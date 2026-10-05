@@ -13,6 +13,8 @@
 //        list from ai/mcp is guarded (422), any other plan leaves out exercises outside the allowed set (a note each)
 //   logSet(deps, session_id, body) / updateSet(deps, id, patch) / deleteSet(deps, id)       → SessionSet / Ok
 //   finishSession(deps, id, body)                                                           → { session, summary }
+//        again after editing a finished session's sets: the summary, PRs and muscle scores are recomputed
+//   deleteSession(deps, id)                                                                 → Ok   (idempotent)
 //   exerciseHistory(deps, id)                                                               → ExerciseHistory
 //   planningContext(deps, date)          → library, readiness, deload, neighbouring sessions, recent digest, templates
 //   progressionFor(deps, input)          → the engine's suggestion per planned exercise (default loads)
@@ -51,7 +53,7 @@ export {
 export { deleteExclusion } from './lib/exclusions'
 export { onTemplateSwap, swapTemplateExercise, templateSwapped, type SwapInput, type SwapListener } from './lib/swap'
 export { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate } from './lib/templates'
-export { deleteSet, finishSession, getSession, listSessions, logSet, startSession, updateSet } from './lib/sessions'
+export { deleteSession, deleteSet, finishSession, getSession, listSessions, logSet, startSession, updateSet } from './lib/sessions'
 export { exerciseHistory, type SessionDigest, type TrainingDigest } from './lib/history'
 export { guardContext, guardWorkout } from './lib/guard'
 export { DEFAULT_REP_RANGE } from './lib/state'

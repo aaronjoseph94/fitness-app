@@ -1,6 +1,7 @@
 // Owns: workout sessions — start (from a template, a week-plan snapshot, an AI draft, or blank) with readiness, and
 // the plan snapshot, the recovery rule and the deload check stored as the start plan (workout_sessions.plan); the session view with each planned exercise's last
-// sets and progression default; set logging with client ids; and finish (engine sessionSummary + an ai_events note).
+// sets and progression default; set logging with client ids; finish (engine sessionSummary + an ai_events note), which
+// re-runs after an edit; and delete (the session, its sets and that note).
 import { DELOAD_SETS_FACTOR, localDate, sessionSummary, weekdayOf, weekStart, type SessionTotals } from '@fitness/shared/engine'
 import {
   WeekPlanContent,
@@ -18,7 +19,7 @@ import {
 } from '@fitness/shared/schemas'
 import { and, between, desc, eq, gt, inArray, lt, max } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { session_sets, week_plans, workout_sessions, workout_templates } from '../../../db'
+import { ai_events, session_sets, week_plans, workout_sessions, workout_templates } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../../lib/http-error'
 import { eventInsert } from '../../events'
@@ -186,6 +187,21 @@ export async function listSessions(deps: Deps, range: { from: string; to: string
   )
 }
 
+/**
+ * DELETE /api/sessions/:id: the session, its sets and its finish note (the 'note' event whose id is the session's), as
+ * one db.batch (no ON DELETE CASCADE). Idempotent: an unknown or deleted id is a no-op, as for the other queued deletes.
+ * A workout proposal the session accepted stays accepted.
+ */
+export async function deleteSession(deps: Deps, id: string): Promise<{ ok: true }> {
+  const { db } = deps
+  await db.batch([
+    db.delete(session_sets).where(eq(session_sets.session_id, id)),
+    db.delete(ai_events).where(and(eq(ai_events.id, id), eq(ai_events.kind, 'note'))),
+    db.delete(workout_sessions).where(eq(workout_sessions.id, id)),
+  ])
+  return { ok: true }
+}
+
 // ── Sets ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 async function setById(deps: Deps, id: string) {
@@ -256,6 +272,8 @@ const roundScores = (s: Partial<Record<Muscle, number>>) =>
  * POST /api/sessions/:id/finish: engine sessionSummary over the completed sets against every earlier session's
  * completed sets of the same exercises (duration, total volume, volume per muscle, PRs by e1RM and best load at
  * reps, muscle scores), stored on the session, plus one ai_events note (id = the session id, so a replay adds none).
+ * Finishing again (after editing a finished session's sets, with the same ended_at) recomputes all of it and rewrites
+ * the note.
  */
 export async function finishSession(deps: Deps, id: string, input: SessionFinish): Promise<SessionFinishResult> {
   const [[row], sets] = await deps.db.batch([
@@ -283,7 +301,8 @@ export async function finishSession(deps: Deps, id: string, input: SessionFinish
   }
   const now = deps.now().toISOString()
   const text = finishText(summary, tags)
-  const note = eventInsert(deps, { id, kind: 'note', summary: text, body: { text, session_id: id, summary }, date: row.date })
+  const body = { text, session_id: id, summary }
+  const note = eventInsert(deps, { id, kind: 'note', summary: text, body, date: row.date })
   await deps.db.batch([
     deps.db
       .update(workout_sessions)
@@ -295,7 +314,8 @@ export async function finishSession(deps: Deps, id: string, input: SessionFinish
         updated_at: now,
       })
       .where(eq(workout_sessions.id, id)),
-    note.statement.onConflictDoNothing(),
+    // A re-finish (after editing the sets) rewrites the note's numbers; a replay writes the same ones.
+    note.statement.onConflictDoUpdate({ target: ai_events.id, set: { summary: text, body, updated_at: now } }),
   ])
   return { session: await getSession(deps, id), summary }
 }

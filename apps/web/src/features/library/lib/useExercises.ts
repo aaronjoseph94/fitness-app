@@ -1,6 +1,7 @@
 // Owns: reading the exercise library — one GET /api/exercises?scope=all per session (the list is ~880 rows without
 // instructions and rarely changes; filtering happens on the phone), shared by the picker, the library, the detail sheet
-// and the builder; an id index; and what goes stale when the allowed set changes (equipment statuses, exclusions).
+// and the builder; an id index; whether the read is waiting for a connection with nothing cached (offline before the
+// library ever loaded on this phone); and what goes stale when the allowed set changes (equipment statuses, exclusions).
 import { endpoints } from '@fitness/shared/api'
 import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
@@ -19,6 +20,8 @@ export interface ExerciseIndex {
   allowed: readonly ExerciseSummary[]
   byId: ReadonlyMap<string, ExerciseSummary>
   isLoading: boolean
+  /** Offline with nothing cached yet: the read waits for a connection (no error, not loading). */
+  paused: boolean
   error: unknown
   refetch: () => void
 }
@@ -36,10 +39,11 @@ export function useExerciseIndex(): ExerciseIndex {
       allowed: data.filter((e) => e.allowed),
       byId: new Map(data.map((e) => [e.id, e])),
       isLoading: query.isLoading,
+      paused: query.isPending && query.fetchStatus === 'paused',
       error: query.error,
       refetch: () => void refetch(),
     }),
-    [data, query.isLoading, query.error, refetch],
+    [data, query.isLoading, query.isPending, query.fetchStatus, query.error, refetch],
   )
 }
 

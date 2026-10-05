@@ -1,4 +1,5 @@
-// Owns: the /train/session/:id page — the logger while the session runs, the finish summary once it is finished,
+// Owns: the /train/session/:id page — the logger while the session runs (or while a finished one is edited), the
+// finish summary once it is finished,
 // and the loading / not-found states when this phone has no working copy and the Worker can't (yet) answer.
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -15,7 +16,7 @@ export function SessionPage() {
   const { session, isLoading, error, refetch } = useSession(id)
 
   if (session)
-    return session.finished ? <FinishSummary session={session} /> : <SessionLogger session={session} />
+    return session.finished && !session.editing ? <FinishSummary session={session} /> : <SessionLogger session={session} />
   if (isLoading)
     return (
       <Box sx={{ display: 'grid', placeItems: 'center', py: 16 }}>

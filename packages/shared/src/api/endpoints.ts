@@ -314,7 +314,10 @@ export const endpoints = {
       response: ExerciseExclusion,
       offline: 'queue',
     }),
-    /** Un-hide: remove an exclusion (idempotent). The body-only rail is not an exclusion and stays. */
+    /**
+     * Un-hide: remove an exclusion (idempotent). :id is the exclusion's or the exercise's id. The body-only rail is not
+     * an exclusion and stays.
+     */
     deleteExclusion: defineEndpoint({ method: 'DELETE', path: '/api/exclusions/:id', params: IdParams, response: Ok, offline: 'queue' }),
     listTemplates: defineEndpoint({ method: 'GET', path: '/api/templates', response: z.array(Template) }),
     getTemplate: defineEndpoint({ method: 'GET', path: '/api/templates/:id', params: IdParams, response: Template }),
@@ -344,6 +347,8 @@ export const endpoints = {
       offline: 'queue',
     }),
     getSession: defineEndpoint({ method: 'GET', path: '/api/sessions/:id', params: IdParams, response: WorkoutSession }),
+    /** A session with its sets and its finish note (a mistaken or duplicate session); an unknown id is a no-op. */
+    deleteSession: defineEndpoint({ method: 'DELETE', path: '/api/sessions/:id', params: IdParams, response: Ok, offline: 'queue' }),
     logSet: defineEndpoint({
       method: 'POST',
       path: '/api/sessions/:id/sets',

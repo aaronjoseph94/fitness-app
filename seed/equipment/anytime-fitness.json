@@ -117,7 +117,22 @@
         "pattern": "\\bchins?\\b|chin-ups?|pull-?ups?\\b|muscle up|\\bdips?\\b|parallel bars?",
         "reason": "Bodyweight hang or dip; use the assisted pull-up/dip machine or lat pulldown instead.",
         "except_equipment": ["machine", "barbell", "dumbbell", "cable", "kettlebells", "e-z curl bar"]
-      }
+      },
+      { "pattern": "renegade row", "reason": "Plank-position row on the floor.", "except_equipment": [] },
+      { "pattern": "turkish get-?up", "reason": "Get-up from lying on the floor.", "except_equipment": [] },
+      { "pattern": "otis-?up", "reason": "Floor sit-up holding a plate.", "except_equipment": [] },
+      { "pattern": "^plate twist$", "reason": "Twist lying on the floor.", "except_equipment": [] },
+      { "pattern": "reverse crunch", "reason": "Reverse crunch lying on the floor (cable too).", "except_equipment": [] },
+      { "pattern": "^ball leg curl$", "reason": "Leg curl lying on the floor, feet on a ball.", "except_equipment": [] },
+      {
+        "pattern": "^bodyweight flyes$",
+        "reason": "Bodyweight fly from a push-up position on the floor.",
+        "except_equipment": []
+      },
+      { "pattern": "ball pull-?in", "reason": "Plank on a ball, hands on the floor.", "except_equipment": [] },
+      { "pattern": "^hip lift with band$", "reason": "Hip lift lying on the floor.", "except_equipment": [] },
+      { "pattern": "kettlebell seated press", "reason": "Press seated on the floor.", "except_equipment": [] },
+      { "pattern": "kneeling jump squat", "reason": "Jump from kneeling on the floor.", "except_equipment": [] }
     ],
     "categories": [
       {

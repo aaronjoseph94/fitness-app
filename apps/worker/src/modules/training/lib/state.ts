@@ -228,9 +228,8 @@ export async function pastSessions(
 }
 
 /**
- * The engine's double-progression suggestion for one planned exercise (SPEC §7). The history goes oldest first by
- * start time: the engine orders sessions by local date only (stable), so two sessions on one day stay in order and the
- * later one is "last session".
+ * The engine's double-progression suggestion for one planned exercise (SPEC §7). The history goes oldest first with
+ * each session's start time, so two sessions on one local date are in order (the later one is "last session").
  */
 export function suggestionFor(
   tags: Pick<ExerciseTags, 'primary_muscles' | 'equipment'>,
@@ -244,7 +243,7 @@ export function suggestionFor(
     rep_min: plan.rep_min,
     rep_max: plan.rep_max,
     sets: plan.sets,
-    history: chronological.map((p) => ({ date: p.date, sets: p.sets })),
+    history: chronological.map((p) => ({ date: p.date, started_at: p.started_at, sets: p.sets })),
     deload_week,
   })
 }

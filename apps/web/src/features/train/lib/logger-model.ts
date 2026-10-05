@@ -83,6 +83,8 @@ export interface LoggerSession {
   /** 'pending' until POST /api/sessions was issued (saved or queued). */
   start: 'pending' | 'sent'
   finished: LoggerFinish | null
+  /** A finished session reopened in the logger to fix its sets; "Save changes" finishes it again with its ended_at. */
+  editing?: boolean
   /**
    * Planned exercises left out when the session was started here, being outside the allowed set by then (equipment
    * status or an exclusion changed since the template or plan was made), as notes in the Worker's format (LEFT_OUT).

@@ -1,7 +1,9 @@
 // Owns: the session logger screen (SPEC §7 session logging) — header (name, running clock, sets ticked, volume,
 // readiness), the start notes (recovery conflicts, deload week, low readiness, planned exercises left out for being
 // outside the allowed set), one card per exercise, add an exercise
-// mid-session (picker), finish with a confirm, the sticky rest timer and the write-problem snackbar.
+// mid-session (picker), finish with a confirm, the sticky rest timer, the write-problem snackbar (at the top, clear of
+// the rest timer), "Delete session", and the edit mode of a finished session (its duration fixed, "Save changes"
+// finishes it again with the same end time).
 import AddRounded from '@mui/icons-material/AddRounded'
 import FlagRounded from '@mui/icons-material/FlagRounded'
 import Alert from '@mui/material/Alert'
@@ -15,15 +17,16 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { useCallback, useMemo, useState } from 'react'
-import { EmptyState, formatNumber, PendingBadge } from '../../../components'
+import { EmptyState, formatNumber, formatShortDate, PendingBadge } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, useExerciseIndex } from '../../library'
 import { useNow } from '../../quick-log'
 import { loggerActions } from './actions'
+import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { ExerciseLogCard } from './ExerciseLogCard'
 import { LEFT_OUT, setCounts, type LoggerSession } from './logger-model'
-import { useLoggerStore } from './logger-store'
+import { loggerState, useLoggerStore } from './logger-store'
 import { ReadinessChip } from './ReadinessChip'
 import { RestTimerBar } from './RestTimerBar'
 import { finishSession } from './sync'
@@ -59,6 +62,18 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
   const picked = useMemo(() => new Set(session.exercises.map((e) => e.exercise_id)), [session.exercises])
   const nameOf = useCallback((id: string) => index.byId.get(id)?.name ?? 'exercise', [index.byId])
 
+  const [deleting, setDeleting] = useState(false)
+  /** A finished session reopened to fix its sets (SessionPage shows the logger while `editing`). */
+  const edited = session.finished
+  const saveEdits = async () => {
+    if (!edited) return
+    setFinishing(true)
+    await finishSession(session.id, edited.ended_at)
+    loggerState().update(session.id, (c) => ({ ...c, editing: false }))
+    setFinishing(false)
+    window.scrollTo({ top: 0 })
+  }
+
   const finish = async () => {
     setFinishing(true)
     await finishSession(session.id, new Date().toISOString())
@@ -88,7 +103,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
-                {ORIGIN_LABEL[session.origin]}
+                {edited ? `Editing · ${formatShortDate(session.date)}` : ORIGIN_LABEL[session.origin]}
               </Box>
               <Box
                 sx={{
@@ -104,7 +119,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
             {session.readiness && <ReadinessChip readiness={session.readiness} />}
           </Box>
           <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
-            <HeaderStat label="Time" value={elapsed(session.started_at, now)} testId="session-clock" />
+            <HeaderStat label="Time" value={elapsed(session.started_at, edited ? Date.parse(edited.ended_at) : now)} testId="session-clock" />
             <HeaderStat label="Sets" value={`${counts.done}/${counts.planned}`} />
             <HeaderStat label="Volume" value={`${formatNumber(counts.volume_kg)} kg`} />
           </Box>
@@ -156,14 +171,23 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
             Add exercise
           </Button>
         )}
-        <Button
-          variant="contained"
-          size="large"
-          startIcon={<FlagRounded />}
-          onClick={() => setConfirm(true)}
-          data-testid="finish-session"
-        >
-          Finish session
+        {edited ? (
+          <Button variant="contained" size="large" disabled={finishing} onClick={() => void saveEdits()} data-testid="save-edits">
+            {finishing ? 'Saving…' : 'Save changes'}
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<FlagRounded />}
+            onClick={() => setConfirm(true)}
+            data-testid="finish-session"
+          >
+            Finish session
+          </Button>
+        )}
+        <Button size="large" color="error" onClick={() => setDeleting(true)} data-testid="delete-session">
+          Delete session
         </Button>
         {/* Room for the rest timer bar. */}
         <Box sx={{ height: 72 }} aria-hidden />
@@ -201,12 +225,17 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         </DialogActions>
       </Dialog>
 
+      <DeleteSessionDialog open={deleting} sessionId={session.id} setsDone={counts.done} onClose={() => setDeleting(false)} />
       <RestTimerBar sessionId={session.id} nameOf={nameOf} />
+      {/* At the top, under the app bar (as the quick-log notice): the rest timer bar holds the bottom. */}
       <Snackbar
         open={problem !== null}
         autoHideDuration={6000}
         onClose={() => setProblem(null)}
         message={problem ? `Couldn't save: ${problem}` : ''}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ top: { xs: `calc(${tokens.tapTarget + tokens.space(4)}px + env(safe-area-inset-top, 0px))` } }}
+        data-testid="logger-problem"
       />
     </>
   )

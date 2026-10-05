@@ -126,6 +126,8 @@ export function loggerActions(sessionId: string): LoggerActions {
       if (load_kg === null) return 'need-load'
       update((x) => mapSet(x, setId, (y) => ({ ...y, reps: y.reps ?? hint.reps, load_kg, done: true })))
       syncSet(sessionId, setId)
+      // Fixing a finished session's sets afterwards: no rest to time.
+      if (current()?.finished) return 'ok'
       askNotificationPermission()
       loggerState().startRest({
         session_id: sessionId,

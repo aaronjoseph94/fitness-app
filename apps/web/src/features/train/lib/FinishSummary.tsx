@@ -1,7 +1,9 @@
 // Owns: the session finish screen (SPEC §7 "Finish") — duration, total volume, sets and PRs as stat cards, the muscle
 // map of what was trained (levels from the session's muscle scores), volume per muscle as a compact bar list, the
-// PRs (best load at a rep count, best e1RM), each exercise's ticked sets, and one-tap "Save as template".
+// PRs (best load at a rep count, best e1RM), each exercise's ticked sets, one-tap "Save as template", "Edit sets" (back
+// into the logger; saving finishes it again with the same end time) and "Delete session".
 import BookmarkAddOutlined from '@mui/icons-material/BookmarkAddOutlined'
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import EmojiEventsRounded from '@mui/icons-material/EmojiEventsRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -16,7 +18,9 @@ import { formatNumber, formatShortDate, formatWeekday, PendingBadge, StatCard } 
 import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { useExerciseIndex } from '../../library'
+import { DeleteSessionDialog } from './DeleteSessionDialog'
 import type { LoggerSession } from './logger-model'
+import { loggerState } from './logger-store'
 import { SaveTemplateDialog } from './SaveTemplateDialog'
 import { formatSet } from './SetRow'
 import { finishView } from './summary'
@@ -64,6 +68,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<{ templateId: string; queued: boolean } | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const view = useMemo(() => finishView(session, index.byId), [session, index.byId])
   if (!view) return null
   const { summary } = view
@@ -223,9 +228,22 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
       >
         Save as template
       </Button>
+      <Button
+        variant="outlined"
+        size="large"
+        startIcon={<EditOutlined />}
+        onClick={() => loggerState().update(session.id, (c) => ({ ...c, editing: true }))}
+        data-testid="summary-edit"
+      >
+        Edit sets
+      </Button>
       <Button size="large" onClick={() => void navigate('/train')}>
         Back to Train
       </Button>
+      <Button size="large" color="error" onClick={() => setDeleting(true)} data-testid="delete-session">
+        Delete session
+      </Button>
+      <DeleteSessionDialog open={deleting} sessionId={session.id} setsDone={view.sets_done} onClose={() => setDeleting(false)} />
 
       <SaveTemplateDialog
         open={saving}

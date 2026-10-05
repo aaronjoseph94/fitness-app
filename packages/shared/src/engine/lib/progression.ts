@@ -21,8 +21,11 @@ export type ProgressionInput = {
   rep_min: number
   rep_max: number
   sets: number
-  /** This exercise's past sessions (any order). */
-  history: readonly { date: LocalDate; sets: readonly LoggedSet[] }[]
+  /**
+   * This exercise's past sessions (any order). `started_at` (UTC instant) orders two sessions on one local date; without
+   * it they keep the order given.
+   */
+  history: readonly { date: LocalDate; started_at?: string; sets: readonly LoggedSet[] }[]
   /** The program is in a deload week (see deloadCheck). */
   deload_week?: boolean
 }
@@ -49,6 +52,7 @@ function working(sets: readonly LoggedSet[]): { reps: number; load_kg: number }[
 
 /**
  * Double progression (SPEC §7):
+ *   sessions in order of (date, started_at); last = the latest
  *   session load L = min load over its working sets; the session "tops out" when it has ≥ `sets` working sets and
  *   every one has reps ≥ rep_max.
  *   last two sessions both top out at the same L → increase: L + increment
@@ -56,8 +60,10 @@ function working(sets: readonly LoggedSet[]): { reps: number; load_kg: number }[
  *   deload week → deload: same L, round(sets × 0.6) sets (at least 1)
  */
 export function nextProgression(input: ProgressionInput): Progression {
+  const order = (a: { date: string; started_at?: string }, b: { date: string; started_at?: string }) =>
+    a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.started_at && b.started_at ? a.started_at.localeCompare(b.started_at) : 0
   const sessions = [...input.history]
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .sort(order)
     .map((s) => working(s.sets))
     .filter((w) => w.length > 0)
   const last = sessions.at(-1)

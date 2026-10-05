@@ -1,11 +1,13 @@
 // Owns: mirroring the logger's working copy to the Worker — one serial write chain for every training write (so a
 // set never overtakes the session it belongs to), per-set reconcile (create when ticked or noted, patch only what
-// changed, delete removed ones), debounced typing, the session start, and finish. Every write goes through the
+// changed, delete removed ones), debounced typing, the session start, finish (again after an edit), and deleting a
+// session. Every write goes through the
 // offline-aware mutations, so a write made offline is queued with its client id and replays in order.
 import { endpoints } from '@fitness/shared/api'
-import type { SessionCreate, SetCreate, SetPatch } from '@fitness/shared/schemas'
+import type { SessionCreate, SetCreate, SetPatch, WorkoutSession } from '@fitness/shared/schemas'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
-import { problemText, useApiMutation, type WriteOutcome } from '../../../api'
+import { apiQueryKey, problemText, useApiMutation, type WriteOutcome } from '../../../api'
 import { findSet, mergeServer, noteFor, payloadKey, shouldExist, type LoggerSession } from './logger-model'
 import { loggerState } from './logger-store'
 
@@ -18,6 +20,7 @@ export interface TrainingWriters {
   updateSet: (setId: string, body: SetPatch) => Promise<unknown>
   deleteSet: (setId: string) => Promise<unknown>
   finish: (sessionId: string, ended_at: string) => Promise<WriteOutcome<typeof t.finishSession>>
+  deleteSession: (sessionId: string) => Promise<unknown>
 }
 
 /** What a session finish invalidates: the lists and days that show sessions. */
@@ -36,6 +39,8 @@ export function useTrainingWriters(): TrainingWriters {
   const updateSet = useApiMutation(t.updateSet)
   const deleteSet = useApiMutation(t.deleteSet)
   const finish = useApiMutation(t.finishSession, { invalidates: FINISH_REFRESHES })
+  const remove = useApiMutation(t.deleteSession, { invalidates: FINISH_REFRESHES.filter((e) => e !== t.getSession) })
+  const queryClient = useQueryClient()
   const writers = useMemo<TrainingWriters>(
     () => ({
       start: (body) => start.mutateAsync({ body }),
@@ -43,8 +48,13 @@ export function useTrainingWriters(): TrainingWriters {
       updateSet: (id, body) => updateSet.mutateAsync({ params: { id }, body }),
       deleteSet: (id) => deleteSet.mutateAsync({ params: { id } }),
       finish: (id, ended_at) => finish.mutateAsync({ params: { id }, body: { ended_at } }),
+      deleteSession: (id) => {
+        // Gone from the lists at once, even while the delete is queued offline.
+        queryClient.setQueriesData<WorkoutSession[]>({ queryKey: apiQueryKey(t.listSessions) }, (list) => list?.filter((s) => s.id !== id))
+        return remove.mutateAsync({ params: { id } })
+      },
     }),
-    [start.mutateAsync, logSet.mutateAsync, updateSet.mutateAsync, deleteSet.mutateAsync, finish.mutateAsync],
+    [start.mutateAsync, logSet.mutateAsync, updateSet.mutateAsync, deleteSet.mutateAsync, finish.mutateAsync, remove.mutateAsync, queryClient],
   )
   // The chain outlives a page; it always writes through the most recently mounted writers.
   useEffect(() => {
@@ -177,6 +187,23 @@ export function flushSession(sessionId: string): void {
     timers.delete(setId)
     void enqueue((w) => reconcileSet(w, sessionId, setId))
   }
+}
+
+/**
+ * Delete a session: drop its debounced writes and its working copy (writes already in the chain then find no copy and
+ * do nothing), then DELETE it through the chain, after any earlier write of the session (its start, a queued finish),
+ * so offline it queues behind them. The Worker's delete is idempotent: a session that never reached it is a no-op.
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  for (const [setId, p] of [...timers]) {
+    if (p.sessionId !== sessionId) continue
+    clearTimeout(p.timer)
+    timers.delete(setId)
+  }
+  loggerState().remove(sessionId)
+  await enqueue(async (w) => {
+    await w.deleteSession(sessionId)
+  })
 }
 
 /** Issue POST /api/sessions for a copy seeded here (no-op once sent). */

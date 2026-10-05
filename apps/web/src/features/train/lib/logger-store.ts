@@ -23,6 +23,8 @@ interface LoggerState {
   put: (session: LoggerSession) => void
   /** Apply `fn` to a working copy (no-op when absent); stamps `touched`. */
   update: (id: string, fn: (session: LoggerSession) => LoggerSession) => void
+  /** Drop a working copy (the session was deleted) and its rest timer. */
+  remove: (id: string) => void
   startRest: (timer: Omit<RestTimer, 'ends_at'>) => void
   extendRest: (seconds: number) => void
   clearRest: () => void
@@ -58,6 +60,11 @@ export const useLoggerStore = create<LoggerState>()(
           const current = s.sessions[id]
           if (!current) return s
           return { sessions: { ...s.sessions, [id]: { ...fn(current), touched: Date.now() } } }
+        }),
+      remove: (id) =>
+        set((s) => {
+          const { [id]: _gone, ...sessions } = s.sessions
+          return { sessions, rest: s.rest?.session_id === id ? null : s.rest }
         }),
       startRest: (timer) =>
         set({

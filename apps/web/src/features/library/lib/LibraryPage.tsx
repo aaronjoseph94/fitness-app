@@ -87,7 +87,7 @@ export function LibraryPage() {
         }
       />
       <Typography variant="label" component="p" sx={{ m: 0 }}>
-        {index.isLoading ? 'Loading…' : `${results.length} of ${includeHidden ? index.all.length : index.allowed.length} ${includeHidden ? 'exercises' : 'allowed exercises'}`}
+        {index.isLoading ? 'Loading…' : index.paused ? 'Offline' : `${results.length} of ${includeHidden ? index.all.length : index.allowed.length} ${includeHidden ? 'exercises' : 'allowed exercises'}`}
       </Typography>
       {index.isLoading ? (
         <Box sx={{ display: 'grid', placeItems: 'center', py: 10 }}>
@@ -95,6 +95,8 @@ export function LibraryPage() {
         </Box>
       ) : index.error && index.all.length === 0 ? (
         <LoadProblem what="The exercise library" error={index.error} onRetry={index.refetch} />
+      ) : index.paused ? (
+        <EmptyState illustration="training" title="Not loaded yet" body="The library isn't on this phone yet — connect once to load it." />
       ) : results.length === 0 ? (
         <EmptyState illustration="training" title="No exercise matches" body="Try fewer words or clear a filter." />
       ) : (
@@ -120,12 +122,15 @@ export function ExercisePage() {
   if (!exercise)
     return index.error && index.all.length === 0 ? (
       <LoadProblem what="The exercise" error={index.error} onRetry={index.refetch} />
+    ) : index.paused ? (
+      <EmptyState illustration="training" title="Not loaded yet" body="The library isn't on this phone yet — connect once to load it." />
     ) : (
       <EmptyState title="Exercise not found" body="It may have been removed from the library." action={<Button component={RouterLink} to="/train/library">Open the library</Button>} />
     )
   return (
     <Stack spacing={4} data-testid="exercise-page">
-      <Typography variant="h2" component="h1">
+      {/* The top bar holds the page's h1; the exercise is the first section under it ("How to" is an h3). */}
+      <Typography variant="h2" component="h2">
         {exercise.name}
       </Typography>
       <ExerciseDetail exercise={exercise} />

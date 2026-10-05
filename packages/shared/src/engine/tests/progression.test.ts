@@ -44,6 +44,27 @@ describe('double progression', () => {
   })
 })
 
+describe('double progression: two sessions on one date', () => {
+  test('started_at orders them: the later one is last session, whatever order the history comes in', () => {
+    const base = { exercise: { primary_muscles: ['shoulders'] as const, equipment: 'dumbbell' }, rep_min: 8, rep_max: 12, sets: 3 }
+    // Newest first, as a database read returns them: 08:00 at 20 kg, 16:30 at 25 kg, both on Mon 2026-11-02.
+    const history = [
+      { date: '2026-11-02', started_at: '2026-11-02T23:30:00.000Z', sets: sets([10, 10, 10], 25) },
+      { date: '2026-11-02', started_at: '2026-11-02T15:00:00.000Z', sets: sets([10, 10, 10], 20) },
+    ]
+    expect(nextProgression({ ...base, history })).toMatchObject({ kind: 'hold', load_kg: 25 })
+    expect(nextProgression({ ...base, history: [...history].reverse() })).toMatchObject({ kind: 'hold', load_kg: 25 })
+  })
+
+  test('two same-day sessions at the top of the range count as two sessions running (+2.5 kg)', () => {
+    const history = [
+      { date: '2026-11-02', started_at: '2026-11-02T23:30:00.000Z', sets: sets([12, 12, 12], 20) },
+      { date: '2026-11-02', started_at: '2026-11-02T15:00:00.000Z', sets: sets([12, 12, 12], 20) },
+    ]
+    expect(nextProgression({ exercise: { primary_muscles: ['shoulders'], equipment: 'dumbbell' }, rep_min: 8, rep_max: 12, sets: 3, history })).toMatchObject({ kind: 'increase', load_kg: 22.5 })
+  })
+})
+
 describe('double progression: increments', () => {
   const topped = [
     { date: '2026-10-05', sets: sets([10, 10, 10], 60) },
