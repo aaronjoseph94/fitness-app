@@ -8,6 +8,8 @@ test('a described meal falls back to manual items, confirms, and shows the rest 
   await page.goto('/')
   await page.getByRole('navigation', { name: 'Quick log' }).getByRole('button', { name: 'Meal' }).click()
   const form = page.getByRole('dialog', { name: 'Log meal' })
+  // The form opens on Favourites once earlier flows have logged foods (recents), on Describe otherwise.
+  await form.getByRole('group', { name: 'How to log' }).getByRole('button', { name: 'Describe' }).click()
   await form.getByRole('textbox', { name: 'What did you eat?' }).fill('2 boiled eggs and a slice of toast')
   await form.getByRole('button', { name: 'Analyse' }).click()
 
