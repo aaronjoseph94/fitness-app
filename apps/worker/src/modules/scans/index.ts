@@ -9,7 +9,8 @@
 //   confirmScan(deps, id, patch)       → Scan           every value as Aaron edited it (a new id = manual entry);
 //                                                       (re)queues scan_analysis; 400 for a scan dated after now
 //   listScans(deps) / getScan(deps, id) → Scan[] / Scan  newest first; comparisons and flags computed on read
-//   deleteScan(deps, id)               → Ok             unconfirmed only (409 otherwise); removes the sheet
+//   deleteScan(deps, id)               → Ok             removes the scan and its sheet; a confirmed one also re-anchors
+//                                                       the milestones and withdraws its debrief's pending proposals
 //   compareScanIds(deps, a, b)         → ScanChange     the later scan against the earlier (tools: compare_scans)
 //   scanSchedule(deps)                 → ScanSchedule   last scan, interval, the scheduled date (newest
 //                                                       scan_scheduled note since the last scan), next due date
@@ -34,12 +35,12 @@ import {
 } from '@fitness/shared/schemas'
 import { and, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { progress_photos, runBatch, scan_segments, scans } from '../../db'
+import { milestones, progress_photos, runBatch, scan_segments, scans } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../lib/http-error'
-import { eventInsert } from '../events'
-import { jobInsert, registerJobHandler, runSoon, type JobMeta } from '../jobs'
-import { createLlmRouter, type LlmRouter } from '../llm'
+import { eventInsert, proposalDecisionUpdate } from '../events'
+import { JobFailed, jobInsert, registerJobHandler, runSoon, type JobMeta } from '../jobs'
+import { createLlmRouter, ProvidersExhaustedError, type LlmRouter } from '../llm'
 import { checkPhotoBytes } from '../photos'
 import { getActivePlan, propose } from '../plan'
 import { getSettings } from '../settings'
@@ -169,15 +170,33 @@ export async function confirmScan(deps: Deps, id: string, patch: ScanPatch): Pro
   return getScan(deps, id)
 }
 
-/** DELETE /api/scans/:id: an unconfirmed scan and its sheet. */
+/**
+ * DELETE /api/scans/:id: a scan and its sheet, in one batch. A confirmed one (a wrong scan would otherwise drive the
+ * milestones, the lean-loss guard and the next due date for good) also hands its milestones back — re-anchored over the
+ * other confirmed scans, as a confirm does — withdraws its debrief's pending proposals and leaves a note saying so.
+ */
 export async function deleteScan(deps: Deps, id: string): Promise<Ok> {
   const row = await scanRow(deps, id)
-  if (row.confirmed) throw new HttpError(409, 'scan_confirmed', 'A confirmed scan cannot be discarded')
   const { db } = deps
+  const confirmedWrites: BatchItem<'sqlite'>[] = []
+  if (row.confirmed) {
+    const store = await loadStore(deps)
+    const [view] = await toViews(deps, store, [row])
+    const anchors = await reanchorMilestones(deps, store.confirmed.filter((s) => s.id !== id))
+    const proposals = view?.analysis?.proposal_ids ?? []
+    const text = `Scan ${row.date} deleted: milestones re-anchored to the other scans${proposals.length ? `, ${proposals.length} pending proposal(s) from its debrief withdrawn` : ''}.`
+    confirmedWrites.push(
+      db.update(milestones).set({ scan_id: null, actor: deps.actor, updated_at: deps.now().toISOString() }).where(eq(milestones.scan_id, id)),
+      ...anchors.statements,
+      ...proposals.map((p) => proposalDecisionUpdate(deps, p, { status: 'rejected' })),
+      eventInsert(deps, { kind: 'note', summary: text, body: { text }, date: today(deps.now()) }).statement,
+    )
+  }
   await db.batch([
     db.update(progress_photos).set({ nearest_scan_id: null }).where(eq(progress_photos.nearest_scan_id, id)),
+    ...confirmedWrites,
     db.delete(scan_segments).where(eq(scan_segments.scan_id, id)),
-    db.delete(scans).where(and(eq(scans.id, id), eq(scans.confirmed, false))),
+    db.delete(scans).where(and(eq(scans.id, id), eq(scans.confirmed, row.confirmed))),
   ])
   if (row.storage_path) await deps.env.FILES.delete(row.storage_path)
   return { ok: true }
@@ -206,7 +225,8 @@ const metaOf = (r: { provider: string; model: string; tokens_in: number; tokens_
 /**
  * scan_extract: the Clerk reads the stored sheet (vision) → ScanExtractOutput in the sheet's units → kg draft in
  * `scans.extracted` (only while unconfirmed). Router errors propagate, so the job retries and then fails; the confirm
- * form offers manual entry meanwhile.
+ * form offers manual entry meanwhile. When no provider has a key at all the job fails at once (JobFailed), naming
+ * manual entry.
  */
 export async function extractScan(deps: ScanJobDeps, input: { scan_id: string }): Promise<{ output: ScanExtractOutput; meta: JobMeta }> {
   const row = await scanRow(deps, input.scan_id)
@@ -216,16 +236,23 @@ export async function extractScan(deps: ScanJobDeps, input: { scan_id: string })
   const object = await deps.env.FILES.get(row.storage_path)
   if (!object) throw new Error(`Sheet ${row.storage_path} is missing from storage`)
   const mime = object.httpMetadata?.contentType ?? 'image/jpeg'
-  const result = await deps.router.complete({
-    job: 'scan_extract',
-    system: EXTRACT_SYSTEM,
-    messages: [{ role: 'user', content: EXTRACT_PROMPT }],
-    images: [{ mime, data: await object.arrayBuffer() }],
-    schema: ScanExtractOutput,
-    priority: 'user',
-    maxTokens: 4096,
-    deadlineMs: EXTRACT_DEADLINE_MS,
-  })
+  const result = await deps.router
+    .complete({
+      job: 'scan_extract',
+      system: EXTRACT_SYSTEM,
+      messages: [{ role: 'user', content: EXTRACT_PROMPT }],
+      images: [{ mime, data: await object.arrayBuffer() }],
+      schema: ScanExtractOutput,
+      priority: 'user',
+      maxTokens: 4096,
+      deadlineMs: EXTRACT_DEADLINE_MS,
+    })
+    .catch((e: unknown) => {
+      // No provider has a key: no retry can read the sheet, so fail now and send Aaron to manual entry.
+      if (e instanceof ProvidersExhaustedError && e.failures.length > 0 && e.failures.every((f) => f.reason === 'no_key'))
+        throw new JobFailed(`No AI provider is set up to read sheets (no API key); enter the values by hand. ${e.message}`)
+      throw e
+    })
   const draft = toDraft(result.data)
   await deps.db
     .update(scans)

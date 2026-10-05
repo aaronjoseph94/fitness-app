@@ -39,7 +39,10 @@ export async function buildTrend(deps: Deps, { from, to }: DateRange): Promise<T
     points: history.filter((p) => p.date >= from),
     change_7d_kg: trendChange(history, to, 7),
     measurements: tape.map(toMeasurement),
-    forecast: plan?.forecast ?? null,
+    // The contract's keys only: the stored forecast also keeps the reforecast's night markers (plan lib/forecast).
+    forecast: plan?.forecast
+      ? { finish_date: plan.forecast.finish_date, weekly_rate_kg: plan.forecast.weekly_rate_kg, band: plan.forecast.band, tdee_est: plan.forecast.tdee_est }
+      : null,
     milestones: stored.map((row) => {
       const m = toMilestone(row)
       const computed = m.kind === 'weight' && m.reached_on === null ? reached.get(m.id) : undefined

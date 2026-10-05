@@ -56,9 +56,10 @@ function LossBar(props: {
 }
 
 export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: WeeklyLossChartProps) {
+  // Ticks print one decimal, so every step is a multiple of 0.1 (a 0.25 step would print −0.75 as "−0.8").
   const y = niceScale(
     weeks.flatMap((w) => [w.change, w.expected ?? 0]),
-    { zero: true, count: 4 },
+    { zero: true, count: 4, minStep: 0.1 },
   )
   const Tip = tooltip<WeeklyLossPoint>(
     (w) => `Week of ${w.week}`,

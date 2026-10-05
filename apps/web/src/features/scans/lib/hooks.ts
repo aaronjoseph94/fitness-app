@@ -48,6 +48,16 @@ export function useDiscardScan() {
   return useApiMutation(endpoints.scans.remove, { invalidates: STALE_AFTER_SCAN_WRITE })
 }
 
+/**
+ * Deleting a confirmed scan also withdraws its debrief's proposals, which Today's day view lists. The deleted scan's own
+ * read is left alone (refetching it would only 404 while the page leaves for the list).
+ */
+export function useDeleteScan() {
+  return useApiMutation(endpoints.scans.remove, {
+    invalidates: [endpoints.scans.list, endpoints.scans.schedule, endpoints.body.trend, endpoints.day.events, endpoints.day.get],
+  })
+}
+
 /** When the next scan is due, as the server has it: a date the coach or a week plan scheduled, else the interval. */
 export function useScanSchedule() {
   return useApiQuery(endpoints.scans.schedule, {})

@@ -1,7 +1,7 @@
 // Owns: tests at the scans seam — the 2026-09-26 sheet (SPEC §2 seed record, printed in lb) extracts within rounding
 // and round-trips through confirm in kg; a scan losing lean mass trips the lean-loss guard with the engine's debrief
-// when no LLM answers; an LLM debrief's proposals go through the guards; a scan dated in the future is refused; the
-// scan-due note; a PNG sheet carrying a text chunk (metadata) is refused before it is stored. The fake router stands in for the LLM; the real one (no keys
+// when no LLM answers; an LLM debrief's proposals go through the guards; a scan dated in the future is refused; a
+// wrong confirmed scan can be deleted (milestones re-anchored, its pending proposals withdrawn); the scan-due note; a PNG sheet carrying a text chunk (metadata) is refused before it is stored. The fake router stands in for the LLM; the real one (no keys
 // locally) shows the graceful failure path.
 import { ReminderKind, ScanRecord, type ReminderPrefs, type ScanExtractOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
@@ -11,7 +11,7 @@ import seed from '../../../seed/scans/2026-09-26.json'
 import { ai_events, ai_jobs, createDb, milestones, plan_versions, profile, scan_segments, scans, settings, weight_logs } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import type { CompleteRequest } from '../src/modules/llm'
-import { analyseScan, confirmScan, extractScan, getScan, noteScanDue, scanSchedule, uploadScan, type ScanJobDeps } from '../src/modules/scans'
+import { analyseScan, confirmScan, deleteScan, extractScan, getScan, noteScanDue, scanSchedule, uploadScan, type ScanJobDeps } from '../src/modules/scans'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -171,13 +171,13 @@ describe('scan extraction', () => {
     const uploaded = await uploadScan(deps, { query: { id, content_type: 'image/png' }, body: sheet })
     await settle()
 
-    // No LLM keys locally: the real router fails, the job waits for a retry, and the scan says so (manual entry offered).
+    // No LLM keys locally: no provider has a key, so no retry can help — the job fails at once and points to manual entry.
     expect(await env.FILES.head(`scan-sheets/${id}.png`)).not.toBeNull()
     expect(await getScan(deps, id)).toMatchObject({
       confirmed: false,
       extracted: null,
       sheet_url: expect.stringMatching(/^\/api\/files\/scan-sheets%2F/),
-      extraction: { job_id: uploaded.job_id, status: 'queued', attempts: 1, error: expect.stringContaining('No LLM provider') },
+      extraction: { job_id: uploaded.job_id, status: 'failed', attempts: 1, error: expect.stringMatching(/No AI provider is set up.*enter the values by hand.*no_key/s) },
     })
 
     const printed: ScanExtractOutput = {
@@ -245,6 +245,40 @@ describe('scan confirm', () => {
     await expect(confirmScan(deps, id, { record: { ...LEAN_LOSS_SCAN, scanned_at: '2026-11-20T14:00:00.000Z' } })).rejects.toMatchObject({ status: 400 })
 
     expect(await db.select().from(scans).where(eq(scans.id, id))).toEqual([])
+    expect((await scanSchedule(deps)).last_scan_date).toBe('2026-09-26')
+  })
+})
+
+describe('deleting a confirmed scan', () => {
+  it('removes it, its segments and sheet; the milestones it reached and its lean-loss proposal go with it; the baseline is the last scan again', async () => {
+    await insertConfirmed(BASELINE, '2026-09-26')
+    const id = crypto.randomUUID()
+    await uploadScan(deps, { query: { id, content_type: 'image/png' }, body: pngSheet() })
+    await settle()
+    // A wrong scan: 29 % body fat and visceral level 9 (two milestones), and lean −1.5 of −3.0 kg (the lean-loss guard).
+    const wrong = ScanRecord.parse({ ...LEAN_LOSS_SCAN, scanned_at: '2026-10-05T09:00:00-06:00', body_fat_pct: 29, visceral_fat_level: 9 })
+    await confirmScan(deps, id, { record: wrong })
+    await settle()
+    const { analysis } = await getScan(deps, id)
+    expect(analysis!.proposal_ids).toHaveLength(1)
+    expect((await db.select().from(milestones).where(eq(milestones.scan_id, id))).map((m) => m.label).sort()).toEqual([
+      'Body fat under 30 %',
+      'Visceral fat level 9 or lower',
+    ])
+
+    expect(await deleteScan(deps, id)).toEqual({ ok: true })
+
+    expect(await db.select().from(scans).where(eq(scans.id, id))).toEqual([])
+    expect(await db.select().from(scan_segments).where(eq(scan_segments.scan_id, id))).toEqual([])
+    expect(await env.FILES.head(`scan-sheets/${id}.png`)).toBeNull()
+    expect((await db.select().from(milestones)).map((m) => [m.label, m.reached_on, m.scan_id])).toEqual(
+      expect.arrayContaining([
+        ['Body fat under 30 %', null, null],
+        ['Visceral fat level 9 or lower', null, null],
+      ]),
+    )
+    const [proposal] = await db.select().from(ai_events).where(eq(ai_events.id, analysis!.proposal_ids[0]!))
+    expect(proposal!.proposal_status).toBe('rejected')
     expect((await scanSchedule(deps)).last_scan_date).toBe('2026-09-26')
   })
 })

@@ -1,7 +1,8 @@
 // Owns: one scan (/scans/:id; /scans/new is manual entry). Unconfirmed: "Extracting…" while the sheet is read, then
 // the review form (or manual entry when reading failed). Confirmed: the headline numbers with changes, the lean-loss
 // guard and other call-outs, the debrief with its milestone updates and proposals, the scan charts, and every value
-// against the previous scan and the baseline; "Edit values" re-confirms.
+// against the previous scan and the baseline; "Edit values" re-confirms, "Delete this scan" (at the foot) removes a
+// wrong scan after a confirm.
 import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded'
 import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
@@ -18,6 +19,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { SectionHeader, StatCard } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, todayLocal } from '../../quick-log'
+import { DeleteScanDialog } from './DeleteScanDialog'
 import { DeltaTable } from './DeltaTable'
 import { formFrom } from './form'
 import { useDiscardScan, useReextractScan, useScan, useScans, useScanSettings } from './hooks'
@@ -213,6 +215,7 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
 
 function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedScan[] }) {
   const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const fallback = useFallback()
   const r = scan.record
   const a = scan.analysis
@@ -280,6 +283,12 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
         </Box>
         <DeltaTable record={r} previous={prev} baseline={a?.vs_baseline ?? null} />
       </Card>
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Button color="error" onClick={() => setDeleting(true)} data-testid="scan-delete">
+          Delete this scan
+        </Button>
+      </Box>
+      {deleting && <DeleteScanDialog scanId={scan.id} date={scan.date} onClose={() => setDeleting(false)} />}
     </Stack>
   )
 }

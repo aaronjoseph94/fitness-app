@@ -1,4 +1,5 @@
-// Owns: the scan schema seam — the SPEC §2 seed record must parse as a confirmed scan record.
+// Owns: the scan schema seam — the SPEC §2 seed record must parse as a confirmed scan record, and a record whose masses
+// cannot be one body (lean or fat above the weight, lean + fat more than 1 kg off the weight) is refused at the field.
 import { describe, expect, test } from 'vitest'
 import { ScanRecord } from '../index'
 
@@ -51,5 +52,32 @@ describe('ScanRecord', () => {
 
   test('scanned_at with an Edmonton offset is stored as the UTC instant', () => {
     expect(ScanRecord.parse(seedRecord).scanned_at).toBe('2026-09-26T16:13:00.000Z')
+  })
+
+  test('the seed record adds up: lean 59.6 + fat 35.5 = weight 95.1 kg', () => {
+    expect(seedRecord.lean_body_mass_kg + seedRecord.body_fat_mass_kg).toBeCloseTo(seedRecord.weight_kg, 6)
+  })
+
+  test('refuses lean mass above the weight (a typo: 120 kg lean on 91.1 kg), on the lean field', () => {
+    const result = ScanRecord.safeParse({ ...seedRecord, weight_kg: 91.1, lean_body_mass_kg: 120, body_fat_mass_kg: 33.2 })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((i) => i.path.join('.'))).toContain('lean_body_mass_kg')
+  })
+
+  test('refuses fat mass above the weight, on the fat field', () => {
+    const result = ScanRecord.safeParse({ ...seedRecord, body_fat_mass_kg: 135.5 })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((i) => i.path.join('.'))).toContain('body_fat_mass_kg')
+  })
+
+  test('refuses lean + fat more than 1 kg off the weight (59.6 + 35.5 = 95.1 vs 97.1), and accepts 0.04 kg of rounding', () => {
+    const off = ScanRecord.safeParse({ ...seedRecord, weight_kg: 97.1 })
+    expect(off.success).toBe(false)
+    expect(off.error?.issues.map((i) => i.path.join('.'))).toContain('weight_kg')
+
+    // A sheet read in lb converts each value on its own (95.12 = 59.58 + 35.5 + rounding).
+    expect(ScanRecord.safeParse({ ...seedRecord, weight_kg: 95.12, lean_body_mass_kg: 59.58 }).success).toBe(true)
   })
 })

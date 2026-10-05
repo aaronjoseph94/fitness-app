@@ -65,18 +65,42 @@ export const ScanMetrics = z.object({
 })
 export type ScanMetrics = z.infer<typeof ScanMetrics>
 
-/** A confirmed scan: exactly the SPEC §2 seed-record shape. Mass values are kg; `source_units` is what the sheet printed. */
-export const ScanRecord = z.object({
-  scanned_at: Instant,
-  source: ScanSource,
-  source_units: MassUnit,
-  height_cm: z.number().positive().max(300),
-  age: Count.max(150),
-  sex: Sex,
-  ...ScanMetrics.shape,
-  segments: ScanSegments,
-  conditions: ScanConditions,
-})
+/** How far lean + fat may sit from the weight: the sheet's lb values are converted one by one (SPEC §2: 59.6 + 35.5 = 95.1). */
+export const SCAN_MASS_TOLERANCE_KG = 1
+
+/**
+ * A confirmed scan: exactly the SPEC §2 seed-record shape. Mass values are kg; `source_units` is what the sheet printed.
+ * The masses are one body: lean < weight, fat < weight, |lean + fat − weight| ≤ 1 kg (each refusal on its field).
+ */
+export const ScanRecord = z
+  .object({
+    scanned_at: Instant,
+    source: ScanSource,
+    source_units: MassUnit,
+    height_cm: z.number().positive().max(300),
+    age: Count.max(150),
+    sex: Sex,
+    ...ScanMetrics.shape,
+    segments: ScanSegments,
+    conditions: ScanConditions,
+  })
+  .superRefine((r, ctx) => {
+    const kg = (v: number) => `${Math.round(v * 100) / 100} kg`
+    const over = (path: 'lean_body_mass_kg' | 'body_fat_mass_kg', label: string) => {
+      if (r[path] < r.weight_kg) return false
+      ctx.addIssue({ code: 'custom', path: [path], message: `${label} ${kg(r[path])} is not less than the weight ${kg(r.weight_kg)}` })
+      return true
+    }
+    const leanOver = over('lean_body_mass_kg', 'Lean mass')
+    const fatOver = over('body_fat_mass_kg', 'Fat mass')
+    const gap = r.lean_body_mass_kg + r.body_fat_mass_kg - r.weight_kg
+    if (!leanOver && !fatOver && Math.abs(gap) > SCAN_MASS_TOLERANCE_KG)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['weight_kg'],
+        message: `Lean ${kg(r.lean_body_mass_kg)} + fat ${kg(r.body_fat_mass_kg)} is ${kg(Math.abs(gap))} ${gap > 0 ? 'more' : 'less'} than the weight; check all three`,
+      })
+  })
 export type ScanRecord = z.infer<typeof ScanRecord>
 
 /** `{ k: S[k] }` → `{ k: S[k] | null }`: a value the sheet reader could not see is null, never guessed. */

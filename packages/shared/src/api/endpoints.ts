@@ -425,7 +425,7 @@ export const endpoints = {
     get: defineEndpoint({ method: 'GET', path: '/api/scans/:id', params: IdParams, response: Scan }),
     /** Read the stored sheet again (a new scan_extract job) for an unconfirmed scan. */
     extract: defineEndpoint({ method: 'POST', path: '/api/scans/:id/extract', params: IdParams, response: ScanUploaded }),
-    /** Discard an unconfirmed scan and its sheet (409 for a confirmed one). */
+    /** Delete a scan and its sheet; a confirmed one also re-anchors the milestones and withdraws its pending proposals. */
     remove: defineEndpoint({ method: 'DELETE', path: '/api/scans/:id', params: IdParams, response: Ok }),
   },
 

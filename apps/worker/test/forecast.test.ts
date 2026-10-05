@@ -1,13 +1,16 @@
 // Owns: tests at the reforecast seam (plan.reforecast) — the expenditure estimate counts a logged intake day as one
 // with a confirmed meal or the fast's own fast day (engine fastDay: a 19:00 → 19:00 fast makes the next day it), not
 // every day a fast overlaps, so it keeps the baseline 2,551 kcal (SPEC §2) with fewer than 10 logged days (SPEC §9);
-// and the weekly re-estimate is idempotent per as_of (run twice for one night, it does not smooth against itself).
+// and the weekly re-estimate is idempotent per as_of (run twice for one night, it does not smooth against itself); the
+// night markers it stores never reach the contract (plan versions, the day view).
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { createDb, fast_logs, meal_items, meals, plan_versions, profile, settings, weight_logs } from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { ensureTargetsThrough, reforecast } from '../src/modules/plan'
+import { getTrend } from '../src/modules/body'
+import { getDay } from '../src/modules/day'
+import { ensureTargetsThrough, getActivePlan, reforecast } from '../src/modules/plan'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -91,5 +94,16 @@ describe('reforecast run twice for the same night', () => {
 
     expect(first.tdee_est).toBe(1981)
     expect(again.tdee_est).toBe(1981)
+  })
+})
+
+describe('the stored forecast as the contract shows it', () => {
+  it('carries only finish_date, weekly_rate_kg, band and tdee_est in the plan, the day view and the trend (not the night markers)', async () => {
+    await reforecast(deps, { as_of: '2026-10-04', reestimate: true })
+    const keys = ['band', 'finish_date', 'tdee_est', 'weekly_rate_kg']
+
+    expect(Object.keys((await getActivePlan(deps)).forecast ?? {}).sort()).toEqual(keys)
+    expect(Object.keys((await getDay(deps, '2026-10-05')).forecast ?? {}).sort()).toEqual(keys)
+    expect(Object.keys((await getTrend(deps, { from: '2026-09-21', to: '2026-10-05' })).forecast ?? {}).sort()).toEqual(keys)
   })
 })

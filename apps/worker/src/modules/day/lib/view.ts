@@ -170,7 +170,8 @@ export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
       trend_kg: point?.trend_kg ?? null,
       change_7d_kg: point ? (trendChange(series, date, 7) ?? null) : null,
     },
-    forecast: activeRows[0]?.forecast ?? null,
+    // The contract's keys only: the stored forecast also keeps the reforecast's night markers (plan lib/forecast).
+    forecast: publicForecast(activeRows[0]?.forecast ?? null),
     session,
     planned_session: plan?.success ? (plan.data.sessions[weekdayOf(date)] ?? null) : null,
   }
@@ -239,4 +240,8 @@ function toSessionBrief(
     volume_kg: round2(Number(agg?.volume_kg ?? 0)),
     muscle_scores: s.muscle_scores ?? null,
   }
+}
+
+function publicForecast(f: { finish_date: string | null; weekly_rate_kg: number; band: { low: number; high: number }; tdee_est: number } | null) {
+  return f && { finish_date: f.finish_date, weekly_rate_kg: f.weekly_rate_kg, band: f.band, tdee_est: f.tdee_est }
 }
