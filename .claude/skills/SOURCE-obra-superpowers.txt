@@ -1,0 +1,6 @@
+Vendored from https://github.com/obra/superpowers (MIT, Jesse Vincent) at 8ca22db (v6.4.2, 2026-09-25).
+Skills: brainstorming, diagnosing-superpowers, dispatching-parallel-agents, executing-plans, finishing-a-development-branch,
+receiving-code-review, requesting-code-review, subagent-driven-development, systematic-debugging, superpowers-test-driven-development,
+using-git-worktrees, using-superpowers, verification-before-completion, writing-plans, writing-skills.
+Local changes: test-driven-development is renamed superpowers-test-driven-development (Addy Osmani's skill already has that name);
+plugin-namespaced references ("superpowers:<skill>") point at the vendored names. The plugin's SessionStart hook is not installed.

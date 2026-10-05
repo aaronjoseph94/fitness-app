@@ -88,6 +88,14 @@ Read `.claude/skills/codebase-design/SKILL.md` before designing any module, and 
 - **Review** each phase with `.claude/skills/code-review` (Standards axis = this file + the smell baseline; Spec axis = `docs/SPEC.md`), then fix findings in one pass.
 - **Decisions** that future work must not re-litigate go in `docs/PROGRESS.md` (and `docs/adr/` for the big ones).
 
+## Superpowers (obra/superpowers — `.claude/skills/`)
+
+The process skills: `brainstorming` → `writing-plans` → `subagent-driven-development` or `executing-plans`, with `systematic-debugging`, `verification-before-completion` and `requesting-code-review` / `receiving-code-review` along the way. Where they differ from this file, this file wins (`using-superpowers` says so too):
+
+- **`main` only.** No remote branches, no PRs. `using-git-worktrees` is fine for local isolation (`.worktrees/`, gitignored); `finishing-a-development-branch` always takes option 1: merge locally into `main`, verify, push `main`.
+- **No questions mid-execution.** Aaron's standing direction is to execute without asking: `brainstorming` and `writing-plans` settle open points themselves and record them in `docs/PROGRESS.md`; ask only when a rail or the spec is at stake. Design specs and plans go in `docs/superpowers/`.
+- **Tests.** `.claude/skills/tdd` still sets where tests go (the agreed seams) and the build-time testing rule below still holds; `superpowers-test-driven-development` (and Addy Osmani's `test-driven-development`) add red-green discipline, not more seams.
+
 ## Engineering rules (from the 2026-10-05 stack check — see docs/PROGRESS.md for the why)
 
 **Dependencies.** Every version is pinned once in the `catalog:` of `pnpm-workspace.yaml` and already installed. Do not run `pnpm add`/`pnpm install` with new packages from a parallel agent; if something is missing, say so in your result. TypeScript 7 (Go-native `tsc`; no compiler API, so dependency-cruiser keeps its own TypeScript 6 via `packageExtensions` — don't remove it or the boundary check silently cruises nothing), Vitest 4.1 (not 5), Playwright 1.56.1 (matches the preinstalled Chromium), Zod 4 (`import * as z from 'zod'`), MUI 9 (Grid uses `size`, not `xs`), React Router 8 (data mode), Recharts 3 (use the `responsive` prop or fixed widths).

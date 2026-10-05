@@ -44,7 +44,7 @@ packages/exercises/  free-exercise-db (pinned) + ExerciseDB GIF matches + fetch 
 seed/                baseline scan, Anytime Fitness equipment, CNF foods
 e2e/                 Playwright flows
 docs/                SPEC, PROGRESS, DEPLOY
-.claude/skills/      Matt Pocock's engineering skills (codebase-design, tdd, code-review, …)
+.claude/skills/      Engineering skills: Matt Pocock's (codebase-design, tdd, code-review, …), Addy Osmani's (review, security, web quality), obra's Superpowers (brainstorming, plans, debugging, verification)
 ```
 
 ## How it fits together
