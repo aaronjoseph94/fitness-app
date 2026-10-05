@@ -96,6 +96,14 @@ The process skills: `brainstorming` → `writing-plans` → `subagent-driven-dev
 - **No questions mid-execution.** Aaron's standing direction is to execute without asking: `brainstorming` and `writing-plans` settle open points themselves and record them in `docs/PROGRESS.md`; ask only when a rail or the spec is at stake. Design specs and plans go in `docs/superpowers/`.
 - **Tests.** `.claude/skills/tdd` still sets where tests go (the agreed seams) and the build-time testing rule below still holds; `superpowers-test-driven-development` (and Addy Osmani's `test-driven-development`) add red-green discipline, not more seams.
 
+## e2e skill (tester-army/e2e — `.claude/skills/e2e`, `.agents/skills/e2e` for Cursor)
+
+It documents TesterArmy's agentic `e2e` runner (`npx e2e`, `e2e.config.ts`, `tests/**/*.e2e.ts`, `agent.act` / `agent.assert`, `e2e explore` bug bashes). How it fits here:
+
+- **Not a dependency yet.** The main-path suite is Playwright in `e2e/` (`pnpm e2e` runs Playwright, not this runner — `npx e2e` is the other tool). Adopting the runner (the `e2e` and `@e2e-dev/web` packages, a config, a model and its key) is Aaron's call: propose it, don't add it from a parallel agent.
+- **Local only.** Its agent steps send screens to a model, so point it only at a seeded local Worker (never `fitness.ajcan.site` or Aaron's real data) and keep progress photos out of its runs (privacy rail).
+- **No `npx e2e feedback`** (it sends reports to TesterArmy) without Aaron's say-so.
+
 ## Engineering rules (from the 2026-10-05 stack check — see docs/PROGRESS.md for the why)
 
 **Dependencies.** Every version is pinned once in the `catalog:` of `pnpm-workspace.yaml` and already installed. Do not run `pnpm add`/`pnpm install` with new packages from a parallel agent; if something is missing, say so in your result. TypeScript 7.0 (Go-native `tsc`; no compiler API, so dependency-cruiser keeps its own TypeScript 6 via `packageExtensions` — don't remove it or the boundary check silently cruises nothing), Node 24 LTS (`engines` ≥24.21), Vitest 4.1 (not 5 — `@cloudflare/vitest-plugin` peers only `^4.1.0`), Playwright 1.63, Zod 4 (`import * as z from 'zod'`), MUI 9 (Grid uses `size`, not `xs`), React Router 8 (data mode), Recharts 3 (use the `responsive` prop or fixed widths).
