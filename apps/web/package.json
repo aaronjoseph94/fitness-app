@@ -9,6 +9,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@dnd-kit/core": "catalog:",
+    "@dnd-kit/sortable": "catalog:",
+    "@dnd-kit/utilities": "catalog:",
     "@emotion/react": "catalog:",
     "@emotion/styled": "catalog:",
     "@fitness/shared": "workspace:*",
@@ -16,6 +19,8 @@
     "@mui/icons-material": "catalog:",
     "@mui/material": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "barcode-detector": "catalog:",
+    "client-zip": "catalog:",
     "dexie": "catalog:",
     "dexie-react-hooks": "catalog:",
     "react": "catalog:",

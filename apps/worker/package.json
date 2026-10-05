@@ -17,9 +17,13 @@
     "setup:local": "pnpm db:migrate:local && pnpm seed:local"
   },
   "dependencies": {
-    "@fitness/shared": "workspace:*",
+    "@block65/webcrypto-web-push": "catalog:",
+    "@cloudflare/workers-oauth-provider": "catalog:",
     "@fitness/exercises": "workspace:*",
+    "@fitness/shared": "workspace:*",
     "@hono/zod-validator": "catalog:",
+    "@modelcontextprotocol/hono": "catalog:",
+    "@modelcontextprotocol/server": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
     "jose": "catalog:",

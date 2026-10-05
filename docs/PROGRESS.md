@@ -4,14 +4,33 @@
 
 ## Done
 
+- 2026-10-05 · Scaffold: pnpm monorepo (shared, exercises, worker, web), pinned catalog, wrangler.jsonc, Vitest projects, PWA skeleton; Worker serves `/api/health` from local D1 and the SPA.
 - 2026-10-05 · Phase 0: spec saved verbatim as `docs/SPEC.md`; `CLAUDE.md` with stack, commands, conventions, rails and phase status; this file.
 
 ## Next
 
-- Phase 1 plan presented; waiting for Aaron's go.
+- Phase 1 in progress (scaffold done; contracts, database, engine and web foundation next).
 
 ## Decisions made on Aaron's behalf
 
+- 2026-10-05 · **Stack check (5 research agents + skeptic verification) — changes from SPEC §4, smallest possible:**
+  - **Workers plan.** Free allows 10 ms CPU per request/cron. Built to fit Free: export zip is assembled in the browser, monthly backup is per-table JSON in R2, PDFs use `BROWSER.quickAction('pdf')`, MCP tool JSON Schemas are precomputed per isolate. If Workers Logs show Error 1102 after deploy, switching to Workers Paid ($5/mo, 30 s CPU) removes the risk with no code change.
+  - **One cron** (`*/5`) instead of four. It dispatches nightly/weekly/monthly work by Edmonton local time with an idempotent `cron_runs` row. Reasons: Cloudflare cron is UTC-only (Edmonton DST would shift the nightly job before midnight for 4.5 months) and cron day-of-week `1` is Sunday, not Monday.
+  - **Instants in UTC**, local date stored beside them (SQLite compares offset strings lexically, which breaks around DST). `water_logs` gains a `date` column; `ai_jobs` gains `lease_until`; new tables `cron_runs` and `app_notes` (dashboard note).
+  - **`wrangler.jsonc`** instead of `wrangler.toml` (Cloudflare's recommended format). Hosting on the `*.workers.dev` hostname by default; a custom domain is optional (it needs a registered domain on a Cloudflare zone).
+  - **MCP:** `@modelcontextprotocol/server` 2.3 + `@modelcontextprotocol/hono` (official, stateless per request) instead of `@hono/mcp` (reuses one transport across requests, which collides in stateless mode).
+  - **Claude connector auth:** static request headers are a limited beta in Claude. The Worker supports three paths: OAuth via `@cloudflare/workers-oauth-provider` (single-user consent page behind Cloudflare Access; works in Claude web/desktop/mobile), the static `Authorization: Bearer <MCP_BEARER_TOKEN>` header (Claude Code, or Claude if the Request headers field is available), and nothing else. An extra read-only `get_procedure(name)` tool returns the coach_review / scan_debrief / program_design / plateau_check procedures, because Claude does not invoke MCP prompts from a typed phrase.
+  - **Tests:** `@cloudflare/vitest-plugin` (renamed from `@cloudflare/vitest-pool-workers`), Vitest 4.1.11 (pool not ready for Vitest 5), Playwright 1.56.1 (matches the preinstalled Chromium).
+  - **TypeScript 6.0** (TS 7 has no compiler API yet, which breaks tooling).
+  - **Recharts has no calendar heatmap/strip**: those are small custom SVG components using the same tokens.
+  - **Barcode:** `barcode-detector` (zxing-cpp WASM, BarcodeDetector API shape) instead of `@zxing/browser`; WASM served from our own assets.
+  - **Voice:** iOS Home Screen web apps may not expose SpeechRecognition. The voice button uses it where available, otherwise focuses the text box with a hint to use the keyboard mic (same text path).
+  - **Offline sync:** no Background Sync on iOS; the Dexie queue flushes from the page (start, online, focus, after successful calls).
+  - **Cloudflare Access + PWA:** the manifest is requested with credentials; the browser-rendered PDF uses an Access service token (`ACCESS_CLIENT_ID`/`ACCESS_CLIENT_SECRET` secrets).
+  - **New secrets** beyond SPEC §4: `FILE_URL_SECRET` (signed file URLs), `USDA_FDC_API_KEY` (free key from api.data.gov), `ACCESS_CLIENT_ID`/`ACCESS_CLIENT_SECRET` (PDF rendering), `VAPID_SUBJECT`. New binding: `OAUTH_KV` (KV, for MCP OAuth).
+- 2026-10-05 · **Visual sources (Aaron: reuse web visuals):** muscle map geometry from react-muscle-map (public domain; all 17 free-exercise-db keys); exercise step images from free-exercise-db (876 exercises, ~1,750 JPGs, fetched by script at build time, not committed); animated demos from the ExerciseDB open-source GIF set matched by name (~400 high-confidence matches); progress-photo pose overlays from Openclipart silhouettes; empty states from unDraw; food icons from Microsoft Fluent Emoji Flat; UI icons from `@mui/icons-material`.
+- 2026-10-05 · **No deploy from the build.** Aaron connects the GitHub repo to Cursor and deploys to Cloudflare from there; `docs/DEPLOY.md` lists the steps. No auto-deploy workflow in the repo.
+- 2026-10-05 · **Phase gates waived by Aaron:** build all five phases without stopping for approval, parallel agents, light testing only, push the built app to `main`.
 - 2026-10-05 · **Aaron's direction:** don't reinvent visuals. The muscle map uses an existing body graphic from the web instead of our own SVG (replaces the build prompt's default and SPEC §7 "own asset"). Exercise media, equipment pictures, icons and illustrations also come from the web, not only from open-source sets, since the app is non-commercial and single-user. Assets are downloaded once and served from static assets or R2 where possible, with the source recorded next to each set.
 - 2026-10-05 · The SPEC §12 open decisions use the defaults from the build prompt (listed in `CLAUDE.md` → "Decided defaults") until Aaron says otherwise.
 - 2026-10-05 · `docs/SPEC.md` is the spec text below the build prompt's divider, unchanged. The build prompt's working rules are carried in `CLAUDE.md` → "How we work".

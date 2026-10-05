@@ -13,7 +13,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 | Phase | Scope (SPEC §12) | Status |
 | --- | --- | --- |
 | 0 | Spec saved, CLAUDE.md, PROGRESS.md | Done |
-| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | Planned, waiting for Aaron's go |
+| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | In progress (scaffold done) |
 | 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | Not started |
 | 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | Not started |
 | 4 | Scans, reviews, week plans, Ask AI, MCP + Claude connector | Not started |
@@ -22,7 +22,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 ## Stack
 
 - **Web** (`apps/web`): React 19, Vite, TypeScript strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Outfit font self-hosted.
-- **Worker** (`apps/worker`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp`, job runner (`ai_jobs` + `ctx.waitUntil()` + Cron Triggers). D1 via Drizzle ORM, R2 for files, Browser Rendering for PDFs, Cloudflare Access JWT on every request.
+- **Worker** (`apps/worker`, config `wrangler.jsonc`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp` (`@modelcontextprotocol/server` v2 + `@modelcontextprotocol/hono`, stateless, new server per request), job runner (`ai_jobs` + `ctx.waitUntil()` + one 5-minute cron). D1 via Drizzle ORM, R2 for files, Browser Rendering (`BROWSER.quickAction('pdf')`) for archived PDFs, Cloudflare Access JWT on every request.
 - **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/engine`), guardrails (`packages/shared/engine/guards.ts`).
 - **Exercises** (`packages/exercises`): free-exercise-db seed, muscle-group mapping, images served as static assets.
 - **Seed** (`seed/`): `scans/2026-09-26.json`, `equipment/anytime-fitness.json`.
@@ -43,7 +43,7 @@ pnpm --filter @fitness/worker db:generate        # drizzle-kit generate → apps
 pnpm --filter @fitness/worker db:migrate:local   # wrangler d1 migrations apply fitness --local
 pnpm --filter @fitness/worker db:migrate:remote  # wrangler d1 migrations apply fitness --remote (CI, before deploy)
 pnpm --filter @fitness/worker seed:local         # load seed/ into local D1
-pnpm --filter @fitness/worker deploy     # wrangler deploy
+pnpm --filter @fitness/worker deploy     # wrangler deploy (Aaron/Cursor only — see docs/DEPLOY.md)
 pnpm e2e                                 # Playwright flows against the local Worker
 ```
 
@@ -69,9 +69,44 @@ pnpm e2e                                 # Playwright flows against the local Wo
 1. Phase by phase (SPEC §12). Before each phase: a short plan (files, migrations, components, tests), then wait for Aaron's go.
 2. Within a phase: feature by feature, one commit per feature with a clear message. Parallel agents where the work splits cleanly (Aaron's standing preference).
 3. The engine (`packages/shared/engine`) is built first in every phase that touches numbers, with Vitest fixtures, before any UI or LLM code uses it.
-4. Testing during the build: a quick, targeted test per feature only. Aaron runs the full suites himself.
+4. Testing during the build: a quick, targeted check per feature only (typecheck + at most one short test). Aaron runs the full suites himself.
 5. When something in the spec is impossible or a better option exists (a library, a Cloudflare limit, a free-tier change), say so and propose the smallest change. Never substitute silently. Record the decision in `docs/PROGRESS.md`.
 6. Show the running app (local Worker) at the end of each feature; Playwright flows for the main paths at the end of each phase.
+
+## Engineering rules (from the 2026-10-05 stack check — see docs/PROGRESS.md for the why)
+
+**Dependencies.** Every version is pinned once in the `catalog:` of `pnpm-workspace.yaml` and already installed. Do not run `pnpm add`/`pnpm install` with new packages from a parallel agent; if something is missing, say so in your result. TypeScript 6.0 (not 7), Vitest 4.1 (not 5), Playwright 1.56.1 (matches the preinstalled Chromium), Zod 4 (`import * as z from 'zod'`), MUI 9 (Grid uses `size`, not `xs`), React Router 8 (data mode), Recharts 3 (use the `responsive` prop or fixed widths).
+
+**Time.** Instants are stored as UTC strings `YYYY-MM-DDTHH:MM:SS.sssZ`. The Edmonton local `date` (`YYYY-MM-DD`) is computed in code (`@fitness/shared/engine` dates helpers using `Intl` with `America/Edmonton`) and stored beside the instant when a row belongs to a day. Never compare offset strings in SQL.
+
+**D1 / Drizzle.**
+- Drizzle schema: `apps/worker/src/db/schema.ts` (all tables). `drizzle-kit generate` only creates migrations; only `wrangler d1 migrations apply DB --local|--remote` applies them. Never `drizzle-kit push/migrate`.
+- `pnpm --filter @fitness/worker db:generate` post-processes migrations (`PRAGMA foreign_keys=OFF/ON` → `PRAGMA defer_foreign_keys=on/off`). Any migration containing `__new_` (a table rebuild) gets hand review and must drop and recreate `v_day`.
+- `v_day` is hand-written SQL in `apps/worker/src/db/v_day.sql`, shipped in a custom migration, queried through `sqliteView(...).existing()`. It uses a date spine with correlated subqueries per metric (indexed `SEARCH`, never a full `SCAN`).
+- Never `db.transaction()` (D1 throws). Validate in JS, then write everything for one change in a single `db.batch([...])`. Conditional writes go in SQL (`ON CONFLICT`, `WHERE NOT EXISTS`).
+- No `ON DELETE CASCADE`. Delete child rows explicitly in the same batch.
+- Max 100 bound parameters per statement: chunk multi-row inserts (rows per statement = floor(100 / columns)). Seeds are generated SQL files applied with `wrangler d1 execute --file`.
+- Enums are enforced in Zod/TypeScript, not with DB CHECKs. JSON columns use `text(..., { mode: 'json' }).$type<T>()`; spec `text[]` means a JSON array column. Parse LLM-fed JSON columns with their Zod schema on read.
+- Index every `date` column, `ai_jobs(status, run_after)`, `ai_events(created_at)`.
+
+**Worker (free plan: 10 ms CPU per request/cron, 50 external subrequests, waitUntil ≤ 30 s).**
+- Business logic lives in `apps/worker/src/services/*` as functions over `(ctx: { db, env, actor }, input)`; REST routes and the tools layer (Ask AI + MCP) both call services. Routes are thin: validate with the shared Zod schema, call a service, return JSON.
+- Keep per-request CPU small: build JSON Schemas for tools once per isolate (module scope), never zip or process images in the Worker (export zip is built in the browser; backups are per-table JSON in R2).
+- One cron (`*/5 * * * *`). `src/cron.ts` sweeps `ai_jobs` and dispatches nightly / weekly / monthly work by **Edmonton local time**, made idempotent by a `cron_runs` row per (kind, local period).
+- Jobs run in `ctx.waitUntil()` with a 25 s deadline (per-attempt `AbortSignal.timeout`); on deadline set `status=queued`. `ai_jobs.lease_until` lets the sweep requeue stuck `running` rows.
+- Auth: Cloudflare Access JWT (`Cf-Access-Jwt-Assertion`, verified with `jose` against `${ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, JWKS cached at module scope). `DEV_AUTH_BYPASS=1` (only in `.dev.vars`, only honoured for localhost hosts) skips it locally. `/api/ingest/health` and `/mcp` use their own bearer tokens.
+- Files: R2 objects are served only through `/api/files/*` with our own HMAC-signed, expiring URLs (`FILE_URL_SECRET`). No S3 presigned URLs.
+
+**Web.**
+- Visual tokens only in `apps/web/src/theme.ts` (`tokens` const of literal hex values + MUI `createTheme({ cssVariables: true })`). Charts read `tokens` directly so SVG output has literal colours for print/PDF.
+- Recharts for line/bar/area charts. Calendar heatmaps, the fasting strip, the milestone timeline and the muscle map are small custom SVG components in `apps/web/src/charts` / `apps/web/src/muscle-map`. Every chart has a `data-testid`.
+- Muscle map geometry is vendored from react-muscle-map (public domain) in `apps/web/src/muscle-map/source/`; we never draw our own body art. Reuse web visuals (exercise GIFs/images, icons, silhouettes, illustrations) per Aaron's direction; record provenance in a `SOURCE.md` next to each set.
+- PWA: `injectManifest` with `src/sw.ts`; manifest fetched with credentials (Access). The Dexie offline queue is flushed from the page (app start, `online`, `visibilitychange`, after any successful call) because iOS has no Background Sync. Client-generated UUIDs make queued writes idempotent. A redirect/opaque response from `/api` means the Access session expired: keep the queue, reload to re-auth.
+- Native `<TextField type="date|time|datetime-local">` for dates (no MUI X pickers). Icons: `@mui/icons-material`.
+
+**Testing during the build.** Typecheck the package you touched and run one quick targeted test at most. No full suites, no exhaustive tests — Aaron runs the in-depth testing later.
+
+**Deploy.** Never deploy from an agent. Aaron deploys via Cursor using `docs/DEPLOY.md`.
 
 ## Decided defaults (from Aaron's build prompt, SPEC §12 open decisions)
 
