@@ -1,9 +1,10 @@
 // Owns: what the export module knows about each exported table, derived once per isolate from the Drizzle schema —
 // its column names (the only identifiers ever spliced into export/import SQL), which of them hold JSON text or 0/1
-// booleans, its unique keys besides id, how many rows one page carries, and the restore order inside a page for
-// tables with a partial unique index.
+// booleans, what a cell of each column may hold (number, 0/1, JSON text or text, its enum values, whether null is
+// allowed, whether a restore page must carry it), its unique keys besides id, how many rows one page carries, and the
+// restore order inside a page for tables with a partial unique index.
 import { ExportTable, EXPORT_PAGE_ROWS } from '@fitness/shared/schemas'
-import { getTableColumns, is, type Table } from 'drizzle-orm'
+import { getTableColumns, is, type Column, type Table } from 'drizzle-orm'
 import { getTableConfig, SQLiteColumn, type SQLiteTable } from 'drizzle-orm/sqlite-core'
 import * as db from '../../../db'
 
@@ -74,6 +75,18 @@ const RESTORE_ORDER: Partial<Record<ExportTable, string>> = {
 /** One-row tables: a restore leaves exactly the export's row (a seeded row under another id is removed). */
 const SINGLE_ROW: ReadonlySet<ExportTable> = new Set(['profile', 'settings'])
 
+/** What one column's export cell may hold, from its Drizzle column (enums are TypeScript-only in SQL; checked here). */
+export interface ColumnRule {
+  /** number: integer() / real(); boolean: 0 or 1; json: text that parses as JSON; text: a string. */
+  kind: 'number' | 'boolean' | 'json' | 'text'
+  /** NULL is allowed (the column is not NOT NULL). */
+  nullable: boolean
+  /** NOT NULL with no SQL default: a restore page must carry it (the upsert is raw SQL, so JS defaults never run). */
+  required: boolean
+  /** A text enum's values, or null. */
+  values: ReadonlySet<string> | null
+}
+
 export interface TableSpec {
   name: ExportTable
   /** Column names in schema order; `id` is one of them. */
@@ -82,11 +95,26 @@ export interface TableSpec {
   jsonColumns: ReadonlySet<string>
   /** Columns stored as 0/1 booleans. */
   boolColumns: ReadonlySet<string>
+  /** What each column's cell may hold, by column name. */
+  rules: ReadonlyMap<string, ColumnRule>
   /** Full (non-partial) unique keys other than id, as column lists. */
   uniqueKeys: readonly (readonly string[])[]
   pageRows: number
   restoreOrder: string | null
   singleRow: boolean
+}
+
+const KINDS: Partial<Record<string, ColumnRule['kind']>> = { number: 'number', boolean: 'boolean', json: 'json', string: 'text' }
+
+function columnRule(column: Column): ColumnRule {
+  const kind = KINDS[column.dataType]
+  if (!kind) throw new Error(`Export: no cell rule for ${column.name} (${column.dataType})`)
+  return {
+    kind,
+    nullable: !column.notNull,
+    required: column.notNull && column.default === undefined,
+    values: column.enumValues?.length ? new Set(column.enumValues) : null,
+  }
 }
 
 const specs = new Map<ExportTable, TableSpec>()
@@ -107,6 +135,7 @@ export function tableSpec(name: ExportTable): TableSpec {
       columns,
       jsonColumns: new Set(all.filter((c) => c.dataType === 'json').map((c) => c.name)),
       boolColumns: new Set(all.filter((c) => c.dataType === 'boolean').map((c) => c.name)),
+      rules: new Map(all.map((c) => [c.name, columnRule(c)])),
       uniqueKeys,
       pageRows: PAGE_ROWS[name] ?? EXPORT_PAGE_ROWS,
       restoreOrder: RESTORE_ORDER[name] ?? null,
