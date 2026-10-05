@@ -4,12 +4,14 @@
 
 ## Done
 
+- 2026-10-05 · Phase 1 built: Worker auth (Access JWT + localhost dev bypass), every logging endpoint, plan versions through the guards, targets, nightly reforecast, day view, jobs queue, one-cron dispatcher; web Today/Log/Progress/Settings, quick-log sheet, offline queue. Smoke-tested end to end against a local Worker (weigh-ins, water, manual and text meals, sleep, health webhook → trend 93.8 kg, finish 2027-04-16).
+- 2026-10-05 · Phase 2 adapters: LLM router and food sources (OFF, USDA FDC, CNF 2026 with 5,894 foods).
 - 2026-10-05 · Scaffold: pnpm monorepo (shared, exercises, worker, web), pinned catalog, wrangler.jsonc, Vitest projects, PWA skeleton; Worker serves `/api/health` from local D1 and the SPA.
 - 2026-10-05 · Phase 0: spec saved verbatim as `docs/SPEC.md`; `CLAUDE.md` with stack, commands, conventions, rails and phase status; this file.
 
 ## Next
 
-- Phase 1 in progress (scaffold done; contracts, database, engine and web foundation next).
+- Phases 2 and 3 in progress in parallel; then phase 4 (scans, reviews, week plans, Ask AI, MCP) and phase 5 (photos, push, export, polish, e2e flows, review).
 
 ## Decisions made on Aaron's behalf
 
@@ -28,6 +30,7 @@
   - **Offline sync:** no Background Sync on iOS; the Dexie queue flushes from the page (start, online, focus, after successful calls).
   - **Cloudflare Access + PWA:** the manifest is requested with credentials; the browser-rendered PDF uses an Access service token (`ACCESS_CLIENT_ID`/`ACCESS_CLIENT_SECRET` secrets).
   - **New secrets** beyond SPEC §4: `FILE_URL_SECRET` (signed file URLs), `USDA_FDC_API_KEY` (free key from api.data.gov), `ACCESS_CLIENT_ID`/`ACCESS_CLIENT_SECRET` (PDF rendering), `VAPID_SUBJECT`. New binding: `OAUTH_KV` (KV, for MCP OAuth).
+- 2026-10-05 · **LLM router and food sources (agents):** provider limits live in `apps/worker/src/modules/llm/providers.json` (SPEC said `src/ai/`), checked 2026-10-05: text chain gemini-3.8-flash → gemini-3.5-flash-lite → glm-4.7-flash → glm-4.5-flash → OpenRouter `:free` (qwen3.8-27b, nemotron-3-super) → Groq gpt-oss-120b; vision chain gemini-3.8-flash → flash-lite → glm-4.6v-flash. The spec's OpenRouter models (DeepSeek V4 Flash, Kimi K2.6, MiniMax M2.5) have no `:free` variants any more. Gemini's daily quota resets on Pacific time, so usage keys carry their own timezone. Gemini free-tier RPM/RPD numbers are estimates (Google shows them only in AI Studio). CNF comes from the 2026 CSVs on open.canada.ca (the canada.ca 2015 zip refuses downloads); OFF search uses search.openfoodfacts.org because `/cgi/search.pl` is retired.
 - 2026-10-05 · **Phase 1 build decisions (agents):**
   - *Contract:* `packages/shared/src/api/endpoints.ts` is the single REST contract (71 endpoints); the Worker binds it with `route()` and the PWA calls through `call()`. Binary uploads (meal/progress photos, scans, import files) go as `application/octet-stream` with metadata in the query. Added endpoints the UI needs: `GET /api/days`, `GET /api/meals?date`, `GET /api/sessions/:id`, `DELETE /api/sets/:id`, `POST /api/fasts/plan`, `GET /api/ai/chat`, `GET /api/notes`, `GET /api/export(/tables)`, `POST /api/import(/files)`. `POST /api/weights` replaces that date's weigh-in. JSON keys keep the spec's spelling (`favorite`); TypeScript names use the glossary's (`Favourite`).
   - *Scan extraction:* the LLM returns values as printed with `units`; the Worker converts lb → kg (× 0.4536) into a draft for the confirm form.

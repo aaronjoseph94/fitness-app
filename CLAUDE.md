@@ -13,9 +13,9 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 | Phase | Scope (SPEC §12) | Status |
 | --- | --- | --- |
 | 0 | Spec saved, CLAUDE.md, PROGRESS.md | Done |
-| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | In progress (scaffold done) |
-| 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | Not started |
-| 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | Not started |
+| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | Built (e2e flows land in phase 5) |
+| 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | In progress (router + food sources done) |
+| 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | In progress |
 | 4 | Scans, reviews, week plans, Ask AI, MCP + Claude connector | Not started |
 | 5 | Photos, push reminders, export/import, full chart inventory, polish | Not started |
 
