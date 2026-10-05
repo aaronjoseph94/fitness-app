@@ -23,6 +23,7 @@
     "client-zip": "catalog:",
     "dexie": "catalog:",
     "dexie-react-hooks": "catalog:",
+    "pdfjs-dist": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-is": "catalog:",

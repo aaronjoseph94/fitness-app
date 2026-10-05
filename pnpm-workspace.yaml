@@ -58,6 +58,7 @@ catalog:
   workbox-expiration: 7.4.1
   "@fontsource-variable/outfit": 5.3.0
   barcode-detector: 3.2.2
+  pdfjs-dist: 6.4.299
   client-zip: 2.5.1
   "@dnd-kit/core": 6.3.1
   "@dnd-kit/sortable": 10.0.0
