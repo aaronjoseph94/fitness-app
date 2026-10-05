@@ -1,11 +1,11 @@
 // Owns: the scans section of Progress (SPEC §8 "the Progress tab charts every metric across scans") — the scan charts
-// in compact form from GET /api/scans (every confirmed scan, whatever the range: scans are a month apart), a link to
-// the scans page, and an empty state that leads to the upload.
+// in compact form and a sparkline tile for every other metric, from GET /api/scans (every confirmed scan, whatever the
+// range: scans are a month apart), a link to the scans page, and an empty state that leads to the upload.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { useNavigate } from 'react-router'
 import { ChartCard, QueryStateCard } from '../../../components'
-import { confirmedScans, ScanCharts, useScans } from '../../scans/charts'
+import { confirmedScans, ScanCharts, ScanMetricGrid, useScans } from '../../scans/charts'
 
 export function ScansSection() {
   const navigate = useNavigate()
@@ -26,6 +26,7 @@ export function ScansSection() {
     <Box data-testid="progress-scans" sx={{ display: 'grid', gap: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: -1 }}>{all}</Box>
       <ScanCharts scans={confirmed} compact />
+      <ScanMetricGrid scans={confirmed} />
     </Box>
   )
 }

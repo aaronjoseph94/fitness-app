@@ -11,12 +11,15 @@
 //   listScans(deps) / getScan(deps, id) → Scan[] / Scan  newest first; comparisons and flags computed on read
 //   deleteScan(deps, id)               → Ok             unconfirmed only (409 otherwise); removes the sheet
 //   compareScanIds(deps, a, b)         → ScanChange     the later scan against the earlier (tools: compare_scans)
-//   scanSchedule(deps)                 → ScanSchedule   last scan, interval, the coach's scheduled date (newest
+//   scanSchedule(deps)                 → ScanSchedule   last scan, interval, the scheduled date (newest
 //                                                       scan_scheduled note since the last scan), next due date
+//   scanDateNote(deps, date | null)    → statement      the note setting (or clearing) the scheduled date, for the
+//                                                       caller's batch (the coach's schedule_scan, an applied week plan)
 //   noteScanDue(deps, date)            → { due, noted } nightly: an ai_events note when a scan is due (idempotent)
+//   addMilestone(deps, input) / removeMilestone(deps, id)  the milestone rows this module re-anchors (coach reviews)
 //   extractScan / analyseScan(deps + { router }, payload)  the two job bodies (registered below; tests call them with
 //        a fake router). analyseScan never fails on the router: no LLM answer → the engine's plain debrief.
-import { localDate, today } from '@fitness/shared/engine'
+import { localDate, targetValue, today } from '@fitness/shared/engine'
 import {
   ScanExtractOutput,
   type Ok,
@@ -31,12 +34,13 @@ import {
 } from '@fitness/shared/schemas'
 import { and, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { progress_photos, scan_segments, scans } from '../../db'
+import { progress_photos, runBatch, scan_segments, scans } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { HttpError, notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
 import { jobInsert, registerJobHandler, runSoon, type JobMeta } from '../jobs'
 import { createLlmRouter, type LlmRouter } from '../llm'
+import { checkPhotoBytes } from '../photos'
 import { getActivePlan, propose } from '../plan'
 import { getSettings } from '../settings'
 import { neighbours, plainNarrative, scanChange, scanFlags, type ConfirmedScan } from './lib/analysis'
@@ -46,7 +50,8 @@ import { DEBRIEF_SYSTEM, DebriefOutput, EXTRACT_PROMPT, EXTRACT_SYSTEM } from '.
 import { loadStore, toViews } from './lib/read'
 import { recordColumns, segmentRows } from './lib/rows'
 
-export { noteScanDue, scanSchedule, ScanScheduledNoteBody, type ScanSchedule } from './lib/due'
+export { noteScanDue, scanDateNote, scanSchedule, ScanScheduledNoteBody } from './lib/due'
+export { addMilestone, removeMilestone } from './lib/milestones'
 
 /** The scan jobs' deps: the usual bag plus the LLM router (tests pass a fake). */
 export type ScanJobDeps = Deps & { router: Pick<LlmRouter, 'complete'> }
@@ -65,7 +70,6 @@ const MAX_PROPOSALS = 3
 const GUARD_PROTEIN_STEP_G = 10
 
 const EXTENSION: Record<ScanUploadQuery['content_type'], string> = {
-  'application/pdf': 'pdf',
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
@@ -90,16 +94,10 @@ export async function getScan(deps: Deps, id: string): Promise<Scan> {
   return view!
 }
 
-/** Run one change as a single db.batch (D1 has no transactions). */
-async function runBatch(deps: Deps, statements: BatchItem<'sqlite'>[]): Promise<void> {
-  const [first, ...rest] = statements
-  if (first) await deps.db.batch([first, ...rest])
-}
-
 /** Queue a scan_extract job for `scanId` in one batch with `extra`, and start it after the response. */
 async function queueExtraction(deps: Deps, scanId: string, extra: BatchItem<'sqlite'>[] = []): Promise<string> {
   const job = jobInsert(deps, { type: 'scan_extract', payload: { scan_id: scanId }, priority: JOB_PRIORITY })
-  await runBatch(deps, [...extra, job.statement])
+  await runBatch(deps.db, [...extra, job.statement])
   runSoon(deps, job.id)
   return job.id
 }
@@ -118,6 +116,8 @@ export async function uploadScan(deps: Deps, input: { query: ScanUploadQuery; bo
     const job_id = await queueExtraction(deps, id)
     return { scan: await getScan(deps, id), job_id }
   }
+  // The sheet goes to the vision LLM: a JPEG/WebP must be what it says and carry no EXIF (PNG comes from the canvas).
+  if (content_type !== 'image/png') checkPhotoBytes(input.body, content_type)
   const key = `scan-sheets/${id}.${EXTENSION[content_type]}`
   await deps.env.FILES.put(key, input.body, { httpMetadata: { contentType: content_type } })
   const now = deps.now()
@@ -229,11 +229,6 @@ export async function extractScan(deps: ScanJobDeps, input: { scan_id: string })
   return { output: result.data, meta: metaOf(result) }
 }
 
-/** A target's current value in the active plan (a weekday override when it has one). */
-function currentTarget(targets: PlanTargets, change: Pick<PlanChange, 'field' | 'weekday'>): number {
-  return (change.weekday ? targets.overrides[change.weekday]?.[change.field] : undefined) ?? targets.defaults[change.field]
-}
-
 const round = (v: number, dp = 2) => Math.round(v * 10 ** dp) / 10 ** dp
 
 /** The compact engine summary the Clerk writes the debrief from (numbers rounded; no names, no photos). */
@@ -325,7 +320,7 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
   const proposed: PlanChange[] = []
   const proposal_ids: string[] = []
   for (const change of changes.slice(0, MAX_PROPOSALS)) {
-    const from = currentTarget(plan.targets, change)
+    const from = targetValue(plan.targets, change.field, change.weekday)
     if (from === change.to) continue
     const result = await propose(ai, { changes: [{ ...change, from }], reason: `Scan ${date}: ${change.reason}`.slice(0, 500) })
     if (result.proposal) {
@@ -345,7 +340,7 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
     date,
     job_id: input.job_id ?? null,
   })
-  await runBatch(deps, [note.statement, ...anchors.statements])
+  await runBatch(deps.db, [note.statement, ...anchors.statements])
 
   return {
     output: {

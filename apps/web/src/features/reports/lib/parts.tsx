@@ -39,11 +39,11 @@ export function Panel({
         '@media print': { p: 2, borderRadius: '8px' },
       }}
     >
-      <Box component="h2" sx={{ m: 0, fontSize: 15, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
+      <Box component="h2" sx={{ m: 0, fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
         {title}
       </Box>
       {subtitle && (
-        <Box className="report-secondary" sx={{ mt: 0.25, fontSize: 12, color: tokens.ink.secondary, '@media print': printSubtitle ? { fontSize: 10 } : { display: 'none' } }}>
+        <Box className="report-secondary" sx={{ mt: 0.25, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, '@media print': printSubtitle ? { fontSize: 10 } : { display: 'none' } }}>
           {subtitle}
         </Box>
       )}
@@ -106,7 +106,7 @@ export function Table({ head, rows, testId }: { head: readonly string[]; rows: r
       sx={{
         width: '100%',
         borderCollapse: 'collapse',
-        fontSize: 13,
+        fontSize: tokens.font.size.label,
         fontVariantNumeric: 'tabular-nums',
         '& th': { textAlign: 'left', fontWeight: tokens.font.weight.label, color: tokens.ink.secondary, fontSize: 11, pb: 0.5 },
         '& td': { borderTop: `1px solid ${tokens.ink.border}`, py: 0.5, pr: 1, verticalAlign: 'top' },
@@ -135,7 +135,7 @@ export function Table({ head, rows, testId }: { head: readonly string[]; rows: r
 
 export function Muted({ children }: { children: ReactNode }) {
   return (
-    <Box className="report-secondary" sx={{ fontSize: 13, color: tokens.ink.secondary }}>
+    <Box className="report-secondary" sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
       {children}
     </Box>
   )
@@ -148,19 +148,20 @@ const cssString = (s: string) => `"${s.replace(/["\\]/g, '')}"`
  * other browsers print without them), screen-only parts are hidden, text turns black on white, and colours print.
  */
 export function PrintStyles({ header }: { header: string }) {
+  const { print } = tokens
   const css = `
 @page {
   size: Letter;
   margin: 15mm;
-  @top-right { content: ${cssString(header)}; font: 8pt ${tokens.font.family}; color: #444; }
-  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt ${tokens.font.family}; color: #444; }
+  @top-right { content: ${cssString(header)}; font: 8pt ${tokens.font.family}; color: ${print.header}; }
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt ${tokens.font.family}; color: ${print.header}; }
 }
 @media print {
-  html, body { background: #fff !important; }
+  html, body { background: ${print.page} !important; }
   .no-print { display: none !important; }
-  [data-report] { color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  [data-report] .report-secondary { color: #333 !important; }
-  [data-report] a { color: #000; text-decoration: none; }
+  [data-report] { color: ${print.text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  [data-report] .report-secondary { color: ${print.secondary} !important; }
+  [data-report] a { color: ${print.text}; text-decoration: none; }
 }`
   return <style data-testid="report-print-css">{css}</style>
 }

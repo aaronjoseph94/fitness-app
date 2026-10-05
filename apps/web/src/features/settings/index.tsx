@@ -14,7 +14,7 @@ import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import type { Settings, Weekday } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { isApiError, signInAgain } from '../../api'
+import { problemText, signInAgain } from '../../api'
 import { formatNumber } from '../../components'
 import { useOnline } from '../../offline'
 import { tokens } from '../../theme'
@@ -27,13 +27,7 @@ import { useSettings, useUpdateSettings, type SettingsChange } from './lib/useSe
 
 type Editing = { kind: 'number'; field: NumberField } | { kind: 'training-days' } | { kind: 'auto-apply' } | null
 
-function saveError(error: unknown): string {
-  if (!isApiError(error)) return 'Could not save. Try again.'
-  if (error.kind === 'network') return 'You’re offline. Settings changes need a connection.'
-  if (error.kind === 'auth-expired') return 'Your sign-in expired. Sign in again, then retry.'
-  if (error.kind === 'invalid-request') return error.message
-  return `Not saved: ${error.message}`
-}
+const saveError = (error: unknown) => problemText(error, 'Settings changes need a connection.')
 
 export function SettingsPage() {
   const query = useSettings()
@@ -208,12 +202,12 @@ export function SettingsPage() {
         <Dialog open onClose={update.isPending ? undefined : close} fullWidth maxWidth="xs" aria-labelledby="auto-apply-title">
           <DialogTitle id="auto-apply-title">Apply safe AI changes?</DialogTitle>
           <DialogContent>
-            <Box sx={{ fontSize: 15, lineHeight: 1.55 }}>
+            <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.55 }}>
               Meal suggestions, exercise swaps within the same muscle and reminder times will apply without a tap. Target
               changes still wait for you, and every change can be reverted in one tap.
             </Box>
             {error && (
-              <Box role="alert" sx={{ mt: 3, fontSize: 14, color: tokens.status.flag }}>
+              <Box role="alert" sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
                 {error}
               </Box>
             )}

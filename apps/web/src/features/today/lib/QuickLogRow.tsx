@@ -56,7 +56,7 @@ export function QuickLogRow({ fasting }: { fasting: boolean }) {
           }}
         >
           <Icon aria-hidden sx={{ color, fontSize: 24 }} />
-          <Box component="span" sx={{ fontSize: 12, fontWeight: tokens.font.weight.label, lineHeight: 1.2, textAlign: 'center' }}>
+          <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, lineHeight: 1.2, textAlign: 'center' }}>
             {label}
           </Box>
         </ButtonBase>

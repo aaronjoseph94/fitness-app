@@ -11,17 +11,17 @@
 // OFF ≤ 6, USDA ≤ 8), so a 30-item meal stays inside the free plan's 50 subrequests with room for the LLM router.
 // When the budget is spent, matching continues from the cache only and unmatched items fall back to the LLM estimate.
 // A job passes the router's FetchBudget as `budget` so both draw on one subrequest limit, and `until` to stop asking
-// remote sources before its deadline.
+// remote sources before its deadline; every call also counts in the invocation's tally (deps.budget).
 import type { FoodSource, Nutrients } from '@fitness/shared/schemas'
-import type { Deps } from '../../lib/deps'
+import type { Deps, FetchBudget } from '../../lib/deps'
 import { HttpError } from '../../lib/http-error'
 import { findByBarcode, findBySourceIds, recordUsage, remember, searchLocal, type FoodRow } from './lib/cache'
-import { createGate, SourceUnavailable, type Fetch, type SharedBudget } from './lib/gate'
+import { createGate, SourceUnavailable, type Fetch } from './lib/gate'
 import { ACCEPT, ftsQuery, looksBranded, rank, STRONG, tokens } from './lib/match'
 import { nutritionFor, type FoodDraft, type Per100g } from './lib/normalise'
 import { createRemote } from './lib/remote'
 
-export { nutritionFor, type FoodRow, type Fetch, type Per100g, type SharedBudget }
+export { nutritionFor, type FoodRow, type Fetch, type Per100g }
 
 export interface FoodSourcesOptions {
   /** Injected so tests use fakes; defaults to the Worker's global fetch. */
@@ -32,7 +32,7 @@ export interface FoodSourcesOptions {
    * A fetch budget shared with other fetching adapters of the same invocation (the LLM router's `budget`): every
    * external call counts against it too, so a job's LLM call and its food lookups stay inside one subrequest limit.
    */
-  budget?: SharedBudget
+  budget?: FetchBudget
   /** No external call starts after this instant (epoch ms); matching continues from the cache. Keeps a job in its deadline. */
   until?: number
 }
@@ -98,7 +98,7 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     maxCalls,
     perSource: { off: Math.min(6, maxCalls), usda: Math.min(8, maxCalls) },
     timeoutMs: 6000,
-    ...(opts.budget ? { shared: opts.budget } : {}),
+    shared: [opts.budget, deps.budget].flatMap((b) => (b ? [b] : [])),
     ...(opts.until !== undefined ? { until: opts.until, now: () => deps.now().getTime() } : {}),
     onCall: (source) => deps.waitUntil(recordUsage(deps.db, source, deps.now()).catch(() => undefined)),
   })

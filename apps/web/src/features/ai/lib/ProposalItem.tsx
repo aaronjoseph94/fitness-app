@@ -1,117 +1,74 @@
-// Owns: one Ask AI proposal card with its decision — Accept / Reject go to POST /api/proposals/:id/accept|reject (a
-// workout is accepted by saving it as a template with its proposal_id; a week plan by POST /api/week-plans/:id/apply).
-// The card shows the decision at once, rolls back if the server refuses, then the whole app refreshes.
-import Alert from '@mui/material/Alert'
+// Owns: one Ask AI proposal card with its decision — a proposal goes to POST /api/proposals/:id/accept|reject (the
+// Worker decides per kind and says what accepting made, so the card can link to it); a proposed week plan goes to
+// POST /api/week-plans/:id/apply|reject. The card shows the decision at once, rolls back if the server refuses, then
+// the whole app refreshes.
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import { endpoints } from '@fitness/shared/api'
-import type { ChatProposal } from '@fitness/shared/schemas'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ChatProposal, ProposalApplied, ProposalBody } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call } from '../../../api'
-import { formatShortDate, ProposalCard, type ProposalStatus } from '../../../components'
-import { useOnline } from '../../../offline'
+import { ProposalCard } from '../../../components'
 import { tokens } from '../../../theme'
-import { problemText } from '../../quick-log'
+import { useProposalDecision, type Decision } from '../../proposals'
 import { chatProposalView } from './proposal-view'
 
-type Decision = 'accepted' | 'rejected'
+type FollowUp = { to: string; label: string } | null
+
+const WEEK_LINK = { to: '/progress', label: 'See the week on Progress' }
+
+/** Where to look at what accepting changed: the Worker's `applied`, else the kind's own page. */
+function followUp(body: ProposalBody, applied: ProposalApplied | null): FollowUp {
+  if (applied?.entity === 'template') return { to: `/train/builder/${applied.id}`, label: 'Open the template' }
+  if (applied?.entity === 'week_plan') return WEEK_LINK
+  if (applied?.entity === 'settings') return { to: '/settings/reminders', label: 'Reminders' }
+  return body.kind === 'plan_change' ? { to: '/plan', label: 'Plan history' } : null
+}
 
 /** Runs the decision; resolves with an in-app link to what accepting created, if any. */
-async function decide(p: ChatProposal, decision: Decision): Promise<{ to: string; label: string } | null> {
+async function decide(p: ChatProposal, decision: Decision): Promise<FollowUp> {
   if (p.type === 'week_plan') {
-    // A proposed week plan has no reject on the server: it stays proposed until a newer plan supersedes it.
-    if (decision === 'rejected') return null
+    if (decision === 'rejected') {
+      await call(endpoints.weekPlans.reject, { params: { id: p.id } })
+      return null
+    }
     await call(endpoints.weekPlans.apply, { params: { id: p.id } })
-    return { to: '/progress', label: 'See the week on Progress' }
+    return WEEK_LINK
   }
   if (decision === 'rejected') {
     await call(endpoints.plan.rejectProposal, { params: { id: p.id } })
     return null
   }
-  switch (p.body.kind) {
-    case 'plan_change':
-      await call(endpoints.plan.acceptProposal, { params: { id: p.id } })
-      return { to: '/plan', label: 'Plan history' }
-    case 'workout': {
-      const template = await call(endpoints.training.createTemplate, {
-        body: {
-          id: crypto.randomUUID(),
-          name: `AI · ${p.body.date ? formatShortDate(p.body.date) : 'workout'}`,
-          origin: 'ai',
-          notes: p.body.workout.rationale || undefined,
-          exercises: p.body.workout.exercises,
-          proposal_id: p.id,
-        },
-      })
-      return { to: `/train/builder/${template.id}`, label: 'Open the template' }
-    }
-    case 'week_plan':
-      await call(endpoints.weekPlans.apply, { params: { id: p.body.week_plan_id } })
-      return { to: '/progress', label: 'See the week on Progress' }
-    case 'reminder_time':
-      await call(endpoints.plan.acceptProposal, { params: { id: p.id } })
-      return { to: '/settings/reminders', label: 'Reminders' }
-    case 'template_swap':
-      await call(endpoints.plan.acceptProposal, { params: { id: p.id } })
-      return { to: `/train/builder/${p.body.template_id}`, label: 'Open the template' }
-  }
+  const { applied } = await call(endpoints.plan.acceptProposal, { params: { id: p.id } })
+  return followUp(p.body, applied)
 }
 
 export function ProposalItem({ proposal }: { proposal: ChatProposal }) {
-  const online = useOnline()
-  const queryClient = useQueryClient()
   const view = chatProposalView(proposal)
-  const [local, setLocal] = useState<ProposalStatus | null>(null)
-  const [link, setLink] = useState<{ to: string; label: string } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const mutation = useMutation({
-    networkMode: 'always',
-    mutationFn: (decision: Decision) => decide(proposal, decision),
-    onSuccess: (created) => {
-      setLink(created)
-      void queryClient.invalidateQueries({ queryKey: ['api'] })
-    },
-    onError: (e) => {
-      setLocal(null)
-      setError(`That didn't go through: ${problemText(e)}`)
-    },
-  })
-  const status = local ?? view.status
-  const choose = (decision: Decision) => {
-    setError(null)
-    setLocal(decision)
-    mutation.mutate(decision)
-  }
+  const [link, setLink] = useState<FollowUp>(null)
+  const d = useProposalDecision(view.status, (decision) => decide(proposal, decision), (_, created) => setLink(created))
 
   return (
     <ProposalCard
       testId="ask-ai-proposal"
-      source={view.replaced ? 'Proposal · replaced by a newer plan' : 'Proposal · Ask AI'}
+      source={view.replaced ? 'Proposal · rejected or replaced by a newer plan' : 'Proposal · Ask AI'}
       title={view.title}
       summary={view.summary}
       changes={view.changes}
-      status={view.replaced ? 'rejected' : status}
-      busy={mutation.isPending}
-      onAccept={online ? () => choose('accepted') : undefined}
-      onReject={online ? () => choose('rejected') : undefined}
+      status={view.replaced ? 'rejected' : d.status}
+      busy={d.busy}
+      onAccept={d.onAccept}
+      onReject={d.onReject}
     >
-      {(link || error || (!online && status === 'pending')) && (
+      {(link || d.notes) && (
         <Box sx={{ display: 'grid', gap: 2 }}>
           {link && (
-            <Link component={RouterLink} to={link.to} sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: 14, fontWeight: tokens.font.weight.label }}>
+            <Link component={RouterLink} to={link.to} sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}>
               {link.label}
             </Link>
           )}
-          {!online && status === 'pending' && (
-            <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>Deciding needs a connection; it will wait here.</Box>
-          )}
-          {error && (
-            <Alert severity="error" onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
+          {d.notes}
         </Box>
       )}
     </ProposalCard>

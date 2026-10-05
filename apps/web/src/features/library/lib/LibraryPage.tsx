@@ -12,8 +12,7 @@ import Typography from '@mui/material/Typography'
 import { ExerciseCategory, Muscle } from '@fitness/shared/schemas'
 import { useDeferredValue, useMemo, useState } from 'react'
 import { Link as RouterLink, useParams, useSearchParams } from 'react-router'
-import { EmptyState } from '../../../components'
-import { LoadProblem } from '../../quick-log'
+import { EmptyState, LoadProblem } from '../../../components'
 import { ExerciseDetail } from './ExerciseDetail'
 import { ExerciseDetailSheet } from './ExerciseDetailSheet'
 import { ExerciseList } from './ExerciseList'
@@ -83,7 +82,6 @@ export function LibraryPage() {
             variant={includeHidden ? 'filled' : 'outlined'}
             color={includeHidden ? 'warning' : 'default'}
             onClick={() => update({ hidden: includeHidden ? undefined : '1' })}
-            sx={{ height: 36 }}
           />
         }
       />

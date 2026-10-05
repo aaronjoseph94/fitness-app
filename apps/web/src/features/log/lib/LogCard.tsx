@@ -31,7 +31,7 @@ export function LogCard({ title, subtitle, badge, action, collapsible = false, c
         <Box component="h3" sx={{ m: 0, fontSize: 17, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
           {title}
         </Box>
-        {subtitle && <Box sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.4, mt: 0.25 }}>{subtitle}</Box>}
+        {subtitle && <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.4, mt: 0.25 }}>{subtitle}</Box>}
       </Box>
       {badge}
       {collapsible && (

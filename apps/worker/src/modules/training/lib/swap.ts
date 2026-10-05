@@ -2,6 +2,8 @@
 // muscle, allowed exercise set only) — the checks, the guarded apply-or-propose through the plan module, and the
 // write: the new exercise takes the old one's place, sets, rep range and rest (target load cleared: another lift).
 // Also what accepting the AI proposals training owns does: a workout becomes a template; a template swap applies.
+// After a swap is written, the swap listeners run (week-plans registers one: planned sessions copied from the template
+// follow it), so training never imports week-plans.
 import { applyGuards, type ExerciseSwapChange } from '@fitness/shared/engine'
 import type { ProposalApplied, ProposalBody, Template, TemplateExerciseInput } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
@@ -18,6 +20,26 @@ export interface SwapInput {
 }
 
 type SwapBody = Extract<ProposalBody, { kind: 'template_swap' }>
+
+/** Runs after a swap was written to a template. */
+export type SwapListener = (deps: Deps, swap: SwapInput) => Promise<void>
+const listeners: SwapListener[] = []
+
+/** Register a swap listener (week-plans does, when it loads). */
+export function onTemplateSwap(listener: SwapListener): void {
+  listeners.push(listener)
+}
+
+/** Tell the listeners a swap was written (every swap path calls this). A failing listener is logged: the swap stands. */
+export async function templateSwapped(deps: Deps, swap: SwapInput): Promise<void> {
+  for (const listener of listeners) {
+    try {
+      await listener(deps, swap)
+    } catch (err) {
+      console.error(JSON.stringify({ level: 'error', msg: 'template swap listener failed', template_id: swap.template_id, error: String(err) }))
+    }
+  }
+}
 
 /** The template and both exercises, after the checks no guard makes: in the template, in the library, same primary muscle. */
 function checkSwap(template: Template, library: Library, input: SwapInput): { from: LibraryEntry; to: LibraryEntry } {
@@ -43,7 +65,9 @@ const swapped = (template: Template, input: SwapInput): TemplateExerciseInput[] 
  * of the template stays as it was, so the whole-workout guards are not re-run on it (they bind ai-built templates).
  */
 async function writeSwap(deps: Deps, template: Template, input: SwapInput): Promise<Template> {
-  return updateTemplate({ ...deps, actor: 'user' }, template.id, { exercises: swapped(template, input) })
+  const updated = await updateTemplate({ ...deps, actor: 'user' }, template.id, { exercises: swapped(template, input) })
+  await templateSwapped(deps, { template_id: template.id, from_exercise_id: input.from_exercise_id, to_exercise_id: input.to_exercise_id })
+  return updated
 }
 
 /**
@@ -83,13 +107,16 @@ export async function acceptTemplateSwap(deps: Deps, proposal: ProposalOf<'templ
   return { plan_version_id: null, applied: { entity: 'template', id: template.id } }
 }
 
-/** Accepting a workout proposal from the plan module: the draft becomes an AI template (guarded as its author). */
+/**
+ * Accepting a workout proposal from the plan module: the draft becomes an AI template (guarded as its author). The
+ * template takes the proposal's id, so a double-tapped or replayed accept rewrites the same template, never a second.
+ */
 export async function acceptWorkout(deps: Deps, proposal: ProposalOf<'workout'>): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
   const { body } = proposal
   const template = await createTemplate(
     { ...deps, actor: proposal.actor },
     {
-      id: crypto.randomUUID(),
+      id: proposal.id,
       name: `AI · ${body.date ?? 'workout'}`,
       origin: 'ai',
       notes: body.workout.rationale || undefined,

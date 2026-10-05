@@ -1,16 +1,14 @@
 // Owns: what a week looks like before anyone plans it — the starting point for replace_week_plan when the week has no
 // active plan: per-weekday targets from the active plan version (override ?? default), its water and steps, the fasts
 // already planned in that week, no sessions, no scan, no focus note; and a template's snapshot as a planned session.
-import { addDays, localDate } from '@fitness/shared/engine'
 import { Weekday, type WeekPlanContentInput, type WeekPlanSessionInput } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
-import { listFasts } from '../../fasting'
 import { getActivePlan } from '../../plan'
 import { getTemplate } from '../../training'
+import { weekFastDates } from './fasts'
 
 export async function basePlan(deps: Deps, week_start: string): Promise<WeekPlanContentInput> {
-  const end = addDays(week_start, 6)
-  const [plan, fasts] = await Promise.all([getActivePlan(deps), listFasts(deps, { from: week_start, to: end })])
+  const [plan, fast_dates] = await Promise.all([getActivePlan(deps), weekFastDates(deps, week_start)])
   const { defaults, overrides } = plan.targets
   const day = (w: Weekday) => {
     const o = overrides[w] ?? {}
@@ -22,7 +20,6 @@ export async function basePlan(deps: Deps, week_start: string): Promise<WeekPlan
       fibre_g: o.fibre_g ?? defaults.fibre_g,
     }
   }
-  const fast_dates = [...new Set(fasts.map((f) => localDate(f.started_at)))].filter((d) => d >= week_start && d <= end)
   return {
     targets: Object.fromEntries(Weekday.options.map((w) => [w, day(w)])) as WeekPlanContentInput['targets'],
     sessions: Object.fromEntries(Weekday.options.map((w) => [w, null])) as WeekPlanContentInput['sessions'],

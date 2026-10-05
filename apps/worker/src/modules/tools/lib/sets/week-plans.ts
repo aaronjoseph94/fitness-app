@@ -40,9 +40,11 @@ export const WEEK_PLAN_TOOLS: readonly ToolDefinition[] = [
     title: 'Propose a week plan',
     description:
       'Store a plan for one Monday–Sunday week as proposed: per-weekday calories and macros, a session per weekday ' +
-      '(exercise ids from the allowed exercise set, 12–28 sets each; null for rest), water, steps, the planned fast ' +
-      'dates, the scan date if one is due, and a focus note. The rails are checked first: kcal between the calorie ' +
-      'floor and ceiling, protein and fat at or above their minimums, two fasts a month. If anything breaks a rail ' +
+      '(exercise ids from the allowed exercise set, 12–28 sets each; null for rest), water, steps, the fast days of ' +
+      'the fasts already planned that week (each fast\'s fast_day: a fast from 19:00 makes the next day the fast day; ' +
+      'plan a new fast with plan_fast first — a fast date with no planned fast is rejected, and planned ones left out ' +
+      'are added), the scan date if one is due, and a focus note. The rails are checked first: kcal between the ' +
+      'calorie floor and ceiling, protein and fat at or above their minimums. If anything breaks a rail ' +
       'nothing is stored and `rejected` says what to fix; a kcal move of more than 150 from last week\'s target for ' +
       'that weekday is cut to the 150 kcal step and listed in `adjusted`. Fast dates get 0 kcal targets automatically, ' +
       'so their weekday targets are ignored. A new proposal replaces the week\'s earlier proposed plan. Nothing changes ' +

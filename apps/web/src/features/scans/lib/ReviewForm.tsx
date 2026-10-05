@@ -12,12 +12,12 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import type { Scan, ScanDraft, ScanSegment } from '@fitness/shared/schemas'
 import { useMemo, useState, type ReactNode } from 'react'
-import { formatNumber } from '../../../components'
+import { formatNumber, NumberField } from '../../../components'
 import { tokens } from '../../../theme'
-import { NumberField, problemText } from '../../quick-log'
 import { confidenceOf, GROUPS, LOW_CONFIDENCE, PROFILE_FIELDS, recordFrom, type FieldSpec, type FormErrors, type ScanForm, type TriState } from './form'
 import { useConfirmScan } from './hooks'
 import { SEGMENT_LABEL, SEGMENTS } from './series'
+import { problemText } from '../../../api'
 
 interface ReviewFormProps {
   scanId: string
@@ -37,7 +37,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: Reac
       <Box component="h3" sx={{ m: 0, fontSize: 17, fontWeight: tokens.font.weight.heading }}>
         {title}
       </Box>
-      {subtitle && <Box sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>{subtitle}</Box>}
+      {subtitle && <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mt: 0.5 }}>{subtitle}</Box>}
       <Box sx={{ mt: 3 }}>{children}</Box>
     </Card>
   )
@@ -58,7 +58,7 @@ const warnSx = { '& .MuiOutlinedInput-notchedOutline': { borderColor: tokens.sta
 function TriToggle({ label, value, onChange }: { label: string; value: TriState; onChange: (v: TriState) => void }) {
   return (
     <Box>
-      <Box sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>{label}</Box>
+      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mb: 1 }}>{label}</Box>
       <ToggleButtonGroup value={value} exclusive fullWidth size="small" onChange={(_, v: TriState | null) => v && onChange(v)} aria-label={label} sx={toggleSx}>
         <ToggleButton value="yes">Yes</ToggleButton>
         <ToggleButton value="no">No</ToggleButton>
@@ -155,7 +155,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
         <Box sx={{ display: 'grid', gridTemplateColumns: '84px 1fr 1fr', gap: 2, alignItems: 'start' }} data-testid="scan-segments">
           {SEGMENTS.map((s) => (
             <Box key={s} sx={{ display: 'contents' }}>
-              <Box sx={{ fontSize: 14, fontWeight: tokens.font.weight.label, pt: 1.25 }}>{SEGMENT_LABEL[s]}</Box>
+              <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, pt: 1.25 }}>{SEGMENT_LABEL[s]}</Box>
               {(['lean_kg', 'fat_kg'] as const).map((part) => {
                 const key = `segments.${s}.${part}`
                 const { helper, tone } = check(draft, key, form.segments[s][part], errors[key])

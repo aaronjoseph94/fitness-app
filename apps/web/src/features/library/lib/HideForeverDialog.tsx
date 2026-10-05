@@ -12,9 +12,9 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import type { Exercise } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { useApiMutation } from '../../../api'
-import { problemText } from '../../quick-log'
+import { problemText, useApiMutation } from '../../../api'
 import { useMarkHidden, useRefreshLibrary } from './useExercises'
+import { tokens } from '../../../theme'
 
 const REASONS = ['Hurts / aggravates an injury', "My gym doesn't have it", "Don't like it", 'Floor exercise', 'Too technical'] as const
 
@@ -49,7 +49,7 @@ export function HideForeverDialog({ exercise, onClose, onHidden }: HideForeverDi
     <Dialog open onClose={onClose} fullWidth maxWidth="xs" sx={{ zIndex: (t) => t.zIndex.modal + 2 }} aria-labelledby="hide-forever-title">
       <DialogTitle id="hide-forever-title">Hide {exercise.name}?</DialogTitle>
       <DialogContent>
-        <Box sx={{ fontSize: 14, color: 'text.secondary', mb: 3 }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mb: 3 }}>
           It leaves the library, the picker and every AI workout. The reason is kept with the exclusion.
         </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 3 }}>

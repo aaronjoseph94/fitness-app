@@ -34,7 +34,7 @@ export function useScan(id: string, enabled = true) {
   return useApiQuery(endpoints.scans.get, { params: { id } }, { enabled, refetchInterval: (q) => pollInterval(q.state.data) })
 }
 
-const STALE_AFTER_SCAN_WRITE = [endpoints.scans.list, endpoints.scans.get, endpoints.body.trend, endpoints.day.events] as const
+const STALE_AFTER_SCAN_WRITE = [endpoints.scans.list, endpoints.scans.get, endpoints.scans.schedule, endpoints.body.trend, endpoints.day.events] as const
 
 export function useConfirmScan() {
   return useApiMutation(endpoints.scans.confirm, { invalidates: STALE_AFTER_SCAN_WRITE })
@@ -46,6 +46,11 @@ export function useReextractScan() {
 
 export function useDiscardScan() {
   return useApiMutation(endpoints.scans.remove, { invalidates: STALE_AFTER_SCAN_WRITE })
+}
+
+/** When the next scan is due, as the server has it: a date the coach or a week plan scheduled, else the interval. */
+export function useScanSchedule() {
+  return useApiQuery(endpoints.scans.schedule, {})
 }
 
 export function useScanSettings() {

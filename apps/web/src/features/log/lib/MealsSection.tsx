@@ -6,9 +6,9 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import type { DayView, Favourite, MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { formatNumber } from '../../../components'
+import { formatNumber, LoadProblem } from '../../../components'
 import { tokens } from '../../../theme'
-import { LoadProblem, SLOT_LABEL, slotShare, visibleSlots } from '../../quick-log'
+import { SLOT_LABEL, slotShare, visibleSlots } from '../../quick-log'
 import { LoadingRows, LogCard } from './LogCard'
 import { MealCard } from './MealCard'
 import { DeleteMealDialog, MealEditor, SaveFavouriteDialog } from './MealDialogs'
@@ -61,7 +61,7 @@ export function MealsSection({ day, meals, favourites, breakfastEnabled, onAdd }
             {meals.isLoading && inSlot.length === 0 ? (
               <LoadingRows rows={1} />
             ) : inSlot.length === 0 ? (
-              <Box sx={{ fontSize: 14, color: 'text.secondary', pb: 1 }}>
+              <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', pb: 1 }}>
                 {meals.error != null ? "Didn't load. Anything you add still saves." : fastDay ? 'Fast day.' : 'Nothing logged.'}
               </Box>
             ) : (

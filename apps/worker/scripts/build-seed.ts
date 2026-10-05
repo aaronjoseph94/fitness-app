@@ -1,11 +1,13 @@
 // Owns: building apps/worker/seed.generated.sql (gitignored) — Aaron's baseline: profile, rails, baseline scan, milestones, equipment, exercise library + exclusions, plan v1, daily targets, first weigh-in, Canadian Nutrient File foods.
 // Run: pnpm --filter @fitness/worker seed:local (builds, then `wrangler d1 execute DB --local --file seed.generated.sql`).
-// Idempotent: deterministic ids + INSERT OR IGNORE (Aaron's later edits win); library exercises upsert by slug so a new pinned commit syncs.
+// Idempotent: deterministic ids + INSERT OR IGNORE (Aaron's later edits win: an exclusion he un-hid is a soft-deleted row
+// the re-seed leaves alone); library exercises upsert by slug so a new pinned commit syncs.
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import * as z from 'zod'
 import { exercises as library, type LibraryExercise } from '@fitness/exercises'
-import { ReminderKind, ScanRecord, Weekday, type ReminderPrefs } from '@fitness/shared/schemas'
+import { forecast, localDate, materialiseTargets, TIMEZONE } from '@fitness/shared/engine'
+import { ReminderKind, ScanRecord, type ReminderPrefs, type Weekday } from '@fitness/shared/schemas'
 import {
   daily_targets,
   equipment_profile,
@@ -26,7 +28,6 @@ import { insertSql, seedId } from './lib/seed-sql'
 const ROOT = path.resolve(import.meta.dirname, '..')
 const SEED_DIR = path.resolve(ROOT, '..', '..', 'seed')
 const OUT = path.join(ROOT, 'seed.generated.sql')
-const TZ = 'America/Edmonton'
 
 // ── Inputs ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -70,34 +71,16 @@ const RAILS = {
   fibre_target_g: 30,
   water_target_ml: 3000,
 }
-const KCAL_PER_KG = 7700
-const FORECAST_BAND = 0.2
-
-// ── Date helpers (calendar arithmetic on 'YYYY-MM-DD'; no time zone involved) ───────────────────────────────
-
-const addDays = (date: string, days: number) => {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
-}
-const weekdayOf = (date: string): Weekday =>
-  Weekday.options[(new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7] as Weekday // getUTCDay: 0 = Sunday
-const localDateOf = (instant: string) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone: TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(instant))
-const round = (n: number, dp: number) => Math.round(n * 10 ** dp) / 10 ** dp
+const round3 = (n: number) => Math.round(n * 1000) / 1000
 
 // ── Plan v1: the rails as the first targets ───────────────────────────────────────────────────────────────────
 
-/** carbs_g = (kcal − protein_g × 4 − fat_g × 9) / 4 = (1,400 − 130 × 4 − 45 × 9) / 4 = 118.75 g. */
+/** carbs_g = round((kcal − protein_g × 4 − fat_g × 9) / 4) = round((1,400 − 130 × 4 − 45 × 9) / 4) = 119 g, as the engine's
+ *  materialiseTargets rounds the remainder. */
 const baselineTargets = {
   kcal: RAILS.floor,
   protein_g: RAILS.protein_min_g,
-  carbs_g: (RAILS.floor - RAILS.protein_min_g * 4 - RAILS.fat_min_g * 9) / 4,
+  carbs_g: Math.round((RAILS.floor - RAILS.protein_min_g * 4 - RAILS.fat_min_g * 9) / 4),
   fat_g: RAILS.fat_min_g,
   fibre_g: RAILS.fibre_target_g,
   water_ml: RAILS.water_target_ml,
@@ -106,20 +89,19 @@ const baselineTargets = {
 const planTargets: NewRow<typeof plan_versions>['targets'] = { defaults: baselineTargets, overrides: {} }
 
 /**
- * Baseline forecast (SPEC §3, §9), from the scan TEE as the first expenditure estimate:
- *   weekly_rate_kg = (tdee_est − target_kcal) × 7 / 7,700 = (2,551 − 1,400) × 7 / 7,700 ≈ 1.046 kg/week
- *   band           = weekly_rate_kg × (1 ∓ 0.20) ≈ 0.837 … 1.256 kg/week
- *   finish_date    = start_date + ceil((start_kg − goal_kg) × 7 / weekly_rate_kg) days, start − goal = 95.1 − 65.0 = 30.1 kg
+ * Baseline forecast (SPEC §3, §9): the engine's forecast from the scan TEE as the first expenditure estimate, stored
+ * the way the nightly reforecast stores it (rates to 0.001 kg, whole kcal):
+ *   weekly_rate_kg = (2,551 − 1,400) × 7 / 7,700 ≈ 1.046 kg/week;  band ≈ 0.837 … 1.256 kg/week
+ *   finish_date    = start_date + ⌈(95.1 − 65.0) / weekly_rate_kg × 7⌉ days
  * The nightly plan_reforecast replaces this once weigh-ins and intake accumulate.
  */
 function baselineForecast(): NonNullable<NewRow<typeof plan_versions>['forecast']> {
-  const tdee = scan.tee_kcal
-  const rate = ((tdee - baselineTargets.kcal) * 7) / KCAL_PER_KG
+  const f = forecast({ as_of: START_DATE, tdee_est: scan.tee_kcal, intake_kcal: baselineTargets.kcal, trend_kg: START_KG, goal_kg: GOAL_KG })
   return {
-    finish_date: addDays(START_DATE, Math.ceil(((START_KG - GOAL_KG) * 7) / rate)),
-    weekly_rate_kg: round(rate, 3),
-    band: { low: round(rate * (1 - FORECAST_BAND), 3), high: round(rate * (1 + FORECAST_BAND), 3) },
-    tdee_est: tdee,
+    finish_date: f.finish_date,
+    weekly_rate_kg: round3(f.weekly_rate_kg),
+    band: { low: round3(f.band.low), high: round3(f.band.high) },
+    tdee_est: Math.round(f.tdee_est),
   }
 }
 
@@ -155,7 +137,7 @@ const profileRows: NewRow<typeof profile>[] = [
     height_cm: scan.height_cm,
     birth_date: null, // unknown; age 31 at the baseline scan
     sex: scan.sex,
-    timezone: TZ,
+    timezone: TIMEZONE,
     goal_weight_kg: GOAL_KG,
     goal_date: GOAL_DATE,
     start_weight_kg: START_KG,
@@ -188,7 +170,7 @@ const scanRows: NewRow<typeof scans>[] = [
     ...metrics,
     id: scanId,
     scanned_at,
-    date: localDateOf(scanned_at),
+    date: localDate(scanned_at),
     storage_path: null, // the original sheet image is attached later through the app
     extracted: null, // never LLM-extracted: the record came from SPEC §2
     confirmed: true,
@@ -251,17 +233,15 @@ const planRows: NewRow<typeof plan_versions>[] = [
   },
 ]
 
-const targetRows: NewRow<typeof daily_targets>[] = []
-for (let date = START_DATE; date <= TARGETS_THROUGH; date = addDays(date, 1)) {
-  targetRows.push({
-    id: seedId(`daily_targets:${date}`),
-    date,
-    plan_version_id: planId,
-    ...baselineTargets,
-    is_fast_day: false,
-    training_planned: TRAINING_DAYS.includes(weekdayOf(date)),
-  })
-}
+/** The engine's materialiseTargets, as every rebuild writes them (no fasts planned yet, no week plan). */
+const targetRows: NewRow<typeof daily_targets>[] = materialiseTargets({
+  from: START_DATE,
+  to: TARGETS_THROUGH,
+  plan_version: { id: planId, targets: planTargets },
+  rails: { calorie_floor: RAILS.floor, protein_min_g: RAILS.protein_min_g, fat_min_g: RAILS.fat_min_g },
+  training_days: TRAINING_DAYS,
+  fast_dates: [],
+}).map(({ training_load: _load, ...t }) => ({ ...t, id: seedId(`daily_targets:${t.date}`) }))
 
 // ── Canadian Nutrient File foods (seed/foods/cnf.json, built by scripts/build-cnf.ts) ──────────────────────────
 // Generic foods for food matching without an API call: source 'cnf', source_id = CNF food code, nutrients per 100 g.

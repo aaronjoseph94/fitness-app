@@ -19,7 +19,7 @@ import { useApiQuery } from '../../../api'
 import { StrengthChart, type StrengthSession } from '../../../charts'
 import { ChartCard, formatNumber, formatShortDate } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, type MuscleLevel } from '../../../muscle-map'
-import { tokens } from '../../../theme'
+import { tokens, withAlpha } from '../../../theme'
 import { HideForeverDialog } from './HideForeverDialog'
 import { categoryLabel, equipmentLabel, sentence } from './labels'
 
@@ -57,7 +57,7 @@ function Media({ exercise }: { exercise: ExerciseSummary }) {
   const frame = {
     borderRadius: `${tokens.radius.control}px`,
     border: `1px solid ${tokens.ink.border}`,
-    bgcolor: '#FFFFFF',
+    bgcolor: tokens.ink.card,
     width: '100%',
     display: 'block',
     objectFit: 'contain' as const,
@@ -68,7 +68,7 @@ function Media({ exercise }: { exercise: ExerciseSummary }) {
         <Box component="figure" sx={{ m: 0 }}>
           <Box component="img" src={gif} alt={`${exercise.name} demonstration`} onError={() => fail(gif)} sx={{ ...frame, aspectRatio: '1 / 1', maxHeight: 320 }} />
           {isExerciseDbGif(gif) && (
-            <Box component="figcaption" data-testid="exercise-gif-credit" sx={{ mt: 1, fontSize: 12, color: tokens.ink.secondary, textAlign: 'center' }}>
+            <Box component="figcaption" data-testid="exercise-gif-credit" sx={{ mt: 1, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, textAlign: 'center' }}>
               <Box component="a" href={GIF_CREDIT_URL} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
                 {GIF_CREDIT}
               </Box>
@@ -88,8 +88,8 @@ function Media({ exercise }: { exercise: ExerciseSummary }) {
                   top: 8,
                   px: 1.5,
                   borderRadius: tokens.radius.chip,
-                  bgcolor: 'rgba(255,255,255,0.9)',
-                  fontSize: 12,
+                  bgcolor: withAlpha(tokens.ink.card, 0.9),
+                  fontSize: tokens.font.size.caption,
                   fontWeight: tokens.font.weight.label,
                   color: tokens.ink.secondary,
                 }}
@@ -118,7 +118,7 @@ function History({ exerciseId }: { exerciseId: string }) {
     >
       <StrengthChart sessions={points} />
       {next && (
-        <Box sx={{ mt: 3, fontSize: 14, color: tokens.ink.secondary }}>
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
           <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
             Next time:{' '}
           </Box>
@@ -137,17 +137,17 @@ function Instructions({ exerciseId }: { exerciseId: string }) {
   if (!full.isPending && steps.length === 0) return null
   return (
     <Box data-testid="exercise-instructions">
-      <Box component="h3" sx={{ m: 0, mb: 2, fontSize: 16, fontWeight: tokens.font.weight.heading }}>
+      <Box component="h3" sx={{ m: 0, mb: 2, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>
         How to
       </Box>
       {full.isPending ? (
         <Stack spacing={1} aria-busy="true" aria-label="Loading the steps">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} variant="text" sx={{ fontSize: 15 }} />
+            <Skeleton key={i} variant="text" sx={{ fontSize: tokens.font.size.emphasis }} />
           ))}
         </Stack>
       ) : (
-        <Box component="ol" sx={{ m: 0, pl: 5, '& li': { mb: 2, lineHeight: 1.5, fontSize: 15 } }}>
+        <Box component="ol" sx={{ m: 0, pl: 5, '& li': { mb: 2, lineHeight: 1.5, fontSize: tokens.font.size.emphasis } }}>
           {steps.map((step, i) => (
             <li key={i}>{step}</li>
           ))}
@@ -160,7 +160,7 @@ function Instructions({ exerciseId }: { exerciseId: string }) {
 function MuscleList({ label, muscles }: { label: string; muscles: readonly Muscle[] }) {
   if (muscles.length === 0) return null
   return (
-    <Box sx={{ fontSize: 14 }}>
+    <Box sx={{ fontSize: tokens.font.size.small }}>
       <Box component="span" sx={{ color: tokens.ink.secondary }}>
         {label}:{' '}
       </Box>
@@ -205,7 +205,7 @@ export function ExerciseDetail({ exercise, onHidden }: ExerciseDetailProps) {
           <MuscleMap levels={exerciseLevels(exercise)} size={280} title={`Muscles trained by ${exercise.name}`} />
         </Box>
         <Stack spacing={1} sx={{ mt: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 13, color: tokens.ink.secondary }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '3px', bgcolor: tokens.muscleMap.steps[3] }} /> Primary
             <Box sx={{ width: 12, height: 12, borderRadius: '3px', bgcolor: tokens.muscleMap.steps[1], ml: 2 }} /> Secondary
           </Box>

@@ -1,77 +1,29 @@
-// Owns: the logging forms' clock in Aaron's timezone (America/Edmonton): today's local date, the local date and wall time
-// of an instant, an Edmonton wall-clock time as a UTC instant, day shifts, and how dates and durations read on screen.
-// Small and local on purpose; swap for the engine's dates helpers once @fitness/shared/engine exports them.
+// Owns: the logging forms' clock in Aaron's timezone (America/Edmonton). Today's local date, the local date and wall
+// time of an instant, day shifts and day counts are the engine's dates helpers under the names the logging kit uses;
+// this file adds an Edmonton wall-clock time as a UTC instant, and how dates and durations read on screen.
+import { addDays, daysBetween, localDate, localTime, today, type InstantInput } from '@fitness/shared/engine'
 
-const TIMEZONE = 'America/Edmonton'
-const DAY_MS = 86_400_000
-
-const wallFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: TIMEZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hourCycle: 'h23',
-})
-
-type InstantLike = string | number | Date
-
-interface Wall {
-  date: string
-  time: string
-  /** The wall-clock reading as if it were UTC, in ms (for offset maths). */
-  asUtc: number
-}
-
-function wall(instant: InstantLike): Wall {
-  const at = instant instanceof Date ? instant : new Date(instant)
-  const p: Record<string, string> = {}
-  for (const { type, value } of wallFormat.formatToParts(at)) p[type] = value
-  const [y, mo, d, h, mi, s] = [p.year, p.month, p.day, p.hour, p.minute, p.second].map(Number) as [
-    number,
-    number,
-    number,
-    number,
-    number,
-    number,
-  ]
-  return {
-    date: `${p.year}-${p.month}-${p.day}`,
-    time: `${p.hour}:${p.minute}`,
-    asUtc: Date.UTC(y, mo - 1, d, h, mi, s),
-  }
-}
+export { daysBetween }
 
 /** Today's Edmonton date, "2026-10-05". */
-export function todayLocal(now: InstantLike = Date.now()): string {
-  return wall(now).date
+export function todayLocal(now: InstantInput = Date.now()): string {
+  return today(now)
 }
 
 /** The Edmonton date of an instant. */
-export function dateOf(instant: InstantLike): string {
-  return wall(instant).date
-}
+export const dateOf = localDate
 
 /** The Edmonton wall time of an instant, "07:42". */
-export function clockOf(instant: InstantLike): string {
-  return wall(instant).time
-}
+export const clockOf = localTime
 
 /** The date `days` calendar days after `date` (negative goes back). */
-export function shiftDate(date: string, days: number): string {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number]
-  return new Date(Date.UTC(y, m - 1, d) + days * DAY_MS).toISOString().slice(0, 10)
-}
+export const shiftDate = addDays
 
-/** Whole calendar days from `a` to `b`. */
-export function daysBetween(a: string, b: string): number {
-  const ms = (date: string) => {
-    const [y, m, d] = date.split('-').map(Number) as [number, number, number]
-    return Date.UTC(y, m - 1, d)
-  }
-  return Math.round((ms(b) - ms(a)) / DAY_MS)
+/** The Edmonton wall clock of an instant read as if it were UTC, in ms at minute resolution (for offset maths). */
+function wallAsUtc(t: number): number {
+  const [y, mo, d] = localDate(t).split('-').map(Number) as [number, number, number]
+  const [h, mi] = localTime(t).split(':').map(Number) as [number, number]
+  return Date.UTC(y, mo - 1, d, h, mi)
 }
 
 /**
@@ -82,7 +34,7 @@ export function instantAt(date: string, time: string): string {
   const [y, mo, d] = date.split('-').map(Number) as [number, number, number]
   const [h, mi] = time.split(':').map(Number) as [number, number]
   const guess = Date.UTC(y, mo - 1, d, h, mi)
-  const offsetAt = (t: number) => wall(t).asUtc - Math.floor(t / 1000) * 1000
+  const offsetAt = (t: number) => wallAsUtc(t) - Math.floor(t / 60_000) * 60_000
   const first = offsetAt(guess)
   let at = guess - first
   const second = offsetAt(at)
@@ -91,7 +43,7 @@ export function instantAt(date: string, time: string): string {
 }
 
 /** An instant on `date` at the current wall time (today: now). Used when logging to a day other than today. */
-export function instantOnDate(date: string, now: InstantLike = Date.now()): string {
+export function instantOnDate(date: string, now: InstantInput = Date.now()): string {
   if (date === todayLocal(now)) return new Date(now).toISOString()
   return instantAt(date, clockOf(now))
 }
@@ -116,7 +68,6 @@ export function formatDuration(ms: number): string {
 }
 
 /** "2026-10-04 19:00" in Edmonton time. */
-export function formatDateTime(instant: InstantLike): string {
-  const w = wall(instant)
-  return `${w.date} ${w.time}`
+export function formatDateTime(instant: InstantInput): string {
+  return `${localDate(instant)} ${localTime(instant)}`
 }

@@ -1,5 +1,6 @@
 // Owns: what each fast is right now — active, planned, completed, partial or missed — from GET /api/fasts, today's
-// fast state (GET /api/day/:date) and starts / ends / plans not yet synced, so the sheet and the Log tab agree.
+// fast state (GET /api/day/:date) and starts / ends / plans / removals not yet synced, so the sheet and the Log tab
+// agree. A missed fast (planned, never ended) is resolved in the fast sheet: end it at its real end, or "Didn't fast".
 import { endpoints } from '@fitness/shared/api'
 import type { Fast } from '@fitness/shared/schemas'
 import { useEffect, useMemo, useState } from 'react'
@@ -57,6 +58,7 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
   const starts = usePendingLogs(endpoints.fasting.start)
   const ends = usePendingLogs(endpoints.fasting.end)
   const plans = usePendingLogs(endpoints.fasting.plan)
+  const cancels = usePendingLogs(endpoints.fasting.cancel)
 
   return useMemo(() => {
     const byId = new Map<string, Fast & { pending?: boolean }>()
@@ -80,6 +82,10 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
       const id = p.path.split('/')[3]
       const existing = id ? byId.get(id) : undefined
       if (existing) byId.set(existing.id, { ...existing, ended_at: p.body.ended_at ?? p.at, pending: true })
+    }
+    for (const p of cancels) {
+      const id = p.path.split('/')[3]
+      if (id) byId.delete(id)
     }
     const activeId = today.data?.fast.state === 'active' ? today.data.fast.fast?.id : undefined
     // The server knows a planned fast that has not started yet even when its start time has passed.
@@ -109,7 +115,7 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
       error: list.error,
       refetch: () => void list.refetch(),
     }
-  }, [list.data, list.isLoading, list.error, list.refetch, today.data, starts, ends, plans, fastHours, now])
+  }, [list.data, list.isLoading, list.error, list.refetch, today.data, starts, ends, plans, cancels, fastHours, now])
 }
 
 /** Planned fasts starting in the month of `date` ("2026-10"), for the "1 of 2 planned" line. */

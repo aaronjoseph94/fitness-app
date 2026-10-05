@@ -13,10 +13,10 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import type { ProgressPhoto } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { formatNumber } from '../../../components'
-import { problemText } from '../../quick-log'
 import { theme, tokens } from '../../../theme'
 import { POSE_LABEL, useRemovePhoto } from './data'
 import { PhotoImage, TrendWeight } from './PhotoParts'
+import { problemText } from '../../../api'
 
 const takenAtFormat = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Edmonton',
@@ -51,7 +51,7 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
           <Stack direction="row" sx={{ alignItems: 'center', px: 2, pt: 'calc(8px + env(safe-area-inset-top, 0px))', pb: 1 }}>
             <Box sx={{ flex: 1, minWidth: 0, pl: 2 }}>
               <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: 17 }}>{POSE_LABEL[photo.pose]}</Box>
-              <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>{takenAtFormat.format(new Date(photo.taken_at))}</Box>
+              <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{takenAtFormat.format(new Date(photo.taken_at))}</Box>
             </Box>
             <IconButton aria-label="Close" onClick={close}>
               <Close />
@@ -64,10 +64,10 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
           </Box>
           <Stack spacing={1} sx={{ px: 5, pt: 3 }}>
             <Box sx={{ display: 'flex', gap: 3, alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>Trend weight</Box>
-              {photo.weight_kg === null ? <Box sx={{ fontSize: 15 }}>—</Box> : <TrendWeight kg={photo.weight_kg} size={17} />}
+              <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Trend weight</Box>
+              {photo.weight_kg === null ? <Box sx={{ fontSize: tokens.font.size.emphasis }}>—</Box> : <TrendWeight kg={photo.weight_kg} size={17} />}
             </Box>
-            <Box sx={{ fontSize: 14, color: tokens.ink.text }}>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text }}>
               {photo.nearest_scan ? (
                 <>
                   Nearest scan {photo.nearest_scan.date}
@@ -85,7 +85,7 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
                 </Box>
               )}
             </Box>
-            {photo.note && <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>{photo.note}</Box>}
+            {photo.note && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{photo.note}</Box>}
           </Stack>
           {remove.isError && (
             <Alert severity="warning" variant="outlined" sx={{ mx: 5, mt: 3 }}>

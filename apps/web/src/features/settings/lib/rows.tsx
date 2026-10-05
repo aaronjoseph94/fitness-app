@@ -35,15 +35,15 @@ const rowSx = {
 function Text({ label, help }: { label: string; help?: ReactNode }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, lineHeight: 1.35 }}>{label}</Box>
-      {help && <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary, lineHeight: 1.4 }}>{help}</Box>}
+      <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: 1.35 }}>{label}</Box>
+      {help && <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.4 }}>{help}</Box>}
     </Box>
   )
 }
 
 function Value({ children }: { children: ReactNode }) {
   return (
-    <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>
+    <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>
       {children}
     </Box>
   )

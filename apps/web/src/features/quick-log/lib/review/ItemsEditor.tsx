@@ -10,10 +10,9 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import { useState } from 'react'
-import { formatNumber } from '../../../../components'
+import { formatNumber, NumberField, parseNumber } from '../../../../components'
 import { tokens } from '../../../../theme'
 import { FoodPicker, type PickedFood } from '../FoodPicker'
-import { NumberField, parseNumber } from '../ui'
 import { FoodIcon } from './food-icons'
 import { confidenceLevel, fromFood, gramsOf, itemNutrients, MAX_ITEMS, stepGrams, swapFood, type ConfidenceLevel, type DraftItem } from './items'
 
@@ -105,7 +104,7 @@ function ItemRow({ item, disabled, swapping, onGrams, onSwap, onSwapped, onRemov
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
         <FoodIcon name={item.description} size={36} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{item.description}</Box>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{item.description}</Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mt: 0.75 }}>
             {level && (
               <Chip
@@ -113,13 +112,13 @@ function ItemRow({ item, disabled, swapping, onGrams, onSwap, onSwapped, onRemov
                 variant="outlined"
                 label={CONFIDENCE[level].label}
                 title={`Confidence ${formatNumber((item.confidence ?? 0) * 100)} %`}
-                sx={{ height: 22, fontSize: 12, color: CONFIDENCE[level].color, borderColor: CONFIDENCE[level].color }}
+                sx={{ height: 22, fontSize: tokens.font.size.caption, color: CONFIDENCE[level].color, borderColor: CONFIDENCE[level].color }}
               />
             )}
             {item.estimated && (
-              <Chip size="small" label="Estimated" title="No database match; the AI estimated the nutrition" sx={{ height: 22, fontSize: 12, bgcolor: tokens.ink.page, color: tokens.ink.secondary }} />
+              <Chip size="small" label="Estimated" title="No database match; the AI estimated the nutrition" sx={{ height: 22, fontSize: tokens.font.size.caption, bgcolor: tokens.ink.page, color: tokens.ink.secondary }} />
             )}
-            <Button size="small" variant="text" startIcon={<SwapHorizRounded />} onClick={onSwap} disabled={disabled} sx={{ minHeight: 32, px: 1, fontSize: 13 }} aria-expanded={swapping}>
+            <Button size="small" variant="text" startIcon={<SwapHorizRounded />} onClick={onSwap} disabled={disabled} sx={{ minHeight: tokens.tapTarget, px: 1, fontSize: tokens.font.size.label }} aria-expanded={swapping}>
               {swapping ? 'Keep' : 'Swap'}
             </Button>
           </Box>
@@ -153,12 +152,12 @@ function ItemRow({ item, disabled, swapping, onGrams, onSwap, onSwapped, onRemov
           <AddRounded fontSize="small" />
         </IconButton>
         <Box sx={{ flex: 1 }} />
-        <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
           {n ? `${formatNumber(n.kcal)} kcal` : grams === null ? 'Grams?' : '—'}
         </Box>
       </Box>
       {n && (
-        <Box sx={{ ml: 12, mt: 1, fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ ml: 12, mt: 1, fontSize: tokens.font.size.caption, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
           {formatNumber(n.protein_g)} g protein · {formatNumber(n.carbs_g)} g carbs · {formatNumber(n.fat_g)} g fat
         </Box>
       )}

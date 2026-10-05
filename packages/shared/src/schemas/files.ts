@@ -3,7 +3,7 @@ import * as z from 'zod'
 import { Instant } from './common'
 
 /** R2 prefixes (SPEC §4). Monthly backups live under reports/backup/<YYYY-MM>/ (modules/export). */
-export const FilePrefix = z.enum(['meal-photos', 'scan-sheets', 'progress-photos', 'reports'])
+export const FilePrefix = z.enum(['meal-photos', 'scan-sheets', 'progress-photos', 'exercise-photos', 'reports'])
 export type FilePrefix = z.infer<typeof FilePrefix>
 
 /** An R2 object key: a known prefix, then path segments of [A-Za-z0-9_.-], never "..". */

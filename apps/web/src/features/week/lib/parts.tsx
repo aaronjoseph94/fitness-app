@@ -23,7 +23,7 @@ export function PlanBadge({ plan }: { plan: Pick<WeekPlan, 'status' | 'author'> 
         px: 2,
         height: 24,
         borderRadius: `${tokens.radius.chip}px`,
-        fontSize: 12,
+        fontSize: tokens.font.size.caption,
         fontWeight: tokens.font.weight.label,
         whiteSpace: 'nowrap',
         color: active ? tokens.status.good : tokens.ink.secondary,

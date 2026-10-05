@@ -16,10 +16,10 @@ import { endpoints } from '@fitness/shared/api'
 import type { HealthImportResult } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
-import { apiQueryKey, call } from '../../../api'
+import { apiQueryKey, call, problemText } from '../../../api'
 import { formatNumber, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, problemText } from '../../quick-log'
+import { clockOf } from '../../quick-log'
 import { applyMapping, guessMapping, type Mapping } from './mapping'
 import { readTable, type Table } from './table'
 
@@ -132,7 +132,7 @@ export function HealthImportPage() {
           {table ? 'Choose another file' : 'Choose a file'}
         </Button>
         {table && (
-          <Box sx={{ mt: 2, fontSize: 13, color: 'text.secondary' }}>
+          <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: 'text.secondary' }}>
             {fileName}: {formatNumber(table.rows.length)} rows, {table.columns.length} columns ({table.format.toUpperCase()})
           </Box>
         )}
@@ -165,15 +165,15 @@ export function HealthImportPage() {
             subtitle={`${formatNumber(mapped.rows.length)} days: steps on ${formatNumber(withSteps)}, sleep on ${formatNumber(withSleep)}${mapped.skipped ? `; ${formatNumber(mapped.skipped)} rows skipped` : ''}`}
           />
           {mapped.reasons.length > 0 && (
-            <Box component="ul" sx={{ m: 0, mt: 2, pl: 2.5, fontSize: 13, color: 'text.secondary' }}>
+            <Box component="ul" sx={{ m: 0, mt: 2, pl: 2.5, fontSize: tokens.font.size.label, color: 'text.secondary' }}>
               {mapped.reasons.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </Box>
           )}
-          <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 1.3fr', columnGap: 2, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+          <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 1.3fr', columnGap: 2, fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums' }}>
             {['Date', 'Steps', 'Asleep', 'In bed → woke'].map((h) => (
-              <Box key={h} sx={{ color: 'text.secondary', fontSize: 12, pb: 1, borderBottom: `1px solid ${tokens.ink.border}` }}>
+              <Box key={h} sx={{ color: 'text.secondary', fontSize: tokens.font.size.caption, pb: 1, borderBottom: `1px solid ${tokens.ink.border}` }}>
                 {h}
               </Box>
             ))}
@@ -186,7 +186,7 @@ export function HealthImportPage() {
               </Box>
             ))}
           </Box>
-          {mapped.rows.length > PREVIEW_ROWS && <Box sx={{ mt: 1, fontSize: 12, color: 'text.secondary' }}>The last {PREVIEW_ROWS} days.</Box>}
+          {mapped.rows.length > PREVIEW_ROWS && <Box sx={{ mt: 1, fontSize: tokens.font.size.caption, color: 'text.secondary' }}>The last {PREVIEW_ROWS} days.</Box>}
           <Button variant="contained" sx={{ mt: 3 }} fullWidth disabled={running || mapped.rows.length === 0} onClick={() => void run()} data-testid="health-import">
             {running ? 'Importing…' : `Import ${formatNumber(mapped.rows.length)} days`}
           </Button>
@@ -196,7 +196,7 @@ export function HealthImportPage() {
       {progress && (
         <Card sx={{ p: 4 }} data-testid="health-import-result" aria-live="polite">
           <LinearProgress variant="determinate" value={(progress.done / progress.total) * 100} />
-          <Box sx={{ mt: 2, fontSize: 15 }}>
+          <Box sx={{ mt: 2, fontSize: tokens.font.size.emphasis }}>
             {progress.done < progress.total ? `Sent ${formatNumber(progress.done)} of ${formatNumber(progress.total)} days…` : 'Done.'} Steps saved for{' '}
             {formatNumber(progress.result.steps_upserted)} days, sleep for {formatNumber(progress.result.sleep_upserted)} nights
             {progress.result.skipped ? `; ${formatNumber(progress.result.skipped)} skipped by the server` : ''}.

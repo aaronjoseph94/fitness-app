@@ -5,7 +5,7 @@ import Card from '@mui/material/Card'
 import LinearProgress from '@mui/material/LinearProgress'
 import { localTime, today } from '@fitness/shared/engine'
 import type { ReactNode } from 'react'
-import { isApiError } from '../../../api'
+import { isApiError, problemText } from '../../../api'
 import { formatNumber } from '../../../components'
 import { tokens } from '../../../theme'
 
@@ -15,7 +15,7 @@ export function DataCard({ id, title, children }: { id: string; title: string; c
       <Box
         component="h2"
         id={`${id}-title`}
-        sx={{ m: 0, fontSize: 18, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}
+        sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}
       >
         {title}
       </Box>
@@ -25,7 +25,7 @@ export function DataCard({ id, title, children }: { id: string; title: string; c
 }
 
 export function Help({ children }: { children: ReactNode }) {
-  return <Box sx={{ mt: 1.5, fontSize: 14, lineHeight: 1.55, color: tokens.ink.secondary }}>{children}</Box>
+  return <Box sx={{ mt: 1.5, fontSize: tokens.font.size.small, lineHeight: 1.55, color: tokens.ink.secondary }}>{children}</Box>
 }
 
 export function ProgressLine({
@@ -50,7 +50,7 @@ export function ProgressLine({
         aria-label={label}
         sx={{ height: 8, borderRadius: tokens.radius.chip }}
       />
-      <Box sx={{ mt: 1.5, display: 'flex', gap: 2, fontSize: 13, color: tokens.ink.secondary }}>
+      <Box sx={{ mt: 1.5, display: 'flex', gap: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
         <Box
           sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
@@ -74,10 +74,8 @@ export function formatBytes(bytes: number): string {
   return `${formatNumber(bytes / (1024 * 1024), 1)} MB`
 }
 
-/** One sentence for a failed export or restore call. */
+/** One sentence for a failed export or restore: an API failure in the app's usual words, else the step's own message. */
 export function failureText(error: unknown): string {
-  if (!isApiError(error)) return error instanceof Error ? error.message : 'Something went wrong.'
-  if (error.kind === 'network') return 'Lost the connection. Check you’re online, then try again.'
-  if (error.kind === 'auth-expired') return 'Your sign-in expired. Sign in again, then try again.'
-  return error.message
+  if (isApiError(error)) return problemText(error)
+  return error instanceof Error ? error.message : 'Something went wrong.'
 }

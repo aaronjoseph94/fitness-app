@@ -4,6 +4,7 @@
 // tool exposing JSON Schemas and both annotations.
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   createDb,
@@ -258,6 +259,39 @@ describe('tools layer', () => {
       review_id: result.review_id,
     })) as RevertReviewResult
     expect(again.already_reverted).toBe(true)
+  })
+
+  it('revert_review after the same week is applied again undoes the new apply', async () => {
+    const applied = (await callTool(deps, 'apply_review', {
+      summary: 'Protein up again',
+      narrative: 'A second pass at the week: protein goes up to 140 g.',
+      changes: [{ kind: 'target', field: 'protein_g', to: 140, reason: 'Protein adherence was 50 %' }],
+    })) as ApplyReviewResult
+    expect((await listVersions(deps))[0]!.targets.defaults.protein_g).toBe(140)
+
+    const reverted = (await callTool(deps, 'revert_review', { review_id: applied.review_id })) as RevertReviewResult
+    expect(reverted.already_reverted ?? false).toBe(false)
+    expect((await listVersions(deps))[0]!.targets.defaults.protein_g).toBe(130)
+  })
+
+  it("apply_review with record_review false (a scan debrief) leaves the week's review as it was and stays revertible", async () => {
+    const before = await getReview(deps, '2026-W40')
+    const applied = (await callTool(deps, 'apply_review', {
+      summary: 'Scan debrief',
+      narrative: 'Fat down, lean mass held.',
+      record_review: false,
+      changes: [{ kind: 'dashboard_note', text: 'Scan looks good.', until: '2026-10-11' }],
+    })) as ApplyReviewResult
+    expect((await getReview(deps, '2026-W40')).narrative).toBe(before.narrative)
+
+    const reverted = (await callTool(deps, 'revert_review', { review_id: applied.review_id })) as RevertReviewResult
+    expect(reverted.undone).toEqual(['dashboard note removed'])
+  })
+
+  it('start_fast refuses a future start: future fasts go through plan_fast and its monthly cap', async () => {
+    const at = '2026-10-07T01:00:00.000Z'
+    await expect(callTool({ ...deps, actor: 'ai' }, 'start_fast', { at })).rejects.toMatchObject({ status: 400 })
+    expect(await db.select().from(fast_logs).where(eq(fast_logs.started_at, at))).toEqual([])
   })
 
   it('apply_review is not available to Ask AI', async () => {

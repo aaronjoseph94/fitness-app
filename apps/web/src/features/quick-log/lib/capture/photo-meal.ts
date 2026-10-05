@@ -1,13 +1,14 @@
 // Owns: a photo meal from pick to analysis — photos picked (camera or gallery, several), each downscaled and re-encoded
 // on this phone; then the meal is created (input_method 'photo', with an optional note as raw_text) and every photo
 // uploaded, which starts the Worker's meal_analysis. Needs a connection: the review waits on that analysis, so photos go now.
-// A failed upload keeps the meal and what already went up, so "Try again" sends only the rest.
+// A failed upload keeps the meal and what already went up, so "Try again" sends only the rest. The meal id is made once,
+// so a retry after a lost createMeal response replays the same id (the Worker returns the stored meal, no second meal).
 import { endpoints } from '@fitness/shared/api'
 import type { MealSlot } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { apiQueryKey, call } from '../../../../api'
-import { problemText } from '../ui'
+import { call, problemText } from '../../../../api'
+import { refreshAfter } from '../writes'
 import { preparePhoto, releasePhoto, uploadMealPhoto, type PreparedPhoto } from './photos'
 
 /** Enough angles for one plate; more only slows the analysis. */
@@ -36,7 +37,8 @@ export function usePhotoMeal(): PhotoMeal {
   const [preparing, setPreparing] = useState(0)
   const [sending, setSending] = useState<PhotoMeal['sending']>(null)
   const [error, setError] = useState<string | null>(null)
-  const mealId = useRef<string | null>(null)
+  const mealId = useRef(crypto.randomUUID())
+  const created = useRef(false)
   const uploaded = useRef(new Set<string>())
   const handedOff = useRef(false)
   const latest = useRef(photos)
@@ -76,26 +78,23 @@ export function usePhotoMeal(): PhotoMeal {
     setError(null)
     setSending({ done: latest.current.length - toSend.length, total: latest.current.length })
     try {
-      if (!mealId.current) {
-        const id = crypto.randomUUID()
+      if (!created.current) {
         const raw = note.trim()
         await call(endpoints.nutrition.createMeal, {
-          body: { id, slot, eaten_at: eatenAt, input_method: 'photo', ...(raw ? { raw_text: raw.slice(0, 2000) } : {}) },
+          body: { id: mealId.current, slot, eaten_at: eatenAt, input_method: 'photo', ...(raw ? { raw_text: raw.slice(0, 2000) } : {}) },
         })
-        mealId.current = id
+        created.current = true
       }
       for (const photo of toSend) {
         await uploadMealPhoto(mealId.current, photo)
         uploaded.current.add(photo.id)
         setSending((s) => (s ? { ...s, done: s.done + 1 } : s))
       }
-      for (const e of [endpoints.nutrition.listMeals, endpoints.day.get, endpoints.day.range]) {
-        void queryClient.invalidateQueries({ queryKey: apiQueryKey(e) })
-      }
+      void refreshAfter(queryClient, endpoints.nutrition.createMeal)
       return mealId.current
     } catch (e) {
       const left = latest.current.filter((p) => !uploaded.current.has(p.id)).length
-      setError(mealId.current ? `The meal is saved but ${left} ${left === 1 ? 'photo' : 'photos'} didn't upload. ${problemText(e)}` : problemText(e))
+      setError(created.current ? `The meal is saved but ${left} ${left === 1 ? 'photo' : 'photos'} didn't upload. ${problemText(e)}` : problemText(e))
       return null
     } finally {
       setSending(null)
@@ -107,5 +106,5 @@ export function usePhotoMeal(): PhotoMeal {
     return latest.current.map((p) => p.previewUrl)
   }
 
-  return { photos, preparing, sending, error, created: mealId.current !== null, add, remove, send, handOff }
+  return { photos, preparing, sending, error, created: created.current, add, remove, send, handOff }
 }

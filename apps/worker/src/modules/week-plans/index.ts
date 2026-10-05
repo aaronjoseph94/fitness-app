@@ -21,7 +21,11 @@
 //        active again (or the week follows the plan version), as one plan version. 403 for actor 'ai'
 //   rejectWeekPlan(deps, id)          → WeekPlan         a proposed plan is superseded and its proposal rejected (one
 //        batch); a superseded one is returned as is; 409 for the active plan (revert it instead). 403 for actor 'ai'
-// Registers the 'week_plan' proposal handler (plan.acceptProposal / rejectProposal → apply / reject).
+// Registers the 'week_plan' proposal handler (plan.acceptProposal / rejectProposal → apply / reject), a template
+// swap listener (training.onTemplateSwap): planned sessions copied from a swapped template follow the swap, today on —
+// the active plan as one plan version, proposed plans in place (lib/swap) — and a fast listener (fasting.onFastsChanged):
+// a plan's fast_dates mirror the fast log's fast days, the same way (lib/fasts). fast_logs is the only source of fast
+// days; a plan's fast_dates never make one.
 //   replaceWeekPlan(deps, { week_start?, templates_by_weekday, focus_note? }) → WeekPlanReplaced   program design:
 //        the week's active plan (or one built from the plan version) with those weekdays' sessions set from
 //        templates (null = rest), proposed, then applied at once unless the actor is 'ai'
@@ -46,11 +50,15 @@ import { week_plans } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError } from '../../lib/http-error'
 import { eventInsert } from '../events'
+import { onFastsChanged } from '../fasting'
 import { registerProposalHandler } from '../plan'
+import { onTemplateSwap } from '../training'
 import { applyPlan, assertMayActivate, assertWeekOpen, revertPlan, supersedeStatements } from './lib/activate'
 import { basePlan, templateSession } from './lib/base'
 import { checkWeekPlan } from './lib/check'
+import { syncFastDates } from './lib/fasts'
 import { ACTOR_OF, AUTHOR_LABEL, AUTHOR_OF, listPlans, requireWeekPlan, weekPlanById, weekState, weekTargets } from './lib/rows'
+import { swapInWeekPlans } from './lib/swap'
 import { weekView } from './lib/view'
 
 export { weekChanges } from './lib/view'
@@ -197,3 +205,9 @@ registerProposalHandler('week_plan', {
     if (plan?.status === 'proposed') await rejectWeekPlan(deps, plan.id)
   },
 })
+
+// A swap written to a template reaches this week's (and later weeks') planned sessions copied from it.
+onTemplateSwap(swapInWeekPlans)
+
+// A planned, moved, started, ended or cancelled fast reaches the fast_dates of this week's (and later weeks') plans.
+onFastsChanged(syncFastDates)

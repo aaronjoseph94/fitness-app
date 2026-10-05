@@ -13,8 +13,9 @@ import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
 import { formatNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, problemText, useLogMutation } from '../../quick-log'
+import { clockOf, useLogMutation } from '../../quick-log'
 import type { MealView } from './meals'
+import { problemText } from '../../../api'
 
 interface MealCardProps {
   meal: MealView
@@ -38,11 +39,11 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
   return (
     <Box data-testid="meal-card" sx={{ py: 2, borderTop: 1, borderColor: 'divider' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: tokens.tapTarget }}>
-        <Box sx={{ fontSize: 14, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{clockOf(meal.eatenAt)}</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{clockOf(meal.eatenAt)}</Box>
         {status && <Chip size="small" variant="outlined" label={status} sx={{ color: 'text.secondary', borderColor: 'divider' }} />}
         {meal.pending && (meal.queued || meal.pending === 'create') && <PendingBadge label={meal.pending === 'edit' ? 'Edit pending' : 'Pending'} />}
         <Box sx={{ flex: 1 }} />
-        <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
           {(meal.status === 'parsing' || failed) && meal.items.length === 0 ? '' : meal.totals ? `${formatNumber(meal.totals.kcal)} kcal` : '— kcal'}
         </Box>
         {canAct && (
@@ -61,7 +62,7 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
       )}
 
       {meal.rawText && (meal.items.length === 0 || meal.status !== 'confirmed') && (
-        <Box sx={{ fontSize: 14, lineHeight: 1.5, mb: 1 }}>“{meal.rawText}”</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: 1.5, mb: 1 }}>“{meal.rawText}”</Box>
       )}
 
       {meal.status === 'parsing' && (
@@ -70,10 +71,10 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
             {canAct ? (
               <>
                 <LinearProgress sx={{ height: 4, borderRadius: tokens.radius.chip, bgcolor: tokens.ink.border, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }} />
-                <Box sx={{ fontSize: 13, color: 'text.secondary', mt: 1 }}>The AI is working out the items.</Box>
+                <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mt: 1 }}>The AI is working out the items.</Box>
               </>
             ) : (
-              <Box sx={{ fontSize: 13, color: 'text.secondary' }}>Saved on this phone. It's analysed once it syncs.</Box>
+              <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>Saved on this phone. It's analysed once it syncs.</Box>
             )}
           </Box>
           {canAct && (
@@ -86,7 +87,7 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
 
       {failed && canAct && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }} data-testid="meal-analysis-failed">
-          <Box sx={{ flex: 1, fontSize: 13, color: 'text.secondary', lineHeight: 1.5 }}>The AI couldn't read this one. Add the items yourself.</Box>
+          <Box sx={{ flex: 1, fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.5 }}>The AI couldn't read this one. Add the items yourself.</Box>
           <Button variant="contained" onClick={onReview}>
             Add items
           </Button>
@@ -98,7 +99,7 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
         // grams and kcal stay on its first line, kcal right-aligned.
         <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75 }}>
           {meal.items.map((item) => (
-            <Box component="li" key={item.id} sx={{ display: 'flex', gap: 2, fontSize: 14, alignItems: 'baseline' }}>
+            <Box component="li" key={item.id} sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.small, alignItems: 'baseline' }}>
               <Box
                 sx={{
                   flex: 1,
@@ -113,7 +114,7 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
               >
                 {item.description}
                 {item.estimated && (
-                  <Box component="span" sx={{ color: 'text.secondary', fontSize: 12 }}>
+                  <Box component="span" sx={{ color: 'text.secondary', fontSize: tokens.font.size.caption }}>
                     {' '}
                     · estimated
                   </Box>
@@ -130,7 +131,7 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
         </Box>
       )}
       {meal.totals && meal.totals.kcal > 0 && (
-        <Box sx={{ fontSize: 12, color: 'text.secondary', mt: 1, fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ fontSize: tokens.font.size.caption, color: 'text.secondary', mt: 1, fontVariantNumeric: 'tabular-nums' }}>
           {formatNumber(meal.totals.protein_g)} g protein · {formatNumber(meal.totals.carbs_g)} g carbs · {formatNumber(meal.totals.fat_g)} g fat
         </Box>
       )}
@@ -146,7 +147,7 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
         </Box>
       )}
       {confirm.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: 14, mt: 1 }}>
+        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small, mt: 1 }}>
           {problemText(confirm.error)}
         </Box>
       )}

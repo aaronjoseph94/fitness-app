@@ -15,14 +15,14 @@ import { isIos } from './push-client'
 import type { PushDevice } from './usePushDevice'
 
 function Help({ children }: { children: ReactNode }) {
-  return <Box sx={{ mt: 1.5, fontSize: 14, lineHeight: 1.55, color: tokens.ink.secondary }}>{children}</Box>
+  return <Box sx={{ mt: 1.5, fontSize: tokens.font.size.small, lineHeight: 1.55, color: tokens.ink.secondary }}>{children}</Box>
 }
 
 function InstallSteps() {
   return (
-    <Box component="ol" data-testid="push-install-steps" sx={{ m: 0, mt: 2, pl: 5, fontSize: 14, lineHeight: 1.7, color: tokens.ink.text }}>
+    <Box component="ol" data-testid="push-install-steps" sx={{ m: 0, mt: 2, pl: 5, fontSize: tokens.font.size.small, lineHeight: 1.7, color: tokens.ink.text }}>
       <li>
-        In Safari, tap Share <IosShareRounded aria-label="Share" sx={{ fontSize: 16, verticalAlign: '-3px' }} />, then{' '}
+        In Safari, tap Share <IosShareRounded aria-label="Share" sx={{ fontSize: tokens.font.size.body, verticalAlign: '-3px' }} />, then{' '}
         <b>Add to Home Screen</b>.
       </li>
       <li>Open Fitness from your Home Screen.</li>
@@ -65,7 +65,7 @@ export function DeviceCard({ device, online, onDone }: { device: PushDevice; onl
   } else if (subscribed) {
     body = (
       <>
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2, fontSize: 15, fontWeight: tokens.font.weight.label }} data-testid="push-on">
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }} data-testid="push-on">
           <CheckCircleRounded sx={{ color: tokens.status.good, fontSize: 22 }} aria-hidden />
           On for this device
         </Box>
@@ -100,7 +100,7 @@ export function DeviceCard({ device, online, onDone }: { device: PushDevice; onl
 
   return (
     <Card component="section" aria-labelledby="push-device-title" data-testid="reminders-device" sx={{ p: 4 }}>
-      <Box component="h2" id="push-device-title" sx={{ m: 0, fontSize: 18, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
+      <Box component="h2" id="push-device-title" sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
         Notifications on this device
       </Box>
       {body}

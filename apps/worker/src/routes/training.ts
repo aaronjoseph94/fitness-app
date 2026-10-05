@@ -18,6 +18,7 @@ import {
   listSessions,
   listTemplates,
   logSet,
+  setExercisePhoto,
   startSession,
   updateEquipment,
   updateSet,
@@ -29,6 +30,7 @@ export function mountTrainingRoutes(app: App): void {
   route(app, t.listExercises, ({ query }, deps) => listExercises(deps, query))
   route(app, t.getExercise, ({ params }, deps) => getExercise(deps, params.id))
   route(app, t.createExercise, ({ body }, deps) => createExercise(deps, body), { status: 201 })
+  route(app, t.uploadExercisePhoto, ({ params, query, body }, deps) => setExercisePhoto(deps, params.id, query, body))
   route(app, t.getEquipment, (_, deps) => getEquipment(deps))
   route(app, t.updateEquipment, ({ body }, deps) => updateEquipment(deps, body))
   route(app, t.createExclusion, ({ body }, deps) => createExclusion(deps, body), { status: 201 })

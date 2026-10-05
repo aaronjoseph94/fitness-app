@@ -2,8 +2,9 @@
 // energy, scores) with units and precision, the form state built from a draft (extraction), a confirmed record
 // (editing) or nothing (manual entry), each field's extraction confidence, and the ScanRecord the form confirms.
 import { ScanRecord, type ScanConditions, type ScanDraft, type ScanSegment } from '@fitness/shared/schemas'
-import { clockOf, dateOf, instantAt, parseNumber } from '../../quick-log'
+import { clockOf, dateOf, instantAt } from '../../quick-log'
 import { SEGMENTS } from './series'
+import { parseNumber } from '../../../components'
 
 export type NumericKey =
   | 'height_cm'

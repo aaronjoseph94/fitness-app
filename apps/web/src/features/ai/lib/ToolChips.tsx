@@ -29,12 +29,12 @@ export function ToolChips({ calls, tools }: { calls: readonly ToolCall[]; tools:
             key={c.id}
             size="small"
             variant="outlined"
-            icon={<BuildOutlined sx={{ fontSize: 14 }} />}
+            icon={<BuildOutlined sx={{ fontSize: tokens.font.size.small }} />}
             label={c.ok === false ? `${c.name} · failed` : c.name}
             onClick={() => setOpen(open === c.id ? null : c.id)}
             aria-expanded={open === c.id}
             sx={{
-              fontSize: 12,
+              fontSize: tokens.font.size.caption,
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
               color: c.ok === false ? tokens.status.warning : tokens.ink.secondary,
               borderColor: tokens.ink.border,
@@ -57,7 +57,7 @@ export function ToolChips({ calls, tools }: { calls: readonly ToolCall[]; tools:
               border: `1px solid ${tokens.ink.border}`,
               borderRadius: `${tokens.radius.control}px`,
               bgcolor: tokens.ink.page,
-              fontSize: 12,
+              fontSize: tokens.font.size.caption,
               lineHeight: 1.45,
               color: tokens.ink.text,
               whiteSpace: 'pre-wrap',

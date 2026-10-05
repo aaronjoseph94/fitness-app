@@ -5,12 +5,13 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, MetricRing, PendingBadge } from '../../../components'
+import { formatNumber, MetricRing, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { instantOnDate, todayLocal } from './dates'
 import { useWater } from './reads'
-import { NumberField, parseNumber, problemText, type LogNotice } from './ui'
+import { type LogNotice } from './ui'
 import { useLogMutation } from './writes'
+import { problemText } from '../../../api'
 
 const QUICK_ML = [250, 500, 750] as const
 
@@ -44,12 +45,12 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
         <Box sx={{ minWidth: 0 }}>
           <Box sx={{ fontSize: 28, fontWeight: tokens.font.weight.number, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
             {water.known ? formatNumber(water.totalMl) : '—'}
-            <Box component="span" sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>
+            <Box component="span" sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>
               {' '}
               / {formatNumber(water.targetMl)} ml
             </Box>
           </Box>
-          <Box sx={{ fontSize: 14, color: 'text.secondary', mt: 0.5 }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 0.5 }}>
             {date === todayLocal() ? 'Today' : date}
             {' · '}
             {!water.known
@@ -107,7 +108,7 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
         </Box>
       )}
 
-      <Box sx={{ minHeight: 24, display: 'flex', alignItems: 'center', gap: 2, fontSize: 14, color: 'text.secondary' }} aria-live="polite">
+      <Box sx={{ minHeight: 24, display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.small, color: 'text.secondary' }} aria-live="polite">
         {add.isError ? (
           <Box component="span" sx={{ color: 'error.main' }}>
             {problemText(add.error)}

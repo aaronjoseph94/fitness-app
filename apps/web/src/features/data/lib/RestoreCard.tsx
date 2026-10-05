@@ -142,7 +142,7 @@ export function RestoreCard({ online }: { online: boolean }) {
 
       {files && (
         <Box sx={{ mt: 4 }} data-testid="restore-preview">
-          <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label }}>{files.fileName}</Box>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{files.fileName}</Box>
           <Help>
             Exported {localStamp(files.exportedAt)} · {formatNumber(files.totalRows)} rows ·{' '}
             {formatNumber(files.files.length)} files · {formatBytes(files.zip.byteLength)}
@@ -169,7 +169,7 @@ export function RestoreCard({ online }: { online: boolean }) {
                   justifyContent: 'space-between',
                   gap: 2,
                   py: 1,
-                  fontSize: 14,
+                  fontSize: tokens.font.size.small,
                   borderBottom: `1px solid ${tokens.ink.border}`,
                 }}
               >
@@ -197,7 +197,7 @@ export function RestoreCard({ online }: { online: boolean }) {
           sx={{
             mt: 3,
             alignItems: 'flex-start',
-            '& .MuiFormControlLabel-label': { pt: 1.25, fontSize: 14, lineHeight: 1.45 },
+            '& .MuiFormControlLabel-label': { pt: 1.25, fontSize: tokens.font.size.small, lineHeight: 1.45 },
           }}
           control={
             <Checkbox

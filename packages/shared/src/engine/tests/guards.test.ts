@@ -38,6 +38,23 @@ describe('guards', () => {
     expect(result.scheduled).toEqual([{ change: { ...change, from: 1550, to: 1700 }, week_offset: 1 }])
   })
 
+  test('rejects a negative water target and fractional steps (they would break TargetValues)', () => {
+    const water = { kind: 'target' as const, field: 'water_ml' as const, weekday: null, from: 3000, to: -500 }
+    const steps = { kind: 'target' as const, field: 'steps' as const, weekday: 'mon' as const, from: 8000, to: 7500.5 }
+    const result = applyGuards([water, steps], ctx)
+
+    expect(result.accepted).toEqual([])
+    expect(result.rejected.map((r) => r.rule)).toEqual(['target_range', 'target_range'])
+  })
+
+  test('rejects a carbs_g change: carbs are the remainder of kcal after protein and fat', () => {
+    const change = { kind: 'target' as const, field: 'carbs_g' as const, weekday: null, from: 95, to: 160 }
+    const result = applyGuards([change], { ...ctx, actor: 'mcp' })
+
+    expect(result.accepted).toEqual([])
+    expect(result.rejected).toEqual([{ change, rule: 'carbs_remainder', reason: expect.any(String) }])
+  })
+
   test('rejects a workout that uses an exercise from an excluded category', () => {
     const workout = {
       kind: 'workout' as const,

@@ -1,6 +1,8 @@
 // Owns: the Train tab's "today" card — the session in progress (resume), today's finished session, the week plan's
-// planned session (start it), or, with no plan, the training flag's "Training day" / "Rest day" with "Generate
-// today's workout" (the AI page runs POST /api/ai/workout {mode: 'generate'}) and a blank session.
+// planned session (start it), the AI's pending draft for today (the nightly workout_generate when no week plan covers
+// the day: preview, swap, start or save it on the AI page, which accepts it), or, with none of those, the training
+// flag's "Training day" / "Rest day" with "Generate today's workout" (the AI page runs POST /api/ai/workout
+// {mode: 'generate'}) and a blank session.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
 import Box from '@mui/material/Box'
@@ -13,7 +15,7 @@ import { useNavigate } from 'react-router'
 import { formatNumber } from '../../../components'
 import { MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
-import { draftMuscleLevels } from '../../builder'
+import { draftMuscleLevels, pendingWorkoutPath, usePendingWorkouts } from '../../builder'
 import { useExerciseIndex } from '../../library'
 import type { LoggerSession } from './logger-model'
 import { sessionPath, type StartInput } from './session'
@@ -48,12 +50,12 @@ function Shell({
     <Card sx={{ p: 4 }} data-testid={testId}>
       <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
             {eyebrow}
           </Box>
           <Box
             sx={{
-              fontSize: 20,
+              fontSize: tokens.font.size.sectionTitle,
               fontWeight: tokens.font.weight.heading,
               lineHeight: 1.3,
               mt: 0.5,
@@ -63,7 +65,7 @@ function Shell({
             {title}
           </Box>
           {body && (
-            <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.45 }}>{body}</Box>
+            <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.45 }}>{body}</Box>
           )}
         </Box>
         {aside}
@@ -78,6 +80,8 @@ export function TodayCard({ day, active, activeCounts, templates, onStart }: Tod
   const index = useExerciseIndex()
   const planned = day?.planned_session ?? null
   const serverSession = day?.session ?? null
+  const pending = usePendingWorkouts()
+  const suggested = day ? (pending.find((w) => w.date === day.date) ?? null) : null
 
   const blank = (
     <Button
@@ -171,6 +175,30 @@ export function TodayCard({ day, active, activeCounts, templates, onStart }: Tod
           Start
         </Button>
         {generate(false)}
+      </Shell>
+    )
+  }
+
+  if (suggested) {
+    const training = draftMuscleLevels(suggested.draft.exercises, index.byId)
+    return (
+      <Shell
+        eyebrow="Suggested by the AI"
+        title="Today's workout"
+        body={`${suggested.draft.exercises.length} exercises · ${training.totalSets} sets. Preview it, swap anything, then start or save it.`}
+        aside={<MuscleMap levels={training.levels} size={96} title="Muscles in the suggested workout" />}
+        testId="today-suggested"
+      >
+        <Button
+          variant="contained"
+          size="large"
+          startIcon={<AutoAwesomeRounded />}
+          onClick={() => void navigate(pendingWorkoutPath(suggested.id))}
+          data-testid="open-suggested"
+        >
+          Preview and start
+        </Button>
+        {blank}
       </Shell>
     )
   }

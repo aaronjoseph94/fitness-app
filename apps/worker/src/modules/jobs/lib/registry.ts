@@ -11,7 +11,11 @@ export interface JobContext<T extends JobType> {
   payload: JobPayload<T>
   /** Attempts so far, including this one. */
   attempts: number
-  /** Aborts at the 25 s deadline; pass it to every fetch. */
+  /**
+   * Aborts at the 25 s deadline, when the runner has already requeued the job. Fetches keep their own timeouts; a
+   * handler whose late write would duplicate work (workout_generate's proposal) calls signal.throwIfAborted() before
+   * it. Idempotent writes (a meal that already has items, a card per job id) may still land.
+   */
   signal: AbortSignal
 }
 

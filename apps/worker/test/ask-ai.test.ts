@@ -1,12 +1,13 @@
 // Owns: tests at the Ask AI seam (modules/ask-ai chatTurn / chatHistory / selectTools) with a fake LLM router — a turn
 // that calls get_today then replies stores user, tool and assistant rows and returns the call; "Raise water to 3.5 L"
 // leaves a pending plan-change proposal (the water target unchanged); a router failure is a calm stored reply; a
-// replayed message id returns the stored turn without a second run; intent picks the tools. Rails from SPEC §2.
+// replayed message id returns the stored turn without a second run; intent picks the tools; the name never reaches the
+// model (tool schemas, tool results). Rails from SPEC §2.
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { chat_messages, createDb, plan_versions, profile, settings } from '../src/db'
+import { app_notes, chat_messages, createDb, plan_versions, profile, settings } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { chatHistory, chatTurn, MAX_TOOLS, selectTools } from '../src/modules/ask-ai'
 import { ProvidersExhaustedError, type ChatRequest, type ChatResult, type LlmRouter, type ToolCall } from '../src/modules/llm'
@@ -135,6 +136,20 @@ describe('Ask AI', () => {
       }),
     ])
     expect((await getActivePlan(deps)).targets.defaults.water_ml).toBe(3000)
+  })
+
+  it('the model never sees the name: not in an offered tool schema, nor in a tool result', async () => {
+    const noteId = crypto.randomUUID()
+    await db.insert(app_notes).values({ id: noteId, text: "Aaron's protein comes first today", until: null, actor: 'mcp' })
+    try {
+      const llm = fakeRouter([{ calls: [{ id: 'c1', name: 'get_today', args: {} }] }, { reply: 'Protein first today.' }])
+      const out = await chatTurn(deps, llm, send('What does the note say? Should I change my water target?'))
+      expect(llm.requests[0]!.tools!.map((t) => t.name)).toContain('propose_plan_change')
+      expect(out.tool_messages[0]!.content).toMatch(/the user's protein comes first/)
+      expect(JSON.stringify(llm.requests)).not.toMatch(/aaron/i)
+    } finally {
+      await db.delete(app_notes).where(eq(app_notes.id, noteId))
+    }
   })
 
   it('a router failure is a calm stored reply; replaying the message id does not run the turn again', async () => {

@@ -22,8 +22,8 @@ export function PhotosLink() {
           {latest ? <PhotoImage photo={latest} /> : <PhotoCameraOutlined sx={{ color: tokens.ink.secondary }} />}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: 16 }}>Progress photos</Box>
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: tokens.font.size.body }}>Progress photos</Box>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             {latest ? (
               <>
                 {count} {count === 1 ? 'photo' : 'photos'} · last {POSE_LABEL[latest.pose].toLowerCase()} {formatShortDate(latest.date)}

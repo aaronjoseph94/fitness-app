@@ -1,19 +1,30 @@
 // Owns: writing plan versions — guard a batch of target changes, apply the accepted ones to the active targets, and
 // build every write of one change as a single db.batch: deactivate old + insert new + the ai_events record + scheduled
 // later steps as future proposals + the rebuilt daily_targets (today … last materialised date) + a plan_reforecast job.
-import { addDays, applyGuards, today, weekdayOf, type GuardRule, type TargetChange } from '@fitness/shared/engine'
-import { Weekday, type Actor, type FieldChange, type PlanChange, type PlanDiff, type PlanTargets, type TargetField } from '@fitness/shared/schemas'
+import { addDays, applyGuards, targetValue, today, weekdayOf, type GuardRule, type TargetChange } from '@fitness/shared/engine'
+import {
+  Weekday,
+  type Actor,
+  type FieldChange,
+  type PlanChange,
+  type PlanDiff,
+  type PlanTargets,
+  type RejectedPlanChange,
+  type ScheduledPlanChange,
+  type Settings,
+  type TargetField,
+} from '@fitness/shared/schemas'
 import { eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { plan_versions } from '../../../db'
+import { plan_versions, week_plans } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { eventInsert } from '../../events'
 import { jobInsert } from '../../jobs'
 import type { PlanContext, PlanVersionRow } from './context'
-import { computeTargetRows, targetHorizon, targetStatements, type WeekOverride } from './targets'
+import { activeWeekPlans, computeTargetRows, targetHorizon, targetStatements, type StoredWeekPlan, type WeekOverride } from './targets'
 
-export type RejectedChange = { change: PlanChange; rule: GuardRule; reason: string }
-export type ScheduledChange = { change: PlanChange; week_offset: number; due: string; proposal_id: string }
+export type RejectedChange = RejectedPlanChange & { rule: GuardRule }
+export type ScheduledChange = ScheduledPlanChange
 
 /** Guard outcome for a batch of plan changes, with proposals already built for the scheduled later steps. */
 export interface GuardedChanges {
@@ -127,6 +138,58 @@ function weekDiff(before: readonly NewTargetRow[], after: readonly NewTargetRow[
 
 type NewTargetRow = Awaited<ReturnType<typeof computeTargetRows>>[number]
 
+const MACROS = ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g'] as const
+const WEEK_WIDE = ['water_ml', 'steps'] as const
+const LAST_DATE = '9999-12-31'
+
+/**
+ * Carry a plan-version change into the active week plans whose week ends on or after `date` (SPEC §8: mid-week edits
+ * change the active row), since a date inside an active week plan takes its targets from it, not from the version:
+ *   kcal / macros: targets[w][f] += eff(after, w, f) − eff(before, w, f), for each weekday dated `date` or later that is
+ *     not one of the plan's fast dates; then kcal ≥ calorie_floor, protein ≥ protein_min, fat ≥ fat_min, all ≥ 0.
+ *     A delta, not the new value, so the coach's per-day shape stays and a ≤150 kcal step stays a ≤150 kcal step.
+ *   water_ml / steps (one value per week plan): = after.defaults[f] when the default moved. A weekday-only move can't
+ *     be expressed in a week plan and is listed in `skipped` ("sat water_ml").
+ * Returns only the week plans that changed.
+ */
+export function carryIntoWeekPlans(
+  weeks: readonly StoredWeekPlan[],
+  before: PlanTargets,
+  after: PlanTargets,
+  rails: Pick<Settings, 'calorie_floor' | 'protein_min_g' | 'fat_min_g'>,
+  date: string,
+): { patched: StoredWeekPlan[]; skipped: string[] } {
+  const skipped = new Set<string>()
+  for (const w of Weekday.options)
+    for (const f of WEEK_WIDE)
+      if (targetValue(before, f, w) !== targetValue(after, f, w) && before.defaults[f] === after.defaults[f]) skipped.add(`${w} ${f}`)
+  const min: Partial<Record<TargetField, number>> = { kcal: rails.calorie_floor, protein_g: rails.protein_min_g, fat_g: rails.fat_min_g }
+  const patched: StoredWeekPlan[] = []
+  for (const week of weeks) {
+    let changed = false
+    const plan = { ...week.plan, targets: { ...week.plan.targets } }
+    for (const f of WEEK_WIDE)
+      if (before.defaults[f] !== after.defaults[f] && plan[f] !== after.defaults[f]) {
+        plan[f] = after.defaults[f]
+        changed = true
+      }
+    Weekday.options.forEach((w, i) => {
+      const day = addDays(week.week_start, i)
+      if (day < date || plan.fast_dates.includes(day)) return
+      const next = { ...plan.targets[w] }
+      for (const f of MACROS) {
+        const delta = targetValue(after, f, w) - targetValue(before, f, w)
+        if (delta === 0) continue
+        next[f] = Math.max(next[f] + delta, min[f] ?? 0, 0)
+        changed = true
+      }
+      plan.targets[w] = next
+    })
+    if (changed) patched.push({ ...week, plan })
+  }
+  return { patched, skipped: [...skipped] }
+}
+
 /**
  * Every write of a new active version, as batch statements (callers may append their own before running them):
  *   UPDATE plan_versions SET active = 0 WHERE active = 1 · INSERT the new version (version = max + 1, active) ·
@@ -134,7 +197,8 @@ type NewTargetRow = Awaited<ReturnType<typeof computeTargetRows>>[number]
  *   rebuilt from the new targets · a queued plan_reforecast job (the forecast is carried over until it runs).
  * With `week` (a week plan applied or reverted) that week's targets come from `week.week_plan`, the rebuild reaches
  * at least the week's Sunday, and the diff is the week's materialised moves from today on; `rows` returns the rebuilt
- * daily_targets rows.
+ * daily_targets rows. Without it, a target change is also carried into the active week plans from today on
+ * (carryIntoWeekPlans: UPDATE week_plans in the same batch), so the days they cover move with the version.
  */
 export async function versionStatements(
   deps: Deps,
@@ -146,7 +210,13 @@ export async function versionStatements(
   const id = crypto.randomUUID()
   const horizon = await targetHorizon(deps)
   const weekEnd = input.week ? addDays(input.week.week_start, 6) : null
-  const rows = await computeTargetRows(deps, ctx, { from: date, to: weekEnd && weekEnd > horizon ? weekEnd : horizon }, { id, targets: input.targets }, input.week)
+  const carried = input.week
+    ? { patched: [], skipped: [] }
+    : carryIntoWeekPlans(await activeWeekPlans(deps, date, LAST_DATE), ctx.active.targets, input.targets, ctx.settings, date)
+  const overrides: WeekOverride[] = input.week
+    ? [input.week]
+    : carried.patched.map((w) => ({ week_start: w.week_start, week_plan: w }))
+  const rows = await computeTargetRows(deps, ctx, { from: date, to: weekEnd && weekEnd > horizon ? weekEnd : horizon }, { id, targets: input.targets }, overrides)
   let diff = diffTargets(ctx.active.targets, input.targets)
   if (input.week && weekEnd) {
     const from = input.week.week_start > date ? input.week.week_start : date
@@ -168,7 +238,14 @@ export async function versionStatements(
   const event = eventInsert(deps, {
     kind: 'change',
     summary: input.summary ?? `Plan v${row.version}: ${describeDiff(diff) || 'no target changed'}`,
-    body: { entity: 'plan_versions', changes: fieldChanges(diff), version: row.version, ...input.extra },
+    body: {
+      entity: 'plan_versions',
+      changes: fieldChanges(diff),
+      version: row.version,
+      ...input.extra,
+      ...(carried.patched.length ? { week_plans_updated: carried.patched.map((w) => w.id) } : {}),
+      ...(carried.skipped.length ? { week_plans_unchanged: carried.skipped } : {}),
+    },
     date,
     plan_version_id: row.id,
   })
@@ -181,6 +258,7 @@ export async function versionStatements(
       deps.db.update(plan_versions).set({ active: false, updated_at: now }).where(eq(plan_versions.active, true)),
       deps.db.insert(plan_versions).values(row),
       event.statement,
+      ...carried.patched.map((w) => deps.db.update(week_plans).set({ plan: w.plan, updated_at: now }).where(eq(week_plans.id, w.id))),
       ...targetStatements(deps, rows, 'replace'),
       job.statement,
     ],

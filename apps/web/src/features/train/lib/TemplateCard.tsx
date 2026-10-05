@@ -51,7 +51,7 @@ function TemplateCardInner({ template, onStart }: TemplateCardProps) {
         <Box sx={{ minWidth: 0 }}>
           <Box
             sx={{
-              fontSize: 16,
+              fontSize: tokens.font.size.body,
               fontWeight: tokens.font.weight.heading,
               lineHeight: 1.3,
               overflowWrap: 'anywhere',
@@ -59,11 +59,11 @@ function TemplateCardInner({ template, onStart }: TemplateCardProps) {
           >
             {template.name}
           </Box>
-          <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>
+          <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
             {template.exercises.length} exercises · {sets} sets{template.origin === 'ai' ? ' · AI' : ''}
           </Box>
           {top.length > 0 && (
-            <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>{top.join(', ')}</Box>
+            <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{top.join(', ')}</Box>
           )}
         </Box>
       </ButtonBase>

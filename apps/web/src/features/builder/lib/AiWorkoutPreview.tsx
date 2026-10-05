@@ -60,7 +60,7 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
     <Stack spacing={4} data-testid="ai-workout-preview">
       <Card sx={{ p: 4, display: 'flex', gap: 3, alignItems: 'flex-start' }}>
         <AutoAwesomeRounded sx={{ color: tokens.metric.weight, mt: 0.25 }} aria-hidden />
-        <Box sx={{ fontSize: 15, lineHeight: 1.5 }} data-testid="ai-rationale">
+        <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }} data-testid="ai-rationale">
           {draft.rationale || 'A balanced session from your allowed exercises.'}
         </Box>
       </Card>
@@ -72,8 +72,8 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ fontSize: 32, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{training.totalSets}</Box>
-            <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>sets · {draft.exercises.length} exercises</Box>
-            <Box sx={{ fontSize: 14, mt: 2, lineHeight: 1.45 }}>{training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}</Box>
+            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>sets · {draft.exercises.length} exercises</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, mt: 2, lineHeight: 1.45 }}>{training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}</Box>
           </Box>
         </Box>
         <Box sx={{ mt: 3 }}>
@@ -96,8 +96,8 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
               >
                 <ExerciseThumb exercise={exercise} size={48} />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, lineHeight: 1.3 }}>{exercise?.name ?? 'Unknown exercise'}</Box>
-                  <Box sx={{ fontSize: 13, color: tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>{prescription(e)}</Box>
+                  <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, lineHeight: 1.3 }}>{exercise?.name ?? 'Unknown exercise'}</Box>
+                  <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>{prescription(e)}</Box>
                 </Box>
               </ButtonBase>
               <IconButton aria-label={`About ${exercise?.name ?? 'exercise'}`} onClick={() => setInfo(e.exercise_id)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>

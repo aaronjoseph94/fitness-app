@@ -34,17 +34,17 @@ function Delta({ value, dp, good }: { value: number | undefined; dp: number; goo
   )
 }
 
-const cell = { py: 1.25, borderBottom: `1px solid ${tokens.ink.border}`, fontVariantNumeric: 'tabular-nums', fontSize: 14, minWidth: 0 } as const
+const cell = { py: 1.25, borderBottom: `1px solid ${tokens.ink.border}`, fontVariantNumeric: 'tabular-nums', fontSize: tokens.font.size.small, minWidth: 0 } as const
 
 export function DeltaTable({ record, previous, baseline }: { record: ScanRecord; previous: ScanChange | null; baseline: ScanChange | null }) {
   const showBaseline = baseline !== null && baseline.scan_id !== previous?.scan_id
   const cols = showBaseline ? 'minmax(0, 1.4fr) repeat(3, minmax(0, 1fr))' : 'minmax(0, 1.4fr) repeat(2, minmax(0, 1fr))'
   const header = (
     <>
-      <Box sx={{ ...cell, color: 'text.secondary', fontSize: 12 }}>Metric</Box>
-      <Box sx={{ ...cell, color: 'text.secondary', fontSize: 12, textAlign: 'right' }}>This scan</Box>
-      <Box sx={{ ...cell, color: 'text.secondary', fontSize: 12, textAlign: 'right' }}>{previous ? `vs ${previous.date}` : 'vs previous'}</Box>
-      {showBaseline && <Box sx={{ ...cell, color: 'text.secondary', fontSize: 12, textAlign: 'right' }}>vs baseline</Box>}
+      <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption }}>Metric</Box>
+      <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption, textAlign: 'right' }}>This scan</Box>
+      <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption, textAlign: 'right' }}>{previous ? `vs ${previous.date}` : 'vs previous'}</Box>
+      {showBaseline && <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption, textAlign: 'right' }}>vs baseline</Box>}
     </>
   )
   const row = (label: string, value: number, unit: string, dp: number, good: Good, prev: number | undefined, base: number | undefined) => (
@@ -52,7 +52,7 @@ export function DeltaTable({ record, previous, baseline }: { record: ScanRecord;
       <Box sx={cell}>{label}</Box>
       <Box sx={{ ...cell, textAlign: 'right' }}>
         {formatNumber(value, dp)}
-        {unit && <Box component="span" sx={{ color: 'text.secondary', fontSize: 12 }}> {unit}</Box>}
+        {unit && <Box component="span" sx={{ color: 'text.secondary', fontSize: tokens.font.size.caption }}> {unit}</Box>}
       </Box>
       <Box sx={{ ...cell, textAlign: 'right' }}>
         <Delta value={prev} dp={dp} good={good} />

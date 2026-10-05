@@ -51,7 +51,7 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
           placeholder={dictation.listening ? 'Listening…' : 'Ask about your data, or ask for a change'}
           inputProps={{ 'aria-label': 'Message', maxLength: 4000, enterKeyHint: 'send' }}
           autoFocus={autoFocus}
-          sx={{ flex: 1, py: 1.75, fontSize: 16, lineHeight: 1.4 }}
+          sx={{ flex: 1, py: 1.75, fontSize: tokens.font.size.body, lineHeight: 1.4 }}
         />
         {dictation.supported && (
           <IconButton
@@ -80,7 +80,7 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
           <ArrowUpwardRounded />
         </IconButton>
       </Box>
-      {hint && <Box sx={{ mt: 1.5, px: 1, fontSize: 13, color: tokens.ink.secondary }}>{hint}</Box>}
+      {hint && <Box sx={{ mt: 1.5, px: 1, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{hint}</Box>}
     </Box>
   )
 }

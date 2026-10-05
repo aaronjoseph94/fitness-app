@@ -34,8 +34,8 @@ export function DateSwitcher({ date, today, onChange }: { date: string; today: s
         <ChevronLeftRounded />
       </IconButton>
       <Box sx={{ position: 'relative', flex: 1, minWidth: 0, textAlign: 'center', minHeight: tokens.tapTarget, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}>{relativeDay(date, today)}</Box>
-        <Box sx={{ fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{date}</Box>
+        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}>{relativeDay(date, today)}</Box>
+        <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{date}</Box>
         {/* The native picker sits invisibly over the label so a tap opens it on iOS and Android. */}
         <Box
           component="input"

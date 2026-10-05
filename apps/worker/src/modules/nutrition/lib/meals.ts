@@ -1,7 +1,8 @@
 // Owns: meals as the API returns them — a meal with its items (nutrition per item), computed totals, signed photo
 // URLs and its analysis state (the status of meals.analysis_job_id) — reading them in one batched round trip, and turning item inputs into meal_items rows (food items get their
 // nutrition from the food's per-100 g values; custom items keep theirs).
-import type { FileKey, JobStatus, Meal, MealItemInput, MealPhoto, Nutrients } from '@fitness/shared/schemas'
+import { sumNutrients } from '@fitness/shared/engine'
+import type { FileKey, JobStatus, Meal, MealItemInput, MealPhoto } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { ai_jobs, meal_items, meal_photos, meals, type NewRow, type Row } from '../../../db'
@@ -17,17 +18,6 @@ export type ItemInsert = NewRow<typeof meal_items>
 
 /** meal_items has 15 columns, all bound: floor(100 / 15) = 6 rows per statement. */
 const ITEMS_PER_STATEMENT = 6
-const round1 = (x: number) => Math.round(x * 10) / 10
-
-const NUTRIENTS = ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g'] as const
-
-/** totals = Σ items per nutrient, to 0.1. */
-export function sumNutrients(items: readonly Nutrients[]): Nutrients {
-  const t: Nutrients = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0 }
-  for (const i of items) for (const k of NUTRIENTS) t[k] += i[k]
-  for (const k of NUTRIENTS) t[k] = round1(t[k])
-  return t
-}
 
 /** A meal_photos row as the API returns it, with a signed, expiring URL. */
 export async function toPhoto(deps: Deps, p: PhotoRow): Promise<MealPhoto> {
@@ -157,14 +147,4 @@ export function itemInserts(deps: Deps, rows: readonly ItemInsert[]): BatchItem<
   return out
 }
 
-/** Ids split for `IN (…)` lists that stay under 100 bound parameters. */
-export function chunkIds(ids: readonly string[], size = 90): string[][] {
-  const out: string[][] = []
-  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size))
-  return out
-}
 
-export async function runBatch(deps: Deps, statements: BatchItem<'sqlite'>[]): Promise<void> {
-  const [first, ...rest] = statements
-  if (first) await deps.db.batch([first, ...rest])
-}

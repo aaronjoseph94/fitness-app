@@ -79,7 +79,8 @@ function deadline(controller: AbortController): { expired: Promise<never>; clear
 }
 
 /**
- * Run job `id` now if it is queued, due, and its type has a handler; otherwise leave it as it is ('skipped').
+ * Run job `id` now if it is queued, due, its type has a handler and the invocation's fetch tally (deps.budget) has
+ * room for handler.fetches; otherwise leave it as it is ('skipped').
  *   lease:    status queued → running, attempts + 1, lease_until = now + 30 s (only if still queued and due)
  *   success:  status done, result = JobOutputs[type].parse(output), latency_ms, provider bookkeeping
  *   failure:  requeued (status queued, run_after later) or failed, by `classify`; the error text is kept either way.
@@ -89,6 +90,8 @@ export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
   const [peek] = await deps.db.select({ type: ai_jobs.type }).from(ai_jobs).where(eq(ai_jobs.id, id))
   const handler = peek ? handlerFor(peek.type) : undefined
   if (!peek || !handler) return { id, status: 'skipped' }
+  // Not enough of the invocation's subrequests left for this job's worst case: it stays queued for the sweep.
+  if (deps.budget && deps.budget.limit - deps.budget.used < handler.fetches) return { id, status: 'skipped' }
 
   const startedMs = deps.now().getTime()
   const [job] = await deps.db

@@ -9,8 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import type { ExerciseSummary, Muscle } from '@fitness/shared/schemas'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { EmptyState } from '../../../components'
-import { LoadProblem } from '../../quick-log'
+import { EmptyState, LoadProblem } from '../../../components'
 import { ExerciseDetailSheet } from './ExerciseDetailSheet'
 import { ExerciseList } from './ExerciseList'
 import { equipmentValues, filterExercises, sameMuscleCandidates, type ExerciseFilter } from './filter'
@@ -107,7 +106,6 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
                   variant={includeHidden ? 'filled' : 'outlined'}
                   color={includeHidden ? 'warning' : 'default'}
                   onClick={() => setIncludeHidden((v) => !v)}
-                  sx={{ height: 36 }}
                 />
               )
             }

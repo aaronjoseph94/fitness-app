@@ -3,7 +3,7 @@
 // guards: floor, ceiling, ≤150 kcal per step, later steps scheduled a week apart) → the weekly_reviews row and one
 // ai_events 'review', written in one batch → next week's plan stored as a proposed Gemini draft (week-plans module).
 // When the router fails the week still gets a review: metrics plus an engine-written narrative, no proposals.
-import { addDays, isoWeek, localDate } from '@fitness/shared/engine'
+import { addDays, isoWeek } from '@fitness/shared/engine'
 import {
   WeeklyReviewOutput,
   type PlanChange,
@@ -15,7 +15,7 @@ import { eq, sql } from 'drizzle-orm'
 import { weekly_reviews } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { eventInsert, proposalDecisionUpdate } from '../../events'
-import { listFasts } from '../../fasting'
+import { fastDaysIn } from '../../fasting'
 import type { CallMeta, LlmRouter } from '../../llm'
 import { getActivePlan, propose, type ProposalResult } from '../../plan'
 import { getSettings } from '../../settings'
@@ -50,9 +50,10 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
     buildWeeklyMetrics(ai, week_start),
     getSettings(ai),
     getActivePlan(ai),
-    listFasts(ai, { from: next_start, to: addDays(next_start, 6) }),
+    fastDaysIn(ai, { from: next_start, to: addDays(next_start, 6) }),
   ])
-  const fastDates = [...new Set(nextFasts.map((f) => localDate(f.started_at)))].filter((d) => d >= next_start && d <= addDays(next_start, 6))
+  // Fast days (engine fastDay: one date per fast), which a week plan's fast_dates mirror.
+  const fastDates = [...new Set(nextFasts.map((f) => f.date))].sort()
   const fallbackPlan = (): WeekPlanContent => carryForwardPlan(plan.targets, fastDates)
 
   if (existing?.author === 'claude_mcp') {

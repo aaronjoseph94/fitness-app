@@ -1,6 +1,7 @@
 // Owns: the rest timer's sticky bar above the bottom tabs — countdown from the ticked exercise's rest (template
 // rest_sec), a progress line, +30 s and Skip; when it reaches zero it says so, buzzes and fires the local notification
-// (rest.ts), then clears itself. The countdown is an end time in the persisted store, so it survives a reload.
+// (rest.ts), then clears itself. The countdown is an end time in the persisted store, so it survives a reload. The
+// alert only fires while the page runs (iOS suspends a backgrounded PWA), so the bar says to keep the app open.
 import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -113,19 +114,26 @@ export function RestTimerBar({ sessionId, nameOf }: RestTimerBarProps) {
         )}
         <TimerOutlined aria-hidden />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box
-            sx={{
-              fontSize: 24,
-              fontWeight: tokens.font.weight.number,
-              lineHeight: 1.1,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {over ? 'Rest over' : clock(remaining)}
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 }}>
+            <Box
+              sx={{
+                fontSize: 24,
+                fontWeight: tokens.font.weight.number,
+                lineHeight: 1.1,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {over ? 'Rest over' : clock(remaining)}
+            </Box>
+            {!over && (
+              <Box sx={{ fontSize: tokens.font.size.caption, opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Keep the app open for the alert
+              </Box>
+            )}
           </Box>
           <Box
             sx={{
-              fontSize: 12,
+              fontSize: tokens.font.size.caption,
               opacity: 0.8,
               whiteSpace: 'nowrap',
               overflow: 'hidden',

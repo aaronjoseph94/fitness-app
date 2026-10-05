@@ -8,9 +8,9 @@ import Chip from '@mui/material/Chip'
 import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
-import { formatNumber, PendingBadge } from '../../../components'
+import { formatNumber, LoadProblem, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
-import { LoadProblem, usePendingLogs } from '../../quick-log'
+import { usePendingLogs } from '../../quick-log'
 
 interface DayHeaderProps {
   date: string
@@ -53,11 +53,11 @@ export function DayHeader({ date, day, isLoading, error, onRetry, pendingMeals, 
           <Box component="span" sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, lineHeight: 1.1, letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums' }}>
             {formatNumber(eaten.kcal)}
           </Box>
-          <Box component="span" sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>
+          <Box component="span" sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>
             {t ? `of ${formatNumber(t.kcal)} kcal` : 'kcal'}
           </Box>
         </Box>
-        <Box sx={{ fontSize: 14, color: 'text.secondary', mt: 1 }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1 }}>
           {fastDay
             ? 'Fast day: intake expected 0. Water target is up.'
             : left === null
@@ -85,7 +85,7 @@ function MacroBar({ label, color, value, target }: { label: string; color: strin
   const ratio = target && target > 0 ? Math.min(1, value / target) : 0
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, mb: 0.75 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: tokens.font.size.label, mb: 0.75 }}>
         <Box component="span" sx={{ fontWeight: tokens.font.weight.label }}>
           {label}
         </Box>
@@ -122,14 +122,14 @@ function WeighInCard({ date, day, onWeighIn }: { date: string; day: DayView; onW
               {formatNumber(raw, 1)} kg
             </Box>
             {day.weight.trend_kg !== null && (
-              <Box component="span" sx={{ fontSize: 14, color: 'text.secondary' }}>
+              <Box component="span" sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
                 trend {formatNumber(day.weight.trend_kg, 1)} kg
               </Box>
             )}
             {pending && <PendingBadge />}
           </Box>
         ) : (
-          <Box sx={{ fontSize: 15, color: 'text.secondary' }}>None for {date}</Box>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, color: 'text.secondary' }}>None for {date}</Box>
         )}
       </Box>
       {raw !== null ? (

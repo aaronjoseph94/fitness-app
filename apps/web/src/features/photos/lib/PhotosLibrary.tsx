@@ -11,8 +11,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { Pose, type ProgressPhoto } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router'
-import { EmptyState } from '../../../components'
-import { LoadProblem } from '../../quick-log'
+import { EmptyState, LoadProblem } from '../../../components'
 import { tokens } from '../../../theme'
 import { CompareView, type CompareMode } from './CompareView'
 import { POSE_LABEL, POSES, usePhotos } from './data'
@@ -78,8 +77,8 @@ export function PhotosLibrary() {
         <Button component={RouterLink} to="/photos/new" variant="contained" startIcon={<AddAPhotoOutlined />} sx={{ px: 5 }}>
           Take photos
         </Button>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontSize: 13, color: tokens.ink.secondary }}>
-          <LockOutlined sx={{ fontSize: 16 }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
+          <LockOutlined sx={{ fontSize: tokens.font.size.body }} />
           Private. Never sent to any AI.
         </Box>
       </Box>
@@ -90,7 +89,7 @@ export function PhotosLibrary() {
         onChange={(_, next: View | null) => next && update({ view: next === 'grid' ? null : next })}
         aria-label="View"
         data-testid="photo-view"
-        sx={{ width: { xs: '100%', sm: 'auto' }, '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'none' }, minHeight: tokens.tapTarget, px: 5, textTransform: 'none', fontWeight: tokens.font.weight.label, fontSize: 15 } }}
+        sx={{ width: { xs: '100%', sm: 'auto' }, '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'none' }, minHeight: tokens.tapTarget, px: 5, textTransform: 'none', fontWeight: tokens.font.weight.label, fontSize: tokens.font.size.emphasis } }}
       >
         {VIEWS.map((v) => (
           <ToggleButton key={v.key} value={v.key}>

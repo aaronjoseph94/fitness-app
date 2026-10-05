@@ -13,11 +13,11 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import type { Food } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
-import { useApiQuery } from '../../../api'
-import { formatNumber } from '../../../components'
+import { problemText, useApiQuery } from '../../../api'
+import { formatNumber, NumberField, parseNumber } from '../../../components'
 import { tokens } from '../../../theme'
 import type { Per100g } from './nutrition'
-import { NumberField, noticeFor, parseNumber, problemText, type LogNotice } from './ui'
+import { noticeFor, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 
 /** A food chosen for a meal item: its id, how it reads, and its per-100 g values for live totals. */
@@ -97,12 +97,12 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
         }}
       />
       {q.length >= 2 && search.isError && (
-        <Box sx={{ fontSize: 14, color: 'text.secondary' }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
           {problemText(search.error)} You can add it as a new food, or describe the meal instead.
         </Box>
       )}
       {q.length >= 2 && search.isSuccess && results.length === 0 && (
-        <Box sx={{ fontSize: 14, color: 'text.secondary' }}>No foods match “{q}”. Add it as a new food.</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>No foods match “{q}”. Add it as a new food.</Box>
       )}
       {results.length > 0 && (
         <List dense disablePadding aria-label="Search results" sx={{ border: 1, borderColor: 'divider', borderRadius: `${tokens.radius.control}px` }}>
@@ -111,7 +111,7 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
               <ListItemText
                 primary={food.brand ? `${food.name} · ${food.brand}` : food.name}
                 secondary={`${formatNumber(food.kcal_per_100g)} kcal · ${formatNumber(food.protein_g, 1)} g protein per 100 g`}
-                slotProps={{ primary: { noWrap: true, sx: { color: 'text.primary', fontSize: 15 } }, secondary: { sx: { fontSize: 13 } } }}
+                slotProps={{ primary: { noWrap: true, sx: { color: 'text.primary', fontSize: tokens.font.size.emphasis } }, secondary: { sx: { fontSize: tokens.font.size.label } } }}
               />
               <AddRounded sx={{ color: 'text.secondary', ml: 2 }} />
             </ListItemButton>
@@ -183,7 +183,7 @@ function NewFoodForm({
       sx={{ display: 'grid', gap: 3 }}
       data-testid="new-food-form"
     >
-      <Box sx={{ fontSize: 14, color: 'text.secondary' }}>New food. Values per 100 g, as on the label.</Box>
+      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>New food. Values per 100 g, as on the label.</Box>
       <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus slotProps={{ htmlInput: { maxLength: 200 } }} />
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
         {MACROS.map(({ key, label, unit }) => (
@@ -198,7 +198,7 @@ function NewFoodForm({
         ))}
       </Box>
       {create.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
           {problemText(create.error)}
         </Box>
       )}

@@ -1,5 +1,7 @@
 // Owns: adding one of Aaron's own exercises (SPEC §7, e.g. a gym-specific machine) — name, equipment (library values
-// and his named machines), primary and secondary muscles by tap, level — sent as POST /api/exercises.
+// and his named machines), primary and secondary muscles by tap, level, and a photo (camera or gallery, downscaled and
+// re-encoded on the phone so no EXIF leaves it) — sent as POST /api/exercises, then POST /api/exercises/:id/photo.
+// Both go through the shared client and its offline queue, which replays them in order.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -15,12 +17,14 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
 import { endpoints } from '@fitness/shared/api'
 import { Muscle } from '@fitness/shared/schemas'
-import { useMemo, useState } from 'react'
-import { useApiMutation, useApiQuery } from '../../../api'
+import AddAPhotoRounded from '@mui/icons-material/AddAPhotoRounded'
+import { useEffect, useMemo, useState } from 'react'
+import { problemText, useApiMutation, useApiQuery } from '../../../api'
 import { MUSCLE_LABELS } from '../../../muscle-map'
-import { problemText } from '../../quick-log'
 import { equipmentLabel, LEVELS, LIBRARY_EQUIPMENT, sentence } from './labels'
+import { preparePhoto, releasePhoto, type PreparedPhoto } from '../../quick-log'
 import { useRefreshLibrary } from './useExercises'
+import { tokens } from '../../../theme'
 
 type Role = 'primary' | 'secondary'
 
@@ -35,6 +39,12 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
   const profile = useApiQuery(endpoints.training.getEquipment, {})
   const refresh = useRefreshLibrary()
   const create = useApiMutation(endpoints.training.createExercise)
+  const upload = useApiMutation(endpoints.training.uploadExercisePhoto)
+  // One id per dialog: after a failed photo upload, "Add exercise" again replays the create (idempotent) and retries it.
+  const [id] = useState(() => crypto.randomUUID())
+  const [photo, setPhoto] = useState<PreparedPhoto | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  useEffect(() => () => void (photo && releasePhoto(photo)), [photo])
   const [name, setName] = useState('')
   const [equipment, setEquipment] = useState('machine')
   const [level, setLevel] = useState<(typeof LEVELS)[number]>('beginner')
@@ -53,8 +63,17 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
   const cycle = (m: Muscle) =>
     setRoles((r) => ({ ...r, [m]: r[m] === undefined ? 'primary' : r[m] === 'primary' ? 'secondary' : undefined }))
 
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setPhotoError(null)
+    try {
+      setPhoto(await preparePhoto(file))
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "That photo couldn't be read.")
+    }
+  }
+
   const submit = () => {
-    const id = crypto.randomUUID()
     create.mutate(
       {
         body: {
@@ -69,7 +88,16 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
         },
       },
       {
-        onSuccess: (outcome) => {
+        onSuccess: async (outcome) => {
+          if (photo) {
+            // Queued behind the create when offline; the photo replays after the exercise exists.
+            const body = await photo.blob.arrayBuffer()
+            const sent = await upload.mutateAsync({ params: { id }, query: { content_type: photo.contentType }, body }).then(
+              () => true,
+              () => false,
+            )
+            if (!sent) return // the error shows; the exercise is stored, so tapping again only retries the photo
+          }
           refresh(outcome)
           onClose()
           if (outcome.status === 'saved') onCreated(id)
@@ -99,8 +127,8 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
             ))}
           </TextField>
           <Box>
-            <Box sx={{ fontSize: 14, fontWeight: 500, mb: 1 }}>Muscles</Box>
-            <Box sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>Tap once for primary, twice for secondary.</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, fontWeight: 500, mb: 1 }}>Muscles</Box>
+            <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mb: 2 }}>Tap once for primary, twice for secondary.</Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
               {Muscle.options.map((m) => (
                 <Chip
@@ -109,17 +137,35 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
                   color={roles[m] === 'primary' ? 'primary' : 'default'}
                   variant={roles[m] ? 'filled' : 'outlined'}
                   onClick={() => cycle(m)}
-                  sx={{ height: 36 }}
                 />
               ))}
             </Box>
           </Box>
+          <Box>
+            <Box sx={{ fontSize: tokens.font.size.small, fontWeight: 500, mb: 1 }}>Photo</Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              {photo && (
+                <Box
+                  component="img"
+                  src={photo.previewUrl}
+                  alt="The machine"
+                  sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}` }}
+                />
+              )}
+              <Button component="label" variant="outlined" startIcon={<AddAPhotoRounded />} data-testid="new-exercise-photo">
+                {photo ? 'Replace photo' : 'Add photo'}
+                <input hidden type="file" accept="image/*" capture="environment" onChange={(e) => void pick(e.target.files?.[0])} />
+              </Button>
+            </Box>
+          </Box>
+          {photoError && <Alert severity="warning">{photoError}</Alert>}
           {create.error && <Alert severity="error">{problemText(create.error)}</Alert>}
+          {upload.error && <Alert severity="error">{problemText(upload.error)}</Alert>}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 6, pb: 4 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" disabled={!valid || create.isPending} onClick={submit}>
+        <Button variant="contained" disabled={!valid || create.isPending || upload.isPending} onClick={submit}>
           Add exercise
         </Button>
       </DialogActions>

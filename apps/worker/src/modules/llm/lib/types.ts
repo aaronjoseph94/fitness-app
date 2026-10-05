@@ -44,11 +44,14 @@ export interface ToolMsg {
 /** One turn of a provider-neutral conversation. Any provider can continue a conversation another one started. */
 export type Msg = UserMsg | AssistantMsg | ToolMsg
 
-/** A tool the model may call. `parameters` is converted to JSON Schema once per isolate and cached. */
+/**
+ * A tool the model may call. `parameters` is a Zod schema (converted to JSON Schema once per isolate and cached) or
+ * a JSON Schema already built elsewhere (the tools layer warms its own at isolate start-up).
+ */
 export interface ToolDef {
   name: string
   description: string
-  parameters: z.ZodType
+  parameters: z.ZodType | Record<string, unknown>
 }
 
 /** An image for a vision job: raw bytes or base64 (no data: prefix needed). Attached to the last user message. */

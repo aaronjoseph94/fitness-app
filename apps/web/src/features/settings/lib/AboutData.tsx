@@ -10,8 +10,8 @@ import { tokens } from '../../../theme'
 function Item({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Box component="li" sx={{ py: 3, '&:not(:last-child)': { borderBottom: `1px solid ${tokens.ink.border}` } }}>
-      <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.heading }}>{title}</Box>
-      <Box sx={{ mt: 0.5, fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.55 }}>{children}</Box>
+      <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading }}>{title}</Box>
+      <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.55 }}>{children}</Box>
     </Box>
   )
 }

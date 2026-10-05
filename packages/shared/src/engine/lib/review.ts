@@ -3,6 +3,7 @@
 import type { LocalDate } from '../../schemas/common'
 import { adherence } from './adherence'
 import { addDays } from './dates'
+import { isLoggedIntakeDay } from './expenditure'
 import { mean, round } from './math'
 import { trendOn } from './trend'
 import type { DayRow, NutrientsLike } from './types'
@@ -37,7 +38,7 @@ export type WeekAggregate = {
 /**
  * The week week_start … week_start + 6 (pass the Sunday before too, for the trend start):
  *   trend_start = trend(week_start − 1) ?? trend(week_start);  trend_end = trend(week_start + 6);  change = end − start
- *   logged day = meals_logged > 0 ∨ is_fast_day;  intake_avg = mean intake over logged days (a fast day counts at its
+ *   logged day = isLoggedIntakeDay (meals_logged > 0 ∨ is_fast_day);  intake_avg = mean intake over logged days (a fast day counts at its
  *     intake, 0 kcal when nothing eaten), kcal whole, grams to 0.1
  *   protein_adherence = |logged non-fast days with protein_g ≥ target| / |logged non-fast days with a target| (0 if none)
  *   water_avg_ml = mean over days with water > 0;  steps_avg, sleep_avg_min = mean over days with data (whole numbers)
@@ -59,7 +60,7 @@ export function weeklyMetrics(input: {
   const trend_start_kg = trendOn(input.days, addDays(input.week_start, -1)) ?? trendOn(input.days, input.week_start)
   const trend_end_kg = trendOn(input.days, end)
 
-  const logged = week.filter((d) => d.meals_logged > 0 || d.is_fast_day)
+  const logged = week.filter(isLoggedIntakeDay)
   const avg = (f: keyof NutrientsLike, dp: number) => round(mean(logged.map((d) => d.intake[f])) ?? 0, dp)
   const eaten = logged.filter((d) => !d.is_fast_day && d.targets !== null)
   const avgOf = (xs: number[]) => {

@@ -17,10 +17,11 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { Pose } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { clockOf, dateOf, instantAt, problemText } from '../../quick-log'
+import { clockOf, dateOf, instantAt } from '../../quick-log'
 import { tokens, withAlpha } from '../../../theme'
 import { POSE_LABEL, POSES, useRefreshPhotos, useUploadPhoto } from './data'
 import { photoFromFile, photoFromVideo, releasePhoto, type PreparedPhoto } from './prepare'
+import { problemText } from '../../../api'
 
 type Facing = 'environment' | 'user'
 type CameraState = 'starting' | 'live' | 'denied' | 'unavailable'
@@ -210,11 +211,11 @@ export function CaptureScreen() {
         onChange={(_, next: Pose | null) => next && setPose(next)}
         aria-label="Pose"
         data-testid="capture-pose"
-        sx={{ width: '100%', '& .MuiToggleButton-root': { flex: 1, minHeight: tokens.tapTarget, textTransform: 'none', fontWeight: tokens.font.weight.label, fontSize: 15, gap: 1.5 } }}
+        sx={{ width: '100%', '& .MuiToggleButton-root': { flex: 1, minHeight: tokens.tapTarget, textTransform: 'none', fontWeight: tokens.font.weight.label, fontSize: tokens.font.size.emphasis, gap: 1.5 } }}
       >
         {POSES.map((p) => (
           <ToggleButton key={p} value={p}>
-            {saved.includes(p) && <CheckCircle sx={{ fontSize: 18, color: tokens.status.good }} aria-label="saved" />}
+            {saved.includes(p) && <CheckCircle sx={{ fontSize: tokens.font.size.cardTitle, color: tokens.status.good }} aria-label="saved" />}
             {POSE_LABEL[p]}
           </ToggleButton>
         ))}
@@ -262,7 +263,7 @@ export function CaptureScreen() {
           />
         )}
         {!shot && noCamera && (
-          <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 4, color: tokens.ink.card, fontSize: 14, textAlign: 'center', bgcolor: withAlpha(tokens.ink.text, 0.7) }}>
+          <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 4, color: tokens.ink.card, fontSize: tokens.font.size.small, textAlign: 'center', bgcolor: withAlpha(tokens.ink.text, 0.7) }}>
             {camera === 'denied' ? 'Camera access is off for this app. Allow it in Settings, or choose a photo.' : 'No camera here. Choose a photo instead.'}
           </Box>
         )}
@@ -340,7 +341,7 @@ export function CaptureScreen() {
             </Box>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-            <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>Timer</Box>
+            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Timer</Box>
             <ToggleButtonGroup
               value={prefs.timer}
               exclusive
@@ -359,7 +360,7 @@ export function CaptureScreen() {
               Choose a {POSE_LABEL[pose].toLowerCase()} photo
             </Button>
           )}
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary, textAlign: 'center' }}>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, textAlign: 'center' }}>
             Same spot, same light, line up with the outline. Private: never sent to any AI.
           </Box>
         </Stack>

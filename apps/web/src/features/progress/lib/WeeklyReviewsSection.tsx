@@ -32,9 +32,9 @@ export function WeeklyReviewsSection() {
       <SectionHeader title="Weekly reviews" subtitle="Each week's summary, printable, with its proposals" />
       <Card sx={{ p: 0, overflow: 'hidden' }}>
         {reviews.isPending ? (
-          <Box sx={{ p: 4, color: tokens.ink.secondary, fontSize: 14 }}>Loading reviews…</Box>
+          <Box sx={{ p: 4, color: tokens.ink.secondary, fontSize: tokens.font.size.small }}>Loading reviews…</Box>
         ) : reviews.isError ? (
-          <Box sx={{ p: 4, color: tokens.ink.secondary, fontSize: 14 }}>Reviews could not be loaded: {reviews.error.message}</Box>
+          <Box sx={{ p: 4, color: tokens.ink.secondary, fontSize: tokens.font.size.small }}>Reviews could not be loaded: {reviews.error.message}</Box>
         ) : rows.length === 0 ? (
           <Box sx={{ p: 4 }}>
             <EmptyState
@@ -79,17 +79,17 @@ function ReviewRow({ review: r }: { review: WeeklyReview }) {
         sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 2, py: 1.5, minHeight: tokens.tapTarget }}
       >
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label }}>
-            {r.week} <Box component="span" sx={{ color: tokens.ink.secondary, fontWeight: tokens.font.weight.body, fontSize: 13 }}>{weekLabel(r)}</Box>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>
+            {r.week} <Box component="span" sx={{ color: tokens.ink.secondary, fontWeight: tokens.font.weight.body, fontSize: tokens.font.size.label }}>{weekLabel(r)}</Box>
           </Box>
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
             {AUTHOR[r.author]}
             {r.proposals.length > 0 && ` · ${r.proposals.length} proposal${r.proposals.length === 1 ? '' : 's'}`}
           </Box>
         </Box>
         <Box
           sx={{
-            fontSize: 15,
+            fontSize: tokens.font.size.emphasis,
             fontWeight: tokens.font.weight.number,
             fontVariantNumeric: 'tabular-nums',
             color: change === null ? tokens.ink.secondary : tokens.metric.weight,
@@ -102,7 +102,7 @@ function ReviewRow({ review: r }: { review: WeeklyReview }) {
         <ChevronRightRounded sx={{ color: tokens.ink.secondary }} />
       </Link>
       {r.pdf_url && (
-        <Link href={r.pdf_url} target="_blank" rel="noopener" sx={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+        <Link href={r.pdf_url} target="_blank" rel="noopener" sx={{ fontSize: tokens.font.size.label, whiteSpace: 'nowrap' }}>
           PDF
         </Link>
       )}

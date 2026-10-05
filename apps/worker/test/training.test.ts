@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { ai_events, createDb, equipment_profile, exercise_exclusions, exercises, plan_versions, settings, type NewRow } from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { finishSession, listExercises, logSet, startSession } from '../src/modules/training'
+import { deleteExclusion, finishSession, listExercises, logSet, startSession } from '../src/modules/training'
 import { draftWorkout, planNextTrainingDay } from '../src/modules/workouts-ai'
 import type { LlmRouter } from '../src/modules/llm'
 
@@ -47,7 +47,7 @@ const press = ex('dumbbell-shoulder-press', 'Dumbbell Shoulder Press', 'dumbbell
 const curl = ex('dumbbell-bicep-curl', 'Dumbbell Bicep Curl', 'dumbbell', ['biceps'])
 const pushdown = ex('triceps-pushdown', 'Triceps Pushdown', 'cable', ['triceps'])
 const pushup = ex('pushups', 'Pushups', 'body only', ['chest'], ['triceps'])
-const smith = ex('smith-machine-bench-press', 'Smith Machine Bench Press', 'smith machine', ['chest'], ['triceps'])
+const smith = ex('smith-machine-bench-press', 'Smith Machine Bench Press', 'machine', ['chest'], ['triceps']) // filed under the generic 'machine', as in free-exercise-db
 const hidden = ex('dumbbell-flyes', 'Dumbbell Flyes', 'dumbbell', ['chest'])
 const library = [bench, pulldown, row, press, curl, pushdown, pushup, smith, hidden]
 
@@ -76,6 +76,7 @@ beforeAll(async () => {
     ...library.map((e) => db.insert(exercises).values(e)), // one row per statement: ≤ 100 bound parameters
     db.insert(equipment_profile).values([
       { equipment: 'barbell', kind: 'library', status: 'have' },
+      { equipment: 'machine', kind: 'library', status: 'have' },
       { equipment: 'smith machine', kind: 'machine', status: 'dont_have', note: null },
     ]),
     db.insert(exercise_exclusions).values({ exercise_id: hidden.id, reason: 'Hidden from its detail sheet: left shoulder' }),
@@ -97,6 +98,17 @@ describe('allowed exercise set', () => {
     expect(why['pushups']).toMatch(/body only/)
     expect(why['dumbbell-flyes']).toBe('Hidden from its detail sheet: left shoulder')
     expect(why['smith-machine-bench-press']).toMatch(/smith machine: don't have/)
+  })
+
+  it('un-hiding is a soft delete: re-running the seed (INSERT OR IGNORE by id) keeps the exercise allowed', async () => {
+    const deps = at('2026-10-05T15:00:00.000Z')
+    const seeded = { id: crypto.randomUUID(), exercise_id: curl.id, reason: 'Seeded exclusion' }
+    await db.insert(exercise_exclusions).values(seeded)
+    expect((await listExercises(deps, {})).map((e) => e.slug)).not.toContain('dumbbell-bicep-curl')
+
+    await deleteExclusion(deps, seeded.id)
+    await db.insert(exercise_exclusions).values(seeded).onConflictDoNothing()
+    expect((await listExercises(deps, {})).map((e) => e.slug)).toContain('dumbbell-bicep-curl')
   })
 })
 
@@ -173,12 +185,12 @@ describe('AI workouts', () => {
     expect(accepted!.proposal_status).toBe('accepted')
   })
 
-  it('nightly hook queues tomorrow once when it is a training day with nothing planned', async () => {
-    const deps = at('2026-10-14T07:00:00.000Z', 'ai') // Wed 01:00 in Edmonton → Thursday
-    const first = await planNextTrainingDay(deps, '2026-10-14')
+  it('nightly hook queues today once when it is a training day with nothing planned', async () => {
+    const deps = at('2026-10-15T07:00:00.000Z', 'ai') // Thu 01:00 in Edmonton
+    const first = await planNextTrainingDay(deps, '2026-10-15')
     expect(first).toMatchObject({ date: '2026-10-15', reason: 'queued' })
     expect(first.job_id).not.toBeNull()
-    expect(await planNextTrainingDay(deps, '2026-10-14')).toMatchObject({ job_id: null, reason: 'a workout job is already queued' })
-    expect(await planNextTrainingDay(deps, '2026-10-15')).toMatchObject({ job_id: null, reason: 'not a training day' }) // Friday
+    expect(await planNextTrainingDay(deps, '2026-10-15')).toMatchObject({ job_id: null, reason: 'a workout job is already queued' })
+    expect(await planNextTrainingDay(deps, '2026-10-16')).toMatchObject({ job_id: null, reason: 'not a training day' }) // Friday
   })
 })

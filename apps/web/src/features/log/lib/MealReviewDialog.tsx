@@ -22,7 +22,7 @@ export function MealReviewDialog({ meal, onClose }: { meal: MealView; onClose: (
       <DialogTitle id="meal-review-title" sx={{ display: 'flex', alignItems: 'center', gap: 2, pr: 2 }}>
         <Box sx={{ flex: 1 }}>
           Review {SLOT_LABEL[meal.slot].toLowerCase()}
-          <Box component="span" sx={{ ml: 2, fontSize: 14, fontWeight: tokens.font.weight.body, color: 'text.secondary' }}>
+          <Box component="span" sx={{ ml: 2, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, color: 'text.secondary' }}>
             {clockOf(meal.eatenAt)}
           </Box>
         </Box>

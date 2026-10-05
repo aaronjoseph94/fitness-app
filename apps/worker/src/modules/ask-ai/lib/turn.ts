@@ -8,7 +8,7 @@ import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
 import type { LlmRouter, ToolCall as ModelCall, Msg, ToolDef } from '../../llm'
 import { getSettings } from '../../settings'
-import { callTool, type ToolDefinition } from '../../tools'
+import { callTool, toolJsonSchemas, type ToolDefinition } from '../../tools'
 import { redact, systemPrompt } from './prompt'
 import { withProposals } from './history'
 import { createdBy } from './proposals'
@@ -35,12 +35,15 @@ const MAX_REPLY_TOKENS = 1_024
 /** A tool result longer than this reaches the model (and the stored row) cut, with a note to ask more narrowly. */
 const MAX_TOOL_CHARS = 12_000
 
-/** Tool definitions as the model reads them (the descriptions name the user for the coach; redacted here), per isolate. */
+/**
+ * Tool definitions as the model reads them (the descriptions name the user for the coach; redacted here), per isolate.
+ * Parameters are the tools layer's JSON Schemas, warmed at isolate start-up, so no conversion runs in the request.
+ */
 const toolDefs = new Map<string, ToolDef>()
 function toolDef(tool: ToolDefinition): ToolDef {
   let def = toolDefs.get(tool.name)
   if (!def) {
-    def = { name: tool.name, description: redact(tool.description), parameters: tool.input }
+    def = { name: tool.name, description: redact(tool.description), parameters: toolJsonSchemas(tool).input }
     toolDefs.set(tool.name, def)
   }
   return def
@@ -65,7 +68,7 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
   const allowed = new Set(tools.map((t) => t.name))
   const system = systemPrompt(started, settings)
   const messages: Msg[] = [
-    ...past.messages.map((m) => (m.role === 'user' ? { ...m, content: redact(m.content) } : m)),
+    ...past.messages.map((m) => ({ ...m, content: redact(m.content) })),
     { role: 'user', content: redact(input.content) },
   ]
   const ai: Deps = { ...deps, actor: 'ai' }
@@ -140,7 +143,8 @@ async function runCall(deps: Deps, call: ModelCall, allowed: ReadonlySet<string>
   const args = JSON.parse(JSON.stringify(call.args ?? {})) as StoredCall['args']
   const done = (ok: boolean, output: unknown, created: ProposalRef[] = []): ToolRun => ({
     call: { id, name: call.name, args, ok, ...(created.length ? { created } : {}) },
-    content: cap(JSON.stringify(output) ?? 'null'),
+    // Tool results carry free text (meal notes, the coach's dashboard note and narrative): the name never goes back.
+    content: redact(cap(JSON.stringify(output) ?? 'null')),
     at: deps.now(),
   })
   if (!allowed.has(call.name))

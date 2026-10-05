@@ -8,12 +8,13 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { useEffect, useState } from 'react'
-import { formatNumber, PendingBadge } from '../../../components'
+import { formatNumber, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
 import { useLastWeight } from './reads'
-import { NumberField, noticeFor, parseNumber, problemText, type LogNotice } from './ui'
+import { noticeFor, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
+import { problemText } from '../../../api'
 
 const MIN_KG = 30
 const MAX_KG = 300
@@ -90,7 +91,7 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
         </IconButton>
       </Box>
 
-      <Box sx={{ minHeight: 20, fontSize: 13, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Box sx={{ minHeight: 20, fontSize: tokens.font.size.label, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
         {isLoading && !last ? (
           'Looking up your last weigh-in…'
         ) : onDate ? (
@@ -128,7 +129,7 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
       )}
 
       {save.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
           {problemText(save.error)}
         </Box>
       )}

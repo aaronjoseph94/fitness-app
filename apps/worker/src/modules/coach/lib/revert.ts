@@ -5,14 +5,13 @@
 // Templates the review created are kept (sessions may use them). Each step that cannot be undone (a fast that has
 // already started) is reported, not fatal. A second revert of the same review returns the first result.
 import { today } from '@fitness/shared/engine'
-import { TemplateExerciseInput, type ReminderPrefs, type Weekday } from '@fitness/shared/schemas'
-import { eq } from 'drizzle-orm'
+import { TemplateExerciseInput } from '@fitness/shared/schemas'
 import * as z from 'zod'
-import { milestones } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { cancelFast, moveFast, planFast } from '../../fasting'
 import { listVersions, restoreVersion } from '../../plan'
+import { removeMilestone } from '../../scans'
 import { updateSettings } from '../../settings'
 import { updateEquipment, updateTemplate } from '../../training'
 import { assertCoach } from './apply'
@@ -26,9 +25,8 @@ type StepResult = { kind: 'undone' | 'kept'; text: string }
 async function undoOne(deps: Deps, u: UndoStep): Promise<StepResult> {
   switch (u.op) {
     case 'settings':
-      if (u.field === 'training_days')
-        await updateSettings(deps, { settings: { training_days: u.before as Weekday[] } })
-      else await updateSettings(deps, { settings: { reminders: u.before as ReminderPrefs } })
+      if (u.field === 'training_days') await updateSettings(deps, { settings: { training_days: u.before } })
+      else await updateSettings(deps, { settings: { reminders: u.before } })
       return { kind: 'undone', text: `${u.label} restored` }
     case 'equipment':
       if (u.before.length) await updateEquipment(deps, { items: u.before })
@@ -49,7 +47,7 @@ async function undoOne(deps: Deps, u: UndoStep): Promise<StepResult> {
       return { kind: 'undone', text: `${u.label} restored` }
     }
     case 'milestone_added':
-      await deps.db.delete(milestones).where(eq(milestones.id, u.id))
+      await removeMilestone(deps, u.id)
       return { kind: 'undone', text: `${u.label} removed` }
     case 'fast_planned':
       await cancelFast(deps, u.id)

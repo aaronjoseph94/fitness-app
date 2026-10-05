@@ -111,7 +111,7 @@ export function ChartFrame({ testId, label, legend, unit, width, empty, height, 
             borderRadius: `${tokens.radius.control}px`,
             bgcolor: tokens.ink.page,
             color: tokens.ink.secondary,
-            fontSize: 14,
+            fontSize: tokens.font.size.small,
           }}
         >
           No data yet
@@ -178,7 +178,7 @@ export function tooltip<Row>(title: (row: Row) => string, lines: readonly TipLin
           pointerEvents: 'none',
         }}
       >
-        <Box sx={{ fontSize: 12, color: tokens.ink.secondary, mb: shown.length ? 1 : 0 }}>{title(row)}</Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mb: shown.length ? 1 : 0 }}>{title(row)}</Box>
         {shown.map((l) => (
           <Box key={l.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, lineHeight: 1.6 }}>
             <Box
@@ -193,11 +193,11 @@ export function tooltip<Row>(title: (row: Row) => string, lines: readonly TipLin
             />
             <Box
               component="span"
-              sx={{ fontSize: 14, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}
+              sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}
             >
               {l.v}
             </Box>
-            <Box component="span" sx={{ fontSize: 12, color: tokens.ink.secondary }}>
+            <Box component="span" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
               {l.label}
             </Box>
           </Box>
@@ -288,7 +288,7 @@ export function TapCaption({ children }: { children: ReactNode }) {
       sx={{
         mt: 2,
         minHeight: 20,
-        fontSize: 13,
+        fontSize: tokens.font.size.label,
         color: tokens.ink.secondary,
         lineHeight: 1.5,
         fontVariantNumeric: 'tabular-nums',

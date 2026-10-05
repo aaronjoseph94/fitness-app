@@ -5,8 +5,7 @@
 import { endpoints } from '@fitness/shared/api'
 import type { SessionCreate, SetCreate, SetPatch } from '@fitness/shared/schemas'
 import { useEffect, useMemo } from 'react'
-import { useApiMutation, type WriteOutcome } from '../../../api'
-import { problemText } from '../../quick-log'
+import { problemText, useApiMutation, type WriteOutcome } from '../../../api'
 import { findSet, mergeServer, noteFor, payloadKey, shouldExist, type LoggerSession } from './logger-model'
 import { loggerState } from './logger-store'
 

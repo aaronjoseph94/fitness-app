@@ -1,5 +1,5 @@
 // Owns: the stored files an export carries — every R2 key the tables reference (meal photos, progress photos, scan
-// sheets, report PDFs; never the monthly backups) — and writing one restored file back under its key with a content
+// sheets, custom exercise photos, report PDFs; never the monthly backups) — and writing one restored file back under its key with a content
 // type read from its extension (the zip keeps no metadata).
 import { FileKey } from '@fitness/shared/schemas'
 import { sql } from 'drizzle-orm'
@@ -12,6 +12,7 @@ export async function referencedKeys(db: Db): Promise<FileKey[]> {
     UNION SELECT storage_path FROM progress_photos
     UNION SELECT storage_path FROM scans WHERE storage_path IS NOT NULL
     UNION SELECT pdf_path FROM weekly_reviews WHERE pdf_path IS NOT NULL
+    UNION SELECT value FROM exercises, json_each(exercises.image_paths) WHERE exercises.custom = 1 AND value LIKE 'exercise-photos/%'
     ORDER BY key`)
   return rows.flatMap((r) => {
     const key = FileKey.safeParse(r.key)

@@ -109,7 +109,7 @@ export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extr
               onClick={(e) => setMenu({ key, anchor: e.currentTarget })}
               onDelete={value ? () => set(key, undefined) : (e) => setMenu({ key, anchor: (e.currentTarget as HTMLElement).parentElement! })}
               deleteIcon={value ? <CloseRounded /> : <ExpandMoreRounded />}
-              sx={{ height: 36, borderRadius: 999 }}
+              sx={{ borderRadius: 999 }}
             />
           )
         })}

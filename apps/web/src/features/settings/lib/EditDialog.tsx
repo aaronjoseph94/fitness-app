@@ -44,21 +44,21 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
       <DialogContent>
         {confirming && value !== null ? (
           <Box data-testid="rail-confirm" sx={{ display: 'grid', gap: 3 }}>
-            <Box sx={{ fontSize: 18, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}>
+            <Box sx={{ fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}>
               <Box component="span" sx={{ color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
                 {formatValue(field, current)}
               </Box>
               {' → '}
               {formatValue(field, value)}
             </Box>
-            <Box sx={{ fontSize: 15, lineHeight: 1.55, color: tokens.ink.text }}>
+            <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.55, color: tokens.ink.text }}>
               This is a rail you set with your doctor and dietitian. Change it only if they agree. The AI and the Coach
               work inside it and can never change it.
             </Box>
           </Box>
         ) : (
           <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
-            <Box sx={{ fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5 }}>{field.help}</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>{field.help}</Box>
             <TextField
               label={field.label}
               value={text}
@@ -78,7 +78,7 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
           </Box>
         )}
         {error && (
-          <Box role="alert" sx={{ mt: 3, fontSize: 14, color: tokens.status.flag }}>
+          <Box role="alert" sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
             {error}
           </Box>
         )}

@@ -1,6 +1,6 @@
 // Owns: the reads behind one weekly report — the review (404 → none yet, then the engine's live metrics instead), the
-// week's v_day rows, four weeks of trend, earlier reviews (volume history) and next week's plan (absent until week
-// plans exist: any error reads as "no plan"). `ready` turns true once every read has settled, success or not, which
+// week's v_day rows, four weeks of trend, earlier reviews (volume history), next week's plan (absent until week
+// plans exist: any error reads as "no plan") and the goal weight the forecast band stops at. `ready` turns true once every read has settled, success or not, which
 // is what the Browser Rendering PDF waits for.
 import { endpoints } from '@fitness/shared/api'
 import { addDays } from '@fitness/shared/engine'
@@ -19,10 +19,11 @@ export function useWeeklyReport(range: { week: string; from: string; to: string 
   const trend = useApiQuery(endpoints.body.trend, { query: { from: addDays(from, -TREND_LEAD_DAYS), to } })
   const history = useApiQuery(endpoints.reviews.list, {})
   const nextStart = addDays(from, 7)
-  const plans = useApiQuery(endpoints.plan.listWeekPlans, { query: { week_start: nextStart } }, { retry: false })
+  const plans = useApiQuery(endpoints.weekPlans.list, { query: { week_start: nextStart } }, { retry: false })
+  const settings = useApiQuery(endpoints.settings.get, {}, { retry: false, staleTime: 5 * 60_000 })
 
   const reviewSettled = review.isSuccess || (review.isError && (!noReview || !metrics.isPending))
-  const ready = reviewSettled && !days.isPending && !trend.isPending && !history.isPending && !plans.isPending
+  const ready = reviewSettled && !days.isPending && !trend.isPending && !history.isPending && !plans.isPending && !settings.isPending
   return {
     review: review.data ?? null,
     reviewError: review.isError && !noReview ? review.error : null,
@@ -32,6 +33,7 @@ export function useWeeklyReport(range: { week: string; from: string; to: string 
     history: history.data ?? [],
     nextPlan: plans.isSuccess ? pickWeekPlan(plans.data) : null,
     nextStart,
+    goalKg: settings.data?.profile.goal_weight_kg ?? null,
     ready,
     refetch: () => Promise.all([review.refetch(), history.refetch()]),
   }

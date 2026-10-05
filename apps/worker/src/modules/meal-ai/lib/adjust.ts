@@ -7,7 +7,7 @@ import { ai_events } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { getDay } from '../../day'
 import { recordEvent } from '../../events'
-import type { SharedBudget } from '../../food-sources'
+import type { FetchBudget } from '../../../lib/deps'
 import type { JobContext, JobMeta } from '../../jobs'
 import { BudgetError, DeadlineError, ProvidersExhaustedError, type LlmRouter } from '../../llm'
 import { listFavourites } from '../../nutrition'
@@ -19,7 +19,7 @@ export const DAY_ADJUSTMENT_FETCHES = 6
 const LLM_DEADLINE_MS = 10_000
 
 export interface AdjustAdapters {
-  router: (deps: Deps, budget: SharedBudget) => Pick<LlmRouter, 'complete'>
+  router: (deps: Deps, budget: FetchBudget) => Pick<LlmRouter, 'complete'>
 }
 
 type Output = { output: DayAdjustmentOutput; meta?: JobMeta }

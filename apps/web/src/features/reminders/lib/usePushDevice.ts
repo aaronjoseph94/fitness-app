@@ -4,7 +4,7 @@
 import { endpoints } from '@fitness/shared/api'
 import type { PushResult } from '@fitness/shared/schemas'
 import { useCallback, useEffect, useState } from 'react'
-import { call, isApiError, useApiQuery } from '../../../api'
+import { call, isApiError, problemText, useApiQuery } from '../../../api'
 import { currentSubscription, disablePush, enablePush, permission, pushSupport, syncPush, type PushSupport } from './push-client'
 
 export interface PushDevice {
@@ -21,11 +21,7 @@ export interface PushDevice {
 }
 
 function sentence(error: unknown): string {
-  if (isApiError(error)) {
-    if (error.kind === 'network') return 'You’re offline. Try again with a connection.'
-    if (error.kind === 'auth-expired') return 'Your sign-in expired. Sign in again, then retry.'
-    return `The server refused: ${error.message}`
-  }
+  if (isApiError(error)) return problemText(error)
   const name = error instanceof DOMException ? error.name : ''
   if (name === 'NotAllowedError') return 'Notifications were not allowed.'
   if (name === 'AbortError') return 'The browser couldn’t reach its push service. Try again.'

@@ -5,8 +5,7 @@ import { endpoints } from '@fitness/shared/api'
 import type { ChatMessage, ChatSend, ChatSent } from '@fitness/shared/schemas'
 import { hashKey, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
-import { apiQueryKey, call, useApiQuery } from '../../../api'
-import { problemText } from '../../quick-log'
+import { apiQueryKey, call, problemText, useApiQuery } from '../../../api'
 import { useThreadStore } from './thread-store'
 
 /** A turn takes up to ~55 s on the Worker (several model calls and tools); wait a little longer than that. */

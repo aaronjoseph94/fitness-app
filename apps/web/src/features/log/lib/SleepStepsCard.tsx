@@ -11,10 +11,11 @@ import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
-import { formatNumber, PendingBadge } from '../../../components'
+import { formatNumber, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, instantAt, NumberField, parseNumber, problemText, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
+import { clockOf, instantAt, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
 import { LogCard } from './LogCard'
+import { problemText } from '../../../api'
 
 type SleepMode = 'times' | 'hours'
 
@@ -119,7 +120,7 @@ export function SleepStepsCard({ date, day }: { date: string; day: DayView | und
         ) : (
           <NumberField label="Hours asleep" value={hours} onChange={setHours} unit="h" error={hours !== '' && !hoursValid} />
         )}
-        <Box sx={{ fontSize: 13, color: 'text.secondary', minHeight: 20 }} aria-live="polite">
+        <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', minHeight: 20 }} aria-live="polite">
           {error ? (
             <Box component="span" sx={{ color: 'error.main' }}>
               {problemText(error)}
@@ -141,7 +142,7 @@ export function SleepStepsCard({ date, day }: { date: string; day: DayView | und
           component={RouterLink}
           to="/imports/health"
           data-testid="log-health-import"
-          sx={{ justifySelf: 'center', display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: 14, fontWeight: tokens.font.weight.label }}
+          sx={{ justifySelf: 'center', display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}
         >
           Import an Apple Watch export
         </Link>

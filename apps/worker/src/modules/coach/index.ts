@@ -7,7 +7,8 @@
 //        training vs the block before, scan + lean-loss guard, open proposals, upcoming fasts/scan/week plans, flags
 //   applyReview(deps, ApplyReviewInput)     → ApplyReviewResult   apply_review: target changes → ONE plan version;
 //        other changes through their modules; a change that fails a rail is dropped and reported, the rest applies;
-//        the review recorded via reviews.recordCoachReview (Claude's narrative replaces Gemini's); 403 for actor 'ai'
+//        the review recorded via reviews.recordCoachReview (Claude's narrative replaces Gemini's), or with
+//        record_review false (scan debrief, program design, plateau check) kept as a note; 403 for actor 'ai'
 //   revertReview(deps, review_id)           → RevertReviewResult  revert_review: the plan version from before the
 //        review restored, the other changes undone where possible; idempotent; 403 for actor 'ai'
 //   setDashboardNote(deps, { text, until? }) → DashboardNote      pin a note to the top of Today

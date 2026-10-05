@@ -1,6 +1,6 @@
 // Owns: the wire — one HTTP request to the Worker with the Access cookie, no redirect following, a timeout, JSON in and
 // out (a binary body goes as application/octet-stream) — and the classification of every failure into an ApiError,
-// including spotting an expired Access session.
+// including spotting an expired Access session. Signed /api/files/* links are fetched as bytes through the same checks.
 import type { HttpMethod } from '@fitness/shared/api'
 import { ApiError } from './errors'
 import { markAuthExpired } from './session'
@@ -56,6 +56,24 @@ export async function send(request: WireRequest, options: SendOptions = {}): Pro
   const body = await readBody(response)
   if (!response.ok) throw httpError(label, response.status, body)
   return body
+}
+
+/**
+ * Fetch a signed /api/files/* link as bytes. Same classification as `send`: an Access bounce throws 'auth-expired' and
+ * raises the "Sign in again" banner, a non-2xx throws 'http', no response throws 'network'.
+ */
+export async function fetchFile(url: string, options: { signal?: AbortSignal } = {}): Promise<ArrayBuffer> {
+  const label = `GET ${new URL(url, window.location.href).pathname}`
+  let response: Response
+  try {
+    response = await fetch(url, { credentials: 'include', redirect: 'manual', signal: options.signal })
+  } catch (cause) {
+    if (options.signal?.aborted) throw cause
+    throw await classifyNoResponse(label)
+  }
+  if (isAccessBounce(response)) throw authExpired(label)
+  if (!response.ok) throw httpError(label, response.status, await readBody(response))
+  return response.arrayBuffer()
 }
 
 function encodeBody(body: unknown): { headers: Record<string, string>; body: BodyInit | undefined } {

@@ -8,7 +8,7 @@ import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { REMINDER_HOURS, type Reminder, type ReminderKind } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { isApiError, signInAgain } from '../../../api'
+import { problemText, signInAgain } from '../../../api'
 import { SectionHeader } from '../../../components'
 import { useOnline } from '../../../offline'
 import { tokens } from '../../../theme'
@@ -18,12 +18,7 @@ import { ReminderList } from './ReminderList'
 import { usePushDevice } from './usePushDevice'
 import { useReminderPrefs } from './useReminderPrefs'
 
-function saveError(error: unknown): string {
-  if (!isApiError(error)) return 'Could not save. Try again.'
-  if (error.kind === 'network') return 'You’re offline. Reminder changes need a connection.'
-  if (error.kind === 'auth-expired') return 'Your sign-in expired. Sign in again, then retry.'
-  return `Not saved: ${error.message}`
-}
+const saveError = (error: unknown) => problemText(error, 'Reminder changes need a connection.')
 
 export function RemindersPage() {
   const online = useOnline()

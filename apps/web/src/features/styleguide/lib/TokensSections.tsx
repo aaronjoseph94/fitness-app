@@ -38,6 +38,11 @@ const GROUPS: { title: string; note: string; swatches: Swatch[] }[] = [
     ],
   },
   {
+    title: 'Print',
+    note: 'The printed report: black text on white, dark-grey secondary text and running header.',
+    swatches: entries(tokens.print, 'print'),
+  },
+  {
     title: 'Muscle map',
     note: 'Grey body, white separations, four indigo steps.',
     swatches: [
@@ -65,7 +70,7 @@ function SwatchTile({ name, hex }: Swatch) {
       <Box sx={{ minWidth: 0 }}>
         <Box
           sx={{
-            fontSize: 14,
+            fontSize: tokens.font.size.small,
             fontWeight: tokens.font.weight.label,
             color: tokens.ink.text,
             overflowWrap: 'anywhere',
@@ -73,7 +78,7 @@ function SwatchTile({ name, hex }: Swatch) {
         >
           {name}
         </Box>
-        <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
           {hex.toUpperCase()}
         </Box>
       </Box>
@@ -91,7 +96,7 @@ export function ColourSection() {
       <Box sx={{ display: 'grid', gap: 4 }}>
         {GROUPS.map((g) => (
           <Panel key={g.title}>
-            <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading }}>{g.title}</Box>
+            <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>{g.title}</Box>
             <Caption sx={{ mt: 0.5, mb: 4 }}>{g.note}</Caption>
             <Box
               sx={{
@@ -128,11 +133,12 @@ const TYPE: {
   { name: 'h1', px: 28, w: weight.heading, sample: 'Today' },
   { name: 'h2', px: 24, w: weight.heading, sample: 'Progress' },
   { name: 'Section title', px: size.sectionTitle, w: weight.heading, sample: 'This week' },
-  { name: 'h4 / card title', px: 18, w: weight.heading, sample: 'Raise protein to 140 g' },
-  { name: 'Body', px: size.body, w: weight.body, sample: 'Lunch is the first meal; breakfast stays hidden.' },
-  { name: 'Body 2', px: 14, w: weight.body, sample: 'Trend down 0.8 kg this week.', secondary: true },
-  { name: 'Button', px: 15, w: weight.label, sample: 'Log weigh-in' },
-  { name: 'Label', px: size.label, w: weight.label, sample: 'Calories remaining', secondary: true },
+  { name: 'Card title (cardTitle, h4)', px: size.cardTitle, w: weight.heading, sample: 'Raise protein to 140 g' },
+  { name: 'Body (body)', px: size.body, w: weight.body, sample: 'Lunch is the first meal; breakfast stays hidden.' },
+  { name: 'Emphasis (emphasis, button)', px: size.emphasis, w: weight.label, sample: 'Log weigh-in' },
+  { name: 'Small (small, body2)', px: size.small, w: weight.body, sample: 'Trend down 0.8 kg this week.', secondary: true },
+  { name: 'Label (label)', px: size.label, w: weight.label, sample: 'Calories remaining', secondary: true },
+  { name: 'Caption (caption)', px: size.caption, w: weight.body, sample: 'Mon 5 Oct · 07:42', secondary: true },
 ]
 
 export function TypeSection() {
@@ -157,8 +163,8 @@ export function TypeSection() {
             }}
           >
             <Box sx={{ width: 150, flex: 'none' }}>
-              <Box sx={{ fontSize: 13, fontWeight: weight.label, color: tokens.ink.text }}>{t.name}</Box>
-              <Box sx={{ fontSize: 12, color: tokens.ink.secondary }}>
+              <Box sx={{ fontSize: tokens.font.size.label, fontWeight: weight.label, color: tokens.ink.text }}>{t.name}</Box>
+              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
                 {t.px} px · {t.w}
               </Box>
             </Box>
@@ -199,7 +205,7 @@ export function SpaceSection() {
                   sx={{
                     width: 96,
                     flex: 'none',
-                    fontSize: 12,
+                    fontSize: tokens.font.size.caption,
                     color: tokens.ink.secondary,
                     fontVariantNumeric: 'tabular-nums',
                   }}
@@ -246,7 +252,7 @@ export function SpaceSection() {
                   border: `1px dashed ${tokens.chart.target}`,
                   display: 'grid',
                   placeItems: 'center',
-                  fontSize: 12,
+                  fontSize: tokens.font.size.caption,
                   color: tokens.ink.secondary,
                 }}
               >

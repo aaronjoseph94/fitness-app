@@ -77,7 +77,7 @@ export function MuscleMapSection() {
                 >
                   <MuscleMap levels={lv} size={96} title={`${name} muscle map`} />
                   <Box sx={{ minWidth: 0 }}>
-                    <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading }}>{name}</Box>
+                    <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>{name}</Box>
                     <Caption sx={{ mt: 0.5 }}>{meta}</Caption>
                   </Box>
                 </Card>
@@ -95,7 +95,7 @@ export function MuscleMapSection() {
               />
             </Box>
             <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2, minHeight: tokens.tapTarget }}>
-              <Box sx={{ flex: 1, fontSize: 14, color: tokens.ink.text }} aria-live="polite">
+              <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: tokens.ink.text }} aria-live="polite">
                 {last ? `${MUSCLE_LABELS[last]}: ${levelLabel(levels[last] ?? 0)}` : 'Nothing selected'}
               </Box>
               <Button

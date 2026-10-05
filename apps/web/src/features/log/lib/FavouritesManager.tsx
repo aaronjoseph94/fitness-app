@@ -17,10 +17,10 @@ import { endpoints } from '@fitness/shared/api'
 import type { Favourite, Food, Meal } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { apiQueryKey } from '../../../api'
-import { formatNumber, PendingBadge } from '../../../components'
+import { apiQueryKey, problemText } from '../../../api'
+import { formatNumber, LoadProblem, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
-import { LoadProblem, NumberField, parseNumber, problemText, useLogMutation, usePendingLogs } from '../../quick-log'
+import { useLogMutation, usePendingLogs } from '../../quick-log'
 import { LoadingRows, LogCard } from './LogCard'
 
 interface FavouriteRow {
@@ -105,7 +105,7 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
       ) : error != null && rows.length === 0 ? (
         <LoadProblem what="Favourites" error={error} onRetry={onRetry} />
       ) : rows.length === 0 ? (
-        <Box sx={{ fontSize: 14, color: 'text.secondary' }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
           None yet. On any logged meal, open its menu and choose “Save as favourite”; a meal with several foods becomes a recipe.
         </Box>
       ) : (
@@ -113,8 +113,8 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
           {rows.map(({ favourite: f, pending }, i) => (
             <Box component="li" key={f.id} data-testid="favourite-manager-row" sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderTop: i === 0 ? 0 : 1, borderColor: 'divider' }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.label}</Box>
-                <Box sx={{ fontSize: 13, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.label}</Box>
+                <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center' }}>
                   <span>
                     {f.kind === 'food' ? `${formatNumber(f.default_grams)} g` : `Recipe · ${f.recipe.length} ${f.recipe.length === 1 ? 'food' : 'foods'}`}
                     {f.totals.kcal > 0 && ` · ${formatNumber(f.totals.kcal)} kcal`}
@@ -136,7 +136,7 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
         </Box>
       )}
       {update.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: 14, mt: 2 }}>
+        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small, mt: 2 }}>
           {problemText(update.error)}
         </Box>
       )}
@@ -186,7 +186,7 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
           <Box component="ul" aria-label="Recipe" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 2 }}>
             {recipe.map((r, i) => (
               <Box component="li" key={`${r.food_id}-${i}`} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Box sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.small, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {names.get(r.food_id) ?? `Food ${i + 1}`}
                 </Box>
                 <NumberField
@@ -205,7 +205,7 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
           </Box>
         )}
         {update.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(update.error)}
           </Box>
         )}

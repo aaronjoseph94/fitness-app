@@ -28,10 +28,9 @@ export async function buildTrend(deps: Deps, { from, to }: DateRange): Promise<T
 
   // Full history to `to`: the 7-day change and the milestone dates need trend values from before `from`.
   const history = trendWeights(weighIns, { to })
+  const weightRows = stored.filter((r) => r.kind === 'weight')
   const reached = new Map(
-    milestoneStatus({ trend: history, scans: scanDates })
-      .filter((m) => m.kind === 'weight')
-      .map((m) => [m.target_value, m]),
+    milestoneStatus({ trend: history, scans: scanDates, definitions: weightRows.map((r) => ({ id: r.id, kind: 'weight', target_value: r.target_value })) }).map((m) => [m.id, m]),
   )
 
   return {
@@ -43,7 +42,7 @@ export async function buildTrend(deps: Deps, { from, to }: DateRange): Promise<T
     forecast: plan?.forecast ?? null,
     milestones: stored.map((row) => {
       const m = toMilestone(row)
-      const computed = m.kind === 'weight' && m.reached_on === null ? reached.get(m.target_value) : undefined
+      const computed = m.kind === 'weight' && m.reached_on === null ? reached.get(m.id) : undefined
       return computed?.reached_on ? { ...m, reached_on: computed.reached_on, scan_id: m.scan_id ?? computed.scan_id } : m
     }),
   }

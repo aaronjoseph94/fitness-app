@@ -579,6 +579,8 @@ export const exercise_exclusions = sqliteTable(
     exercise_id: text().references(() => exercises.id),
     category: text(),
     reason: text().notNull(),
+    /** Un-hidden at (soft delete): the row stays, so a re-seed's INSERT OR IGNORE and a restore keep the un-hide. */
+    removed_at: text(),
     actor: actor(),
     ...timestamps(),
   },

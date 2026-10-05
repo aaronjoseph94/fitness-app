@@ -1,5 +1,7 @@
 // Owns: comparing two scans (SPEC §3, §8) — metric and segment deltas, fat vs lean vs water change, the lean-loss
 // guard (with the hydration call-out) and the composition milestones newly reached.
+import type { MilestoneKind } from '../../schemas/body'
+import { ScanMetricField, ScanSegment } from '../../schemas/scans'
 import { daysBetween, localDate } from './dates'
 import { compositionMilestonesMet, type CompositionScan } from './milestones'
 
@@ -9,31 +11,11 @@ export const LEAN_LOSS_SHARE = 0.25
 export const HYDRATION_MATCH = 0.9
 
 /** Whole-body metrics compared between scans (the numeric fields of the seed record, SPEC §2). */
-const SCAN_METRICS = [
-  'weight_kg',
-  'lean_body_mass_kg',
-  'skeletal_muscle_mass_kg',
-  'protein_kg',
-  'mineral_kg',
-  'total_body_water_kg',
-  'icf_kg',
-  'ecf_kg',
-  'body_fat_mass_kg',
-  'body_fat_pct',
-  'subcutaneous_fat_kg',
-  'visceral_fat_kg',
-  'visceral_fat_area_cm2',
-  'visceral_fat_level',
-  'bmr_kcal',
-  'tee_kcal',
-  'waist_hip_ratio',
-  'bio_age',
-  'bwi_score',
-] as const
-export type ScanMetricKey = (typeof SCAN_METRICS)[number]
+const SCAN_METRICS = ScanMetricField.options
+export type ScanMetricKey = ScanMetricField
 
-const SEGMENTS = ['left_arm', 'right_arm', 'torso', 'left_leg', 'right_leg'] as const
-type SegmentKey = (typeof SEGMENTS)[number]
+const SEGMENTS = ScanSegment.options
+type SegmentKey = ScanSegment
 type SegmentMass = { lean_kg: number; fat_kg: number }
 
 /** A confirmed scan (structurally a subset of `ScanRecord`): four masses required, every other metric optional. */
@@ -60,7 +42,7 @@ export type ScanComparison = {
   /** The lean-loss guard: ok, lean_loss (flag it), or hydration (a lean drop matched by a water drop). */
   lean_loss: 'ok' | 'lean_loss' | 'hydration'
   /** Composition milestones the newer scan meets and the older did not. */
-  milestones_reached: { kind: string; label: string; target_value: number }[]
+  milestones_reached: { kind: MilestoneKind; label: string; target_value: number }[]
 }
 
 /**

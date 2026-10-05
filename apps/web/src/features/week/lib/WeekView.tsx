@@ -88,12 +88,12 @@ function RevertButton({ plan }: { plan: WeekPlan }) {
       <Dialog open={open} onClose={revert.isPending ? undefined : () => setOpen(false)} fullWidth maxWidth="xs" aria-labelledby="revert-week-plan-title">
         <DialogTitle id="revert-week-plan-title">Revert this week’s plan?</DialogTitle>
         <DialogContent>
-          <Box sx={{ fontSize: 15, lineHeight: 1.5 }}>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>
             The plan it replaced comes back, or the week follows your everyday targets and training days again. Days already
             past keep their targets.
           </Box>
           {revert.isError && (
-            <Box role="alert" sx={{ mt: 2, fontSize: 14, color: tokens.status.flag }}>
+            <Box role="alert" sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
               {revert.error.message}
             </Box>
           )}
@@ -123,7 +123,7 @@ function DayRows({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; to
       <Box
         component="li"
         aria-hidden
-        sx={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr) 84px', gap: 2, pb: 1, fontSize: 12, color: tokens.ink.secondary }}
+        sx={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr) 84px', gap: 2, pb: 1, fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}
       >
         <span />
         <span>Plan</span>
@@ -140,16 +140,16 @@ function DayRows({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; to
             gap: 2,
             py: 2,
             alignItems: 'start',
-            fontSize: 13,
+            fontSize: tokens.font.size.label,
             borderTop: `1px solid ${tokens.ink.border}`,
           }}
         >
           <Box>
-            <Box sx={{ fontSize: 14, fontWeight: tokens.font.weight.label }}>{formatWeekday(d.date)}</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}>{formatWeekday(d.date)}</Box>
             <Box sx={{ color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{Number(d.date.slice(8))}</Box>
           </Box>
           <Box sx={{ minWidth: 0 }}>
-            <Box sx={{ fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>
+            <Box sx={{ fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums' }}>
               {d.fast ? (
                 <Box component="span" sx={{ color: tokens.metric.fasting, fontWeight: tokens.font.weight.label }}>
                   Fast day
@@ -167,7 +167,7 @@ function DayRows({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; to
               <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <SessionThumb session={d.session} size={MINI_MAP} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Box sx={{ fontSize: 14, fontWeight: tokens.font.weight.label, overflowWrap: 'anywhere' }}>{d.session.name}</Box>
+                  <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, overflowWrap: 'anywhere' }}>{d.session.name}</Box>
                   <Box sx={{ color: tokens.ink.secondary }}>{sessionDetail(d.session)}</Box>
                 </Box>
               </Box>
@@ -203,8 +203,8 @@ export function WeekView({ date }: WeekViewProps) {
           <ChevronLeftRounded />
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
-          <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading }}>{label}</Box>
-          {label !== range && <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>{range}</Box>}
+          <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>{label}</Box>
+          {label !== range && <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{range}</Box>}
         </Box>
         <IconButton aria-label="Next week" onClick={() => setMonday(addDays(monday, 7))} sx={{ width: tokens.tapTarget, height: tokens.tapTarget }}>
           <ChevronRightRounded />
@@ -212,20 +212,20 @@ export function WeekView({ date }: WeekViewProps) {
       </Box>
 
       {view.isPending ? (
-        <Box sx={{ mt: 3, fontSize: 14, color: tokens.ink.secondary }}>Loading the week…</Box>
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Loading the week…</Box>
       ) : view.isError || !data ? (
-        <Box sx={{ mt: 3, fontSize: 14, color: tokens.ink.secondary }}>The week could not be loaded: {view.error?.message}</Box>
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>The week could not be loaded: {view.error?.message}</Box>
       ) : (
         <>
           <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            {plan ? <PlanBadge plan={plan} /> : <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>No active plan: your everyday targets apply.</Box>}
+            {plan ? <PlanBadge plan={plan} /> : <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>No active plan: your everyday targets apply.</Box>}
             <Box sx={{ flex: 1 }} />
             {plan && open && <RevertButton plan={plan} />}
           </Box>
           {data.proposed && <ProposedBanner plan={data.proposed} />}
-          {shown?.plan.focus_note && <Box sx={{ mt: 3, fontSize: 15, lineHeight: 1.5 }}>{shown.plan.focus_note}</Box>}
+          {shown?.plan.focus_note && <Box sx={{ mt: 3, fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>{shown.plan.focus_note}</Box>}
           {shown && (
-            <Box sx={{ mt: 2, fontSize: 13, color: tokens.ink.secondary }}>
+            <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
               Water {formatNumber(shown.plan.water_ml)} ml · steps {formatNumber(shown.plan.steps)}
               {shown.plan.scan_date ? ` · scan ${formatWeekday(shown.plan.scan_date)} ${formatShortDate(shown.plan.scan_date)}` : ''}
             </Box>
@@ -243,7 +243,7 @@ export function WeekView({ date }: WeekViewProps) {
               <DayRows view={data} plan={shown} today={date} />
             </Box>
           ) : (
-            <Box sx={{ mt: 3, fontSize: 14, color: tokens.ink.secondary }}>
+            <Box sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
               No week plan yet. The coach review (Claude) or Sunday’s weekly review drafts one.
             </Box>
           )}
@@ -252,9 +252,9 @@ export function WeekView({ date }: WeekViewProps) {
             <Box sx={{ mt: 3 }} data-testid="week-view-changes">
               <Label>Changed from last week{plan ? '' : ' (if accepted)'}</Label>
               {changes.length === 0 ? (
-                <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary }}>Same targets and sessions as last week.</Box>
+                <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Same targets and sessions as last week.</Box>
               ) : (
-                <Box component="ul" sx={{ m: 0, mt: 1, pl: 4, fontSize: 14, lineHeight: 1.6 }}>
+                <Box component="ul" sx={{ m: 0, mt: 1, pl: 4, fontSize: tokens.font.size.small, lineHeight: 1.6 }}>
                   {changes.map((c) => (
                     <li key={c}>{c}</li>
                   ))}

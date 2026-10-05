@@ -57,10 +57,10 @@ function DeltaLine({
   const Icon = delta.value < 0 ? ArrowDownwardRounded : ArrowUpwardRounded
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5, minWidth: 0 }}>
-      {!flat && <Icon sx={{ fontSize: 16, color }} aria-hidden />}
+      {!flat && <Icon sx={{ fontSize: tokens.font.size.body, color }} aria-hidden />}
       <Box
         component="span"
-        sx={{ fontSize: 14, fontWeight: tokens.font.weight.label, color, whiteSpace: 'nowrap' }}
+        sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color, whiteSpace: 'nowrap' }}
       >
         {formatSigned(delta.value, precision)}
         {unit ? ` ${unit}` : ''}
@@ -69,7 +69,7 @@ function DeltaLine({
         <Box
           component="span"
           sx={{
-            fontSize: 14,
+            fontSize: tokens.font.size.small,
             color: tokens.ink.secondary,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -148,7 +148,7 @@ export function StatCard({
         {unit && value !== null && (
           <Box
             component="span"
-            sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}
+            sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}
           >
             {unit}
           </Box>
@@ -157,7 +157,7 @@ export function StatCard({
       {delta && <DeltaLine delta={delta} fallbackUnit={unit} precision={precision} />}
       {sparkline && <Box sx={{ mt: 3 }}>{sparkline}</Box>}
       {footnote && (
-        <Box sx={{ mt: 2, fontSize: 13, color: tokens.ink.secondary, lineHeight: 1.4 }}>{footnote}</Box>
+        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.4 }}>{footnote}</Box>
       )}
     </Box>
   )

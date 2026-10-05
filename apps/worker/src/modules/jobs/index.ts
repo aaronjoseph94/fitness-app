@@ -121,7 +121,7 @@ export type SweepResult = { requeued: number; steps: Record<string, number>; ran
  */
 export async function sweep(deps: Deps, opts: { max?: number; fetch_budget?: number } = {}): Promise<SweepResult> {
   const max = opts.max ?? 5
-  let budget = opts.fetch_budget ?? SWEEP_FETCH_BUDGET
+  let budget = Math.min(opts.fetch_budget ?? SWEEP_FETCH_BUDGET, deps.budget ? deps.budget.limit - deps.budget.used : Infinity)
   const now = deps.now().toISOString()
 
   const requeued = await deps.db

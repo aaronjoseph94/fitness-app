@@ -1,6 +1,7 @@
 // Owns: the plan — append-only plan versions (exactly one active), proposals and their accept/reject, the materialised
 // daily targets (the v_day spine), and the forecast. Every change is guarded (engine applyGuards) and written as ONE
-// db.batch: deactivate old + insert new version + ai_events record + rebuilt daily_targets + a plan_reforecast job.
+// db.batch: deactivate old + insert new version + ai_events record + the change carried into the active week plans
+// from today on (a day in an active week plan takes its targets from it) + rebuilt daily_targets + a plan_reforecast job.
 // Interface:
 //   getActivePlan(deps) / listVersions(deps)            → PlanVersion / PlanVersion[] (newest first)
 //   createVersion(deps, { changes, reason, created_by? }) → VersionResult   guards as created_by (default deps.actor);
@@ -9,7 +10,8 @@
 //   propose(deps, { changes, reason })                   → ProposalResult   guarded, stored as a pending proposal
 //        (its body carries the guards' rejected and scheduled lists, as does a version's change event and the note
 //        written when nothing passed; PlanVersion reads them back as `rejected` / `scheduled`)
-//   acceptProposal(deps, id) / rejectProposal(deps, id) → ProposalDecision (idempotent replays; 409 on a reversal).
+//   acceptProposal(deps, id) / rejectProposal(deps, id) → ProposalDecision (idempotent replays; 409 on a reversal,
+//        and 409 not_due for a scheduled kcal step before its date).
 //        plan_change is handled here; every other kind by the handler its module registered:
 //   registerProposalHandler(kind, { accept, reject? })   training (workout, template_swap), week-plans (week_plan),
 //        reminders (reminder_time) register when they load, so plan never imports them
@@ -19,6 +21,8 @@
 //   materialiseTargets(deps, { from, to? })             → DailyTargets[]   rebuild those dates from the active version,
 //        settings, fasts and active week plans (call after any of them changes); `to` defaults to the materialised
 //        horizon, max(last date with targets, today + 14)
+//   targetStatementsFor(deps, { from, to? }, pending)   → statements (not run) rebuilding those dates as they will be
+//        once the caller's own write lands (pending fasts / deleted fasts / settings), for that write's batch
 //   ensureTargetsThrough(deps, date)                    → rows added       start_date … date all have targets
 //   weekPlanVersion(deps, { week_start, week_plan, reason, summary, extra }) → statements (not run) making a week
 //        plan the source of its week's targets (or, with null, handing the week back to the plan version) as one
@@ -29,7 +33,7 @@ import { addDays, today } from '@fitness/shared/engine'
 import type { Actor, DailyTargets, PlanChange, PlanVersion, Proposal, ProposalDecision, WeekPlanContent } from '@fitness/shared/schemas'
 import { desc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { plan_versions } from '../../db'
+import { plan_versions, runBatch } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { HttpError, notFound } from '../../lib/http-error'
 import { eventInsert, getProposalRow, proposalDecisionUpdate, toProposal } from '../events'
@@ -37,10 +41,18 @@ import { registerJobHandler, runSoon } from '../jobs'
 import { loadPlanContext, loadVerdicts, toPlanVersion, type PlanVersionRow } from './lib/context'
 import { reforecast } from './lib/forecast'
 import { proposalHandler, safeChange, type HandledKind, type ProposalOf, type SafeChangeInput, type SafeChangeResult } from './lib/proposals'
-import { ensureThrough, materialise, newRowTargets, runStatements, targetHorizon } from './lib/targets'
+import {
+  ensureThrough,
+  materialise,
+  newRowTargets,
+  pendingTargetStatements,
+  targetHorizon,
+  type PendingInputs,
+} from './lib/targets'
 import { applyChanges, guardChanges, versionStatements, type RejectedChange, type ScheduledChange } from './lib/versions'
 
 export type { RejectedChange, ScheduledChange } from './lib/versions'
+export type { PendingFast, PendingInputs } from './lib/targets'
 export {
   registerProposalHandler,
   type ProposalHandler,
@@ -115,7 +127,7 @@ export async function createVersion(
   input: { changes: readonly PlanChange[]; reason: string; created_by?: Actor },
 ): Promise<VersionResult> {
   const built = await buildChange(deps, input)
-  await runStatements(deps, built.statements)
+  await runBatch(deps.db, built.statements)
   if (built.job_id) runSoon(deps, built.job_id)
   return built.result
 }
@@ -140,7 +152,7 @@ export async function propose(deps: Deps, input: { changes: readonly PlanChange[
     body: { kind: 'plan_change', changes: g.accepted, rejected: g.rejected, scheduled: g.scheduled },
     proposal_status: 'pending',
   })
-  await runStatements(deps, [p.statement, ...g.statements])
+  await runBatch(deps.db, [p.statement, ...g.statements])
   const row = await getProposalRow(deps, p.id)
   return { proposal: row ? toProposal(row) : null, rejected: g.rejected, scheduled: g.scheduled }
 }
@@ -183,10 +195,12 @@ export async function acceptProposal(deps: Deps, id: string): Promise<ProposalDe
     return { proposal: await decided(deps, id, proposal), plan_version: await versionById(deps, outcome.plan_version_id), applied: outcome.applied }
   }
 
+  // A scheduled later step of a >150 kcal move waits for its week (SPEC §9: larger moves are split across weeks).
+  if (row.date && row.date > today(deps.now())) throw new HttpError(409, 'not_due', `This step is due ${row.date}`)
   const built = await buildChange(deps, { changes: proposal.body.changes, reason: `Accepted proposal: ${row.summary}`, created_by: row.actor })
   const status = built.row ? 'accepted' : 'rejected'
   try {
-    await runStatements(deps, [...built.statements, proposalDecisionUpdate(deps, id, { status, plan_version_id: built.row?.id ?? null })])
+    await runBatch(deps.db, [...built.statements, proposalDecisionUpdate(deps, id, { status, plan_version_id: built.row?.id ?? null })])
   } catch (e) {
     const again = await getProposalRow(deps, id) // a concurrent accept won the version number
     const replay = again && toProposal(again)
@@ -225,13 +239,18 @@ export async function restoreVersion(deps: Deps, id: string): Promise<PlanVersio
     created_by: deps.actor,
     extra: { restored_from: target.version },
   })
-  await runStatements(deps, v.statements)
+  await runBatch(deps.db, v.statements)
   runSoon(deps, v.job_id)
   return toPlanVersion(v.row)
 }
 
 export async function materialiseTargets(deps: Deps, range: { from: string; to?: string }): Promise<DailyTargets[]> {
   return materialise(deps, { from: range.from, to: range.to ?? (await targetHorizon(deps)) })
+}
+
+/** Daily-target statements for the caller's batch, computed as if `pending` were already written. */
+export function targetStatementsFor(deps: Deps, range: { from: string; to?: string }, pending: PendingInputs): Promise<BatchItem<'sqlite'>[]> {
+  return pendingTargetStatements(deps, range, pending)
 }
 
 export function ensureTargetsThrough(deps: Deps, date: string): Promise<number> {

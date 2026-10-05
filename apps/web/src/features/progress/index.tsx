@@ -1,19 +1,20 @@
 // Owns: the Progress tab (SPEC §11 chart inventory) — range selector (4 w / 12 w / all, kept in ?range=), the range's
-// headline numbers, then two columns from 900 px: weight and body (left), food, water and recovery (right), and the
-// training charts that later phases bring. Data: GET /api/days, /api/trend, /api/fasts, /api/settings.
+// headline numbers, then two columns from 900 px: weight and body (left), food, water and recovery (right), then
+// training (weekly volume, the weekly volume map with its 7-day slider, strength per exercise). Data: GET /api/days,
+// /api/trend, /api/fasts, /api/sessions, /api/settings.
 // Second entry point: ./series (the weight-series mapping Today shares).
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Stack from '@mui/material/Stack'
 import { useSearchParams } from 'react-router'
 import { useLocalToday } from '../../app/local-today'
-import { ChartCard, SectionHeader } from '../../components'
 import { tokens } from '../../theme'
 import { HabitsColumn } from './lib/HabitsColumn'
 import { isRangeKey, type RangeKey } from './lib/range'
 import { RangeToggle } from './lib/RangeToggle'
 import { latestTargets, rangeDays, rangeSummary } from './lib/series'
 import { SummaryStats } from './lib/SummaryStats'
+import { TrainingSection } from './lib/TrainingSection'
 import { useProgressData } from './lib/useProgressData'
 import { WeightColumn } from './lib/WeightColumn'
 import { WeeklyReviewsSection } from './lib/WeeklyReviewsSection'
@@ -28,7 +29,7 @@ export function ProgressPage() {
   const requested = params.get('range')
   const range: RangeKey = isRangeKey(requested) ? requested : '4w'
   const date = useLocalToday()
-  const { from, to, settings, days, trend, fasts } = useProgressData(range, date)
+  const { from, to, settings, days, trend, fasts, sessions } = useProgressData(range, date)
   const length = rangeDays(from, to)
   const goalKg = settings.data?.profile.goal_weight_kg ?? DEFAULT_GOAL_KG
   const summary = days.data && trend.data ? rangeSummary(days.data, trend.data.points) : null
@@ -39,7 +40,7 @@ export function ProgressPage() {
     <Stack spacing={4} data-testid="progress-page" aria-busy={refreshing}>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3 }}>
         <RangeToggle value={range} onChange={(next) => setParams(next === '4w' ? {} : { range: next }, { replace: true })} />
-        <Box sx={{ fontSize: 14, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
           {from} – {to}
         </Box>
       </Box>
@@ -61,23 +62,7 @@ export function ProgressPage() {
         </Grid>
       </Grid>
 
-      <Box>
-        <SectionHeader title="Training" subtitle="Volume and strength charts arrive with session logging." />
-        <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-          <ChartCard
-            title="Training volume per week"
-            subtitle="Sets × reps × kg, stacked by muscle group"
-            empty={{ title: 'Arrives in phase 3', body: 'Session logging brings weekly volume and the muscle map.', illustration: null }}
-            testId="placeholder-volume"
-          />
-          <ChartCard
-            title="Strength per exercise"
-            subtitle="Top set load and estimated 1RM"
-            empty={{ title: 'Arrives in phase 3', body: 'Each exercise gets its load and e1RM line once sets are logged.', illustration: null }}
-            testId="placeholder-strength"
-          />
-        </Box>
-      </Box>
+      <TrainingSection sessions={sessions} from={from} to={to} />
 
       <WeekViewSection date={date} />
 

@@ -20,7 +20,7 @@ export function RangeToggle({ value, onChange }: { value: RangeKey; onChange: (r
           px: 5,
           textTransform: 'none',
           fontWeight: tokens.font.weight.label,
-          fontSize: 15,
+          fontSize: tokens.font.size.emphasis,
         },
       }}
     >

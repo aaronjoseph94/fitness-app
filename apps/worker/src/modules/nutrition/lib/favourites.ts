@@ -1,5 +1,6 @@
 // Owns: favourites — one-tap repeats: a food with default grams, or a recipe (foods with grams) — with the nutrition of
 // one default portion and the named foods in it, their sort order, deleting one, and the meal items it expands to.
+import { sumNutrients } from '@fitness/shared/engine'
 import type { Favourite, FavouriteCreate, FavouriteItem, FavouritePatch, MealItemInput, Nutrients, Ok, RecipeItem } from '@fitness/shared/schemas'
 import { asc, eq, max } from 'drizzle-orm'
 import { favorites, type Row } from '../../../db'
@@ -7,7 +8,6 @@ import type { Deps } from '../../../lib/deps'
 import { badRequest, notFound } from '../../../lib/http-error'
 import { nutritionFor } from '../../food-sources'
 import { foodLabel, foodsByIds, type FoodRow } from './foods'
-import { sumNutrients } from './meals'
 
 type FavouriteRow = Row<typeof favorites>
 

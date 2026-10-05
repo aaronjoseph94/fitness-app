@@ -1,5 +1,5 @@
 // Owns: the /api plan route group (thin: validate via the shared contract, call module entry points).
-// Week plans (GET/POST /api/week-plans, POST /api/week-plans/:id/apply) arrive with phase 4.
+// Week plans have their own group (routes/week-plans.ts).
 import { endpoints } from '@fitness/shared/api'
 import type { App } from '../env'
 import { route } from '../lib/route'

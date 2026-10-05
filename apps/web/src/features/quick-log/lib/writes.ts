@@ -25,6 +25,7 @@ const REFRESHES = new Map<Endpoint, readonly Endpoint[]>([
   [fasting.start, [fasting.list, day.get, day.range]],
   [fasting.end, [fasting.list, day.get, day.range]],
   [fasting.plan, [fasting.list, day.get, day.range]],
+  [fasting.cancel, [fasting.list, day.get, day.range]],
   [health.createSleep, [day.get, day.range]],
   [health.createSteps, [day.get, day.range]],
 ])
@@ -33,7 +34,8 @@ function logMutationKey(endpoint: Endpoint): readonly unknown[] {
   return ['log', endpoint.method, endpoint.path]
 }
 
-async function refresh(queryClient: QueryClient, endpoint: Endpoint): Promise<void> {
+/** Refetch what a write to `endpoint` made stale (for a write made with `call`, outside useLogMutation). */
+export async function refreshAfter(queryClient: QueryClient, endpoint: Endpoint): Promise<void> {
   const stale = REFRESHES.get(endpoint) ?? []
   await Promise.all(stale.map((e) => queryClient.invalidateQueries({ queryKey: apiQueryKey(e) })))
 }
@@ -48,8 +50,8 @@ export function useLogMutation<E extends Endpoint>(endpoint: E) {
     mutationKey: logMutationKey(endpoint),
     onSuccess: async (outcome: WriteOutcome<E>) => {
       // A queued write must not wait on a refetch that may hang until the network times out.
-      if (outcome.status === 'saved') await refresh(queryClient, endpoint)
-      else void refresh(queryClient, endpoint)
+      if (outcome.status === 'saved') await refreshAfter(queryClient, endpoint)
+      else void refreshAfter(queryClient, endpoint)
     },
   })
 }

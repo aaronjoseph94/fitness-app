@@ -12,9 +12,9 @@ export function PhotoGrid({ photos, onOpen, showPose }: { photos: readonly Progr
     <Box data-testid="photo-grid" sx={{ display: 'grid', gap: 5 }}>
       {groupByMonth(photos).map((group) => (
         <Box component="section" key={group.month} aria-label={monthLabel(group.month)}>
-          <Box component="h2" sx={{ m: 0, mb: 2, fontSize: 15, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+          <Box component="h2" sx={{ m: 0, mb: 2, fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
             {monthLabel(group.month)}
-            <Box component="span" sx={{ ml: 2, fontWeight: tokens.font.weight.body, color: tokens.ink.secondary, fontSize: 13 }}>
+            <Box component="span" sx={{ ml: 2, fontWeight: tokens.font.weight.body, color: tokens.ink.secondary, fontSize: tokens.font.size.label }}>
               {group.photos.length} {group.photos.length === 1 ? 'photo' : 'photos'}
             </Box>
           </Box>

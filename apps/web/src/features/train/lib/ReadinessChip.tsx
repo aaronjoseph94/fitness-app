@@ -52,19 +52,19 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
         aria-label={`Readiness ${readiness.score} of 100. Details`}
         data-testid="readiness-chip"
         sx={{
-          height: 32,
+          minHeight: tokens.tapTarget,
           px: 2.5,
           gap: 1,
           borderRadius: tokens.radius.chip,
           bgcolor: withAlpha(tone, 0.1),
           color: tone,
-          fontSize: 14,
+          fontSize: tokens.font.size.small,
           fontWeight: tokens.font.weight.heading,
           fontVariantNumeric: 'tabular-nums',
           flex: 'none',
         }}
       >
-        <BoltRounded sx={{ fontSize: 18 }} aria-hidden />
+        <BoltRounded sx={{ fontSize: tokens.font.size.cardTitle }} aria-hidden />
         Readiness {readiness.score}
       </ButtonBase>
       <Popover
@@ -84,7 +84,7 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
           },
         }}
       >
-        <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading }}>
+        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>
           Readiness {readiness.score} / 100
         </Box>
         <Box
@@ -96,7 +96,7 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
             gridTemplateColumns: 'auto 1fr',
             columnGap: 3,
             rowGap: 1.5,
-            fontSize: 14,
+            fontSize: tokens.font.size.small,
           }}
         >
           {rows.map(([label, value]) => (
@@ -113,7 +113,7 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
         <Box
           sx={{
             mt: 3,
-            fontSize: 13,
+            fontSize: tokens.font.size.label,
             color: readiness.reduced_volume ? tokens.status.flag : tokens.ink.secondary,
             lineHeight: 1.45,
           }}

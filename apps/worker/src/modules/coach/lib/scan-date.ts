@@ -5,8 +5,7 @@
 import { today } from '@fitness/shared/engine'
 import type { Deps } from '../../../lib/deps'
 import { badRequest } from '../../../lib/http-error'
-import { eventInsert } from '../../events'
-import { scanSchedule, type ScanScheduledNoteBody } from '../../scans'
+import { scanDateNote, scanSchedule } from '../../scans'
 import type { NextScan, ScanScheduled } from './schemas'
 
 /** The scheduled date in force (null when none was set since the last scan, or it was cleared). */
@@ -30,11 +29,6 @@ export async function scheduleScan(deps: Deps, date: string | null): Promise<Sca
   if (date !== null && date < today(deps.now()))
     throw badRequest(`A scan date must be today or later (got ${date})`)
   const previous_scheduled = await scheduledScanDate(deps)
-  const text =
-    date === null
-      ? 'Next Evolt scan back on the usual interval'
-      : `Evolt scan planned for ${date}. Same conditions as the baseline: morning, fasted, no training the day before.`
-  const body: ScanScheduledNoteBody = { text, flag: 'scan_scheduled', scan_date: date }
-  await eventInsert(deps, { kind: 'note', summary: text, body, date: today(deps.now()) }).statement
+  await scanDateNote(deps, date)
   return { ...(await nextScan(deps)), previous_scheduled }
 }

@@ -77,7 +77,7 @@ export function ProposalCard({
         sx={{
           m: 0,
           mt: 1.5,
-          fontSize: 18,
+          fontSize: tokens.font.size.cardTitle,
           fontWeight: tokens.font.weight.heading,
           color: tokens.ink.text,
           lineHeight: 1.3,
@@ -85,7 +85,7 @@ export function ProposalCard({
       >
         {title}
       </Box>
-      <Box sx={{ mt: 1.5, fontSize: 15, color: tokens.ink.secondary, lineHeight: 1.5 }}>{summary}</Box>
+      <Box sx={{ mt: 1.5, fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>{summary}</Box>
 
       {changes && changes.length > 0 && (
         <Box component="dl" sx={{ m: 0, mt: 3, borderTop: `1px solid ${tokens.ink.border}` }}>
@@ -100,14 +100,14 @@ export function ProposalCard({
                 borderBottom: `1px solid ${tokens.ink.border}`,
               }}
             >
-              <Box component="dt" sx={{ flex: 1, minWidth: 0, fontSize: 14, color: tokens.ink.secondary }}>
+              <Box component="dt" sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
                 {c.label}
               </Box>
               <Box
                 component="dd"
                 sx={{
                   m: 0,
-                  fontSize: 14,
+                  fontSize: tokens.font.size.small,
                   color: tokens.ink.text,
                   fontVariantNumeric: 'tabular-nums',
                   whiteSpace: 'nowrap',
@@ -129,7 +129,7 @@ export function ProposalCard({
       {children && <Box sx={{ mt: 3 }}>{children}</Box>}
 
       {decided ? (
-        <Box sx={{ mt: 3, fontSize: 14, fontWeight: tokens.font.weight.label, color: decided.color }}>
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: decided.color }}>
           {decided.text}
         </Box>
       ) : (

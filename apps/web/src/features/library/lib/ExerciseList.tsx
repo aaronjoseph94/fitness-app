@@ -61,7 +61,7 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box
                   sx={{
-                    fontSize: 15,
+                    fontSize: tokens.font.size.emphasis,
                     fontWeight: tokens.font.weight.label,
                     color: tokens.ink.text,
                     lineHeight: 1.3,
@@ -73,7 +73,7 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
                 >
                   {e.name}
                 </Box>
-                <Box sx={{ fontSize: 13, color: tokens.ink.secondary, mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {!e.allowed && <Box component="span" sx={{ color: tokens.status.warning, fontWeight: tokens.font.weight.label }}>Hidden · </Box>}
                   {musclesLine(e)}
                 </Box>

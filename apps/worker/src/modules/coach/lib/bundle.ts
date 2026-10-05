@@ -9,6 +9,7 @@
 import {
   addDays,
   daysBetween,
+  fastDay,
   isoWeek,
   KCAL_STEP,
   localDate,
@@ -341,7 +342,7 @@ export async function reviewBundle(deps: Deps, q: BundleQuery): Promise<ReviewBu
     upcoming: {
       fasts: fasts
         .filter((f) => f.started_at > now)
-        .map((f) => ({ id: f.id, date: localDate(f.started_at), starts_at: f.started_at, note: f.note })),
+        .map((f) => ({ id: f.id, date: localDate(f.started_at), fast_day: fastDay(f, s.fast_hours), starts_at: f.started_at, note: f.note })),
       scan,
       week_plans: plans,
     },

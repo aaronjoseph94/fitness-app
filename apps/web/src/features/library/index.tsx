@@ -7,5 +7,5 @@ export { LibraryPage, ExercisePage } from './lib/LibraryPage'
 export { EquipmentPage } from './lib/EquipmentPage'
 export { useExercises, useExerciseIndex, type ExerciseIndex } from './lib/useExercises'
 export { ExerciseThumb, type ExerciseThumbProps } from './lib/ExerciseThumb'
-/** Map levels for one exercise: primary muscles 4, secondary 2 (the detail sheet's map). */
-export { exerciseLevels } from './lib/ExerciseDetail'
+/** Map levels for one exercise (primary 4, secondary 2), and an exercise's history as strength chart points. */
+export { exerciseLevels, strengthSessions } from './lib/ExerciseDetail'

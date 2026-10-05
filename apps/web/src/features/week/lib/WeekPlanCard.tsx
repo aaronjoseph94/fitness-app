@@ -49,11 +49,11 @@ function weekStrip(date: LocalDate, day: DayView | undefined, plan: WeekPlan | n
 function Target({ label, value, unit }: { label: string; value: number | null; unit: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Box sx={{ fontSize: 12, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>{label}</Box>
-      <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+      <Box sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>{label}</Box>
+      <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
         {formatNumber(value)}
         {value !== null && unit && (
-          <Box component="span" sx={{ ml: 0.75, fontSize: 12, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
+          <Box component="span" sx={{ ml: 0.75, fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
             {unit}
           </Box>
         )}
@@ -90,7 +90,7 @@ function Strip({ strip, date }: { strip: StripDay[]; date: LocalDate }) {
               }}
             >
               <Box sx={{ fontSize: 11, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>{formatWeekday(d.date)}</Box>
-              <Box sx={{ fontSize: 15, fontWeight: isToday ? tokens.font.weight.number : tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
+              <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: isToday ? tokens.font.weight.number : tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
                 {Number(d.date.slice(8))}
               </Box>
               <Box sx={{ display: 'flex', gap: 0.5, height: 8 }} aria-hidden>
@@ -102,7 +102,7 @@ function Strip({ strip, date }: { strip: StripDay[]; date: LocalDate }) {
           )
         })}
       </Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 1.5, fontSize: 12, color: tokens.ink.secondary }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 1.5, fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{ width: 6, height: 6, borderRadius: tokens.radius.chip, bgcolor: tokens.ink.text }} /> Training
         </Box>
@@ -128,26 +128,26 @@ function TrainingToday({ day, planned, training, fastDay }: { day: DayView | und
     <Box sx={{ mt: 4 }}>
       <Label>Training today</Label>
       {s ? (
-        <Box sx={{ mt: 1, fontSize: 16, fontWeight: tokens.font.weight.label }} data-testid="training-today">
+        <Box sx={{ mt: 1, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }} data-testid="training-today">
           {s.ended_at ? 'Done' : 'In progress'}: {s.template_name ?? 'Session'} · {s.sets_done} sets · {formatNumber(s.volume_kg)} kg
         </Box>
       ) : planned ? (
         <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
           <SessionThumb session={planned} size={96} />
           <Box sx={{ minWidth: 0 }}>
-            <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading, overflowWrap: 'anywhere' }} data-testid="training-today">
+            <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, overflowWrap: 'anywhere' }} data-testid="training-today">
               {planned.name}
             </Box>
-            <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>{sessionDetail(planned)}</Box>
-            <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>Start it from the Train tab.</Box>
+            <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{sessionDetail(planned)}</Box>
+            <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Start it from the Train tab.</Box>
           </Box>
         </Box>
       ) : (
-        <Box sx={{ mt: 1, fontSize: 16, fontWeight: tokens.font.weight.label }} data-testid="training-today">
+        <Box sx={{ mt: 1, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }} data-testid="training-today">
           {training ? 'Training day' : 'Rest day'}
         </Box>
       )}
-      {fastDay && <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>Fast day: keep any training light.</Box>}
+      {fastDay && <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Fast day: keep any training light.</Box>}
     </Box>
   )
 }
@@ -171,17 +171,17 @@ export function WeekPlanCard({ date, day, trainingDays }: WeekPlanCardProps) {
   return (
     <Card data-testid="this-week" sx={{ p: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Box component="h2" sx={{ m: 0, fontSize: 18, fontWeight: tokens.font.weight.heading, flex: 1 }}>
+        <Box component="h2" sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, flex: 1 }}>
           This week
         </Box>
         {plan && <PlanBadge plan={plan} />}
       </Box>
-      <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>{source}</Box>
+      <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{source}</Box>
 
       <Strip strip={strip} date={date} />
 
       {plan?.plan.focus_note && (
-        <Box sx={{ mt: 3, fontSize: 15, lineHeight: 1.5, color: tokens.ink.text }} data-testid="week-focus">
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.emphasis, lineHeight: 1.5, color: tokens.ink.text }} data-testid="week-focus">
           {plan.plan.focus_note}
         </Box>
       )}
@@ -203,7 +203,7 @@ export function WeekPlanCard({ date, day, trainingDays }: WeekPlanCardProps) {
             <Target label="Steps" value={t?.steps ?? plan?.plan.steps ?? null} unit="" />
           </Box>
         ) : (
-          <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary }}>No targets for today yet; they come from the active plan.</Box>
+          <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>No targets for today yet; they come from the active plan.</Box>
         )}
       </Box>
 
@@ -213,10 +213,10 @@ export function WeekPlanCard({ date, day, trainingDays }: WeekPlanCardProps) {
         <Box sx={{ mt: 4 }} data-testid="week-changes">
           <Label>Changed from last week</Label>
           {changes.length === 0 ? (
-            <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary }}>Same targets and sessions as last week.</Box>
+            <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Same targets and sessions as last week.</Box>
           ) : (
             <>
-              <Box component="ul" sx={{ m: 0, mt: 1, pl: 4, fontSize: 14, lineHeight: 1.6 }}>
+              <Box component="ul" sx={{ m: 0, mt: 1, pl: 4, fontSize: tokens.font.size.small, lineHeight: 1.6 }}>
                 {(allChanges ? changes : changes.slice(0, CHANGES_SHOWN)).map((c) => (
                   <li key={c}>{c}</li>
                 ))}

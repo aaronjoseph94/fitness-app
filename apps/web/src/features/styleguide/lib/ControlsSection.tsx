@@ -53,7 +53,7 @@ export function ControlsSection() {
             {[250, 500, 750].map((ml) => (
               <Chip
                 key={ml}
-                icon={<WaterDropOutlined sx={{ fontSize: 18 }} />}
+                icon={<WaterDropOutlined sx={{ fontSize: tokens.font.size.cardTitle }} />}
                 label={`${ml} ml`}
                 variant={water === ml ? 'filled' : 'outlined'}
                 color={water === ml ? 'secondary' : 'default'}

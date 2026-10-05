@@ -69,6 +69,8 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
   const config = opts.config ? ProvidersConfig.parse(opts.config) : defaultConfig
   const fetchFn: FetchFn = opts.fetch ?? ((input, init) => fetch(input, init))
   const budget = opts.budget ?? { limit: DEFAULT_FETCH_BUDGET, used: 0 }
+  // Its own cap and the invocation's tally (deps.budget), so jobs and requests in one invocation stay under 50.
+  const budgets = deps.budget ? [budget, deps.budget] : [budget]
   const nowMs = () => deps.now().getTime()
 
   async function chat<T = string>(req: ChatRequest<T>): Promise<ChatResult<T>> {
@@ -83,7 +85,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
       tools: (req.tools ?? []).map((t) => ({
         name: t.name,
         description: t.description,
-        parameters: jsonSchemaOf(t.parameters),
+        parameters: t.parameters instanceof z.ZodType ? jsonSchemaOf(t.parameters) : t.parameters,
       })),
       jsonSchema: req.schema ? jsonSchemaOf(req.schema) : null,
       maxTokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
@@ -192,7 +194,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
           const wire = adapter.build(c.provider, c.spec, key, { ...prepared, messages })
           turn = adapter.parse(
             c.spec,
-            await send(fetchFn, budget, wire, Math.min(c.spec.timeout_ms, remaining()), nowMs()),
+            await send(fetchFn, budgets, wire, Math.min(c.spec.timeout_ms, remaining()), nowMs()),
           )
         } catch (e) {
           if (!(e instanceof AttemptFailure)) throw e // BudgetError and programming errors

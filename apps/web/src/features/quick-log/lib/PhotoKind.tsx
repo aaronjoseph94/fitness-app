@@ -3,6 +3,7 @@
 import Box from '@mui/material/Box'
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router'
+import { tokens } from '../../../theme'
 
 export function PhotoKind({ onLeave }: { onLeave: () => void }) {
   const navigate = useNavigate()
@@ -14,5 +15,5 @@ export function PhotoKind({ onLeave }: { onLeave: () => void }) {
     onLeave()
     void navigate('/photos/new')
   }, [navigate, onLeave])
-  return <Box sx={{ py: 4, textAlign: 'center', fontSize: 14, color: 'text.secondary' }}>Opening the camera…</Box>
+  return <Box sx={{ py: 4, textAlign: 'center', fontSize: tokens.font.size.small, color: 'text.secondary' }}>Opening the camera…</Box>
 }

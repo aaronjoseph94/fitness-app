@@ -14,9 +14,9 @@ export const FASTING_TOOLS: readonly ToolDefinition[] = [
     title: 'Start a fast',
     area: 'fasting',
     description:
-      "Start a 24 h fast now (or at `at`). If a planned fast is on today's calendar and has not begun, that one starts; otherwise an ad-hoc fast starts. Today becomes a fast day: intake target 0, water target up, training light, meal reminders off. Fails with fast_active while another fast runs.",
+      "Start a 24 h fast now (or at `at`, now or earlier; a future fast is planned with plan_fast). If a planned fast is on today's calendar and has not begun, that one starts; otherwise an ad-hoc fast starts. Today becomes a fast day: intake target 0, water target up, training light, meal reminders off. Fails with fast_active while another fast runs.",
     input: z.object({
-      at: Instant.optional().describe('Start instant; default now'),
+      at: Instant.optional().describe('Start instant, now or earlier; default now'),
       note: z.string().trim().max(500).optional(),
     }),
     output: Fast,
@@ -35,8 +35,8 @@ export const FASTING_TOOLS: readonly ToolDefinition[] = [
     title: 'End the fast',
     area: 'fasting',
     description:
-      'End the fast that is running now (at `at`, default now). The weekly review reports it as completed (≥ 95 % of 24 h) or partial with its real hours.',
-    input: z.object({ at: Instant.optional().describe('End instant; default now') }),
+      'End the fast that is running now (at `at`, now or earlier; default now). The weekly review reports it as completed (≥ 95 % of 24 h) or partial with its real hours.',
+    input: z.object({ at: Instant.optional().describe('End instant, now or earlier; default now') }),
     output: Fast,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     run: async (deps, i) => {
@@ -53,7 +53,7 @@ export const FASTING_TOOLS: readonly ToolDefinition[] = [
     title: 'Plan a fast',
     area: 'fasting',
     description:
-      "Put a 24 h fast on the calendar for a future Edmonton date (default start 19:00, dinner to dinner), or move a planned fast with fast_id. The fasting pattern rail allows settings.fasts_per_month (2) fasts in a calendar month; a third fails with fasting_pattern. The fast days' targets are rebuilt and the fast reminders follow. Plan only dates Aaron picked.",
+      "Put a 24 h fast on the calendar for a future Edmonton date (default start 19:00, dinner to dinner), or move a planned fast with fast_id. The fasting pattern rail allows settings.fasts_per_month (2) fasts in a calendar month; a third fails with fasting_pattern. The fast day (0 kcal target) is the date holding most of the fast — a 19:00 start makes the next day the fast day; its targets are rebuilt, the week plan's fast_dates and the fast reminders follow. Plan only dates Aaron picked.",
     input: z.object({
       date: LocalDate,
       time: LocalTime.optional().describe(`HH:MM Edmonton start; default ${DEFAULT_FAST_TIME}`),

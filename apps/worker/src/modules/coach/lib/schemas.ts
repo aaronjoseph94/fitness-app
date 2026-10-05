@@ -17,6 +17,7 @@ import {
   LocalTime,
   MeasurementSite,
   MilestoneKind,
+  MovableTargetField,
   MuscleScores,
   Nutrients,
   PlanChange,
@@ -25,7 +26,6 @@ import {
   ReminderKind,
   ReviewFlag,
   ScanSegment,
-  TargetField,
   TemplateExerciseInput,
   Weekday,
 } from '@fitness/shared/schemas'
@@ -145,7 +145,7 @@ export const ReviewChange = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('target'),
-      field: TargetField,
+      field: MovableTargetField,
       weekday: Weekday.nullable()
         .default(null)
         .describe('null = every day (the default); a weekday = that weekday only'),
@@ -153,7 +153,7 @@ export const ReviewChange = z.discriminatedUnion('kind', [
       reason: Reason.optional(),
     })
     .describe(
-      'Move one daily target (kcal, protein_g, carbs_g, fat_g, fibre_g, water_ml, steps). Water target = field water_ml.',
+      'Move one daily target (kcal, protein_g, fat_g, fibre_g, water_ml, steps). Carbs are the remainder of kcal after protein and fat, so they move with those. Water target = field water_ml.',
     ),
   z
     .object({
@@ -229,7 +229,9 @@ export const ReviewChange = z.discriminatedUnion('kind', [
       note: z.string().max(500).optional(),
       reason: Reason.optional(),
     })
-    .describe('Plan a 24 h fast (or move a planned one). At most settings.fasts_per_month per month.'),
+    .describe(
+      'Plan a 24 h fast (or move a planned one). At most settings.fasts_per_month per month. The 0 kcal fast day is the date holding most of it (a 19:00 start makes the next day the fast day).',
+    ),
   z
     .object({ kind: z.literal('fast_cancel'), fast_id: Id, reason: Reason.optional() })
     .describe('Cancel a planned fast that has not started.'),
@@ -264,6 +266,12 @@ export const ApplyReviewInput = z.object({
   ),
   highlights: z.array(z.string().trim().min(1).max(300)).max(8).optional(),
   concerns: z.array(z.string().trim().min(1).max(300)).max(8).optional(),
+  record_review: z
+    .boolean()
+    .default(true)
+    .describe(
+      "true (default) only for the weekly coach_review: the narrative becomes that week's review. false for a scan debrief, program design or plateau check: the changes apply and stay revertible, the narrative is kept as a note, and the week's review (and its Sunday draft) is left alone.",
+    ),
 })
 export type ApplyReviewInput = z.infer<typeof ApplyReviewInput>
 
@@ -489,7 +497,16 @@ export const ReviewBundle = z.object({
     }),
   ),
   upcoming: z.object({
-    fasts: z.array(z.object({ id: Id, date: LocalDate, starts_at: Instant, note: z.string().nullable() })),
+    fasts: z.array(
+      z.object({
+        id: Id,
+        date: LocalDate,
+        /** The 0 kcal day it makes (one per fast; a 19:00 start makes the next day): what a week plan's fast_dates list. */
+        fast_day: LocalDate.nullable(),
+        starts_at: Instant,
+        note: z.string().nullable(),
+      }),
+    ),
     scan: NextScan,
     week_plans: z.array(z.object({ id: Id, week_start: LocalDate, status: z.string(), author: z.string() })),
   }),

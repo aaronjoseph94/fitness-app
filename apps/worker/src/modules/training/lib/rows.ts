@@ -163,12 +163,7 @@ export function toTemplate(row: TemplateRow, items: readonly TemplateExerciseRow
 /** Unique values in first-seen order. */
 export const unique = <T>(xs: Iterable<T>): T[] => [...new Set(xs)]
 
-/** Split for ≤ 100 bound parameters per statement. */
-export function chunk<T>(xs: readonly T[], size: number): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size))
-  return out
-}
+export { chunk } from '../../../db'
 
 export const round = (x: number, dp = 1) => Math.round(x * 10 ** dp) / 10 ** dp
 

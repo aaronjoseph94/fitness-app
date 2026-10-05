@@ -1,7 +1,8 @@
 // Owns: the workout builder page (/train/builder, /train/builder/:templateId, /train/builder?from=<id> to duplicate;
 // SPEC §7) — name, a live muscle map of the template's scores, the exercise list (tap to add from the picker, drag to
 // reorder, per-exercise sets / rep range / load / rest / note), notes, "Fill with AI" into a preview, and a sticky
-// Start / Save bar. Leaving with unsaved changes asks first.
+// Start / Save bar. The fill's pending workout proposal goes with the next create or start (accepting it). Leaving with
+// unsaved changes asks first.
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
@@ -24,16 +25,15 @@ import Typography from '@mui/material/Typography'
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { endpoints } from '@fitness/shared/api'
-import { SESSION_SETS } from '@fitness/shared/engine'
+import { SESSION_SETS, today } from '@fitness/shared/engine'
 import type { WorkoutDraft } from '@fitness/shared/schemas'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useApiQuery } from '../../../api'
-import { EmptyState, SectionHeader } from '../../../components'
+import { problemText, useApiQuery } from '../../../api'
+import { EmptyState, formatShortDate, LoadProblem, SectionHeader } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, useExerciseIndex } from '../../library'
-import { LoadProblem, problemText } from '../../quick-log'
 import { AiWorking } from './AiWorking'
 import { AiWorkoutPreview } from './AiWorkoutPreview'
 import { ExerciseCard } from './ExerciseCard'
@@ -63,6 +63,8 @@ export function BuilderPage() {
   const [aiOpen, setAiOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [showProblems, setShowProblems] = useState(false)
+  /** The pending workout proposal of the AI fill now in the builder; sent with the next create or start, then cleared. */
+  const [proposalId, setProposalId] = useState<string | null>(null)
   /** Set before a navigation the builder makes itself (after a save, into a session), so it is not blocked. */
   const leaving = useRef(false)
   const nameRef = useRef<HTMLInputElement | null>(null)
@@ -112,7 +114,8 @@ export function BuilderPage() {
       if (!state.name.trim()) nameRef.current?.focus()
       return null
     }
-    const name = state.name.trim() || `AI workout ${new Date().toISOString().slice(0, 10)}`
+    const name = state.name.trim() || `AI · ${formatShortDate(today(Date.now()))}`
+    const proposal_id = override?.proposal_id ?? proposalId ?? undefined
     try {
       const outcome = await writes.save({
         id: templateId,
@@ -120,8 +123,11 @@ export function BuilderPage() {
         origin: state.origin,
         notes: state.notes.trim() || override?.rationale.trim() || null,
         exercises: list,
+        proposal_id,
       })
       builder.markSaved()
+      // A new template accepted it; a replace cannot, so the next start sends it instead.
+      if (!templateId) setProposalId(null)
       if (!templateId) {
         loaded.current = `${outcome.templateId}|`
         leaving.current = true
@@ -136,11 +142,12 @@ export function BuilderPage() {
   }
 
   const start = async (override?: WorkoutDraft) => {
+    const proposal_id = override?.proposal_id ?? proposalId ?? undefined
     const id = builder.dirty || !templateId || override ? await save(override) : templateId
     if (!id) return
     leaving.current = true
     try {
-      await writes.start(id, override ? 'ai' : 'template')
+      await writes.start(id, override ? 'ai' : 'template', proposal_id)
     } catch (e) {
       leaving.current = false
       setNotice(problemText(e))
@@ -193,12 +200,12 @@ export function BuilderPage() {
             <Box sx={{ fontSize: 32, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }} data-testid="builder-sets">
               {training.totalSets}
             </Box>
-            <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>
+            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
               sets · {state.items.length} exercise{state.items.length === 1 ? '' : 's'}
             </Box>
-            {training.top.length > 0 && <Box sx={{ fontSize: 14, mt: 2, lineHeight: 1.45 }}>{training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}</Box>}
+            {training.top.length > 0 && <Box sx={{ fontSize: tokens.font.size.small, mt: 2, lineHeight: 1.45 }}>{training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}</Box>}
             {training.outsideRail && (
-              <Box sx={{ fontSize: 13, mt: 1.5, color: tokens.status.warning }}>
+              <Box sx={{ fontSize: tokens.font.size.label, mt: 1.5, color: tokens.status.warning }}>
                 {training.outsideRail === 'under' ? `Under ${SESSION_SETS.min} sets` : `Over ${SESSION_SETS.max} sets`} (session range {SESSION_SETS.min}–{SESSION_SETS.max})
               </Box>
             )}
@@ -249,7 +256,7 @@ export function BuilderPage() {
           Add exercise
         </Button>
         {state.items.length === 0 && (
-          <Box sx={{ mt: 2, fontSize: 14, color: tokens.ink.secondary, textAlign: 'center' }}>Add one or two exercises, then let the AI fill a balanced session.</Box>
+          <Box sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.ink.secondary, textAlign: 'center' }}>Add one or two exercises, then let the AI fill a balanced session.</Box>
         )}
       </Box>
 
@@ -316,6 +323,7 @@ export function BuilderPage() {
                 onSwap={(next) => ai.setDraft(next)}
                 onSave={(draft) => {
                   builder.replaceAll(draft.exercises, { notes: state.notes.trim() ? state.notes : draft.rationale })
+                  setProposalId(draft.proposal_id ?? null)
                   setAiOpen(false)
                   ai.reset()
                   setNotice('AI fill added · review and save')

@@ -18,20 +18,9 @@ import type { Favourite, MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { formatNumber } from '../../../components'
 import { tokens } from '../../../theme'
-import {
-  clockOf,
-  dateOf,
-  draftTotals,
-  instantAt,
-  ItemsEditor,
-  problemText,
-  SLOT_LABEL,
-  toItemInputs,
-  useLogMutation,
-  visibleSlots,
-  type DraftItem,
-} from '../../quick-log'
+import { clockOf, dateOf, draftTotals, instantAt, ItemsEditor, SLOT_LABEL, toItemInputs, useLogMutation, visibleSlots, type DraftItem } from '../../quick-log'
 import { draftFromView, type MealView } from './meals'
+import { problemText } from '../../../api'
 
 export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView; breakfastEnabled: boolean; onClose: () => void }) {
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
@@ -86,18 +75,18 @@ export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView
         </Box>
         <TextField label="Time" type="time" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ maxWidth: 180 }} />
 
-        {meal.rawText && <Box sx={{ fontSize: 14, color: 'text.secondary' }}>Logged as “{meal.rawText}”</Box>}
+        {meal.rawText && <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>Logged as “{meal.rawText}”</Box>}
 
         <ItemsEditor items={items} onChange={setItems} disabled={update.isPending} />
-        {items.length === 0 && <Box sx={{ fontSize: 14, color: 'text.secondary' }}>No items. Add one, or delete the meal from its menu.</Box>}
+        {items.length === 0 && <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>No items. Add one, or delete the meal from its menu.</Box>}
         {update.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(update.error)}
           </Box>
         )}
       </DialogContent>
       <DialogActions sx={{ px: 6, pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`, gap: 2 }}>
-        <Box sx={{ flex: 1, fontSize: 14, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
           {items.length > 0 ? `${formatNumber(totals.kcal)}${complete ? '' : '+'} kcal` : ''}
         </Box>
         {meal.status === 'review' ? (
@@ -124,11 +113,11 @@ export function DeleteMealDialog({ meal, onClose }: { meal: MealView; onClose: (
   return (
     <Dialog open onClose={onClose} aria-labelledby="delete-meal-title" maxWidth="xs" fullWidth>
       <DialogTitle id="delete-meal-title">Delete this {SLOT_LABEL[meal.slot].toLowerCase()}?</DialogTitle>
-      <DialogContent sx={{ fontSize: 15, color: 'text.secondary' }}>
+      <DialogContent sx={{ fontSize: tokens.font.size.emphasis, color: 'text.secondary' }}>
         {clockOf(meal.eatenAt)} · {meal.items.length > 0 ? meal.items.map((i) => i.description).join(', ') : (meal.rawText ?? 'No items')}
         {meal.totals ? ` · ${formatNumber(meal.totals.kcal)} kcal` : ''}
         {remove.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: 14, mt: 2 }}>
+          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small, mt: 2 }}>
             {problemText(remove.error)}
           </Box>
         )}
@@ -165,7 +154,7 @@ export function SaveFavouriteDialog({ meal, favourites, onClose }: { meal: MealV
     <Dialog open onClose={onClose} aria-labelledby="save-favourite-title" maxWidth="xs" fullWidth>
       <DialogTitle id="save-favourite-title">Save as favourite</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 3 }}>
-        <Box sx={{ fontSize: 14, color: 'text.secondary', lineHeight: 1.5 }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: 1.5 }}>
           {foods.length === 1
             ? `One tap logs ${formatNumber(foods[0]?.grams ?? 0)} g of it, adjustable.`
             : `A recipe of ${foods.length} foods with their grams; one tap logs it all.`}
@@ -173,7 +162,7 @@ export function SaveFavouriteDialog({ meal, favourites, onClose }: { meal: MealV
         </Box>
         <TextField label="Name" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus slotProps={{ htmlInput: { maxLength: 100 } }} sx={{ mt: 1 }} />
         {create.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(create.error)}
           </Box>
         )}

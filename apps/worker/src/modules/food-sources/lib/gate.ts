@@ -1,6 +1,7 @@
 // Owns: every outbound call to a nutrition source — the injected fetch, the per-instance subrequest budget, per-source
 // caps, a timeout, the descriptive User-Agent, de-duplication of identical GETs, and switching a source off for the rest
 // of the instance after a 429/5xx. Free plan: 50 external subrequests per invocation, shared with the LLM router.
+import type { FetchBudget } from '../../../lib/deps'
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 export type RemoteSource = 'off' | 'usda'
@@ -25,8 +26,8 @@ export interface GateOptions {
   /** Per-source caps inside that budget. OFF search is rate-limited hardest (10 req/min). */
   perSource: Record<RemoteSource, number>
   timeoutMs: number
-  /** A budget shared with other adapters of the same invocation; each call also needs room in it and counts in it. */
-  shared?: SharedBudget
+  /** Budgets shared with other adapters of the same invocation; each call needs room in every one and counts in each. */
+  shared?: readonly FetchBudget[]
   /** No call starts at or after this instant (epoch ms, read with `now`). */
   until?: number
   now?: () => number
@@ -34,11 +35,6 @@ export interface GateOptions {
   onCall?: (source: RemoteSource) => void
 }
 
-/** Structurally the LLM router's FetchBudget: one object counted by every fetching adapter of an invocation. */
-export interface SharedBudget {
-  limit: number
-  used: number
-}
 
 export interface Gate {
   /** GET a JSON document. Null on 404. Throws SourceUnavailable when the source cannot answer. */
@@ -53,12 +49,12 @@ export function createGate(opts: GateOptions): Gate {
 
   async function call(source: RemoteSource, url: string): Promise<unknown> {
     if (down.has(source)) throw new SourceUnavailable(source, 'unavailable for this run')
-    if (calls >= opts.maxCalls || used[source] >= opts.perSource[source] || (opts.shared && opts.shared.used >= opts.shared.limit))
+    if (calls >= opts.maxCalls || used[source] >= opts.perSource[source] || opts.shared?.some((b) => b.used >= b.limit))
       throw new SourceUnavailable(source, 'subrequest budget spent')
     if (opts.until !== undefined && (opts.now ?? Date.now)() >= opts.until) throw new SourceUnavailable(source, 'out of time')
     calls++
     used[source]++
-    if (opts.shared) opts.shared.used++
+    for (const b of opts.shared ?? []) b.used++
     opts.onCall?.(source)
     let res: Response
     try {

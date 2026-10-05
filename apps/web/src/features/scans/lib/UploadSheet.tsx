@@ -16,16 +16,21 @@ import type { ScanUploaded } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { endpoints } from '@fitness/shared/api'
-import { apiQueryKey, call } from '../../../api'
+import { apiQueryKey, call, problemText } from '../../../api'
 import { tokens } from '../../../theme'
-import { problemText } from '../../quick-log'
 import { MaskEditor } from './MaskEditor'
 import { ACCEPT, DEFAULT_MASK, maskedSheet, renderSheet, type MaskBox } from './sheet'
 
 /** A scan PDF can be a few MB; give the upload a minute. Never queued: reading the sheet needs the server now. */
 const UPLOAD_TIMEOUT_MS = 60_000
 
-type Step = { kind: 'pick' } | { kind: 'rendering'; name: string } | { kind: 'mask'; sheet: HTMLCanvasElement; name: string } | { kind: 'uploading' }
+/** `id` is the scan's client id, made once per picked sheet so "Upload and read" after a timeout replays it (the Worker
+ * returns the stored scan, no second scan or extraction job). */
+type Step =
+  | { kind: 'pick' }
+  | { kind: 'rendering'; name: string }
+  | { kind: 'mask'; sheet: HTMLCanvasElement; name: string; id: string }
+  | { kind: 'uploading' }
 
 export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onClose: () => void; onUploaded: (result: ScanUploaded) => void }) {
   const fullScreen = useMediaQuery(`(max-width: ${tokens.layout.phoneWidth + 210}px)`)
@@ -53,7 +58,7 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
     try {
       const sheet = await renderSheet(file)
       setBox(DEFAULT_MASK)
-      setStep({ kind: 'mask', sheet, name: file.name })
+      setStep({ kind: 'mask', sheet, name: file.name, id: crypto.randomUUID() })
     } catch (e) {
       setError(e instanceof Error ? e.message : "That file couldn't be opened.")
       setStep({ kind: 'pick' })
@@ -62,14 +67,14 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
 
   const upload = async () => {
     if (step.kind !== 'mask') return
-    const { sheet } = step
+    const { sheet, name, id } = step
     setError(null)
     setStep({ kind: 'uploading' })
     try {
       const { blob, content_type } = await maskedSheet(sheet, box)
       const result = await call(
         endpoints.scans.upload,
-        { query: { id: crypto.randomUUID(), content_type }, body: await blob.arrayBuffer() },
+        { query: { id, content_type }, body: await blob.arrayBuffer() },
         { timeoutMs: UPLOAD_TIMEOUT_MS },
       )
       void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.scans.list) })
@@ -77,7 +82,7 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
       onUploaded(result)
     } catch (e) {
       setError(problemText(e))
-      setStep({ kind: 'mask', sheet, name: '' })
+      setStep({ kind: 'mask', sheet, name, id })
     }
   }
 
@@ -100,7 +105,7 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
 
         {step.kind === 'pick' && (
           <>
-            <Box sx={{ color: 'text.secondary', fontSize: 15, lineHeight: 1.5 }}>
+            <Box sx={{ color: 'text.secondary', fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>
               Share the result sheet from the Evolt Active app, or save it from app.evoltactive.com, then pick it here. You'll hide your name
               before anything is uploaded.
             </Box>
@@ -118,7 +123,7 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
 
         {(step.kind === 'mask' || step.kind === 'uploading') && (
           <>
-            <Box sx={{ fontSize: 14, color: 'text.secondary', lineHeight: 1.5 }}>
+            <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: 1.5 }}>
               Drag the black box over your name; drag a corner to resize it. Only the masked image is uploaded and read.
             </Box>
             {step.kind === 'mask' ? (

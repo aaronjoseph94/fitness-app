@@ -27,14 +27,18 @@ export type { TargetValuesLike, PlanTargetsLike, ExerciseInfo, NutrientsLike, Da
 // Trend weight, expenditure, forecast
 export { trendWeights, trendChange, TREND_ALPHA } from './lib/trend'
 export type { TrendDay, TrendSample } from './lib/trend'
-export { estimateExpenditure, EXPENDITURE_WINDOW_DAYS, MIN_LOGGED_DAYS, TDEE_RANGE } from './lib/expenditure'
+export { estimateExpenditure, isLoggedIntakeDay, EXPENDITURE_WINDOW_DAYS, MIN_LOGGED_DAYS, TDEE_RANGE } from './lib/expenditure'
 export type { ExpenditureDay, ExpenditureEstimate } from './lib/expenditure'
 export { forecast, KCAL_PER_KG, FORECAST_BAND } from './lib/forecast'
 export type { ForecastInput, ForecastResult } from './lib/forecast'
 
 // Daily targets
-export { materialiseTargets, meanPlannedIntake, FAST_DAY_EXTRA_WATER_ML } from './lib/targets'
-export type { TargetsInput, DayTargets, WeekPlanLike } from './lib/targets'
+export { materialiseTargets, meanPlannedIntake, fastDay, FAST_DAY_EXTRA_WATER_ML } from './lib/targets'
+export type { TargetsInput, DayTargets, WeekPlanLike, FastWindowLike } from './lib/targets'
+
+// Food maths: portions, scaling, meal totals
+export { portion, scaleNutrients, sumNutrients } from './lib/nutrition'
+export type { Per100gLike } from './lib/nutrition'
 
 // Adherence, safety flags, milestones, weekly review metrics
 export { dayAdherence, adherence } from './lib/adherence'
@@ -42,7 +46,7 @@ export type { AdherenceDay, DayAdherence, AdherenceWindow } from './lib/adherenc
 export { safetyFlags } from './lib/flags'
 export type { SafetyFlag } from './lib/flags'
 export { milestones, WEIGHT_MILESTONES_KG } from './lib/milestones'
-export type { MilestoneStatus, CompositionScan } from './lib/milestones'
+export type { MilestoneDefinition, MilestoneStatus, CompositionScan } from './lib/milestones'
 export { weeklyMetrics } from './lib/review'
 export type { WeekAggregate, FastLike, FastResult } from './lib/review'
 
@@ -59,14 +63,13 @@ export { muscleScores, muscleLevels, e1rm, sessionSummary } from './lib/muscles'
 export type { MuscleValues, MuscleLevel, SessionSetLike, PrRecord, SessionSummaryInput, SessionTotals } from './lib/muscles'
 
 // Guards (SPEC §9: packages/shared/engine/guards.ts)
-export { applyGuards, KCAL_STEP, SESSION_SETS, LOCKED_SETTINGS } from './guards'
+export { applyGuards, targetValue, KCAL_STEP, SESSION_SETS, LOCKED_SETTINGS } from './guards'
 export type {
   GuardChange,
   TargetChange,
   WorkoutChange,
   ExerciseSwapChange,
   FastChange,
-  SettingsChange,
   OpenChange,
   GuardRails,
   GuardContext,

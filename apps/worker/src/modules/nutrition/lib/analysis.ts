@@ -5,9 +5,9 @@
 import type { InputMethod, MealSlot, MealStatus, Nutrients } from '@fitness/shared/schemas'
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { meal_items, meal_photos, meals } from '../../../db'
+import { chunk, meal_items, meal_photos, meals } from '../../../db'
 import type { Deps } from '../../../lib/deps'
-import { chunkIds, itemInserts, type ItemInsert } from './meals'
+import { itemInserts, type ItemInsert } from './meals'
 
 export interface AnalysisInput {
   meal: { id: string; date: string; slot: MealSlot; input_method: InputMethod; raw_text: string | null; status: MealStatus; item_count: number }
@@ -97,7 +97,7 @@ export async function applyAnalysis(
     db.update(meals).set({ status: 'parsing' }).where(and(eq(meals.id, mealId), eq(meals.status, 'review'), noItems)),
     db.delete(meal_items).where(and(eq(meal_items.meal_id, mealId), parsing)),
     ...itemInserts(deps, rows),
-    ...chunkIds(rows.map((r) => r.id!)).map((ids) => db.delete(meal_items).where(and(inArray(meal_items.id, ids), sql`not ${parsing}`))),
+    ...chunk(rows.map((r) => r.id!), 90).map((ids) => db.delete(meal_items).where(and(inArray(meal_items.id, ids), sql`not ${parsing}`))),
     db.update(meals).set({ status: 'review', updated_at: now }).where(and(eq(meals.id, mealId), eq(meals.status, 'parsing'))).returning({ id: meals.id }),
     ...extra,
   ])

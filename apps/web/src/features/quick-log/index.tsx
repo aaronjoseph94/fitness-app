@@ -6,7 +6,8 @@
 //   progress, the editable item list (ItemsEditor) and Confirm, then the DayAdjustmentCard.
 // - The logging kit the Log tab builds on: writes that know what they make stale and show as pending until synced
 //   (useLogMutation, usePendingLogs), dictation (useDictation, also behind Ask AI's mic), the shared reads (day, settings, water, fasts, the day's meals polled while one
-//   is analysed), the food picker, food icons, the food maths and slots, Edmonton dates, and the small form pieces.
+//   is analysed), the food picker, food icons, the food maths and slots, Edmonton dates, and the logged notice. Error
+//   wording (problemText) lives in the api module; LoadProblem, NumberField and parseNumber in components.
 import { useUiStore } from '../../app/ui-store'
 import { LogSheet } from './lib/LogSheet'
 
@@ -25,7 +26,7 @@ export { FoodPicker, type PickedFood } from './lib/FoodPicker'
 export { WaterForm } from './lib/WaterForm'
 export { portion, scaled, sum, SLOT_LABEL, SLOT_TIME, visibleSlots, slotShare, type Per100g } from './lib/nutrition'
 export { todayLocal, dateOf, clockOf, shiftDate, instantAt, relativeDay, formatDuration, formatDateTime } from './lib/dates'
-export { LoadProblem, NumberField, parseNumber, problemText, noticeFor, type LogNotice } from './lib/ui'
+export { noticeFor, type LogNotice } from './lib/ui'
 export { MealReview, type MealReviewProps } from './lib/review/MealReview'
 export { ItemsEditor } from './lib/review/ItemsEditor'
 export { draftTotals, fromMealItem, fromFood, toItemInputs, type DraftItem } from './lib/review/items'
@@ -34,3 +35,4 @@ export { DayAdjustmentCard, type DayAdjustmentCardProps } from './lib/review/Day
 export { latestAdjustment, useDayAdjustment, type AdjustmentEvent } from './lib/review/adjustment'
 export { FoodIcon, useFoodIcons } from './lib/review/food-icons'
 export { useDictation, appendPhrase, type Dictation } from './lib/capture/voice'
+export { preparePhoto, releasePhoto, type PreparedPhoto } from './lib/capture/photos'

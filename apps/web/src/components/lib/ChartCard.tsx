@@ -37,7 +37,7 @@ export function ChartCard({ title, subtitle, legend, action, empty, children, te
             component="h3"
             sx={{
               m: 0,
-              fontSize: 16,
+              fontSize: tokens.font.size.body,
               fontWeight: tokens.font.weight.heading,
               color: tokens.ink.text,
               lineHeight: 1.35,
@@ -46,7 +46,7 @@ export function ChartCard({ title, subtitle, legend, action, empty, children, te
             {title}
           </Box>
           {subtitle && (
-            <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary, lineHeight: 1.4 }}>{subtitle}</Box>
+            <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.4 }}>{subtitle}</Box>
           )}
         </Box>
         {action && <Box sx={{ flex: 'none', mt: -1.5, mr: -1.5 }}>{action}</Box>}

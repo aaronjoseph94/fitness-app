@@ -1,15 +1,19 @@
-// Owns: the pure mapping from API data (TrendSeries, DaySummary rows, fasts, the forecast) to the chart kit's plain
-// series, plus the small aggregates the Progress summary shows. No React, no fetching: data in, series out.
-import { addDays, dayAdherence, daysBetween, localDate, localTime, weekStart } from '@fitness/shared/engine'
+// Owns: the pure mapping from API data (TrendSeries, DaySummary rows, fasts, the forecast, sessions) to the chart kit's
+// plain series, plus the small aggregates the Progress summary shows. The weekly report reuses the day, weight and
+// volume mappings through ./series. No React, no fetching: data in, series out.
+import { addDays, dayAdherence, daysBetween, localDate, localTime, sessionSummary, weekStart, type MuscleValues } from '@fitness/shared/engine'
 import type {
   DaySummary,
+  ExerciseSummary,
   Fast,
   Forecast,
   LocalDate,
   Measurement,
   Milestone as MilestoneRow,
+  Muscle,
   TargetValues,
   TrendPoint,
+  WorkoutSession,
 } from '@fitness/shared/schemas'
 import type {
   CaloriesDay,
@@ -20,6 +24,8 @@ import type {
   Milestone,
   SleepNight,
   StepsDay,
+  VolumeGroup,
+  VolumeWeek,
   WaistPoint,
   WaterDay,
   WeeklyLossPoint,
@@ -250,6 +256,93 @@ export function fastEntries(fasts: readonly Fast[], nowMs: number, fastHours: nu
       return { date, status: start > nowMs || running ? 'planned' : 'missed' }
     })
     .sort((a, b) => (a.date < b.date ? -1 : 1))
+}
+
+// ── Training ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The volume chart's four groups, bottom → top (the styleguide's grouping). */
+export const VOLUME_GROUPS: readonly VolumeGroup[] = [
+  { key: 'legs', label: 'Legs' },
+  { key: 'pull', label: 'Back & biceps' },
+  { key: 'push', label: 'Chest, shoulders & triceps' },
+  { key: 'core', label: 'Core' },
+]
+
+const GROUP_OF: Readonly<Record<Muscle, string>> = {
+  quadriceps: 'legs',
+  hamstrings: 'legs',
+  glutes: 'legs',
+  calves: 'legs',
+  adductors: 'legs',
+  abductors: 'legs',
+  lats: 'pull',
+  'middle back': 'pull',
+  'lower back': 'pull',
+  traps: 'pull',
+  biceps: 'pull',
+  forearms: 'pull',
+  neck: 'pull',
+  chest: 'push',
+  shoulders: 'push',
+  triceps: 'push',
+  abdominals: 'core',
+}
+
+/**
+ * Real kilograms lifted per group. The engine's volume_by_muscle weights each lift 1.0 per primary and 0.5 per
+ * secondary muscle, so it sums to 2–3× the kg lifted; it is scaled back to the week's tonnage:
+ *   k = volume_kg / Σ volume_by_muscle,   group(g) = k × Σ_{muscle ∈ g} volume_by_muscle[muscle]
+ * so the groups add up to volume_kg (Σ reps × kg, "sets × reps × kg"). Exact because both come from one sessionSummary.
+ */
+export function groupVolume(volumeByMuscle: MuscleValues, volumeKg: number): Record<string, number> {
+  const weighted = Object.values(volumeByMuscle).reduce((sum, v) => sum + (v ?? 0), 0)
+  const k = weighted > 0 ? volumeKg / weighted : 0
+  const out: Record<string, number> = {}
+  for (const [muscle, kg] of Object.entries(volumeByMuscle) as [Muscle, number][]) {
+    const g = GROUP_OF[muscle]
+    out[g] = (out[g] ?? 0) + kg * k
+  }
+  for (const g of Object.keys(out)) out[g] = Math.round(out[g]!)
+  return out
+}
+
+type ExerciseTags = Pick<ExerciseSummary, 'id' | 'primary_muscles' | 'secondary_muscles'>
+
+/** The engine's volume numbers over the completed sets of the sessions dated `from` … `to` (inclusive). */
+export function volumeBetween(
+  sessions: readonly WorkoutSession[],
+  exercises: readonly ExerciseTags[],
+  from: LocalDate,
+  to: LocalDate,
+): { volume_kg: number; volume_by_muscle: MuscleValues } {
+  const sets = sessions.filter((s) => s.date >= from && s.date <= to).flatMap((s) => s.sets)
+  const t = sessionSummary({ date: to, started_at: from, ended_at: from, sets, exercises, history: [] })
+  return { volume_kg: t.total_volume_kg, volume_by_muscle: t.volume_by_muscle }
+}
+
+/** Volume per group for every Monday–Sunday week touching `from` … `to`, oldest first. */
+export function sessionVolumeWeeks(
+  sessions: readonly WorkoutSession[],
+  exercises: readonly ExerciseTags[],
+  from: LocalDate,
+  to: LocalDate,
+): VolumeWeek[] {
+  const weeks: VolumeWeek[] = []
+  for (let monday = weekStart(from); monday <= to; monday = addDays(monday, 7)) {
+    const v = volumeBetween(sessions, exercises, monday, addDays(monday, 6))
+    weeks.push({ week: monday, volume: groupVolume(v.volume_by_muscle, v.volume_kg) })
+  }
+  return weeks
+}
+
+/** Sessions per exercise with a completed loaded set, most first (the strength chart's picker order). */
+export function exercisesByUse(sessions: readonly WorkoutSession[]): { exercise_id: string; sessions: number }[] {
+  const count = new Map<string, number>()
+  for (const s of sessions) {
+    const ids = new Set(s.sets.filter((x) => x.completed && x.load_kg !== null && x.load_kg > 0).map((x) => x.exercise_id))
+    for (const id of ids) count.set(id, (count.get(id) ?? 0) + 1)
+  }
+  return [...count].map(([exercise_id, n]) => ({ exercise_id, sessions: n })).sort((a, b) => b.sessions - a.sessions)
 }
 
 // ── Targets and summaries ──────────────────────────────────────────────────────────────────────────────────────

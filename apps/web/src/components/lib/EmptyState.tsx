@@ -69,7 +69,7 @@ export function EmptyState({
         {title}
       </Box>
       {body && (
-        <Box sx={{ mt: 1.5, fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5, maxWidth: 320 }}>
+        <Box sx={{ mt: 1.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5, maxWidth: 320 }}>
           {body}
         </Box>
       )}

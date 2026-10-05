@@ -34,10 +34,10 @@ function SectionCard({
 }) {
   return (
     <Card sx={{ p: 4 }} data-testid={testId}>
-      <Box component="h3" sx={{ m: 0, fontSize: 16, fontWeight: tokens.font.weight.heading }}>
+      <Box component="h3" sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>
         {title}
       </Box>
-      {subtitle && <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary }}>{subtitle}</Box>}
+      {subtitle && <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{subtitle}</Box>}
       <Box sx={{ mt: 3 }}>{children}</Box>
     </Card>
   )
@@ -79,7 +79,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
     <Stack spacing={3} data-testid="session-summary">
       <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
             {formatWeekday(session.date)} {formatShortDate(session.date)}
           </Box>
           <Box
@@ -109,7 +109,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         testId="summary-muscle-map"
       >
         {view.volume.length === 0 && Object.keys(summary.muscle_scores).length === 0 ? (
-          <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
             No ticked sets, so nothing was trained.
           </Box>
         ) : (
@@ -135,7 +135,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
                   gridTemplateColumns: '92px 1fr 72px',
                   gap: 2,
                   alignItems: 'center',
-                  fontSize: 14,
+                  fontSize: tokens.font.size.small,
                 }}
               >
                 <Box sx={{ color: tokens.ink.text }}>{MUSCLE_LABELS[muscle]}</Box>
@@ -162,11 +162,11 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
 
       <SectionCard title="Personal records" testId="summary-prs">
         {view.prs_pending ? (
-          <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
             PRs are checked against your history once this session syncs.
           </Box>
         ) : summary.prs.length === 0 ? (
-          <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
             No new records this time. Consistency is what moves them.
           </Box>
         ) : (
@@ -180,11 +180,11 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
                 >
                   <EmojiEventsRounded sx={{ color: tokens.metric.carbs, mt: 0.25 }} aria-hidden />
                   <Box sx={{ minWidth: 0 }}>
-                    <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.heading }}>
+                    <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading }}>
                       {name(pr.exercise_id)}
                     </Box>
-                    <Box sx={{ fontSize: 14 }}>{t.title}</Box>
-                    <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>{t.detail}</Box>
+                    <Box sx={{ fontSize: tokens.font.size.small }}>{t.title}</Box>
+                    <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{t.detail}</Box>
                   </Box>
                 </Box>
               )
@@ -198,12 +198,12 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
           <Stack spacing={2.5}>
             {done.map(({ e, sets }) => (
               <Box key={e.exercise_id}>
-                <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label }}>{name(e.exercise_id)}</Box>
-                <Box sx={{ fontSize: 14, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+                <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{name(e.exercise_id)}</Box>
+                <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
                   {sets.map((s) => formatSet(s.reps, s.load_kg)).join(' · ')} kg
                 </Box>
                 {e.note.trim() && (
-                  <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontStyle: 'italic' }}>
+                  <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontStyle: 'italic' }}>
                     {e.note.trim()}
                   </Box>
                 )}

@@ -22,10 +22,9 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
 import { EquipmentStatus } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
-import { useApiMutation, useApiQuery } from '../../../api'
-import { PendingBadge, SectionHeader } from '../../../components'
+import { problemText, useApiMutation, useApiQuery } from '../../../api'
+import { LoadProblem, PendingBadge, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
-import { LoadProblem, problemText } from '../../quick-log'
 import { equipmentLabel, isLibraryEquipment, LIBRARY_EQUIPMENT, MACHINE_SUGGESTIONS, sentence, STATUS_LABEL } from './labels'
 import { useExerciseIndex, useRefreshLibrary } from './useExercises'
 
@@ -53,11 +52,11 @@ function StatusToggle({ value, onChange, label }: { value: EquipmentStatus | nul
           value={s}
           sx={{
             minHeight: tokens.tapTarget,
-            fontSize: 13,
+            fontSize: tokens.font.size.label,
             textTransform: 'none',
             whiteSpace: 'nowrap',
             px: 0.5,
-            '&.Mui-selected, &.Mui-selected:hover': { color: '#FFFFFF', bgcolor: STATUS_COLOR[s] },
+            '&.Mui-selected, &.Mui-selected:hover': { color: tokens.ink.card, bgcolor: STATUS_COLOR[s] },
           }}
         >
           {STATUS_LABEL[s]}
@@ -79,10 +78,10 @@ function EquipmentRow({ row, count, onChange }: { row: Row; count?: number; onCh
     <Box sx={{ py: 3, borderBottom: `1px solid ${tokens.ink.border}`, '&:last-of-type': { borderBottom: 'none' } }} data-testid="equipment-row">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.label }}>
+          <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }}>
             {equipmentLabel(row.equipment)} {row.pending && <PendingBadge />}
           </Box>
-          {count !== undefined && <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>{count} exercises in the library</Box>}
+          {count !== undefined && <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{count} exercises in the library</Box>}
         </Box>
         <IconButton aria-label={`Note for ${row.equipment}`} onClick={() => setEditing((v) => !v)} sx={{ color: row.note ? 'primary.main' : 'text.secondary' }}>
           <EditNoteRounded />
@@ -102,7 +101,7 @@ function EquipmentRow({ row, count, onChange }: { row: Row; count?: number; onCh
           slotProps={{ htmlInput: { maxLength: 200, 'aria-label': `Note for ${row.equipment}`, enterKeyHint: 'done' } }}
         />
       ) : (
-        row.note && <Box sx={{ mt: 1.5, fontSize: 13, color: tokens.ink.secondary }}>{row.note}</Box>
+        row.note && <Box sx={{ mt: 1.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{row.note}</Box>
       )}
     </Box>
   )
@@ -202,7 +201,7 @@ export function EquipmentPage() {
   return (
     <Stack spacing={6} data-testid="equipment-page">
       {profile.error && !profile.data && <LoadProblem what="Your equipment profile" error={profile.error} onRetry={() => void profile.refetch()} />}
-      <Box sx={{ fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+      <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
         Don&apos;t have, dislike and can&apos;t use take exercises out of the allowed set: the library, the picker and every AI workout skip them.
         {index.all.length > 0 && ` ${index.allowed.length} of ${index.all.length} exercises are allowed now.`}
       </Box>
@@ -226,7 +225,7 @@ export function EquipmentPage() {
         />
         <Card sx={{ px: 4 }}>
           {rows.machines.length === 0 ? (
-            <Box sx={{ py: 4, color: tokens.ink.secondary, fontSize: 14 }}>No named machines yet.</Box>
+            <Box sx={{ py: 4, color: tokens.ink.secondary, fontSize: tokens.font.size.small }}>No named machines yet.</Box>
           ) : (
             rows.machines.map((row) => <EquipmentRow key={row.equipment} row={row} onChange={(s, n) => set(row.equipment, s, n)} />)
           )}

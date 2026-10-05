@@ -30,7 +30,7 @@ export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProp
           {title}
         </Box>
         {subtitle && (
-          <Box sx={{ mt: 0.5, fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.45 }}>{subtitle}</Box>
+          <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.45 }}>{subtitle}</Box>
         )}
       </Box>
       {action && <Box sx={{ flex: 'none' }}>{action}</Box>}

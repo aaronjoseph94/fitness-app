@@ -1,7 +1,7 @@
 // Owns: assembling one DayView — the date's targets and v_day row, intake by slot, trend weight, last night's sleep,
 // the fast state, the session, the planned session from the active week plan and the active forecast, read in one
 // batched round trip.
-import { addDays, localDate, trendChange, trendWeights, weekdayOf, weekStart } from '@fitness/shared/engine'
+import { addDays, fastDay, localDate, trendChange, trendWeights, weekdayOf, weekStart } from '@fitness/shared/engine'
 import {
   SleepStages,
   WeekPlanContent,
@@ -132,7 +132,8 @@ export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
   const series = trendWeights(weights, { to: date })
   const point = series.find((p) => p.date === date) ?? null
 
-  const fast = fastState(fastRows, date, now.getTime(), settingsRows[0]?.fast_hours ?? 24)
+  const fastHours = settingsRows[0]?.fast_hours ?? 24
+  const fast = fastState(fastRows, date, now.getTime(), fastHours)
   const session = sessionRows[0] ? toSessionBrief(sessionRows[0].session, sessionRows[0].template_name, setRows) : null
   const plan = weekRows[0] ? WeekPlanContent.safeParse(weekRows[0].plan) : null
 
@@ -162,7 +163,8 @@ export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
     water_ml: vd?.water_ml ?? 0,
     steps: vd?.steps ?? null,
     sleep: sleepRows[0] ? toSleepLog(sleepRows[0]) : null,
-    fast: { ...fast, is_fast_day: (t?.is_fast_day ?? false) || (vd?.fasted ?? false) || fast.state !== 'none' },
+    // The 0 kcal day is the targets' (one fast day per fast, engine fastDay); without targets, the same rule.
+    fast: { ...fast, is_fast_day: t ? t.is_fast_day : fastRows.some((f) => fastDay(f, fastHours) === date) },
     weight: {
       raw_kg: point?.weight_kg ?? null,
       trend_kg: point?.trend_kg ?? null,

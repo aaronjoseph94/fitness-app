@@ -1,0 +1,1 @@
+ALTER TABLE `exercise_exclusions` ADD `removed_at` text;

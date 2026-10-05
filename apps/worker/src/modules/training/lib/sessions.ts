@@ -16,7 +16,7 @@ import {
   type TemplateExerciseInput,
   type WorkoutSession,
 } from '@fitness/shared/schemas'
-import { and, between, desc, eq, inArray, lt } from 'drizzle-orm'
+import { and, between, desc, eq, gt, inArray, lt, max } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { session_sets, week_plans, workout_sessions, workout_templates } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -24,9 +24,9 @@ import { badRequest, HttpError, notFound } from '../../../lib/http-error'
 import { eventInsert } from '../../events'
 import { acceptStatement, loadWorkoutProposal } from './guard'
 import { exerciseTags, requireExercises } from './library'
-import { bySetOrder, round, startPlan, startReadiness, toSessionSet, toWorkoutSession, unique, type ExerciseTags, type SessionRow, type StartPlan } from './rows'
+import { bySetOrder, chunk, round, startPlan, startReadiness, toSessionSet, toWorkoutSession, unique, type ExerciseTags, type SessionRow, type StartPlan } from './rows'
 import { DEFAULT_REP_RANGE, deloadOn, neighbourSessions, pastSessions, readinessOn, recoveryFor, suggestionFor, topLoad } from './state'
-import { scoresOf, templatePlan } from './templates'
+import { checkExercises, scoresOf, templatePlan } from './templates'
 
 async function sessionRow(deps: Deps, id: string): Promise<SessionRow | null> {
   const [row] = await deps.db.select().from(workout_sessions).where(eq(workout_sessions.id, id))
@@ -46,6 +46,7 @@ async function weekPlanSession(deps: Deps, date: string): Promise<{ template_id:
 /**
  * POST /api/sessions. The plan is `exercises` when given, else the template's, else the proposal's draft, else the
  * active week plan's session (origin week_plan); blank has none. Replaying the same id returns the stored session.
+ * `exercises` from ai/mcp must pass the workout guards (422, as for templates); Aaron's own list is not checked.
  */
 export async function startSession(deps: Deps, input: SessionCreate): Promise<WorkoutSession> {
   if (await sessionRow(deps, input.id)) return getSession(deps, input.id)
@@ -67,7 +68,8 @@ export async function startSession(deps: Deps, input: SessionCreate): Promise<Wo
     if (planned?.template_id && (await deps.db.select({ id: workout_templates.id }).from(workout_templates).where(eq(workout_templates.id, planned.template_id))).length)
       template_id = planned.template_id
   }
-  const tags = await requireExercises(deps, plan.map((p) => p.exercise_id))
+  // An explicit list from ai/mcp passes the workout guards (allowed set, 12–28 sets), as a template would.
+  const tags = input.exercises ? await checkExercises(deps, plan) : await requireExercises(deps, plan.map((p) => p.exercise_id))
 
   const [readiness, deload, neighbours] = await Promise.all([readinessOn(deps, date), deloadOn(deps, date), neighbourSessions(deps, date)])
   const primaries = unique(plan.flatMap((p) => tags.get(p.exercise_id)?.primary_muscles ?? []))
@@ -281,13 +283,29 @@ export async function finishSession(deps: Deps, id: string, input: SessionFinish
   return { session: await getSession(deps, id), summary }
 }
 
-/** Every completed set of `ids` in sessions started before `before` (for PR detection). */
+/**
+ * The best completed load per (exercise, reps) of `ids` in sessions started before `before`: all PR detection reads
+ * (best load at ≥ r reps; e1RM rises with load at fixed reps, so its max is among these rows), in at most one row per
+ * rep count per exercise however long the history grows.
+ */
 async function historySets(deps: Deps, ids: readonly string[], before: string) {
-  if (ids.length === 0) return []
-  const rows = await deps.db
-    .select({ exercise_id: session_sets.exercise_id, reps: session_sets.reps, load_kg: session_sets.load_kg, completed: session_sets.completed })
-    .from(session_sets)
-    .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
-    .where(and(inArray(session_sets.exercise_id, ids.slice(0, 90)), lt(workout_sessions.started_at, before), eq(session_sets.completed, true)))
-  return rows
+  const out: { exercise_id: string; reps: number | null; load_kg: number | null; completed: boolean }[] = []
+  for (const part of chunk(ids, 90)) {
+    const rows = await deps.db
+      .select({ exercise_id: session_sets.exercise_id, reps: session_sets.reps, load_kg: max(session_sets.load_kg) })
+      .from(session_sets)
+      .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
+      .where(
+        and(
+          inArray(session_sets.exercise_id, part),
+          lt(workout_sessions.started_at, before),
+          eq(session_sets.completed, true),
+          gt(session_sets.reps, 0),
+          gt(session_sets.load_kg, 0),
+        ),
+      )
+      .groupBy(session_sets.exercise_id, session_sets.reps)
+    for (const r of rows) out.push({ ...r, completed: true })
+  }
+  return out
 }

@@ -2,6 +2,7 @@
 // readiness, progression suggestions, and the workout_generate / workout_fill output (WorkoutDraft).
 import * as z from 'zod'
 import { Count, Id, Instant, Kg, LocalDate, Muscle, Row } from './common'
+import { ImageType } from './files'
 
 // ── Library ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,13 @@ export const ExerciseCreate = z.object({
   instructions: z.array(z.string().max(1000)).default([]),
 })
 export type ExerciseCreate = z.infer<typeof ExerciseCreate>
+
+/**
+ * Query of POST /api/exercises/:id/photo (body: the image bytes, downscaled and re-encoded by the browser, no EXIF): a
+ * photo of one of Aaron's own exercises (SPEC §7 "with a photo"). It replaces the exercise's image.
+ */
+export const ExercisePhotoUploadQuery = z.object({ content_type: ImageType })
+export type ExercisePhotoUploadQuery = z.infer<typeof ExercisePhotoUploadQuery>
 
 // ── Equipment profile and exclusions ───────────────────────────────────────────────────────────────────────────
 

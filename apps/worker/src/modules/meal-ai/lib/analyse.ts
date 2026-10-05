@@ -6,7 +6,8 @@
 import { MealAnalysisOutput, type Nutrients } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 import { eventInsert } from '../../events'
-import { nutritionFor, type FoodSources, type SharedBudget } from '../../food-sources'
+import type { FetchBudget } from '../../../lib/deps'
+import { nutritionFor, type FoodSources } from '../../food-sources'
 import { JobFailed, type JobContext, type JobMeta } from '../../jobs'
 import { ProvidersExhaustedError, type ImageInput, type LlmRouter } from '../../llm'
 import { analysisInput, applyAnalysis, releaseForReview, type AnalysedItem } from '../../nutrition'
@@ -26,8 +27,8 @@ const MATCH_WINDOW_MS = 21_000
 const ESTIMATE_CONFIDENCE_CAP = 0.6
 
 export interface AnalyseAdapters {
-  router: (deps: Deps, budget: SharedBudget) => Pick<LlmRouter, 'complete'>
-  foodSources: (deps: Deps, opts: { budget: SharedBudget; maxExternalCalls: number; until: number }) => FoodSources
+  router: (deps: Deps, budget: FetchBudget) => Pick<LlmRouter, 'complete'>
+  foodSources: (deps: Deps, opts: { budget: FetchBudget; maxExternalCalls: number; until: number }) => FoodSources
 }
 
 type Output = { output: MealAnalysisOutput; meta?: JobMeta }
@@ -52,7 +53,7 @@ export async function analyseMeal(deps: Deps, adapters: AnalyseAdapters, job: Jo
       return skipped('Nothing to analyse yet: no text and no photo.')
     }
     const started = deps.now().getTime()
-    const budget: SharedBudget = { limit: MEAL_ANALYSIS_FETCHES, used: 0 }
+    const budget: FetchBudget = { limit: MEAL_ANALYSIS_FETCHES, used: 0 }
     const res = await adapters.router(deps, budget).complete({
       job: 'meal_analysis',
       system: MEAL_ANALYSIS_SYSTEM,

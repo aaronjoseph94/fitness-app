@@ -113,7 +113,7 @@ export function Gauge({
           {unit && (
             <Box
               component="span"
-              sx={{ ml: 1, fontSize: 14, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}
+              sx={{ ml: 1, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}
             >
               {unit}
             </Box>
@@ -133,7 +133,7 @@ export function Gauge({
         <span>{formatNumber(min)}</span>
         <span>{formatNumber(max)}</span>
       </Box>
-      <Box sx={{ mt: 1, fontSize: 13, color: tokens.ink.secondary }}>{label}</Box>
+      <Box sx={{ mt: 1, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{label}</Box>
       {band && (
         <Box
           sx={{
@@ -141,7 +141,7 @@ export function Gauge({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 1.5,
-            fontSize: 13,
+            fontSize: tokens.font.size.label,
             fontWeight: tokens.font.weight.label,
             color: tokens.ink.text,
           }}

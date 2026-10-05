@@ -47,15 +47,15 @@ export function QueryStateCard({ query, what, height = 200 }: QueryStateCardProp
   if (isQueryLoading(query))
     return (
       <Card data-testid="chart-skeleton" aria-busy="true" sx={{ p: 4 }}>
-        <Skeleton variant="text" width="45%" sx={{ fontSize: 16 }} />
-        <Skeleton variant="text" width="65%" sx={{ fontSize: 13 }} />
+        <Skeleton variant="text" width="45%" sx={{ fontSize: tokens.font.size.body }} />
+        <Skeleton variant="text" width="65%" sx={{ fontSize: tokens.font.size.label }} />
         <Skeleton variant="rounded" height={height} sx={{ mt: 3, borderRadius: `${tokens.radius.control}px` }} />
       </Card>
     )
   const offline = query.fetchStatus === 'paused'
   return (
     <Card data-testid="load-error" role="alert" sx={{ p: 4 }}>
-      <Box sx={{ fontSize: 15, color: tokens.ink.text, lineHeight: 1.5 }}>{errorText(query.error, what, offline)}</Box>
+      <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.text, lineHeight: 1.5 }}>{errorText(query.error, what, offline)}</Box>
       {!offline && query.error?.kind !== 'auth-expired' && (
         <Button variant="outlined" onClick={() => void query.refetch()} sx={{ mt: 3 }}>
           Try again

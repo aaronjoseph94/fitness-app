@@ -7,7 +7,7 @@ import { ChatMessage } from './chat'
 import { MilestoneKind } from './body'
 import { FoodSource, Nutrients, Remaining } from './nutrition'
 import { Forecast, PlanChange } from './plan'
-import { ScanExtractOutput } from './scans'
+import { ScanExtractOutput, ScanFlag } from './scans'
 import { TemplateExerciseInput, WorkoutDraft } from './training'
 import { WeekPlanContentInput } from './week-plan'
 
@@ -85,12 +85,7 @@ export type DayAdjustmentWording = z.infer<typeof DayAdjustmentWording>
 export const ScanAnalysisOutput = z.object({
   narrative: z.string().max(3000),
   fat_vs_lean: z.object({ fat_kg: z.number(), lean_kg: z.number(), water_kg: z.number() }),
-  flags: z.array(
-    z.object({
-      code: z.enum(['lean_loss', 'water_shift', 'visceral_up', 'fat_gain', 'conditions_mismatch', 'other']),
-      message: z.string().max(300),
-    }),
-  ),
+  flags: z.array(ScanFlag),
   milestone_updates: z.array(z.object({ milestone_id: Id, kind: MilestoneKind, reached_on: LocalDate })),
   proposals: z.array(PlanChange).max(5),
 })

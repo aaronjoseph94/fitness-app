@@ -15,6 +15,13 @@ export type TargetValues = z.infer<typeof TargetValues>
 export const TargetField = TargetValues.keyof()
 export type TargetField = z.infer<typeof TargetField>
 
+/**
+ * A target a proposal or review may move: every field but carbs_g, which is always the remainder of kcal after protein
+ * and fat (the guards reject a carbs_g change with `carbs_remainder`). Diffs keep the full TargetField.
+ */
+export const MovableTargetField = TargetField.exclude(['carbs_g'])
+export type MovableTargetField = z.infer<typeof MovableTargetField>
+
 /** `plan_versions.targets`: defaults for every day, and per-weekday overrides of any field. */
 export const PlanTargets = z.object({
   defaults: TargetValues,

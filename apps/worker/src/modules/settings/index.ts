@@ -1,18 +1,20 @@
 // Owns: the settings module's interface — the profile and the settings row (the rails plus app preferences) as one
 // view, and edits to them. Only actor 'user' may move a rail (engine LOCKED_SETTINGS); every edit that changes
 // something is logged as one `change` event per entity with each field's from/to. Edits to the inputs of the daily
-// targets (training days, the floor and macro minimums) re-materialise the targets.
-import { addDays, LOCKED_SETTINGS, today } from '@fitness/shared/engine'
+// targets (training days, the floor and macro minimums, fast hours) rebuild the targets from today on in the same
+// db.batch as the edit.
+import { LOCKED_SETTINGS, today } from '@fitness/shared/engine'
 import type { Profile, Settings, SettingsUpdate, SettingsView } from '@fitness/shared/schemas'
-import { eq, max } from 'drizzle-orm'
-import { ai_events, daily_targets, profile, settings } from '../../db'
+import { eq } from 'drizzle-orm'
+import { profile, settings } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../lib/http-error'
-import { materialiseTargets } from '../plan'
+import { eventInsert } from '../events'
+import { targetStatementsFor } from '../plan'
 import { changedValues, fieldChanges, summarise } from './lib/changes'
 
-/** Settings fields materialiseTargets reads: changing one rebuilds the daily targets. */
-const TARGET_INPUTS: readonly string[] = ['training_days', 'calorie_floor', 'protein_min_g', 'fat_min_g']
+/** Settings fields the daily targets read: changing one rebuilds them. */
+const TARGET_INPUTS: readonly string[] = ['training_days', 'calorie_floor', 'protein_min_g', 'fat_min_g', 'fast_hours']
 
 /** GET /api/settings. */
 export async function getSettings(deps: Deps): Promise<SettingsView> {
@@ -41,19 +43,23 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
 
   const now = deps.now().toISOString()
   const event = (entity: 'settings' | 'profile', changes: typeof settingsChanges) =>
-    db.insert(ai_events).values({
+    eventInsert(deps, {
       kind: 'change',
-      actor: deps.actor,
       date: today(now),
       summary: summarise(entity === 'settings' ? 'Settings' : 'Profile', changes),
       body: { entity, changes },
-    })
+    }).statement
+  const newSettings = changedValues<Settings>(settingsChanges)
+  // The targets from today through the horizon, as they will be with the new rails (same batch as the edit).
+  const targets = settingsChanges.some((c) => TARGET_INPUTS.includes(c.path))
+    ? await targetStatementsFor(deps, { from: today(now) }, { settings: newSettings })
+    : []
   const writes = [
     ...(settingsChanges.length > 0
       ? [
           db
             .update(settings)
-            .set({ ...changedValues<Settings>(settingsChanges), updated_at: now })
+            .set({ ...newSettings, updated_at: now })
             .where(eq(settings.id, current.settings.id)),
           event('settings', settingsChanges),
         ]
@@ -68,23 +74,7 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
         ]
       : []),
   ]
-  const [first, ...rest] = writes
+  const [first, ...rest] = [...writes, ...targets]
   await db.batch([first!, ...rest])
-
-  if (settingsChanges.some((c) => TARGET_INPUTS.includes(c.path))) await rebuildTargets(deps, today(now))
   return getSettings(deps)
-}
-
-/**
- * Rebuild daily targets from `from` through max(last materialised date, from + 14) — the plan module's horizon rule.
- * The edit is already saved, so a failure is logged rather than failing the request (the next plan change heals it).
- */
-async function rebuildTargets(deps: Deps, from: string): Promise<void> {
-  try {
-    const [row] = await deps.db.select({ last: max(daily_targets.date) }).from(daily_targets)
-    const floor = addDays(from, 14)
-    await materialiseTargets(deps, { from, to: row?.last && row.last > floor ? row.last : floor })
-  } catch (err) {
-    console.error(JSON.stringify({ level: 'error', msg: 'targets not rebuilt after settings edit', from, error: String(err) }))
-  }
 }

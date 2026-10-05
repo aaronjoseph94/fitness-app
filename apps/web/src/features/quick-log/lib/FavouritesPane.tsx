@@ -9,12 +9,11 @@ import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
 import type { Favourite, Nutrients } from '@fitness/shared/schemas'
 import { useState, type ReactNode } from 'react'
-import { useApiQuery } from '../../../api'
-import { formatNumber, SectionHeader } from '../../../components'
+import { problemText, useApiQuery } from '../../../api'
+import { formatNumber, NumberField, parseNumber, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
 import { scaled } from './nutrition'
 import { useRecentFoods, type RecentFood } from './reads'
-import { NumberField, parseNumber, problemText } from './ui'
 
 /** A meal the pane asks the form to log. */
 export type QuickMeal =
@@ -41,9 +40,9 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
             <Skeleton variant="rounded" height={52} />
           </Box>
         ) : favourites.isError && favs.length === 0 ? (
-          <Box sx={{ fontSize: 14, color: 'text.secondary' }}>{problemText(favourites.error)}</Box>
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>{problemText(favourites.error)}</Box>
         ) : favs.length === 0 ? (
-          <Box sx={{ fontSize: 14, color: 'text.secondary' }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
             None yet. Save a logged meal as a favourite from the Log tab and it becomes one tap here.
           </Box>
         ) : (
@@ -171,7 +170,7 @@ function AdjustButton({ label, onClick, aria }: { label: string; onClick: () => 
         px: 3,
         borderRadius: tokens.radius.chip,
         border: `1px solid ${tokens.ink.border}`,
-        fontSize: 14,
+        fontSize: tokens.font.size.small,
         fontWeight: tokens.font.weight.label,
         fontVariantNumeric: 'tabular-nums',
         color: 'text.primary',
@@ -203,8 +202,8 @@ function Row({
       sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1, borderBottom: 1, borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Box>
-        <Box sx={{ fontSize: 13, color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</Box>
+        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Box>
+        <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</Box>
       </Box>
       {adjust}
       <IconButton aria-label={`Log ${label}`} onClick={onLog} disabled={disabled} sx={{ bgcolor: tokens.ink.text, color: tokens.ink.card, '&:hover': { bgcolor: tokens.ink.text }, '&.Mui-disabled': { bgcolor: tokens.ink.border } }}>

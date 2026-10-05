@@ -114,7 +114,7 @@ function contextFor(deps: Deps, serve?: (request: Request) => Promise<Response>)
   return ctx as unknown as McpContext
 }
 
-const mcpDeps = (c: Context<AppEnv>): Deps => ({ ...depsFromContext(c), actor: 'mcp' })
+const mcpDeps = (c: Context<AppEnv>): Deps => depsFromContext(c, 'mcp')
 
 /**
  * Mount /mcp and the OAuth endpoints. /authorize must already be behind the Access check (app.use('/authorize', auth())),

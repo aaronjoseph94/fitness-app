@@ -21,6 +21,7 @@ import {
   EventsResponse,
   Exercise,
   ExerciseCreate,
+  ExercisePhotoUploadQuery,
   ExerciseExclusion,
   ExerciseHistory,
   ExerciseQuery,
@@ -78,6 +79,7 @@ import {
   RecentFoodsQuery,
   Scan,
   ScanPatch,
+  ScanSchedule,
   ScanUploaded,
   ScanUploadQuery,
   SessionCreate,
@@ -248,7 +250,10 @@ export const endpoints = {
       response: Fast,
       offline: 'queue',
     }),
-    /** Cancel a planned fast that has not started (409 fast_started once it has; end it instead). */
+    /**
+     * Remove a fast that did not happen: a planned fast not yet begun, a planned fast begun but never ended (skipped),
+     * or one ended within an hour of its start (a mis-tap). 409 fast_started otherwise (end it instead).
+     */
     cancel: defineEndpoint({ method: 'DELETE', path: '/api/fasts/:id', params: IdParams, response: Ok, offline: 'queue' }),
   },
 
@@ -280,6 +285,16 @@ export const endpoints = {
       method: 'POST',
       path: '/api/exercises',
       body: ExerciseCreate,
+      response: Exercise,
+      offline: 'queue',
+    }),
+    /** The photo of one of Aaron's own exercises (custom only: 409 not_custom otherwise); replaces its image. */
+    uploadExercisePhoto: defineEndpoint({
+      method: 'POST',
+      path: '/api/exercises/:id/photo',
+      params: IdParams,
+      query: ExercisePhotoUploadQuery,
+      body: Upload,
       response: Exercise,
       offline: 'queue',
     }),
@@ -382,10 +397,6 @@ export const endpoints = {
       params: IdParams,
       response: ProposalDecision,
     }),
-    /** Aliases of weekPlans.list / propose / apply (the phase 1 names). */
-    listWeekPlans: weekPlans.list,
-    createWeekPlan: weekPlans.propose,
-    applyWeekPlan: weekPlans.apply,
   },
 
   weekPlans,
@@ -403,6 +414,8 @@ export const endpoints = {
     confirm: defineEndpoint({ method: 'PATCH', path: '/api/scans/:id', params: IdParams, body: ScanPatch, response: Scan }),
     /** Newest first. */
     list: defineEndpoint({ method: 'GET', path: '/api/scans', response: z.array(Scan) }),
+    /** When the next scan is due: the scheduled date (coach or week plan), else the interval after the last scan. */
+    schedule: defineEndpoint({ method: 'GET', path: '/api/scans/schedule', response: ScanSchedule }),
     get: defineEndpoint({ method: 'GET', path: '/api/scans/:id', params: IdParams, response: Scan }),
     /** Read the stored sheet again (a new scan_extract job) for an unconfirmed scan. */
     extract: defineEndpoint({ method: 'POST', path: '/api/scans/:id/extract', params: IdParams, response: ScanUploaded }),

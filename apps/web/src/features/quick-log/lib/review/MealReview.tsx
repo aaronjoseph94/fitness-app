@@ -15,13 +15,14 @@ import { tokens } from '../../../../theme'
 import { useNow } from '../fasts'
 import { SLOT_LABEL } from '../nutrition'
 import { useRecentFoods } from '../reads'
-import { noticeFor, problemText, type LogNotice } from '../ui'
+import { noticeFor, type LogNotice } from '../ui'
 import { useLogMutation } from '../writes'
 import { useDayAdjustment } from './adjustment'
 import { DayAdjustmentCard } from './DayAdjustmentCard'
 import { ItemsEditor } from './ItemsEditor'
 import { draftTotals, fromMealItem, toItemInputs, type DraftItem } from './items'
 import { analysisState, useLiveMeal } from './meal-live'
+import { problemText } from '../../../../api'
 
 export interface MealReviewProps {
   date: string
@@ -96,7 +97,7 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
             : "The AI couldn't read this one just now. Add what you ate below; what you wrote is kept."}
         </Alert>
       ) : (
-        <Box sx={{ fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
           Check the items and grams, then confirm. Tap a name's Swap to pick the right food.
         </Box>
       )}
@@ -116,13 +117,13 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
           zIndex: 1,
         }}
       >
-        <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }} data-testid="review-totals">
+        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }} data-testid="review-totals">
           {items.length === 0
             ? 'No items yet.'
             : `${formatNumber(totals.kcal)} kcal${complete ? '' : '+'} · ${formatNumber(totals.protein_g)} g protein · ${formatNumber(totals.carbs_g)} g carbs · ${formatNumber(totals.fat_g)} g fat`}
         </Box>
         {update.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(update.error)}
           </Box>
         )}
@@ -159,7 +160,7 @@ function MealSource({ meal, localPreviews }: { meal: Meal; localPreviews: readon
         </Box>
       )}
       {meal.raw_text && (
-        <Box sx={{ fontSize: 14, lineHeight: 1.5, color: tokens.ink.text }} data-testid="meal-raw-text">
+        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: 1.5, color: tokens.ink.text }} data-testid="meal-raw-text">
           “{meal.raw_text}”
         </Box>
       )}
@@ -188,10 +189,10 @@ function AnalysingView({
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2 }}>
           <Box sx={{ flex: 1, fontSize: 17, fontWeight: tokens.font.weight.heading }}>Analysing {what}…</Box>
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{seconds} s</Box>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{seconds} s</Box>
         </Box>
         <LinearProgress sx={{ borderRadius: tokens.radius.chip, height: 6, bgcolor: tokens.ink.border, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }} />
-        <Box sx={{ mt: 2, fontSize: 13, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.5 }}>
           {slow
             ? 'Taking longer than usual; the AI services may be busy. Keep waiting, or add the items yourself.'
             : 'Usually under 20 seconds. You can close this; the meal waits for you in the Log tab.'}

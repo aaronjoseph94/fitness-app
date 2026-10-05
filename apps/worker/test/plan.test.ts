@@ -8,7 +8,7 @@ import { createDb, plan_versions, profile, settings, weight_logs } from '../src/
 import type { Deps } from '../src/lib/deps'
 import { getDay } from '../src/modules/day'
 import { listEvents } from '../src/modules/events'
-import { createVersion, listVersions } from '../src/modules/plan'
+import { acceptProposal, createVersion, listVersions } from '../src/modules/plan'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -127,5 +127,7 @@ describe('plan version verdicts', () => {
     expect(result.plan_version).toMatchObject({ scheduled, rejected })
     const [newest] = await listVersions(deps)
     expect(newest).toMatchObject({ id: result.plan_version!.id, scheduled, rejected })
+    // The later step waits for its week: accepting it now would be a 200 kcal move in minutes.
+    await expect(acceptProposal(deps, result.scheduled[0]!.proposal_id)).rejects.toMatchObject({ status: 409, code: 'not_due' })
   })
 })

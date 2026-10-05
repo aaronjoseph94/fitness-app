@@ -1,6 +1,6 @@
 // Owns: the reads behind the Progress tab for one range — v_day rows (GET /api/days), the trend series with forecast,
-// measurements and milestones (GET /api/trend), fasts from the range start on (so planned ones show), and settings
-// (start date, goal, fast length). Switching range keeps the previous range on screen until the new one arrives.
+// measurements and milestones (GET /api/trend), fasts from the range start on (so planned ones show), the range's
+// workout sessions with their sets (GET /api/sessions), and settings (start date, goal, fast length). Switching range keeps the previous range on screen until the new one arrives.
 import { endpoints } from '@fitness/shared/api'
 import { keepPreviousData } from '@tanstack/react-query'
 import { useApiQuery } from '../../../api'
@@ -16,5 +16,6 @@ export function useProgressData(range: RangeKey, date: LocalDate) {
   const days = useApiQuery(endpoints.day.range, { query: { from, to } }, { enabled: ready, placeholderData: keepPreviousData })
   const trend = useApiQuery(endpoints.body.trend, { query: { from, to } }, { enabled: ready, placeholderData: keepPreviousData })
   const fasts = useApiQuery(endpoints.fasting.list, { query: { from } }, { enabled: ready, placeholderData: keepPreviousData })
-  return { from, to, settings, days, trend, fasts }
+  const sessions = useApiQuery(endpoints.training.listSessions, { query: { from, to } }, { enabled: ready, placeholderData: keepPreviousData })
+  return { from, to, settings, days, trend, fasts, sessions }
 }

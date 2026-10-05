@@ -4,26 +4,28 @@
 //   2. the other changes in order, each through its module's own guarded entry point (templates and swaps: allowed
 //      exercise set and 12–28 sets; fasts: the monthly pattern; settings: never a rail) — one that fails is dropped
 //      with the rule it broke and the rest still applies
-//   3. the review through reviews.recordCoachReview (Claude's narrative replaces the Gemini draft; one 'review' event)
+//   3. the review through reviews.recordCoachReview (Claude's narrative replaces the Gemini draft; one 'review' event),
+//      or with record_review false (scan debrief, program design, plateau check) the narrative as an ai_events note,
+//      whose id is then the review_id revert_review takes — the week's review and its Sunday draft are left alone
 //   4. the change log (log.ts) linking the review to the versions before/after and the undo steps revert_review replays
 // D1 has no transactions: each step is its module's own batch, so a crash mid-way leaves the earlier steps applied.
-import { isoWeek, today, weekdayOf } from '@fitness/shared/engine'
+import { isoWeek, targetValue, today, weekdayOf } from '@fitness/shared/engine'
 import {
   type FieldChange,
   type PlanChange,
-  type PlanTargets,
   type ReminderPrefs,
   type ReviewProposal,
   type TemplateExerciseInput,
 } from '@fitness/shared/schemas'
-import { milestones } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { badRequest, HttpError } from '../../../lib/http-error'
 import { cancelFast, listFasts, moveFast, planFast } from '../../fasting'
 import { createVersion, getActivePlan } from '../../plan'
 import { recordCoachReview } from '../../reviews'
+import { addMilestone } from '../../scans'
 import { getSettings, updateSettings } from '../../settings'
-import { createTemplate, getEquipment, getTemplate, updateEquipment, updateTemplate } from '../../training'
+import { createTemplate, getEquipment, getTemplate, templateSwapped, updateEquipment, updateTemplate } from '../../training'
+import { eventInsert } from '../../events'
 import { coachLogInsert, type UndoStep } from './log'
 import { setDashboardNote } from './note'
 import { scheduledScanDate, scheduleScan } from './scan-date'
@@ -43,11 +45,6 @@ type Outcome = { summary: string; changes: FieldChange[]; undo: UndoStep }
 type TargetChange = Extract<ReviewChange, { kind: 'target' }>
 
 const label = (c: { field: string; weekday: string | null }) => `${c.weekday ?? 'daily'} ${c.field}`
-
-/** The value a target change moves from: the weekday's override when set, else the default. */
-function currentTarget(targets: PlanTargets, c: Pick<TargetChange, 'field' | 'weekday'>): number {
-  return (c.weekday ? targets.overrides[c.weekday]?.[c.field] : undefined) ?? targets.defaults[c.field]
-}
 
 /** Only Aaron (the app) and the coach (MCP, approved in the chat) apply a review; Ask AI writes proposals instead. */
 export function assertCoach(deps: Deps, what: string): void {
@@ -114,6 +111,7 @@ async function applyOne(deps: Deps, c: Exclude<ReviewChange, TargetChange>): Pro
           : e,
       )
       await updateTemplate(deps, c.template_id, { exercises })
+      await templateSwapped(deps, { template_id: c.template_id, from_exercise_id: c.from_exercise_id, to_exercise_id: c.to_exercise_id })
       return {
         summary: `swapped an exercise in "${before.name}"`,
         changes: [
@@ -189,18 +187,7 @@ async function applyOne(deps: Deps, c: Exclude<ReviewChange, TargetChange>): Pro
     case 'milestone': {
       if (c.milestone_kind === 'segment' && !c.segment)
         throw badRequest("A 'segment' milestone needs its segment (e.g. torso)")
-      const id = crypto.randomUUID()
-      const now = deps.now().toISOString()
-      await deps.db.insert(milestones).values({
-        id,
-        kind: c.milestone_kind,
-        segment: c.milestone_kind === 'segment' ? (c.segment ?? null) : null,
-        target_value: c.target_value,
-        label: c.label,
-        actor: deps.actor,
-        created_at: now,
-        updated_at: now,
-      })
+      const id = await addMilestone(deps, { kind: c.milestone_kind, segment: c.segment ?? null, target_value: c.target_value, label: c.label })
       return {
         summary: `milestone "${c.label}" added`,
         changes: [{ path: `milestones.${id}`, from: null, to: c.label }],
@@ -292,7 +279,7 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
   const asPlan = (c: TargetChange): PlanChange => ({
     field: c.field,
     weekday: c.weekday,
-    from: currentTarget(before.targets, c),
+    from: targetValue(before.targets, c.field, c.weekday),
     to: c.to,
     reason: reason(c.reason),
   })
@@ -321,7 +308,7 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
     scheduled = result.scheduled.map((s) => ({ change: s.change, due: s.due, proposal_id: s.proposal_id }))
     for (const t of unmatched) {
       const line = diff.find((d) => d.field === t.c.field && d.weekday === t.c.weekday)
-      const from = currentTarget(before.targets, t.c)
+      const from = targetValue(before.targets, t.c.field, t.c.weekday)
       const to = line?.to ?? t.c.to
       const later = scheduled.filter((s) => s.change.field === t.c.field && s.change.weekday === t.c.weekday)
       const steps = later.length
@@ -371,21 +358,29 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
   applied.sort((a, b) => a.index - b.index)
   dropped.sort((a, b) => a.index - b.index)
 
-  // 3. The review (supersedes the Gemini draft), then 4. its change log.
-  const review = await recordCoachReview(deps, {
-    week_start,
-    narrative: input.narrative,
-    highlights: input.highlights,
-    concerns: input.concerns,
-    proposals,
-  })
+  // 3. The review (supersedes the Gemini draft) or, off the weekly review, a note; then 4. its change log.
+  let review_id: string
+  if (input.record_review) {
+    const review = await recordCoachReview(deps, {
+      week_start,
+      narrative: input.narrative,
+      highlights: input.highlights,
+      concerns: input.concerns,
+      proposals,
+    })
+    review_id = review.id
+  } else {
+    const note = eventInsert(deps, { kind: 'note', summary: `Coach: ${input.summary}`, body: { text: input.narrative }, date: today(deps.now()) })
+    await note.statement
+    review_id = note.id
+  }
   const plan_version_before = { id: before.id, version: before.version }
   await coachLogInsert(
     deps,
     {
       entity: 'coach_review',
       changes,
-      review_id: review.id,
+      review_id,
       week_start,
       summary: input.summary,
       plan_version_before,
@@ -397,8 +392,8 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
   ).statement
 
   return {
-    review_id: review.id,
-    week: review.week,
+    review_id,
+    week: isoWeek(week_start),
     week_start,
     plan_version: version,
     plan_version_before,

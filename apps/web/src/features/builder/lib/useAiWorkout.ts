@@ -4,8 +4,7 @@
 import { endpoints } from '@fitness/shared/api'
 import type { AiWorkoutRequest, WorkoutDraft } from '@fitness/shared/schemas'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { call, useApiQuery } from '../../../api'
-import { problemText } from '../../quick-log'
+import { call, problemText, useApiQuery } from '../../../api'
 
 const POLL_MS = 1_500
 /** Free-tier providers can queue a while; past this the page says so. */
@@ -24,6 +23,8 @@ export interface AiWorkout {
   run: (request: AiWorkoutRequest) => void
   /** Replace the current draft (after a swap). */
   setDraft: (draft: WorkoutDraft) => void
+  /** Show a draft that already exists (a pending proposal) as if a job had just made it. */
+  open: (draft: WorkoutDraft) => void
   reset: () => void
 }
 
@@ -92,11 +93,17 @@ export function useAiWorkout(): AiWorkout {
     [],
   )
 
+  const open = useCallback((draft: WorkoutDraft) => {
+    runId.current++
+    setJobId(null)
+    setState({ status: 'done', draft, provider: null })
+  }, [])
+
   const reset = useCallback(() => {
     runId.current++
     setJobId(null)
     setState({ status: 'idle' })
   }, [])
 
-  return { state, run, setDraft, reset }
+  return { state, run, setDraft, open, reset }
 }

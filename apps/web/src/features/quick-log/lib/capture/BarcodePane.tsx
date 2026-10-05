@@ -12,13 +12,12 @@ import { alpha } from '@mui/material/styles'
 import { endpoints } from '@fitness/shared/api'
 import type { Food } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState } from 'react'
-import { useApiQuery } from '../../../../api'
-import { formatNumber } from '../../../../components'
+import { problemText, useApiQuery } from '../../../../api'
+import { formatNumber, NumberField, parseNumber } from '../../../../components'
 import { tokens } from '../../../../theme'
 import { FoodPicker, pickedFromFood, type PickedFood } from '../FoodPicker'
 import { portion } from '../nutrition'
 import { FoodIcon } from '../review/food-icons'
-import { NumberField, parseNumber, problemText } from '../ui'
 import { isValidGtin, loadBarcodeReader, openRearCamera, scanVideo, stopStream } from './barcode'
 
 export interface BarcodeItem {
@@ -56,17 +55,17 @@ export function BarcodePane({ busy, onSave }: BarcodePaneProps) {
   if (code !== null) {
     return (
       <Box sx={{ display: 'grid', gap: 3 }} data-testid="barcode-lookup">
-        <Box sx={{ fontSize: 14, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>Barcode {code}</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>Barcode {code}</Box>
         {lookup.isLoading ? (
-          <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 15 }}>
+          <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.emphasis }}>
             <CircularProgress size={18} aria-hidden /> Looking it up…
           </Box>
         ) : lookup.isError ? (
-          <Box role="alert" sx={{ fontSize: 15 }}>
+          <Box role="alert" sx={{ fontSize: tokens.font.size.emphasis }}>
             {problemText(lookup.error)}
           </Box>
         ) : (
-          <Box sx={{ fontSize: 15, lineHeight: 1.5 }}>Not in Open Food Facts yet. Find it by name, or add it as a new food.</Box>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>Not in Open Food Facts yet. Find it by name, or add it as a new food.</Box>
         )}
         {!lookup.isLoading && (searching ? <FoodPicker autoFocus onPick={setPicked} /> : null)}
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -163,14 +162,14 @@ function Scanner({ onCode, onType }: { onCode: (code: string) => void; onType: (
           <Box sx={{ position: 'absolute', left: 12, right: 12, top: '50%', height: 2, bgcolor: alpha(tokens.metric.calories, 0.85), borderRadius: 1 }} />
         </Box>
         {!ready && (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: tokens.ink.card, fontSize: 14 }}>
+          <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: tokens.ink.card, fontSize: tokens.font.size.small }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <CircularProgress size={18} sx={{ color: tokens.ink.card }} aria-hidden /> Starting the camera…
             </Box>
           </Box>
         )}
       </Box>
-      <Box sx={{ fontSize: 14, color: 'text.secondary', textAlign: 'center' }}>Line the barcode up inside the frame.</Box>
+      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', textAlign: 'center' }}>Line the barcode up inside the frame.</Box>
       <Button variant="text" startIcon={<KeyboardRounded />} onClick={onType} sx={{ justifySelf: 'center' }}>
         Type the numbers instead
       </Button>
@@ -194,7 +193,7 @@ function TypedCode({ note, onCode, onCamera }: { note?: string; onCode: (code: s
       sx={{ display: 'grid', gap: 3 }}
       data-testid="barcode-typed"
     >
-      {note && <Box sx={{ fontSize: 14, color: 'text.secondary', lineHeight: 1.5 }}>{note}</Box>}
+      {note && <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: 1.5 }}>{note}</Box>}
       <TextField
         label="Barcode number"
         value={text}
@@ -243,8 +242,8 @@ function FoundFood({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <FoodIcon name={food.name} size={44} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{food.name}</Box>
-          <Box sx={{ fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+          <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{food.name}</Box>
+          <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
             {formatNumber(food.per100.kcal_per_100g)} kcal · {formatNumber(food.per100.protein_g, 1)} g protein per 100 g
             {code ? ` · ${code}` : ''}
           </Box>
@@ -263,7 +262,7 @@ function FoundFood({
         ))}
       </Box>
       {n && (
-        <Box sx={{ fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
           {formatNumber(n.protein_g)} g protein · {formatNumber(n.carbs_g)} g carbs · {formatNumber(n.fat_g)} g fat
         </Box>
       )}

@@ -53,7 +53,7 @@ ${RAILS}
 10. Logging adherence: under 80 % weakens every conclusion — say so and favour logging fixes over plan changes.
 
 ## 3. What may change — apply_review changes[]
-- target: kcal (within the rails, ≤ 150 per review), protein_g, carbs_g, fat_g, fibre_g, water_ml (the water target), steps — for every day (weekday null) or one weekday.
+- target: kcal (within the rails, ≤ 150 per review), protein_g, fat_g, fibre_g, water_ml (the water target), steps — for every day (weekday null) or one weekday. Carbs are the remainder of kcal after protein and fat; they are not a target of their own.
 - template (create or rewrite), exercise_swap (allowed exercises only), week_split (training days), equipment (statuses), reminder_time, milestone, fast / fast_cancel, scan_date, dashboard_note.
 - Never: the rails, auto_apply_safe, anything medical. Prefer one or two meaningful changes over many small ones.
 
@@ -63,7 +63,7 @@ ${PRESENT}
 apply_review({ summary, narrative, changes, highlights, concerns }). The narrative is what the printed weekly report shows: second person, plain words, under ~250 words, no medical advice, the numbers that matter. Tell Aaron that revert_review(review_id) undoes the whole review in one call (the app also offers a one-tap revert on the plan version).
 
 ## 5. End with next week's plan
-Build the coming Monday–Sunday: per-day targets within the rails (fast days 0 kcal), the four sessions as template snapshots (Mon–Thu by default; light or rest on a fast day; no muscle trained as a primary target on consecutive days; 12–28 sets each; allowed exercises only; loads from history), water, steps, planned fasts, the scan date if due, and a one-line focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light"). Call propose_week_plan(week_start, plan), show Aaron the summary, and after he approves call apply_week_plan(id). Optionally pin the focus with set_dashboard_note.`
+Build the coming Monday–Sunday: per-day targets within the rails (fast days 0 kcal), the four sessions as template snapshots (Mon–Thu by default; light or rest on a fast day; no muscle trained as a primary target on consecutive days; 12–28 sets each; allowed exercises only; loads from history), water, steps, fast_dates = the fast_day of each fast already planned that week (upcoming.fasts; plan a new one with plan_fast or apply_review fast first), the scan date if due, and a one-line focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light"). Call propose_week_plan(week_start, plan), show Aaron the summary, and after he approves call apply_week_plan(id). Optionally pin the focus with set_dashboard_note.`
 
 const SCAN_DEBRIEF = `# scan_debrief — after a confirmed Evolt scan
 
@@ -89,7 +89,7 @@ Protein target (up, never below the minimum), training volume (template / exerci
 ${PRESENT}
 
 ## 4. Apply
-apply_review with week_start = the Monday of the scan's week and a narrative that reads as the scan debrief; schedule the next scan (scan_date change or schedule_scan).`
+apply_review with record_review: false and a narrative that reads as the scan debrief (the week's coach review and its Sunday draft stay as they are); schedule the next scan (scan_date change or schedule_scan).`
 
 const PROGRAM_DESIGN = `# program_design — build or rebuild the Mon–Thu training plan
 
@@ -109,7 +109,7 @@ ${RAILS}
 - Loads: leave target_load_kg null when there is no history — the engine's double progression sets the default load.
 
 ## 3. What may change
-Templates (apply_review kind "template", or create_template), exercise swaps, equipment statuses Aaron mentions, the week's sessions (propose_week_plan → apply_week_plan).
+Templates (apply_review kind "template" with record_review: false, or create_template), exercise swaps, equipment statuses Aaron mentions, the week's sessions (propose_week_plan → apply_week_plan). Only the weekly coach_review records the week's review.
 
 ${PRESENT}
 Also show each session as exercise · sets × reps, and the weekly sets per muscle against the last block.`
@@ -130,7 +130,7 @@ ${RAILS}
 5. Adaptive expenditure: tdee_est falling over the weeks.
 
 ## 3. What may change
-Steps target (at most +1,000 a week), protein up, training volume, water, a dashboard note. Never below the calorie floor; a kcal move only within the rails and ≤ 150. Suggest Aaron discusses a diet break or refeed with his dietitian — the app never proposes either on its own.
+Steps target (at most +1,000 a week), protein up, training volume, water, a dashboard note. Never below the calorie floor; a kcal move only within the rails and ≤ 150. Suggest Aaron discusses a diet break or refeed with his dietitian — the app never proposes either on its own. Apply with apply_review and record_review: false (only the weekly coach_review records the week's review).
 
 ${PRESENT}
 Give the verdict first: plateau, not yet, or logging gap — with the 21-day trend change and adherence behind it.`

@@ -12,10 +12,10 @@ import DialogTitle from '@mui/material/DialogTitle'
 import { endpoints } from '@fitness/shared/api'
 import type { PlanVersion } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { useApiMutation } from '../../../api'
+import { problemText, useApiMutation } from '../../../api'
 import { useOnline } from '../../../offline'
 import { tokens } from '../../../theme'
-import { problemText, formatDateTime } from '../../quick-log'
+import { formatDateTime } from '../../quick-log'
 import { actorLabel, diffRows, forecastText, targetsDiff, type DiffRow } from './plan-view'
 
 /** What a restore makes stale: the plan, the versions list, the day (targets) and the event feed. */
@@ -33,7 +33,7 @@ export function VersionCard({ version, active, onRestored }: VersionCardProps) {
   return (
     <Card component="article" data-testid="plan-version" data-active={version.active} sx={{ p: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box component="h3" sx={{ m: 0, fontSize: 18, fontWeight: tokens.font.weight.heading }}>
+        <Box component="h3" sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading }}>
           Version {version.version}
         </Box>
         {version.active && (
@@ -46,7 +46,7 @@ export function VersionCard({ version, active, onRestored }: VersionCardProps) {
               display: 'inline-flex',
               alignItems: 'center',
               borderRadius: tokens.radius.chip,
-              fontSize: 12,
+              fontSize: tokens.font.size.caption,
               fontWeight: tokens.font.weight.label,
               color: tokens.ink.card,
               bgcolor: tokens.status.good,
@@ -56,17 +56,17 @@ export function VersionCard({ version, active, onRestored }: VersionCardProps) {
           </Box>
         )}
         <Box sx={{ flex: 1 }} />
-        <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDateTime(version.created_at)}</Box>
+        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDateTime(version.created_at)}</Box>
       </Box>
-      <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary }}>
+      <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
         By {actorLabel(version.created_by)}
         {version.reason ? ` · ${version.reason}` : ''}
       </Box>
 
-      {rows.length > 0 ? <DiffList rows={rows} /> : <Box sx={{ mt: 2, fontSize: 14, color: tokens.ink.secondary }}>Starting targets, no change.</Box>}
+      {rows.length > 0 ? <DiffList rows={rows} /> : <Box sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Starting targets, no change.</Box>}
 
       {version.forecast && (
-        <Box sx={{ mt: 2, fontSize: 13, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.5 }}>
           <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
             Forecast:{' '}
           </Box>
@@ -89,10 +89,10 @@ export function DiffList({ rows }: { rows: readonly DiffRow[] }) {
     <Box component="dl" sx={{ m: 0, mt: 2, borderTop: `1px solid ${tokens.ink.border}` }}>
       {rows.map((r) => (
         <Box key={r.key} sx={{ display: 'flex', alignItems: 'baseline', gap: 2, py: 1.5, borderBottom: `1px solid ${tokens.ink.border}` }}>
-          <Box component="dt" sx={{ flex: 1, minWidth: 0, fontSize: 14, color: tokens.ink.secondary }}>
+          <Box component="dt" sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
             {r.label}
           </Box>
-          <Box component="dd" sx={{ m: 0, fontSize: 14, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>
+          <Box component="dd" sx={{ m: 0, fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }}>
             <Box component="span" sx={{ color: tokens.ink.secondary }}>
               {r.from}
             </Box>
@@ -125,13 +125,13 @@ function RestoreDialog({
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth aria-labelledby="restore-title">
       <DialogTitle id="restore-title">Restore version {version.version}?</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 2 }}>
-        <Box sx={{ fontSize: 15, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>
           This makes a new version with version {version.version}'s targets. Nothing is deleted; you can restore version {active.version} the same way.
         </Box>
-        {rows.length > 0 ? <DiffList rows={rows} /> : <Box sx={{ fontSize: 14 }}>The targets are the same as now.</Box>}
-        {!online && <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>Restoring needs a connection.</Box>}
+        {rows.length > 0 ? <DiffList rows={rows} /> : <Box sx={{ fontSize: tokens.font.size.small }}>The targets are the same as now.</Box>}
+        {!online && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Restoring needs a connection.</Box>}
         {restore.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(restore.error)}
           </Box>
         )}

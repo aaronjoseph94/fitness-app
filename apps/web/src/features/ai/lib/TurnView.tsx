@@ -56,7 +56,7 @@ export function ReplyText({ text }: { text: string }) {
       </Box>,
     )
   }
-  return <Box sx={{ display: 'grid', gap: 2.5, fontSize: 16, lineHeight: 1.5, color: tokens.ink.text }}>{blocks}</Box>
+  return <Box sx={{ display: 'grid', gap: 2.5, fontSize: tokens.font.size.body, lineHeight: 1.5, color: tokens.ink.text }}>{blocks}</Box>
 }
 
 export function TurnView({ turn }: { turn: Turn }) {
@@ -74,7 +74,7 @@ export function TurnView({ turn }: { turn: Turn }) {
             borderRadius: `${tokens.radius.card}px ${tokens.radius.card}px 4px ${tokens.radius.card}px`,
             bgcolor: tokens.ink.text,
             color: tokens.ink.card,
-            fontSize: 16,
+            fontSize: tokens.font.size.body,
             lineHeight: 1.45,
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
@@ -85,7 +85,7 @@ export function TurnView({ turn }: { turn: Turn }) {
       )}
       {turn.waiting && (
         <Box role="status" sx={{ display: 'grid', gap: 2, maxWidth: 220 }}>
-          <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>Looking it up…</Box>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Looking it up…</Box>
           <LinearProgress color="inherit" sx={{ height: 2, borderRadius: 1, color: tokens.ink.secondary }} />
         </Box>
       )}

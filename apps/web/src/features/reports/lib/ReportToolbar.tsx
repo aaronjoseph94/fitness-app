@@ -75,13 +75,13 @@ export function ReportToolbar({ week, prevWeek, nextWeek, author, onDrafted }: R
   return (
     <Box className="no-print" sx={{ mb: 4, display: 'grid', gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Link component={RouterLink} to="/progress" sx={{ fontSize: 14, fontWeight: tokens.font.weight.label, minHeight: tokens.tapTarget, display: 'inline-flex', alignItems: 'center', mr: 'auto' }}>
+        <Link component={RouterLink} to="/progress" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, minHeight: tokens.tapTarget, display: 'inline-flex', alignItems: 'center', mr: 'auto' }}>
           Progress
         </Link>
         <IconButton component={RouterLink} to={`/reports/week/${prevWeek}`} aria-label={`Previous week ${prevWeek}`} data-testid="report-prev">
           <ChevronLeftRounded />
         </IconButton>
-        <Box sx={{ fontSize: 14, fontVariantNumeric: 'tabular-nums', color: tokens.ink.secondary }}>{week}</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums', color: tokens.ink.secondary }}>{week}</Box>
         <IconButton component={RouterLink} to={`/reports/week/${nextWeek}`} aria-label={`Next week ${nextWeek}`} data-testid="report-next">
           <ChevronRightRounded />
         </IconButton>

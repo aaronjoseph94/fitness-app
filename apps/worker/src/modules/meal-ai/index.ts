@@ -1,7 +1,7 @@
 // Owns: AI on every log (SPEC §6 nutrition pipeline, §9 jobs) — the meal_analysis and day_adjustment job handlers.
 // Interface:
-//   registerMealAiJobs(adapters?)   registers both handlers with the job queue (the nutrition routes call it when they
-//                                   mount; tests call it again with fake adapters, which replaces them)
+//   registerMealAiJobs(adapters?)   registers both handlers with the job queue (done when this module loads, with the
+//                                   real adapters; tests call it again with fake adapters, which replaces them)
 //   MealAiAdapters                  { router, foodSources }: one LLM router and one food-sources instance per run,
 //                                   both drawing on the run's shared fetch budget
 // meal_analysis (a text, voice or photo meal): the router reads the meal (text; a photo meal's own photos, never any
@@ -31,3 +31,6 @@ export function registerMealAiJobs(adapters: MealAiAdapters = defaultAdapters): 
   registerJobHandler('meal_analysis', { fetches: MEAL_ANALYSIS_FETCHES, run: (deps, job) => analyseMeal(deps, adapters, job) })
   registerJobHandler('day_adjustment', { fetches: DAY_ADJUSTMENT_FETCHES, run: (deps, job) => adjustDay(deps, adapters, job) })
 }
+
+// Loading the module registers the handlers, so the cron sweep finds them whether or not the app's routes mounted.
+registerMealAiJobs()

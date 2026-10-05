@@ -1,16 +1,21 @@
 // Owns: tests at the week-plans seam (and its tools) — the guards on propose (calorie floor, the allowed exercise
 // set), apply rebuilding the week's daily targets with the plan's literal kcal (a fast date at 0 kcal, +500 ml water),
 // revert walking back to the previous plan and then to the plan version, and a Gemini draft never replacing Claude's
-// plan. Rails from SPEC §2/§6 (floor 1,400, ceiling 1,700, protein 130 g, fat 45 g); today is Monday 2026-10-05.
+// plan, a plan change (accepted water, a kcal step) carried into the active week plan's days, and a template swap
+// reaching the planned session copied from the template; a plan's fast dates mirror the fast log (a date with no planned
+// fast is rejected; moving the fast moves the 0 kcal day and the active plan's fast_dates). Rails from SPEC §2/§6
+// (floor 1,400, ceiling 1,700, protein 130 g, fat 45 g); today is Monday 2026-10-05.
 import { ReminderKind, Weekday, type ReminderPrefs, type WeekPlanContentInput, type WeekPlanProposal } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { asc, between } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { createDb, daily_targets, exercises, plan_versions, profile, settings, type NewRow } from '../src/db'
+import { createDb, daily_targets, exercises, fast_logs, plan_versions, profile, settings, type NewRow } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { callTool, findTool, toolJsonSchemas } from '../src/modules/tools'
 import { getProposalRow } from '../src/modules/events'
-import { acceptProposal } from '../src/modules/plan'
+import { moveFast } from '../src/modules/fasting'
+import { acceptProposal, createVersion, propose } from '../src/modules/plan'
+import { createTemplate, swapTemplateExercise } from '../src/modules/training'
 import { applyWeekPlan, getWeekPlan, proposeWeekPlan, rejectWeekPlan, revertWeekPlan } from '../src/modules/week-plans'
 
 const db = createDb(env.DB)
@@ -47,8 +52,11 @@ const pulldown = ex('wide-grip-lat-pulldown', 'cable', ['lats'])
 const row = ex('seated-cable-rows', 'cable', ['middle back'])
 const press = ex('dumbbell-shoulder-press', 'dumbbell', ['shoulders'])
 const pushups = ex('pushups', 'body only', ['chest'])
+const dbBench = ex('dumbbell-bench-press', 'dumbbell', ['chest'])
 
 const NEXT_MONDAY = '2026-10-12'
+/** The planned fast: Wednesday 2026-10-14 19:00 MDT → Thursday 19:00, so Thursday 2026-10-15 is the fast day. */
+const FAST_ID = crypto.randomUUID()
 const day = (kcal: number) => ({ kcal, protein_g: 130, carbs_g: 150, fat_g: 45, fibre_g: 30 })
 const set = (e: Ex, sets = 4) => ({ exercise_id: e.id, sets, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null })
 const upper = { template_id: null, name: 'Upper A', exercises: [set(bench), set(pulldown), set(row), set(press)] }
@@ -93,7 +101,8 @@ beforeAll(async () => {
       diff: [],
       targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
     }),
-    ...[bench, pulldown, row, press, pushups].map((e) => db.insert(exercises).values(e)),
+    ...[bench, pulldown, row, press, pushups, dbBench].map((e) => db.insert(exercises).values(e)),
+    db.insert(fast_logs).values({ id: FAST_ID, started_at: '2026-10-15T01:00:00.000Z', start_date: '2026-10-14', planned: true }),
   ])
 })
 
@@ -144,7 +153,8 @@ describe('apply and revert', () => {
 
     await revertWeekPlan(at(), first.id)
     const rows = await weekTargets()
-    expect(rows.map((r) => r.kcal)).toEqual(Array(7).fill(1400))
+    // Thursday stays the fast day: the fast is in the fast log, whichever plan the week follows.
+    expect(rows.map((r) => r.kcal)).toEqual([1400, 1400, 1400, 0, 1400, 1400, 1400])
     expect(rows.every((r) => r.week_plan_id === null)).toBe(true)
   })
 
@@ -178,6 +188,58 @@ describe('Ask AI week plans', () => {
     const again = (await callTool(at('ai'), 'propose_week_plan', { week_start: NEXT_MONDAY, plan: plan({ mon: 1450 }) })) as WeekPlanProposal
     expect(await rejectWeekPlan(at('user'), again.week_plan!.id)).toMatchObject({ status: 'superseded' })
     expect((await getProposalRow(at(), again.week_plan!.id))?.proposal_status).toBe('rejected')
+  })
+})
+
+describe('plan changes while a week plan is active', () => {
+  it("an accepted water change and a +100 kcal step reach the week plan's days, keeping its per-day shape", async () => {
+    const { week_plan } = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan() })
+    await applyWeekPlan(at(), week_plan!.id)
+
+    const asked = await propose(at('ai'), {
+      changes: [{ field: 'water_ml', weekday: null, from: 3000, to: 3500, reason: 'You asked for 3.5 L' }],
+      reason: 'Raise water to 3.5 L',
+    })
+    await acceptProposal(at('user'), asked.proposal!.id)
+    await createVersion(at(), { changes: [{ field: 'kcal', weekday: null, from: 1400, to: 1500, reason: 'Slower loss' }], reason: 'Review' })
+
+    const rows = await weekTargets()
+    expect(rows.map((r) => r.water_ml)).toEqual([3500, 3500, 3500, 4000, 3500, 3500, 3500])
+    expect(rows.map((r) => r.kcal)).toEqual([1650, 1600, 1550, 0, 1500, 1500, 1500])
+    expect(rows.every((r) => r.week_plan_id === week_plan!.id)).toBe(true)
+    expect((await getWeekPlan(at(), NEXT_MONDAY)).active?.plan.water_ml).toBe(3500)
+  })
+})
+
+describe('template swaps', () => {
+  it("a swap in a template reaches the active week plan's session copied from it", async () => {
+    const template = await createTemplate(at('user'), { id: crypto.randomUUID(), name: 'Upper A', origin: 'custom', exercises: upper.exercises })
+    const { week_plan } = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan({}, { mon: { ...upper, template_id: template.id } }) })
+    await applyWeekPlan(at(), week_plan!.id)
+
+    const swap = await swapTemplateExercise(at(), { template_id: template.id, from_exercise_id: bench.id, to_exercise_id: dbBench.id })
+    expect(swap.status).toBe('applied')
+    const active = (await getWeekPlan(at(), NEXT_MONDAY)).active!
+    expect(active.id).toBe(week_plan!.id)
+    expect(active.plan.sessions.mon!.exercises.map((e) => e.exercise_id)).toEqual([dbBench.id, pulldown.id, row.id, press.id])
+  })
+})
+
+describe('fasts in week plans', () => {
+  it('a fast date with no planned fast is rejected; moving the fast moves the 0 kcal day and the plan follows', async () => {
+    const unplanned = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: { ...plan(), fast_dates: ['2026-10-15', '2026-10-17'] } })
+    expect(unplanned.week_plan).toBeNull()
+    expect(unplanned.rejected).toEqual([expect.objectContaining({ where: 'fast_dates', rule: 'fast_not_planned' })])
+
+    const { week_plan } = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan() })
+    await applyWeekPlan(at(), week_plan!.id)
+    // Thursday 19:00 → Friday 19:00: Friday is the fast day, Thursday is back to the plan's 1,400.
+    await moveFast(at(), FAST_ID, { started_at: '2026-10-16T01:00:00.000Z' })
+
+    const rows = await weekTargets()
+    expect(rows.map((r) => r.is_fast_day)).toEqual([false, false, false, false, true, false, false])
+    expect(rows[3]).toMatchObject({ date: '2026-10-15', kcal: 1400 })
+    expect((await getWeekPlan(at(), NEXT_MONDAY)).active?.plan.fast_dates).toEqual(['2026-10-16'])
   })
 })
 

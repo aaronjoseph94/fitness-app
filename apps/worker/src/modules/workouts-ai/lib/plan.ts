@@ -1,7 +1,8 @@
-// Owns: what the AI workout jobs ask for and show the model — the day's focus from the weekly split (default
-// upper / lower / upper / lower over the training days), the candidate exercises (allowed set only, compact), the
-// prompt, and the LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by the repair step).
-import { Weekday, type DeloadStatus, type Muscle, type Readiness, type TemplateExerciseInput } from '@fitness/shared/schemas'
+// Owns: what the AI workout jobs ask for and show the model — the day's focus (from Aaron's note when he gave one, else
+// the weekly split: default upper / lower / upper / lower over the training days), the candidate exercises (allowed
+// set only, compact), the prompt, and the LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by
+// the repair step).
+import { Weekday, type Muscle, type Readiness, type TemplateExerciseInput } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import type { LibraryEntry, SessionDigest, TrainingDigest } from '../../training'
 
@@ -34,6 +35,20 @@ export function dayFocus(weekday: Weekday, training_days: readonly Weekday[], pa
   const order = Weekday.options.filter((d) => training_days.includes(d))
   const i = order.indexOf(weekday)
   return i < 0 ? 'full' : i % 2 === 0 ? 'upper' : 'lower'
+}
+
+const LOWER_WORDS = /\b(lower|legs?|glutes?|quads?|quadriceps|hamstrings?|calf|calves)\b/i
+const UPPER_WORDS = /\b(upper|push|pull|chest|back|arms?|shoulders?|biceps?|triceps?|lats?)\b/i
+
+/**
+ * The focus Aaron asked for in a note (the AI page's chips, Ask AI's "make Thursday a pull day"):
+ *   lower words only → lower; upper words only (push, pull, chest, back, arms, …) → upper; anything else → full,
+ *   so the candidates cover any muscle and the note itself steers the model.
+ */
+export function focusFromNote(note: string): Focus {
+  const lower = LOWER_WORDS.test(note)
+  const upper = UPPER_WORDS.test(note)
+  return lower && !upper ? 'lower' : upper && !lower ? 'upper' : 'full'
 }
 
 /** Categories a gym session draws from (cardio and Olympic lifts are left to Aaron). */
@@ -113,7 +128,6 @@ export interface PromptInput {
   focus: Focus
   note: string | null
   readiness: Readiness
-  deload: DeloadStatus
   fast_day: boolean
   avoid: readonly Muscle[]
   sets: { min: number; max: number; aim: string }
@@ -146,7 +160,6 @@ export function buildPrompt(p: PromptInput): string {
     ...(p.note ? [`Client's note: ${p.note.replace(/\s+/g, ' ').slice(0, 200)}`] : []),
     `Readiness: ${readiness}${r.reduced_volume ? ' - reduce volume' : ''}.`,
     `Fast day: ${p.fast_day ? 'yes (24 h fast) - keep it light' : 'no'}.`,
-    `Deload week: ${p.deload.active ? `yes - about ${Math.round(p.deload.sets_factor * 100)} % of usual sets` : 'no'}.`,
     `Avoid as primary target (trained on a neighbouring day): ${p.avoid.length ? p.avoid.join(', ') : 'none'}.`,
     `Total working sets: aim ${p.sets.aim}, allowed ${p.sets.min}-${p.sets.max}.`,
     '',

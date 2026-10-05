@@ -84,12 +84,12 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         <Card sx={{ p: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
+              <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
                 {ORIGIN_LABEL[session.origin]}
               </Box>
               <Box
                 sx={{
-                  fontSize: 20,
+                  fontSize: tokens.font.size.sectionTitle,
                   fontWeight: tokens.font.weight.heading,
                   lineHeight: 1.3,
                   overflowWrap: 'anywhere',
@@ -113,7 +113,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         </Card>
 
         {notes.length > 0 && (
-          <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: 14 } }}>
+          <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { fontSize: tokens.font.size.small } }}>
             {notes.map((n) => (
               <div key={n}>{n}</div>
             ))}
@@ -178,7 +178,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
 
       <Dialog open={confirm} onClose={() => !finishing && setConfirm(false)} fullWidth maxWidth="xs">
         <DialogTitle>Finish session?</DialogTitle>
-        <DialogContent sx={{ fontSize: 15, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <DialogContent sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>
           {counts.done === 0
             ? 'No sets are ticked yet, so nothing will be logged.'
             : `${counts.done} of ${counts.planned} sets ticked · ${formatNumber(counts.volume_kg)} kg. Sets that aren't ticked aren't logged.`}
@@ -212,12 +212,12 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
 function HeaderStat({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
     <Box data-testid={testId}>
-      <Box sx={{ fontSize: 12, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
+      <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
         {label}
       </Box>
       <Box
         sx={{
-          fontSize: 20,
+          fontSize: tokens.font.size.sectionTitle,
           fontWeight: tokens.font.weight.number,
           fontVariantNumeric: 'tabular-nums',
           lineHeight: 1.2,

@@ -3,6 +3,7 @@
 // read. Numbers come from the engine (muscle scores, readiness, progression, deload, recovery, session summary, PRs).
 // Interface (REST routes and, in phase 4, the tools layer call these; every write is idempotent on its client id):
 //   listExercises(deps, query) / getExercise(deps, id) / createExercise(deps, body)        → Exercise(s) with `allowed`
+//   setExercisePhoto(deps, id, query, bytes)  → Exercise   a custom exercise's photo (R2 exercise-photos/, signed URL)
 //   getEquipment(deps) / updateEquipment(deps, body)                                        → EquipmentItem[]
 //   createExclusion(deps, body) / deleteExclusion(deps, id)                                 → ExerciseExclusion / Ok
 //   listTemplates / getTemplate / createTemplate / updateTemplate / deleteTemplate          → Template (ai/mcp: guarded)
@@ -16,6 +17,8 @@
 //   guardContext(deps, library, actor?)  → GuardContext for workout checks (engine applyGuards)
 //   swapTemplateExercise(deps, { template_id, from_exercise_id, to_exercise_id }) → SafeChangeResult<Template>
 //        safe list: same primary muscle, allowed set; applied now or proposed (plan.applySafeChange decides)
+//   onTemplateSwap(listener) / templateSwapped(deps, swap)  listeners run after any swap is written (week-plans
+//        registers one, so planned sessions copied from the template follow the swap)
 // Template/session creation with `proposal_id` accepts that pending AI workout proposal in the same batch.
 // Registers the 'workout' (→ an AI template) and 'template_swap' proposal handlers for plan.acceptProposal.
 // A session stores its readiness score in workout_sessions.readiness and its start plan (plan snapshot, recovery,
@@ -37,13 +40,14 @@ export {
   getExercise,
   listExercises,
   loadLibrary,
+  setExercisePhoto,
   updateEquipment,
   RAIL_EXCLUDED_EQUIPMENT,
   type Library,
   type LibraryEntry,
 } from './lib/library'
 export { deleteExclusion } from './lib/exclusions'
-export { swapTemplateExercise, type SwapInput } from './lib/swap'
+export { onTemplateSwap, swapTemplateExercise, templateSwapped, type SwapInput, type SwapListener } from './lib/swap'
 export { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate } from './lib/templates'
 export { deleteSet, finishSession, getSession, listSessions, logSet, startSession, updateSet } from './lib/sessions'
 export { exerciseHistory, type SessionDigest, type TrainingDigest } from './lib/history'

@@ -11,13 +11,13 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { endpoints } from '@fitness/shared/api'
 import type { Remaining } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { useApiQuery } from '../../../../api'
+import { problemText, useApiQuery } from '../../../../api'
 import { formatNumber } from '../../../../components'
 import { tokens } from '../../../../theme'
 import { clockOf, instantAt, todayLocal } from '../dates'
 import { defaultSlot, SLOT_LABEL, SLOT_TIME } from '../nutrition'
 import { useDay, useLogSettings } from '../reads'
-import { noticeFor, problemText, type LogNotice } from '../ui'
+import { noticeFor, type LogNotice } from '../ui'
 import { useLogMutation } from '../writes'
 import { suggestionScale, type AdjustmentEvent } from './adjustment'
 import { FoodIcon } from './food-icons'
@@ -60,7 +60,7 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
         <Box sx={{ flex: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
           Rest of {date === todayLocal() ? 'today' : date}
         </Box>
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5, fontSize: 13, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>
           <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, bgcolor: STATUS[status].color }} />
           {STATUS[status].label}
         </Box>
@@ -71,12 +71,12 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
           <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', color: tokens.metric.calories, lineHeight: 1.1 }}>
             {formatNumber(Math.abs(kcal))}
           </Box>
-          <Box sx={{ fontSize: 15, color: tokens.ink.secondary }}>{kcal >= 0 ? 'kcal left' : 'kcal over'}</Box>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary }}>{kcal >= 0 ? 'kcal left' : 'kcal over'}</Box>
         </Box>
       )}
 
       {remaining && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 2, fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
           {MACROS.map(({ key, label, color }) => (
             <Box key={key} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.5 }}>
               <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, bgcolor: color }} />
@@ -88,12 +88,12 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
 
       {/* Protein status in words, unless the AI's note already says it. */}
       {protein !== null && !adjustment?.body.note && (
-        <Box sx={{ mt: 2, fontSize: 14, color: tokens.ink.text }}>
+        <Box sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.ink.text }}>
           {protein > 0 ? `${formatNumber(protein)} g protein still to go today.` : 'Protein target met for today.'}
         </Box>
       )}
 
-      {adjustment?.body.note && <Box sx={{ mt: 2, fontSize: 14, color: tokens.ink.text, lineHeight: 1.5 }}>{adjustment.body.note}</Box>}
+      {adjustment?.body.note && <Box sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.ink.text, lineHeight: 1.5 }}>{adjustment.body.note}</Box>}
 
       {suggestions.length > 0 && (
         <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${tokens.ink.border}` }}>
@@ -107,7 +107,7 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
       )}
 
       {waiting && (
-        <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3, fontSize: 13, color: tokens.ink.secondary }}>
+        <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
           <CircularProgress size={14} aria-hidden />
           Working out next-meal ideas…
         </Box>
@@ -155,16 +155,16 @@ function Suggestion({ date, suggestion, onLogged }: { date: string; suggestion: 
     <Box component="li" data-testid="adjustment-suggestion" sx={{ display: 'flex', alignItems: 'center', gap: 3, minHeight: tokens.tapTarget }}>
       <FoodIcon name={label} size={32} />
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: 15, lineHeight: 1.35 }}>
+        <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.35 }}>
           {label}
           <Box component="span" sx={{ color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
             {' '}
             · {formatNumber(suggestion.grams)} g
           </Box>
         </Box>
-        {suggestion.why && <Box sx={{ fontSize: 12, color: tokens.ink.secondary, lineHeight: 1.4 }}>{suggestion.why}</Box>}
+        {suggestion.why && <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, lineHeight: 1.4 }}>{suggestion.why}</Box>}
         {create.isError && (
-          <Box role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
+          <Box role="alert" sx={{ fontSize: tokens.font.size.caption, color: 'error.main' }}>
             {problemText(create.error)}
           </Box>
         )}

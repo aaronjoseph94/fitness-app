@@ -1,16 +1,12 @@
 // Owns: one HTTP attempt against a provider — the per-invocation fetch budget, the per-attempt AbortSignal.timeout,
 // and turning any non-2xx, timeout or network error into an AttemptFailure (with Retry-After or Gemini RetryInfo).
 // Bodies of failed responses are read only for a machine error code; their text is never logged or rethrown.
+import type { FetchBudget } from '../../../lib/deps'
 import { AttemptFailure, BudgetError } from './errors'
 import type { WireRequest } from './types'
 
 export type FetchFn = (input: string, init: RequestInit) => Promise<Response>
-
-/** External fetches allowed per invocation, shared by everything that holds the same object. */
-export interface FetchBudget {
-  limit: number
-  used: number
-}
+export type { FetchBudget }
 
 /** Retry-After as seconds or an HTTP date, or Gemini's google.rpc.RetryInfo `retryDelay: "12s"`. */
 function retryAfterMs(res: Response, body: unknown, nowMs: number): number | undefined {
@@ -53,16 +49,20 @@ function errorCode(body: unknown): string | undefined {
   return typeof c === 'string' || typeof c === 'number' ? String(c).slice(0, 64) : undefined
 }
 
-/** Send one request. Resolves with the parsed 2xx JSON body; throws AttemptFailure or BudgetError. */
+/**
+ * Send one request. Resolves with the parsed 2xx JSON body; throws AttemptFailure, or BudgetError when any of
+ * `budgets` (the router's own cap, the invocation's tally) is spent — every one of them counts the fetch.
+ */
 export async function send(
   fetchFn: FetchFn,
-  budget: FetchBudget,
+  budgets: readonly FetchBudget[],
   req: WireRequest,
   timeoutMs: number,
   nowMs: number,
 ): Promise<unknown> {
-  if (budget.used >= budget.limit) throw new BudgetError(budget.limit)
-  budget.used++
+  const spent = budgets.find((b) => b.used >= b.limit)
+  if (spent) throw new BudgetError(spent.limit)
+  for (const b of budgets) b.used++
   let res: Response
   try {
     res = await fetchFn(req.url, {

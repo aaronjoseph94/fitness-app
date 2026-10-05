@@ -56,6 +56,20 @@ function fromUtcMs(ms: number): LocalDate {
   return new Date(ms).toISOString().slice(0, 10)
 }
 
+/**
+ * The instant (epoch ms) `date` starts in Edmonton: UTC midnight + 6 h (MDT) or + 7 h (MST), whichever reads as that
+ * date at 00:00. DST changes at 02:00, so local midnight always exists once.
+ */
+export function localMidnight(date: LocalDate): number {
+  const utc = toUtcMs(date)
+  for (const hours of [6, 7]) {
+    const at = utc + hours * 3_600_000
+    const wall = wallClock(at)
+    if (wall.date === date && wall.time === '00:00') return at
+  }
+  return utc + 7 * 3_600_000
+}
+
 /** addDays(d, n) = the calendar date n days after d (n may be negative). */
 export function addDays(date: LocalDate, days: number): LocalDate {
   return fromUtcMs(toUtcMs(date) + days * DAY_MS)

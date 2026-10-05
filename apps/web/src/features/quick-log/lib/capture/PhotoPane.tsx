@@ -82,7 +82,7 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
               display: 'grid',
               placeItems: 'center',
               gap: 0.5,
-              fontSize: 12,
+              fontSize: tokens.font.size.caption,
               '&:hover': { bgcolor: alpha(tokens.ink.text, 0.03) },
             }}
           >
@@ -103,12 +103,12 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
         slotProps={{ htmlInput: { maxLength: 500 } }}
       />
 
-      <Box sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.5 }}>
+      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.5 }}>
         Photos are shrunk to 1,024 px and their location data is removed on this phone before they're sent.
       </Box>
 
       {!online && (
-        <Box role="status" sx={{ fontSize: 14, color: 'text.secondary' }}>
+        <Box role="status" sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
           You're offline. Photos need a connection to be analysed;{' '}
           <Button variant="text" size="small" onClick={onDescribe} sx={{ minHeight: 0, p: 0, verticalAlign: 'baseline' }}>
             describe the meal
@@ -117,7 +117,7 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
         </Box>
       )}
       {error && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
           {error}
         </Box>
       )}

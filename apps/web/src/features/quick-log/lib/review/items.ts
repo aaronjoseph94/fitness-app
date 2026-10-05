@@ -4,7 +4,7 @@
 import type { MealItem, MealItemInput, Nutrients } from '@fitness/shared/schemas'
 import type { PickedFood } from '../FoodPicker'
 import { portion, scaled, sum, type Per100g } from '../nutrition'
-import { parseNumber } from '../ui'
+import { parseNumber } from '../../../../components'
 
 export interface DraftItem {
   /** The meal item's client id (kept across a swap, so a PATCH replaces in place). */

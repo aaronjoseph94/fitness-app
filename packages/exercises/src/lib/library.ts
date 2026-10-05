@@ -2,18 +2,8 @@
 import * as z from 'zod'
 import { ExerciseCategory, Force, LibraryEquipment, Level, Mechanic, Muscle } from '@fitness/shared/schemas'
 import raw from '../../data/free-exercise-db.json' with { type: 'json' }
+import { toSlug, videoSearchUrl } from '../naming'
 import { mediaFor } from './media'
-
-/** 'Barbell_Bench_Press_-_Medium_Grip' → 'barbell-bench-press-medium-grip'. */
-export const toSlug = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-
-/** YouTube search for "<name> form" (SPEC §7). */
-export const videoSearchUrl = (name: string) =>
-  `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} form`)}`
 
 /** One free-exercise-db record in, one normalised library exercise out. Image paths are served from /exercises/<id>/<n>.jpg;
  *  a matched animated demo from /media/exercises/<id>.gif. */

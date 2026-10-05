@@ -36,10 +36,10 @@ function ThreadHeader({ title, onClose }: { title: string; onClose?: () => void 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: tokens.tapTarget }}>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.heading, color: tokens.ink.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, color: tokens.ink.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
         </Box>
-        <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>Numbers come from your data; changes wait for your tap.</Box>
+        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Numbers come from your data; changes wait for your tap.</Box>
       </Box>
       <IconButton aria-label="Past chats" onClick={(e) => setAnchor(e.currentTarget)} sx={{ width: tokens.tapTarget, height: tokens.tapTarget }}>
         <HistoryRounded />
@@ -73,7 +73,7 @@ function ThreadHeader({ title, onClose }: { title: string; onClose?: () => void 
             <ListItemText
               primary={shorten(m.content, 60)}
               secondary={formatShortDate(m.created_at.slice(0, 10))}
-              slotProps={{ primary: { noWrap: true, sx: { fontSize: 15 } }, secondary: { sx: { fontSize: 12 } } }}
+              slotProps={{ primary: { noWrap: true, sx: { fontSize: tokens.font.size.emphasis } }, secondary: { sx: { fontSize: tokens.font.size.caption } } }}
             />
           </MenuItem>
         ))}
@@ -85,7 +85,7 @@ function ThreadHeader({ title, onClose }: { title: string; onClose?: () => void 
 function Starters({ onPick, disabled }: { onPick: (text: string) => void; disabled: boolean }) {
   return (
     <Box data-testid="ask-ai-suggestions" sx={{ display: 'grid', gap: 3, py: 2 }}>
-      <Box sx={{ fontSize: 15, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+      <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>
         Ask about anything you have logged, or ask for a change. Logs you mention are saved; plan changes come back as a card you
         accept with one tap.
       </Box>
@@ -97,7 +97,7 @@ function Starters({ onPick, disabled }: { onPick: (text: string) => void; disabl
             variant="outlined"
             disabled={disabled}
             onClick={() => onPick(s)}
-            sx={{ height: 'auto', minHeight: 36, py: 1, borderColor: tokens.ink.border, bgcolor: tokens.ink.card, '& .MuiChip-label': { whiteSpace: 'normal', fontSize: 14 } }}
+            sx={{ height: 'auto', minHeight: tokens.tapTarget, py: 1, borderColor: tokens.ink.border, bgcolor: tokens.ink.card, '& .MuiChip-label': { whiteSpace: 'normal', fontSize: tokens.font.size.small } }}
           />
         ))}
       </Box>

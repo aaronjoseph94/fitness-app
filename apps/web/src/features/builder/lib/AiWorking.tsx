@@ -9,8 +9,8 @@ export function AiWorking({ slow }: { slow: boolean }) {
   return (
     <Stack spacing={3} sx={{ alignItems: 'center', textAlign: 'center', py: 10 }} data-testid="ai-working">
       <CircularProgress aria-label="Building the workout" />
-      <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.label }}>Building a balanced session…</Box>
-      <Box sx={{ fontSize: 14, color: tokens.ink.secondary, maxWidth: 300 }}>
+      <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }}>Building a balanced session…</Box>
+      <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, maxWidth: 300 }}>
         {slow ? 'Still working: the free AI tier can take a minute when busy.' : 'Only exercises from your allowed set, 12–28 sets, loads from your history.'}
       </Box>
     </Stack>

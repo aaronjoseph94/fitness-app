@@ -117,7 +117,7 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
               {review ? 'Review meal' : (selected?.label ?? 'Quick log')}
             </Typography>
             {selected && selected.kind !== 'fast' && selected.kind !== 'photo' && !isToday && (
-              <Box sx={{ fontSize: 13, color: 'text.secondary' }}>
+              <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>
                 For {relativeDay(day)} {day}
               </Box>
             )}

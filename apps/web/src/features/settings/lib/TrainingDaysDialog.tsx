@@ -28,7 +28,7 @@ export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: Tra
     <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="training-days-title">
       <DialogTitle id="training-days-title">Training days</DialogTitle>
       <DialogContent>
-        <Box sx={{ fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5, mb: 3 }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5, mb: 3 }}>
           The days the plan puts a session on. The default split is upper / lower / upper / lower, Mon–Thu.
         </Box>
         <ToggleButtonGroup
@@ -47,11 +47,11 @@ export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: Tra
             </ToggleButton>
           ))}
         </ToggleButtonGroup>
-        <Box sx={{ mt: 2, fontSize: 13, color: tokens.ink.secondary }}>
+        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
           {ordered.length} {ordered.length === 1 ? 'day' : 'days'}: {formatDays(ordered)}
         </Box>
         {error && (
-          <Box role="alert" sx={{ mt: 3, fontSize: 14, color: tokens.status.flag }}>
+          <Box role="alert" sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
             {error}
           </Box>
         )}

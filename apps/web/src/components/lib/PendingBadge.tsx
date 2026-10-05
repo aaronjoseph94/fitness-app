@@ -25,7 +25,7 @@ export function PendingBadge({ label = 'Pending', count }: PendingBadgeProps) {
         borderRadius: tokens.radius.chip,
         border: `1px solid ${tokens.ink.border}`,
         bgcolor: tokens.ink.card,
-        fontSize: 12,
+        fontSize: tokens.font.size.caption,
         fontWeight: tokens.font.weight.label,
         color: tokens.ink.text,
         whiteSpace: 'nowrap',

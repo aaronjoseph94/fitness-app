@@ -83,17 +83,17 @@ export function RecentSessions({ sessions, unsynced, templates }: RecentSessions
           }}
         >
           <Box sx={{ width: 52, flex: 'none', textAlign: 'center' }}>
-            <Box sx={{ fontSize: 12, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
+            <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
               {formatWeekday(r.date)}
             </Box>
-            <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}>
+            <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}>
               {formatShortDate(r.date)}
             </Box>
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box
               sx={{
-                fontSize: 15,
+                fontSize: tokens.font.size.emphasis,
                 fontWeight: tokens.font.weight.label,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -102,7 +102,7 @@ export function RecentSessions({ sessions, unsynced, templates }: RecentSessions
             >
               {r.name}
             </Box>
-            <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
               {r.sets} sets · {formatNumber(r.volume_kg)} kg
             </Box>
           </Box>

@@ -1,10 +1,10 @@
-// Owns: when the next scan is due (SPEC §3, §8) — the date the coach scheduled (an ai_events 'scan_scheduled' note
-// written on or after the last confirmed scan's date, for a date after it; the newest such note wins, and a null
-// scan_date clears it), else every settings.scan_interval_days (default 28) after the last confirmed scan — and the
-// nightly "scan due" note: once on the due date, then weekly while overdue, never while a newer sheet waits to be
-// confirmed.
-import { addDays } from '@fitness/shared/engine'
-import { LocalDate } from '@fitness/shared/schemas'
+// Owns: when the next scan is due (SPEC §3, §8) — the date the coach or an applied week plan scheduled (an ai_events
+// 'scan_scheduled' note written on or after the last confirmed scan's date, for a date after it; the newest such note
+// wins, and a null scan_date clears it; scanDateNote builds that note for the caller's batch), else every
+// settings.scan_interval_days (default 28) after the last confirmed scan — and the nightly "scan due" note: once on
+// the due date, then weekly while overdue, never while a newer sheet waits to be confirmed.
+import { addDays, today } from '@fitness/shared/engine'
+import { LocalDate, type ScanSchedule } from '@fitness/shared/schemas'
 import { and, desc, eq, gte, sql } from 'drizzle-orm'
 import * as z from 'zod'
 import { ai_events, scans, settings } from '../../../db'
@@ -19,19 +19,17 @@ const REPEAT_DAYS = 7
 export const ScanScheduledNoteBody = z.object({ text: z.string(), flag: z.literal('scan_scheduled'), scan_date: LocalDate.nullable() })
 export type ScanScheduledNoteBody = z.infer<typeof ScanScheduledNoteBody>
 
-export interface ScanSchedule {
-  /** Local date of the last confirmed scan (null before the first). */
-  last_scan_date: LocalDate | null
-  interval_days: number
-  /** last_scan_date + interval_days (null before the first scan). */
-  interval_due: LocalDate | null
-  /** The coach's scheduled date, when one is set after the last scan. */
-  scheduled: LocalDate | null
-  /** When the next scan is due: the scheduled date, else the interval date. */
-  due: LocalDate | null
-  source: 'scheduled' | 'interval' | 'none'
-  /** Local date of the newest uploaded sheet still waiting to be confirmed, if any. */
-  awaiting_confirmation: LocalDate | null
+/**
+ * The note that sets the next scan date (or, with null, clears it back to the interval), dated today, as a statement
+ * for the caller's db.batch. The caller checks the date is today or later.
+ */
+export function scanDateNote(deps: Deps, date: LocalDate | null) {
+  const text =
+    date === null
+      ? 'Next Evolt scan back on the usual interval'
+      : `Evolt scan planned for ${date}. Same conditions as the baseline: morning, fasted, no training the day before.`
+  const body: ScanScheduledNoteBody = { text, flag: 'scan_scheduled', scan_date: date }
+  return eventInsert(deps, { kind: 'note', summary: text, body, date: today(deps.now()) }).statement
 }
 
 /** The newest scan_scheduled note written on or after the last confirmed scan's date (indexed by date). */

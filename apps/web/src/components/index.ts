@@ -1,5 +1,6 @@
 // Owns: the public surface of the visual kit's building blocks — cards, rings, legends, headers, empty states, the
-// loading/error card for a read, the proposal shell and the number/date formatting every screen shares. Internals live in ./lib.
+// loading/error card for a read, the inline "couldn't load" row, the number field, the proposal shell and the number/date
+// formatting every screen shares. Internals live in ./lib.
 export { StatCard, type StatCardProps, type StatDelta } from './lib/StatCard'
 export { MetricRing, type MetricRingProps } from './lib/MetricRing'
 export { RingsRow, type RingsRowProps, type RingItem } from './lib/RingsRow'
@@ -15,6 +16,7 @@ export {
 } from './lib/EmptyState'
 export { PendingBadge, type PendingBadgeProps } from './lib/PendingBadge'
 export { QueryStateCard, isQueryLoading, type QueryStateCardProps } from './lib/QueryStateCard'
+export { LoadProblem, NumberField, parseNumber, type NumberFieldProps } from './lib/forms'
 export {
   ProposalCard,
   type ProposalCardProps,

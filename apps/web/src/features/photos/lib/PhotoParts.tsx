@@ -62,7 +62,7 @@ export function PhotoFacts({ photo, showPose = false, compact = false }: { photo
   const scan = scanText(photo, compact)
   return (
     <Box sx={{ pt: 1.5, minWidth: 0, lineHeight: 1.35 }}>
-      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'baseline', flexWrap: 'wrap', fontSize: 13 }}>
+      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'baseline', flexWrap: 'wrap', fontSize: tokens.font.size.label }}>
         <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
           {showPose ? `${POSE_LABEL[photo.pose]} · ` : ''}
           {formatShortDate(photo.date)}
@@ -70,7 +70,7 @@ export function PhotoFacts({ photo, showPose = false, compact = false }: { photo
         <TrendWeight kg={photo.weight_kg} />
       </Box>
       {scan && (
-        <Box sx={{ fontSize: 12, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{scan}</Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{scan}</Box>
       )}
     </Box>
   )

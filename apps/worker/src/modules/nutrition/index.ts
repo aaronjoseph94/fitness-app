@@ -23,7 +23,7 @@ import { localDate } from '@fitness/shared/engine'
 import type { Food, FoodCreate, FoodSearchQuery, Meal, MealCreate, MealItemInput, MealPatch, Ok } from '@fitness/shared/schemas'
 import { eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { meal_items, meal_photos, meals } from '../../db'
+import { meal_items, meal_photos, meals, runBatch } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { notFound } from '../../lib/http-error'
 import { createFoodSources } from '../food-sources'
@@ -31,7 +31,7 @@ import { jobInsert, registerSweepStep, runSoon } from '../jobs'
 import { autoConfirmMeals, dayAdjustmentAfterConfirm } from './lib/confirm'
 import { favouriteItemInputs } from './lib/favourites'
 import { createUserFood, toFood } from './lib/foods'
-import { itemInserts, itemRows, mealById, mealsOn, runBatch } from './lib/meals'
+import { itemInserts, itemRows, mealById, mealsOn } from './lib/meals'
 import { MEAL_ANALYSIS_PRIORITY } from './lib/photos'
 
 export { analysisInput, applyAnalysis, releaseForReview, type AnalysedItem, type AnalysisInput } from './lib/analysis'
@@ -102,7 +102,7 @@ export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
     ...(adjust ? [adjust.statement] : []),
   ]
   try {
-    await runBatch(deps, statements)
+    await runBatch(deps.db, statements)
   } catch (e) {
     const raced = await mealById(deps, body.id) // a concurrent replay of the same id won
     if (raced) return raced
@@ -131,7 +131,7 @@ export async function updateMeal(deps: Deps, id: string, patch: MealPatch): Prom
   const adjust = patch.confirm && meal.status !== 'confirmed' ? await dayAdjustmentAfterConfirm(deps, { id, date }) : null
   if (adjust) statements.push(adjust.statement)
   if (patch.confirm) status = 'confirmed'
-  await runBatch(deps, [
+  await runBatch(deps.db, [
     deps.db
       .update(meals)
       .set({
@@ -150,7 +150,7 @@ export async function updateMeal(deps: Deps, id: string, patch: MealPatch): Prom
 /** Delete a meal with its items and photo rows in one batch (no cascades); replaying a delete is a no-op. */
 export async function deleteMeal(deps: Deps, id: string): Promise<Ok> {
   const photos = await deps.db.select({ key: meal_photos.storage_path }).from(meal_photos).where(eq(meal_photos.meal_id, id))
-  await runBatch(deps, [
+  await runBatch(deps.db, [
     deps.db.delete(meal_items).where(eq(meal_items.meal_id, id)),
     deps.db.delete(meal_photos).where(eq(meal_photos.meal_id, id)),
     deps.db.delete(meals).where(eq(meals.id, id)),

@@ -1,9 +1,9 @@
 // Owns: the coach review's change log — one ai_events 'change' (entity 'coach_review') written by apply_review beside
 // the reviews module's 'review' event. It links the review to the plan version before and after it, lists each applied
 // change as a FieldChange (what the app shows), and carries the undo steps revert_review replays in reverse. A revert
-// writes its own 'change' (entity 'coach_review_revert') so a second revert is a no-op.
-import { FieldChange, Id, LocalDate } from '@fitness/shared/schemas'
-import { and, desc, eq, sql } from 'drizzle-orm'
+// writes its own 'change' (entity 'coach_review_revert') so a second revert is a no-op until the review is applied again.
+import { EquipmentStatus, FieldChange, Id, LocalDate, ReminderPrefs, Weekday } from '@fitness/shared/schemas'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import * as z from 'zod'
 import { ai_events } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -13,18 +13,19 @@ import { DroppedChange, RevertReviewResult } from './schemas'
 const VersionRef = z.object({ id: Id, version: z.number().int().positive() })
 const Before = z.object({
   equipment: z.string(),
-  status: z.enum(['have', 'dont_have', 'dislike', 'cant_use']),
+  status: EquipmentStatus,
   note: z.string().nullable(),
 })
 
+/** Restoring a settings field: each field's `before` parsed with its own schema. */
+const SettingsUndo = z.discriminatedUnion('field', [
+  z.object({ op: z.literal('settings'), label: z.string(), field: z.literal('training_days'), before: z.array(Weekday) }),
+  z.object({ op: z.literal('settings'), label: z.string(), field: z.literal('reminders'), before: ReminderPrefs }),
+])
+
 /** One step that undoes one applied change; `label` says what the change was, for the revert report. */
 export const UndoStep = z.discriminatedUnion('op', [
-  z.object({
-    op: z.literal('settings'),
-    label: z.string(),
-    field: z.enum(['training_days', 'reminders']),
-    before: z.json(),
-  }),
+  SettingsUndo,
   z.object({
     op: z.literal('equipment'),
     label: z.string(),
@@ -90,14 +91,14 @@ export function coachLogInsert(deps: Deps, body: CoachLogBody, date: string) {
   })
 }
 
-async function latestBody(deps: Deps, entity: string, review_id: string): Promise<unknown> {
+async function latestBody(deps: Deps, entities: readonly string[], review_id: string): Promise<unknown> {
   const [row] = await deps.db
     .select({ body: ai_events.body })
     .from(ai_events)
     .where(
       and(
         eq(ai_events.kind, 'change'),
-        sql`json_extract(${ai_events.body}, '$.entity') = ${entity}`,
+        inArray(sql`json_extract(${ai_events.body}, '$.entity')`, [...entities]),
         sql`json_extract(${ai_events.body}, '$.review_id') = ${review_id}`,
       ),
     )
@@ -108,15 +109,19 @@ async function latestBody(deps: Deps, entity: string, review_id: string): Promis
 
 /** The newest change log of a review (a review re-applied for the same week has several; the newest wins). */
 export async function findCoachLog(deps: Deps, review_id: string): Promise<CoachLogBody | null> {
-  const parsed = CoachLogBody.safeParse(await latestBody(deps, 'coach_review', review_id))
+  const parsed = CoachLogBody.safeParse(await latestBody(deps, ['coach_review'], review_id))
   return parsed.success ? parsed.data : null
 }
 
+/**
+ * The revert of the review's newest apply, or null. A revert counts only when it is newer than the newest change log:
+ * a review re-applied for the same week (same review_id) after a revert can be reverted again.
+ */
 export async function findRevert(
   deps: Deps,
   review_id: string,
 ): Promise<z.infer<typeof RevertReviewResult> | null> {
-  const parsed = RevertLogBody.safeParse(await latestBody(deps, 'coach_review_revert', review_id))
+  const parsed = RevertLogBody.safeParse(await latestBody(deps, ['coach_review', 'coach_review_revert'], review_id))
   return parsed.success ? parsed.data.result : null
 }
 

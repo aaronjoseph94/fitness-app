@@ -50,15 +50,15 @@ export function AcceptPlanDialog({ plan, open, onClose, onAccepted }: AcceptPlan
     <Dialog open={open} onClose={apply.isPending ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="accept-week-plan-title">
       <DialogTitle id="accept-week-plan-title">Accept the plan for {range}?</DialogTitle>
       <DialogContent>
-        <Box sx={{ fontSize: 14, color: tokens.ink.secondary }}>Proposed by {AUTHOR[plan.author]}</Box>
-        {plan.plan.focus_note && <Box sx={{ mt: 2, fontSize: 15, lineHeight: 1.5 }}>{plan.plan.focus_note}</Box>}
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Proposed by {AUTHOR[plan.author]}</Box>
+        {plan.plan.focus_note && <Box sx={{ mt: 2, fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>{plan.plan.focus_note}</Box>}
 
         <Box component="ul" data-testid="accept-plan-days" sx={{ listStyle: 'none', m: 0, mt: 3, p: 0 }}>
           {planDays(plan).map((d) => (
             <Box
               component="li"
               key={d.date}
-              sx={{ display: 'flex', gap: 2, py: 1, fontSize: 14, '& + &': { borderTop: `1px solid ${tokens.ink.border}` } }}
+              sx={{ display: 'flex', gap: 2, py: 1, fontSize: tokens.font.size.small, '& + &': { borderTop: `1px solid ${tokens.ink.border}` } }}
             >
               <Box sx={{ width: 44, flex: 'none', fontWeight: tokens.font.weight.label }}>{formatWeekday(d.date)}</Box>
               <Box sx={{ width: 84, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{d.fast ? 'Fast' : `${formatNumber(d.kcal)} kcal`}</Box>
@@ -73,11 +73,11 @@ export function AcceptPlanDialog({ plan, open, onClose, onAccepted }: AcceptPlan
         <Box sx={{ mt: 3 }}>
           <Label>What changes from last week</Label>
           {changes === null ? (
-            <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary }}>{view.isError ? 'Could not load the comparison.' : 'Loading…'}</Box>
+            <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{view.isError ? 'Could not load the comparison.' : 'Loading…'}</Box>
           ) : changes.length === 0 ? (
-            <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary }}>Same targets and sessions as last week.</Box>
+            <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Same targets and sessions as last week.</Box>
           ) : (
-            <Box component="ul" sx={{ m: 0, mt: 1, pl: 4, fontSize: 14, lineHeight: 1.6 }}>
+            <Box component="ul" sx={{ m: 0, mt: 1, pl: 4, fontSize: tokens.font.size.small, lineHeight: 1.6 }}>
               {changes.map((c) => (
                 <li key={c}>{c}</li>
               ))}
@@ -85,12 +85,12 @@ export function AcceptPlanDialog({ plan, open, onClose, onAccepted }: AcceptPlan
           )}
         </Box>
 
-        <Box sx={{ mt: 3, fontSize: 13, color: tokens.ink.secondary }}>
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
           Accepting sets that week’s daily targets and planned sessions. Water {formatNumber(plan.plan.water_ml)} ml · steps{' '}
           {formatNumber(plan.plan.steps)}. You can revert it from the week view on Progress.
         </Box>
         {apply.isError && (
-          <Box role="alert" sx={{ mt: 2, fontSize: 14, color: tokens.status.flag }}>
+          <Box role="alert" sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
             {apply.error.message}
           </Box>
         )}

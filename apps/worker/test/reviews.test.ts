@@ -295,8 +295,13 @@ describe('draftWeeklyReview', () => {
 })
 
 describe('POST /api/reviews/:week/pdf', () => {
-  // Only the reviews route group (auth is the auth test's seam), with the app's JSON error body.
+  // Only the reviews route group (auth is the auth test's seam: here the request is Aaron's, as auth() would set it),
+  // with the app's JSON error body.
   const app = new Hono<AppEnv>()
+  app.use('*', async (c, next) => {
+    c.set('actor', 'user')
+    await next()
+  })
   mountReviewsRoutes(app)
   app.onError(handleError)
   const post = (bindings: object) => app.request('http://localhost/api/reviews/2026-W40/pdf', { method: 'POST' }, bindings)

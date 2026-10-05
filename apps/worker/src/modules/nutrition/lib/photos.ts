@@ -4,11 +4,12 @@
 import type { FileKey, MealPhoto, MealPhotoUploadQuery } from '@fitness/shared/schemas'
 import { and, eq, ne } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { meal_photos, meals } from '../../../db'
+import { meal_photos, meals, runBatch } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { jobInsert, queuedJobId, runSoon } from '../../jobs'
-import { runBatch, toPhoto } from './meals'
+import { checkPhotoBytes } from '../../photos'
+import { toPhoto } from './meals'
 
 /** meal_analysis is user-facing: it runs before nightly work. */
 export const MEAL_ANALYSIS_PRIORITY = 10
@@ -26,6 +27,7 @@ export async function addMealPhoto(deps: Deps, mealId: string, q: MealPhotoUploa
     return toPhoto(deps, existing)
   }
 
+  checkPhotoBytes(body, q.content_type) // stored as exif_stripped and sent to the vision LLM: check, don't trust
   const key = `meal-photos/${mealId}/${q.photo_id}.${q.content_type === 'image/webp' ? 'webp' : 'jpg'}` as FileKey
   await deps.env.FILES.put(key, body, { httpMetadata: { contentType: q.content_type } })
 
@@ -57,7 +59,7 @@ export async function addMealPhoto(deps: Deps, mealId: string, q: MealPhotoUploa
         .where(and(eq(meals.id, mealId), ne(meals.status, 'confirmed'))),
     )
   if (job) statements.push(job.statement)
-  await runBatch(deps, statements)
+  await runBatch(deps.db, statements)
   if (job) runSoon(deps, job.id)
 
   const [row] = await db.select().from(meal_photos).where(eq(meal_photos.id, q.photo_id))

@@ -5,11 +5,12 @@
 // Interface:
 //   requestWorkout(deps, body)            → JobRef     POST /api/ai/workout: enqueue (user priority) + run soon
 //   draftWorkout(deps, llm, input)        → WorkoutDraft (with muscle_scores, guard_notes, proposal_id)  the job body
-//   planNextTrainingDay(deps, today)      → { date, job_id, reason }  nightly: queue workout_generate (background) for
-//                                           tomorrow when it is a training day with no session, week-plan session,
-//                                           pending workout proposal or queued job
+//   planNextTrainingDay(deps, today)      → { date, job_id, reason }  nightly (after 00:30): queue workout_generate
+//                                           (background) for today when it is a training day with no session, week-plan
+//                                           session, pending workout proposal or queued job (yesterday's steps and
+//                                           session are known by then)
 // Registers the 'workout_generate' and 'workout_fill' job handlers (≤ 8 external fetches each).
-import { addDays, muscleScores, today, weekdayOf, weekStart } from '@fitness/shared/engine'
+import { muscleScores, today, weekdayOf, weekStart } from '@fitness/shared/engine'
 import {
   WeekPlanContent,
   type AiWorkoutRequest,
@@ -25,7 +26,7 @@ import { eventInsert } from '../events'
 import { enqueue, registerJobHandler, runSoon, type JobContext } from '../jobs'
 import { createLlmRouter, type LlmRouter, type Priority } from '../llm'
 import { guardContext, planningContext, progressionFor } from '../training'
-import { buildPrompt, dayFocus, LlmWorkout, selectCandidates, SYSTEM_PROMPT, type Focus } from './lib/plan'
+import { buildPrompt, dayFocus, focusFromNote, LlmWorkout, selectCandidates, SYSTEM_PROMPT, type Focus } from './lib/plan'
 import { repairDraft } from './lib/repair'
 
 export { RepairError } from './lib/repair'
@@ -37,7 +38,10 @@ export const BACKGROUND_PRIORITY = 0
 const LLM_FETCHES = 8
 /** Leave the job runner's 25 s deadline a margin for the database writes. */
 const LLM_DEADLINE_MS = 22_000
-/** Set limits (guards: 12–28); a reduced-volume day (readiness, short sleep, fast day, deload week) caps at 16. */
+/**
+ * Set limits (guards: 12–28); a reduced-volume day (readiness, short sleep, fast day) caps at 16. A deload week's 60 %
+ * is applied once, by the session plan (progression), never here as well.
+ */
 const SETS = { min: 12, max: 28, reduced_max: 16 } as const
 
 export interface DraftInput {
@@ -49,6 +53,8 @@ export interface DraftInput {
   exercises?: readonly TemplateExerciseInput[]
   priority: Priority
   job_id?: string | null
+  /** The job's deadline: an attempt the runner already requeued must not store a second proposal. */
+  signal?: AbortSignal
 }
 
 /** POST /api/ai/workout: queue the job at user priority and start it after the response. */
@@ -66,7 +72,9 @@ const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower 
 
 /**
  * Draft one workout for `input.date` and store it as a pending proposal (actor ai):
- *   reduced volume = readiness.reduced_volume ∨ fast day ∨ deload week → sets 12–16 (aim 12–14), else 12–28 (aim 16–22)
+ *   focus          = from Aaron's note when he gave one (focusFromNote), else the split (dayFocus)
+ *   reduced volume = readiness.reduced_volume ∨ fast day → sets 12–16 (aim 12–14), else 12–28 (aim 16–22); a deload
+ *                    week is not reduced here, since the session plan applies its 60 % when the draft is started
  *   avoid          = primary muscles of the sessions the day before and after (recovery rule)
  *   loads          = engine progression load when the exercise has history, else the LLM's (0.5 kg steps), else null
  *   muscle_scores  = engine muscleScores of the final exercises
@@ -87,10 +95,11 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   const keep = input.mode === 'fill' ? (input.exercises ?? []) : []
   const keepPrimary = keep.flatMap((k) => library.byId.get(k.exercise_id)?.primary_muscles ?? [])
   const weekday = weekdayOf(date)
-  const focus = dayFocus(weekday, s.training_days, keepPrimary)
+  const note = input.mode === 'generate' ? input.note?.trim() : undefined
+  const focus = note ? focusFromNote(note) : dayFocus(weekday, s.training_days, keepPrimary)
   const avoid = [...new Set(ctx.neighbours.flatMap((n) => n.primary_muscles))]
   const fast_day = targets?.is_fast_day ?? false
-  const reduced = ctx.readiness.reduced_volume || fast_day || ctx.deload.active
+  const reduced = ctx.readiness.reduced_volume || fast_day
   const sets = { min: SETS.min, max: reduced ? SETS.reduced_max : SETS.max }
 
   const logged = new Set(ctx.digest.last_top_sets.keys())
@@ -103,7 +112,6 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
     focus,
     note: input.note ?? null,
     readiness: ctx.readiness,
-    deload: ctx.deload,
     fast_day,
     avoid,
     sets: { ...sets, aim: reduced ? '12-14' : '16-22' },
@@ -143,6 +151,7 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   const proposal_id = crypto.randomUUID()
   const workout = { exercises, rationale, guard_notes: repaired.notes }
   const total = exercises.reduce((n, e) => n + e.sets, 0)
+  input.signal?.throwIfAborted()
   await eventInsert(ai, {
     id: proposal_id,
     kind: 'proposal',
@@ -169,8 +178,8 @@ async function runWorkoutJob(deps: Deps, job: JobContext<'workout_generate'> | J
   }
   const output =
     job.type === 'workout_fill'
-      ? await draftWorkout(deps, tracked, { mode: 'fill', date: job.payload.date, exercises: job.payload.exercises, priority, job_id: job.id })
-      : await draftWorkout(deps, tracked, { mode: 'generate', date: job.payload.date, note: job.payload.focus, priority, job_id: job.id })
+      ? await draftWorkout(deps, tracked, { mode: 'fill', date: job.payload.date, exercises: job.payload.exercises, priority, job_id: job.id, signal: job.signal })
+      : await draftWorkout(deps, tracked, { mode: 'generate', date: job.payload.date, note: job.payload.focus, priority, job_id: job.id, signal: job.signal })
   return { output, meta: provider }
 }
 
@@ -178,12 +187,13 @@ registerJobHandler('workout_generate', { fetches: LLM_FETCHES, run: runWorkoutJo
 registerJobHandler('workout_fill', { fetches: LLM_FETCHES, run: runWorkoutJob })
 
 /**
- * Nightly hook: tomorrow (today + 1) gets a background workout_generate job when it is one of settings.training_days
- * and has no session, no session in the active week plan, no pending workout proposal and no queued/running job.
+ * Nightly hook (runs after 00:30): today gets a background workout_generate job when it is one of
+ * settings.training_days and has no session, no session in the active week plan, no pending workout proposal and no
+ * queued/running job. Today, not tomorrow, so the draft's readiness sees yesterday's steps and session.
  */
 export async function planNextTrainingDay(deps: Deps, todayDate: string): Promise<{ date: string; job_id: string | null; reason: string }> {
   const { db } = deps
-  const date = addDays(todayDate, 1)
+  const date = todayDate
   const [[s], sessions, plans, proposals, jobs] = await db.batch([
     db.select({ training_days: settings.training_days }).from(settings).limit(1),
     db.select({ id: workout_sessions.id }).from(workout_sessions).where(eq(workout_sessions.date, date)).limit(1),

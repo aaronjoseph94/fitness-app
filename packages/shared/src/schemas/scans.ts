@@ -147,7 +147,7 @@ export const ScanChange = z.object({
 })
 export type ScanChange = z.infer<typeof ScanChange>
 
-/** A call-out of the scan analysis (same codes as the scan_analysis job output). */
+/** A call-out of the scan analysis (the scan_analysis job output reuses it). */
 export const ScanFlag = z.object({
   code: z.enum(['lean_loss', 'water_shift', 'visceral_up', 'fat_gain', 'conditions_mismatch', 'other']),
   message: z.string().max(300),
@@ -201,16 +201,39 @@ export const Scan = Row.extend({
 })
 export type Scan = z.infer<typeof Scan>
 
-/** Query of POST /api/scans (body: the sheet file as Binary; the name field is masked in the browser first). */
+/**
+ * Query of POST /api/scans (body: the sheet as an image; the browser renders a PDF and masks the name field first —
+ * a raw PDF would carry the name in its text layer to the vision LLM, so it is not accepted).
+ */
 export const ScanUploadQuery = z.object({
   id: Id,
-  content_type: z.enum(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']),
+  content_type: z.enum(['image/png', 'image/jpeg', 'image/webp']),
 })
 export type ScanUploadQuery = z.infer<typeof ScanUploadQuery>
 
 /** Response of POST /api/scans: the new scan and the scan_extract job reading it. */
 export const ScanUploaded = z.object({ scan: Scan, job_id: Id })
 export type ScanUploaded = z.infer<typeof ScanUploaded>
+
+/**
+ * GET /api/scans/schedule: when the next scan is due — the date the coach or an applied week plan set (after the last
+ * confirmed scan), else every interval_days after the last confirmed scan. The reminder and the nightly note use it too.
+ */
+export const ScanSchedule = z.object({
+  /** Local date of the last confirmed scan (null before the first). */
+  last_scan_date: LocalDate.nullable(),
+  interval_days: z.number().int().positive(),
+  /** last_scan_date + interval_days (null before the first scan). */
+  interval_due: LocalDate.nullable(),
+  /** The scheduled date, when one is set after the last scan. */
+  scheduled: LocalDate.nullable(),
+  /** When the next scan is due: the scheduled date, else the interval date. */
+  due: LocalDate.nullable(),
+  source: z.enum(['scheduled', 'interval', 'none']),
+  /** Local date of the newest uploaded sheet still waiting to be confirmed, if any. */
+  awaiting_confirmation: LocalDate.nullable(),
+})
+export type ScanSchedule = z.infer<typeof ScanSchedule>
 
 /** Body of PATCH /api/scans/:id: the full record after Aaron's edits (or manual entry). Saving it confirms the scan. */
 export const ScanPatch = z.object({ record: ScanRecord })

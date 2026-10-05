@@ -86,6 +86,7 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
           history={data.history}
           nextPlan={data.nextPlan}
           nextStart={data.nextStart}
+          goalKg={data.goalKg}
           fixed={fixed}
         />
       ) : data.ready ? (

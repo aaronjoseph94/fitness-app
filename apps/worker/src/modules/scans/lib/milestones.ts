@@ -1,9 +1,10 @@
 // Owns: re-anchoring the stored milestones after a scan is confirmed (SPEC §3 "each scan re-anchors the composition
-// milestones") — the engine's `milestones` over every confirmed scan and the weigh-in trend, matched to the stored rows
-// by kind and target value: composition milestones take the first scan meeting them; reached weight milestones take
-// the scan nearest the date the trend reached them. Returns the UPDATE statements for the caller's db.batch.
+// milestones") — the engine's `milestones` over every stored milestone row (seeded or added by the coach), every
+// confirmed scan and the weigh-in trend, matched back by id: composition milestones take the first scan meeting them;
+// reached weight milestones take the scan nearest the date the trend reached them. Returns the UPDATE statements for
+// the caller's db.batch. Also the one place other modules add or remove a milestone row (apply_review / revert_review).
 import { milestones as milestoneStatus, trendWeights } from '@fitness/shared/engine'
-import { MilestoneKind, type ScanMilestoneUpdate } from '@fitness/shared/schemas'
+import { MilestoneKind, type ScanMilestoneUpdate, type ScanSegment } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { milestones, weight_logs } from '../../../db'
@@ -19,15 +20,18 @@ export async function reanchorMilestones(
     db.select().from(milestones),
     db.select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg }).from(weight_logs).orderBy(asc(weight_logs.date)),
   ])
-  const computed = milestoneStatus({
-    trend: trendWeights(weighIns),
-    scans: confirmed.map((s) => ({ id: s.id, ...s.record })),
-  })
+  const computed = new Map(
+    milestoneStatus({
+      trend: trendWeights(weighIns),
+      scans: confirmed.map((s) => ({ id: s.id, ...s.record })),
+      definitions: stored.map((r) => ({ id: r.id, kind: MilestoneKind.parse(r.kind), target_value: r.target_value, segment: r.segment })),
+    }).map((m) => [m.id, m]),
+  )
   const now = deps.now().toISOString()
   const updates: ScanMilestoneUpdate[] = []
   const statements: BatchItem<'sqlite'>[] = []
   for (const row of stored) {
-    const c = computed.find((m) => m.kind === row.kind && Math.abs(m.target_value - row.target_value) < 1e-9)
+    const c = computed.get(row.id)
     if (!c) continue
     let next: { reached_on: string | null; scan_id: string | null }
     if (row.kind === 'weight') {
@@ -42,4 +46,29 @@ export async function reanchorMilestones(
     updates.push({ milestone_id: row.id, kind: MilestoneKind.parse(row.kind), label: row.label, reached_on: next.reached_on })
   }
   return { updates, statements }
+}
+
+/** Add a milestone (a target value reached at or below it); returns its id. The next scan re-anchors it. */
+export async function addMilestone(
+  deps: Deps,
+  input: { kind: MilestoneKind; segment: ScanSegment | null; target_value: number; label: string },
+): Promise<string> {
+  const id = crypto.randomUUID()
+  const now = deps.now().toISOString()
+  await deps.db.insert(milestones).values({
+    id,
+    kind: input.kind,
+    segment: input.kind === 'segment' ? input.segment : null,
+    target_value: input.target_value,
+    label: input.label,
+    actor: deps.actor,
+    created_at: now,
+    updated_at: now,
+  })
+  return id
+}
+
+/** Remove a milestone (a replay is a no-op). */
+export async function removeMilestone(deps: Deps, id: string): Promise<void> {
+  await deps.db.delete(milestones).where(eq(milestones.id, id))
 }

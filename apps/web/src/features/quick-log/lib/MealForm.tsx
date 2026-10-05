@@ -22,8 +22,8 @@ import { endpoints } from '@fitness/shared/api'
 import type { MealCreate, MealSlot } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { useApiQuery } from '../../../api'
-import { formatNumber } from '../../../components'
+import { problemText, useApiQuery } from '../../../api'
+import { formatNumber, NumberField, parseNumber } from '../../../components'
 import { tokens } from '../../../theme'
 import { BarcodePane } from './capture/BarcodePane'
 import { PhotoPane } from './capture/PhotoPane'
@@ -34,7 +34,7 @@ import { FavouritesPane, type QuickMeal } from './FavouritesPane'
 import { FoodPicker, type PickedFood } from './FoodPicker'
 import { defaultSlot, portion, SLOT_LABEL, SLOT_TIME, sum, visibleSlots } from './nutrition'
 import { useLogSettings, useRecentFoods } from './reads'
-import { NumberField, noticeFor, parseNumber, problemText, type LogNotice } from './ui'
+import { noticeFor, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 
 type Mode = 'favourites' | 'foods' | 'describe' | 'photo' | 'barcode'
@@ -229,7 +229,7 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
       )}
 
       {create.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
           {problemText(create.error)}
         </Box>
       )}
@@ -264,7 +264,7 @@ function CaptureTile({
         placeItems: 'center',
         gap: 0.5,
         py: 1.5,
-        fontSize: 13,
+        fontSize: tokens.font.size.label,
         fontWeight: tokens.font.weight.label,
         color: tokens.ink.text,
       }}
@@ -305,8 +305,8 @@ function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave
           {parsed.map(({ item, grams }) => (
             <Box component="li" key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.food.name}</Box>
-                <Box sx={{ fontSize: 13, color: 'text.secondary' }}>
+                <Box sx={{ fontSize: tokens.font.size.emphasis, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.food.name}</Box>
+                <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>
                   {grams !== null && grams > 0 ? `${formatNumber(portion(item.food.per100, grams).kcal)} kcal` : 'Enter grams'}
                 </Box>
               </Box>
@@ -396,22 +396,22 @@ function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic
         }}
       />
       {keyboardMicHint && !dictation.supported && (
-        <Box role="status" data-testid="keyboard-mic-hint" sx={{ fontSize: 14, color: tokens.ink.text, display: 'flex', gap: 1.5, alignItems: 'center' }}>
+        <Box role="status" data-testid="keyboard-mic-hint" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text, display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <MicNoneRounded fontSize="small" sx={{ color: tokens.metric.calories }} />
           Tap the mic on your keyboard to dictate.
         </Box>
       )}
       {dictation.listening && (
-        <Box role="status" sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+        <Box role="status" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
           Listening… say what you ate, then pause.
         </Box>
       )}
       {dictation.error && (
-        <Box role="alert" sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+        <Box role="alert" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
           {dictation.error}
         </Box>
       )}
-      <Box sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.5 }}>
+      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.5 }}>
         The AI turns it into items with grams and kcal for you to check before it counts.
       </Box>
       <Button type="submit" variant="contained" size="large" disabled={!trimmed || busy || dictation.listening} data-testid="meal-save-text">

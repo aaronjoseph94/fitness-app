@@ -17,9 +17,9 @@ import { today } from '@fitness/shared/engine'
 import type { Template } from '@fitness/shared/schemas'
 import { useCallback } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { EmptyState, formatShortDate, formatWeekday, SectionHeader } from '../../../components'
+import { EmptyState, formatShortDate, formatWeekday, LoadProblem, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
-import { LoadProblem, useNow } from '../../quick-log'
+import { useNow } from '../../quick-log'
 import { ReadinessChip } from './ReadinessChip'
 import { RecentSessions } from './RecentSessions'
 import { useStartSession } from './session'
@@ -74,7 +74,7 @@ export function TrainPage() {
     <Stack spacing={5} data-testid="train-page">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Box
-          sx={{ flex: 1, fontSize: 15, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}
+          sx={{ flex: 1, fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}
         >
           {formatWeekday(date)} {formatShortDate(date)}
         </Box>
@@ -181,8 +181,8 @@ export function TrainPage() {
             >
               <Icon sx={{ color: tokens.ink.secondary }} aria-hidden />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label }}>{label}</Box>
-                <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>{detail}</Box>
+                <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{label}</Box>
+                <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{detail}</Box>
               </Box>
               <ChevronRightRounded sx={{ color: tokens.ink.secondary }} aria-hidden />
             </ButtonBase>

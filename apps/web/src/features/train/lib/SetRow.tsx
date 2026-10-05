@@ -10,13 +10,12 @@ import InputBase from '@mui/material/InputBase'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { useEffect, useRef, useState, type Ref } from 'react'
-import { formatNumber } from '../../../components'
+import { formatNumber, parseNumber } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
-import { parseNumber } from '../../quick-log'
 import type { LastSet, LoggerSet } from './logger-model'
 
 /** Shared with the column header row so the two line up. */
-export const SET_GRID = '28px minmax(52px, 1fr) 68px 52px 40px 44px'
+export const SET_GRID = '28px minmax(48px, 1fr) 68px 52px 44px 44px'
 
 const RPE_STEPS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const
 
@@ -80,7 +79,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
           borderRadius: tokens.radius.chip,
           display: 'grid',
           placeItems: 'center',
-          fontSize: 13,
+          fontSize: tokens.font.size.label,
           fontWeight: tokens.font.weight.heading,
           color: set.done ? tokens.ink.card : tokens.ink.secondary,
           bgcolor: set.done ? tokens.status.good : tokens.chart.grid,
@@ -101,7 +100,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
           height: 44,
           px: 1,
           borderRadius: `${tokens.radius.control}px`,
-          fontSize: 14,
+          fontSize: tokens.font.size.small,
           color: tokens.ink.secondary,
           opacity: previous ? 0.85 : 0.5,
           fontVariantNumeric: 'tabular-nums',
@@ -171,7 +170,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
               onValues({ rpe })
               setRpeAnchor(null)
             }}
-            sx={{ minHeight: 40, fontVariantNumeric: 'tabular-nums' }}
+            sx={{ minHeight: tokens.tapTarget, fontVariantNumeric: 'tabular-nums' }}
           >
             RPE {rpe}
           </MenuItem>
@@ -181,7 +180,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
             onValues({ rpe: null })
             setRpeAnchor(null)
           }}
-          sx={{ minHeight: 40, color: tokens.ink.secondary }}
+          sx={{ minHeight: tokens.tapTarget, color: tokens.ink.secondary }}
         >
           No RPE
         </MenuItem>
@@ -260,11 +259,11 @@ function NumberCell({
         'data-testid': testId,
       }}
       sx={{
-        height: 40,
+        height: tokens.tapTarget,
         borderRadius: '10px',
         border: `1px solid ${invalid || error ? tokens.status.flag : tokens.ink.border}`,
         bgcolor: tokens.ink.card,
-        fontSize: 16,
+        fontSize: tokens.font.size.body,
         fontWeight: tokens.font.weight.label,
         fontVariantNumeric: 'tabular-nums',
         '& input': { textAlign: 'center', p: 0, height: '100%' },

@@ -2,10 +2,10 @@
 // time, each kind at most once per local period through a cron_runs row (unique kind + period_key):
 //   nightly  once per local date, after 00:30   ensure targets through today + 14, reforecast as of yesterday,
 //                                               new safety flags as ai_events notes, the "scan due" note,
-//                                               release proposals due today, queue tomorrow's AI workout when it is
+//                                               release proposals due today, queue today's AI workout when it is
 //                                               an unplanned training day
 //   weekly   once per ISO week, Sunday ≥ 20:00  the weekly_review job for the week ending that Sunday
-//   monthly  once per local month, ≥ 01:00      (hook for once-a-month work)
+//   fast     every tick, once per fast          a planned fast that began on its own gets its day_adjustment card
 //   backup   every tick from 01:00 until done   the monthly per-table backup to R2, one table per tick (modules/export)
 //   remind   every tick 07:00–22:00             due Web Push reminders, once per local period each (modules/reminders)
 // A run that throws releases its claim, so the next tick retries it.
@@ -15,6 +15,8 @@ import { ai_events, cron_runs } from './db'
 import type { Deps } from './lib/deps'
 import { days } from './modules/day'
 import { eventInsert, releaseDueProposals } from './modules/events'
+import './modules/meal-ai' // registers meal_analysis and day_adjustment, which the sweep runs
+import { adjustDayForFast, fastsBegunSince } from './modules/fasting'
 import { sweep, type SweepResult } from './modules/jobs'
 import { monthlyBackupStep } from './modules/export'
 import { ensureTargetsThrough, reforecast } from './modules/plan'
@@ -23,7 +25,7 @@ import { weeklyReviewHook } from './modules/reviews'
 import { noteScanDue } from './modules/scans'
 import { dispatchReminders } from './modules/reminders'
 
-export type CronKind = 'nightly' | 'weekly' | 'monthly'
+export type CronKind = 'nightly' | 'weekly'
 
 export interface CronResult {
   sweep: SweepResult | null
@@ -35,6 +37,8 @@ export interface CronResult {
 const NIGHTLY_AFTER = '00:30'
 const WEEKLY_AFTER = '20:00'
 const MONTHLY_AFTER = '01:00'
+/** A planned fast that began within this window gets its day_adjustment card (claimed once per fast). */
+const FAST_START_WINDOW_MS = 15 * 60_000
 /** Days of v_day the safety flags read (rapid loss looks back three weeks plus a day). */
 const FLAG_WINDOW_DAYS = 22
 /** A flag already noted within this many days is not noted again. */
@@ -58,7 +62,6 @@ export async function runCron(deps: Deps): Promise<CronResult> {
   const due: [CronKind, string, () => Promise<void>][] = []
   if (time >= NIGHTLY_AFTER) due.push(['nightly', date, () => nightly(deps, date)])
   if (weekdayOf(date) === 'sun' && time >= WEEKLY_AFTER) due.push(['weekly', isoWeek(date), () => weekly(deps, isoWeek(date))])
-  if (time >= MONTHLY_AFTER) due.push(['monthly', date.slice(0, 7), () => monthly(date.slice(0, 7))])
 
   for (const [kind, period_key, run] of due) {
     if (!(await claim(deps, kind, period_key))) continue
@@ -71,13 +74,14 @@ export async function runCron(deps: Deps): Promise<CronResult> {
       await deps.db.delete(cron_runs).where(and(eq(cron_runs.kind, kind), eq(cron_runs.period_key, period_key)))
     }
   }
+  await startedFasts(deps).catch((e: unknown) => log('error', 'fast start cards failed; retried next tick', { error: String(e) }))
   if (time >= MONTHLY_AFTER) await monthlyBackupStep(deps, date.slice(0, 7)).catch((e: unknown) => log('error', 'monthly backup step failed; retried next tick', { error: String(e) }))
   await dispatchReminders(deps).catch((e: unknown) => log('error', 'reminders failed; due ones retry next tick', { error: String(e) }))
   return result
 }
 
 /** INSERT … ON CONFLICT DO NOTHING RETURNING: true only for the one tick that claims (kind, period_key). */
-async function claim(deps: Deps, kind: CronKind, period_key: string): Promise<boolean> {
+async function claim(deps: Deps, kind: CronKind | 'fast_start', period_key: string): Promise<boolean> {
   const now = deps.now().toISOString()
   const rows = await deps.db
     .insert(cron_runs)
@@ -120,7 +124,10 @@ async function weekly(deps: Deps, week: string): Promise<void> {
   await weeklyReviewHook(deps, week)
 }
 
-/** Hook for once-a-month work. The monthly backup is not here: it advances one table per tick (monthlyBackupStep). */
-async function monthly(month: string): Promise<void> {
-  log('info', 'monthly tick', { month })
+/** SPEC §9 day_adjustment trigger "fast started": a planned fast that began on its own, once per fast (cron_runs). */
+async function startedFasts(deps: Deps): Promise<void> {
+  const since = new Date(deps.now().getTime() - FAST_START_WINDOW_MS).toISOString()
+  for (const fast of await fastsBegunSince(deps, since)) {
+    if (await claim(deps, 'fast_start', fast.id)) await adjustDayForFast(deps, fast)
+  }
 }

@@ -84,12 +84,13 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     title: 'List exercises',
     area: 'training',
     description:
-      'Search the exercise library. By default only the allowed exercise set (what the equipment profile and exclusions permit; the only exercises any workout may use). Filter by primary muscle (17 keys: abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower back, middle back, neck, quadriceps, shoulders, traps, triceps), equipment, category, level or name words. Returns compact entries; use get_exercise for instructions and media. Read-only.',
-    input: ExerciseQuery.extend({ limit: z.number().int().min(1).max(200).default(40) }),
+      'Search the exercise library: the allowed exercise set only (what the equipment profile and exclusions permit; the only exercises any workout may use). Filter by primary muscle (17 keys: abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower back, middle back, neck, quadriceps, shoulders, traps, triceps), equipment, category, level or name words. Returns compact entries; use get_exercise for instructions and media. Read-only.',
+    input: ExerciseQuery.omit({ scope: true }).extend({ limit: z.number().int().min(1).max(200).default(40) }),
     output: z.object({ exercises: z.array(ExerciseBrief), total: Count }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    // The allowed set only (scope is not an input): the AI only ever sees the allowed list (SPEC §7).
     run: async (deps, { limit, ...query }) => {
-      const all = await listExercises(deps, query)
+      const all = await listExercises(deps, { ...query, scope: 'allowed' })
       return {
         total: all.length,
         exercises: all.slice(0, limit).map((e) => ({

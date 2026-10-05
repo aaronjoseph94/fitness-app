@@ -1,9 +1,9 @@
-// Owns: the /api nutrition route group (thin: validate via the shared contract, call module entry points), and
-// registering the AI job handlers its writes queue (meal_analysis, day_adjustment) when the routes mount.
+// Owns: the /api nutrition route group (thin: validate via the shared contract, call module entry points). Its writes
+// queue meal_analysis / day_adjustment, whose handlers the meal-ai module registers when it loads.
 import { endpoints } from '@fitness/shared/api'
 import type { App } from '../env'
 import { route } from '../lib/route'
-import { registerMealAiJobs } from '../modules/meal-ai'
+import '../modules/meal-ai'
 import {
   addMealPhoto,
   createFavourite,
@@ -21,9 +21,6 @@ import {
 } from '../modules/nutrition'
 
 export function mountNutritionRoutes(app: App): void {
-  // Meals, photos and fasts queue meal_analysis / day_adjustment jobs; the cron sweep runs them in this isolate too.
-  registerMealAiJobs()
-
   route(app, endpoints.nutrition.listMeals, ({ query }, deps) => listMeals(deps, query.date))
   route(app, endpoints.nutrition.getMeal, ({ params }, deps) => getMeal(deps, params.id))
   route(app, endpoints.nutrition.createMeal, ({ body }, deps) => createMeal(deps, body), { status: 201 })

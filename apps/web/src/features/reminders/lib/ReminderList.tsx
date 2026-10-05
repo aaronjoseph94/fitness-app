@@ -48,8 +48,8 @@ function ReminderRow({ copy, value, help, disabled, onSave }: RowProps) {
     <Box sx={{ px: 4, py: 3 }} data-testid={`reminder-${copy.kind}`}>
       <Box component="label" sx={{ display: 'flex', alignItems: 'center', gap: 3, cursor: disabled ? 'default' : 'pointer', minHeight: 44 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, lineHeight: 1.35 }}>{copy.label}</Box>
-          <Box sx={{ mt: 0.5, fontSize: 13, color: tokens.ink.secondary, lineHeight: 1.4 }}>{help}</Box>
+          <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: 1.35 }}>{copy.label}</Box>
+          <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.4 }}>{help}</Box>
         </Box>
         <Switch
           checked={value.enabled}

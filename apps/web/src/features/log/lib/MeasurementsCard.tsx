@@ -6,10 +6,10 @@ import Button from '@mui/material/Button'
 import { endpoints } from '@fitness/shared/api'
 import type { MeasurementSite } from '@fitness/shared/schemas'
 import { useEffect, useMemo, useState } from 'react'
-import { useApiQuery } from '../../../api'
-import { formatNumber, PendingBadge } from '../../../components'
+import { problemText, useApiQuery } from '../../../api'
+import { formatNumber, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
-import { NumberField, parseNumber, problemText, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
+import { shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
 import { LogCard } from './LogCard'
 
 const SITES: { site: MeasurementSite; label: string }[] = [
@@ -85,7 +85,7 @@ export function MeasurementsCard({ date }: { date: string }) {
         sx={{ display: 'grid', gap: 3 }}
       >
         {trend.isError && !trend.data && (
-          <Box sx={{ fontSize: 13, color: 'text.secondary' }}>Last values didn't load; you can still log today's.</Box>
+          <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>Last values didn't load; you can still log today's.</Box>
         )}
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
           {SITES.map(({ site, label }) => {
@@ -106,7 +106,7 @@ export function MeasurementsCard({ date }: { date: string }) {
             )
           })}
         </Box>
-        <Box sx={{ fontSize: 13, color: save.isError ? 'error.main' : 'text.secondary', minHeight: 20 }} aria-live="polite">
+        <Box sx={{ fontSize: tokens.font.size.label, color: save.isError ? 'error.main' : 'text.secondary', minHeight: 20 }} aria-live="polite">
           {save.isError ? problemText(save.error) : saved ?? 'Fill in the sites you measured; the rest stay as they were.'}
         </Box>
         <Button type="submit" variant="contained" disabled={entries.length === 0 || !allValid || save.isPending}>

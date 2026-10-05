@@ -26,8 +26,8 @@ export function ProposedBanner({ plan }: { plan: WeekPlan }) {
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label }}>New plan for {range}</Box>
-        <Box sx={{ fontSize: 13, color: tokens.ink.secondary }}>Proposed by {AUTHOR[plan.author]}</Box>
+        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>New plan for {range}</Box>
+        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Proposed by {AUTHOR[plan.author]}</Box>
       </Box>
       <Button variant="outlined" onClick={() => setOpen(true)} sx={{ minHeight: tokens.tapTarget, flex: 'none' }}>
         Review

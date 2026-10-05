@@ -1,5 +1,6 @@
-// Owns: the exercise library as the app sees it — the allowed exercise set (GLOSSARY), list/get/create of exercises,
-// the equipment profile (library values and named machines) and exclusions (hide forever, with a reason).
+// Owns: the exercise library as the app sees it — the allowed exercise set (GLOSSARY), list/get/create of exercises
+// (and the photo of one of Aaron's own, lib/photo), the equipment profile (library values and named machines) and
+// exclusions (hide forever, with a reason).
 //
 // Allowed exercise set — an exercise is excluded, with the first reason that applies:
 //   1. an exclusion row for the exercise id
@@ -18,13 +19,15 @@ import {
   type Exercise,
   type ExerciseCreate,
   type ExerciseExclusion,
+  type ExercisePhotoUploadQuery,
   type ExerciseQuery,
   type ExerciseSummary,
 } from '@fitness/shared/schemas'
-import { and, asc, eq, getTableColumns, inArray, type SQL } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm'
 import { equipment_profile, exercise_exclusions, exercises, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
+import { storeExercisePhoto, withPhotoUrls } from './photo'
 import { chunk, toExercise, toSlug, unique, videoSearchUrl, type ExerciseRow, type ExerciseTags } from './rows'
 
 /** Equipment the rails exclude whatever the profile says; also passed to the guards as an excluded category. */
@@ -63,14 +66,17 @@ function toRules(exclusions: readonly ExclusionRow[], equipment: readonly Equipm
 }
 
 const rulesQueries = (deps: Deps) =>
-  [deps.db.select().from(exercise_exclusions), deps.db.select().from(equipment_profile).orderBy(asc(equipment_profile.equipment))] as const
+  [
+    deps.db.select().from(exercise_exclusions).where(isNull(exercise_exclusions.removed_at)),
+    deps.db.select().from(equipment_profile).orderBy(asc(equipment_profile.equipment)),
+  ] as const
 
 export async function loadRules(deps: Deps): Promise<Rules & { equipmentRows: EquipmentRow[] }> {
   const [x, e] = await deps.db.batch(rulesQueries(deps))
   return { ...toRules(x, e), equipmentRows: e }
 }
 
-/** Why `row` is outside the allowed exercise set (rules 1–4 in the file header), or null when it is allowed. */
+/** Why `row` is outside the allowed exercise set (rules 1–5 in the file header), or null when it is allowed. */
 export function exclusionReason(row: Pick<ExerciseRow, 'id' | 'name' | 'category' | 'equipment'>, rules: Rules): string | null {
   const own = rules.byExercise.get(row.id)
   if (own) return own
@@ -81,7 +87,10 @@ export function exclusionReason(row: Pick<ExerciseRow, 'id' | 'name' | 'category
   const equipment = (row.equipment ?? 'body only').toLowerCase()
   if ((RAIL_EXCLUDED_EQUIPMENT as readonly string[]).includes(equipment))
     return 'Bodyweight (body only) exercises are excluded: machines and free weights only'
-  const status = rules.equipment.get(equipment) ?? rules.blockedMachines.find((m) => row.name.toLowerCase().includes(m.name))?.row
+  // Rule 4 first; a generic 'have' (e.g. 'machine') must not hide a blocked named machine (rule 5).
+  const generic = rules.equipment.get(equipment)
+  const named = rules.blockedMachines.find((m) => row.name.toLowerCase().includes(m.name))?.row
+  const status = generic && BLOCKING[generic.status] ? generic : (named ?? generic)
   const blocked = status ? BLOCKING[status.status] : undefined
   if (status && blocked) return `Equipment ${status.equipment}: ${blocked}${status.note ? ` (${status.note})` : ''}`
   return null
@@ -180,13 +189,20 @@ export async function listExercises(deps: Deps, query: ExerciseQuery): Promise<E
     const { instructions: _, ...summary } = toExercise({ ...row, instructions: [] }, reason)
     out.push(summary)
   }
-  return out
+  return withPhotoUrls(deps, out)
 }
 
 export async function getExercise(deps: Deps, id: string): Promise<Exercise> {
   const [[row], x, e] = await deps.db.batch([deps.db.select().from(exercises).where(eq(exercises.id, id)), ...rulesQueries(deps)])
   if (!row) throw notFound('Exercise')
-  return toExercise(row, exclusionReason(row, toRules(x, e)))
+  const [exercise] = await withPhotoUrls(deps, [toExercise(row, exclusionReason(row, toRules(x, e)))])
+  return exercise!
+}
+
+/** POST /api/exercises/:id/photo: a photo for one of Aaron's own exercises (lib/photo); returns the exercise. */
+export async function setExercisePhoto(deps: Deps, id: string, query: ExercisePhotoUploadQuery, body: ArrayBuffer): Promise<Exercise> {
+  await storeExercisePhoto(deps, id, query, body)
+  return getExercise(deps, id)
 }
 
 /** The spelling an equipment name already has in the profile (case-insensitive), else the library value, else as typed. */
@@ -300,19 +316,26 @@ export async function createExclusion(deps: Deps, input: ExclusionCreate): Promi
     if (!row) throw notFound('Exercise')
   }
   const now = deps.now().toISOString()
-  await db
-    .insert(exercise_exclusions)
-    .values({
-      id: input.id,
-      exercise_id: input.exercise_id ?? null,
-      category: input.category ?? null,
-      reason: input.reason,
-      actor: deps.actor,
-      created_at: now,
-      updated_at: now,
-    })
-    .onConflictDoNothing()
   const match = input.exercise_id ? eq(exercise_exclusions.exercise_id, input.exercise_id) : eq(exercise_exclusions.category, input.category!)
+  await db.batch([
+    // An exercise or category un-hidden before (soft-deleted row) is hidden again with the new reason.
+    db
+      .update(exercise_exclusions)
+      .set({ removed_at: null, reason: input.reason, actor: deps.actor, updated_at: now })
+      .where(and(match, isNotNull(exercise_exclusions.removed_at))),
+    db
+      .insert(exercise_exclusions)
+      .values({
+        id: input.id,
+        exercise_id: input.exercise_id ?? null,
+        category: input.category ?? null,
+        reason: input.reason,
+        actor: deps.actor,
+        created_at: now,
+        updated_at: now,
+      })
+      .onConflictDoNothing(),
+  ])
   const [byId] = await db.select().from(exercise_exclusions).where(eq(exercise_exclusions.id, input.id))
   const [row] = byId ? [byId] : await db.select().from(exercise_exclusions).where(match)
   if (!row) throw new HttpError(409, 'exclusion_conflict', 'The exclusion could not be stored')

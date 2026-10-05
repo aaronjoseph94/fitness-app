@@ -53,7 +53,7 @@ export function Sheet({ open, onClose, title, subtitle, header, footer, children
           <Typography variant="sectionTitle" component="h2" sx={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
             {title}
           </Typography>
-          {subtitle && <Box sx={{ fontSize: 13, color: tokens.ink.secondary, mt: 0.25 }}>{subtitle}</Box>}
+          {subtitle && <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.25 }}>{subtitle}</Box>}
         </Box>
         <IconButton aria-label="Close" onClick={onClose}>
           <CloseRounded />

@@ -46,8 +46,8 @@ export function scoresOf(exercises: readonly TemplateExerciseInput[], tags: Read
   return muscleScores(exercises.flatMap((e) => (tags.has(e.exercise_id) ? [{ ...tags.get(e.exercise_id)!, sets: e.sets }] : [])))
 }
 
-/** Exercises exist (400) and, for ai/mcp, pass the workout guards (422); returns the tags. */
-async function checkExercises(deps: Deps, exercises: readonly TemplateExerciseInput[]) {
+/** Exercises exist (400) and, for ai/mcp, pass the workout guards (422); returns the tags. Sessions use it too. */
+export async function checkExercises(deps: Deps, exercises: readonly TemplateExerciseInput[]) {
   const tags = await requireExercises(deps, exercises.map((e) => e.exercise_id))
   if (deps.actor !== 'user') {
     const ctx = await guardContext(deps, await loadLibrary(deps))

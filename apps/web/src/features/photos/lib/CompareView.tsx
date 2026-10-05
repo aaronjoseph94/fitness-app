@@ -80,7 +80,7 @@ export function CompareView({ photos, before, after, mode, onChange }: CompareVi
           <ToggleButton value="side">Side by side</ToggleButton>
           <ToggleButton value="slider">Slider</ToggleButton>
         </ToggleButtonGroup>
-        <Box sx={{ fontSize: 14, color: tokens.metric.weight, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.metric.weight, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
           {changeText(before, after)}
         </Box>
       </Box>
@@ -123,7 +123,7 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
     dragging.current = false
   }
 
-  const label = { position: 'absolute', top: 8, px: 2, py: 0.5, borderRadius: `${tokens.radius.chip}px`, fontSize: 12, fontWeight: tokens.font.weight.label, bgcolor: withAlpha(tokens.ink.card, 0.85), color: tokens.ink.text, pointerEvents: 'none' } as const
+  const label = { position: 'absolute', top: 8, px: 2, py: 0.5, borderRadius: `${tokens.radius.chip}px`, fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, bgcolor: withAlpha(tokens.ink.card, 0.85), color: tokens.ink.text, pointerEvents: 'none' } as const
 
   return (
     <Stack spacing={2} data-testid="photo-compare-slider">

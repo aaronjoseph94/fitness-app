@@ -22,7 +22,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { ExerciseSummary, TemplateExerciseInput } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
 import { formatNumber } from '../../../components'
-import { tokens } from '../../../theme'
+import { tokens, withAlpha } from '../../../theme'
 import { ExerciseThumb } from '../../library'
 
 export type BuilderItem = TemplateExerciseInput & { key: string }
@@ -74,7 +74,7 @@ function NumberBox({
       sx={{ width, flex: 'none', '& input': { textAlign: 'center', fontVariantNumeric: 'tabular-nums', py: 1.5, minHeight: 28 } }}
       slotProps={{
         htmlInput: { inputMode: integer ? 'numeric' : 'decimal', pattern: integer ? '[0-9]*' : '[0-9]*[.,]?[0-9]*', 'aria-label': ariaLabel ?? label, enterKeyHint: 'done' },
-        input: unit ? { endAdornment: <Box sx={{ fontSize: 13, color: tokens.ink.secondary, ml: 0.5 }}>{unit}</Box> } : undefined,
+        input: unit ? { endAdornment: <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, ml: 0.5 }}>{unit}</Box> } : undefined,
       }}
     />
   )
@@ -108,7 +108,7 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
         transition,
         position: 'relative',
         zIndex: isDragging ? 2 : 'auto',
-        boxShadow: isDragging ? '0 8px 24px rgba(26,26,46,0.16)' : 'none',
+        boxShadow: isDragging ? `0 8px 24px ${withAlpha(tokens.ink.text, 0.16)}` : 'none',
         borderColor: isDragging ? 'primary.main' : undefined,
       }}
     >
@@ -129,10 +129,10 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
         >
           <ExerciseThumb exercise={exercise} size={44} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
             </Box>
-            <Box sx={{ fontSize: 13, color: repsInvalid ? tokens.status.flag : tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>
+            <Box sx={{ fontSize: tokens.font.size.label, color: repsInvalid ? tokens.status.flag : tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>
               {repsInvalid ? 'Rep min is above max' : prescription(item)}
             </Box>
           </Box>
@@ -150,10 +150,10 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
                 <RemoveRounded />
               </IconButton>
               <Box sx={{ width: 52, textAlign: 'center' }}>
-                <Box sx={{ fontSize: 20, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }} aria-live="polite">
+                <Box sx={{ fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }} aria-live="polite">
                   {item.sets}
                 </Box>
-                <Box sx={{ fontSize: 12, color: tokens.ink.secondary }}>sets</Box>
+                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>sets</Box>
               </Box>
               <IconButton aria-label="One more set" disabled={item.sets >= 10} onClick={() => onChange({ sets: item.sets + 1 })} sx={{ border: `1px solid ${tokens.ink.border}` }}>
                 <AddRounded />
@@ -178,10 +178,10 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
                 variant={item.rest_sec === s ? 'filled' : 'outlined'}
                 color={item.rest_sec === s ? 'primary' : 'default'}
                 onClick={() => onChange({ rest_sec: s })}
-                sx={{ height: 32, minWidth: 56 }}
+                sx={{ minHeight: tokens.tapTarget, minWidth: 56 }}
               />
             ))}
-            {!noteOpen && <Chip label="+ Note" size="small" variant="outlined" onClick={() => setNoteOpen(true)} sx={{ height: 32 }} />}
+            {!noteOpen && <Chip label="+ Note" size="small" variant="outlined" onClick={() => setNoteOpen(true)} sx={{ minHeight: tokens.tapTarget }} />}
           </Box>
           {noteOpen && (
             <TextField

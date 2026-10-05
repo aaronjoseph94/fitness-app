@@ -11,15 +11,15 @@ export function CoachNote({ note }: { note: DashboardNote }) {
   return (
     <Card data-testid="coach-note" component="aside" aria-label={who} sx={{ p: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <PushPinOutlined aria-hidden sx={{ fontSize: 16, color: tokens.ink.secondary }} />
+        <PushPinOutlined aria-hidden sx={{ fontSize: tokens.font.size.body, color: tokens.ink.secondary }} />
         <Box sx={{ flex: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
           {who}
         </Box>
         {note.until && (
-          <Box sx={{ fontSize: 12, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>until {whenLabel(note.until).slice(0, 10)}</Box>
+          <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>until {whenLabel(note.until).slice(0, 10)}</Box>
         )}
       </Box>
-      <Box sx={{ mt: 2, fontSize: 16, lineHeight: 1.55, color: tokens.ink.text, whiteSpace: 'pre-line' }}>{note.text}</Box>
+      <Box sx={{ mt: 2, fontSize: tokens.font.size.body, lineHeight: 1.55, color: tokens.ink.text, whiteSpace: 'pre-line' }}>{note.text}</Box>
     </Card>
   )
 }

@@ -1,6 +1,7 @@
 // Owns: the Apple Watch manual route on Today (SPEC §8 route 1) — one small form for a day's steps and the hours asleep
-// the night before (sleep date = wake date), posted to /api/steps and /api/sleep with client ids so a queued entry
-// replays once. Either field may be left empty.
+// the night before (sleep date = wake date), posted to /api/steps and /api/sleep through the logging kit's writes (they
+// refresh the day and show as pending until synced). Both upsert by date, so a retry never doubles a value. Either
+// field may be left empty.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -12,10 +13,9 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { useApiMutation } from '../../../api'
+import { problemText } from '../../../api'
 import { tokens } from '../../../theme'
-
-const STALE = [endpoints.day.get, endpoints.day.range] as const
+import { useLogMutation } from '../../quick-log'
 
 interface HealthDialogProps {
   open: boolean
@@ -30,8 +30,8 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
   const [steps, setSteps] = useState('')
   const [hours, setHours] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const stepsWrite = useApiMutation(endpoints.health.createSteps, { invalidates: STALE })
-  const sleepWrite = useApiMutation(endpoints.health.createSleep, { invalidates: STALE })
+  const stepsWrite = useLogMutation(endpoints.health.createSteps)
+  const sleepWrite = useLogMutation(endpoints.health.createSleep)
   const busy = stepsWrite.isPending || sleepWrite.isPending
 
   const stepsValue = steps.trim() === '' ? null : Number(steps.replace(/[\s,]/g, ''))
@@ -60,7 +60,7 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
       reset()
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Try again.')
+      setError(problemText(e))
     }
   }
 
@@ -69,7 +69,7 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
       <DialogTitle id="health-dialog-title">Steps and sleep</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'grid', gap: 4, pt: 1 }}>
-          <Box sx={{ fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
             From the Health app. Sleep is the night that ended on this date.
           </Box>
           <TextField
@@ -100,7 +100,7 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
             }}
           />
           {error && (
-            <Box role="alert" sx={{ fontSize: 14, color: tokens.status.flag }}>
+            <Box role="alert" sx={{ fontSize: tokens.font.size.small, color: tokens.status.flag }}>
               {error}
             </Box>
           )}

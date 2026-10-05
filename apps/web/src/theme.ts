@@ -7,7 +7,20 @@ export const tokens = {
   font: {
     family: "'Outfit Variable', 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif",
     weight: { body: 400, label: 500, heading: 600, number: 700 },
-    size: { body: 16, label: 13, sectionTitle: 20, bigNumber: 36, bigNumberSmall: 32, bigNumberLarge: 40 },
+    /** The type scale in px. caption: axis text, small print; label: card labels; small: secondary text (body2);
+     * emphasis: lead text, buttons; body; cardTitle: card headings (h4); sectionTitle; the big numbers. */
+    size: {
+      caption: 12,
+      label: 13,
+      small: 14,
+      emphasis: 15,
+      body: 16,
+      cardTitle: 18,
+      sectionTitle: 20,
+      bigNumber: 36,
+      bigNumberSmall: 32,
+      bigNumberLarge: 40,
+    },
   },
   ink: {
     text: '#1A1A2E',
@@ -32,6 +45,8 @@ export const tokens = {
   },
   /** Status only — never used for a metric. */
   status: { good: '#16A34A', warning: '#D97706', flag: '#DC2626' },
+  /** The printed report (SPEC §11 print: black text on white): body text, secondary text, the running header. */
+  print: { text: '#000000', secondary: '#333333', header: '#444444', page: '#FFFFFF' },
   chart: {
     grid: '#F1F5F9',
     lineWidth: 2,
@@ -119,12 +134,12 @@ export const theme = createTheme({
     fontSize: 14,
     htmlFontSize: 16,
     body1: { fontSize: font.size.body, fontWeight: font.weight.body },
-    body2: { fontSize: 14, fontWeight: font.weight.body, color: ink.secondary },
-    button: { fontWeight: font.weight.label, textTransform: 'none', fontSize: 15 },
+    body2: { fontSize: font.size.small, fontWeight: font.weight.body, color: ink.secondary },
+    button: { fontWeight: font.weight.label, textTransform: 'none', fontSize: font.size.emphasis },
     h1: { fontSize: 28, fontWeight: font.weight.heading },
     h2: { fontSize: 24, fontWeight: font.weight.heading },
     h3: { fontSize: font.size.sectionTitle, fontWeight: font.weight.heading },
-    h4: { fontSize: 18, fontWeight: font.weight.heading },
+    h4: { fontSize: font.size.cardTitle, fontWeight: font.weight.heading },
     sectionTitle: { fontSize: font.size.sectionTitle, fontWeight: font.weight.heading, lineHeight: 1.3 },
     label: { fontSize: font.size.label, fontWeight: font.weight.label, color: ink.secondary, letterSpacing: 0.1 },
     bigNumber: {
@@ -153,7 +168,9 @@ export const theme = createTheme({
       styleOverrides: { root: { minHeight: tokens.tapTarget, borderRadius: radius.control } },
     },
     MuiIconButton: { styleOverrides: { root: { minWidth: tokens.tapTarget, minHeight: tokens.tapTarget } } },
-    MuiChip: { styleOverrides: { root: { fontWeight: font.weight.label } } },
+    // A tappable chip or menu row is a tap target too (SPEC §11: 44 px), whatever size an sx asks for.
+    MuiChip: { styleOverrides: { root: { fontWeight: font.weight.label }, clickable: { minHeight: tokens.tapTarget } } },
+    MuiMenuItem: { styleOverrides: { root: { minHeight: tokens.tapTarget } } },
     MuiTextField: { defaultProps: { fullWidth: true, size: 'medium' } },
     MuiBottomNavigation: {
       styleOverrides: { root: { height: tokens.layout.bottomNavHeight, borderTop: `1px solid ${ink.border}` } },

@@ -1,11 +1,10 @@
-// Owns: the report's pure mappings — v_day rows to the chart kit's day series, muscle scores to map levels, weekly
-// volume to the four muscle groups across the last reviews, the ISO-week arithmetic of the prev/next links, and the
-// next week's plan as table rows. Data in, plain rows out; no React, no fetching.
-import { addDays, isoWeek, isoWeekRange, localTime, muscleLevels } from '@fitness/shared/engine'
-import type { DaySummary, IsoWeek, Muscle, MuscleScores, TrendPoint, WeekPlan, Weekday, WeeklyMetrics } from '@fitness/shared/schemas'
-import type { CaloriesDay, MacrosDay, SleepNight, StepsDay, VolumeGroup, VolumeWeek, WaterDay, WeightPoint } from '../../../charts'
-
-const round = (v: number, places = 1) => Math.round(v * 10 ** places) / 10 ** places
+// Owns: the report's pure mappings — the day and weight series (Progress's own, re-exported), muscle scores to map
+// levels, weekly volume to the four muscle groups across the last reviews (in real kg), the ISO-week arithmetic of the
+// prev/next links, and the next week's plan as table rows. Data in, plain rows out; no React, no fetching.
+import { addDays, isoWeek, isoWeekRange, muscleLevels } from '@fitness/shared/engine'
+import type { DaySummary, IsoWeek, MuscleScores, WeekPlan, Weekday, WeeklyMetrics } from '@fitness/shared/schemas'
+import type { VolumeWeek } from '../../../charts'
+import { groupVolume, VOLUME_GROUPS } from '../../progress/series'
 
 // ── Weeks ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -28,38 +27,8 @@ export function shiftWeek(monday: string, offset: number): IsoWeek {
 
 // ── Days ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function weightPoints(points: readonly TrendPoint[]): WeightPoint[] {
-  return points.map((p) => ({ date: p.date, raw: p.weight_kg, trend: p.trend_kg }))
-}
-
-export function caloriesDays(days: readonly DaySummary[]): CaloriesDay[] {
-  return days.map((d) => ({ date: d.date, ...d.kcal_by_slot, fast: d.is_fast_day }))
-}
-
-export function macrosDays(days: readonly DaySummary[]): MacrosDay[] {
-  return days.map((d) =>
-    d.meals_logged === 0
-      ? { date: d.date, protein: null, carbs: null, fat: null }
-      : { date: d.date, protein: Math.round(d.intake.protein_g), carbs: Math.round(d.intake.carbs_g), fat: Math.round(d.intake.fat_g) },
-  )
-}
-
-export function waterDays(days: readonly DaySummary[]): WaterDay[] {
-  return days.map((d) => ({ date: d.date, ml: d.water_ml > 0 ? d.water_ml : null }))
-}
-
-export function stepsDays(days: readonly DaySummary[]): StepsDay[] {
-  return days.map((d) => ({ date: d.date, steps: d.steps }))
-}
-
-/** Hours asleep and the Edmonton bedtime of each night (date = wake date). */
-export function sleepNights(days: readonly DaySummary[]): SleepNight[] {
-  return days.map((d) => ({
-    date: d.date,
-    hours: d.sleep_min === null ? null : round(d.sleep_min / 60),
-    bedtime: d.in_bed_at ? localTime(d.in_bed_at) : null,
-  }))
-}
+// The day and weight series are Progress's own mappings (SPEC §11 puts these charts on both), so both draw the same.
+export { caloriesDays, macrosDays, sleepNights, stepsDays, waterDays, weightPoints } from '../../progress/series'
 
 /** The week's targets for the dashed lines: those of its first non-fast day with targets. */
 export function weekTargets(days: readonly DaySummary[]) {
@@ -72,45 +41,15 @@ export function mapLevels(scores: MuscleScores) {
   return muscleLevels(scores)
 }
 
-/** The volume chart's four groups, bottom → top (the styleguide's grouping). */
-export const VOLUME_GROUPS: readonly VolumeGroup[] = [
-  { key: 'legs', label: 'Legs' },
-  { key: 'pull', label: 'Back & biceps' },
-  { key: 'push', label: 'Chest, shoulders & triceps' },
-  { key: 'core', label: 'Core' },
-]
+export { VOLUME_GROUPS }
 
-const GROUP_OF: Readonly<Record<Muscle, string>> = {
-  quadriceps: 'legs',
-  hamstrings: 'legs',
-  glutes: 'legs',
-  calves: 'legs',
-  adductors: 'legs',
-  abductors: 'legs',
-  lats: 'pull',
-  'middle back': 'pull',
-  'lower back': 'pull',
-  traps: 'pull',
-  biceps: 'pull',
-  forearms: 'pull',
-  neck: 'pull',
-  chest: 'push',
-  shoulders: 'push',
-  triceps: 'push',
-  abdominals: 'core',
-}
-
-/** Volume (kg) per group for each week, oldest first: the current week plus up to `count − 1` earlier reviewed weeks. */
+/**
+ * Real kg per group for each week, oldest first: the current week plus up to `count − 1` earlier reviewed weeks. The
+ * weighted volume_by_muscle is scaled to the week's volume_kg (groupVolume), so the stacks match "X kg lifted".
+ */
 export function volumeWeeks(current: WeeklyMetrics, earlier: readonly WeeklyMetrics[], count = 4): VolumeWeek[] {
   const weeks = [...earlier.filter((m) => m.week_start < current.week_start).sort((a, b) => (a.week_start < b.week_start ? -1 : 1)).slice(-(count - 1)), current]
-  return weeks.map((m) => {
-    const volume: Record<string, number> = {}
-    for (const [muscle, kg] of Object.entries(m.volume_by_muscle) as [Muscle, number][]) {
-      const g = GROUP_OF[muscle]
-      volume[g] = (volume[g] ?? 0) + kg
-    }
-    return { week: m.week_start, volume }
-  })
+  return weeks.map((m) => ({ week: m.week_start, volume: groupVolume(m.volume_by_muscle, m.volume_kg) }))
 }
 
 // ── Next week's plan ───────────────────────────────────────────────────────────────────────────────────────────

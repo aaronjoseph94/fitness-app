@@ -36,7 +36,7 @@ function Fact({ label, value, unit, testId }: { label: string; value: string; un
       <Box
         sx={{
           mt: 0.5,
-          fontSize: 18,
+          fontSize: tokens.font.size.cardTitle,
           fontWeight: tokens.font.weight.heading,
           color: tokens.ink.text,
           fontVariantNumeric: 'tabular-nums',
@@ -45,7 +45,7 @@ function Fact({ label, value, unit, testId }: { label: string; value: string; un
       >
         {value}
         {unit && value !== '—' && (
-          <Box component="span" sx={{ ml: 1, fontSize: 13, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
+          <Box component="span" sx={{ ml: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
             {unit}
           </Box>
         )}
@@ -80,7 +80,7 @@ export function TodayHeader(props: TodayHeaderProps) {
           Trend weight
         </Box>
         {rawKg !== null && (
-          <Box sx={{ fontSize: 13, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             Weigh-in {formatNumber(rawKg, 1)} kg
           </Box>
         )}
@@ -89,10 +89,10 @@ export function TodayHeader(props: TodayHeaderProps) {
 
       {trendKg === null ? (
         <Box sx={{ mt: 2 }}>
-          <Box sx={{ fontSize: 18, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+          <Box sx={{ fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
             {unavailable ? 'The trend isn’t on this phone yet' : 'No weigh-ins yet'}
           </Box>
-          <Box sx={{ mt: 1, fontSize: 14, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+          <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
             {unavailable
               ? 'It shows once the app reaches the server. A weigh-in logged now is kept and syncs.'
               : `One morning weigh-in a day is all the trend needs. Goal: ${formatNumber(goalKg, 0)} kg.`}
@@ -118,17 +118,17 @@ export function TodayHeader(props: TodayHeaderProps) {
             >
               {formatNumber(trendKg, 1)}
             </Box>
-            <Box component="span" sx={{ fontSize: 16, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
+            <Box component="span" sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
               kg
             </Box>
           </Box>
           {sinceStart !== null && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              {!flat && <DeltaIcon aria-hidden sx={{ fontSize: 16, color: deltaColor }} />}
-              <Box component="span" sx={{ fontSize: 14, fontWeight: tokens.font.weight.label, color: deltaColor, whiteSpace: 'nowrap' }}>
+              {!flat && <DeltaIcon aria-hidden sx={{ fontSize: tokens.font.size.body, color: deltaColor }} />}
+              <Box component="span" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: deltaColor, whiteSpace: 'nowrap' }}>
                 {formatSigned(sinceStart, 1)} kg
               </Box>
-              <Box component="span" sx={{ fontSize: 14, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Box component="span" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 since {startDate ? `${startDate} (${formatNumber(startKg, 1)} kg)` : 'start'}
               </Box>
             </Box>
@@ -154,7 +154,7 @@ export function TodayHeader(props: TodayHeaderProps) {
             />
           </Box>
           {forecast && !finish && (
-            <Box sx={{ mt: 2, fontSize: 13, color: tokens.ink.secondary }}>
+            <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
               No finish date while the forecast rate is {formatNumber(forecast.weekly_rate_kg, 2)} kg/week.
             </Box>
           )}

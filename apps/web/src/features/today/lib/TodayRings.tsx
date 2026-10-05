@@ -168,7 +168,7 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
       {(pending.meals > 0 || missingHealth) && (
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: 3 }}>
           {pending.meals > 0 && (
-            <Box sx={{ flex: 1, fontSize: 13, color: tokens.ink.secondary }}>
+            <Box sx={{ flex: 1, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
               {pending.meals === 1 ? 'One meal' : `${pending.meals} meals`} will count once synced.
             </Box>
           )}

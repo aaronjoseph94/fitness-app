@@ -1,18 +1,18 @@
 // Owns: the plan tools — get_plan, list_plan_versions, restore_plan_version, propose_plan_change, apply_proposal,
 // reject_proposal (the plan module: guarded plan versions and proposals). Applying or resolving is for Aaron and the
 // coach (MCP); for Ask AI (actor 'ai') those tools answer 403 needs_approval and it proposes instead.
+import { targetValue } from '@fitness/shared/engine'
 import {
   Count,
   Id,
-  LocalDate,
-  PlanChange,
   PlanVersion,
   Proposal,
   ProposalDecision,
   Rails,
-  TargetField,
+  RejectedPlanChange,
+  ScheduledPlanChange,
+  MovableTargetField,
   Weekday,
-  type PlanTargets,
 } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import { assertCoach } from '../../../coach'
@@ -26,12 +26,6 @@ import {
 } from '../../../plan'
 import { getSettings } from '../../../settings'
 import { defineTool, type ToolDefinition } from '../define'
-
-const Rejected = z.object({ change: PlanChange, rule: z.string(), reason: z.string() })
-const Scheduled = z.object({ change: PlanChange, week_offset: Count, due: LocalDate, proposal_id: Id })
-
-const current = (t: PlanTargets, c: { field: TargetField; weekday: Weekday | null }) =>
-  (c.weekday ? t.overrides[c.weekday]?.[c.field] : undefined) ?? t.defaults[c.field]
 
 export const PLAN_TOOLS: readonly ToolDefinition[] = [
   defineTool({
@@ -96,7 +90,7 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
       changes: z
         .array(
           z.object({
-            field: TargetField,
+            field: MovableTargetField.describe('carbs_g is not movable: carbs are the remainder of kcal after protein and fat'),
             weekday: Weekday.nullable().default(null).describe('null = every day'),
             to: z.number().nonnegative(),
             reason: z.string().trim().min(1).max(500).optional(),
@@ -109,12 +103,12 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
         .trim()
         .min(1)
         .max(500)
-        .describe('Why, in one sentence Aaron will read on the proposal card'),
+        .describe('Why, in one sentence the user will read on the proposal card'),
     }),
     output: z.object({
       proposal: Proposal.nullable(),
-      rejected: z.array(Rejected),
-      scheduled: z.array(Scheduled),
+      rejected: z.array(RejectedPlanChange),
+      scheduled: z.array(ScheduledPlanChange),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     run: async (deps, input) => {
@@ -122,7 +116,7 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
       const changes = input.changes.map((c) => ({
         field: c.field,
         weekday: c.weekday,
-        from: current(targets, c),
+        from: targetValue(targets, c.field, c.weekday),
         to: c.to,
         reason: c.reason ?? input.reason,
       }))

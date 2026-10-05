@@ -1,7 +1,8 @@
 // Owns: "Export everything" — building the export zip in the browser (the Worker never zips: free-plan CPU). Reads the
 // manifest, pages every table from /api/export/tables, then streams the zip with client-zip: README.txt, one CSV per
 // table under tables/, every photo, scan sheet and report PDF under files/<key> (fetched from its signed link), and
-// full.json last, listing only the files that made it in. full.json is what "Restore from export" reads.
+// full.json last, listing only the files that made it in. full.json is what "Restore from export" reads. An expired
+// Access session stops the export (and raises "Sign in again") instead of listing every file as missing.
 import { endpoints } from '@fitness/shared/api'
 import {
   EXPORT_FULL_JSON,
@@ -10,7 +11,7 @@ import {
   type ExportTable,
 } from '@fitness/shared/schemas'
 import { downloadZip } from 'client-zip'
-import { call } from '../../../api'
+import { call, fetchFile, isApiError } from '../../../api'
 import { toCsv } from './csv'
 
 export interface ExportProgress {
@@ -79,6 +80,8 @@ export async function buildExport(
   const included: ExportArchive['files'] = []
   const missing: string[] = []
   const files = manifest.files
+  /** Why the file loop stopped the zip: rethrown as is (the zip stream may wrap it). */
+  let stopped: unknown = null
 
   async function* entries() {
     for (const [table, rows] of Object.entries(tables)) {
@@ -89,12 +92,12 @@ export async function buildExport(
       onProgress({ phase: 'files', done: i, total: files.length, label: 'Adding photos, sheets and reports' })
       const path = `files/${file.key}`
       try {
-        const response = await fetch(file.url, { credentials: 'include', redirect: 'manual', signal })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        yield { name: path, input: new Uint8Array(await response.arrayBuffer()), lastModified }
+        const bytes = await fetchFile(file.url, { signal })
+        yield { name: path, input: new Uint8Array(bytes), lastModified }
         included.push({ key: file.key, path })
       } catch (error) {
         if (signal.aborted) throw error
+        if (isApiError(error) && error.kind === 'auth-expired') throw (stopped = error)
         missing.push(file.key)
       }
     }
@@ -115,7 +118,11 @@ export async function buildExport(
     yield { name: EXPORT_FULL_JSON, input: JSON.stringify(archive), lastModified }
   }
 
-  const blob = await downloadZip(entries(), { buffersAreUTF8: true }).blob()
+  const blob = await downloadZip(entries(), { buffersAreUTF8: true })
+    .blob()
+    .catch((error: unknown) => {
+      throw stopped ?? error
+    })
   return {
     blob: new Blob([blob], { type: 'application/zip' }),
     fileName: `fitness-export-${manifest.exported_at.slice(0, 10)}.zip`,

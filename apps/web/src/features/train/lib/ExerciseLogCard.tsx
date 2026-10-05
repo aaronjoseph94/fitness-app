@@ -58,7 +58,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
             sx={{
               display: 'block',
               textAlign: 'left',
-              fontSize: 16,
+              fontSize: tokens.font.size.body,
               fontWeight: tokens.font.weight.heading,
               lineHeight: 1.3,
               color: tokens.ink.text,
@@ -69,7 +69,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
           <Box
             sx={{
               mt: 0.5,
-              fontSize: 13,
+              fontSize: tokens.font.size.label,
               color: tokens.ink.secondary,
               display: 'flex',
               flexWrap: 'wrap',
@@ -100,7 +100,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
             display: 'flex',
             gap: 1.5,
             alignItems: 'center',
-            fontSize: 13,
+            fontSize: tokens.font.size.label,
             color: tokens.ink.secondary,
           }}
         >
@@ -123,7 +123,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
             }}
           >
             {exercise.suggestion.kind === 'increase' && (
-              <TrendingUpRounded sx={{ fontSize: 16 }} aria-hidden />
+              <TrendingUpRounded sx={{ fontSize: tokens.font.size.body }} aria-hidden />
             )}
             {hint}
           </Box>
@@ -144,7 +144,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
           display: 'grid',
           gridTemplateColumns: SET_GRID,
           gap: 1.5,
-          fontSize: 12,
+          fontSize: tokens.font.size.caption,
           fontWeight: tokens.font.weight.label,
           color: tokens.ink.secondary,
           textAlign: 'center',
@@ -202,7 +202,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
           value={exercise.note}
           onChange={(e) => actions.setNote(id, e.target.value.slice(0, 200))}
           slotProps={{ htmlInput: { 'aria-label': `Note for ${name}`, maxLength: 200 } }}
-          sx={{ mt: 1, '& textarea': { fontSize: 16 } }}
+          sx={{ mt: 1, '& textarea': { fontSize: tokens.font.size.body } }}
         />
       )}
 

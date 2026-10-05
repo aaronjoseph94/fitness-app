@@ -1,4 +1,5 @@
-// Owns: the scans list (/scans) — when the next scan is due (last scan + the settings interval) with Upload and
+// Owns: the scans list (/scans) — when the next scan is due (the server's schedule: a date the coach or a week plan
+// set, else the last scan + the settings interval) with Upload and
 // Enter-by-hand, sheets waiting for review, the latest scan's headline numbers with their changes, fat vs lean across
 // scans, and every scan with its fat and lean change and the lean-loss guard.
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
@@ -11,16 +12,17 @@ import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import type { Scan } from '@fitness/shared/schemas'
+import type { Scan, ScanSchedule } from '@fitness/shared/schemas'
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { BodyCompositionChart } from '../../../charts'
 import { ChartCard, EmptyState, formatNumber, formatSigned, SectionHeader, StatCard } from '../../../components'
 import { tokens } from '../../../theme'
-import { problemText, todayLocal } from '../../quick-log'
-import { useScans, useScanSettings } from './hooks'
-import { compositionSeries, confirmedScans, nextDue, TARGETS, type ConfirmedScan } from './series'
+import { todayLocal } from '../../quick-log'
+import { useScans, useScanSchedule } from './hooks'
+import { compositionSeries, confirmedScans, TARGETS } from './series'
 import { UploadSheet } from './UploadSheet'
+import { problemText } from '../../../api'
 
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
@@ -41,7 +43,7 @@ function Row({ title, subtitle, chip, onClick }: { title: string; subtitle: stri
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box sx={{ fontWeight: tokens.font.weight.label }}>{title}</Box>
-        <Box sx={{ fontSize: 13, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{subtitle}</Box>
+        <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{subtitle}</Box>
       </Box>
       {chip}
       <ChevronRightRounded sx={{ color: 'text.secondary' }} aria-hidden />
@@ -49,19 +51,22 @@ function Row({ title, subtitle, chip, onClick }: { title: string; subtitle: stri
   )
 }
 
-function DueCard({ confirmed, interval, onUpload, onManual }: { confirmed: ConfirmedScan[]; interval: number; onUpload: () => void; onManual: () => void }) {
-  const due = nextDue(confirmed, interval)
+function DueCard({ schedule, onUpload, onManual }: { schedule: ScanSchedule | undefined; onUpload: () => void; onManual: () => void }) {
+  const due = schedule?.due ?? null
+  const interval = schedule?.interval_days ?? 28
   const today = todayLocal()
   const left = due ? daysBetween(today, due) : null
   const status = left === null ? 'No scan yet' : left > 0 ? `in ${left} ${left === 1 ? 'day' : 'days'}` : left === 0 ? 'today' : `${-left} ${left === -1 ? 'day' : 'days'} overdue`
   return (
     <Card sx={{ p: 4 }} data-testid="scan-due">
-      <Box sx={{ fontSize: 13, color: 'text.secondary' }}>Next scan</Box>
+      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>Next scan</Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
         <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums' }}>{due ?? '—'}</Box>
         <Chip size="small" label={status} color={left !== null && left <= 0 ? 'warning' : 'default'} variant={left !== null && left <= 0 ? 'filled' : 'outlined'} />
       </Box>
-      <Box sx={{ fontSize: 13, color: 'text.secondary', mt: 1 }}>Every {interval} days, same conditions: morning, fasted, no training the day before.</Box>
+      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mt: 1 }}>
+        {schedule?.source === 'scheduled' ? 'Scheduled by your plan' : `Every ${interval} days`}, same conditions: morning, fasted, no training the day before.
+      </Box>
       <Box sx={{ display: 'flex', gap: 2, mt: 3, flexWrap: 'wrap' }}>
         <Button variant="contained" startIcon={<UploadFileRounded />} onClick={onUpload} data-testid="scan-upload-open">
           Upload sheet
@@ -75,9 +80,8 @@ function DueCard({ confirmed, interval, onUpload, onManual }: { confirmed: Confi
 export function ScansPage() {
   const navigate = useNavigate()
   const scans = useScans()
-  const settings = useScanSettings()
+  const schedule = useScanSchedule()
   const [uploading, setUploading] = useState(false)
-  const interval = settings.data?.settings.scan_interval_days ?? 28
 
   if (scans.isPending)
     return (
@@ -95,7 +99,7 @@ export function ScansPage() {
 
   return (
     <Stack spacing={4} data-testid="scans-page">
-      <DueCard confirmed={confirmed} interval={interval} onUpload={() => setUploading(true)} onManual={() => void navigate('/scans/new')} />
+      <DueCard schedule={schedule.data} onUpload={() => setUploading(true)} onManual={() => void navigate('/scans/new')} />
 
       {waiting.length > 0 && (
         <Card sx={{ pt: 3 }}>

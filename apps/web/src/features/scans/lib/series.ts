@@ -2,7 +2,6 @@
 // baseline vs a scan), the gauge bands for the Evolt ranges, the SPEC §3 composition targets, and the next due date.
 import type { CompositionScan, FatScan, GaugeBand, SegmentFat } from '../../../charts'
 import type { Scan, ScanRecord, ScanSegment } from '@fitness/shared/schemas'
-import { shiftDate } from '../../quick-log'
 
 /** SPEC §3: body fat ≤ 18 % at goal (about 11.7 kg fat); visceral level 9 or lower. */
 export const TARGETS = { fatMassKg: 11.7, bodyFatPct: 18, visceralLevel: 9 } as const
@@ -56,10 +55,4 @@ export function fatSeries(scans: readonly ConfirmedScan[]): FatScan[] {
 /** Fat kg per segment at the baseline and at `latest`. */
 export function segmentalFat(baseline: ScanRecord, latest: ScanRecord): SegmentFat[] {
   return SEGMENTS.map((s) => ({ segment: SEGMENT_LABEL[s], baseline: baseline.segments[s].fat_kg, latest: latest.segments[s].fat_kg }))
-}
-
-/** Next scan due: last confirmed scan date + interval (null before the first scan). */
-export function nextDue(scans: readonly ConfirmedScan[], intervalDays: number): string | null {
-  const last = scans.at(-1)
-  return last ? shiftDate(last.date, intervalDays) : null
 }

@@ -1,22 +1,23 @@
 // Owns: the guardrails (SPEC §9) — every change an LLM or MCP proposes passes applyGuards before it touches the
 // database. A change that breaks a rail is dropped and reported with its rule; the rest of the batch applies.
 import type { Actor, LocalDate, Weekday } from '../schemas/common'
+import { TargetValues } from '../schemas/plan'
+import { Rails, type Settings } from '../schemas/profile-settings'
 import type { ExerciseInfo, PlanTargetsLike, TargetField } from './lib/types'
 
 /** Largest move of daily kcal one proposal may make (SPEC §9); larger moves are split across weeks. */
 export const KCAL_STEP = 150
 /** Working sets per session (SPEC §9). */
 export const SESSION_SETS = { min: 12, max: 28 } as const
-/** `settings` fields only Aaron may change: the rails, and the switch that lets AI changes apply without a tap. */
+/**
+ * `settings` fields only Aaron may change: every `Rails` field, and the switch that lets AI changes apply without a
+ * tap. Derived from the schema, so a new rail is locked and a renamed one fails typecheck. Typed as plain strings
+ * because callers test arbitrary patch keys against it (settings updateSettings).
+ */
 export const LOCKED_SETTINGS: readonly string[] = [
-  'calorie_floor',
-  'calorie_ceiling',
-  'protein_min_g',
-  'fat_min_g',
-  'fasts_per_month',
-  'fast_hours',
+  ...Rails.keyof().options,
   'auto_apply_safe',
-]
+] satisfies readonly (keyof Settings)[]
 
 // ── Changes the guards understand ──────────────────────────────────────────────────────────────────────────────
 
@@ -32,26 +33,15 @@ export type ExerciseSwapChange = { kind: 'exercise_swap'; from_exercise_id: stri
 /** Plan a fast on a date. */
 export type FastChange = { kind: 'fast'; date: LocalDate }
 
-/** Edit a `settings` field. */
-export type SettingsChange = { kind: 'settings'; field: string }
+/** Changes no rail limits; both are on the auto-apply safe list (SPEC §9). */
+export type OpenChange = { kind: 'meal_suggestion' | 'reminder_time' }
 
-/** Changes no rail limits; `meal_suggestion` and `reminder_time` are on the auto-apply safe list. */
-export type OpenChange = {
-  kind: 'meal_suggestion' | 'reminder_time' | 'equipment' | 'milestone' | 'scan_date' | 'dashboard_note' | 'week_split'
-}
-
-export type GuardChange = TargetChange | WorkoutChange | ExerciseSwapChange | FastChange | SettingsChange | OpenChange
+export type GuardChange = TargetChange | WorkoutChange | ExerciseSwapChange | FastChange | OpenChange
 
 // ── Context and result ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** The rails from `settings` the guards check (structurally a subset of `Rails`). */
-export type GuardRails = {
-  calorie_floor: number
-  calorie_ceiling: number
-  protein_min_g: number
-  fat_min_g: number
-  fasts_per_month: number
-}
+/** The rails from `settings` the guards check (every rail but the fast length). */
+export type GuardRails = Omit<Rails, 'fast_hours'>
 
 export type GuardContext = {
   /** Who proposes the batch. */
@@ -70,6 +60,8 @@ export type GuardContext = {
 }
 
 export type GuardRule =
+  | 'target_range'
+  | 'carbs_remainder'
   | 'calorie_floor'
   | 'calorie_ceiling'
   | 'protein_min'
@@ -79,7 +71,6 @@ export type GuardRule =
   | 'excluded_category'
   | 'session_sets'
   | 'fasting_pattern'
-  | 'rails_locked'
 
 export type GuardResult<C extends GuardChange> = {
   /** Changes that pass, in batch order. `auto_apply` = may apply without a tap in the app. */
@@ -94,6 +85,9 @@ type Verdict<C> = { ok: true; change: C; later?: C[] } | { ok: false; rule: Guar
 
 /**
  * Check a batch against the rails, change by change in batch order:
+ *   target range:      `to` is a valid value of its field in `TargetValues` (finite, ≥ 0, whole ml and steps, ≤ the
+ *                      unit's sanity maximum), so an applied change always parses as a plan version
+ *   target carbs_g:    always rejected — carbs = (kcal − protein × 4 − fat × 9) / 4 is the remainder (materialiseTargets)
  *   target kcal:       calorie_floor ≤ to ≤ calorie_ceiling
  *   target protein_g:  to ≥ protein_min_g;   target fat_g: to ≥ fat_min_g
  *   targets:           one change per (field, weekday) per batch; `from` is re-read from ctx.plan
@@ -102,7 +96,7 @@ type Verdict<C> = { ok: true; change: C; later?: C[] } | { ok: false; rule: Guar
  *   workout:           every exercise in the allowed set and in no excluded category; 12 ≤ Σ sets ≤ 28
  *   exercise_swap:     the new exercise in the allowed set and in no excluded category
  *   fast:              planned fasts in that calendar month ≤ fasts_per_month
- *   settings:          the rails (LOCKED_SETTINGS) change only when the actor is `user`
+ * (The settings rails are locked outside the guards: updateSettings refuses LOCKED_SETTINGS to any actor but `user`.)
  * auto_apply (may apply without a tap in the app):
  *   user → true; mcp → true (Aaron approves in the Claude chat; still versioned and guarded);
  *   ai   → auto_apply_safe ∧ kind ∈ {meal_suggestion, reminder_time, exercise_swap sharing a primary muscle}
@@ -164,12 +158,6 @@ function check<C extends GuardChange>(change: C, ctx: GuardContext, state: Batch
       state.fasts.add(date)
       return { ok: true, change }
     }
-    case 'settings': {
-      const { field } = change as C & SettingsChange
-      if (ctx.actor !== 'user' && LOCKED_SETTINGS.includes(field))
-        return reject('rails_locked', `${field} is a rail; only Aaron changes it`)
-      return { ok: true, change }
-    }
     default:
       return { ok: true, change }
   }
@@ -199,6 +187,10 @@ function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: Guard
   const { rails } = ctx
   const key = `${field}:${weekday ?? 'all'}`
   if (seen.has(key)) return reject('duplicate_target', `${label(change)} is already changed in this batch`)
+  if (field === 'carbs_g')
+    return reject('carbs_remainder', 'Carbs are the remainder of kcal after protein and fat; move kcal, protein_g or fat_g instead')
+  if (!TargetValues.shape[field].safeParse(to).success)
+    return reject('target_range', `${label(change)} ${to} is not a valid ${field}`)
   if (field === 'kcal' && to < rails.calorie_floor)
     return reject('calorie_floor', `${label(change)} ${to} kcal is below the ${rails.calorie_floor} kcal floor`)
   if (field === 'kcal' && to > rails.calorie_ceiling)
@@ -208,7 +200,7 @@ function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: Guard
   if (field === 'fat_g' && to < rails.fat_min_g)
     return reject('fat_min', `${label(change)} ${to} g is below the ${rails.fat_min_g} g fat minimum`)
   seen.add(key)
-  const from = currentTarget(ctx.plan, field, weekday)
+  const from = targetValue(ctx.plan, field, weekday)
   if (field !== 'kcal' || ctx.actor === 'user' || Math.abs(to - from) <= KCAL_STEP) return { ok: true, change: { ...change, from } }
 
   const delta = to - from
@@ -221,8 +213,11 @@ function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: Guard
   return { ok: true, change: steps[0]!, later: steps.slice(1) }
 }
 
-/** The value a target has now: the weekday's override when set, else the default. */
-function currentTarget(plan: PlanTargetsLike, field: TargetField, weekday: Weekday | null): number {
+/**
+ * The value a target has in a plan: value(f, w) = overrides[w]?.[f] ?? defaults[f]  (w = null → defaults[f]).
+ * The `from` of every target change (PlanChange) is read with this.
+ */
+export function targetValue(plan: PlanTargetsLike, field: TargetField, weekday: Weekday | null): number {
   return (weekday === null ? undefined : plan.overrides[weekday]?.[field]) ?? plan.defaults[field]
 }
 

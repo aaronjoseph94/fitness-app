@@ -37,9 +37,9 @@ export function StyleguidePage() {
         >
           Visual kit
         </Box>
-        <Box sx={{ mt: 1.5, fontSize: 15, color: tokens.ink.secondary, lineHeight: 1.5, maxWidth: 560 }}>
+        <Box sx={{ mt: 1.5, fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5, maxWidth: 560 }}>
           Every token, card and chart with sample data from the 2026-09-26 baseline. Tokens live only in{' '}
-          <Box component="code" sx={{ fontSize: 14, color: tokens.ink.text }}>
+          <Box component="code" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text }}>
             apps/web/src/theme.ts
           </Box>
           ; change one there and this page shows it everywhere.
@@ -63,7 +63,7 @@ export function StyleguidePage() {
                 border: `1px solid ${tokens.ink.border}`,
                 bgcolor: tokens.ink.card,
                 color: tokens.ink.text,
-                fontSize: 14,
+                fontSize: tokens.font.size.small,
                 fontWeight: tokens.font.weight.label,
                 textDecoration: 'none',
                 '&:hover': { borderColor: tokens.chart.target },

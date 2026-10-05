@@ -221,7 +221,7 @@ export function ProposalsSection() {
                 p: 3,
                 borderRadius: `${tokens.radius.control}px`,
                 bgcolor: tokens.ink.page,
-                fontSize: 14,
+                fontSize: tokens.font.size.small,
                 color: tokens.ink.text,
                 lineHeight: 1.5,
               }}

@@ -17,13 +17,14 @@ import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
 import { SectionHeader, StatCard } from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, problemText, todayLocal } from '../../quick-log'
+import { clockOf, todayLocal } from '../../quick-log'
 import { DeltaTable } from './DeltaTable'
 import { formFrom } from './form'
 import { useDiscardScan, useReextractScan, useScan, useScans, useScanSettings } from './hooks'
 import { ReviewForm } from './ReviewForm'
 import { ScanCharts } from './ScanCharts'
 import { confirmedScans, type ConfirmedScan } from './series'
+import { problemText } from '../../../api'
 
 const SEVERITY: Record<ScanFlag['code'], 'error' | 'warning' | 'info'> = {
   lean_loss: 'error',
@@ -141,7 +142,7 @@ function PendingScan({ scan }: { scan: Scan }) {
           <CircularProgress size={28} />
           <Box>
             <Box sx={{ fontWeight: tokens.font.weight.heading }}>Extracting…</Box>
-            <Box sx={{ fontSize: 14, color: 'text.secondary' }}>Reading every value off the sheet. This takes up to half a minute.</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>Reading every value off the sheet. This takes up to half a minute.</Box>
           </Box>
         </Card>
       )}
@@ -184,21 +185,21 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
         {a.narrative_by && <Chip size="small" variant="outlined" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />}
       </Box>
       {a.status === 'pending' && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2, color: 'text.secondary', fontSize: 14 }} aria-live="polite">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2, color: 'text.secondary', fontSize: tokens.font.size.small }} aria-live="polite">
           <CircularProgress size={18} /> Writing the debrief…
         </Box>
       )}
-      {a.status === 'failed' && !a.narrative && <Box sx={{ mt: 2, color: 'text.secondary', fontSize: 14 }}>The debrief could not be written; the numbers below are the engine's.</Box>}
-      {a.narrative && <Box sx={{ mt: 2, fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{a.narrative}</Box>}
+      {a.status === 'failed' && !a.narrative && <Box sx={{ mt: 2, color: 'text.secondary', fontSize: tokens.font.size.small }}>The debrief could not be written; the numbers below are the engine's.</Box>}
+      {a.narrative && <Box sx={{ mt: 2, fontSize: tokens.font.size.emphasis, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{a.narrative}</Box>}
       {milestones.length > 0 && (
-        <Box component="ul" sx={{ m: 0, mt: 3, pl: 2.5, fontSize: 14, lineHeight: 1.7 }} data-testid="scan-milestones">
+        <Box component="ul" sx={{ m: 0, mt: 3, pl: 2.5, fontSize: tokens.font.size.small, lineHeight: 1.7 }} data-testid="scan-milestones">
           {milestones.map((m) => (
             <li key={m.key}>{m.text}</li>
           ))}
         </Box>
       )}
       {a.proposal_ids.length > 0 && (
-        <Box sx={{ mt: 3, fontSize: 14 }}>
+        <Box sx={{ mt: 3, fontSize: tokens.font.size.small }}>
           {a.proposal_ids.length === 1 ? 'One plan proposal is' : `${a.proposal_ids.length} plan proposals are`} waiting for a tap on{' '}
           <Box component={RouterLink} to="/" sx={{ color: 'primary.main' }}>
             Today

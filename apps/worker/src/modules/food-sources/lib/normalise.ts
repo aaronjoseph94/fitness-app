@@ -1,5 +1,6 @@
 // Owns: mapping each nutrition source's record to one food draft per 100 g (the `foods` row minus id/timestamps), and
 // scaling a food to a portion. Open Food Facts and USDA FoodData Central shapes are validated loosely with Zod here.
+import { portion, type Per100gLike } from '@fitness/shared/engine'
 import type { Nutrients } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import type { foods, NewRow } from '../../../db'
@@ -11,13 +12,7 @@ export type FoodDraft = Required<Omit<NewRow<typeof foods>, 'id' | 'created_at' 
 }
 
 /** Per-100 g values a portion is computed from (a cached food row or a draft). */
-export interface Per100g {
-  kcal_per_100g: number
-  protein_g: number
-  carbs_g: number
-  fat_g: number
-  fibre_g: number | null
-}
+export type Per100g = Per100gLike
 
 const KJ_PER_KCAL = 4.184
 /** Salt → sodium: sodium_g = salt_g / 2.5, so sodium_mg = salt_g × 400. */
@@ -36,19 +31,9 @@ function plausible(d: FoodDraft): FoodDraft | null {
   return d.kcal_per_100g <= 950 && macros.every((m) => m <= 100) ? d : null
 }
 
-/**
- * portion = per-100 g value × grams / 100, rounded to 0.1 (kcal and grams alike). Unknown fibre counts as 0.
- * e.g. banana 89 kcal/100 g × 120 g → 106.8 kcal.
- */
+/** A portion of a food: the engine's `portion` (per-100 g value × grams / 100, to 0.1; unknown fibre counts as 0). */
 export function nutritionFor(food: Per100g, grams: number): Nutrients {
-  const f = grams / 100
-  return {
-    kcal: round(food.kcal_per_100g * f, 1),
-    protein_g: round(food.protein_g * f, 1),
-    carbs_g: round(food.carbs_g * f, 1),
-    fat_g: round(food.fat_g * f, 1),
-    fibre_g: round((food.fibre_g ?? 0) * f, 1),
-  }
+  return portion(food, grams)
 }
 
 // ── Open Food Facts (v2 product, and search-a-licious hits) ─────────────────────────────────────────────────

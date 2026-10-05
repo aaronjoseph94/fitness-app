@@ -2,7 +2,9 @@
 // reverting the active one (the plan it replaced restored, else the week handed back to the plan version). Each switch
 // is one plan version through the plan module (reason, diff, the week's daily_targets rebuilt from today on, a
 // reforecast job) and its 'change' event, whose body records the switch — week_plan: { action, id, week_start,
-// replaced_id | restored_id } — so a later revert finds the plan an apply replaced.
+// replaced_id | restored_id } — so a later revert finds the plan an apply replaced. Applying a plan with a scan date
+// (today or later, not already the due date) schedules the next scan in the same batch (scans.scanDateNote), so the
+// reminder, the nightly due note and the Scans page follow it.
 import { addDays, isoWeek, today } from '@fitness/shared/engine'
 import type { WeekPlan, WeekPlanApplied, WeekPlanContent, WeekPlanIssue } from '@fitness/shared/schemas'
 import { and, eq, gte, inArray, sql } from 'drizzle-orm'
@@ -14,6 +16,7 @@ import { HttpError } from '../../../lib/http-error'
 import { proposalDecisionUpdate } from '../../events'
 import { runSoon } from '../../jobs'
 import { weekPlanVersion } from '../../plan'
+import { scanDateNote, scanSchedule } from '../../scans'
 import { AUTHOR_LABEL, weekPlanById } from './rows'
 
 /** The part of a plan version's 'change' event body a switch writes. */
@@ -84,10 +87,13 @@ export async function applyPlan(
     extra: { week_plan: { action: 'apply', id: plan.id, week_start: plan.week_start, replaced_id: current?.id ?? null } },
   })
   const now = deps.now().toISOString()
+  const scan = content.scan_date && content.scan_date >= today(deps.now()) ? content.scan_date : null
+  const scheduleScan = scan !== null && (await scanSchedule(deps)).due !== scan
   await run(
     deps,
     [
       ...v.statements,
+      ...(scheduleScan ? [scanDateNote(deps, scan)] : []),
       // Supersede first: at most one active row per week (week_plans_active_week_uq).
       ...(current ? [deps.db.update(week_plans).set({ status: 'superseded', updated_at: now }).where(eq(week_plans.id, current.id))] : []),
       deps.db

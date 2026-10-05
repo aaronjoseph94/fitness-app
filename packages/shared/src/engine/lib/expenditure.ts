@@ -13,6 +13,15 @@ export const MIN_LOGGED_DAYS = 10
 /** Plausible range of the estimate (SPEC §9). */
 export const TDEE_RANGE = { min: 1200, max: 4500 } as const
 
+/**
+ * Logged intake day = meals_logged > 0 ∨ is_fast_day: the day's intake counts at its logged total (a fast day at its
+ * intake, 0 kcal when nothing eaten). Used by the expenditure estimate and the weekly review. Adherence's stricter
+ * "≥ 2 meals or a fast" is a logging-completeness score, not this.
+ */
+export function isLoggedIntakeDay(d: Pick<DayRow, 'meals_logged' | 'is_fast_day'>): boolean {
+  return d.meals_logged > 0 || d.is_fast_day
+}
+
 /** A v_day row as the estimate reads it. */
 export type ExpenditureDay = Pick<DayRow, 'date' | 'trend_kg' | 'meals_logged' | 'is_fast_day'> & { intake: { kcal: number } }
 
@@ -27,7 +36,7 @@ export type ExpenditureEstimate = {
 
 /**
  * Over the 14 days as_of − 13 … as_of (call it weekly, on a complete day such as yesterday):
- *   logged day   = meals_logged > 0 ∨ is_fast_day   (a fast day is a logged day at its intake, 0 kcal when nothing eaten)
+ *   logged day   = isLoggedIntakeDay: meals_logged > 0 ∨ is_fast_day
  *   mean_intake  = Σ intake.kcal over logged days / logged days
  *   raw          = mean_intake + (trend(as_of − 14) − trend(as_of)) × 7,700 / 14
  *   tdee_est     = round(0.5 × clamp(raw, 1,200, 4,500) + 0.5 × previous_kcal)
@@ -36,7 +45,7 @@ export type ExpenditureEstimate = {
  */
 export function estimateExpenditure(input: { as_of: LocalDate; days: readonly ExpenditureDay[]; previous_kcal: number }): ExpenditureEstimate {
   const from = addDays(input.as_of, -(EXPENDITURE_WINDOW_DAYS - 1))
-  const logged = input.days.filter((d) => d.date >= from && d.date <= input.as_of && (d.meals_logged > 0 || d.is_fast_day))
+  const logged = input.days.filter((d) => d.date >= from && d.date <= input.as_of && isLoggedIntakeDay(d))
   const start = trendOn(input.days, addDays(input.as_of, -EXPENDITURE_WINDOW_DAYS))
   const end = trendOn(input.days, input.as_of)
   const intake = mean(logged.map((d) => d.intake.kcal))

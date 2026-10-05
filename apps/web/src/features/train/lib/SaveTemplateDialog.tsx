@@ -8,9 +8,8 @@ import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { useEffect, useState } from 'react'
-import { useApiMutation } from '../../../api'
+import { problemText, useApiMutation } from '../../../api'
 import { tokens } from '../../../theme'
-import { problemText } from '../../quick-log'
 import { asTemplateExercises, type LoggerSession } from './logger-model'
 
 export interface SaveTemplateDialogProps {

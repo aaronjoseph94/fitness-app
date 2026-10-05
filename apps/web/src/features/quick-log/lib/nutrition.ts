@@ -1,48 +1,13 @@
-// Owns: the food maths the meal forms show before the Worker answers — a portion of a per-100 g food, rescaling a
-// portion, sums — and the meal slots: labels, which are shown, the default slot for the time of day, and the planned
-// share of the day's kcal per slot.
-import type { Food, MealSlot, Nutrients } from '@fitness/shared/schemas'
+// Owns: the food maths the meal forms show before the Worker answers — re-exported from the engine (a portion of a
+// per-100 g food, rescaling a portion, sums, each to 0.1 as the Worker stores them) — and the meal slots: labels,
+// which are shown, the default slot for the time of day, and the planned share of the day's kcal per slot.
+import type { Per100gLike } from '@fitness/shared/engine'
+import type { MealSlot } from '@fitness/shared/schemas'
 
-export const ZERO: Nutrients = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0 }
+export { portion, scaleNutrients as scaled, sumNutrients as sum } from '@fitness/shared/engine'
 
 /** Per-100 g values of a food (as stored in `foods`). */
-export type Per100g = Pick<Food, 'kcal_per_100g' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'>
-
-/** nutrient(grams) = per_100g × grams / 100 */
-export function portion(food: Per100g, grams: number): Nutrients {
-  const f = grams / 100
-  return {
-    kcal: food.kcal_per_100g * f,
-    protein_g: food.protein_g * f,
-    carbs_g: food.carbs_g * f,
-    fat_g: food.fat_g * f,
-    fibre_g: (food.fibre_g ?? 0) * f,
-  }
-}
-
-/** Every nutrient × factor (e.g. new grams / old grams). */
-export function scaled(n: Nutrients, factor: number): Nutrients {
-  return {
-    kcal: n.kcal * factor,
-    protein_g: n.protein_g * factor,
-    carbs_g: n.carbs_g * factor,
-    fat_g: n.fat_g * factor,
-    fibre_g: n.fibre_g * factor,
-  }
-}
-
-export function sum(list: readonly Nutrients[]): Nutrients {
-  return list.reduce(
-    (a, n) => ({
-      kcal: a.kcal + n.kcal,
-      protein_g: a.protein_g + n.protein_g,
-      carbs_g: a.carbs_g + n.carbs_g,
-      fat_g: a.fat_g + n.fat_g,
-      fibre_g: a.fibre_g + n.fibre_g,
-    }),
-    ZERO,
-  )
-}
+export type Per100g = Per100gLike
 
 // ── Slots ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
