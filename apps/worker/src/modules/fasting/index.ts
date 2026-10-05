@@ -8,7 +8,9 @@
 // missed or cancelled fast gives its day back) in the same db.batch, then tells the fast listeners (week-plans
 // registers one: a week plan's fast_dates mirror the fast log), so fasting never
 // imports week-plans. Starting a fast now queues the day_adjustment card (water, light session) in that batch too; a
-// planned fast that begins on its own gets it from the cron (fastsBegunSince + adjustDayForFast).
+// planned fast that begins on its own gets it from the cron (fastsBegunSince + adjustDayForFast). Ending or cancelling
+// a fast that was running or whose fast day was or is today queues a fresh card for today the same way, so Today never
+// keeps saying "Fast day" after the fast is gone.
 // The monthly cap (settings.fasts_per_month) counts fast days, not start dates: a fast from 31 Oct 19:00 is one of
 // November's. planFast holds it for everyone; startFast holds it for Ask AI and Claude (Aaron may start an extra fast
 // himself, still one at a time), who also may not backdate a start by more than 24 h.
@@ -129,6 +131,31 @@ export async function adjustDayForFast(deps: Deps, fast: { id: string; started_a
   return true
 }
 
+/**
+ * The day_adjustment job after a fast is ended or cancelled, for the caller's batch, when that changes today: the fast
+ * was running, or its fast day (engine fastDay) was or now is today. Today's card then stops saying "Fast day" or
+ * "Fasting now" when neither holds. Null when today is untouched, or a card for today is already queued (it reads the
+ * day when it runs).
+ */
+async function dayCardAfterChange(
+  deps: Deps,
+  id: string,
+  before: { started_at: string; ended_at: string | null },
+  after: { started_at: string; ended_at: string | null } | null,
+  fastHours: number,
+) {
+  const now = deps.now()
+  const date = today(now)
+  const running = !before.ended_at && Date.parse(before.started_at) <= now.getTime() && now.getTime() - Date.parse(before.started_at) < 2 * fastHours * HOUR_MS
+  const touched = running || fastDay(before, fastHours) === date || (after !== null && fastDay(after, fastHours) === date)
+  if (!touched) return null
+  return jobInsertOnce(
+    deps,
+    { type: 'day_adjustment', payload: { date, trigger: 'fast_changed', meal_id: null, fast_id: id }, priority: DAY_ADJUSTMENT_PRIORITY },
+    { date },
+  )
+}
+
 /** The day_adjustment job for a fast that began today, for the caller's batch (null: none needed or one is queued). */
 async function dayAdjustmentJob(deps: Deps, fast: { id: string; started_at: string; start_date: string }) {
   if (fast.started_at > deps.now().toISOString() || fast.start_date !== today(deps.now())) return null
@@ -216,13 +243,17 @@ export async function endFast(deps: Deps, id: string, input: FastEnd): Promise<F
   if (ended_at > latest(deps)) throw badRequest('A fast ends now or in the past; end it when it ends')
 
   const end_date = localDate(ended_at)
+  const hours = await fastHours(deps)
   const pending = { fasts: [{ id, started_at: row.started_at, ended_at }] }
-  const targets = await fastDayStatements(deps, pending, await fastHours(deps), { ...row, ended_at, end_date }, row)
+  const targets = await fastDayStatements(deps, pending, hours, { ...row, ended_at, end_date }, row)
+  const card = await dayCardAfterChange(deps, id, row, { started_at: row.started_at, ended_at }, hours)
   const [, [saved]] = await db.batch([
     db.update(fast_logs).set({ ended_at, end_date, actor: deps.actor, updated_at: now }).where(eq(fast_logs.id, id)),
     db.select().from(fast_logs).where(eq(fast_logs.id, id)),
     ...targets,
+    ...(card ? [card.statement] : []),
   ])
+  if (card) runSoon(deps, card.id)
   await fastsChanged(deps)
   return toFast(saved!)
 }
@@ -277,8 +308,11 @@ export async function cancelFast(deps: Deps, id: string): Promise<Ok> {
   const skipped = row.planned && !row.ended_at
   const mistap = row.ended_at !== null && Date.parse(row.ended_at) - Date.parse(row.started_at) < MISTAP_MS
   if (begun && !skipped && !mistap) throw fastStarted()
-  const targets = await fastDayStatements(deps, { removed_fasts: [id] }, await fastHours(deps), row)
-  await deps.db.batch([deps.db.delete(fast_logs).where(eq(fast_logs.id, id)), ...targets])
+  const hours = await fastHours(deps)
+  const targets = await fastDayStatements(deps, { removed_fasts: [id] }, hours, row)
+  const card = await dayCardAfterChange(deps, id, row, null, hours)
+  await deps.db.batch([deps.db.delete(fast_logs).where(eq(fast_logs.id, id)), ...targets, ...(card ? [card.statement] : [])])
+  if (card) runSoon(deps, card.id)
   await fastsChanged(deps)
   return { ok: true }
 }

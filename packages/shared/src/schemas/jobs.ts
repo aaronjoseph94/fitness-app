@@ -129,7 +129,8 @@ export const JobPayloads = {
   meal_analysis: z.object({ meal_id: Id }),
   day_adjustment: z.object({
     date: LocalDate,
-    trigger: z.enum(['meal_confirmed', 'fast_started']),
+    /** fast_changed: a fast that touched today was ended or cancelled, so today's card is written afresh. */
+    trigger: z.enum(['meal_confirmed', 'fast_started', 'fast_changed']),
     meal_id: Id.nullable(),
     fast_id: Id.nullable(),
   }),

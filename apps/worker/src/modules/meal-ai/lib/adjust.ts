@@ -1,4 +1,5 @@
-// Owns: one day_adjustment run (after a meal is confirmed or a fast starts) — the day's numbers from the day view
+// Owns: one day_adjustment run (after a meal is confirmed, a fast starts, or a fast that touched today ends or is
+// cancelled: every trigger is written from the day as it is now) — the day's numbers from the day view
 // (remaining, protein status), favourites that fit what is left (none while fasting), the LLM's short wording (optional:
 // without a provider the card is written with plain text), and the 'adjustment' event the Today tab shows. A fast
 // running today is told apart from today being its fast day (a fast begun this afternoon makes tomorrow the fast day).
