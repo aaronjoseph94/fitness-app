@@ -1,6 +1,8 @@
-// Owns: the slim sticky top bar — back arrow on non-tab pages, page title, sync status, settings gear — and the thin
-// progress line while a lazy page loads.
+// Owns: the slim sticky top bar — back arrow on non-tab pages, page title, sync status, the Ask AI button (opens the
+// slide-up panel; hidden on the AI tab, which is the chat), settings gear — and the thin progress line while a lazy
+// page loads.
 import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew'
+import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
@@ -22,6 +24,8 @@ interface TopBarProps {
 export function TopBar({ title, width, showBack }: TopBarProps) {
   const back = useBack()
   const onSettings = useMatch('/settings') !== null
+  const onAskAi = useMatch('/ai') !== null
+  const openAskAi = useUiStore((s) => s.setAskAiOpen)
   const loading = useNavigation().state === 'loading'
   return (
     <Box
@@ -38,6 +42,11 @@ export function TopBar({ title, width, showBack }: TopBarProps) {
           {title}
         </Typography>
         <SyncStatus />
+        {!onAskAi && (
+          <IconButton aria-label="Ask AI" data-testid="ask-ai-open" onClick={() => openAskAi(true)}>
+            <AutoAwesomeOutlined />
+          </IconButton>
+        )}
         {!onSettings && (
           <IconButton aria-label="Settings" edge="end" component={Link} to="/settings">
             <SettingsOutlined />

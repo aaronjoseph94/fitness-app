@@ -1,11 +1,12 @@
 // Owns: the app frame around every in-app page — top bar, banners, the page column, quick-log button and sheet, bottom
-// tabs — configured per route through its `handle` (title, tab, width, quick-log).
+// tabs, and the Ask AI slide-up panel — configured per route through its `handle` (title, tab, width, quick-log).
 import Box from '@mui/material/Box'
 import { useEffect } from 'react'
 import { Outlet, ScrollRestoration } from 'react-router'
 import { QuickLogSheet } from '../../../features/quick-log'
 import { useUiStore } from '../../ui-store'
 import { useRouteHandle } from '../route-handle'
+import { AskAiHost } from './AskAiHost'
 import { BottomTabs } from './BottomTabs'
 import { columnSx, contentBottomPadding } from './layout'
 import { QuickLogFab } from './QuickLogFab'
@@ -34,6 +35,7 @@ export function AppShell() {
       {quickLog && <QuickLogFab width={width} />}
       <BottomTabs active={tab} />
       <QuickLogSheet />
+      <AskAiHost />
       <ScrollRestoration />
     </Box>
   )

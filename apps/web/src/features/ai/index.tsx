@@ -1,10 +1,47 @@
-// Owns: the AI tab — Ask AI chat (SPEC §8). Placeholder until the Ask AI work package replaces it.
-import { PhasePlaceholder } from '../../app/placeholder'
+// Owns: Ask AI (SPEC §8) on the web — the AI tab page (proposals waiting for a tap, then the chat) and the slide-up
+// panel the shell offers on every other tab; both show the same thread. Reads/writes: GET/POST /api/ai/chat, GET
+// /api/events, POST /api/proposals/:id/accept|reject, POST /api/templates, POST /api/week-plans/:id/apply.
+import Drawer from '@mui/material/Drawer'
+import { tokens } from '../../theme'
+import { Chat } from './lib/Chat'
+import { PendingProposals } from './lib/PendingProposals'
+
+export { SUGGESTIONS } from './lib/Chat'
 
 export function AskAiPage() {
+  return <Chat variant="page" aside={<PendingProposals />} />
+}
+
+export interface AskAiPanelProps {
+  open: boolean
+  onClose: () => void
+}
+
+/** The chat as a sheet sliding up over the current tab. */
+export function AskAiPanel({ open, onClose }: AskAiPanelProps) {
   return (
-    <PhasePlaceholder title="Ask AI" phase={4}>
-      Ask about your data or ask for a change; every change is a proposal you accept with one tap.
-    </PhasePlaceholder>
+    <Drawer
+      anchor="bottom"
+      open={open}
+      onClose={onClose}
+      aria-label="Ask AI"
+      slotProps={{
+        paper: {
+          'data-testid': 'ask-ai-panel',
+          sx: {
+            height: 'calc(100dvh - 48px - env(safe-area-inset-top, 0px))',
+            maxWidth: 640,
+            mx: 'auto',
+            borderTopLeftRadius: tokens.radius.card,
+            borderTopRightRadius: tokens.radius.card,
+            boxShadow: 'none',
+            borderTop: `1px solid ${tokens.ink.border}`,
+            bgcolor: tokens.ink.page,
+          },
+        } as object,
+      }}
+    >
+      <Chat variant="panel" onClose={onClose} />
+    </Drawer>
   )
 }
