@@ -117,7 +117,17 @@ export type ProposalStatus = z.infer<typeof ProposalStatus>
  * verdicts when it was proposed); a workout becomes a template/session; a week plan becomes the week's active plan.
  */
 export const ProposalBody = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('plan_change'), changes: z.array(PlanChange).min(1), ...Verdicts }),
+  z.object({
+    kind: z.literal('plan_change'),
+    changes: z.array(PlanChange).min(1),
+    ...Verdicts,
+    /**
+     * A later step of a kcal move split into ≤150 kcal steps: the series it belongs to (step 1's proposal id, or the
+     * plan version that applied step 1). Rejecting a step, or reverting the review behind it, rejects the series'
+     * later pending steps.
+     */
+    series_id: Id.optional(),
+  }),
   z.object({
     kind: z.literal('workout'),
     mode: z.enum(['generate', 'fill']),

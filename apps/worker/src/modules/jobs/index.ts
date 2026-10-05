@@ -9,20 +9,20 @@
 //   jobInsertOnce(deps, input, match) → { id, statement } | null   jobInsert unless such a queued job exists
 //   runSoon(deps, id)                             run in waitUntil after the response; no-op when no handler exists yet
 //   runJob(deps, id)       → JobOutcome           run one job now (lease, deadline, requeue or fail by error kind)
-//   sweep(deps, { max, fetch_budget })            requeue expired leases, run the sweep steps, then due jobs within
-//                                                 the subrequest budget
+//   sweep(deps, { max, fetch_budget })            requeue expired leases (failed once attempts reach MAX_REQUEUES),
+//                                                 run the sweep steps, then due jobs within the subrequest budget
 //   getJob(deps, id)       → AiJob                GET /api/jobs/:id
 // Handler errors: the router's DeadlineError / BudgetError and quota-only ProvidersExhaustedError requeue the job for
 // later (up to 6 attempts); RetryLater(afterMs) requeues it; JobFailed fails it at once; anything else retries with
 // backoff and fails after 3 attempts (lib/runner.ts `classify`). Every handler runs with actor 'ai'.
 // A job type with no registered handler is left queued untouched (its handler may arrive in a later phase).
 import { AiJob, type JobPayload, type JobType } from '@fitness/shared/schemas'
-import { and, asc, desc, eq, inArray, lt, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm'
 import { ai_jobs, type Row } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { notFound } from '../../lib/http-error'
 import { handlerFor, registeredTypes, sweepSteps } from './lib/registry'
-import { runJob, type JobOutcome } from './lib/runner'
+import { MAX_REQUEUES, runJob, type JobOutcome } from './lib/runner'
 
 export {
   registerJobHandler,
@@ -112,9 +112,13 @@ export function runSoon(deps: Deps, id: string): void {
 
 export type SweepResult = { requeued: number; steps: Record<string, number>; ran: JobOutcome[]; deferred: number }
 
+/** The error a job gets when its lease expired on its last allowed attempt (its isolate keeps dying). */
+export const LEASE_EXPIRED_MAX_ATTEMPTS = 'lease_expired_max_attempts'
+
 /**
  * The 5-minute sweep:
- *   1. running jobs whose lease_until < now → queued (their waitUntil died)
+ *   1. running jobs whose lease_until < now (their waitUntil died, like a deadline): attempts < MAX_REQUEUES → queued;
+ *      otherwise → failed with error 'lease_expired_max_attempts', so a job that kills its isolate cannot loop forever
  *   2. every registered sweep step (rows it touched in `steps`; a step that throws is logged and counted as -1)
  *   3. up to `max` queued jobs with run_after ≤ now and a registered handler, priority DESC then run_after ASC,
  *      run one after another while Σ handler.fetches ≤ fetch_budget; the rest wait for the next sweep.
@@ -124,11 +128,18 @@ export async function sweep(deps: Deps, opts: { max?: number; fetch_budget?: num
   let budget = Math.min(opts.fetch_budget ?? SWEEP_FETCH_BUDGET, deps.budget ? deps.budget.limit - deps.budget.used : Infinity)
   const now = deps.now().toISOString()
 
-  const requeued = await deps.db
-    .update(ai_jobs)
-    .set({ status: 'queued', lease_until: null, updated_at: now })
-    .where(and(eq(ai_jobs.status, 'running'), lt(ai_jobs.lease_until, now)))
-    .returning({ id: ai_jobs.id })
+  const expired = and(eq(ai_jobs.status, 'running'), lt(ai_jobs.lease_until, now))
+  const [, requeued] = await deps.db.batch([
+    deps.db
+      .update(ai_jobs)
+      .set({ status: 'failed', error: LEASE_EXPIRED_MAX_ATTEMPTS, lease_until: null, updated_at: now })
+      .where(and(expired, gte(ai_jobs.attempts, MAX_REQUEUES))),
+    deps.db
+      .update(ai_jobs)
+      .set({ status: 'queued', lease_until: null, updated_at: now })
+      .where(and(expired, lt(ai_jobs.attempts, MAX_REQUEUES)))
+      .returning({ id: ai_jobs.id }),
+  ])
 
   const steps: Record<string, number> = {}
   for (const [name, step] of sweepSteps()) {

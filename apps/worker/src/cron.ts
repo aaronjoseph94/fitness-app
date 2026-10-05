@@ -4,7 +4,8 @@
 //                                               new safety flags as ai_events notes, the "scan due" note,
 //                                               release proposals due today, queue today's AI workout when it is
 //                                               an unplanned training day
-//   weekly   once per ISO week, Sunday ≥ 20:00  the weekly_review job for the week ending that Sunday
+//   weekly   once per ISO week, Sunday ≥ 20:00  the weekly_review job for the week ending that Sunday; a week no
+//                                               tick claimed by Sunday midnight is caught up on Monday before 12:00
 //   fast     every tick, once per fast          a planned fast that began on its own gets its day_adjustment card
 //   backup   every tick from 01:00 until done   the monthly per-table backup to R2, one table per tick (modules/export)
 //   remind   every tick 07:00–22:00             due Web Push reminders, once per local period each (modules/reminders)
@@ -36,6 +37,8 @@ export interface CronResult {
 
 const NIGHTLY_AFTER = '00:30'
 const WEEKLY_AFTER = '20:00'
+/** A weekly review missed on Sunday evening (no tick claimed it) runs on Monday before this time instead. */
+const WEEKLY_CATCH_UP_BEFORE = '12:00'
 const MONTHLY_AFTER = '01:00'
 /** A planned fast that began within this window gets its day_adjustment card (claimed once per fast). */
 const FAST_START_WINDOW_MS = 15 * 60_000
@@ -62,6 +65,9 @@ export async function runCron(deps: Deps): Promise<CronResult> {
   const due: [CronKind, string, () => Promise<void>][] = []
   if (time >= NIGHTLY_AFTER) due.push(['nightly', date, () => nightly(deps, date)])
   if (weekdayOf(date) === 'sun' && time >= WEEKLY_AFTER) due.push(['weekly', isoWeek(date), () => weekly(deps, isoWeek(date))])
+  // Catch-up: the claim is per ISO week, so a Sunday tick that ran makes this a no-op.
+  const lastWeek = isoWeek(addDays(date, -1))
+  if (weekdayOf(date) === 'mon' && time < WEEKLY_CATCH_UP_BEFORE) due.push(['weekly', lastWeek, () => weekly(deps, lastWeek)])
 
   for (const [kind, period_key, run] of due) {
     if (!(await claim(deps, kind, period_key))) continue

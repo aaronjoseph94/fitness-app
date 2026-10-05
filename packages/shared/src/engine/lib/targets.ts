@@ -80,6 +80,7 @@ const MACRO_FIELDS = ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g'] as con
  * Daily targets for every date from..to:
  *   base      = active week plan's targets[weekday] (+ its water_ml, steps), else plan override[weekday][f] ?? default[f]
  *   kcal      = max(base.kcal, calorie_floor);  protein = max(base.protein, protein_min);  fat = max(base.fat, fat_min)
+ *   protein, fat held inside kcal (holdMacros), so protein × 4 + fat × 9 ≤ kcal
  *   carbs     = max(0, round((kcal − protein × 4 − fat × 9) / 4))      (carbs are the remainder)
  *   fast day  (date ∈ fast_dates; a week plan's fast_dates only mirror them): kcal = protein = carbs = fat = fibre = 0,
  *             water = base.water + 500 ml
@@ -116,8 +117,10 @@ export function materialiseTargets(input: TargetsInput): DayTargets[] {
       return { ...ids, ...zero, water_ml: base.water_ml + FAST_DAY_EXTRA_WATER_ML, steps: base.steps, training_load: training_planned ? 'light' : 'rest' }
     }
     const kcal = Math.max(base.kcal, rails.calorie_floor)
-    const protein_g = Math.max(base.protein_g, rails.protein_min_g)
-    const fat_g = Math.max(base.fat_g, rails.fat_min_g)
+    const { protein_g, fat_g } = holdMacros(
+      { kcal, protein_g: Math.max(base.protein_g, rails.protein_min_g), fat_g: Math.max(base.fat_g, rails.fat_min_g) },
+      rails,
+    )
     const carbs_g = Math.max(0, Math.round((kcal - protein_g * 4 - fat_g * 9) / 4))
     return {
       ...ids,
@@ -131,6 +134,23 @@ export function materialiseTargets(input: TargetsInput): DayTargets[] {
       training_load: training_planned ? 'full' : 'rest',
     }
   })
+}
+
+/**
+ * Protein and fat held inside the day's energy (carbs are the remainder, so they may not use more than kcal):
+ *   if protein × 4 + fat × 9 > kcal:   fat = max(fat_min, ⌊(kcal − protein × 4) / 9⌋)
+ *   if still over:                     protein = max(protein_min, ⌊(kcal − fat × 9) / 4⌋)
+ * A day already inside is returned unchanged. At the rails' own minimums (130 × 4 + 45 × 9 = 925 kcal) every day at or
+ * above the 1,400 kcal floor fits.
+ */
+export function holdMacros(
+  day: { kcal: number; protein_g: number; fat_g: number },
+  rails: { protein_min_g: number; fat_min_g: number },
+): { protein_g: number; fat_g: number } {
+  let { protein_g, fat_g } = day
+  if (protein_g * 4 + fat_g * 9 > day.kcal) fat_g = Math.max(rails.fat_min_g, Math.floor((day.kcal - protein_g * 4) / 9))
+  if (protein_g * 4 + fat_g * 9 > day.kcal) protein_g = Math.max(rails.protein_min_g, Math.floor((day.kcal - fat_g * 9) / 4))
+  return { protein_g, fat_g }
 }
 
 /** The week plan schedules training itself: at least one day has a session. */

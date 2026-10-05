@@ -57,3 +57,17 @@ describe('fast days', () => {
     expect(days.find((d) => d.date === '2026-10-08')).toMatchObject({ is_fast_day: false, kcal: 1400 })
   })
 })
+
+describe('macros held to the kcal target', () => {
+  test('a stored fat target of 200 g on a 1,400 kcal day is cut so protein × 4 + fat × 9 ≤ kcal (carbs ≥ 0)', () => {
+    const base = input(rest)
+    const [day] = materialiseTargets({
+      ...base,
+      to: base.from,
+      week_plans: [],
+      plan_version: { id: 'v', targets: { defaults: { ...base.plan_version.targets.defaults, fat_g: 200 }, overrides: {} } },
+    })
+    // 1,400 − 130 × 4 = 880 kcal left for fat: 97 g (873 kcal), 7 kcal → carbs 2 g.
+    expect(day).toMatchObject({ kcal: 1400, protein_g: 130, fat_g: 97, carbs_g: 2 })
+  })
+})

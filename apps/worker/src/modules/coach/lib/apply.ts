@@ -311,6 +311,15 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
       const from = targetValue(before.targets, t.c.field, t.c.weekday)
       const to = line?.to ?? t.c.to
       const later = scheduled.filter((s) => s.change.field === t.c.field && s.change.weekday === t.c.weekday)
+      if (!line && later.length) {
+        // Nothing moves this week (150 kcal per rolling week): only the scheduled steps, as pending proposals.
+        applied.push({
+          index: t.index,
+          kind: 'target',
+          summary: `${label(t.c)} stays ${from} this week; ${later.map((s) => `${s.change.to} due ${s.due}`).join(', ')} as pending proposals`,
+        })
+        continue
+      }
       const steps = later.length
         ? ` (step 1; ${later.map((s) => `${s.change.to} due ${s.due}`).join(', ')} as pending proposals)`
         : ''

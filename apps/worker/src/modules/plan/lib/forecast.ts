@@ -1,10 +1,12 @@
 // Owns: the nightly reforecast (SPEC §3, §9) — trend weight over every weigh-in, the expenditure estimate re-estimated
-// weekly from v_day intake (fast days count as logged days at their intake, 0 kcal when nothing was eaten), and the
+// weekly from v_day intake (engine isLoggedIntakeDay: a confirmed meal, or the fast's own fast day — engine fastDay over
+// the fast log, not every day a fast overlaps — which counts at its intake, 0 kcal when nothing was eaten), and the
 // forecast at the mean planned intake ahead — written into the active version's `forecast` (derived data, no new version).
 import {
   addDays,
   eachDate,
   estimateExpenditure,
+  fastDay,
   forecast,
   meanPlannedIntake,
   trendWeights,
@@ -13,7 +15,7 @@ import {
 } from '@fitness/shared/engine'
 import type { Forecast } from '@fitness/shared/schemas'
 import { and, between, desc, eq, gt, isNotNull, lte } from 'drizzle-orm'
-import { daily_targets, plan_versions, scans, v_day, weight_logs } from '../../../db'
+import { daily_targets, fast_logs, plan_versions, scans, v_day, weight_logs } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
 import { loadPlanContext } from './context'
@@ -39,7 +41,7 @@ export async function reforecast(deps: Deps, input: { as_of: string; reestimate?
   const profile = ctx.profile
   if (!profile) throw new HttpError(503, 'not_seeded', 'No profile (goal and start weight) to forecast from')
   const windowFrom = addDays(as_of, -14)
-  const [weights, scan, ahead, window] = await deps.db.batch([
+  const [weights, scan, ahead, window, fasts] = await deps.db.batch([
     deps.db
       .select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg })
       .from(weight_logs)
@@ -60,11 +62,13 @@ export async function reforecast(deps: Deps, input: { as_of: string; reestimate?
         date: v_day.date,
         intake_kcal: v_day.intake_kcal,
         meals_logged: v_day.meals_logged,
-        is_fast_day: v_day.is_fast_day,
-        fasted: v_day.fasted,
       })
       .from(v_day)
       .where(between(v_day.date, windowFrom, as_of)),
+    deps.db
+      .select({ started_at: fast_logs.started_at, ended_at: fast_logs.ended_at })
+      .from(fast_logs)
+      .where(between(fast_logs.start_date, addDays(windowFrom, -3), as_of)),
   ])
 
   const trend = trendWeights(weights, { to: as_of })
@@ -75,13 +79,14 @@ export async function reforecast(deps: Deps, input: { as_of: string; reestimate?
   let tdee_est = previous
   if (input.reestimate ?? weekdayOf(as_of) === 'sun') {
     const byDate = new Map(window.map((d) => [d.date, d]))
+    const fastDays = new Set(fasts.map((f) => fastDay(f, ctx.settings.fast_hours)))
     const days: ExpenditureDay[] = eachDate(windowFrom, as_of).map((date) => {
       const d = byDate.get(date)
       return {
         date,
         trend_kg: trendByDate.get(date) ?? null,
         meals_logged: d?.meals_logged ?? 0,
-        is_fast_day: d ? d.is_fast_day || d.fasted : false,
+        is_fast_day: fastDays.has(date),
         intake: { kcal: d?.intake_kcal ?? 0 },
       }
     })

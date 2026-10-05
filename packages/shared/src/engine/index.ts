@@ -6,6 +6,7 @@
 export {
   TIMEZONE,
   localDate,
+  localMidnight,
   today,
   localTime,
   addDays,
@@ -33,7 +34,7 @@ export { forecast, KCAL_PER_KG, FORECAST_BAND } from './lib/forecast'
 export type { ForecastInput, ForecastResult } from './lib/forecast'
 
 // Daily targets
-export { materialiseTargets, meanPlannedIntake, fastDay, FAST_DAY_EXTRA_WATER_ML } from './lib/targets'
+export { materialiseTargets, meanPlannedIntake, fastDay, holdMacros, FAST_DAY_EXTRA_WATER_ML } from './lib/targets'
 export type { TargetsInput, DayTargets, WeekPlanLike, FastWindowLike } from './lib/targets'
 
 // Food maths: portions, scaling, meal totals

@@ -1,10 +1,10 @@
 // Owns: materialising `daily_targets` — the engine's materialiseTargets fed with the active plan version, the rails,
 // planned/actual fast dates and active week plans, written as chunked upserts (≤ 100 bound params per statement).
-import { addDays, daysBetween, fastDay, materialiseTargets as computeTargets, today, type WeekPlanLike } from '@fitness/shared/engine'
+import { addDays, daysBetween, eachDate, fastDay, materialiseTargets as computeTargets, today, type WeekPlanLike } from '@fitness/shared/engine'
 import { WeekPlanContent, type DailyTargets, type PlanTargets } from '@fitness/shared/schemas'
-import { and, between, count, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, between, count, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { chunk, daily_targets, fast_logs, profile, runBatch, week_plans, type NewRow, type Row } from '../../../db'
+import { chunk, daily_targets, fast_logs, plan_versions, profile, runBatch, week_plans, type NewRow, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { loadPlanContext, type PlanContext } from './context'
 
@@ -126,7 +126,9 @@ export function targetStatements(deps: Deps, rows: NewRow<typeof daily_targets>[
 
 /**
  * Statements (not run) rebuilding from..to (default: through the horizon) as the targets will be once `pending`
- * lands, for the caller's own batch (one change, one db.batch).
+ * lands, for the caller's own batch (one change, one db.batch). Dates from today on follow the active version; a past
+ * date is history and is rebuilt with the plan version its stored row was materialised from (the active one when it
+ * has none), so only what `pending` changes there (a fast day given back) moves.
  */
 export async function pendingTargetStatements(
   deps: Deps,
@@ -136,7 +138,31 @@ export async function pendingTargetStatements(
   const stored = await loadPlanContext(deps)
   const ctx = pending.settings ? { ...stored, settings: { ...stored.settings, ...pending.settings } } : stored
   const to = range.to ?? (await targetHorizon(deps))
-  return targetStatements(deps, await computeTargetRows(deps, ctx, { from: range.from, to }, ctx.active, [], pending), 'replace')
+  const now = today(deps.now())
+  const rows: NewRow<typeof daily_targets>[] = []
+  if (range.from < now) {
+    const pastTo = to < now ? to : addDays(now, -1)
+    const built = await deps.db
+      .select({ date: daily_targets.date, plan_version_id: daily_targets.plan_version_id })
+      .from(daily_targets)
+      .where(between(daily_targets.date, range.from, pastTo))
+    const versionOf = new Map(built.map((r) => [r.date, r.plan_version_id]))
+    const ids = [...new Set(built.flatMap((r) => (r.plan_version_id ? [r.plan_version_id] : [])))]
+    const versions = new Map(
+      ids.length
+        ? (await deps.db.select({ id: plan_versions.id, targets: plan_versions.targets }).from(plan_versions).where(inArray(plan_versions.id, ids))).map(
+            (v) => [v.id, v],
+          )
+        : [],
+    )
+    for (const date of eachDate(range.from, pastTo)) {
+      const version = versions.get(versionOf.get(date) ?? '') ?? ctx.active
+      rows.push(...(await computeTargetRows(deps, ctx, { from: date, to: date }, version, [], pending)))
+    }
+  }
+  const from = range.from > now ? range.from : now
+  if (from <= to) rows.push(...(await computeTargetRows(deps, ctx, { from, to }, ctx.active, [], pending)))
+  return targetStatements(deps, rows, 'replace')
 }
 
 /** How far targets are materialised: max(last date with targets, today + 14). */

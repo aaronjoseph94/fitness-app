@@ -42,7 +42,7 @@ const deps: Deps = {
 const baseline = {
   kcal: 1400,
   protein_g: 130,
-  carbs_g: 118.75,
+  carbs_g: 119,
   fat_g: 45,
   fibre_g: 30,
   water_ml: 3000,

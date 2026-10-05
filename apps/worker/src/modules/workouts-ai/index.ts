@@ -187,15 +187,18 @@ registerJobHandler('workout_generate', { fetches: LLM_FETCHES, run: runWorkoutJo
 registerJobHandler('workout_fill', { fetches: LLM_FETCHES, run: runWorkoutJob })
 
 /**
- * Nightly hook (runs after 00:30): today gets a background workout_generate job when it is one of
- * settings.training_days and has no session, no session in the active week plan, no pending workout proposal and no
- * queued/running job. Today, not tomorrow, so the draft's readiness sees yesterday's steps and session.
+ * Nightly hook (runs after 00:30): today gets a background workout_generate job when its daily targets plan training
+ * (daily_targets.training_planned: the active week plan's sessions when it has any, else settings.training_days; the
+ * settings when the date has no targets yet) and it has no session, no session in the active week plan, no pending
+ * workout proposal and no queued/running job. Today, not tomorrow, so the draft's readiness sees yesterday's steps and
+ * session.
  */
 export async function planNextTrainingDay(deps: Deps, todayDate: string): Promise<{ date: string; job_id: string | null; reason: string }> {
   const { db } = deps
   const date = todayDate
-  const [[s], sessions, plans, proposals, jobs] = await db.batch([
+  const [[s], [targets], sessions, plans, proposals, jobs] = await db.batch([
     db.select({ training_days: settings.training_days }).from(settings).limit(1),
+    db.select({ training_planned: daily_targets.training_planned }).from(daily_targets).where(eq(daily_targets.date, date)),
     db.select({ id: workout_sessions.id }).from(workout_sessions).where(eq(workout_sessions.date, date)).limit(1),
     db
       .select({ plan: week_plans.plan })
@@ -222,7 +225,8 @@ export async function planNextTrainingDay(deps: Deps, todayDate: string): Promis
       .limit(1),
   ])
   const skip = (reason: string) => ({ date, job_id: null, reason })
-  if (!s?.training_days.includes(weekdayOf(date))) return skip('not a training day')
+  const training = targets ? targets.training_planned : (s?.training_days.includes(weekdayOf(date)) ?? false)
+  if (!training) return skip('not a training day')
   if (sessions.length) return skip('a session is already logged')
   const weekPlan = plans.map((p) => WeekPlanContent.safeParse(p.plan)).find((p) => p.success)
   if (weekPlan?.data?.sessions[weekdayOf(date)]) return skip('the active week plan has a session')

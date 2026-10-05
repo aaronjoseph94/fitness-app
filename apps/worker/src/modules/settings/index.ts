@@ -2,7 +2,9 @@
 // view, and edits to them. Only actor 'user' may move a rail (engine LOCKED_SETTINGS); every edit that changes
 // something is logged as one `change` event per entity with each field's from/to. Edits to the inputs of the daily
 // targets (training days, the floor and macro minimums, fast hours) rebuild the targets from today on in the same
-// db.batch as the edit.
+// db.batch as the edit. The daily water and fibre targets come from the plan version, so a new water_target_ml or
+// fibre_target_g also writes a plan version (defaults.water_ml / fibre_g, as deps.actor, through the guards) in that
+// batch, which rebuilds the targets from today on.
 import { LOCKED_SETTINGS, today } from '@fitness/shared/engine'
 import type { Profile, Settings, SettingsUpdate, SettingsView } from '@fitness/shared/schemas'
 import { eq } from 'drizzle-orm'
@@ -10,11 +12,14 @@ import { profile, settings } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
-import { targetStatementsFor } from '../plan'
+import { planChangeStatements, targetStatementsFor } from '../plan'
+import { runSoon } from '../jobs'
 import { changedValues, fieldChanges, summarise } from './lib/changes'
 
 /** Settings fields the daily targets read: changing one rebuilds them. */
 const TARGET_INPUTS: readonly string[] = ['training_days', 'calorie_floor', 'protein_min_g', 'fat_min_g', 'fast_hours']
+/** Settings fields that are plan-version defaults too (the daily targets read the version): settings field → target. */
+const PLAN_DEFAULTS = { water_target_ml: 'water_ml', fibre_target_g: 'fibre_g' } as const
 
 /** GET /api/settings. */
 export async function getSettings(deps: Deps): Promise<SettingsView> {
@@ -50,10 +55,20 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
       body: { entity, changes },
     }).statement
   const newSettings = changedValues<Settings>(settingsChanges)
+  // Water / fibre: a plan version with the new defaults (it rebuilds the targets with the new settings too).
+  const planChanges = settingsChanges.flatMap((c) =>
+    c.path in PLAN_DEFAULTS
+      ? [{ field: PLAN_DEFAULTS[c.path as keyof typeof PLAN_DEFAULTS], weekday: null, from: 0, to: c.to as number, reason: 'Settings' }]
+      : [],
+  )
+  const version = planChanges.length
+    ? await planChangeStatements(deps, { changes: planChanges, reason: 'Settings: water/fibre target' }, { settings: newSettings })
+    : null
   // The targets from today through the horizon, as they will be with the new rails (same batch as the edit).
-  const targets = settingsChanges.some((c) => TARGET_INPUTS.includes(c.path))
-    ? await targetStatementsFor(deps, { from: today(now) }, { settings: newSettings })
-    : []
+  const targets =
+    !version?.job_id && settingsChanges.some((c) => TARGET_INPUTS.includes(c.path))
+      ? await targetStatementsFor(deps, { from: today(now) }, { settings: newSettings })
+      : []
   const writes = [
     ...(settingsChanges.length > 0
       ? [
@@ -74,7 +89,8 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
         ]
       : []),
   ]
-  const [first, ...rest] = [...writes, ...targets]
+  const [first, ...rest] = [...writes, ...(version?.statements ?? []), ...targets]
   await db.batch([first!, ...rest])
+  if (version?.job_id) runSoon(deps, version.job_id)
   return getSettings(deps)
 }

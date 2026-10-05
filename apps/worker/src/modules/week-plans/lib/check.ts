@@ -2,7 +2,7 @@
 // applied, and the muscle-score snapshot of each planned session:
 //   week      fast dates and the scan date fall inside Monday … Sunday
 //   targets   each weekday that is not a fast date: calorie floor ≤ kcal ≤ calorie ceiling, protein ≥ protein_min_g,
-//             fat ≥ fat_min_g; for ai/mcp a kcal move of more than 150 from last week's target for that weekday (last
+//             fat ≥ fat_min_g, protein × 4 + fat × 9 ≤ kcal (macro_energy); for ai/mcp a kcal move of more than 150 from last week's target for that weekday (last
 //             week's active plan, else the active plan version) is cut to the first 150 kcal step and reported
 //   sessions  every exercise in the allowed exercise set and in no excluded category; 12 ≤ Σ sets ≤ 28
 //   fasts     fast_logs is the only source of fast days (engine fastDay: one date per fast, e.g. a 19:00 → 19:00 fast

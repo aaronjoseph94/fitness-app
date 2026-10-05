@@ -6,23 +6,31 @@
 //   getActivePlan(deps) / listVersions(deps)            → PlanVersion / PlanVersion[] (newest first)
 //   createVersion(deps, { changes, reason, created_by? }) → VersionResult   guards as created_by (default deps.actor);
 //        rejected changes are recorded on the event (a 'note' when nothing passed); later ≤150 kcal steps become
-//        pending proposals due a week apart
+//        pending proposals due a week apart, one series (series_id = the new version's id)
 //   propose(deps, { changes, reason })                   → ProposalResult   guarded, stored as a pending proposal
 //        (its body carries the guards' rejected and scheduled lists, as does a version's change event and the note
 //        written when nothing passed; PlanVersion reads them back as `rejected` / `scheduled`)
+//   proposalStatements(deps, { changes, reason })        → the same, not yet run, for the caller's batch
+//   ai/mcp kcal moves are held to 150 kcal over a rolling 7 days (lib/window: measured from the version active a week
+//        ago, or Aaron's own newer kcal edit); what does not fit now is scheduled a week out
 //   acceptProposal(deps, id) / rejectProposal(deps, id) → ProposalDecision (idempotent replays; 409 on a reversal,
-//        and 409 not_due for a scheduled kcal step before its date).
+//        and 409 not_due for a scheduled kcal step before its date or before the rolling week lets it apply — accepting
+//        never schedules another step). Rejecting a step rejects its series' later pending steps.
 //        plan_change is handled here; every other kind by the handler its module registered:
 //   registerProposalHandler(kind, { accept, reject? })   training (workout, template_swap), week-plans (week_plan),
 //        reminders (reminder_time) register when they load, so plan never imports them
 //   applySafeChange(deps, input)                        → SafeChangeResult  a safe-list change (reminder time,
 //        exercise swap): guarded as deps.actor, then applied now or stored as a pending proposal (lib/proposals)
-//   restoreVersion(deps, id)                            → PlanVersion      a new version copying an old one's targets
+//   restoreVersion(deps, id, { withdraw_series? })      → PlanVersion      a new version copying an old one's targets
+//        (403 needs_approval for actor 'ai'); withdraw_series: those series' pending steps rejected in the same batch
 //   materialiseTargets(deps, { from, to? })             → DailyTargets[]   rebuild those dates from the active version,
 //        settings, fasts and active week plans (call after any of them changes); `to` defaults to the materialised
 //        horizon, max(last date with targets, today + 14)
 //   targetStatementsFor(deps, { from, to? }, pending)   → statements (not run) rebuilding those dates as they will be
-//        once the caller's own write lands (pending fasts / deleted fasts / settings), for that write's batch
+//        once the caller's own write lands (pending fasts / deleted fasts / settings), for that write's batch; a past
+//        date keeps the plan version it was built from
+//   planChangeStatements(deps, { changes, reason, created_by? }, pending?) → { statements, job_id } (not run): a guarded
+//        new version for the caller's batch, computed with `pending` settings (settings' water / fibre targets)
 //   ensureTargetsThrough(deps, date)                    → rows added       start_date … date all have targets
 //   weekPlanVersion(deps, { week_start, week_plan, reason, summary, extra }) → statements (not run) making a week
 //        plan the source of its week's targets (or, with null, handing the week back to the plan version) as one
@@ -36,7 +44,7 @@ import type { BatchItem } from 'drizzle-orm/batch'
 import { plan_versions, runBatch } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { HttpError, notFound } from '../../lib/http-error'
-import { eventInsert, getProposalRow, proposalDecisionUpdate, toProposal } from '../events'
+import { eventInsert, getProposalRow, proposalDecisionUpdate, seriesRejectUpdate, toProposal } from '../events'
 import { registerJobHandler, runSoon } from '../jobs'
 import { loadPlanContext, loadVerdicts, toPlanVersion, type PlanVersionRow } from './lib/context'
 import { reforecast } from './lib/forecast'
@@ -50,6 +58,7 @@ import {
   type PendingInputs,
 } from './lib/targets'
 import { applyChanges, guardChanges, versionStatements, type RejectedChange, type ScheduledChange } from './lib/versions'
+import { kcalWindow, stepFitsOn } from './lib/window'
 
 export type { RejectedChange, ScheduledChange } from './lib/versions'
 export type { PendingFast, PendingInputs } from './lib/targets'
@@ -93,21 +102,45 @@ export async function listVersions(deps: Deps): Promise<PlanVersion[]> {
 
 const rejectionText = (rejected: readonly RejectedChange[]) => rejected.map((r) => r.reason).join('; ')
 
-/** Statements for one guarded change (a new version, or a rejection note when nothing passed). Not yet executed. */
+/** The note written when nothing applies now: what waits for a later week (150 kcal per week), then what was dropped. */
+function nothingNowText(prefix: string, rejected: readonly RejectedChange[], scheduled: readonly ScheduledChange[]): string {
+  const waits = scheduled.map((s) => `${s.change.weekday ?? 'daily'} ${s.change.field} ${s.change.from} → ${s.change.to} due ${s.due}`)
+  const parts = [waits.length ? `scheduled at 150 kcal per week: ${waits.join('; ')}` : '', rejectionText(rejected)].filter(Boolean)
+  return `${prefix}: ${parts.join('; ') || 'no changes given'}`
+}
+
+/**
+ * Statements for one guarded change (a new version, or a rejection note when nothing passed now — with the scheduled
+ * steps either way). Not yet executed. With `accepting` (a stored proposal being accepted) nothing is scheduled again,
+ * and `waiting` is the date a kcal change that cannot move at all yet fits the rolling week (the accept is then 409).
+ */
 async function buildChange(
   deps: Deps,
-  input: { changes: readonly PlanChange[]; reason: string; created_by?: Actor },
-): Promise<{ statements: BatchItem<'sqlite'>[]; result: VersionResult; row: PlanVersionRow | null; job_id: string | null }> {
+  input: { changes: readonly PlanChange[]; reason: string; created_by?: Actor; accepting?: boolean },
+  pending: PendingInputs = {},
+): Promise<{ statements: BatchItem<'sqlite'>[]; result: VersionResult; row: PlanVersionRow | null; job_id: string | null; waiting: string | null }> {
   const created_by = input.created_by ?? deps.actor
-  const ctx = await loadPlanContext(deps)
-  const guarded = guardChanges(deps, ctx, input.changes, created_by)
+  const stored = await loadPlanContext(deps)
+  const ctx = pending.settings ? { ...stored, settings: { ...stored.settings, ...pending.settings } } : stored
+  const window = await kcalWindow(deps)
+  const id = crypto.randomUUID()
+  const guarded = guardChanges(deps, ctx, input.changes, created_by, {
+    kcal_base: window.base,
+    schedule_steps: !input.accepting,
+    series_id: id,
+  })
   const { rejected, scheduled } = guarded
+  const waits = rejected.filter(
+    (r) => r.rule === 'kcal_step' && !guarded.accepted.some((a) => a.field === r.change.field && a.weekday === r.change.weekday),
+  )
+  const waiting = waits.length ? waits.map((r) => stepFitsOn(deps, window, r.change)).sort().at(-1)! : null
   if (guarded.accepted.length === 0) {
-    const text = `Plan change rejected: ${rejectionText(rejected) || 'no changes given'}`
+    const text = nothingNowText(scheduled.length ? 'Plan change not applied yet' : 'Plan change rejected', rejected, scheduled)
     const note = eventInsert(deps, { kind: 'note', summary: text, body: { text, reason: input.reason, rejected, scheduled }, date: today(deps.now()) })
-    return { statements: [note.statement], result: { plan_version: null, rejected, scheduled }, row: null, job_id: null }
+    return { statements: [note.statement, ...guarded.statements], result: { plan_version: null, rejected, scheduled }, row: null, job_id: null, waiting }
   }
   const v = await versionStatements(deps, ctx, {
+    id,
     targets: applyChanges(ctx.active.targets, guarded.accepted),
     reason: input.reason,
     created_by,
@@ -118,6 +151,7 @@ async function buildChange(
     result: { plan_version: toPlanVersion(v.row, { rejected, scheduled }), rejected, scheduled },
     row: v.row,
     job_id: v.job_id,
+    waiting,
   }
 }
 
@@ -132,29 +166,61 @@ export async function createVersion(
   return built.result
 }
 
-/** Store guarded plan changes as a pending proposal (actor deps.actor); nothing applies until it is accepted. */
-export async function propose(deps: Deps, input: { changes: readonly PlanChange[]; reason: string }): Promise<ProposalResult> {
-  const ctx = await loadPlanContext(deps)
-  const g = guardChanges(deps, ctx, input.changes, deps.actor)
+/**
+ * A guarded new version as statements for the caller's own batch (then runSoon(job_id) after it commits), computed with
+ * `pending` settings as they will be once that batch lands. job_id is null when nothing passed (a note is written).
+ */
+export async function planChangeStatements(
+  deps: Deps,
+  input: { changes: readonly PlanChange[]; reason: string; created_by?: Actor },
+  pending: PendingInputs = {},
+): Promise<{ statements: BatchItem<'sqlite'>[]; result: VersionResult; job_id: string | null }> {
+  const built = await buildChange(deps, input, pending)
+  return { statements: built.statements, result: built.result, job_id: built.job_id }
+}
+
+export interface ProposalStatements {
+  /** Not yet run: the proposal (or the note when nothing passed now) and its scheduled later steps. */
+  statements: BatchItem<'sqlite'>[]
+  /** The pending proposal's id; null when nothing passed now. */
+  proposal_id: string | null
+  /** The changes in the proposal (step 1 of a split kcal move). */
+  accepted: PlanChange[]
+  rejected: RejectedChange[]
+  scheduled: ScheduledChange[]
+}
+
+/** Guarded plan changes as a pending proposal (actor deps.actor), as statements for the caller's batch. */
+export async function proposalStatements(deps: Deps, input: { changes: readonly PlanChange[]; reason: string }): Promise<ProposalStatements> {
+  const [ctx, window] = await Promise.all([loadPlanContext(deps), kcalWindow(deps)])
+  const id = crypto.randomUUID()
+  const g = guardChanges(deps, ctx, input.changes, deps.actor, { kcal_base: window.base, series_id: id })
   if (g.accepted.length === 0) {
-    const text = `Proposal dropped: ${rejectionText(g.rejected) || 'no changes given'}`
-    await eventInsert(deps, {
+    const text = nothingNowText(g.scheduled.length ? 'Proposal not due yet' : 'Proposal dropped', g.rejected, g.scheduled)
+    const note = eventInsert(deps, {
       kind: 'note',
       summary: text,
-      body: { text, reason: input.reason, rejected: g.rejected, scheduled: [] },
+      body: { text, reason: input.reason, rejected: g.rejected, scheduled: g.scheduled },
       date: today(deps.now()),
-    }).statement
-    return { proposal: null, rejected: g.rejected, scheduled: [] }
+    })
+    return { statements: [note.statement, ...g.statements], proposal_id: null, accepted: [], rejected: g.rejected, scheduled: g.scheduled }
   }
   const p = eventInsert(deps, {
+    id,
     kind: 'proposal',
     summary: input.reason,
     body: { kind: 'plan_change', changes: g.accepted, rejected: g.rejected, scheduled: g.scheduled },
     proposal_status: 'pending',
   })
-  await runBatch(deps.db, [p.statement, ...g.statements])
-  const row = await getProposalRow(deps, p.id)
-  return { proposal: row ? toProposal(row) : null, rejected: g.rejected, scheduled: g.scheduled }
+  return { statements: [p.statement, ...g.statements], proposal_id: id, accepted: g.accepted, rejected: g.rejected, scheduled: g.scheduled }
+}
+
+/** Store guarded plan changes as a pending proposal (actor deps.actor); nothing applies until it is accepted. */
+export async function propose(deps: Deps, input: { changes: readonly PlanChange[]; reason: string }): Promise<ProposalResult> {
+  const built = await proposalStatements(deps, input)
+  await runBatch(deps.db, built.statements)
+  const row = built.proposal_id ? await getProposalRow(deps, built.proposal_id) : null
+  return { proposal: row ? toProposal(row) : null, rejected: built.rejected, scheduled: built.scheduled }
 }
 
 async function versionById(deps: Deps, id: string | null): Promise<PlanVersion | null> {
@@ -195,9 +261,16 @@ export async function acceptProposal(deps: Deps, id: string): Promise<ProposalDe
     return { proposal: await decided(deps, id, proposal), plan_version: await versionById(deps, outcome.plan_version_id), applied: outcome.applied }
   }
 
-  // A scheduled later step of a >150 kcal move waits for its week (SPEC §9: larger moves are split across weeks).
+  // A scheduled later step of a >150 kcal move waits for its week (SPEC §9: larger moves are split across weeks), and
+  // for the rolling week to let it apply (a step 1 accepted late moves it on); accepting never schedules another step.
   if (row.date && row.date > today(deps.now())) throw new HttpError(409, 'not_due', `This step is due ${row.date}`)
-  const built = await buildChange(deps, { changes: proposal.body.changes, reason: `Accepted proposal: ${row.summary}`, created_by: row.actor })
+  const built = await buildChange(deps, {
+    changes: proposal.body.changes,
+    reason: `Accepted proposal: ${row.summary}`,
+    created_by: row.actor,
+    accepting: true,
+  })
+  if (built.waiting) throw new HttpError(409, 'not_due', `This step is due ${built.waiting} (150 kcal per week)`)
   const status = built.row ? 'accepted' : 'rejected'
   try {
     await runBatch(deps.db, [...built.statements, proposalDecisionUpdate(deps, id, { status, plan_version_id: built.row?.id ?? null })])
@@ -212,13 +285,21 @@ export async function acceptProposal(deps: Deps, id: string): Promise<ProposalDe
   return { proposal: await decided(deps, id, proposal), plan_version: built.result.plan_version, applied: null }
 }
 
-/** Reject a pending proposal (its kind's handler withdraws what proposing stored); replaying a rejection returns it. */
+/**
+ * Reject a pending proposal (its kind's handler withdraws what proposing stored); replaying a rejection returns it.
+ * A plan change that starts or continues a split kcal move takes its series' later pending steps with it (one batch).
+ */
 export async function rejectProposal(deps: Deps, id: string): Promise<ProposalDecision> {
   const { row, proposal } = await loadProposal(deps, id)
   if (row.proposal_status === 'rejected') return { proposal, plan_version: null, applied: null }
   if (row.proposal_status !== 'pending') throw new HttpError(409, 'proposal_accepted', 'This proposal was already applied')
-  if (proposal.body.kind !== 'plan_change') await proposalHandler(proposal.body.kind)?.reject?.(deps, proposal as ProposalOf<HandledKind>)
-  await proposalDecisionUpdate(deps, id, { status: 'rejected' })
+  if (proposal.body.kind !== 'plan_change') {
+    await proposalHandler(proposal.body.kind)?.reject?.(deps, proposal as ProposalOf<HandledKind>)
+    await proposalDecisionUpdate(deps, id, { status: 'rejected' })
+  } else {
+    const series = proposal.body.series_id ?? id
+    await runBatch(deps.db, [proposalDecisionUpdate(deps, id, { status: 'rejected' }), seriesRejectUpdate(deps, series, row.date)])
+  }
   return { proposal: await decided(deps, id, proposal), plan_version: null, applied: null }
 }
 
@@ -227,17 +308,28 @@ export async function applySafeChange<T>(deps: Deps, input: SafeChangeInput<T>):
   return safeChange(deps, await loadPlanContext(deps), input)
 }
 
-/** Revert: a new active version with an older version's targets (append-only). Restoring the active one is a no-op. */
-export async function restoreVersion(deps: Deps, id: string): Promise<PlanVersion> {
+/**
+ * Revert: a new active version with an older version's targets (append-only). Restoring the active one is a no-op.
+ * 403 needs_approval for actor 'ai' (Ask AI proposes; Aaron or the coach restores). `withdraw_series`: kcal series
+ * whose pending later steps are rejected in the same batch (revert_review: the review's split kcal move).
+ */
+export async function restoreVersion(deps: Deps, id: string, opts: { withdraw_series?: readonly string[] } = {}): Promise<PlanVersion> {
+  if (deps.actor === 'ai') throw new HttpError(403, 'needs_approval', 'Restoring a plan version is for Aaron or the coach; Ask AI proposes changes instead')
   const ctx = await loadPlanContext(deps)
   const [target] = await deps.db.select().from(plan_versions).where(eq(plan_versions.id, id))
   if (!target) throw notFound('Plan version')
-  if (target.id === ctx.active.id) return toPlanVersion(ctx.active)
+  const withdraw = (opts.withdraw_series ?? []).map((series) => seriesRejectUpdate(deps, series))
+  if (target.id === ctx.active.id) {
+    const [first, ...rest] = withdraw
+    if (first) await deps.db.batch([first, ...rest])
+    return toPlanVersion(ctx.active)
+  }
   const v = await versionStatements(deps, ctx, {
     targets: target.targets,
     reason: `Restored version ${target.version}`,
     created_by: deps.actor,
     extra: { restored_from: target.version },
+    also: withdraw,
   })
   await runBatch(deps.db, v.statements)
   runSoon(deps, v.job_id)

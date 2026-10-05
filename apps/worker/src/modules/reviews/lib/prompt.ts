@@ -13,7 +13,7 @@ Return JSON with:
 - highlights: up to 5 short items that went well.
 - concerns: up to 5 short items to watch (every flag in the input is a concern).
 - proposals: at most 3 plan changes {field, weekday, from, to, reason}. weekday null means every day. from is the current value in plan_targets. Daily kcal stays between rails.calorie_floor and rails.calorie_ceiling; protein_g never below rails.protein_min_g; fat_g never below rails.fat_min_g. Never propose fewer calories because of a plateau; suggest talking to the dietitian instead. Propose nothing when the week does not call for a change.
-- week_plan for next_week_start: targets per weekday copied from plan_targets (an override replaces the default) with your proposals applied; every session null (training is planned separately); water_ml and steps from plan_targets; fast_dates exactly next_week_planned_fasts; scan_date null; focus_note one or two sentences.`
+- week_plan for next_week_start: targets per weekday copied from plan_targets unchanged (an override replaces the default); do not apply your proposals here, they reach the week when the user accepts them; every session null (training is planned separately); water_ml and steps from plan_targets; fast_dates exactly next_week_planned_fasts; scan_date null; focus_note one or two sentences.`
 
 /** The user message: one JSON object (ids and precise floats stripped to keep it small). */
 export function reviewMessage(input: {

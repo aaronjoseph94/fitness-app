@@ -1,5 +1,6 @@
 // Owns: revert_review — undo a coach review in one call. The plan goes back to the version that was active before the
-// review (plan.restoreVersion: a new version copying it; versions made after the review are undone too, and counted),
+// review (plan.restoreVersion: a new version copying it; versions made after the review are undone too, and counted;
+// the later steps still pending of the review's split kcal move are rejected with it),
 // then the review's other changes are undone newest first from its change log: settings and equipment statuses
 // restored, added milestones removed, planned fasts cancelled or moved back, the scan date and dashboard note cleared.
 // Templates the review created are kept (sessions may use them). Each step that cannot be undone (a fast that has
@@ -80,7 +81,8 @@ export async function revertReview(deps: Deps, review_id: string): Promise<Rever
   if (log.plan_version) {
     const reviewVersion = log.plan_version.version
     later_versions_undone = (await listVersions(deps)).filter((v) => v.version > reviewVersion).length
-    const restored = await restoreVersion(deps, log.plan_version_before.id)
+    // The review's split kcal move: its later steps (series = the review's version) go with it, in the same batch.
+    const restored = await restoreVersion(deps, log.plan_version_before.id, { withdraw_series: [log.plan_version.id] })
     plan_version = { id: restored.id, version: restored.version }
   }
 

@@ -1,7 +1,18 @@
 // Owns: writing plan versions — guard a batch of target changes, apply the accepted ones to the active targets, and
 // build every write of one change as a single db.batch: deactivate old + insert new + the ai_events record + scheduled
-// later steps as future proposals + the rebuilt daily_targets (today … last materialised date) + a plan_reforecast job.
-import { addDays, applyGuards, targetValue, today, weekdayOf, type GuardRule, type TargetChange } from '@fitness/shared/engine'
+// later steps as future proposals (one series) + the change carried into the active week plans (within the rails) +
+// the rebuilt daily_targets (today … last materialised date) + a plan_reforecast job.
+import {
+  addDays,
+  applyGuards,
+  holdMacros,
+  targetValue,
+  today,
+  weekdayOf,
+  type GuardRule,
+  type PlanTargetsLike,
+  type TargetChange,
+} from '@fitness/shared/engine'
 import {
   Weekday,
   type Actor,
@@ -43,11 +54,23 @@ const toPlanChange = (c: ReasonedTarget): PlanChange => ({ field: c.field, weekd
 
 const label = (c: { field: string; weekday: string | null }) => `${c.weekday ?? 'daily'} ${c.field}`
 
+/** How a batch is guarded beyond the actor (see guardChanges). */
+export interface GuardOptions {
+  /** The rolling 7-day kcal base (lib/window); absent → the active targets. */
+  kcal_base?: PlanTargetsLike
+  /** false when accepting a stored proposal: nothing is scheduled again; what does not fit now is `kcal_step`. */
+  schedule_steps?: boolean
+  /** The series the scheduled steps belong to when step 1 applies (its proposal or plan version id). */
+  series_id?: string
+}
+
 /**
- * Run the guards (SPEC §9) over plan changes as `actor`. A target change's `from` is re-read from the active version.
- * Scheduled steps (a >150 kcal move by ai/mcp split into ≤150 kcal steps) become pending proposals dated a week apart.
+ * Run the guards (SPEC §9) over plan changes as `actor`. A target change's `from` is re-read from the active version;
+ * ai/mcp kcal moves are measured over the rolling 7-day window (`kcal_base`). Scheduled steps (the rest of a kcal move
+ * by ai/mcp, in ≤150 kcal steps) become pending proposals dated a week apart, all carrying one series_id: the caller's
+ * (step 1 applied or proposed) or, when nothing applies now, the first scheduled step's own id.
  */
-export function guardChanges(deps: Deps, ctx: PlanContext, changes: readonly PlanChange[], actor: Actor): GuardedChanges {
+export function guardChanges(deps: Deps, ctx: PlanContext, changes: readonly PlanChange[], actor: Actor, opts: GuardOptions = {}): GuardedChanges {
   const result = applyGuards<ReasonedTarget>(
     changes.map((c) => ({ kind: 'target', field: c.field, weekday: c.weekday, from: c.from, to: c.to, reason: c.reason })),
     {
@@ -58,19 +81,24 @@ export function guardChanges(deps: Deps, ctx: PlanContext, changes: readonly Pla
       excluded_categories: [],
       planned_fast_dates: [],
       auto_apply_safe: ctx.settings.auto_apply_safe,
+      kcal_base: opts.kcal_base,
+      schedule_steps: opts.schedule_steps,
     },
   )
   const now = today(deps.now())
   const statements: BatchItem<'sqlite'>[] = []
-  const scheduled = result.scheduled.map(({ change, week_offset }) => {
+  const ids = result.scheduled.map(() => crypto.randomUUID())
+  const series_id = (result.accepted.length ? opts.series_id : undefined) ?? ids[0]
+  const scheduled = result.scheduled.map(({ change, week_offset }, i) => {
     const step = toPlanChange(change)
     const due = addDays(now, 7 * week_offset)
     const { id, statement } = eventInsert(
       { ...deps, actor },
       {
+        id: ids[i],
         kind: 'proposal',
-        summary: `${label(step)} ${step.from} → ${step.to} (step ${week_offset + 1}, due ${due})`,
-        body: { kind: 'plan_change', changes: [step] },
+        summary: `${label(step)} ${step.from} → ${step.to} (step ${week_offset + (result.accepted.length ? 1 : 0)}, due ${due})`,
+        body: { kind: 'plan_change', changes: [step], series_id },
         date: due,
         proposal_status: 'pending',
       },
@@ -146,20 +174,22 @@ const LAST_DATE = '9999-12-31'
  * Carry a plan-version change into the active week plans whose week ends on or after `date` (SPEC §8: mid-week edits
  * change the active row), since a date inside an active week plan takes its targets from it, not from the version:
  *   kcal / macros: targets[w][f] += eff(after, w, f) − eff(before, w, f), for each weekday dated `date` or later that is
- *     not one of the plan's fast dates; then kcal ≥ calorie_floor, protein ≥ protein_min, fat ≥ fat_min, all ≥ 0.
+ *     not one of the plan's fast dates; then kcal ≥ calorie_floor, protein ≥ protein_min, fat ≥ fat_min, all ≥ 0, and
+ *     on every day the carry touches kcal ≤ calorie_ceiling and protein × 4 + fat × 9 ≤ kcal (engine holdMacros).
  *     A delta, not the new value, so the coach's per-day shape stays and a ≤150 kcal step stays a ≤150 kcal step.
  *   water_ml / steps (one value per week plan): = after.defaults[f] when the default moved. A weekday-only move can't
  *     be expressed in a week plan and is listed in `skipped` ("sat water_ml").
- * Returns only the week plans that changed.
+ * Returns only the week plans that changed, and each day the rails cut (`clamped`: "2026-10-10 kcal 1850 → 1700").
  */
 export function carryIntoWeekPlans(
   weeks: readonly StoredWeekPlan[],
   before: PlanTargets,
   after: PlanTargets,
-  rails: Pick<Settings, 'calorie_floor' | 'protein_min_g' | 'fat_min_g'>,
+  rails: Pick<Settings, 'calorie_floor' | 'calorie_ceiling' | 'protein_min_g' | 'fat_min_g'>,
   date: string,
-): { patched: StoredWeekPlan[]; skipped: string[] } {
+): { patched: StoredWeekPlan[]; skipped: string[]; clamped: string[] } {
   const skipped = new Set<string>()
+  const clamped: string[] = []
   for (const w of Weekday.options)
     for (const f of WEEK_WIDE)
       if (targetValue(before, f, w) !== targetValue(after, f, w) && before.defaults[f] === after.defaults[f]) skipped.add(`${w} ${f}`)
@@ -177,17 +207,30 @@ export function carryIntoWeekPlans(
       const day = addDays(week.week_start, i)
       if (day < date || plan.fast_dates.includes(day)) return
       const next = { ...plan.targets[w] }
+      let moved = false
       for (const f of MACROS) {
         const delta = targetValue(after, f, w) - targetValue(before, f, w)
         if (delta === 0) continue
         next[f] = Math.max(next[f] + delta, min[f] ?? 0, 0)
-        changed = true
+        moved = true
       }
+      if (!moved) return
+      if (next.kcal > rails.calorie_ceiling) {
+        clamped.push(`${day} kcal ${next.kcal} → ${rails.calorie_ceiling}`)
+        next.kcal = rails.calorie_ceiling
+      }
+      const held = holdMacros(next, rails)
+      for (const f of ['protein_g', 'fat_g'] as const)
+        if (held[f] !== next[f]) {
+          clamped.push(`${day} ${f} ${next[f]} → ${held[f]}`)
+          next[f] = held[f]
+        }
       plan.targets[w] = next
+      changed = true
     })
     if (changed) patched.push({ ...week, plan })
   }
-  return { patched, skipped: [...skipped] }
+  return { patched, skipped: [...skipped], clamped }
 }
 
 /**
@@ -203,15 +246,26 @@ export function carryIntoWeekPlans(
 export async function versionStatements(
   deps: Deps,
   ctx: PlanContext,
-  input: { targets: PlanTargets; reason: string; created_by: Actor; extra?: Record<string, unknown>; week?: WeekOverride; summary?: string },
+  input: {
+    targets: PlanTargets
+    reason: string
+    created_by: Actor
+    extra?: Record<string, unknown>
+    week?: WeekOverride
+    summary?: string
+    /** The new version's id (default: a new UUID), e.g. the series id its scheduled steps already carry. */
+    id?: string
+    /** Extra statements for the same batch (e.g. withdrawing a series' pending steps on a revert). */
+    also?: BatchItem<'sqlite'>[]
+  },
 ): Promise<{ row: PlanVersionRow; statements: BatchItem<'sqlite'>[]; job_id: string; rows: NewTargetRow[] }> {
   const now = deps.now().toISOString()
   const date = today(deps.now())
-  const id = crypto.randomUUID()
+  const id = input.id ?? crypto.randomUUID()
   const horizon = await targetHorizon(deps)
   const weekEnd = input.week ? addDays(input.week.week_start, 6) : null
   const carried = input.week
-    ? { patched: [], skipped: [] }
+    ? { patched: [], skipped: [], clamped: [] }
     : carryIntoWeekPlans(await activeWeekPlans(deps, date, LAST_DATE), ctx.active.targets, input.targets, ctx.settings, date)
   const overrides: WeekOverride[] = input.week
     ? [input.week]
@@ -245,6 +299,7 @@ export async function versionStatements(
       ...input.extra,
       ...(carried.patched.length ? { week_plans_updated: carried.patched.map((w) => w.id) } : {}),
       ...(carried.skipped.length ? { week_plans_unchanged: carried.skipped } : {}),
+      ...(carried.clamped.length ? { week_plans_clamped: carried.clamped } : {}),
     },
     date,
     plan_version_id: row.id,
@@ -260,6 +315,7 @@ export async function versionStatements(
       event.statement,
       ...carried.patched.map((w) => deps.db.update(week_plans).set({ plan: w.plan, updated_at: now }).where(eq(week_plans.id, w.id))),
       ...targetStatements(deps, rows, 'replace'),
+      ...(input.also ?? []),
       job.statement,
     ],
   }

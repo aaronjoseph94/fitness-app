@@ -4,13 +4,17 @@
 // list, and each fast's fast day (engine fastDay: one local date per fast). A fast has begun once started_at <= now (a
 // planned fast begins at its time); at most one fast runs at a time, and a fast with no end older than 2 × fast_hours
 // no longer counts as running. Rows store start_date / end_date as Edmonton local dates beside the instants. Every
-// write rebuilds the affected dates' daily targets (is_fast_day, through the plan module) in the same db.batch, then
-// tells the fast listeners (week-plans registers one: a week plan's fast_dates mirror the fast log), so fasting never
+// write rebuilds the affected dates' daily targets (is_fast_day, through the plan module; a past fast day too, so a
+// missed or cancelled fast gives its day back) in the same db.batch, then tells the fast listeners (week-plans
+// registers one: a week plan's fast_dates mirror the fast log), so fasting never
 // imports week-plans. Starting a fast now queues the day_adjustment card (water, light session) in that batch too; a
 // planned fast that begins on its own gets it from the cron (fastsBegunSince + adjustDayForFast).
-import { fastDay, localDate, today } from '@fitness/shared/engine'
+// The monthly cap (settings.fasts_per_month) counts fast days, not start dates: a fast from 31 Oct 19:00 is one of
+// November's. planFast holds it for everyone; startFast holds it for Ask AI and Claude (Aaron may start an extra fast
+// himself, still one at a time), who also may not backdate a start by more than 24 h.
+import { addDays, fastDay, localDate, today } from '@fitness/shared/engine'
 import type { Fast, FastEnd, FastListQuery, FastMove, FastPlan, FastStart, Ok } from '@fitness/shared/schemas'
-import { and, asc, count, eq, gt, gte, isNull, lt, lte, ne, or, type SQL } from 'drizzle-orm'
+import { and, asc, eq, gt, gte, isNull, lt, lte, ne, or, sql, type SQL } from 'drizzle-orm'
 import { fast_logs, settings } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../lib/http-error'
@@ -22,6 +26,7 @@ import { fastDayStatements } from './lib/targets'
 const DAY_ADJUSTMENT_PRIORITY = 8
 
 const fastStarted = () => new HttpError(409, 'fast_started', 'This fast has already started; end it instead')
+const fastActive = () => new HttpError(409, 'fast_active', 'A fast is already running; end it before starting another')
 
 const HOUR_MS = 3_600_000
 /** A fast ended this soon after it started is a mis-tap: it may be deleted like a fast that never happened. */
@@ -47,9 +52,33 @@ async function fastsChanged(deps: Deps): Promise<void> {
   }
 }
 
+async function fastRails(deps: Deps): Promise<{ fast_hours: number; fasts_per_month: number }> {
+  const [row] = await deps.db.select({ fast_hours: settings.fast_hours, fasts_per_month: settings.fasts_per_month }).from(settings).limit(1)
+  return { fast_hours: row?.fast_hours ?? 24, fasts_per_month: row?.fasts_per_month ?? 2 }
+}
+
 async function fastHours(deps: Deps): Promise<number> {
-  const [row] = await deps.db.select({ fast_hours: settings.fast_hours }).from(settings).limit(1)
-  return row?.fast_hours ?? 24
+  return (await fastRails(deps)).fast_hours
+}
+
+/**
+ * The monthly cap (SPEC §2: two fasts a month): fasts other than `id` whose fast day (engine fastDay) falls in the
+ * month of `date`, plus this one, may not exceed fasts_per_month (422 fasting_pattern). A fast's day is at most a few
+ * days after its start date, so starts from the 3 days before the month on are read.
+ */
+async function assertMonthCap(deps: Deps, input: { id: string; date: string; rails: { fast_hours: number; fasts_per_month: number } }): Promise<void> {
+  const month = monthOf(input.date)
+  const rows = await deps.db
+    .select({ started_at: fast_logs.started_at, ended_at: fast_logs.ended_at })
+    .from(fast_logs)
+    .where(and(gte(fast_logs.start_date, addDays(month.from, -3)), lt(fast_logs.start_date, month.until), ne(fast_logs.id, input.id)))
+  const n = rows.filter((f) => {
+    const d = fastDay(f, input.rails.fast_hours)
+    return d !== null && d >= month.from && d < month.until
+  }).length
+  const cap = input.rails.fasts_per_month
+  if (n + 1 > cap)
+    throw new HttpError(422, 'fasting_pattern', `${input.date.slice(0, 7)} already has ${n} fast day(s); the pattern is ${cap} a month`)
 }
 
 /**
@@ -114,10 +143,16 @@ async function dayAdjustmentJob(deps: Deps, fast: { id: string; started_at: stri
   )
 }
 
+/** Ask AI and Claude may log a fast that began at most this long ago (Aaron may log an older one himself). */
+const AI_BACKDATE_MS = 24 * HOUR_MS
+
 /**
  * POST /api/fasts/start. A new id starts an ad-hoc fast; a planned fast's id starts it now (or at `started_at`).
  * A fast that has already begun is returned as is (replays are no-ops). 409 fast_active while another fast runs;
  * 400 when `started_at` is in the future (beyond 5 min of skew): future fasts go through planFast and its monthly cap.
+ * For ai/mcp also: 400 when `started_at` is more than 24 h ago, 422 fasting_pattern over the monthly cap.
+ * One running fast is enforced in SQL too: the write's started_at is NULL (NOT NULL fails, so the whole batch rolls
+ * back) when another fast began running meanwhile — two starts tapped at once leave one fast.
  */
 export async function startFast(deps: Deps, input: FastStart): Promise<Fast> {
   const { db } = deps
@@ -127,28 +162,41 @@ export async function startFast(deps: Deps, input: FastStart): Promise<Fast> {
 
   // Running = begun, not ended, and within 2 × fast_hours of its start (as the day view counts it): a planned fast
   // nobody ended stops blocking new fasts then (cancel it as skipped, or end it at its real end).
-  const runningSince = new Date(deps.now().getTime() - 2 * (await fastHours(deps)) * HOUR_MS).toISOString()
-  const [running] = await db
-    .select({ id: fast_logs.id })
-    .from(fast_logs)
-    .where(and(isNull(fast_logs.ended_at), lte(fast_logs.started_at, now), gt(fast_logs.started_at, runningSince), ne(fast_logs.id, input.id)))
-    .limit(1)
-  if (running) throw new HttpError(409, 'fast_active', 'A fast is already running; end it before starting another')
+  const rails = await fastRails(deps)
+  const runningSince = new Date(deps.now().getTime() - 2 * rails.fast_hours * HOUR_MS).toISOString()
+  const otherRunning = and(isNull(fast_logs.ended_at), lte(fast_logs.started_at, now), gt(fast_logs.started_at, runningSince), ne(fast_logs.id, input.id))
+  const [running] = await db.select({ id: fast_logs.id }).from(fast_logs).where(otherRunning).limit(1)
+  if (running) throw fastActive()
 
   const started_at = input.started_at ?? now
   // A future start would book a 0 kcal fast day around the monthly cap (SPEC §2: two fasts a month, on dates he picks).
   if (started_at > latest(deps)) throw badRequest('A fast that starts later is planned: use plan_fast / POST /api/fasts/plan')
+  if (deps.actor !== 'user') {
+    if (Date.parse(started_at) < deps.now().getTime() - AI_BACKDATE_MS)
+      throw badRequest('A fast is started now or up to 24 h back; Aaron can log an older one in the app')
+    const day = fastDay({ started_at, ended_at: null }, rails.fast_hours)
+    if (day) await assertMonthCap(deps, { id: input.id, date: day, rails })
+  }
+  const start = sql`CASE WHEN EXISTS (SELECT 1 FROM fast_logs AS other WHERE other.ended_at IS NULL AND other.started_at <= ${now} AND other.started_at > ${runningSince} AND other.id <> ${input.id}) THEN NULL ELSE ${started_at} END`
   const fields = { started_at, start_date: localDate(started_at), actor: deps.actor }
   const write = row
     ? db
         .update(fast_logs)
-        .set({ ...fields, note: input.note ?? row.note, updated_at: now })
+        .set({ ...fields, started_at: start, note: input.note ?? row.note, updated_at: now })
         .where(eq(fast_logs.id, input.id))
-    : db.insert(fast_logs).values({ id: input.id, ...fields, planned: false, note: input.note ?? null })
+    : db.insert(fast_logs).values({ id: input.id, ...fields, started_at: start, planned: false, note: input.note ?? null })
   const pending = { fasts: [{ id: input.id, started_at, ended_at: null }] }
-  const targets = await fastDayStatements(deps, pending, { start_date: fields.start_date, end_date: null }, row)
+  const targets = await fastDayStatements(deps, pending, rails.fast_hours, { ...fields, ended_at: null, end_date: null }, row)
   const job = await dayAdjustmentJob(deps, { id: input.id, ...fields })
-  await db.batch([write, ...targets, ...(job ? [job.statement] : [])])
+  try {
+    await db.batch([write, ...targets, ...(job ? [job.statement] : [])])
+  } catch (e) {
+    // Lost a race: the same id started by a replay (a no-op), or another fast that is now running (409).
+    const [mine] = await db.select().from(fast_logs).where(eq(fast_logs.id, input.id))
+    if (mine && mine.started_at <= now) return toFast(mine)
+    if ((await db.select({ id: fast_logs.id }).from(fast_logs).where(otherRunning).limit(1)).length) throw fastActive()
+    throw e
+  }
   if (job) runSoon(deps, job.id)
   await fastsChanged(deps)
   return toFast((await db.select().from(fast_logs).where(eq(fast_logs.id, input.id)))[0]!)
@@ -168,7 +216,8 @@ export async function endFast(deps: Deps, id: string, input: FastEnd): Promise<F
   if (ended_at > latest(deps)) throw badRequest('A fast ends now or in the past; end it when it ends')
 
   const end_date = localDate(ended_at)
-  const targets = await fastDayStatements(deps, { fasts: [{ id, started_at: row.started_at, ended_at }] }, { start_date: row.start_date, end_date })
+  const pending = { fasts: [{ id, started_at: row.started_at, ended_at }] }
+  const targets = await fastDayStatements(deps, pending, await fastHours(deps), { ...row, ended_at, end_date }, row)
   const [, [saved]] = await db.batch([
     db.update(fast_logs).set({ ended_at, end_date, actor: deps.actor, updated_at: now }).where(eq(fast_logs.id, id)),
     db.select().from(fast_logs).where(eq(fast_logs.id, id)),
@@ -180,8 +229,8 @@ export async function endFast(deps: Deps, id: string, input: FastEnd): Promise<F
 
 /**
  * POST /api/fasts/plan: put a fast on the calendar at a future start. Re-planning the same id moves it (until it
- * begins; after that the stored fast is returned). Fasts in the start's local month, this one included, may not
- * exceed settings.fasts_per_month (422 fasting_pattern).
+ * begins; after that the stored fast is returned). Fasts whose fast day falls in this fast's fast-day month, this one
+ * included, may not exceed settings.fasts_per_month (422 fasting_pattern).
  */
 export async function planFast(deps: Deps, input: FastPlan): Promise<Fast> {
   const { db } = deps
@@ -190,18 +239,9 @@ export async function planFast(deps: Deps, input: FastPlan): Promise<Fast> {
   if (row && row.started_at <= now) return toFast(row)
   if (input.started_at <= now) throw badRequest('A planned fast must start in the future')
 
+  const rails = await fastRails(deps)
   const start_date = localDate(input.started_at)
-  const month = monthOf(start_date)
-  const [[rails], [{ n }]] = await db.batch([
-    db.select({ fasts_per_month: settings.fasts_per_month }).from(settings).limit(1),
-    db
-      .select({ n: count() })
-      .from(fast_logs)
-      .where(and(gte(fast_logs.start_date, month.from), lt(fast_logs.start_date, month.until), ne(fast_logs.id, input.id))),
-  ])
-  const cap = rails?.fasts_per_month ?? 2
-  if (n! + 1 > cap)
-    throw new HttpError(422, 'fasting_pattern', `${start_date.slice(0, 7)} already has ${n} fast(s); the pattern is ${cap} a month`)
+  await assertMonthCap(deps, { id: input.id, date: fastDay({ started_at: input.started_at, ended_at: null }, rails.fast_hours) ?? start_date, rails })
 
   const fields = { started_at: input.started_at, start_date, planned: true, actor: deps.actor }
   const write = row
@@ -211,7 +251,7 @@ export async function planFast(deps: Deps, input: FastPlan): Promise<Fast> {
         .where(eq(fast_logs.id, input.id))
     : db.insert(fast_logs).values({ id: input.id, ...fields, note: input.note ?? null })
   const pending = { fasts: [{ id: input.id, started_at: input.started_at, ended_at: null }] }
-  const targets = await fastDayStatements(deps, pending, { start_date, end_date: null }, row)
+  const targets = await fastDayStatements(deps, pending, rails.fast_hours, { ...fields, ended_at: null, end_date: null }, row)
   const [, [saved]] = await db.batch([write, db.select().from(fast_logs).where(eq(fast_logs.id, input.id)), ...targets])
   await fastsChanged(deps)
   return toFast(saved!)
@@ -237,7 +277,7 @@ export async function cancelFast(deps: Deps, id: string): Promise<Ok> {
   const skipped = row.planned && !row.ended_at
   const mistap = row.ended_at !== null && Date.parse(row.ended_at) - Date.parse(row.started_at) < MISTAP_MS
   if (begun && !skipped && !mistap) throw fastStarted()
-  const targets = await fastDayStatements(deps, { removed_fasts: [id] }, row)
+  const targets = await fastDayStatements(deps, { removed_fasts: [id] }, await fastHours(deps), row)
   await deps.db.batch([deps.db.delete(fast_logs).where(eq(fast_logs.id, id)), ...targets])
   await fastsChanged(deps)
   return { ok: true }

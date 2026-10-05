@@ -1,7 +1,9 @@
 // Owns: tests at the reviews seam (modules/reviews index + the /api/reviews/:week/pdf route) — the engine's week metrics
 // for a seeded week (2026-W40, Mon 2026-09-28 … Sun 2026-10-04) as literals, the weekly_review draft with a fake router
 // (a +300 kcal proposal split by the guards into two ≤150 kcal steps), the engine fallback when the router fails, the
-// skip when Claude already reviewed a week, and the PDF archive with and without the Browser Rendering binding.
+// skip when Claude already reviewed a week, next week's draft plan carrying the targets forward unchanged (a proposal
+// reaches the week once, when accepted), the proposals and the review written together or not at all, and the PDF
+// archive with and without the Browser Rendering binding.
 import { ReminderKind, type ReminderPrefs, type WeeklyReviewOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { and, eq } from 'drizzle-orm'
@@ -21,6 +23,7 @@ import {
   sleep_logs,
   step_logs,
   water_logs,
+  week_plans,
   weekly_reviews,
   weight_logs,
   workout_sessions,
@@ -49,7 +52,7 @@ const W40 = '2026-09-28'
 const W41 = '2026-10-05'
 const benchId = crypto.randomUUID()
 const pressId = crypto.randomUUID()
-const baseline = { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }
+const baseline = { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }
 const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
 
 /** Two confirmed meals a day: [lunch kcal, lunch protein, dinner kcal, dinner protein]; each item 50 g carbs, 10 g fat, 5 g fibre. */
@@ -186,7 +189,7 @@ function fakeRouter(output: WeeklyReviewOutput | null, fail?: Error): LlmRouter 
   return router
 }
 
-const day = { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30 }
+const day = { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }
 const weekPlan: WeeklyReviewOutput['week_plan'] = {
   targets: { mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day },
   sessions: { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
@@ -291,6 +294,45 @@ describe('draftWeeklyReview', () => {
     expect(llm.calls).toBe(0)
     const [row] = await db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, W41))
     expect(row).toMatchObject({ author: 'claude_mcp', narrative: 'Claude: hold 1,400 kcal, add a set on leg press.' })
+  })
+})
+
+describe('draftWeeklyReview: proposals and next week', () => {
+  const pendingByAi = async () =>
+    (await db.select().from(ai_events).where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.actor, 'ai'), eq(ai_events.proposal_status, 'pending')))).length
+  const raise = (to: number): WeeklyReviewOutput => ({
+    narrative: 'More energy for training.',
+    highlights: [],
+    concerns: [],
+    proposals: [{ field: 'kcal', weekday: null, from: 1400, to, reason: 'Hunger' }],
+    // The model applied its own proposal to next week (the prompt used to ask for that).
+    week_plan: { ...weekPlan, targets: Object.fromEntries(Object.keys(weekPlan.targets).map((w) => [w, { ...day, kcal: to }])) as WeeklyReviewOutput['week_plan']['targets'] },
+  })
+
+  it('writes no proposal when the review write fails (a deadline mid-draft): they land together or not at all', async () => {
+    const before = await pendingByAi()
+    // The batch that stores the review row fails, as if the job's 25 s deadline hit it.
+    const failing = new Proxy(db, {
+      get(target, key, receiver) {
+        if (key !== 'batch') return Reflect.get(target, key, receiver)
+        return (statements: { toSQL?: () => { sql: string } }[]) => {
+          if (statements.some((st) => st.toSQL?.().sql.includes('"weekly_reviews"'))) return Promise.reject(new Error('deadline'))
+          return target.batch(statements as unknown as Parameters<typeof target.batch>[0])
+        }
+      },
+    })
+
+    await expect(draftWeeklyReview({ ...deps, db: failing }, fakeRouter(raise(1700)), W40)).rejects.toThrow('deadline')
+
+    expect(await pendingByAi()).toBe(before)
+  })
+
+  it("stores next week's draft with the current targets: an accepted proposal reaches the week once, through the plan", async () => {
+    const outcome = await draftWeeklyReview(deps, fakeRouter(raise(1550)), W40)
+
+    expect(outcome.review!.proposals.map((p) => [p.from, p.to, p.status])).toEqual([[1400, 1550, 'pending']])
+    const [draft] = await db.select().from(week_plans).where(and(eq(week_plans.week_start, W41), eq(week_plans.status, 'proposed')))
+    expect(Object.values((draft!.plan as WeeklyReviewOutput['week_plan']).targets).map((t) => t.kcal)).toEqual(Array(7).fill(1400))
   })
 })
 

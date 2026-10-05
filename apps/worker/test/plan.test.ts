@@ -22,8 +22,8 @@ const at = (iso: string, actor: Deps['actor'] = 'user'): Deps => ({
   waitUntil: (p) => void pending.push(p.catch(() => undefined)),
 })
 
-/** Plan v1 (SPEC §6): 1,400 kcal floor, 130 g protein, 45 g fat, 30 g fibre, carbs the remainder (118.75 g). */
-const baseline = { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }
+/** Plan v1 (SPEC §6): 1,400 kcal floor, 130 g protein, 45 g fat, 30 g fibre, carbs the remainder (119 g, as the engine writes it). */
+const baseline = { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }
 const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
 
 beforeAll(async () => {
