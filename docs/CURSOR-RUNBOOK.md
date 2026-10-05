@@ -78,15 +78,18 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
    ```
    **Expect:** `Test Files 60 passed (60)` and `Tests 378 passed (378)`, or more if commits landed since.
 3. Run:
+
    ```sh
    pnpm exec playwright install chromium   # once per machine: Playwright 1.63 needs its own Chromium build
    pnpm e2e
    ```
+
    **Expect:** `9 passed`. The flows are ask-ai, log-a-day, mcp, offline-sync, scan-manual, styleguide, text-meal, training and weekly-report.
 
    The run builds the web app, seeds a throwaway local D1 in `apps/worker/.wrangler/e2e` and serves it on port 8799. A warning `llm_failed … ProvidersExhaustedError` is expected, because the local runs have no LLM keys.
 
    **If** port 8799 is already in use, stop the other `wrangler dev` first. Playwright otherwise reuses a stale server.
+
 4. Run:
    ```sh
    pnpm audit
@@ -103,11 +106,13 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
    ```
    **Expect:** the account id `9c22250f47e2547f0acdffcff516e6ee` (the one in `wrangler.jsonc`).
 2. Run:
+
    ```sh
    npx wrangler d1 list            # contains "fitness" 3f659ddb-d8c4-4890-a9d6-e550e9ff0f61
    npx wrangler r2 bucket list     # contains "fitness-files"
    npx wrangler kv namespace list  # contains id 34932a69d93d4d9986d4aff411762221 (OAUTH_KV)
    ```
+
    **If** `fitness-files` is missing, run `npx wrangler r2 bucket create fitness-files`.
 
    **If** the D1 database or the KV namespace is missing, stop and report. Don't create a new one: its id would differ from `wrangler.jsonc`, and its data would be empty.
@@ -142,11 +147,13 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
 ## 6. Exercise media and the web build
 
 1. Run (from the repo root):
+
    ```sh
    pnpm --filter @fitness/exercises run fetch:images   # ~1,750 step images + 112 px WebP thumbnails (gitignored)
    pnpm --filter @fitness/exercises run fetch:media    # ~460 animated GIFs (gitignored)
    pnpm build
    ```
+
    **Expect:**
    - `apps/web/dist` exists, and `apps/web/dist/exercises/<id>/thumb.webp` files are present;
    - Vite's chunk-size warning is expected.
@@ -165,34 +172,39 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
    - Don't echo values back.
    - Full details are in `docs/DEPLOY.md` §4.
 
-   | Secret | Notes |
-   | --- | --- |
-   | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` | From the Zero Trust Access application. |
-   | **`ACCESS_EMAIL`** | **New this round.** Aaron's Access login email. Any other Access identity gets 403. |
-   | `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET` | Service token for the weekly PDF (read-only). |
-   | `HEALTH_WEBHOOK_TOKEN`, `MCP_BEARER_TOKEN`, `FILE_URL_SECRET` | Random values. |
-   | `GEMINI_API_KEY` | Required for any AI feature. Without keys, AI paths now say "not set up" at once. |
-   | `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY` | Fallbacks (optional). |
-   | `USDA_FDC_API_KEY` | Generic foods. |
-   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generate the keys with `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts`. The subject is `mailto:` plus Aaron's email. |
+   | Secret                                                        | Notes                                                                                                                               |
+   | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+   | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`                            | From the Zero Trust Access application.                                                                                             |
+   | **`ACCESS_EMAIL`**                                            | **New this round.** Aaron's Access login email. Any other Access identity gets 403.                                                 |
+   | `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`                    | Service token for the weekly PDF (read-only).                                                                                       |
+   | `HEALTH_WEBHOOK_TOKEN`, `MCP_BEARER_TOKEN`, `FILE_URL_SECRET` | Random values.                                                                                                                      |
+   | `GEMINI_API_KEY`                                              | Required for any AI feature. Without keys, AI paths now say "not set up" at once.                                                   |
+   | `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`           | Fallbacks (optional).                                                                                                               |
+   | `USDA_FDC_API_KEY`                                            | Generic foods.                                                                                                                      |
+   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`      | Generate the keys with `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts`. The subject is `mailto:` plus Aaron's email. |
 
    **Expect:** `npx wrangler secret list` shows all of them. **Never** set `DEV_AUTH_BYPASS`.
 
 ## 8. Deploy
 
 1. Run (from the repo root):
+
    ```sh
    pnpm --filter @fitness/worker deploy
    ```
+
    **Expect:**
    - wrangler uploads the Worker and the static assets (`apps/web/dist`);
    - it lists the cron `*/5 * * * *` and prints a version id.
 
    `workers_dev` and `preview_urls` are off on purpose, so no `*.workers.dev` URL is printed. Copy the version id into the report.
+
 2. Check the custom domain:
+
    ```sh
    curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" https://fitness.ajcan.site/api/health
    ```
+
    **Expect:** `302` to `https://<team>.cloudflareaccess.com/…` (Access is guarding it).
 
    🧑 **If** you get `404`, `522` or a DNS error, the custom domain isn't attached to the Worker. Aaron adds it in the dashboard: Workers & Pages → `fitness` → Settings → Domains & Routes → Add → Custom domain `fitness.ajcan.site`.
@@ -214,6 +226,7 @@ Full background is in `docs/DEPLOY.md` §6.
    - `/.well-known/oauth-protected-resource/mcp`
 
    **Not** `/authorize`: the consent page stays behind Access.
+
 3. **Service token** with a Service Auth policy on the Fitness app. Its id and secret are the two `ACCESS_CLIENT_*` secrets.
 4. **Bot Fight Mode off** for the hostname, because Claude's connector calls come from Anthropic's cloud.
 5. **WAF rate-limiting rule.** This is new this round; it works because `fitness.ajcan.site` is on Aaron's zone. Go to Security → WAF → Rate limiting rules → Create:
