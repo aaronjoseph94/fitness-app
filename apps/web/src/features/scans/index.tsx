@@ -1,21 +1,5 @@
-// Owns: the Evolt scan pages — list (/scans) and one scan (/scans/:id) (SPEC §8). Placeholders until the scans work
-// package replaces them.
-import { useParams } from 'react-router'
-import { PhasePlaceholder } from '../../app/placeholder'
-
-export function ScansPage() {
-  return (
-    <PhasePlaceholder title="Scans" phase={4}>
-      Every Evolt 360 scan with fat, lean and segment changes.
-    </PhasePlaceholder>
-  )
-}
-
-export function ScanPage() {
-  const { id } = useParams()
-  return (
-    <PhasePlaceholder title="Scan" phase={4}>
-      Scan {id}: body fat, visceral level, segmental fat change and the scan debrief.
-    </PhasePlaceholder>
-  )
-}
+// Owns: the Evolt scan pages (SPEC §8) — the list with the next due date and the upload flow (/scans), and one scan
+// (/scans/:id; /scans/new is manual entry): extracting, the confirm form, then the analysis with its charts.
+// Second entry point: ./charts (the scan charts and reads the Progress tab shows).
+export { ScansPage } from './lib/ScansPage'
+export { ScanPage } from './lib/ScanPage'
