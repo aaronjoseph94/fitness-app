@@ -2,3 +2,4 @@
 export { defineTool, type ToolArea, type ToolDefinition } from './lib/define'
 export { allTools, findTool, toolJsonSchemas } from './lib/registry'
 export { callTool } from './lib/call'
+export { getProcedure, PROCEDURE_NAMES, PROCEDURES, type Procedure, type ProcedureName } from './lib/procedures'
