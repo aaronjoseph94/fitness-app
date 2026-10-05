@@ -4,6 +4,7 @@
 
 ## Done
 
+- 2026-10-05 · Final round: cross-agent polish (22 follow-ups), 9 Playwright flows for the main paths, and a two-axis code review (Standards + Spec, plus rails/security/privacy) — 74 confirmed findings fixed (8 blockers, 26 major, 40 minor). 118 Vitest tests and the e2e suite pass.
 - 2026-10-05 · Phases 2–5 built: AI on every log, training, scans, weekly reviews and the printable report, week plans, the tools layer (46 tools), the MCP server (bearer + OAuth), Ask AI, progress photos, Web Push reminders, export/restore and the monthly backup. 94 Vitest tests pass; every screen smoke-tested against a local Worker.
 - 2026-10-05 · Phase 1 built: Worker auth (Access JWT + localhost dev bypass), every logging endpoint, plan versions through the guards, targets, nightly reforecast, day view, jobs queue, one-cron dispatcher; web Today/Log/Progress/Settings, quick-log sheet, offline queue. Smoke-tested end to end against a local Worker (weigh-ins, water, manual and text meals, sleep, health webhook → trend 93.8 kg, finish 2027-04-16).
 - 2026-10-05 · Phase 2 adapters: LLM router and food sources (OFF, USDA FDC, CNF 2026 with 5,894 foods).
@@ -12,7 +13,6 @@
 
 ## Next
 
-- Final polish (cross-agent follow-ups), Playwright e2e flows, and a two-axis code review (Standards + Spec) with a fix pass.
 - After deploy (Aaron): connect the Claude connector and run a live coach review; upload the 2026-09-26 Evolt sheet to check extraction against SPEC §2; try barcode, voice and push on the iPhone.
 
 ## Decisions made on Aaron's behalf

@@ -17,7 +17,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 | 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | Built |
 | 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | Built |
 | 4 | Scans, reviews, week plans, Ask AI, MCP + Claude connector | Built (connector untested with live Claude until deployed) |
-| 5 | Photos, push reminders, export/import, full chart inventory, polish | Built; final polish, e2e flows and code review in progress |
+| 5 | Photos, push reminders, export/import, full chart inventory, polish | Built; e2e flows pass; code-reviewed (74 findings fixed) |
 
 ## Stack
 
