@@ -13,7 +13,12 @@ export type LocalDate = z.infer<typeof LocalDate>
  * An instant. Accepts any ISO offset ("2026-09-26T10:13:00-06:00" or "…Z") and normalises to the stored UTC form
  * "YYYY-MM-DDTHH:MM:SS.sssZ" (→ "2026-09-26T16:13:00.000Z"), so normalised instants compare correctly as strings.
  */
-export const Instant = z.iso.datetime({ offset: true }).overwrite((v) => new Date(v).toISOString())
+// Zod 4 still runs .overwrite() after the datetime check fails, so an unreadable value must pass through untouched
+// (it is already an issue) rather than throw from toISOString().
+export const Instant = z.iso.datetime({ offset: true }).overwrite((v) => {
+  const t = Date.parse(v)
+  return Number.isNaN(t) ? v : new Date(t).toISOString()
+})
 export type Instant = z.infer<typeof Instant>
 
 /** A wall-clock time in Edmonton, "HH:MM" (reminder times). */

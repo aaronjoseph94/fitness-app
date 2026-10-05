@@ -74,6 +74,11 @@ export const HealthIngest = z.object({
   active_kcal: ShortcutCount.optional(),
   sleep: z
     .object({ in_bed_at: Instant, woke_at: Instant, asleep_min: ShortcutCount.pipe(AsleepMin) })
+    .refine((s) => s.in_bed_at < s.woke_at, { message: 'Wake time must be after in-bed time', path: ['woke_at'] })
+    .refine((s) => s.asleep_min <= (Date.parse(s.woke_at) - Date.parse(s.in_bed_at)) / 60_000, {
+      message: 'Asleep longer than in bed',
+      path: ['asleep_min'],
+    })
     .nullable()
     .optional(),
 })
