@@ -1,17 +1,18 @@
 // Owns: the single 5-minute cron (`*/5 * * * *`). Each tick sweeps ai_jobs, then dispatches work by Edmonton local
 // time, each kind at most once per local period through a cron_runs row (unique kind + period_key):
-//   nightly  once per local date, after 00:30   ensure targets through today + 14, reforecast as of yesterday,
-//                                               new safety flags as ai_events notes, the "scan due" note,
-//                                               release proposals due today, queue today's AI workout when it is
-//                                               an unplanned training day
+//   nightly  once per local date, after 00:30   ensure targets through today + 14, new safety flags as ai_events
+//                                               notes, the "scan due" note, release proposals due today (and on
+//                                               days since the last nightly that ran, up to 7), queue today's AI
+//                                               workout when it is an unplanned training day, and last reforecast
+//                                               as of yesterday
 //   weekly   once per ISO week, Sunday ≥ 20:00  the weekly_review job for the week ending that Sunday; a week no
 //                                               tick claimed by Sunday midnight is caught up on Monday before 12:00
 //   fast     every tick, once per fast          a planned fast that began on its own gets its day_adjustment card
 //   backup   every tick from 01:00 until done   the monthly per-table backup to R2, one table per tick (modules/export)
 //   remind   every tick 07:00–22:00             due Web Push reminders, once per local period each (modules/reminders)
 // A run that throws releases its claim, so the next tick retries it.
-import { addDays, isoWeek, localTime, safetyFlags, today, weekdayOf } from '@fitness/shared/engine'
-import { and, eq, gte } from 'drizzle-orm'
+import { addDays, eachDate, isoWeek, localTime, safetyFlags, today, weekdayOf } from '@fitness/shared/engine'
+import { and, eq, gte, lt, max } from 'drizzle-orm'
 import { ai_events, cron_runs } from './db'
 import type { Deps } from './lib/deps'
 import { days } from './modules/day'
@@ -46,6 +47,8 @@ const FAST_START_WINDOW_MS = 15 * 60_000
 const FLAG_WINDOW_DAYS = 22
 /** A flag already noted within this many days is not noted again. */
 const FLAG_REPEAT_DAYS = 7
+/** Missed days (no nightly ran) whose scheduled proposals the next nightly still releases. */
+const RELEASE_CATCH_UP_DAYS = 7
 
 const log = (level: 'info' | 'error', msg: string, extra: Record<string, unknown> = {}) =>
   console[level === 'error' ? 'error' : 'log'](JSON.stringify({ level, msg, ...extra }))
@@ -77,7 +80,7 @@ export async function runCron(deps: Deps): Promise<CronResult> {
     } catch (e) {
       result.failed.push(kind)
       log('error', `cron ${kind} failed; released for retry`, { period_key, error: e instanceof Error ? e.message : String(e) })
-      await deps.db.delete(cron_runs).where(and(eq(cron_runs.kind, kind), eq(cron_runs.period_key, period_key)))
+      await release(deps, kind, period_key)
     }
   }
   await startedFasts(deps).catch((e: unknown) => log('error', 'fast start cards failed; retried next tick', { error: String(e) }))
@@ -97,14 +100,38 @@ async function claim(deps: Deps, kind: CronKind | 'fast_start', period_key: stri
   return rows.length > 0
 }
 
+/** Give a claim back (its run threw), so the next tick retries it. */
+async function release(deps: Deps, kind: CronKind | 'fast_start', period_key: string): Promise<void> {
+  await deps.db.delete(cron_runs).where(and(eq(cron_runs.kind, kind), eq(cron_runs.period_key, period_key)))
+}
+
+/**
+ * A nightly that throws is redone in full on the next tick, so every step must be safe to repeat. reforecast is not
+ * (on a Sunday as_of it smooths the expenditure estimate against the stored one, so a redo would smooth twice): it runs
+ * last, after every step that can fail, and its single write is the nightly's final statement.
+ */
 async function nightly(deps: Deps, date: string): Promise<void> {
   const as_of = addDays(date, -1) // yesterday is the last complete day
   await ensureTargetsThrough(deps, addDays(date, 14))
-  await reforecast(deps, { as_of })
   await noteNewFlags(deps, as_of)
   await noteScanDue(deps, date)
-  await releaseDueProposals(deps, date)
+  for (const d of await datesSinceLastNightly(deps, date)) await releaseDueProposals(deps, d)
   await planNextTrainingDay(deps, date)
+  await reforecast(deps, { as_of })
+}
+
+/**
+ * Today, and each day after the last nightly that ran (its claim kept), at most RELEASE_CATCH_UP_DAYS back: a day the
+ * Worker was down or whose nightly kept failing still gets its scheduled proposals released. Today only on a first run.
+ */
+async function datesSinceLastNightly(deps: Deps, date: string): Promise<string[]> {
+  const [last] = await deps.db
+    .select({ key: max(cron_runs.period_key) })
+    .from(cron_runs)
+    .where(and(eq(cron_runs.kind, 'nightly'), lt(cron_runs.period_key, date)))
+  const floor = addDays(date, -(RELEASE_CATCH_UP_DAYS - 1))
+  const from = last?.key ? addDays(last.key, 1) : date
+  return eachDate(from > floor ? from : floor, date)
 }
 
 /** Safety flags (SPEC §3) as ai_events notes, shown never applied; a kind noted in the last 7 days is skipped. */
@@ -130,10 +157,19 @@ async function weekly(deps: Deps, week: string): Promise<void> {
   await weeklyReviewHook(deps, week)
 }
 
-/** SPEC §9 day_adjustment trigger "fast started": a planned fast that began on its own, once per fast (cron_runs). */
+/**
+ * SPEC §9 day_adjustment trigger "fast started": a planned fast that began on its own, once per fast (cron_runs). A
+ * card that fails to queue gives its claim back, so the next tick inside the start window retries it.
+ */
 async function startedFasts(deps: Deps): Promise<void> {
   const since = new Date(deps.now().getTime() - FAST_START_WINDOW_MS).toISOString()
   for (const fast of await fastsBegunSince(deps, since)) {
-    if (await claim(deps, 'fast_start', fast.id)) await adjustDayForFast(deps, fast)
+    if (!(await claim(deps, 'fast_start', fast.id))) continue
+    try {
+      await adjustDayForFast(deps, fast)
+    } catch (e) {
+      await release(deps, 'fast_start', fast.id)
+      throw e
+    }
   }
 }

@@ -1,7 +1,8 @@
 // Owns: what each reminder kind checks before it goes out and what it says (SPEC §8 "Reminders"). Each rule runs on a
 // 5-minute tick inside the waking day, claims its local period (lib/claims) at most once, and returns the notification
-// to send, or nothing. Clock rules claim first, then check (one check per period); event rules (fasts, reviews) read
-// first and claim only when there is something to say.
+// to send, or nothing. Clock rules claim first, then check (one check per period; a check that throws gives the claim
+// back, so the next tick in the grace window retries); event rules (fasts, reviews) read first and claim only when
+// there is something to say.
 //   weigh_in      at its time, daily, unless today's weigh-in is logged
 //   workout       at its time on a training day (daily_targets.training_planned, else settings.training_days),
 //                 unless a session is logged today
@@ -19,7 +20,7 @@ import { daily_targets, fast_logs, water_logs, weekly_reviews, weight_logs, work
 import type { Deps } from '../../../lib/deps'
 import type { PushDelivery } from '../../push'
 import { scanSchedule } from '../../scans'
-import { claim, unclaimed } from './claims'
+import { claim, release, unclaimed } from './claims'
 import { anyWaterSlot, dueWaterSlot, GRACE_MIN, slotDue, waterPace } from './clock'
 
 /** One tick's view: the Edmonton date and time, the reminder prefs and the settings the rules read. */
@@ -49,6 +50,17 @@ const litres = (ml: number) => `${(ml / 1000).toFixed(1)} L`
 /** The time a clock reminder fires at: its own, else the default (e.g. scan due 09:00). */
 const timeFor = (tick: Tick, kind: ReminderKind) => tick.prefs[kind]?.time ?? DEFAULT_REMINDER_PREFS[kind].time
 
+/** Claim a clock reminder's period, then run its check; a check that throws releases the claim and rethrows. */
+async function claimThenCheck(tick: Tick, kind: ReminderKind, period_key: string, check: () => Promise<Due[]>): Promise<Due[]> {
+  if (!(await claim(tick.deps, kind, period_key))) return []
+  try {
+    return await check()
+  } catch (e) {
+    await release(tick.deps, kind, period_key)
+    throw e
+  }
+}
+
 async function todaysTargets(tick: Tick) {
   const [row] = await tick.deps.db
     .select({ water_ml: daily_targets.water_ml, is_fast_day: daily_targets.is_fast_day, training_planned: daily_targets.training_planned })
@@ -60,63 +72,69 @@ async function todaysTargets(tick: Tick) {
 
 export async function weighIn(tick: Tick): Promise<Due[]> {
   const at = timeFor(tick, 'weigh_in')
-  if (!at || !slotDue(tick.time, at) || !(await claim(tick.deps, 'weigh_in', tick.date))) return []
-  const [logged] = await tick.deps.db.select({ id: weight_logs.id }).from(weight_logs).where(eq(weight_logs.date, tick.date)).limit(1)
-  if (logged) return []
-  return [
-    {
-      kind: 'weigh_in',
-      period_key: tick.date,
-      notification: { title: 'Weigh-in', body: 'Step on the scale before breakfast: same time, same conditions.', url: '/', tag: 'weigh_in' },
-      delivery: { ttl_s: 3 * HOUR_S },
-    },
-  ]
+  if (!at || !slotDue(tick.time, at)) return []
+  return claimThenCheck(tick, 'weigh_in', tick.date, async () => {
+    const [logged] = await tick.deps.db.select({ id: weight_logs.id }).from(weight_logs).where(eq(weight_logs.date, tick.date)).limit(1)
+    if (logged) return []
+    return [
+      {
+        kind: 'weigh_in',
+        period_key: tick.date,
+        notification: { title: 'Weigh-in', body: 'Step on the scale before breakfast: same time, same conditions.', url: '/', tag: 'weigh_in' },
+        delivery: { ttl_s: 3 * HOUR_S },
+      },
+    ]
+  })
 }
 
 export async function workout(tick: Tick): Promise<Due[]> {
   const at = timeFor(tick, 'workout')
-  if (!at || !slotDue(tick.time, at) || !(await claim(tick.deps, 'workout', tick.date))) return []
-  const [targets, [session]] = await Promise.all([
-    todaysTargets(tick),
-    tick.deps.db.select({ id: workout_sessions.id }).from(workout_sessions).where(eq(workout_sessions.date, tick.date)).limit(1),
-  ])
-  const planned = targets ? targets.training_planned : tick.settings.training_days.includes(weekdayOf(tick.date))
-  if (!planned || session) return []
-  return [
-    {
-      kind: 'workout',
-      period_key: tick.date,
-      notification: {
-        title: 'Training day',
-        body: targets?.is_fast_day ? 'Fast day: keep today’s session light.' : 'Today’s session is planned. Start it when you get to the gym.',
-        url: '/train',
-        tag: 'workout',
+  if (!at || !slotDue(tick.time, at)) return []
+  return claimThenCheck(tick, 'workout', tick.date, async () => {
+    const [targets, [session]] = await Promise.all([
+      todaysTargets(tick),
+      tick.deps.db.select({ id: workout_sessions.id }).from(workout_sessions).where(eq(workout_sessions.date, tick.date)).limit(1),
+    ])
+    const planned = targets ? targets.training_planned : tick.settings.training_days.includes(weekdayOf(tick.date))
+    if (!planned || session) return []
+    return [
+      {
+        kind: 'workout',
+        period_key: tick.date,
+        notification: {
+          title: 'Training day',
+          body: targets?.is_fast_day ? 'Fast day: keep today’s session light.' : 'Today’s session is planned. Start it when you get to the gym.',
+          url: '/train',
+          tag: 'workout',
+        },
+        delivery: { ttl_s: 2 * HOUR_S },
       },
-      delivery: { ttl_s: 2 * HOUR_S },
-    },
-  ]
+    ]
+  })
 }
 
 export async function scanDue(tick: Tick): Promise<Due[]> {
   const at = timeFor(tick, 'scan_due')
-  if (!at || !slotDue(tick.time, at) || !(await claim(tick.deps, 'scan_due', tick.date))) return []
-  const schedule = await scanSchedule(tick.deps)
-  const { due } = schedule
-  if (!due || due > tick.date || daysBetween(due, tick.date) % 7 !== 0) return []
-  if (schedule.awaiting_confirmation && schedule.awaiting_confirmation >= due) return []
-  const why = schedule.source === 'scheduled' ? 'as planned' : `every ${schedule.interval_days} days`
-  const body =
-    due === tick.date
-      ? `Evolt scan due today (${why}). Same conditions: morning, fasted, no training the day before.`
-      : `Evolt scan overdue since ${due}. Same conditions: morning, fasted, no training the day before.`
-  return [
-    {
-      kind: 'scan_due',
-      period_key: tick.date,
-      notification: { title: due === tick.date ? 'Scan due' : 'Scan overdue', body, url: '/scans', tag: 'scan_due' },
-      delivery: { ttl_s: 12 * HOUR_S },
-    },
-  ]
+  if (!at || !slotDue(tick.time, at)) return []
+  return claimThenCheck(tick, 'scan_due', tick.date, async () => {
+    const schedule = await scanSchedule(tick.deps)
+    const { due } = schedule
+    if (!due || due > tick.date || daysBetween(due, tick.date) % 7 !== 0) return []
+    if (schedule.awaiting_confirmation && schedule.awaiting_confirmation >= due) return []
+    const why = schedule.source === 'scheduled' ? 'as planned' : `every ${schedule.interval_days} days`
+    const body =
+      due === tick.date
+        ? `Evolt scan due today (${why}). Same conditions: morning, fasted, no training the day before.`
+        : `Evolt scan overdue since ${due}. Same conditions: morning, fasted, no training the day before.`
+    return [
+      {
+        kind: 'scan_due',
+        period_key: tick.date,
+        notification: { title: due === tick.date ? 'Scan due' : 'Scan overdue', body, url: '/scans', tag: 'scan_due' },
+        delivery: { ttl_s: 12 * HOUR_S },
+      },
+    ]
+  })
 }
 
 export async function water(tick: Tick): Promise<Due[]> {

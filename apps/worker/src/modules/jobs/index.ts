@@ -32,7 +32,7 @@ export {
   type JobMeta,
   type SweepStep,
 } from './lib/registry'
-export { runJob, DEADLINE_MS, JobFailed, MAX_ATTEMPTS, MAX_REQUEUES, RetryLater, type JobOutcome } from './lib/runner'
+export { runJob, DEADLINE_MS, JobFailed, LEASE_LOST, MAX_ATTEMPTS, MAX_REQUEUES, RetryLater, type JobOutcome } from './lib/runner'
 
 export type JobRow = Row<typeof ai_jobs>
 

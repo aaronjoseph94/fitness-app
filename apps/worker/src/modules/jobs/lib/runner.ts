@@ -1,6 +1,6 @@
 // Owns: running one job — lease it (conditional UPDATE … RETURNING, so two runners never both get it), call its handler
 // under a 25 s deadline, validate the output, and complete it, requeue it (later, or with backoff) or fail it, by what
-// went wrong (see `classify`).
+// went wrong (see `classify`) — only while it still holds the lease, so a runner whose lease expired writes nothing.
 import { JobOutputs, JobPayloads, JobType } from '@fitness/shared/schemas'
 import { and, eq, lte, sql } from 'drizzle-orm'
 import { ai_jobs } from '../../../db'
@@ -16,6 +16,8 @@ export const LEASE_MS = 30_000
 export const MAX_ATTEMPTS = 3
 /** Attempts before a job that keeps running out of time, budget or quota is marked failed. */
 export const MAX_REQUEUES = 6
+/** The outcome error of a runner that finished after its lease was taken back (its result is dropped). */
+export const LEASE_LOST = 'lease_lost'
 
 export type JobOutcome = { id: string; status: 'done' | 'queued' | 'failed' | 'skipped'; error?: string }
 
@@ -85,6 +87,9 @@ function deadline(controller: AbortController): { expired: Promise<never>; clear
  *   success:  status done, result = JobOutputs[type].parse(output), latency_ms, provider bookkeeping
  *   failure:  requeued (status queued, run_after later) or failed, by `classify`; the error text is kept either way.
  *             An invalid payload fails at once (retrying cannot fix it).
+ *   fencing:  each of those writes applies only while the row is still this attempt's lease (status running, same
+ *             attempts); a runner whose lease expired (the sweep requeued or failed the job, or another attempt took
+ *             it) changes nothing and gets 'skipped' with error LEASE_LOST.
  */
 export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
   const [peek] = await deps.db.select({ type: ai_jobs.type }).from(ai_jobs).where(eq(ai_jobs.id, id))
@@ -108,16 +113,21 @@ export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
   const attempts = job.attempts
 
   const type = JobType.parse(job.type)
-  const finish = (set: Partial<typeof ai_jobs.$inferInsert>) =>
-    deps.db
+  /** Write this attempt's outcome while it still holds the lease; false when it lost it (nothing written). */
+  const finish = async (set: Partial<typeof ai_jobs.$inferInsert>): Promise<boolean> => {
+    const rows = await deps.db
       .update(ai_jobs)
       .set({ ...set, lease_until: null, updated_at: deps.now().toISOString() })
-      .where(eq(ai_jobs.id, id))
+      .where(and(eq(ai_jobs.id, id), eq(ai_jobs.status, 'running'), eq(ai_jobs.attempts, attempts)))
+      .returning({ id: ai_jobs.id })
+    return rows.length > 0
+  }
+  const lost: JobOutcome = { id, status: 'skipped', error: LEASE_LOST }
 
   const payload = JobPayloads[type].safeParse(job.payload)
   if (!payload.success) {
     const error = `Invalid payload: ${payload.error.message}`.slice(0, 1000)
-    await finish({ status: 'failed', error })
+    if (!(await finish({ status: 'failed', error }))) return lost
     return { id, status: 'failed', error }
   }
 
@@ -130,7 +140,7 @@ export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
       timeout.expired,
     ])
     const result = JobOutputs[type].parse(output)
-    await finish({
+    const kept = await finish({
       status: 'done',
       result,
       error: null,
@@ -140,15 +150,15 @@ export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
       tokens_in: meta?.tokens_in ?? null,
       tokens_out: meta?.tokens_out ?? null,
     })
-    return { id, status: 'done' }
+    return kept ? { id, status: 'done' } : lost
   } catch (e) {
     const error = (e instanceof Error ? e.message : String(e)).slice(0, 1000)
     const verdict = classify(e, attempts)
     if (verdict.kind === 'fail' || attempts >= verdict.cap) {
-      await finish({ status: 'failed', error })
+      if (!(await finish({ status: 'failed', error }))) return lost
       return { id, status: 'failed', error }
     }
-    await finish({ status: 'queued', error, run_after: iso(deps.now().getTime() + verdict.afterMs) })
+    if (!(await finish({ status: 'queued', error, run_after: iso(deps.now().getTime() + verdict.afterMs) }))) return lost
     return { id, status: 'queued', error }
   } finally {
     timeout.clear()

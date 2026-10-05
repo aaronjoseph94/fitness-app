@@ -9,7 +9,7 @@
 // Invariants: nothing between 22:00 and 07:00 (quiet; no reads either); any kind can be off in settings.reminders
 // (missing kinds fall back to DEFAULT_REMINDER_PREFS); with no VAPID keys or no subscription for a kind, that kind
 // is skipped without touching the database again. A send that reaches no device at all releases its claim, so the
-// next tick inside the 30-minute grace window retries.
+// next tick inside the 30-minute grace window retries; so does a clock reminder whose check throws after its claim.
 import { localTime, today } from '@fitness/shared/engine'
 import { DEFAULT_REMINDER_PREFS, type PushResult, type ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { settings } from '../../db'
