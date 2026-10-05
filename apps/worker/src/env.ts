@@ -1,4 +1,5 @@
 // Owns: the Worker's environment type (bindings, vars, secrets) and the Hono app type every route uses.
+import type { Actor } from '@fitness/shared/schemas'
 import type { Hono } from 'hono'
 
 export interface Env {
@@ -24,11 +25,13 @@ export interface Env {
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string
   VAPID_SUBJECT?: string
+  ACCESS_CLIENT_ID?: string
+  ACCESS_CLIENT_SECRET?: string
 }
 
 export interface Variables {
-  /** Who is calling: Aaron through the app (Access), the health webhook, or MCP. */
-  actor: 'user' | 'mcp' | 'webhook'
+  /** Who is making this change: Aaron through the app or a webhook ('user'), a job ('ai'), or Claude via MCP ('mcp'). */
+  actor: Actor
   /** Request id for logs. */
   requestId: string
 }
