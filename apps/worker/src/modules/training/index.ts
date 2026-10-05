@@ -4,7 +4,7 @@
 // Interface (REST routes and, in phase 4, the tools layer call these; every write is idempotent on its client id):
 //   listExercises(deps, query) / getExercise(deps, id) / createExercise(deps, body)        → Exercise(s) with `allowed`
 //   getEquipment(deps) / updateEquipment(deps, body)                                        → EquipmentItem[]
-//   createExclusion(deps, body)                                                             → ExerciseExclusion
+//   createExclusion(deps, body) / deleteExclusion(deps, id)                                 → ExerciseExclusion / Ok
 //   listTemplates / getTemplate / createTemplate / updateTemplate / deleteTemplate          → Template (ai/mcp: guarded)
 //   startSession(deps, body) / getSession(deps, id) / listSessions(deps, { from, to })      → WorkoutSession
 //        start/get carry `plan` (last sets + progression default per exercise), `recovery` and `deload`
@@ -14,15 +14,21 @@
 //   planningContext(deps, date)          → library, readiness, deload, neighbouring sessions, recent digest, templates
 //   progressionFor(deps, input)          → the engine's suggestion per planned exercise (default loads)
 //   guardContext(deps, library, actor?)  → GuardContext for workout checks (engine applyGuards)
+//   swapTemplateExercise(deps, { template_id, from_exercise_id, to_exercise_id }) → SafeChangeResult<Template>
+//        safe list: same primary muscle, allowed set; applied now or proposed (plan.applySafeChange decides)
 // Template/session creation with `proposal_id` accepts that pending AI workout proposal in the same batch.
-// The session start record (readiness, plan snapshot, recovery, deload) is stored in workout_sessions.readiness.
+// Registers the 'workout' (→ an AI template) and 'template_swap' proposal handlers for plan.acceptProposal.
+// A session stores its readiness score in workout_sessions.readiness and its start plan (plan snapshot, recovery,
+// deload) in workout_sessions.plan.
 import { addDays, type Progression } from '@fitness/shared/engine'
 import type { DeloadStatus, Muscle, Readiness, Template, TemplateExerciseInput } from '@fitness/shared/schemas'
 import type { Deps } from '../../lib/deps'
+import { registerProposalHandler } from '../plan'
 import { trainingDigest, topSetsSince, type TrainingDigest } from './lib/history'
 import { exerciseTags, loadLibrary, type Library } from './lib/library'
 import { listTemplates } from './lib/templates'
 import { deloadOn, neighbourSessions, pastSessions, readinessOn, suggestionFor } from './lib/state'
+import { acceptTemplateSwap, acceptWorkout } from './lib/swap'
 
 export {
   createExclusion,
@@ -36,6 +42,8 @@ export {
   type Library,
   type LibraryEntry,
 } from './lib/library'
+export { deleteExclusion } from './lib/exclusions'
+export { swapTemplateExercise, type SwapInput } from './lib/swap'
 export { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate } from './lib/templates'
 export { deleteSet, finishSession, getSession, listSessions, logSet, startSession, updateSet } from './lib/sessions'
 export { exerciseHistory, type SessionDigest, type TrainingDigest } from './lib/history'
@@ -88,3 +96,7 @@ export async function progressionFor(
   }
   return out
 }
+
+// plan.acceptProposal of the proposals training owns: an AI workout becomes a template; a template swap applies.
+registerProposalHandler('workout', { accept: acceptWorkout })
+registerProposalHandler('template_swap', { accept: acceptTemplateSwap })

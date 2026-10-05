@@ -4,8 +4,11 @@ import * as z from 'zod'
 import type { ToolDefinition } from './define'
 import { TOOL_SETS } from './sets'
 
+type JsonSchema = Record<string, unknown>
+
 let all: readonly ToolDefinition[] | undefined
-const jsonSchemas = new Map<string, { input: Record<string, unknown>; output: Record<string, unknown> }>()
+const inputSchemas = new Map<string, JsonSchema>()
+const outputSchemas = new Map<string, JsonSchema>()
 
 export function allTools(): readonly ToolDefinition[] {
   if (!all) {
@@ -23,19 +26,27 @@ export function findTool(name: string): ToolDefinition | undefined {
   return allTools().find((t) => t.name === name)
 }
 
-/** JSON Schema for a tool's input and output, computed once per isolate (z.toJSONSchema is the expensive part). */
-export function toolJsonSchemas(tool: ToolDefinition): { input: Record<string, unknown>; output: Record<string, unknown> } {
-  let s = jsonSchemas.get(tool.name)
+function cached(cache: Map<string, JsonSchema>, tool: ToolDefinition, side: 'input' | 'output'): JsonSchema {
+  let s = cache.get(tool.name)
   if (!s) {
-    const strip = (o: Record<string, unknown>) => {
-      const { $schema: _drop, ...rest } = o
-      return rest
-    }
-    s = {
-      input: strip(z.toJSONSchema(tool.input, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>),
-      output: strip(z.toJSONSchema(tool.output, { io: 'output', unrepresentable: 'any' }) as Record<string, unknown>),
-    }
-    jsonSchemas.set(tool.name, s)
+    const { $schema: _drop, ...rest } = z.toJSONSchema(tool[side], { io: side, unrepresentable: 'any' }) as JsonSchema
+    s = rest
+    cache.set(tool.name, s)
   }
   return s
+}
+
+/**
+ * JSON Schema for a tool's input and output, each computed once per isolate (z.toJSONSchema is the expensive part).
+ * `input` is built now (MCP's tools/list advertises it; the MCP module warms every input at isolate start-up);
+ * `output` only when first read — MCP does not list output schemas, and building them all costs ~80 ms of start-up.
+ */
+export function toolJsonSchemas(tool: ToolDefinition): { input: JsonSchema; readonly output: JsonSchema } {
+  const input = cached(inputSchemas, tool, 'input')
+  return {
+    input,
+    get output() {
+      return cached(outputSchemas, tool, 'output')
+    },
+  }
 }

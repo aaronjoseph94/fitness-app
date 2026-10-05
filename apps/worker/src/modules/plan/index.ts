@@ -7,7 +7,14 @@
 //        rejected changes are recorded on the event (a 'note' when nothing passed); later ≤150 kcal steps become
 //        pending proposals due a week apart
 //   propose(deps, { changes, reason })                   → ProposalResult   guarded, stored as a pending proposal
-//   acceptProposal(deps, id) / rejectProposal(deps, id) → ProposalDecision (idempotent replays; 409 on a reversal)
+//        (its body carries the guards' rejected and scheduled lists, as does a version's change event and the note
+//        written when nothing passed; PlanVersion reads them back as `rejected` / `scheduled`)
+//   acceptProposal(deps, id) / rejectProposal(deps, id) → ProposalDecision (idempotent replays; 409 on a reversal).
+//        plan_change is handled here; every other kind by the handler its module registered:
+//   registerProposalHandler(kind, { accept, reject? })   training (workout, template_swap), week-plans (week_plan),
+//        reminders (reminder_time) register when they load, so plan never imports them
+//   applySafeChange(deps, input)                        → SafeChangeResult  a safe-list change (reminder time,
+//        exercise swap): guarded as deps.actor, then applied now or stored as a pending proposal (lib/proposals)
 //   restoreVersion(deps, id)                            → PlanVersion      a new version copying an old one's targets
 //   materialiseTargets(deps, { from, to? })             → DailyTargets[]   rebuild those dates from the active version,
 //        settings, fasts and active week plans (call after any of them changes); `to` defaults to the materialised
@@ -27,12 +34,21 @@ import type { Deps } from '../../lib/deps'
 import { HttpError, notFound } from '../../lib/http-error'
 import { eventInsert, getProposalRow, proposalDecisionUpdate, toProposal } from '../events'
 import { registerJobHandler, runSoon } from '../jobs'
-import { loadPlanContext, toPlanVersion, type PlanVersionRow } from './lib/context'
+import { loadPlanContext, loadVerdicts, toPlanVersion, type PlanVersionRow } from './lib/context'
 import { reforecast } from './lib/forecast'
+import { proposalHandler, safeChange, type HandledKind, type ProposalOf, type SafeChangeInput, type SafeChangeResult } from './lib/proposals'
 import { ensureThrough, materialise, newRowTargets, runStatements, targetHorizon } from './lib/targets'
 import { applyChanges, guardChanges, versionStatements, type RejectedChange, type ScheduledChange } from './lib/versions'
 
 export type { RejectedChange, ScheduledChange } from './lib/versions'
+export {
+  registerProposalHandler,
+  type ProposalHandler,
+  type ProposalOf,
+  type ProposalOutcome,
+  type SafeChangeInput,
+  type SafeChangeResult,
+} from './lib/proposals'
 export { reforecast }
 
 export interface VersionResult {
@@ -50,12 +66,17 @@ export interface ProposalResult {
 }
 
 export async function getActivePlan(deps: Deps): Promise<PlanVersion> {
-  return toPlanVersion((await loadPlanContext(deps)).active)
+  const { active } = await loadPlanContext(deps)
+  return toPlanVersion(active, (await loadVerdicts(deps, [active.id])).get(active.id))
 }
 
 export async function listVersions(deps: Deps): Promise<PlanVersion[]> {
   const rows = await deps.db.select().from(plan_versions).orderBy(desc(plan_versions.version))
-  return rows.map(toPlanVersion)
+  const verdicts = await loadVerdicts(
+    deps,
+    rows.map((r) => r.id),
+  )
+  return rows.map((r) => toPlanVersion(r, verdicts.get(r.id)))
 }
 
 const rejectionText = (rejected: readonly RejectedChange[]) => rejected.map((r) => r.reason).join('; ')
@@ -71,7 +92,7 @@ async function buildChange(
   const { rejected, scheduled } = guarded
   if (guarded.accepted.length === 0) {
     const text = `Plan change rejected: ${rejectionText(rejected) || 'no changes given'}`
-    const note = eventInsert(deps, { kind: 'note', summary: text, body: { text, reason: input.reason, rejected }, date: today(deps.now()) })
+    const note = eventInsert(deps, { kind: 'note', summary: text, body: { text, reason: input.reason, rejected, scheduled }, date: today(deps.now()) })
     return { statements: [note.statement], result: { plan_version: null, rejected, scheduled }, row: null, job_id: null }
   }
   const v = await versionStatements(deps, ctx, {
@@ -82,7 +103,7 @@ async function buildChange(
   })
   return {
     statements: [...v.statements, ...guarded.statements],
-    result: { plan_version: toPlanVersion(v.row), rejected, scheduled },
+    result: { plan_version: toPlanVersion(v.row, { rejected, scheduled }), rejected, scheduled },
     row: v.row,
     job_id: v.job_id,
   }
@@ -105,14 +126,18 @@ export async function propose(deps: Deps, input: { changes: readonly PlanChange[
   const g = guardChanges(deps, ctx, input.changes, deps.actor)
   if (g.accepted.length === 0) {
     const text = `Proposal dropped: ${rejectionText(g.rejected) || 'no changes given'}`
-    await eventInsert(deps, { kind: 'note', summary: text, body: { text, reason: input.reason, rejected: g.rejected }, date: today(deps.now()) })
-      .statement
+    await eventInsert(deps, {
+      kind: 'note',
+      summary: text,
+      body: { text, reason: input.reason, rejected: g.rejected, scheduled: [] },
+      date: today(deps.now()),
+    }).statement
     return { proposal: null, rejected: g.rejected, scheduled: [] }
   }
   const p = eventInsert(deps, {
     kind: 'proposal',
     summary: input.reason,
-    body: { kind: 'plan_change', changes: g.accepted, rejected: g.rejected },
+    body: { kind: 'plan_change', changes: g.accepted, rejected: g.rejected, scheduled: g.scheduled },
     proposal_status: 'pending',
   })
   await runStatements(deps, [p.statement, ...g.statements])
@@ -123,7 +148,7 @@ export async function propose(deps: Deps, input: { changes: readonly PlanChange[
 async function versionById(deps: Deps, id: string | null): Promise<PlanVersion | null> {
   if (!id) return null
   const [row] = await deps.db.select().from(plan_versions).where(eq(plan_versions.id, id))
-  return row ? toPlanVersion(row) : null
+  return row ? toPlanVersion(row, (await loadVerdicts(deps, [id])).get(id)) : null
 }
 
 async function loadProposal(deps: Deps, id: string) {
@@ -134,17 +159,29 @@ async function loadProposal(deps: Deps, id: string) {
   return { row, proposal }
 }
 
+async function decided(deps: Deps, id: string, fallback: Proposal) {
+  const after = await getProposalRow(deps, id)
+  return (after && toProposal(after)) ?? fallback
+}
+
 /**
  * Accept: a plan_change proposal becomes a new version (guards re-run as the proposal's author, since rails may have
- * moved) and the proposal is marked accepted in the same batch. Replaying an accepted proposal returns it again.
+ * moved) and the proposal is marked accepted in the same batch; any other kind goes to its registered handler (which
+ * re-checks what it applies), then is marked accepted. Replaying an accepted proposal returns it again.
  */
 export async function acceptProposal(deps: Deps, id: string): Promise<ProposalDecision> {
   const { row, proposal } = await loadProposal(deps, id)
   if (row.proposal_status === 'accepted' || row.proposal_status === 'auto_applied')
-    return { proposal, plan_version: await versionById(deps, row.plan_version_id) }
+    return { proposal, plan_version: await versionById(deps, row.plan_version_id), applied: null }
   if (row.proposal_status === 'rejected') throw new HttpError(409, 'proposal_rejected', 'This proposal was already rejected')
-  if (proposal.body.kind !== 'plan_change')
-    throw new HttpError(422, 'unsupported_proposal', `Accepting a ${proposal.body.kind} proposal is not available yet`)
+  if (proposal.body.kind !== 'plan_change') {
+    const kind: HandledKind = proposal.body.kind
+    const handler = proposalHandler(kind)
+    if (!handler) throw new HttpError(422, 'unsupported_proposal', `Accepting a ${kind} proposal is not available`)
+    const outcome = await handler.accept(deps, proposal as ProposalOf<HandledKind>)
+    await proposalDecisionUpdate(deps, id, { status: 'accepted', plan_version_id: outcome.plan_version_id })
+    return { proposal: await decided(deps, id, proposal), plan_version: await versionById(deps, outcome.plan_version_id), applied: outcome.applied }
+  }
 
   const built = await buildChange(deps, { changes: proposal.body.changes, reason: `Accepted proposal: ${row.summary}`, created_by: row.actor })
   const status = built.row ? 'accepted' : 'rejected'
@@ -153,22 +190,27 @@ export async function acceptProposal(deps: Deps, id: string): Promise<ProposalDe
   } catch (e) {
     const again = await getProposalRow(deps, id) // a concurrent accept won the version number
     const replay = again && toProposal(again)
-    if (replay && replay.proposal_status === 'accepted') return { proposal: replay, plan_version: await versionById(deps, again.plan_version_id) }
+    if (replay && replay.proposal_status === 'accepted')
+      return { proposal: replay, plan_version: await versionById(deps, again.plan_version_id), applied: null }
     throw e
   }
   if (built.job_id) runSoon(deps, built.job_id)
-  const after = await getProposalRow(deps, id)
-  return { proposal: (after && toProposal(after)) ?? proposal, plan_version: built.result.plan_version }
+  return { proposal: await decided(deps, id, proposal), plan_version: built.result.plan_version, applied: null }
 }
 
-/** Reject a pending proposal; replaying a rejection returns it again. */
+/** Reject a pending proposal (its kind's handler withdraws what proposing stored); replaying a rejection returns it. */
 export async function rejectProposal(deps: Deps, id: string): Promise<ProposalDecision> {
   const { row, proposal } = await loadProposal(deps, id)
-  if (row.proposal_status === 'rejected') return { proposal, plan_version: null }
+  if (row.proposal_status === 'rejected') return { proposal, plan_version: null, applied: null }
   if (row.proposal_status !== 'pending') throw new HttpError(409, 'proposal_accepted', 'This proposal was already applied')
+  if (proposal.body.kind !== 'plan_change') await proposalHandler(proposal.body.kind)?.reject?.(deps, proposal as ProposalOf<HandledKind>)
   await proposalDecisionUpdate(deps, id, { status: 'rejected' })
-  const after = await getProposalRow(deps, id)
-  return { proposal: (after && toProposal(after)) ?? proposal, plan_version: null }
+  return { proposal: await decided(deps, id, proposal), plan_version: null, applied: null }
+}
+
+/** A safe-list change (reminder time, exercise swap) guarded as deps.actor: applied now, proposed, or rejected. */
+export async function applySafeChange<T>(deps: Deps, input: SafeChangeInput<T>): Promise<SafeChangeResult<T>> {
+  return safeChange(deps, await loadPlanContext(deps), input)
 }
 
 /** Revert: a new active version with an older version's targets (append-only). Restoring the active one is a no-op. */

@@ -8,6 +8,7 @@ import { HEALTH_TOOLS } from './sets/health'
 import { METRIC_TOOLS } from './sets/metrics'
 import { NUTRITION_TOOLS } from './sets/nutrition'
 import { PLAN_TOOLS } from './sets/plan'
+import { REMINDER_TOOLS } from './sets/reminders'
 import { REVIEW_TOOLS } from './sets/reviews'
 import { SCAN_TOOLS } from './sets/scans'
 import { TRAINING_TOOLS } from './sets/training'
@@ -28,4 +29,5 @@ export const TOOL_SETS: ReadonlyArray<readonly ToolDefinition[]> = [
   COACH_TOOLS,
   WEEK_PLAN_TOOLS,
   WATER_TOOLS,
+  REMINDER_TOOLS,
 ]

@@ -131,7 +131,7 @@ describe('Ask AI', () => {
       expect.objectContaining({
         type: 'proposal',
         status: 'pending',
-        body: { kind: 'plan_change', changes: [expect.objectContaining({ field: 'water_ml', from: 3000, to: 3500 })] },
+        body: { kind: 'plan_change', changes: [expect.objectContaining({ field: 'water_ml', from: 3000, to: 3500 })], rejected: [], scheduled: [] },
       }),
     ])
     expect((await getActivePlan(deps)).targets.defaults.water_ml).toBe(3000)

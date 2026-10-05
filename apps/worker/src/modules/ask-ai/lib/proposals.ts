@@ -1,6 +1,6 @@
-// Owns: what an Ask AI turn created that waits for Aaron's tap — read off each proposing tool's output (a plan-change
-// or workout proposal in ai_events, a proposed week plan) — and those refs resolved to ChatProposals with their status
-// now, through the events and week-plans modules.
+// Owns: what an Ask AI turn created that waits for Aaron's tap — read off each proposing tool's output (a plan-change,
+// workout, reminder-time or template-swap proposal in ai_events, a proposed week plan) — and those refs resolved to
+// ChatProposals with their status now, through the events and week-plans modules.
 import type { ChatProposal } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 import { getProposalRow, toProposal } from '../../events'
@@ -20,17 +20,23 @@ function weekPlanRef(proposal: Out): ProposalRef[] {
   return id && week_start && plan?.status === 'proposed' ? [{ type: 'week_plan', id, week_start }] : []
 }
 
+/** A proposal event in a tool output as a ref. */
+function proposalRef(proposal: unknown): ProposalRef[] {
+  const id = str(obj(proposal)?.id)
+  return id ? [{ type: 'proposal', id }] : []
+}
+
 const READERS: Readonly<Record<string, (out: Out) => ProposalRef[]>> = {
-  propose_plan_change: (out) => {
-    const id = str(obj(out?.proposal)?.id)
-    return id ? [{ type: 'proposal', id }] : []
-  },
+  propose_plan_change: (out) => proposalRef(out?.proposal),
   generate_workout: (out) => {
     const id = str(obj(out?.draft)?.proposal_id)
     return id ? [{ type: 'proposal', id }] : []
   },
   propose_week_plan: (out) => weekPlanRef(out),
   replace_week_plan: (out) => weekPlanRef(obj(out?.proposal)),
+  // Safe-list tools: a pending proposal when auto_apply_safe is off (an auto_applied record otherwise, shown as done).
+  set_reminder_time: (out) => proposalRef(out?.proposal),
+  swap_template_exercise: (out) => proposalRef(out?.proposal),
 }
 
 /** What a successful call of `tool` created that waits for a tap. */

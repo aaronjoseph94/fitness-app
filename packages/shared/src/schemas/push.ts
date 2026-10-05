@@ -22,6 +22,8 @@ export const REMINDER_HOURS = { from: '07:00', to: '22:00' } as const satisfies 
 
 /** Kinds that fire at a time of day Aaron picks (the rest follow events: pace, planned fasts, reviews, the timer). */
 export const CLOCK_REMINDERS = ['weigh_in', 'workout', 'scan_due'] as const satisfies readonly ReminderKind[]
+export const ClockReminder = z.enum(CLOCK_REMINDERS)
+export type ClockReminder = z.infer<typeof ClockReminder>
 
 /**
  * SPEC §8 defaults: weigh-in 07:00, water when behind pace, workout 16:30 on training days, fast start/end, scan due

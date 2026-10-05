@@ -65,6 +65,13 @@ export const Exercise = Row.extend({
 })
 export type Exercise = z.infer<typeof Exercise>
 
+/**
+ * One row of GET /api/exercises: an Exercise without its instructions (about half of the list's bytes). The detail
+ * view reads them from GET /api/exercises/:id.
+ */
+export const ExerciseSummary = Exercise.omit({ instructions: true })
+export type ExerciseSummary = z.infer<typeof ExerciseSummary>
+
 /** Query of GET /api/exercises. `scope` defaults to the allowed set; `muscle` matches a primary muscle. */
 export const ExerciseQuery = z.object({
   muscle: Muscle.optional(),

@@ -1,10 +1,10 @@
-// Owns: meals as the API returns them — a meal with its items (nutrition per item), computed totals and signed photo
-// URLs — reading them in one batched round trip, and turning item inputs into meal_items rows (food items get their
+// Owns: meals as the API returns them — a meal with its items (nutrition per item), computed totals, signed photo
+// URLs and its analysis state (the status of meals.analysis_job_id) — reading them in one batched round trip, and turning item inputs into meal_items rows (food items get their
 // nutrition from the food's per-100 g values; custom items keep theirs).
-import type { FileKey, Meal, MealItemInput, MealPhoto, Nutrients } from '@fitness/shared/schemas'
+import type { FileKey, JobStatus, Meal, MealItemInput, MealPhoto, Nutrients } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { meal_items, meal_photos, meals, type NewRow, type Row } from '../../../db'
+import { ai_jobs, meal_items, meal_photos, meals, type NewRow, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { signFileUrl } from '../../files'
 import { nutritionFor } from '../../food-sources'
@@ -35,8 +35,11 @@ export async function toPhoto(deps: Deps, p: PhotoRow): Promise<MealPhoto> {
   return { id: p.id, meal_id: p.meal_id, width: p.width ?? 1, height: p.height ?? 1, exif_stripped: p.exif_stripped, url: signed.url }
 }
 
-async function assemble(deps: Deps, mealRows: MealRow[], itemRows: ItemRow[], photoRows: PhotoRow[]): Promise<Meal[]> {
+type JobState = { id: string; status: JobStatus }
+
+async function assemble(deps: Deps, mealRows: MealRow[], itemRows: ItemRow[], photoRows: PhotoRow[], jobs: JobState[]): Promise<Meal[]> {
   const photos = await Promise.all(photoRows.map((p) => toPhoto(deps, p)))
+  const jobStatus = new Map(jobs.map((j) => [j.id, j.status]))
   return mealRows.map((m) => {
     const items = itemRows
       .filter((i) => i.meal_id === m.id)
@@ -67,14 +70,17 @@ async function assemble(deps: Deps, mealRows: MealRow[], itemRows: ItemRow[], ph
       items,
       totals: sumNutrients(items),
       photos: photos.filter((p) => p.meal_id === m.id),
+      analysis: m.analysis_job_id && jobStatus.has(m.analysis_job_id) ? { job_id: m.analysis_job_id, status: jobStatus.get(m.analysis_job_id)! } : null,
     }
   })
 }
 
+const jobState = { id: ai_jobs.id, status: ai_jobs.status }
+
 /** Every meal on a local date (any status), by eaten_at, items in their order. */
 export async function mealsOn(deps: Deps, date: string): Promise<Meal[]> {
   const { db } = deps
-  const [m, i, p] = await db.batch([
+  const [m, i, p, j] = await db.batch([
     db.select().from(meals).where(eq(meals.date, date)).orderBy(asc(meals.eaten_at), asc(meals.created_at)),
     db
       .select({ item: meal_items })
@@ -88,24 +94,27 @@ export async function mealsOn(deps: Deps, date: string): Promise<Meal[]> {
       .innerJoin(meals, eq(meals.id, meal_photos.meal_id))
       .where(eq(meals.date, date))
       .orderBy(asc(meal_photos.created_at)),
+    db.select(jobState).from(ai_jobs).innerJoin(meals, eq(meals.analysis_job_id, ai_jobs.id)).where(eq(meals.date, date)),
   ])
   return assemble(
     deps,
     m,
     i.map((r) => r.item),
     p.map((r) => r.photo),
+    j,
   )
 }
 
 export async function mealById(deps: Deps, id: string): Promise<Meal | null> {
   const { db } = deps
-  const [m, i, p] = await db.batch([
+  const [m, i, p, j] = await db.batch([
     db.select().from(meals).where(eq(meals.id, id)),
     db.select().from(meal_items).where(eq(meal_items.meal_id, id)).orderBy(asc(meal_items.sort_order)),
     db.select().from(meal_photos).where(eq(meal_photos.meal_id, id)).orderBy(asc(meal_photos.created_at)),
+    db.select(jobState).from(ai_jobs).innerJoin(meals, eq(meals.analysis_job_id, ai_jobs.id)).where(eq(meals.id, id)),
   ])
   if (!m[0]) return null
-  return (await assemble(deps, m, i, p))[0] ?? null
+  return (await assemble(deps, m, i, p, j))[0] ?? null
 }
 
 const isFoodItem = (i: MealItemInput): i is Extract<MealItemInput, { food_id: string }> => 'food_id' in i
@@ -145,6 +154,13 @@ export async function itemRows(deps: Deps, mealId: string, inputs: readonly Meal
 export function itemInserts(deps: Deps, rows: readonly ItemInsert[]): BatchItem<'sqlite'>[] {
   const out: BatchItem<'sqlite'>[] = []
   for (let i = 0; i < rows.length; i += ITEMS_PER_STATEMENT) out.push(deps.db.insert(meal_items).values(rows.slice(i, i + ITEMS_PER_STATEMENT)))
+  return out
+}
+
+/** Ids split for `IN (…)` lists that stay under 100 bound parameters. */
+export function chunkIds(ids: readonly string[], size = 90): string[][] {
+  const out: string[][] = []
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size))
   return out
 }
 

@@ -2,14 +2,14 @@
 // LLM output schemas avoid transforms so they convert to JSON Schema for the providers; the router validates
 // every response with JobOutputs[type] before anything is written.
 import * as z from 'zod'
-import { Count, Fraction, Grams, Id, Instant, LocalDate, Row } from './common'
+import { Count, Fraction, Grams, Id, Instant, JobStatus, LocalDate, Row } from './common'
 import { ChatMessage } from './chat'
 import { MilestoneKind } from './body'
 import { FoodSource, Nutrients, Remaining } from './nutrition'
 import { Forecast, PlanChange } from './plan'
 import { ScanExtractOutput } from './scans'
 import { TemplateExerciseInput, WorkoutDraft } from './training'
-import { WeekPlanContent } from './week-plan'
+import { WeekPlanContentInput } from './week-plan'
 
 export const JobType = z.enum([
   'meal_analysis',
@@ -23,9 +23,6 @@ export const JobType = z.enum([
   'plan_reforecast',
 ])
 export type JobType = z.infer<typeof JobType>
-
-export const JobStatus = z.enum(['queued', 'running', 'done', 'failed'])
-export type JobStatus = z.infer<typeof JobStatus>
 
 // ── Outputs ────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -99,13 +96,16 @@ export const ScanAnalysisOutput = z.object({
 })
 export type ScanAnalysisOutput = z.infer<typeof ScanAnalysisOutput>
 
-/** weekly_review (Gemini draft when no Claude review ran): narrative, highlights, concerns, proposals, next week's plan. */
+/**
+ * weekly_review (Gemini draft when no Claude review ran): narrative, highlights, concerns, proposals, next week's plan.
+ * The plan is the proposer's shape (WeekPlanContentInput): muscle scores are the engine's, never asked of the LLM.
+ */
 export const WeeklyReviewOutput = z.object({
   narrative: z.string().max(4000),
   highlights: z.array(z.string().max(300)).max(8),
   concerns: z.array(z.string().max(300)).max(8),
   proposals: z.array(PlanChange).max(5),
-  week_plan: WeekPlanContent,
+  week_plan: WeekPlanContentInput,
 })
 export type WeeklyReviewOutput = z.infer<typeof WeeklyReviewOutput>
 

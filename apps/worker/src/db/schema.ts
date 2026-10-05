@@ -292,6 +292,8 @@ export const meals = sqliteTable(
     status: text({ enum: values(MealStatus) })
       .notNull()
       .default('parsing'),
+    /** The newest meal_analysis job queued for this meal (its status is the meal's analysis state); null = never analysed. */
+    analysis_job_id: text(),
     actor: actor(),
     ...timestamps(),
   },
@@ -513,6 +515,9 @@ export const progress_photos = sqliteTable(
     date: text().notNull(),
     pose: text({ enum: PHOTO_POSE }).notNull(),
     storage_path: text().notNull(),
+    /** Pixel size as uploaded (the browser downscaled it); null on photos stored before the columns existed. */
+    width: integer(),
+    height: integer(),
     weight_kg: real(),
     nearest_scan_id: text().references(() => scans.id),
     note: text(),
@@ -616,7 +621,10 @@ export const template_exercises = sqliteTable(
   (t) => [index('template_exercises_template_id_idx').on(t.template_id)],
 )
 
-/** One gym visit. Done = ended_at set. */
+/**
+ * One gym visit. Done = ended_at set. `readiness` is the score at start; `plan` is the start snapshot (the planned
+ * exercises, the recovery rule and the deload check), parsed with its schema on read (training module).
+ */
 export const workout_sessions = sqliteTable(
   'workout_sessions',
   {
@@ -629,6 +637,7 @@ export const workout_sessions = sqliteTable(
       .notNull()
       .default('blank'),
     readiness: text({ mode: 'json' }).$type<unknown>(),
+    plan: text({ mode: 'json' }).$type<unknown>(),
     notes: text(),
     muscle_scores: text({ mode: 'json' }).$type<MuscleScores>(),
     prs: text({ mode: 'json' }).$type<unknown>(),
@@ -720,7 +729,12 @@ export const ai_events = sqliteTable(
     read_at: text(),
     ...timestamps(),
   },
-  (t) => [index('ai_events_created_at_idx').on(t.created_at), index('ai_events_date_idx').on(t.date)],
+  (t) => [
+    index('ai_events_created_at_idx').on(t.created_at),
+    index('ai_events_date_idx').on(t.date),
+    // A plan version's 'change' event (its guard verdicts, the week-plan switch it records) and the proposals it accepted.
+    index('ai_events_plan_version_idx').on(t.plan_version_id),
+  ],
 )
 
 export const chat_messages = sqliteTable(

@@ -8,7 +8,7 @@ import { createDb, plan_versions, profile, settings, weight_logs } from '../src/
 import type { Deps } from '../src/lib/deps'
 import { getDay } from '../src/modules/day'
 import { listEvents } from '../src/modules/events'
-import { createVersion } from '../src/modules/plan'
+import { createVersion, listVersions } from '../src/modules/plan'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -74,7 +74,12 @@ describe('plan versions', () => {
     expect(result.plan_version).toBeNull()
     expect(result.rejected).toEqual([expect.objectContaining({ rule: 'calorie_floor' })])
     const { events } = await listEvents(deps, {})
-    expect(events.at(-1)).toMatchObject({ kind: 'note', actor: 'mcp', summary: expect.stringContaining('1400 kcal floor') })
+    expect(events.at(-1)).toMatchObject({
+      kind: 'note',
+      actor: 'mcp',
+      summary: expect.stringContaining('1400 kcal floor'),
+      body: { rejected: [expect.objectContaining({ rule: 'calorie_floor' })] },
+    })
   })
 })
 
@@ -101,5 +106,26 @@ describe('cron dispatch', () => {
     expect(again.ran).not.toContain('nightly')
     expect(nextNight.ran).toContain('nightly')
     expect([...first.failed, ...nextNight.failed]).toEqual([])
+  })
+})
+
+// Last: it moves the active plan, which the day view above reads for days without materialised targets.
+describe('plan version verdicts', () => {
+  it("keeps the guards' verdicts on the version: +200 kcal by mcp is 150 now and 50 a week later; protein 120 g dropped", async () => {
+    const deps = at('2026-10-05T15:00:00.000Z', 'mcp')
+    const result = await createVersion(deps, {
+      changes: [
+        { field: 'kcal', weekday: null, from: 1400, to: 1600, reason: 'More energy for training' },
+        { field: 'protein_g', weekday: null, from: 130, to: 120, reason: 'Fewer shakes' },
+      ],
+      reason: 'Coach review',
+    })
+
+    expect(result.plan_version?.targets.defaults.kcal).toBe(1550)
+    const scheduled = [expect.objectContaining({ week_offset: 1, due: '2026-10-12', change: expect.objectContaining({ from: 1550, to: 1600 }) })]
+    const rejected = [expect.objectContaining({ rule: 'protein_min' })]
+    expect(result.plan_version).toMatchObject({ scheduled, rejected })
+    const [newest] = await listVersions(deps)
+    expect(newest).toMatchObject({ id: result.plan_version!.id, scheduled, rejected })
   })
 })

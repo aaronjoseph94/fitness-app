@@ -1,5 +1,5 @@
 // Owns: the photos module's interface — progress photos (front/side/back, SPEC §8) stored privately in R2 under
-// progress-photos/<id>.<ext>, each tagged with that day's trend weight and the nearest confirmed scan.
+// progress-photos/<id>.<ext> with their pixel size, each tagged with that day's trend weight and the nearest confirmed scan.
 //   uploadPhoto(deps, upload)  → ProgressPhoto    idempotent by the client id (a replay returns the stored photo)
 //   listPhotos(deps, query)    → ProgressPhoto[]  newest first, short-lived signed URLs, tags read live
 //   removePhoto(deps, id)      → Ok               row now, R2 object after the response; replaying is a no-op
@@ -48,6 +48,8 @@ export async function uploadPhoto(deps: Deps, input: PhotoUpload): Promise<Progr
         date,
         pose: input.pose,
         storage_path: key,
+        width: input.width,
+        height: input.height,
         weight_kg: tags.trendKg.get(date) ?? null,
         nearest_scan_id: nearestScan(tags, input.taken_at)?.id ?? null,
         note: input.note || null,

@@ -104,9 +104,10 @@ export async function scanDue(tick: Tick): Promise<Due[]> {
   const { due } = schedule
   if (!due || due > tick.date || daysBetween(due, tick.date) % 7 !== 0) return []
   if (schedule.awaiting_confirmation && schedule.awaiting_confirmation >= due) return []
+  const why = schedule.source === 'scheduled' ? 'as planned' : `every ${schedule.interval_days} days`
   const body =
     due === tick.date
-      ? `Evolt scan due today (every ${schedule.interval_days} days). Same conditions: morning, fasted, no training the day before.`
+      ? `Evolt scan due today (${why}). Same conditions: morning, fasted, no training the day before.`
       : `Evolt scan overdue since ${due}. Same conditions: morning, fasted, no training the day before.`
   return [
     {

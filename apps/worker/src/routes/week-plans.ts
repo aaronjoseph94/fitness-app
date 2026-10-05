@@ -2,7 +2,7 @@
 import { endpoints } from '@fitness/shared/api'
 import type { App } from '../env'
 import { route } from '../lib/route'
-import { applyWeekPlan, getWeekPlan, listWeekPlans, proposeWeekPlan, revertWeekPlan } from '../modules/week-plans'
+import { applyWeekPlan, getWeekPlan, listWeekPlans, proposeWeekPlan, rejectWeekPlan, revertWeekPlan } from '../modules/week-plans'
 
 export function mountWeekPlansRoutes(app: App): void {
   route(app, endpoints.weekPlans.get, ({ query }, deps) => getWeekPlan(deps, query.week_start))
@@ -10,4 +10,5 @@ export function mountWeekPlansRoutes(app: App): void {
   route(app, endpoints.weekPlans.propose, ({ body }, deps) => proposeWeekPlan(deps, body))
   route(app, endpoints.weekPlans.apply, ({ params }, deps) => applyWeekPlan(deps, params.id))
   route(app, endpoints.weekPlans.revert, ({ params }, deps) => revertWeekPlan(deps, params.id))
+  route(app, endpoints.weekPlans.reject, ({ params }, deps) => rejectWeekPlan(deps, params.id))
 }

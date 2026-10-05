@@ -4,6 +4,8 @@
 // (a cron_runs claim, e.g. ('remind:water', '2026-10-05T11:00')). Rules live in lib/rules.ts.
 // Interface:
 //   dispatchReminders(deps) → ReminderRun   what went out on this tick
+//   setReminderTime(deps, { kind, time }) → SafeChangeResult   move a clock reminder (safe list: applied now, or a
+//        pending 'reminder_time' proposal); registers that proposal's handler for plan.acceptProposal
 // Invariants: nothing between 22:00 and 07:00 (quiet; no reads either); any kind can be off in settings.reminders
 // (missing kinds fall back to DEFAULT_REMINDER_PREFS); with no VAPID keys or no subscription for a kind, that kind
 // is skipped without touching the database again. A send that reaches no device at all releases its claim, so the
@@ -11,10 +13,14 @@
 import { localTime, today } from '@fitness/shared/engine'
 import { DEFAULT_REMINDER_PREFS, type PushResult, type ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { settings } from '../../db'
+import { registerProposalHandler } from '../plan'
 import { reachableKinds, sendPush, type PushDeps } from '../push'
 import { release } from './lib/claims'
 import { awake } from './lib/clock'
 import { fasts, reviewReady, scanDue, water, weighIn, workout, type Due, type Tick } from './lib/rules'
+import { acceptReminderTime } from './lib/time'
+
+export { setReminderTime } from './lib/time'
 
 export interface ReminderSent {
   kind: ReminderKind
@@ -77,3 +83,5 @@ export async function dispatchReminders(deps: PushDeps): Promise<ReminderRun> {
 }
 
 const log = (msg: string, extra: Record<string, unknown>) => console.error(JSON.stringify({ level: 'error', msg, ...extra }))
+
+registerProposalHandler('reminder_time', { accept: acceptReminderTime })

@@ -19,8 +19,9 @@ import {
   type ExerciseCreate,
   type ExerciseExclusion,
   type ExerciseQuery,
+  type ExerciseSummary,
 } from '@fitness/shared/schemas'
-import { and, asc, eq, inArray, type SQL } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, inArray, type SQL } from 'drizzle-orm'
 import { equipment_profile, exercise_exclusions, exercises, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
@@ -144,15 +145,21 @@ export async function requireExercises(deps: Deps, ids: readonly string[]): Prom
 
 // ── List, get, create ──────────────────────────────────────────────────────────────────────────────────────────
 
-/** GET /api/exercises: SQL filters on equipment/category/level, then primary muscle, name words and scope. */
-export async function listExercises(deps: Deps, query: ExerciseQuery): Promise<Exercise[]> {
+/** Every exercises column but instructions (about half the library's bytes): the list never reads them. */
+const { instructions: _instructions, ...SUMMARY_COLUMNS } = getTableColumns(exercises)
+
+/**
+ * GET /api/exercises: SQL filters on equipment/category/level, then primary muscle, name words and scope. Rows come
+ * without instructions (ExerciseSummary); getExercise has them.
+ */
+export async function listExercises(deps: Deps, query: ExerciseQuery): Promise<ExerciseSummary[]> {
   const where: SQL[] = []
   if (query.equipment) where.push(eq(exercises.equipment, query.equipment))
   if (query.category) where.push(eq(exercises.category, query.category))
   if (query.level) where.push(eq(exercises.level, query.level))
   const [rows, x, e] = await deps.db.batch([
     deps.db
-      .select()
+      .select(SUMMARY_COLUMNS)
       .from(exercises)
       .where(and(...where))
       .orderBy(asc(exercises.name)),
@@ -161,7 +168,7 @@ export async function listExercises(deps: Deps, query: ExerciseQuery): Promise<E
   const rules = toRules(x, e)
   const words = (query.q ?? '').toLowerCase().split(/\s+/).filter(Boolean)
   const all = query.scope === 'all'
-  const out: Exercise[] = []
+  const out: ExerciseSummary[] = []
   for (const row of rows) {
     if (query.muscle && !row.primary_muscles.includes(query.muscle)) continue
     if (words.length) {
@@ -170,7 +177,8 @@ export async function listExercises(deps: Deps, query: ExerciseQuery): Promise<E
     }
     const reason = exclusionReason(row, rules)
     if (!all && reason !== null) continue
-    out.push(toExercise(row, reason))
+    const { instructions: _, ...summary } = toExercise({ ...row, instructions: [] }, reason)
+    out.push(summary)
   }
   return out
 }

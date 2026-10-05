@@ -130,7 +130,7 @@ export const NextScan = z.object({
   source: z.enum(['scheduled', 'interval', 'none']),
   last_scan_date: LocalDate.nullable(),
   interval_days: Count,
-  /** last scan + interval (what the scan-due reminder uses). */
+  /** last scan + interval (`date` when no scan is scheduled; the scan-due reminder and note follow `date`). */
   interval_due: LocalDate.nullable(),
 })
 export type NextScan = z.infer<typeof NextScan>

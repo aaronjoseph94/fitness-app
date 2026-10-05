@@ -13,7 +13,7 @@ import { nutritionFor, type FoodRow, type FoodSources } from '../src/modules/foo
 import { enqueue, runJob, sweep } from '../src/modules/jobs'
 import { ProvidersExhaustedError, type CompleteRequest, type CompleteResult, type LlmRouter } from '../src/modules/llm'
 import { registerMealAiJobs } from '../src/modules/meal-ai'
-import { addMealPhoto, createFavourite, createFood, createMeal, getMeal } from '../src/modules/nutrition'
+import { addMealPhoto, createFavourite, createFood, createMeal, getMeal, updateMeal } from '../src/modules/nutrition'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -136,6 +136,7 @@ describe('meal_analysis', () => {
 
     const [job] = await jobsFor(meal.id)
     expect(job).toMatchObject({ status: 'done', provider: 'fake', model: 'fake-flash', tokens_in: 120, tokens_out: 60, attempts: 1 })
+    expect(analysed.analysis).toEqual({ job_id: job!.id, status: 'done' })
     const [note] = await db.select().from(ai_events).where(eq(ai_events.job_id, job!.id))
     expect(note).toMatchObject({ kind: 'note', actor: 'ai', date: '2026-10-05', summary: 'Lunch: 3 items, about 321 kcal (1 estimated). Check and confirm.' })
   })
@@ -149,6 +150,7 @@ describe('meal_analysis', () => {
 
     expect(await getMeal(at(T0), down.id)).toMatchObject({ status: 'review', raw_text: 'pasta with tomato sauce', items: [] })
     expect((await jobsFor(down.id))[0]).toMatchObject({ status: 'failed', attempts: 1, error: expect.stringContaining('gemini/gemini-3.8-flash=server(503)') })
+    expect((await getMeal(at(T0), down.id)).analysis).toMatchObject({ status: 'failed' })
 
     reply = () => {
       throw new ProvidersExhaustedError([
@@ -161,6 +163,21 @@ describe('meal_analysis', () => {
 
     expect(await getMeal(at(T0), quota.id)).toMatchObject({ status: 'review', raw_text: 'an apple', items: [] })
     expect((await jobsFor(quota.id))[0]).toMatchObject({ status: 'queued', attempts: 1, run_after: '2026-10-05T19:00:00.000Z' })
+  })
+
+  it("never overwrites items Aaron saved while the meal was being analysed", async () => {
+    const id = crypto.randomUUID()
+    reply = () => ({ items: [item('chicken breast, grilled', 150, 0.9)], notes: '' })
+    const meal = await createMeal(at(T0), { id, slot: 'dinner', eaten_at: T0, input_method: 'text', raw_text: 'chicken and rice' })
+    expect(meal.analysis?.job_id).toEqual(expect.any(String))
+    // He saves his own items before the queued analysis runs (the meal leaves 'parsing').
+    await updateMeal(at(T0), id, { items: [{ id: crypto.randomUUID(), food_id: ids.rice, grams: 200 }] })
+    await settle()
+
+    const after = await getMeal(at(T0), id)
+    expect(after.status).toBe('review')
+    expect(after.items.map((i) => [i.food_id, i.grams])).toEqual([[ids.rice, 200]])
+    expect(after.analysis).toMatchObject({ status: 'done' })
   })
 
   it('stores an uploaded photo in R2 and analyses the meal from its bytes', async () => {

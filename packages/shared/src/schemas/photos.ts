@@ -1,5 +1,5 @@
-// Owns: progress photos (front/side/back) — the photo as the API returns it (signed URL, the day's trend weight, the
-// nearest confirmed scan), the upload query and the list query.
+// Owns: progress photos (front/side/back) — the photo as the API returns it (signed URL, pixel size, the day's trend
+// weight, the nearest confirmed scan), the upload query and the list query.
 // Progress photos never go to any LLM (CLAUDE.md privacy rail): no job payload, tool output or prompt references them.
 import * as z from 'zod'
 import { Id, Instant, Kg, LocalDate, Percent, QueryInt, Row } from './common'
@@ -28,6 +28,9 @@ export const ProgressPhoto = Row.extend({
   /** Short-lived signed URL; fetch the list again after `url_expires_at`. */
   url: FileUrl,
   url_expires_at: Instant,
+  /** Pixel size as uploaded (null on photos stored before sizes were kept). */
+  width: z.number().int().positive().nullable(),
+  height: z.number().int().positive().nullable(),
   /** The day's trend weight (null before the first weigh-in). */
   weight_kg: Kg.nullable(),
   /** The confirmed scan nearest to taken_at (before or after), or null when there is none. */

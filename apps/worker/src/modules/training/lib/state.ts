@@ -15,7 +15,7 @@ import type { DeloadStatus, Muscle, Readiness, SessionRecovery } from '@fitness/
 import { and, asc, between, desc, eq, inArray, lt, lte, min, ne } from 'drizzle-orm'
 import { exercises, session_sets, sleep_logs, step_logs, workout_sessions } from '../../../db'
 import type { Deps } from '../../../lib/deps'
-import { chunk, startRecord, unique, type ExerciseTags, type SetRow } from './rows'
+import { chunk, startPlan, unique, type ExerciseTags, type SetRow } from './rows'
 
 /** Rep minimum assumed for a logged set whose session stored no plan (SPEC §7 default range 8–12). */
 export const DEFAULT_REP_RANGE = { rep_min: 8, rep_max: 12, sets: 3, rest_sec: 90 } as const
@@ -76,7 +76,7 @@ export async function neighbourSessions(
   const days = [addDays(date, -1), addDays(date, 1)]
   const [sessions, done] = await db.batch([
     db
-      .select({ id: workout_sessions.id, date: workout_sessions.date, readiness: workout_sessions.readiness })
+      .select({ id: workout_sessions.id, date: workout_sessions.date, plan: workout_sessions.plan, readiness: workout_sessions.readiness })
       .from(workout_sessions)
       .where(and(inArray(workout_sessions.date, days), ne(workout_sessions.id, exclude))),
     db
@@ -86,11 +86,11 @@ export async function neighbourSessions(
       .innerJoin(exercises, eq(exercises.id, session_sets.exercise_id))
       .where(and(inArray(workout_sessions.date, days), eq(session_sets.completed, true))),
   ])
-  const planIds = unique(sessions.flatMap((s) => (done.some((d) => d.session_id === s.id) ? [] : (startRecord(s)?.plan ?? []).map((p) => p.exercise_id))))
+  const planIds = unique(sessions.flatMap((s) => (done.some((d) => d.session_id === s.id) ? [] : (startPlan(s)?.exercises ?? []).map((p) => p.exercise_id))))
   const planTags = planIds.length ? await primariesOf(deps, planIds) : new Map<string, Muscle[]>()
   return sessions.map((s) => {
     const logged = done.filter((d) => d.session_id === s.id).flatMap((d) => d.primary)
-    const planned = (startRecord(s)?.plan ?? []).flatMap((p) => planTags.get(p.exercise_id) ?? [])
+    const planned = (startPlan(s)?.exercises ?? []).flatMap((p) => planTags.get(p.exercise_id) ?? [])
     return { date: s.date, primary_muscles: unique(logged.length ? logged : planned) }
   })
 }
@@ -126,7 +126,7 @@ export function recoveryFor(
 
 /**
  * Deload status for a session on `date` (engine deloadCheck, SPEC §7). The last deload is the later of
- *   - the first day of the latest run of sessions started in a deload week (start record deload.active), and
+ *   - the first day of the latest run of sessions started in a deload week (start plan deload.active), and
  *   - the day after the last session before a gap of ≥ 8 days (a week off counts as a deload);
  * training started on the first session ever. active = inside a deload week (≤ 6 days after its first session), or due.
  */
@@ -135,7 +135,7 @@ export async function deloadOn(deps: Deps, date: string, exclude: string = NONE)
   const from = addDays(date, -DELOAD_WINDOW_DAYS)
   const [rows, firstRows] = await db.batch([
     db
-      .select({ id: workout_sessions.id, date: workout_sessions.date, readiness: workout_sessions.readiness })
+      .select({ id: workout_sessions.id, date: workout_sessions.date, plan: workout_sessions.plan, readiness: workout_sessions.readiness })
       .from(workout_sessions)
       .where(and(between(workout_sessions.date, from, date), ne(workout_sessions.id, exclude)))
       .orderBy(asc(workout_sessions.date), asc(workout_sessions.started_at)),
@@ -145,7 +145,7 @@ export async function deloadOn(deps: Deps, date: string, exclude: string = NONE)
       .where(ne(workout_sessions.id, exclude)),
   ])
   const first = firstRows[0]?.first ?? null
-  const flagged = rows.filter((r) => startRecord(r)?.deload?.active)
+  const flagged = rows.filter((r) => startPlan(r)?.deload?.active)
   const lastFlag = flagged.at(-1)
   const deloadStart = lastFlag ? flagged.find((r) => daysBetween(r.date, lastFlag.date) <= 6)!.date : null
   if (deloadStart && daysBetween(deloadStart, date) <= 6)
@@ -171,7 +171,7 @@ export async function deloadOn(deps: Deps, date: string, exclude: string = NONE)
     last_deload_on,
     training_started_on: first ?? date,
     recent_sessions: recent.map((r) => {
-      const plan = startRecord(r)?.plan ?? []
+      const plan = startPlan(r)?.exercises ?? []
       return {
         date: r.date,
         sets: sets

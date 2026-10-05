@@ -65,7 +65,7 @@ describe('progress photos', () => {
     const photo = await uploadPhoto(deps, upload)
 
     // trend(03-01) = 100; trend(03-03) = 100 + 0.25 × (96 − 100) = 99; carried forward to 03-10.
-    expect(photo).toMatchObject({ id, date: '2001-03-10', pose: 'front', weight_kg: 99, taken_at: '2001-03-10T14:30:00.000Z' })
+    expect(photo).toMatchObject({ id, date: '2001-03-10', pose: 'front', weight_kg: 99, taken_at: '2001-03-10T14:30:00.000Z', width: 768, height: 1024 })
     expect(photo.nearest_scan).toEqual({ id: nearScanId, date: '2001-03-02', body_fat_pct: 30.6, weight_kg: 99.2 })
     // Signed for 30 minutes from now.
     expect(photo.url_expires_at).toBe('2001-03-10T18:30:00.000Z')

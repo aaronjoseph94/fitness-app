@@ -2,14 +2,16 @@
 // set), apply rebuilding the week's daily targets with the plan's literal kcal (a fast date at 0 kcal, +500 ml water),
 // revert walking back to the previous plan and then to the plan version, and a Gemini draft never replacing Claude's
 // plan. Rails from SPEC §2/§6 (floor 1,400, ceiling 1,700, protein 130 g, fat 45 g); today is Monday 2026-10-05.
-import { ReminderKind, Weekday, type ReminderPrefs, type WeekPlanContentInput } from '@fitness/shared/schemas'
+import { ReminderKind, Weekday, type ReminderPrefs, type WeekPlanContentInput, type WeekPlanProposal } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { asc, between } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { createDb, daily_targets, exercises, plan_versions, profile, settings, type NewRow } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { callTool, findTool, toolJsonSchemas } from '../src/modules/tools'
-import { applyWeekPlan, getWeekPlan, proposeWeekPlan, revertWeekPlan } from '../src/modules/week-plans'
+import { getProposalRow } from '../src/modules/events'
+import { acceptProposal } from '../src/modules/plan'
+import { applyWeekPlan, getWeekPlan, proposeWeekPlan, rejectWeekPlan, revertWeekPlan } from '../src/modules/week-plans'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -155,6 +157,27 @@ describe('apply and revert', () => {
     const view = (await callTool(at(), 'get_week_plan', { week_start: '2026-10-14' })) as Awaited<ReturnType<typeof getWeekPlan>>
     expect(view.proposed?.id).toBe(claude.week_plan!.id)
     await expect(applyWeekPlan(at('ai'), claude.week_plan!.id)).rejects.toMatchObject({ status: 403 })
+  })
+})
+
+describe('Ask AI week plans', () => {
+  it('wait as a proposal beside the active plan; accepting applies it, rejecting supersedes it', async () => {
+    const active = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan() })
+    await applyWeekPlan(at(), active.week_plan!.id)
+
+    const asked = (await callTool(at('ai'), 'propose_week_plan', { week_start: NEXT_MONDAY, plan: plan({ mon: 1500 }) })) as WeekPlanProposal
+    const id = asked.week_plan!.id
+    expect(asked.week_plan).toMatchObject({ status: 'proposed', author: 'gemini' })
+    expect((await getWeekPlan(at(), NEXT_MONDAY)).active?.id).toBe(active.week_plan!.id)
+
+    // The proposal event shares the plan's id; accepting it goes through the week-plans module's handler.
+    const decision = await acceptProposal(at('user'), id)
+    expect(decision).toMatchObject({ proposal: { proposal_status: 'accepted' }, applied: { entity: 'week_plan', id } })
+    expect((await weekTargets())[0]).toMatchObject({ kcal: 1500, week_plan_id: id })
+
+    const again = (await callTool(at('ai'), 'propose_week_plan', { week_start: NEXT_MONDAY, plan: plan({ mon: 1450 }) })) as WeekPlanProposal
+    expect(await rejectWeekPlan(at('user'), again.week_plan!.id)).toMatchObject({ status: 'superseded' })
+    expect((await getProposalRow(at(), again.week_plan!.id))?.proposal_status).toBe('rejected')
   })
 })
 

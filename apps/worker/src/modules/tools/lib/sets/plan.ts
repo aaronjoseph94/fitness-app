@@ -134,7 +134,7 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
     title: 'Accept a proposal',
     area: 'plan',
     description:
-      'Accept a pending plan-change proposal: the guards re-run and it becomes a new plan version (revertible). Only after Aaron says yes to that proposal. Workout and week-plan proposals are accepted from the Train tab or with apply_week_plan instead. Not available to Ask AI.',
+      'Accept a pending proposal: a plan change re-runs the guards and becomes a new plan version (revertible); a workout becomes an AI template; a week plan becomes the week\'s active plan; a reminder time or template swap is applied. Only after Aaron says yes to that proposal. Not available to Ask AI.',
     input: z.object({
       id: Id.describe('The proposal id (get_today → proposals, or get_review_bundle → open_proposals)'),
     }),
@@ -150,7 +150,7 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
     title: 'Reject a proposal',
     area: 'plan',
     description:
-      'Reject a pending proposal (it stays in the history as rejected; nothing changes). Only after Aaron says no to it. Not available to Ask AI.',
+      'Reject a pending proposal (it stays in the history as rejected; nothing changes, and a proposed week plan is set aside). Only after Aaron says no to it. Not available to Ask AI.',
     input: z.object({ id: Id }),
     output: ProposalDecision,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },

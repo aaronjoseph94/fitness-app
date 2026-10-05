@@ -19,7 +19,9 @@ import {
 } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import type { ApplyReviewResult, ReviewBundle, RevertReviewResult } from '../src/modules/coach'
-import { listVersions } from '../src/modules/plan'
+import { acceptProposal, listVersions } from '../src/modules/plan'
+import { noteScanDue, scanSchedule } from '../src/modules/scans'
+import { getSettings } from '../src/modules/settings'
 import { getReview } from '../src/modules/reviews'
 import { allTools, callTool, getProcedure, toolJsonSchemas } from '../src/modules/tools'
 
@@ -161,6 +163,26 @@ describe('tools layer', () => {
         .description.startsWith('For a weekly review, call get_procedure("coach_review") first.'),
     ).toBe(true)
     expect(getProcedure('coach_review').text).toContain('propose_week_plan')
+  })
+
+  it('set_reminder_time waits as a proposal from Ask AI (auto-apply off) until accepted; from Claude it applies', async () => {
+    type Out = { status: string; proposal: { id: string } | null; applied: ReminderPrefs | null }
+    const asked = (await callTool({ ...deps, actor: 'ai' }, 'set_reminder_time', { kind: 'weigh_in', time: '07:15' })) as Out
+    expect(asked).toMatchObject({ status: 'proposed', applied: null })
+    expect((await getSettings(deps)).settings.reminders.weigh_in?.time).toBeNull()
+
+    expect(await acceptProposal({ ...deps, actor: 'user' }, asked.proposal!.id)).toMatchObject({ applied: { entity: 'settings' } })
+    expect((await getSettings(deps)).settings.reminders.weigh_in).toEqual({ enabled: true, time: '07:15' })
+
+    const claude = (await callTool(deps, 'set_reminder_time', { kind: 'workout', time: '17:15' })) as Out
+    expect(claude).toMatchObject({ status: 'applied', proposal: null, applied: { workout: { enabled: true, time: '17:15' } } })
+  })
+
+  it('schedule_scan moves the due date the reminder and the nightly note use', async () => {
+    await callTool(deps, 'schedule_scan', { date: '2026-10-20' })
+    expect(await scanSchedule(deps)).toMatchObject({ scheduled: '2026-10-20', due: '2026-10-20', source: 'scheduled' })
+    expect(await noteScanDue(deps, '2026-10-20')).toEqual({ due: '2026-10-20', noted: true })
+    expect(await noteScanDue(deps, '2026-10-20')).toEqual({ due: '2026-10-20', noted: false })
   })
 
   it('get_today returns the day view for the baseline date 2026-09-26', async () => {

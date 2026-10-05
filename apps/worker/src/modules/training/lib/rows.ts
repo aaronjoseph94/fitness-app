@@ -1,6 +1,7 @@
 // Owns: training rows ↔ contract shapes — exercises (gif from the column or its media list, the video search link),
-// sets, sessions, templates, and the session start record kept in `workout_sessions.readiness` (readiness + the plan
-// snapshot + recovery + deload at start; extra keys beside the Readiness fields, which the contract strips on read).
+// sets, sessions, templates, and the session start plan kept in `workout_sessions.plan` (the planned exercises, the
+// recovery rule and the deload check at start; `workout_sessions.readiness` holds only the readiness score). Sessions
+// stored before that column existed kept the start plan beside the Readiness fields; startPlan reads both.
 import {
   DeloadStatus,
   PersonalRecord,
@@ -76,25 +77,43 @@ export function toSessionSet(row: SetRow): SessionSet {
   }
 }
 
-/** The session start record stored in `workout_sessions.readiness` (see the file header). */
-export const StartRecord = Readiness.extend({
+/** `workout_sessions.plan`: what a session started from (see the file header). */
+export const StartPlan = z.object({
+  exercises: z.array(TemplateExerciseInput),
+  recovery: SessionRecovery,
+  deload: DeloadStatus,
+})
+export type StartPlan = z.infer<typeof StartPlan>
+
+/** Sessions stored before `workout_sessions.plan`: the start plan beside the Readiness fields in `readiness`. */
+const LegacyStartRecord = Readiness.extend({
   plan: z.array(TemplateExerciseInput).default([]),
   recovery: SessionRecovery.optional(),
   deload: DeloadStatus.optional(),
 })
-export type StartRecord = z.infer<typeof StartRecord>
 
-/** The start record of a session row; null when none was stored (or it no longer parses). */
-export function startRecord(row: Pick<SessionRow, 'readiness'>): StartRecord | null {
-  const parsed = StartRecord.safeParse(row.readiness)
+/** The start plan of a session row (recovery/deload null on old rows that lack them); null when none was stored. */
+export function startPlan(
+  row: Pick<SessionRow, 'plan' | 'readiness'>,
+): { exercises: TemplateExerciseInput[]; recovery: SessionRecovery | null; deload: DeloadStatus | null } | null {
+  if (row.plan !== null) {
+    const parsed = StartPlan.safeParse(row.plan)
+    return parsed.success ? parsed.data : null
+  }
+  const legacy = LegacyStartRecord.safeParse(row.readiness)
+  return legacy.success ? { exercises: legacy.data.plan, recovery: legacy.data.recovery ?? null, deload: legacy.data.deload ?? null } : null
+}
+
+/** The readiness score a session started with (extra keys on old rows stripped); null when none was stored. */
+export function startReadiness(row: Pick<SessionRow, 'readiness'>): Readiness | null {
+  const parsed = Readiness.safeParse(row.readiness)
   return parsed.success ? parsed.data : null
 }
 
 const PrList = z.array(PersonalRecord)
 
 export function toWorkoutSession(row: SessionRow, sets: readonly SetRow[]): WorkoutSession {
-  const record = startRecord(row)
-  const readiness = record ? Readiness.parse(record) : null
+  const readiness = startReadiness(row)
   const prs = PrList.safeParse(row.prs)
   return {
     id: row.id,

@@ -7,7 +7,7 @@ import type { BatchItem } from 'drizzle-orm/batch'
 import { meal_photos, meals } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
-import { jobInsertOnce, runSoon } from '../../jobs'
+import { jobInsert, queuedJobId, runSoon } from '../../jobs'
 import { runBatch, toPhoto } from './meals'
 
 /** meal_analysis is user-facing: it runs before nightly work. */
@@ -46,14 +46,14 @@ export async function addMealPhoto(deps: Deps, mealId: string, q: MealPhotoUploa
       .onConflictDoNothing({ target: meal_photos.id }),
   ]
   const analyse = meal.input_method === 'photo' && meal.status !== 'confirmed'
-  const job = analyse
-    ? await jobInsertOnce(deps, { type: 'meal_analysis', payload: { meal_id: mealId }, priority: MEAL_ANALYSIS_PRIORITY }, { meal_id: mealId })
-    : null
+  // One queued job reads every photo when it runs: reuse a queued one, else queue a new one.
+  const queued = analyse ? await queuedJobId(deps, 'meal_analysis', { meal_id: mealId }) : null
+  const job = analyse && !queued ? jobInsert(deps, { type: 'meal_analysis', payload: { meal_id: mealId }, priority: MEAL_ANALYSIS_PRIORITY }) : null
   if (analyse)
     statements.push(
       db
         .update(meals)
-        .set({ status: 'parsing', updated_at: now })
+        .set({ status: 'parsing', analysis_job_id: job?.id ?? queued, updated_at: now })
         .where(and(eq(meals.id, mealId), ne(meals.status, 'confirmed'))),
     )
   if (job) statements.push(job.statement)

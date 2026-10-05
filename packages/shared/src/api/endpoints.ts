@@ -24,6 +24,7 @@ import {
   ExerciseExclusion,
   ExerciseHistory,
   ExerciseQuery,
+  ExerciseSummary,
   ExclusionCreate,
   ExportManifest,
   ExportPage,
@@ -122,7 +123,7 @@ const DateParams = z.object({ date: LocalDate })
 const WeekParams = z.object({ week: IsoWeek })
 const FileKeyParams = z.object({ key: FileKey })
 
-/** Week plans (SPEC §8 "Next-week plan"): the plans of a week, the week view, propose, apply, revert. */
+/** Week plans (SPEC §8 "Next-week plan"): the plans of a week, the week view, propose, apply, revert, reject. */
 const weekPlans = {
   /** Newest week first; filter by week (its Monday) and status. */
   list: defineEndpoint({ method: 'GET', path: '/api/week-plans', query: WeekPlanQuery, response: z.array(WeekPlan) }),
@@ -134,6 +135,8 @@ const weekPlans = {
   apply: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/apply', params: IdParams, response: WeekPlanApplied }),
   /** Undo applying the active plan: the week's previous active plan comes back (or the plan version's targets). */
   revert: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/revert', params: IdParams, response: WeekPlanApplied }),
+  /** Turn down a proposed plan: it is superseded (the week keeps its active plan) and its proposal is rejected. */
+  reject: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/reject', params: IdParams, response: WeekPlan }),
 }
 
 export const endpoints = {
@@ -174,6 +177,8 @@ export const endpoints = {
 
   nutrition: {
     listMeals: defineEndpoint({ method: 'GET', path: '/api/meals', query: MealListQuery, response: z.array(Meal) }),
+    /** One meal with its items, photos and analysis state (poll it while `analysis.status` is queued or running). */
+    getMeal: defineEndpoint({ method: 'GET', path: '/api/meals/:id', params: IdParams, response: Meal }),
     createMeal: defineEndpoint({ method: 'POST', path: '/api/meals', body: MealCreate, response: Meal, offline: 'queue' }),
     updateMeal: defineEndpoint({
       method: 'PATCH',
@@ -268,7 +273,8 @@ export const endpoints = {
   },
 
   training: {
-    listExercises: defineEndpoint({ method: 'GET', path: '/api/exercises', query: ExerciseQuery, response: z.array(Exercise) }),
+    /** Every row without instructions (ExerciseSummary); getExercise returns one in full. */
+    listExercises: defineEndpoint({ method: 'GET', path: '/api/exercises', query: ExerciseQuery, response: z.array(ExerciseSummary) }),
     getExercise: defineEndpoint({ method: 'GET', path: '/api/exercises/:id', params: IdParams, response: Exercise }),
     createExercise: defineEndpoint({
       method: 'POST',
@@ -292,6 +298,8 @@ export const endpoints = {
       response: ExerciseExclusion,
       offline: 'queue',
     }),
+    /** Un-hide: remove an exclusion (idempotent). The body-only rail is not an exclusion and stays. */
+    deleteExclusion: defineEndpoint({ method: 'DELETE', path: '/api/exclusions/:id', params: IdParams, response: Ok, offline: 'queue' }),
     listTemplates: defineEndpoint({ method: 'GET', path: '/api/templates', response: z.array(Template) }),
     getTemplate: defineEndpoint({ method: 'GET', path: '/api/templates/:id', params: IdParams, response: Template }),
     createTemplate: defineEndpoint({

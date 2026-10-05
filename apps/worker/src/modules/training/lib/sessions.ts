@@ -1,5 +1,5 @@
-// Owns: workout sessions — start (from a template, a week-plan snapshot, an AI draft, or blank) with readiness, the
-// recovery rule and the deload check stored as the start record; the session view with each planned exercise's last
+// Owns: workout sessions — start (from a template, a week-plan snapshot, an AI draft, or blank) with readiness, and
+// the plan snapshot, the recovery rule and the deload check stored as the start plan (workout_sessions.plan); the session view with each planned exercise's last
 // sets and progression default; set logging with client ids; and finish (engine sessionSummary + an ai_events note).
 import { DELOAD_SETS_FACTOR, localDate, sessionSummary, weekdayOf, weekStart, type SessionTotals } from '@fitness/shared/engine'
 import {
@@ -24,7 +24,7 @@ import { badRequest, HttpError, notFound } from '../../../lib/http-error'
 import { eventInsert } from '../../events'
 import { acceptStatement, loadWorkoutProposal } from './guard'
 import { exerciseTags, requireExercises } from './library'
-import { bySetOrder, round, startRecord, toSessionSet, toWorkoutSession, unique, type ExerciseTags, type SessionRow, type StartRecord } from './rows'
+import { bySetOrder, round, startPlan, startReadiness, toSessionSet, toWorkoutSession, unique, type ExerciseTags, type SessionRow, type StartPlan } from './rows'
 import { DEFAULT_REP_RANGE, deloadOn, neighbourSessions, pastSessions, readinessOn, recoveryFor, suggestionFor, topLoad } from './state'
 import { scoresOf, templatePlan } from './templates'
 
@@ -71,7 +71,7 @@ export async function startSession(deps: Deps, input: SessionCreate): Promise<Wo
 
   const [readiness, deload, neighbours] = await Promise.all([readinessOn(deps, date), deloadOn(deps, date), neighbourSessions(deps, date)])
   const primaries = unique(plan.flatMap((p) => tags.get(p.exercise_id)?.primary_muscles ?? []))
-  const record: StartRecord = { ...readiness, plan, recovery: recoveryFor(date, primaries, neighbours, readiness), deload }
+  const start: StartPlan = { exercises: plan, recovery: recoveryFor(date, primaries, neighbours, readiness), deload }
   const now = deps.now().toISOString()
   const statements: BatchItem<'sqlite'>[] = [
     deps.db
@@ -83,7 +83,8 @@ export async function startSession(deps: Deps, input: SessionCreate): Promise<Wo
         started_at: input.started_at,
         ended_at: null,
         origin: input.origin,
-        readiness: record,
+        readiness,
+        plan: start,
         notes: null,
         muscle_scores: plan.length ? scoresOf(plan, tags) : null,
         prs: null,
@@ -105,8 +106,8 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
     deps.db.select().from(session_sets).where(eq(session_sets.session_id, id)),
   ])
   if (!row) throw notFound('Session')
-  const record = startRecord(row)
-  const planned = record?.plan ?? []
+  const start = startPlan(row)
+  const planned = start?.exercises ?? []
   const extra = unique([...sets].sort(bySetOrder).map((s) => s.exercise_id)).filter((x) => !planned.some((p) => p.exercise_id === x))
   const entries: TemplateExerciseInput[] = [
     ...planned,
@@ -122,7 +123,7 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
   ]
   const ids = entries.map((e) => e.exercise_id)
   const [tags, past] = await Promise.all([exerciseTags(deps, ids), pastSessions(deps, ids, row.started_at)])
-  const deload: DeloadStatus = record?.deload ?? { due: false, reason: null, weeks_since: 0, sets_factor: DELOAD_SETS_FACTOR, active: false }
+  const deload: DeloadStatus = start?.deload ?? { due: false, reason: null, weeks_since: 0, sets_factor: DELOAD_SETS_FACTOR, active: false }
   const plan = entries.flatMap((e): SessionPlanExercise[] => {
     const t = tags.get(e.exercise_id)
     if (!t) return []
@@ -143,7 +144,7 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
   return {
     ...toWorkoutSession(row, sets),
     plan,
-    recovery: record?.recovery ?? { conflicts: [], reduced_volume: record?.reduced_volume ?? false, notes: [] },
+    recovery: start?.recovery ?? { conflicts: [], reduced_volume: startReadiness(row)?.reduced_volume ?? false, notes: [] },
     deload,
   }
 }

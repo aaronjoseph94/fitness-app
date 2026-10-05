@@ -20,6 +20,10 @@ export type Instant = z.infer<typeof Instant>
 export const LocalTime = z.iso.time({ precision: -1 })
 export type LocalTime = z.infer<typeof LocalTime>
 
+/** An `ai_jobs` row's state: queued → running → done | failed (a requeued job is queued again). */
+export const JobStatus = z.enum(['queued', 'running', 'done', 'failed'])
+export type JobStatus = z.infer<typeof JobStatus>
+
 /** ISO week key, e.g. "2026-W41". */
 export const IsoWeek = z.string().regex(/^\d{4}-W\d{2}$/)
 export type IsoWeek = z.infer<typeof IsoWeek>

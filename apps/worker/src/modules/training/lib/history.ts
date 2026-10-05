@@ -7,7 +7,7 @@ import * as z from 'zod'
 import { exercises, session_sets, template_exercises, workout_sessions } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { notFound } from '../../../lib/http-error'
-import { round, startRecord, toSessionSet, type SetRow } from './rows'
+import { round, startPlan, toSessionSet, type SetRow } from './rows'
 import { DEFAULT_REP_RANGE, deloadOn, suggestionFor, topLoad, type PastSession } from './state'
 
 /** Sessions shown per exercise (the strength chart's whole history for a year of four sessions a week). */
@@ -28,7 +28,13 @@ export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseH
   const [[exercise], rows, prRows, [template]] = await db.batch([
     db.select({ id: exercises.id, primary_muscles: exercises.primary_muscles, equipment: exercises.equipment }).from(exercises).where(eq(exercises.id, id)),
     db
-      .select({ set: session_sets, date: workout_sessions.date, started_at: workout_sessions.started_at, readiness: workout_sessions.readiness })
+      .select({
+        set: session_sets,
+        date: workout_sessions.date,
+        started_at: workout_sessions.started_at,
+        plan: workout_sessions.plan,
+        readiness: workout_sessions.readiness,
+      })
       .from(session_sets)
       .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
       .where(and(eq(session_sets.exercise_id, id), eq(session_sets.completed, true)))
@@ -46,12 +52,12 @@ export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseH
   ])
   if (!exercise) throw notFound('Exercise')
 
-  const sessions: (PastSession & { readiness: unknown })[] = []
+  const sessions: (PastSession & { plan: unknown; readiness: unknown })[] = []
   for (const r of rows) {
     let s = sessions.at(-1)
     if (s?.session_id !== r.set.session_id) {
       if (sessions.length >= HISTORY_SESSIONS) break
-      s = { session_id: r.set.session_id, date: r.date, started_at: r.started_at, readiness: r.readiness, sets: [] }
+      s = { session_id: r.set.session_id, date: r.date, started_at: r.started_at, plan: r.plan, readiness: r.readiness, sets: [] }
       sessions.push(s)
     }
     s.sets.push(r.set)
@@ -65,7 +71,7 @@ export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseH
     .filter((p) => p.exercise_id === id)
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
-  const planned = sessions.map((s) => startRecord(s)?.plan.find((p) => p.exercise_id === id)).find((p) => p !== undefined)
+  const planned = sessions.map((s) => startPlan(s)?.exercises.find((p) => p.exercise_id === id)).find((p) => p !== undefined)
   const range = planned ?? template ?? DEFAULT_REP_RANGE
   const deload = await deloadOn(deps, today(deps.now()))
   const next = sessions.length ? suggestionFor(exercise, range, sessions, deload.active) : null

@@ -1,7 +1,8 @@
 // Owns: nutrition — meals (each with items, computed totals and photos), foods and favourites (incl. recipes), and the
 // meal side of the AI pipeline (what meal_analysis reads and when its items may land; auto-confirm).
 // Interface:
-//   listMeals(deps, date) / getMeal(deps, id)   → Meal[] / Meal
+//   listMeals(deps, date) / getMeal(deps, id)   → Meal[] / Meal   with `analysis` = the status of the meal's newest
+//        meal_analysis job (meals.analysis_job_id, set whenever one is queued for it)
 //   createMeal(deps, MealCreate)  → Meal   by input method: manual/barcode items (food items priced per 100 g) and a
 //        favourite (copied, scaled) are confirmed at once; text/voice store raw_text as 'parsing' and queue a
 //        meal_analysis job in the same batch; photo waits as 'parsing' for its photos. A replayed id returns the meal.
@@ -91,6 +92,7 @@ export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
       input_method: body.input_method,
       raw_text,
       status,
+      analysis_job_id: job?.id ?? null,
       actor: deps.actor,
       created_at: now,
       updated_at: now,

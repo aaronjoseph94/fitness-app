@@ -11,6 +11,7 @@ import * as z from 'zod'
 import { ai_events, plan_versions, week_plans } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
+import { proposalDecisionUpdate } from '../../events'
 import { runSoon } from '../../jobs'
 import { weekPlanVersion } from '../../plan'
 import { AUTHOR_LABEL, weekPlanById } from './rows'
@@ -93,6 +94,8 @@ export async function applyPlan(
         .update(week_plans)
         .set({ status: 'active', plan: content, plan_version_id: v.plan_version.id, updated_at: now })
         .where(eq(week_plans.id, plan.id)),
+      // An Ask AI plan's pending proposal shares the plan's id (no-op for plans proposed without one).
+      proposalDecisionUpdate(deps, plan.id, { status: 'accepted', plan_version_id: v.plan_version.id }),
     ],
     v.job_id,
   )
@@ -141,6 +144,14 @@ export async function revertPlan(deps: Deps, plan: WeekPlan): Promise<WeekPlanAp
   }
 }
 
-/** Mark earlier proposed plans superseded (inside the caller's batch). */
-export const supersedeStatement = (deps: Deps, ids: readonly string[]) =>
-  deps.db.update(week_plans).set({ status: 'superseded', updated_at: deps.now().toISOString() }).where(inArray(week_plans.id, [...ids]))
+/**
+ * Mark proposed plans superseded and reject their pending proposals (an Ask AI plan's proposal shares its id), as
+ * statements for the caller's batch.
+ */
+export const supersedeStatements = (deps: Deps, ids: readonly string[]): BatchItem<'sqlite'>[] =>
+  ids.length === 0
+    ? []
+    : [
+        deps.db.update(week_plans).set({ status: 'superseded', updated_at: deps.now().toISOString() }).where(inArray(week_plans.id, [...ids])),
+        ...ids.map((id) => proposalDecisionUpdate(deps, id, { status: 'rejected' })),
+      ]

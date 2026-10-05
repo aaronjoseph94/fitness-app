@@ -71,6 +71,8 @@ export async function toPhoto(deps: Deps, row: PhotoRow, tags: Tags): Promise<Pr
     pose: row.pose,
     url: signed.url,
     url_expires_at: signed.expires_at,
+    width: row.width,
+    height: row.height,
     weight_kg: tags.trendKg.get(row.date) ?? row.weight_kg,
     nearest_scan: nearestScan(tags, row.taken_at),
     note: row.note,

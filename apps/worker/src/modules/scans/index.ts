@@ -11,7 +11,8 @@
 //   listScans(deps) / getScan(deps, id) → Scan[] / Scan  newest first; comparisons and flags computed on read
 //   deleteScan(deps, id)               → Ok             unconfirmed only (409 otherwise); removes the sheet
 //   compareScanIds(deps, a, b)         → ScanChange     the later scan against the earlier (tools: compare_scans)
-//   scanSchedule(deps)                 → ScanSchedule   last scan, interval, next due date
+//   scanSchedule(deps)                 → ScanSchedule   last scan, interval, the coach's scheduled date (newest
+//                                                       scan_scheduled note since the last scan), next due date
 //   noteScanDue(deps, date)            → { due, noted } nightly: an ai_events note when a scan is due (idempotent)
 //   extractScan / analyseScan(deps + { router }, payload)  the two job bodies (registered below; tests call them with
 //        a fake router). analyseScan never fails on the router: no LLM answer → the engine's plain debrief.
@@ -45,7 +46,7 @@ import { DEBRIEF_SYSTEM, DebriefOutput, EXTRACT_PROMPT, EXTRACT_SYSTEM } from '.
 import { loadStore, toViews } from './lib/read'
 import { recordColumns, segmentRows } from './lib/rows'
 
-export { noteScanDue, scanSchedule, type ScanSchedule } from './lib/due'
+export { noteScanDue, scanSchedule, ScanScheduledNoteBody, type ScanSchedule } from './lib/due'
 
 /** The scan jobs' deps: the usual bag plus the LLM router (tests pass a fake). */
 export type ScanJobDeps = Deps & { router: Pick<LlmRouter, 'complete'> }

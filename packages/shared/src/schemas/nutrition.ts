@@ -2,7 +2,7 @@
 // create/patch bodies for every input method (text, voice, photo, barcode, manual items, favourite).
 // Wire names follow SPEC spelling ("favorite"); schema names follow GLOSSARY ("Favourite").
 import * as z from 'zod'
-import { Count, Fraction, Grams, Id, Instant, Kcal, LocalDate, MealSlot, QueryInt, Row } from './common'
+import { Count, Fraction, Grams, Id, Instant, JobStatus, Kcal, LocalDate, MealSlot, QueryInt, Row } from './common'
 import { FileUrl, ImageType } from './files'
 
 /** Energy and macros of a portion, a day's intake or a day's targets. */
@@ -160,6 +160,14 @@ export const MealPhoto = z.object({
 export type MealPhoto = z.infer<typeof MealPhoto>
 
 /** A meal as the API returns it, with items, computed totals and photos. `date` is eaten_at's Edmonton day. */
+/**
+ * The meal's newest meal_analysis job (GET /api/jobs/:id has the rest). queued/running = still analysing (a retry after
+ * a provider hiccup is queued again while the meal already sits in review); failed = no provider answered, add items
+ * by hand; done = the items landed (or Aaron's own edits came first and were kept).
+ */
+export const MealAnalysis = z.object({ job_id: Id, status: JobStatus })
+export type MealAnalysis = z.infer<typeof MealAnalysis>
+
 export const Meal = Row.extend({
   date: LocalDate,
   slot: MealSlot,
@@ -170,6 +178,8 @@ export const Meal = Row.extend({
   items: z.array(MealItem),
   totals: Nutrients,
   photos: z.array(MealPhoto),
+  /** Null when the meal was never sent for analysis (manual, barcode, favourite). */
+  analysis: MealAnalysis.nullable(),
 })
 export type Meal = z.infer<typeof Meal>
 

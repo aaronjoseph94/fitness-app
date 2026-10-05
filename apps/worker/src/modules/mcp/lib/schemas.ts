@@ -3,7 +3,8 @@
 // validate() passes arguments through: callTool validates them with the tool's Zod schema, so the rules live in one
 // place and Ask AI and MCP report the same errors. Output schemas are not advertised: they total ~440 KB across the
 // tools (inputs ~50 KB) and would bloat tools/list and Claude's context; every result still carries structuredContent
-// plus the same JSON as text. (toolJsonSchemas builds both sides: ~80 ms per isolate, paid at start-up, not per request.)
+// plus the same JSON as text. (toolJsonSchemas builds the input side here, at start-up; output sides are built only if
+// something reads them, which saves ~80 ms per isolate.)
 import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server'
 import { allTools, toolJsonSchemas, type ToolDefinition } from '../../tools'
 

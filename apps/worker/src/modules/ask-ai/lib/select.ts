@@ -36,6 +36,7 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
     ['week_plans'],
   ],
   [/\b(scans?|evolt|body fat|lean|visceral|muscle mass|segment\w*|composition)\b/, ['scans']],
+  [/\b(remind\w*|notif\w*|alerts?|alarms?|push)\b/, ['reminders']],
   [/\b(review\w*|report\w*|summary|recap|progress|how am i doing|overall)\b/, ['reviews', 'coach']],
   [/\b(average\w*|avg|mean|total|history|month\w*|january|february|march|april|may|june|july|august|september|october|november|december)\b/, ['metrics']],
 ]

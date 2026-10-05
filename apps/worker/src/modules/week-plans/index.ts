@@ -8,13 +8,20 @@
 //   proposeWeekPlan(deps, { id?, week_start, plan, author?, review_id? }) → WeekPlanProposal
 //        week_start must be a Monday of a week not over (400 / 422). The guards (lib/check) run as the author
 //        (default from deps.actor); any rejected issue stores nothing. Stored as proposed, superseding the week's
-//        earlier proposed plans — except that a Gemini draft is not stored when the week already has an active plan
-//        or a proposed one by Claude or Aaron. Replaying an id returns the stored plan.
+//        earlier proposed plans (their pending proposals rejected) — except that a weekly-review Gemini draft
+//        (author 'gemini') is not stored when the week already has an active plan or a proposed one by Claude, Aaron
+//        or Ask AI. Ask AI (actor 'ai', no author or review_id given) is always stored, with a pending 'week_plan'
+//        proposal event whose id is the plan's id; it never replaces the active plan until Aaron accepts. Replaying
+//        an id returns the stored plan.
 //   applyWeekPlan(deps, id)           → WeekPlanApplied  guards re-run as the author (422 on a rejected issue); the
-//        previous active plan superseded, daily_targets of that week rebuilt from today on, one plan version and one
-//        'change' event — ONE batch. Applying the active plan again returns it. 403 for actor 'ai' (Aaron taps Accept)
+//        previous active plan superseded, daily_targets of that week rebuilt from today on, one plan version, one
+//        'change' event and the plan's pending proposal accepted — ONE batch. Applying the active plan again returns
+//        it. 403 for actor 'ai' (Aaron taps Accept)
 //   revertWeekPlan(deps, id)          → WeekPlanApplied  only the active plan (409 otherwise): the plan it replaced is
 //        active again (or the week follows the plan version), as one plan version. 403 for actor 'ai'
+//   rejectWeekPlan(deps, id)          → WeekPlan         a proposed plan is superseded and its proposal rejected (one
+//        batch); a superseded one is returned as is; 409 for the active plan (revert it instead). 403 for actor 'ai'
+// Registers the 'week_plan' proposal handler (plan.acceptProposal / rejectProposal → apply / reject).
 //   replaceWeekPlan(deps, { week_start?, templates_by_weekday, focus_note? }) → WeekPlanReplaced   program design:
 //        the week's active plan (or one built from the plan version) with those weekdays' sessions set from
 //        templates (null = rest), proposed, then applied at once unless the actor is 'ai'
@@ -39,7 +46,8 @@ import { week_plans } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError } from '../../lib/http-error'
 import { eventInsert } from '../events'
-import { applyPlan, assertMayActivate, assertWeekOpen, revertPlan, supersedeStatement } from './lib/activate'
+import { registerProposalHandler } from '../plan'
+import { applyPlan, assertMayActivate, assertWeekOpen, revertPlan, supersedeStatements } from './lib/activate'
 import { basePlan, templateSession } from './lib/base'
 import { checkWeekPlan } from './lib/check'
 import { ACTOR_OF, AUTHOR_LABEL, AUTHOR_OF, listPlans, requireWeekPlan, weekPlanById, weekState, weekTargets } from './lib/rows'
@@ -79,8 +87,12 @@ export async function proposeWeekPlan(deps: Deps, input: ProposeInput): Promise<
   assertWeekOpen(deps, input.week_start)
   const author = input.author ?? AUTHOR_OF[deps.actor]
   const { active, proposed } = await weekState(deps, input.week_start)
-  if (author === 'gemini') {
-    const keep = active ?? proposed.find((p) => p.author !== 'gemini')
+  // Ask AI (actor 'ai' through the tools layer: no author or review given): Aaron asked for this plan in the chat, so
+  // it is stored for his tap whatever the week already has. The weekly-review job names itself (author 'gemini').
+  const askAi = deps.actor === 'ai' && input.author === undefined && !input.review_id
+  if (author === 'gemini' && !askAi) {
+    // An Ask AI plan (author gemini, no review) is Aaron's request: a review draft never replaces it either.
+    const keep = active ?? proposed.find((p) => p.author !== 'gemini' || p.review_id === null)
     if (keep)
       return {
         week_plan: null,
@@ -109,8 +121,12 @@ export async function proposeWeekPlan(deps: Deps, input: ProposeInput): Promise<
     updated_at: now,
   })
   const text = `${AUTHOR_LABEL[author]} proposed a plan for the week of ${input.week_start}${checked.plan.focus_note ? `: ${checked.plan.focus_note}` : ''}`
-  const note = author === 'user' ? [] : [eventInsert(deps, { kind: 'note', summary: text.slice(0, 300), body: { text, week_plan_id: id }, date: today(deps.now()) }).statement]
-  await deps.db.batch([insert, ...(superseded.length ? [supersedeStatement(deps, superseded)] : []), ...note])
+  const event = askAi
+    ? [eventInsert(deps, { id, kind: 'proposal', summary: text.slice(0, 300), body: { kind: 'week_plan', week_plan_id: id }, proposal_status: 'pending' }).statement]
+    : author === 'user'
+      ? []
+      : [eventInsert(deps, { kind: 'note', summary: text.slice(0, 300), body: { text, week_plan_id: id }, date: today(deps.now()) }).statement]
+  await deps.db.batch([insert, ...supersedeStatements(deps, superseded), ...event])
   return { week_plan: await requireWeekPlan(deps, id), rejected: [], adjusted: checked.adjusted, superseded, note: null }
 }
 
@@ -135,6 +151,18 @@ export async function revertWeekPlan(deps: Deps, id: string): Promise<WeekPlanAp
   return revertPlan(deps, plan)
 }
 
+export async function rejectWeekPlan(deps: Deps, id: string): Promise<WeekPlan> {
+  assertMayActivate(deps)
+  const plan = await requireWeekPlan(deps, id)
+  if (plan.status === 'active')
+    throw new HttpError(409, 'week_plan_active', 'This is the week\'s active plan; revert it instead of rejecting it')
+  if (plan.status === 'proposed') {
+    const [first, ...rest] = supersedeStatements(deps, [plan.id])
+    await deps.db.batch([first!, ...rest])
+  }
+  return requireWeekPlan(deps, id)
+}
+
 export async function replaceWeekPlan(
   deps: Deps,
   input: { week_start?: string; templates_by_weekday: TemplatesByWeekday; focus_note?: string },
@@ -157,3 +185,15 @@ export async function todaysPlannedSession(deps: Deps, date: string): Promise<We
   const [active] = await listPlans(deps, { week_start: weekStart(date), status: 'active' })
   return active?.plan.sessions[weekdayOf(date)] ?? null
 }
+
+// plan.acceptProposal / rejectProposal of a 'week_plan' proposal (Ask AI's plans) apply or turn down the plan.
+registerProposalHandler('week_plan', {
+  accept: async (deps, proposal) => {
+    const applied = await applyWeekPlan(deps, proposal.body.week_plan_id)
+    return { plan_version_id: applied.plan_version_id, applied: { entity: 'week_plan', id: proposal.body.week_plan_id } }
+  },
+  reject: async (deps, proposal) => {
+    const plan = await weekPlanById(deps, proposal.body.week_plan_id)
+    if (plan?.status === 'proposed') await rejectWeekPlan(deps, plan.id)
+  },
+})

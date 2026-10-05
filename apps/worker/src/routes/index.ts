@@ -3,6 +3,7 @@ import type { App } from '../env'
 import { mountAiRoutes } from './ai'
 import { mountBodyRoutes } from './body'
 import { mountDayRoutes } from './day'
+import { mountExclusionRoutes } from './exclusions'
 import { mountExportRoutes } from './export'
 import { mountFastingRoutes } from './fasting'
 import { mountFilesRoutes } from './files'
@@ -31,6 +32,7 @@ export function mountApiRoutes(app: App): void {
   mountPlanRoutes(app)
   mountFilesRoutes(app)
   mountTrainingRoutes(app)
+  mountExclusionRoutes(app)
   mountAiRoutes(app)
   mountScansRoutes(app)
   mountReviewsRoutes(app)

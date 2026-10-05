@@ -1,5 +1,5 @@
 // Owns: the training tools — list_exercises, get_exercise, get_equipment_profile, update_equipment, create_template,
-// generate_workout, start_session, log_set, finish_session, get_training_history (the training and workouts-ai
+// swap_template_exercise (safe list: applied or proposed), generate_workout, start_session, log_set, finish_session, get_training_history (the training and workouts-ai
 // modules). Templates and workouts written by ai/mcp pass the training guards: allowed exercise set only (machines
 // and free weights; no "body only" or floor work), 12–28 sets per session.
 import {
@@ -37,10 +37,11 @@ import {
   loadLibrary,
   logSet,
   startSession,
+  swapTemplateExercise,
   updateEquipment,
 } from '../../../training'
 import { requestWorkout } from '../../../workouts-ai'
-import { defineTool, type ToolDefinition } from '../define'
+import { defineTool, safeChangeOutput, type ToolDefinition } from '../define'
 
 /** generate_workout waits this long for the job (it runs after the call starts), polling once a second. */
 const WORKOUT_WAIT_MS = 20_000
@@ -160,6 +161,26 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
         notes: i.notes,
         exercises: i.exercises,
       }),
+  }),
+  defineTool({
+    name: 'swap_template_exercise',
+    title: 'Swap an exercise in a template',
+    area: 'training',
+    description:
+      'Replace one exercise of a saved template with another that shares a primary muscle (e.g. a barbell press for a ' +
+      'dumbbell press when the bench is taken), keeping its place, sets, rep range and rest; the target load is cleared ' +
+      'so progression picks it. The new exercise must be in the allowed exercise set (list_exercises with the muscle). ' +
+      'A safe-list change: from Claude it applies at once once agreed in chat; from the in-app assistant it applies at ' +
+      'once only when auto-apply of safe changes is on in Settings, otherwise it waits as a proposal for a tap. ' +
+      '`status` says which (applied, proposed or rejected with the rule).',
+    input: z.object({
+      template_id: Id.describe('The template id (a get_week_plan session\'s template_id, or get_review_bundle templates)'),
+      from_exercise_id: Id.describe('The exercise in the template to replace'),
+      to_exercise_id: Id.describe('The allowed exercise to put in its place (same primary muscle)'),
+    }),
+    output: safeChangeOutput(Template),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: (deps, input) => swapTemplateExercise(deps, input),
   }),
   defineTool({
     name: 'generate_workout',

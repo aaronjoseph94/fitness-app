@@ -11,6 +11,7 @@ import {
   createMeal,
   deleteFavourite,
   deleteMeal,
+  getMeal,
   listFavourites,
   listMeals,
   recentFoods,
@@ -24,6 +25,7 @@ export function mountNutritionRoutes(app: App): void {
   registerMealAiJobs()
 
   route(app, endpoints.nutrition.listMeals, ({ query }, deps) => listMeals(deps, query.date))
+  route(app, endpoints.nutrition.getMeal, ({ params }, deps) => getMeal(deps, params.id))
   route(app, endpoints.nutrition.createMeal, ({ body }, deps) => createMeal(deps, body), { status: 201 })
   route(app, endpoints.nutrition.updateMeal, ({ params, body }, deps) => updateMeal(deps, params.id, body))
   route(app, endpoints.nutrition.deleteMeal, ({ params }, deps) => deleteMeal(deps, params.id))

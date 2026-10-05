@@ -1,12 +1,13 @@
 // Owns: the meal side of meal analysis — what a meal_analysis job reads (the meal, its raw text and its photo keys,
 // only ever under meal-photos/<meal_id>/) and the write policy for its result: items land only on a meal still waiting
-// for them, in one batch with the job's note, and a failed analysis leaves the meal in review with its raw text.
+// for them (re-checked in SQL inside the write batch, so items Aaron adds while it analyses are never overwritten), in
+// one batch with the job's note, and a failed analysis leaves the meal in review with its raw text.
 import type { InputMethod, MealSlot, MealStatus, Nutrients } from '@fitness/shared/schemas'
-import { and, asc, count, eq, ne } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { meal_items, meal_photos, meals } from '../../../db'
 import type { Deps } from '../../../lib/deps'
-import { itemInserts, runBatch, type ItemInsert } from './meals'
+import { chunkIds, itemInserts, type ItemInsert } from './meals'
 
 export interface AnalysisInput {
   meal: { id: string; date: string; slot: MealSlot; input_method: InputMethod; raw_text: string | null; status: MealStatus; item_count: number }
@@ -55,7 +56,12 @@ export async function analysisInput(deps: Deps, mealId: string): Promise<Analysi
  * Store an analysis on a meal still waiting for it: status 'parsing', or 'review' with no items (an earlier attempt
  * failed and Aaron has not added any). Not when it was confirmed or edited meanwhile, or gained photos the analysis did
  * not see (`photo_ids`; the job queued for them will write instead). Items replace the list and the meal moves to
- * 'review'; `extra` statements (the job's note) go in the same batch. Returns whether it wrote.
+ * 'review'; `extra` statements (the job's note) go in the same batch. Returns whether the items landed.
+ *
+ * The batch re-checks in SQL, because Aaron may save items between the read and the write (that moves the meal out of
+ * 'parsing'): (1) a 'review' meal with no items is claimed back to 'parsing'; (2) the old items are deleted and
+ * (3) the new ones inserted; (4) the new rows are deleted again unless the meal is still 'parsing'; (5) 'parsing' →
+ * 'review'. D1 runs the batch as one transaction, so nobody sees the steps in between.
  */
 export async function applyAnalysis(
   deps: Deps,
@@ -84,16 +90,19 @@ export async function applyAnalysis(
     created_at: now,
     updated_at: now,
   }))
-  await runBatch(deps, [
-    deps.db
-      .update(meals)
-      .set({ status: 'review', updated_at: now })
-      .where(and(eq(meals.id, mealId), ne(meals.status, 'confirmed'))),
-    deps.db.delete(meal_items).where(eq(meal_items.meal_id, mealId)),
+  const { db } = deps
+  const parsing = sql`exists (select 1 from ${meals} where ${meals.id} = ${mealId} and ${meals.status} = 'parsing')`
+  const noItems = sql`not exists (select 1 from ${meal_items} where ${meal_items.meal_id} = ${mealId})`
+  const [, , ...rest] = await db.batch([
+    db.update(meals).set({ status: 'parsing' }).where(and(eq(meals.id, mealId), eq(meals.status, 'review'), noItems)),
+    db.delete(meal_items).where(and(eq(meal_items.meal_id, mealId), parsing)),
     ...itemInserts(deps, rows),
+    ...chunkIds(rows.map((r) => r.id!)).map((ids) => db.delete(meal_items).where(and(inArray(meal_items.id, ids), sql`not ${parsing}`))),
+    db.update(meals).set({ status: 'review', updated_at: now }).where(and(eq(meals.id, mealId), eq(meals.status, 'parsing'))).returning({ id: meals.id }),
     ...extra,
   ])
-  return true
+  const landed = rest[rest.length - 1 - extra.length]
+  return Array.isArray(landed) && landed.length > 0
 }
 
 /** A meal whose analysis failed moves from 'parsing' to 'review', raw text kept, so Aaron can add items himself. */

@@ -1,8 +1,9 @@
 // Owns: the single 5-minute cron (`*/5 * * * *`). Each tick sweeps ai_jobs, then dispatches work by Edmonton local
 // time, each kind at most once per local period through a cron_runs row (unique kind + period_key):
 //   nightly  once per local date, after 00:30   ensure targets through today + 14, reforecast as of yesterday,
-//                                               new safety flags as ai_events notes, release proposals due today,
-//                                               queue tomorrow's AI workout when it is an unplanned training day
+//                                               new safety flags as ai_events notes, the "scan due" note,
+//                                               release proposals due today, queue tomorrow's AI workout when it is
+//                                               an unplanned training day
 //   weekly   once per ISO week, Sunday ≥ 20:00  the weekly_review job for the week ending that Sunday
 //   monthly  once per local month, ≥ 01:00      (hook for once-a-month work)
 //   backup   every tick from 01:00 until done   the monthly per-table backup to R2, one table per tick (modules/export)
@@ -19,6 +20,7 @@ import { monthlyBackupStep } from './modules/export'
 import { ensureTargetsThrough, reforecast } from './modules/plan'
 import { planNextTrainingDay } from './modules/workouts-ai'
 import { weeklyReviewHook } from './modules/reviews'
+import { noteScanDue } from './modules/scans'
 import { dispatchReminders } from './modules/reminders'
 
 export type CronKind = 'nightly' | 'weekly' | 'monthly'
@@ -90,6 +92,7 @@ async function nightly(deps: Deps, date: string): Promise<void> {
   await ensureTargetsThrough(deps, addDays(date, 14))
   await reforecast(deps, { as_of })
   await noteNewFlags(deps, as_of)
+  await noteScanDue(deps, date)
   await releaseDueProposals(deps, date)
   await planNextTrainingDay(deps, date)
 }
