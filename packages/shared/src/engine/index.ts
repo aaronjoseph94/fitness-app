@@ -1,2 +1,75 @@
-// Owns: re-exports of the pure engine (SPEC §9). Every function here is pure, typed and commented with its formula.
-export {}
+// Owns: the engine's interface (SPEC §3, §7, §9) — pure, typed functions for every number in the app. Implementation
+// lives in ./lib (private); guards.ts is the second entry point (SPEC §9 names it) and is re-exported here.
+// Inputs are plain data structurally compatible with the schemas (v_day rows, plan targets, sessions, scans).
+
+// Dates in America/Edmonton
+export {
+  TIMEZONE,
+  localDate,
+  today,
+  localTime,
+  addDays,
+  daysBetween,
+  weekdayOf,
+  weekStart,
+  isoWeek,
+  isoWeekRange,
+  eachDate,
+} from './lib/dates'
+export type { InstantInput } from './lib/dates'
+
+// Units
+export { KG_PER_LB, CM_PER_IN, lbToKg, kgToLb, inToCm, cmToIn } from './lib/units'
+
+// Shared input shapes
+export type { TargetValuesLike, PlanTargetsLike, ExerciseInfo, NutrientsLike, DayRow } from './lib/types'
+
+// Trend weight, expenditure, forecast
+export { trendWeights, trendChange, TREND_ALPHA } from './lib/trend'
+export type { TrendDay, TrendSample } from './lib/trend'
+export { estimateExpenditure, EXPENDITURE_WINDOW_DAYS, MIN_LOGGED_DAYS, TDEE_RANGE } from './lib/expenditure'
+export type { ExpenditureDay, ExpenditureEstimate } from './lib/expenditure'
+export { forecast, KCAL_PER_KG, FORECAST_BAND } from './lib/forecast'
+export type { ForecastInput, ForecastResult } from './lib/forecast'
+
+// Daily targets
+export { materialiseTargets, meanPlannedIntake, FAST_DAY_EXTRA_WATER_ML } from './lib/targets'
+export type { TargetsInput, DayTargets, WeekPlanLike } from './lib/targets'
+
+// Adherence, safety flags, milestones, weekly review metrics
+export { dayAdherence, adherence } from './lib/adherence'
+export type { AdherenceDay, DayAdherence, AdherenceWindow } from './lib/adherence'
+export { safetyFlags } from './lib/flags'
+export type { SafetyFlag } from './lib/flags'
+export { milestones, WEIGHT_MILESTONES_KG } from './lib/milestones'
+export type { MilestoneStatus, CompositionScan } from './lib/milestones'
+export { weeklyMetrics } from './lib/review'
+export type { WeekAggregate, FastLike, FastResult } from './lib/review'
+
+// Scans
+export { compareScans, LEAN_LOSS_SHARE } from './lib/scans'
+export type { ScanLike, ScanComparison, ScanMetricKey } from './lib/scans'
+
+// Training: readiness, progression, deload, recovery, muscle scores, volume, e1RM, PRs
+export { readiness } from './lib/readiness'
+export type { ReadinessScore } from './lib/readiness'
+export { nextProgression, deloadCheck, recoveryConflicts, DELOAD_SETS_FACTOR } from './lib/progression'
+export type { LoggedSet, ProgressionInput, Progression, DeloadInput, DeloadCheck } from './lib/progression'
+export { muscleScores, muscleLevels, e1rm, sessionSummary } from './lib/muscles'
+export type { MuscleValues, MuscleLevel, SessionSetLike, PrRecord, SessionSummaryInput, SessionTotals } from './lib/muscles'
+
+// Guards (SPEC §9: packages/shared/engine/guards.ts)
+export { applyGuards, KCAL_STEP, SESSION_SETS, LOCKED_SETTINGS } from './guards'
+export type {
+  GuardChange,
+  TargetChange,
+  WorkoutChange,
+  ExerciseSwapChange,
+  FastChange,
+  SettingsChange,
+  OpenChange,
+  GuardRails,
+  GuardContext,
+  GuardRule,
+  GuardResult,
+} from './guards'
