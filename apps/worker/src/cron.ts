@@ -1,9 +1,12 @@
 // Owns: the single 5-minute cron (`*/5 * * * *`). Each tick sweeps ai_jobs, then dispatches work by Edmonton local
 // time, each kind at most once per local period through a cron_runs row (unique kind + period_key):
 //   nightly  once per local date, after 00:30   ensure targets through today + 14, reforecast as of yesterday,
-//                                               new safety flags as ai_events notes, release proposals due today
-//   weekly   once per ISO week, Sunday ≥ 20:00  the weekly review (hook only until phase 4 builds it)
-//   monthly  once per local month, ≥ 01:00      the monthly backup (hook only until phase 5 builds it)
+//                                               new safety flags as ai_events notes, release proposals due today,
+//                                               queue tomorrow's AI workout when it is an unplanned training day
+//   weekly   once per ISO week, Sunday ≥ 20:00  the weekly_review job for the week ending that Sunday
+//   monthly  once per local month, ≥ 01:00      (hook for once-a-month work)
+//   backup   every tick from 01:00 until done   the monthly per-table backup to R2, one table per tick (modules/export)
+//   remind   every tick 07:00–22:00             due Web Push reminders, once per local period each (modules/reminders)
 // A run that throws releases its claim, so the next tick retries it.
 import { addDays, isoWeek, localTime, safetyFlags, today, weekdayOf } from '@fitness/shared/engine'
 import { and, eq, gte } from 'drizzle-orm'
@@ -12,7 +15,11 @@ import type { Deps } from './lib/deps'
 import { days } from './modules/day'
 import { eventInsert, releaseDueProposals } from './modules/events'
 import { sweep, type SweepResult } from './modules/jobs'
+import { monthlyBackupStep } from './modules/export'
 import { ensureTargetsThrough, reforecast } from './modules/plan'
+import { planNextTrainingDay } from './modules/workouts-ai'
+import { weeklyReviewHook } from './modules/reviews'
+import { dispatchReminders } from './modules/reminders'
 
 export type CronKind = 'nightly' | 'weekly' | 'monthly'
 
@@ -48,7 +55,7 @@ export async function runCron(deps: Deps): Promise<CronResult> {
   const time = localTime(now)
   const due: [CronKind, string, () => Promise<void>][] = []
   if (time >= NIGHTLY_AFTER) due.push(['nightly', date, () => nightly(deps, date)])
-  if (weekdayOf(date) === 'sun' && time >= WEEKLY_AFTER) due.push(['weekly', isoWeek(date), () => weekly(isoWeek(date))])
+  if (weekdayOf(date) === 'sun' && time >= WEEKLY_AFTER) due.push(['weekly', isoWeek(date), () => weekly(deps, isoWeek(date))])
   if (time >= MONTHLY_AFTER) due.push(['monthly', date.slice(0, 7), () => monthly(date.slice(0, 7))])
 
   for (const [kind, period_key, run] of due) {
@@ -62,6 +69,8 @@ export async function runCron(deps: Deps): Promise<CronResult> {
       await deps.db.delete(cron_runs).where(and(eq(cron_runs.kind, kind), eq(cron_runs.period_key, period_key)))
     }
   }
+  if (time >= MONTHLY_AFTER) await monthlyBackupStep(deps, date.slice(0, 7)).catch((e: unknown) => log('error', 'monthly backup step failed; retried next tick', { error: String(e) }))
+  await dispatchReminders(deps).catch((e: unknown) => log('error', 'reminders failed; due ones retry next tick', { error: String(e) }))
   return result
 }
 
@@ -82,6 +91,7 @@ async function nightly(deps: Deps, date: string): Promise<void> {
   await reforecast(deps, { as_of })
   await noteNewFlags(deps, as_of)
   await releaseDueProposals(deps, date)
+  await planNextTrainingDay(deps, date)
 }
 
 /** Safety flags (SPEC §3) as ai_events notes, shown never applied; a kind noted in the last 7 days is skipped. */
@@ -102,12 +112,12 @@ async function noteNewFlags(deps: Deps, as_of: string): Promise<void> {
   if (first) await deps.db.batch([first, ...rest])
 }
 
-/** Hook for the weekly review job (phase 4: weekly_review unless a Claude review ran this week). */
-async function weekly(week: string): Promise<void> {
-  log('info', 'weekly review not built yet; skipped', { week })
+/** The weekly review job for the week ending this Sunday (skipped when a Claude review ran that week). */
+async function weekly(deps: Deps, week: string): Promise<void> {
+  await weeklyReviewHook(deps, week)
 }
 
-/** Hook for the monthly per-table JSON backup to R2 (phase 5). */
+/** Hook for once-a-month work. The monthly backup is not here: it advances one table per tick (monthlyBackupStep). */
 async function monthly(month: string): Promise<void> {
-  log('info', 'monthly backup not built yet; skipped', { month })
+  log('info', 'monthly tick', { month })
 }
