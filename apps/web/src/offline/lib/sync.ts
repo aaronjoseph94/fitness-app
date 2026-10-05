@@ -1,7 +1,9 @@
 // Owns: replaying the queue to the Worker — one flush at a time, strictly in order, with backoff — and what triggers a replay
 // (app start once the page is idle, `online`, the app becoming visible, any successful API call, a new queued write). The
 // page flushes, not the service worker: iOS has no Background Sync. A head write the Worker keeps failing on (5 HTTP 5xx
-// in a row) moves to the rejected list, so one poisoned write never wedges every write behind it.
+// in a row) moves to the rejected list, so one poisoned write never wedges every write behind it. A backoff after no
+// response at all ends with the next call that reaches the Worker (the network is back); one after an HTTP failure of
+// the head write keeps its timer.
 import { db } from './db'
 import { pruneCache } from './cache'
 import { whenIdle } from './idle'
@@ -37,6 +39,8 @@ let sync: OfflineSyncOptions | null = null
 let running: Promise<void> | null = null
 let flushAgain = false
 let retryAt = 0
+/** What the current backoff waits for: the network to come back, or the Worker to stop failing the head write. */
+let retryAfter: 'network' | 'http' | null = null
 let retryTimer: ReturnType<typeof setTimeout> | undefined
 
 /** Wire the queue to a sender and start the triggers. Call once at app start; returns a stop function. */
@@ -102,7 +106,16 @@ export async function queueWrite(write: NewWrite): Promise<PendingWrite> {
 export function flushNow(): Promise<void> {
   clearTimeout(retryTimer)
   retryAt = 0
+  retryAfter = null
   return requestFlush()
+}
+
+/**
+ * A call just reached the Worker. A backoff that was waiting for the network is over, so replay now; a backoff after
+ * the Worker answered the head write with a 5xx or 429 keeps its timer.
+ */
+export function reachedWorker(): Promise<void> {
+  return retryAfter === 'network' ? flushNow() : requestFlush()
 }
 
 async function flushOnce(send: QueueSender): Promise<number> {
@@ -133,7 +146,7 @@ async function flushOnce(send: QueueSender): Promise<number> {
           break
         }
         await db.queue.update(seq, { attempts, last_error: outcome.error, server_errors: serverErrors })
-        scheduleRetry(attempts)
+        scheduleRetry(attempts, outcome.status === undefined ? 'network' : 'http')
         return delivered
       }
     }
@@ -148,9 +161,10 @@ async function reject(seq: number, pending: PendingWrite, status: number, error:
   })
 }
 
-function scheduleRetry(attempts: number): void {
+function scheduleRetry(attempts: number, after: 'network' | 'http'): void {
   const delay = Math.min(RETRY_BASE_MS * 2 ** (attempts - 1), RETRY_MAX_MS)
   retryAt = Date.now() + delay
+  retryAfter = after
   clearTimeout(retryTimer)
   retryTimer = setTimeout(() => void flushNow(), delay)
 }

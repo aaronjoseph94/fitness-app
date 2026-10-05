@@ -227,5 +227,16 @@ export const theme = createTheme({
     MuiBottomNavigationAction: {
       styleOverrides: { root: { minWidth: 0, paddingTop: 6, '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width } } },
     },
+    // A bottom snackbar sits above the bottom nav and the home indicator, never over the tabs (at every width: MUI's
+    // own wider-screen offset is replaced too).
+    MuiSnackbar: {
+      styleOverrides: {
+        root: ({ ownerState, theme }) => {
+          if (ownerState.anchorOrigin?.vertical === 'top') return {}
+          const bottom = `calc(${tokens.layout.bottomNavHeight + tokens.space(2)}px + env(safe-area-inset-bottom, 0px))`
+          return { bottom, [theme.breakpoints.up('sm')]: { bottom } }
+        },
+      },
+    },
   },
 })

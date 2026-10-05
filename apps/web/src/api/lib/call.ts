@@ -1,7 +1,7 @@
 // Owns: typed calls over the shared endpoint contract — validate the input against the endpoint's schemas, build the
 // path and query, exchange it on the wire, validate the response — plus the "a call worked, replay the queue" trigger.
 import { buildPath, type Endpoint, type EndpointInput, type EndpointOutput } from '@fitness/shared/api'
-import { requestFlush } from '../../offline'
+import { reachedWorker } from '../../offline'
 import { schemaError } from './errors'
 import { send, type SendOptions, type WireRequest } from './transport'
 
@@ -14,7 +14,7 @@ export async function call<E extends Endpoint>(endpoint: E, input: EndpointInput
 /** Send, and on success replay anything queued: a working round trip means the queue can drain. */
 export async function exchange(request: WireRequest, options?: SendOptions): Promise<unknown> {
   const body = await send(request, options)
-  void requestFlush()
+  void reachedWorker()
   return body
 }
 

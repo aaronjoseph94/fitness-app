@@ -162,7 +162,7 @@ export function HealthImportPage() {
         <Card sx={{ p: 4 }} data-testid="health-preview">
           <SectionHeader
             title="Preview"
-            subtitle={`${formatNumber(mapped.rows.length)} days: steps on ${formatNumber(withSteps)}, sleep on ${formatNumber(withSleep)}${mapped.skipped ? `; ${formatNumber(mapped.skipped)} rows skipped` : ''}`}
+            subtitle={`${formatNumber(mapped.rows.length)} days: steps on ${formatNumber(withSteps)}, sleep on ${formatNumber(withSleep)}${mapped.skipped ? `; ${formatNumber(mapped.skipped)} ${mapped.skipped === 1 ? 'row' : 'rows'} skipped` : ''}`}
           />
           {mapped.reasons.length > 0 && (
             <Box component="ul" sx={{ m: 0, mt: 2, pl: 2.5, fontSize: tokens.font.size.label, color: 'text.secondary' }}>
