@@ -1,0 +1,140 @@
+// Owns: the weigh-in form — one number prefilled with that day's weigh-in or the last one, ±0.1 kg nudges, the date
+// (today by default), an optional note — saved with POST /api/weights, which replaces any weigh-in on that date.
+import AddRounded from '@mui/icons-material/AddRounded'
+import RemoveRounded from '@mui/icons-material/RemoveRounded'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import TextField from '@mui/material/TextField'
+import { endpoints } from '@fitness/shared/api'
+import { useEffect, useState } from 'react'
+import { formatNumber, PendingBadge } from '../../../components'
+import { tokens } from '../../../theme'
+import { todayLocal } from './dates'
+import { useLastWeight } from './reads'
+import { NumberField, noticeFor, parseNumber, problemText, type LogNotice } from './ui'
+import { useLogMutation } from './writes'
+
+const MIN_KG = 30
+const MAX_KG = 300
+
+export function WeighInForm({ date: initialDate, onLogged }: { date: string; onLogged: (notice: LogNotice) => void }) {
+  const today = todayLocal()
+  const [date, setDate] = useState(initialDate)
+  const { last, onDate, isLoading } = useLastWeight(date)
+  const [text, setText] = useState('')
+  const [touched, setTouched] = useState(false)
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [note, setNote] = useState('')
+  const save = useLogMutation(endpoints.body.createWeight)
+
+  // Prefill once the last weigh-in is known, unless Aaron has started typing.
+  const prefill = (onDate ?? last)?.kg
+  useEffect(() => {
+    if (!touched && prefill !== undefined) setText(prefill.toFixed(1))
+  }, [prefill, touched])
+
+  const kg = parseNumber(text)
+  const valid = kg !== null && kg >= MIN_KG && kg <= MAX_KG && date <= today
+
+  const nudge = (delta: number) => {
+    const base = kg ?? prefill ?? 0
+    if (!base) return
+    setTouched(true)
+    setText((Math.round((base + delta) * 10) / 10).toFixed(1))
+  }
+
+  const submit = () => {
+    if (!valid || kg === null) return
+    const weight = Math.round(kg * 10) / 10
+    save.mutate(
+      { body: { id: crypto.randomUUID(), date, weight_kg: weight, note: note.trim() || undefined } },
+      { onSuccess: (outcome) => onLogged(noticeFor(outcome, `Weigh-in ${formatNumber(weight, 1)} kg on ${date}`)) },
+    )
+  }
+
+  return (
+    <Box
+      component="form"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        submit()
+      }}
+      sx={{ display: 'grid', gap: 4 }}
+      data-testid="weigh-in-form"
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <IconButton aria-label="Minus 0.1 kg" onClick={() => nudge(-0.1)} sx={{ border: 1, borderColor: 'divider' }}>
+          <RemoveRounded />
+        </IconButton>
+        <NumberField
+          label="Weight"
+          value={text}
+          onChange={(v) => {
+            setTouched(true)
+            setText(v)
+          }}
+          unit="kg"
+          autoFocus
+          error={touched && text !== '' && !valid}
+          slotProps={{
+            htmlInput: {
+              'aria-label': 'Weight in kg',
+              style: { fontSize: 32, fontWeight: tokens.font.weight.number, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
+            },
+          }}
+        />
+        <IconButton aria-label="Plus 0.1 kg" onClick={() => nudge(0.1)} sx={{ border: 1, borderColor: 'divider' }}>
+          <AddRounded />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ minHeight: 20, fontSize: 13, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        {isLoading && !last ? (
+          'Looking up your last weigh-in…'
+        ) : onDate ? (
+          <>
+            Logged {formatNumber(onDate.kg, 1)} kg for {date}; saving replaces it.
+            {onDate.pending && <PendingBadge />}
+          </>
+        ) : last ? (
+          <>
+            Last {formatNumber(last.kg, 1)} kg on {last.date}
+            {last.trendKg !== null && ` · trend ${formatNumber(last.trendKg, 1)} kg`}
+            {last.pending && <PendingBadge />}
+          </>
+        ) : (
+          'Your first weigh-in. Morning, after the bathroom, is the steadiest.'
+        )}
+      </Box>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 2, alignItems: 'center' }}>
+        <TextField
+          label="Date"
+          type="date"
+          value={date}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: today } }}
+        />
+        {!noteOpen && (
+          <Button variant="text" onClick={() => setNoteOpen(true)}>
+            Add note
+          </Button>
+        )}
+      </Box>
+      {noteOpen && (
+        <TextField label="Note" value={note} onChange={(e) => setNote(e.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />
+      )}
+
+      {save.isError && (
+        <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
+          {problemText(save.error)}
+        </Box>
+      )}
+      <Button type="submit" variant="contained" size="large" disabled={!valid || save.isPending} data-testid="weigh-in-save">
+        {save.isPending ? 'Saving…' : kg !== null && valid ? `Save ${formatNumber(kg, 1)} kg` : 'Save weigh-in'}
+      </Button>
+    </Box>
+  )
+}
