@@ -7,7 +7,7 @@ Aaron's single-user, AI-first fitness tracker: an installable React PWA and one 
 - **Spec:** [`docs/SPEC.md`](docs/SPEC.md) (source of truth)
 - **Working agreement for agents:** [`CLAUDE.md`](CLAUDE.md), domain language in [`GLOSSARY.md`](GLOSSARY.md)
 - **What's done and every decision made on Aaron's behalf:** [`docs/PROGRESS.md`](docs/PROGRESS.md)
-- **Deploy (Cloudflare, via Cursor):** [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- **Deploy (Cloudflare, via Cursor):** [`docs/DEPLOY.md`](docs/DEPLOY.md); Cursor's step-by-step checklist: [`docs/CURSOR-RUNBOOK.md`](docs/CURSOR-RUNBOOK.md)
 
 ## Run it locally
 

@@ -4,6 +4,8 @@
 
 Everything runs in one Cloudflare Worker on the free plan: static assets (the PWA), `/api`, `/mcp`, jobs and one cron. Data lives in D1, files in R2. Commands run from the repo root unless noted.
 
+Cursor (or any agent) deploying for Aaron follows [`CURSOR-RUNBOOK.md`](CURSOR-RUNBOOK.md): the same steps in order, each with its command, expected output and stop condition.
+
 ## 0. Prerequisites
 
 - Node 24.21+ and pnpm 12 (`corepack enable`), then `pnpm install`.
