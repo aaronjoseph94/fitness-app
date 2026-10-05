@@ -1,33 +1,27 @@
 // Owns: the hero weight chart — raw weigh-ins as faint dots, the trend line, the forecast band (±20 %) and its
 // mid line to the goal, the dashed goal line, and a marker on each milestone reached.
-import {
-  Area,
-  ComposedChart,
-  Line,
-  ReferenceDot,
-  ReferenceLine,
-  Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts'
 import { formatNumber, type LegendItem } from '../../components'
 import { tokens, withAlpha } from '../../theme'
 import {
   ChartFrame,
   MARGIN,
+  dateSpan,
   dotStyle,
   gridStyle,
   lineCursor,
   lineStyle,
   niceScale,
   rechartsSize,
+  seriesSummary,
+  surfaceText,
   targetStyle,
+  tickInterval,
   tooltip,
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
 } from './frame'
+import { Plot } from './plot'
 import { dateToTime, timeAxis } from './time'
 
 export interface WeightPoint {
@@ -126,10 +120,19 @@ export function WeightTrendChart({
     ],
   )
 
+  const label = 'Weight trend with forecast'
+  const summary = [
+    `Trend ${seriesSummary(points.map((p) => ({ date: p.date, value: p.trend })), (v) => kg(v)!)}`,
+    forecast.length ? `Forecast ${kg(forecast.at(-1)!.mid)} by ${dateSpan([forecast.at(-1)!.date])}.` : '',
+    goal !== undefined ? `Goal ${kg(goal)}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <ChartFrame
       testId="chart-weight-trend"
-      label="Weight trend with forecast"
+      label={label}
       legend={legend ? items : undefined}
       unit="kg"
       width={width}
@@ -137,89 +140,94 @@ export function WeightTrendChart({
       empty={rows.length === 0}
     >
       {axis && (
-        <ComposedChart data={rows} margin={MARGIN} {...rechartsSize(width, height)}>
-          <CartesianGrid {...gridStyle} />
-          <XAxis
-            {...xAxisStyle}
-            dataKey="t"
-            type="number"
-            scale="time"
-            domain={axis.domain}
-            ticks={axis.ticks}
-            tickFormatter={axis.format}
-          />
-          <YAxis {...yAxisStyle} domain={y.domain} ticks={y.ticks} />
-          <Tooltip content={Tip} cursor={lineCursor} />
-          {forecast.length > 0 && (
-            <Area
-              dataKey="band"
-              stroke="none"
-              fill={C}
-              fillOpacity={tokens.chart.bandOpacity}
-              connectNulls
-              isAnimationActive={false}
-              activeDot={false}
-            />
+        <Plot width={width} height={height}>
+          {(R, plotWidth) => (
+            <R.ComposedChart data={rows} margin={MARGIN} {...rechartsSize(width, height)} {...surfaceText(label, summary)}>
+              <R.CartesianGrid {...gridStyle} />
+              <R.XAxis
+                {...xAxisStyle}
+                dataKey="t"
+                type="number"
+                scale="time"
+                domain={axis.domain}
+                ticks={axis.ticks}
+                tickFormatter={axis.format}
+                interval={tickInterval(axis.ticks.length, plotWidth)}
+              />
+              <R.YAxis {...yAxisStyle} domain={y.domain} ticks={y.ticks} />
+              <R.Tooltip content={Tip} cursor={lineCursor} />
+              {forecast.length > 0 && (
+                <R.Area
+                  dataKey="band"
+                  stroke="none"
+                  fill={C}
+                  fillOpacity={tokens.chart.bandOpacity}
+                  connectNulls
+                  isAnimationActive={false}
+                  activeDot={false}
+                />
+              )}
+              {forecast.length > 0 && (
+                <R.Line
+                  dataKey="mid"
+                  stroke={withAlpha(C, 0.55)}
+                  strokeWidth={tokens.chart.lineWidth}
+                  strokeDasharray="6 5"
+                  dot={false}
+                  activeDot={false}
+                  connectNulls
+                  type="monotone"
+                  isAnimationActive={false}
+                />
+              )}
+              {goal !== undefined && (
+                <R.ReferenceLine
+                  y={goal}
+                  {...targetStyle}
+                  label={{
+                    value: `Goal ${formatNumber(goal, 0)} kg`,
+                    position: 'insideBottomLeft',
+                    fill: tokens.chart.axis,
+                    fontSize: 11,
+                  }}
+                />
+              )}
+              <R.Line
+                dataKey="raw"
+                stroke="none"
+                dot={{ r: 2.5, fill: withAlpha(C, 0.4), stroke: 'none' }}
+                activeDot={{ r: 4, fill: withAlpha(C, 0.6), stroke: tokens.ink.card, strokeWidth: 2 }}
+                isAnimationActive={false}
+                legendType="none"
+              />
+              <R.Line
+                dataKey="trend"
+                stroke={C}
+                {...lineStyle}
+                dot={false}
+                activeDot={dotStyle(C)}
+                connectNulls
+                isAnimationActive={false}
+              />
+              {reached.map((m) => (
+                <R.ReferenceDot
+                  key={m.value}
+                  x={dateToTime(m.reachedOn)}
+                  y={m.value}
+                  {...dotStyle(C, 5)}
+                  ifOverflow="visible"
+                  label={{
+                    value: formatNumber(m.value, 0),
+                    position: 'top',
+                    fill: tokens.ink.text,
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                />
+              ))}
+            </R.ComposedChart>
           )}
-          {forecast.length > 0 && (
-            <Line
-              dataKey="mid"
-              stroke={withAlpha(C, 0.55)}
-              strokeWidth={tokens.chart.lineWidth}
-              strokeDasharray="6 5"
-              dot={false}
-              activeDot={false}
-              connectNulls
-              type="monotone"
-              isAnimationActive={false}
-            />
-          )}
-          {goal !== undefined && (
-            <ReferenceLine
-              y={goal}
-              {...targetStyle}
-              label={{
-                value: `Goal ${formatNumber(goal, 0)} kg`,
-                position: 'insideBottomLeft',
-                fill: tokens.chart.axis,
-                fontSize: 11,
-              }}
-            />
-          )}
-          <Line
-            dataKey="raw"
-            stroke="none"
-            dot={{ r: 2.5, fill: withAlpha(C, 0.4), stroke: 'none' }}
-            activeDot={{ r: 4, fill: withAlpha(C, 0.6), stroke: tokens.ink.card, strokeWidth: 2 }}
-            isAnimationActive={false}
-            legendType="none"
-          />
-          <Line
-            dataKey="trend"
-            stroke={C}
-            {...lineStyle}
-            dot={false}
-            activeDot={dotStyle(C)}
-            connectNulls
-            isAnimationActive={false}
-          />
-          {reached.map((m) => (
-            <ReferenceDot
-              key={m.value}
-              x={dateToTime(m.reachedOn)}
-              y={m.value}
-              {...dotStyle(C, 5)}
-              ifOverflow="visible"
-              label={{
-                value: formatNumber(m.value, 0),
-                position: 'top',
-                fill: tokens.ink.text,
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            />
-          ))}
-        </ComposedChart>
+        </Plot>
       )}
     </ChartFrame>
   )

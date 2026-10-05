@@ -51,7 +51,8 @@ export const sendQueuedWrite: QueueSender = async (pending) => {
   } catch (error) {
     if (!isApiError(error)) return { kind: 'retry', error: String(error) }
     if (error.kind === 'auth-expired') return { kind: 'auth-expired' }
-    if (error.transient) return { kind: 'retry', error: error.message }
+    // A transient HTTP answer carries its status, so the queue can tell a failing Worker (5xx) from no network.
+    if (error.transient) return { kind: 'retry', error: error.message, ...(error.status !== null ? { status: error.status } : {}) }
     return { kind: 'rejected', status: error.status ?? 0, error: error.message }
   }
 }

@@ -5,10 +5,11 @@ import { endpoints } from '@fitness/shared/api'
 import { weekStart } from '@fitness/shared/engine'
 import type { LocalDate, WeekPlan } from '@fitness/shared/schemas'
 import { useApiMutation, useApiQuery } from '../../../api'
+import { WEEK_VIEW_STALE_MS, weekViewInput } from '../queries'
 
 /** The week view for the week holding `date`: active and proposed plan, this week's and last week's actuals. */
 export function useWeekPlan(date: LocalDate) {
-  return useApiQuery(endpoints.weekPlans.get, { query: { week_start: weekStart(date) } }, { staleTime: 60_000 })
+  return useApiQuery(endpoints.weekPlans.get, weekViewInput(date), { staleTime: WEEK_VIEW_STALE_MS })
 }
 
 /** Proposed plans for the week holding `date` and later weeks, soonest week first. */

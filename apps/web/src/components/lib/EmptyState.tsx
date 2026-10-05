@@ -9,6 +9,16 @@ import { tokens } from '../../theme'
 export const ILLUSTRATIONS = ['empty', 'training', 'meals', 'progress', 'schedule', 'goals'] as const
 export type Illustration = (typeof ILLUSTRATIONS)[number]
 
+/** Intrinsic size of each SVG (its viewBox), so the browser reserves the right box before it loads (no layout shift). */
+const ILLUSTRATION_SIZE: Readonly<Record<Illustration, readonly [width: number, height: number]>> = {
+  empty: [648, 632],
+  training: [960, 665],
+  meals: [296, 658],
+  progress: [960, 665],
+  schedule: [801, 779],
+  goals: [960, 769],
+}
+
 export function illustrationUrl(name: Illustration): string {
   return `${import.meta.env.BASE_URL}illustrations/${name}.svg`
 }
@@ -55,7 +65,9 @@ export function EmptyState({
           src={illustrationUrl(illustration)}
           alt=""
           decoding="async"
-          sx={{ height: compact ? 88 : 140, maxWidth: '80%', objectFit: 'contain', mb: compact ? 3 : 5 }}
+          width={ILLUSTRATION_SIZE[illustration][0]}
+          height={ILLUSTRATION_SIZE[illustration][1]}
+          sx={{ height: compact ? 88 : 140, width: 'auto', maxWidth: '80%', objectFit: 'contain', mb: compact ? 3 : 5 }}
         />
       )}
       <Box

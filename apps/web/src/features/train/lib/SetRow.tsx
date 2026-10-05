@@ -1,6 +1,7 @@
 // Owns: one set row in the session logger — set number, last session's set greyed (tap to copy), kg and reps
 // fields with greyed hints (what a tick logs when they are left empty), optional RPE 6–10, and the done tick.
 // Sized for a 390 px phone: 28 / flex / 68 / 52 / 40 / 44 px columns, 16 px inputs (no iOS zoom), 44 px taps.
+// A problem (a tick with no load, a load or reps out of range) is said in words under the row, not only in red.
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import RadioButtonUncheckedRounded from '@mui/icons-material/RadioButtonUncheckedRounded'
 import Box from '@mui/material/Box'
@@ -9,7 +10,7 @@ import IconButton from '@mui/material/IconButton'
 import InputBase from '@mui/material/InputBase'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { useEffect, useId, useRef, useState, type Ref } from 'react'
 import { formatNumber, parseNumber } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
 import type { LastSet, LoggerSet } from './logger-model'
@@ -39,14 +40,24 @@ export function formatSet(reps: number | null, load: number | null): string {
 export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious, onToggle }: SetRowProps) {
   const loadRef = useRef<HTMLInputElement>(null)
   const [needLoad, setNeedLoad] = useState(false)
+  const [loadInvalid, setLoadInvalid] = useState(false)
+  const [repsInvalid, setRepsInvalid] = useState(false)
   const [rpeAnchor, setRpeAnchor] = useState<HTMLElement | null>(null)
   const n = position + 1
+  const problemId = useId()
 
+  // "Load needed" stays until a load is entered (a message that vanishes on a timer can be missed).
   useEffect(() => {
-    if (!needLoad) return
-    const t = setTimeout(() => setNeedLoad(false), 2500)
-    return () => clearTimeout(t)
-  }, [needLoad])
+    if (set.load_kg !== null) setNeedLoad(false)
+  }, [set.load_kg])
+
+  const problem = loadInvalid
+    ? 'Load must be a number from 0 to 1,000 kg'
+    : needLoad
+      ? `Enter the load in kg to log set ${n}`
+      : repsInvalid
+        ? 'Reps must be a whole number up to 100'
+        : null
 
   const toggle = () => {
     if (onToggle() === 'need-load') {
@@ -102,7 +113,8 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
           borderRadius: `${tokens.radius.control}px`,
           fontSize: tokens.font.size.small,
           color: tokens.ink.secondary,
-          opacity: previous ? 0.85 : 0.5,
+          // Full ink-secondary (4.8:1) when there is a set to copy; dimmed only when disabled.
+          opacity: previous ? 1 : 0.5,
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -118,6 +130,8 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
         error={needLoad}
         max={1000}
         onChange={(load_kg) => onValues({ load_kg })}
+        onValidity={(ok) => setLoadInvalid(!ok)}
+        describedBy={problem && (needLoad || loadInvalid) ? problemId : undefined}
         testId="set-load"
       />
       <NumberCell
@@ -127,6 +141,8 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
         placeholder={String(hint.reps)}
         max={100}
         onChange={(reps) => onValues({ reps })}
+        onValidity={(ok) => setRepsInvalid(!ok)}
+        describedBy={problem && repsInvalid && !needLoad && !loadInvalid ? problemId : undefined}
         testId="set-reps"
       />
       <ButtonBase
@@ -185,6 +201,16 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
           No RPE
         </MenuItem>
       </Menu>
+      {problem && (
+        <Box
+          id={problemId}
+          role="alert"
+          data-testid="set-problem"
+          sx={{ gridColumn: '1 / -1', pl: 9, pb: 1, fontSize: tokens.font.size.label, color: tokens.status.flag, lineHeight: 1.4 }}
+        >
+          {problem}
+        </Box>
+      )}
     </Box>
   )
 }
@@ -198,6 +224,10 @@ interface NumberCellProps {
   max: number
   error?: boolean
   inputRef?: Ref<HTMLInputElement>
+  /** Told whether the typed text is a valid value (false while it is out of range); true again on blur. */
+  onValidity?: (ok: boolean) => void
+  /** Id of the message that explains the field's problem. */
+  describedBy?: string
   testId: string
 }
 
@@ -211,10 +241,16 @@ function NumberCell({
   max,
   error = false,
   inputRef,
+  onValidity,
+  describedBy,
   testId,
 }: NumberCellProps) {
   const [text, setText] = useState(kg(value))
-  const [invalid, setInvalid] = useState(false)
+  const [invalid, setInvalidState] = useState(false)
+  const setInvalid = (next: boolean) => {
+    setInvalidState(next)
+    onValidity?.(!next)
+  }
   const focused = useRef(false)
 
   // Values set elsewhere (copy previous, a tick filling the hint) show unless the field is being typed in.
@@ -254,6 +290,7 @@ function NumberCell({
         pattern: integer ? '[0-9]*' : '[0-9]*[.,]?[0-9]*',
         'aria-label': label,
         'aria-invalid': invalid || error || undefined,
+        'aria-describedby': describedBy,
         autoComplete: 'off',
         enterKeyHint: 'done',
         'data-testid': testId,
@@ -261,13 +298,14 @@ function NumberCell({
       sx={{
         height: tokens.tapTarget,
         borderRadius: '10px',
-        border: `1px solid ${invalid || error ? tokens.status.flag : tokens.ink.border}`,
+        // ≥3:1 outline so the field reads as a field (WCAG 1.4.11); red when its value is the problem.
+        border: `1px solid ${invalid || error ? tokens.status.flag : tokens.ink.control}`,
         bgcolor: tokens.ink.card,
         fontSize: tokens.font.size.body,
         fontWeight: tokens.font.weight.label,
         fontVariantNumeric: 'tabular-nums',
         '& input': { textAlign: 'center', p: 0, height: '100%' },
-        '& input::placeholder': { color: tokens.ink.secondary, opacity: 0.75 },
+        '& input::placeholder': { color: tokens.ink.secondary, opacity: 1 },
         '&.Mui-focused': { borderColor: tokens.metric.weight },
       }}
     />

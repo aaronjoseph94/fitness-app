@@ -72,7 +72,7 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
                 <>
                   Nearest scan {photo.nearest_scan.date}
                   {photo.nearest_scan.body_fat_pct !== null && (
-                    <Box component="span" sx={{ color: tokens.metric.fatMass, fontWeight: tokens.font.weight.label }}>
+                    <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
                       {' '}
                       · {formatNumber(photo.nearest_scan.body_fat_pct, 1)} % body fat
                     </Box>

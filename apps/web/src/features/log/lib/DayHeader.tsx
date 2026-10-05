@@ -1,5 +1,6 @@
 // Owns: the top of the Log tab for one day — kcal eaten against the day's target with what is left, protein / carbs /
 // fat / fibre bars against their targets (GET /api/day/:date), the fast-day note, and the day's weigh-in with an edit.
+// While the day loads both cards keep their loaded rows with placeholders in the values, so the meals below never move.
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -24,15 +25,7 @@ interface DayHeaderProps {
 }
 
 export function DayHeader({ date, day, isLoading, error, onRetry, pendingMeals, onWeighIn }: DayHeaderProps) {
-  if (isLoading && !day) {
-    return (
-      <Card sx={{ p: 4 }}>
-        <Skeleton width="40%" height={44} />
-        <Skeleton width="60%" />
-        <Skeleton variant="rounded" height={64} sx={{ mt: 3 }} />
-      </Card>
-    )
-  }
+  if (isLoading && !day) return <DayHeaderSkeleton />
   if (!day) return <LoadProblem what={`The day ${date}`} error={error} onRetry={onRetry} />
 
   const t = day.targets
@@ -81,8 +74,45 @@ export function DayHeader({ date, day, isLoading, error, onRetry, pendingMeals, 
   )
 }
 
-function MacroBar({ label, color, value, target }: { label: string; color: string; value: number; target: number | null }) {
-  const ratio = target && target > 0 ? Math.min(1, value / target) : 0
+const MACROS = ['Protein', 'Carbs', 'Fat', 'Fibre'] as const
+
+/** A value still loading: a text-line placeholder in the value's own font, so the line keeps its height. */
+const pendingValue = (width: number) => <Skeleton variant="text" width={width} />
+
+/** Both cards while the day loads, row for row the loaded cards' boxes. */
+function DayHeaderSkeleton() {
+  return (
+    <Box sx={{ display: 'grid', gap: 3 }} aria-busy="true" data-testid="day-totals-loading">
+      <Card sx={{ p: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 24 }}>
+          <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, bgcolor: tokens.metric.calories }} />
+          <Box sx={{ flex: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>Eaten</Box>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', mt: 1.5, fontSize: tokens.font.size.bigNumber, lineHeight: 1.1 }}>
+          {pendingValue(150)}
+        </Box>
+        <Box sx={{ fontSize: tokens.font.size.small, mt: 1 }}>{pendingValue(200)}</Box>
+        <Box sx={{ display: 'grid', gap: 2.5, mt: 4 }}>
+          {MACROS.map((label) => (
+            <MacroBar key={label} label={label} color={tokens.chart.grid} value={null} target={null} />
+          ))}
+        </Box>
+      </Card>
+      <Card sx={{ px: 4, py: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
+        <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, bgcolor: tokens.metric.weight, flex: 'none' }} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>Weigh-in</Box>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', fontSize: 22 }}>{pendingValue(90)}</Box>
+        </Box>
+        <Skeleton variant="rounded" width={72} height={tokens.tapTarget} />
+      </Card>
+    </Box>
+  )
+}
+
+/** One macro against its target; `value` null while the day loads. */
+function MacroBar({ label, color, value, target }: { label: string; color: string; value: number | null; target: number | null }) {
+  const ratio = value !== null && target && target > 0 ? Math.min(1, value / target) : 0
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: tokens.font.size.label, mb: 0.75 }}>
@@ -90,14 +120,14 @@ function MacroBar({ label, color, value, target }: { label: string; color: strin
           {label}
         </Box>
         <Box component="span" sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-          {formatNumber(value)}
-          {target !== null ? ` / ${formatNumber(target)} g` : ' g'}
+          {value === null ? pendingValue(56) : formatNumber(value)}
+          {value !== null && (target !== null ? ` / ${formatNumber(target)} g` : ' g')}
         </Box>
       </Box>
       <Box
         role="meter"
         aria-label={label}
-        aria-valuenow={Math.round(value)}
+        aria-valuenow={value === null ? undefined : Math.round(value)}
         aria-valuemin={0}
         aria-valuemax={target ?? undefined}
         sx={{ height: 6, borderRadius: tokens.radius.chip, bgcolor: tokens.chart.grid, overflow: 'hidden' }}

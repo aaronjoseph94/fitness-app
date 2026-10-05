@@ -1,0 +1,20 @@
+# Owns: response headers for every static asset the Worker serves (Workers static assets read this file; responses the
+# Worker itself builds — /api, /mcp, OAuth — set their own). A private, single-user app: never indexed, never framed,
+# and a CSP that allows only this origin plus what the app really needs:
+#   'wasm-unsafe-eval'  the barcode reader (zxing WASM, /wasm/zxing_reader.wasm)
+#   'unsafe-inline' styles  MUI/emotion inject <style> tags and React writes style attributes
+#   blob: images  previews of photos picked or taken before upload; data: images  inline SVG/data URIs
+#   blob: workers  pdf.js and the service worker are same-origin; blob: covers libraries that spin up inline workers
+# No third-party hosts: fonts are self-hosted, exercise media and food icons are local, the Open Food Facts lookup
+# happens in the Worker (its product images are never shown), and photos come through /api/files.
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'
+
+# Hashed build output (file names change with their content): cached for a year and never revalidated. index.html,
+# sw.js and the manifest keep the default (revalidated) caching, so a new deploy is picked up.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

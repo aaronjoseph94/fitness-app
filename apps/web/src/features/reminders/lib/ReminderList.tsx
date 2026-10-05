@@ -26,8 +26,7 @@ function TimeField({ copy, value, disabled, onSave }: Omit<RowProps, 'help'>) {
   return (
     <TextField
       type="time"
-      size="small"
-      label="Time"
+      label={`${copy.label} time`}
       value={draft}
       disabled={disabled}
       onChange={(e) => setDraft(e.target.value)}
@@ -38,7 +37,7 @@ function TimeField({ copy, value, disabled, onSave }: Omit<RowProps, 'help'>) {
       error={draft !== '' && !valid}
       helperText={draft !== '' && !valid ? `Between ${EARLIEST_TIME} and ${LATEST_TIME}` : undefined}
       slotProps={{ htmlInput: { min: EARLIEST_TIME, max: LATEST_TIME, step: 300, 'data-testid': `reminder-${copy.kind}-time` } }}
-      sx={{ mt: 2, width: 140 }}
+      sx={{ mt: 2, width: 180 }}
     />
   )
 }

@@ -1,6 +1,7 @@
 // Owns: the web build — React, the PWA (injectManifest so src/sw.ts owns caching and later push), the manifest and
-// theme colour from the theme tokens, static files that live outside public/ (exercise step images, exercise GIFs, the
-// barcode reader's WASM) served in dev and copied into the build, and the dev/preview proxy to the local Worker.
+// theme colour from the theme tokens, the font's CSS inlined and its latin file preloaded, static files that live
+// outside public/ (exercise step images and thumbnails, exercise GIFs, the barcode reader's WASM) served in dev and
+// copied into the build, and the dev/preview proxy to the local Worker.
 import { cpSync, createReadStream, existsSync, mkdirSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, extname, join, resolve, sep } from 'node:path'
@@ -94,6 +95,43 @@ function themeColorMeta(): Plugin {
   }
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')
+
+/** Entry stylesheets at most this big are inlined into index.html (today: only Outfit's two @font-face rules, ~0.7 KB). */
+const INLINE_CSS_MAX_BYTES = 4 * 1024
+
+/**
+ * The self-hosted Outfit font without a render-blocking request: the entry stylesheet (its @font-face rules, still
+ * font-display: swap) is inlined into index.html, and the latin woff2 that every screen uses is preloaded, so the font
+ * downloads alongside the scripts instead of being discovered at the first paint. (The CSP allows inline styles.)
+ */
+function inlineFontCss(): Plugin {
+  return {
+    name: 'fitness:inline-font-css',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const bundle = ctx.bundle
+        if (!bundle) return html
+        let out = html
+        for (const [fileName, output] of Object.entries(bundle)) {
+          if (output.type !== 'asset' || !fileName.endsWith('.css')) continue
+          const css = typeof output.source === 'string' ? output.source : new TextDecoder().decode(output.source)
+          const link = new RegExp(`<link rel="stylesheet"[^>]*href="/${escapeRegExp(fileName)}"[^>]*>`)
+          if (css.length > INLINE_CSS_MAX_BYTES || !link.test(out)) continue
+          out = out.replace(link, () => `<style>${css}</style>`)
+        }
+        const latin = Object.keys(bundle).find((f) => /\/outfit-latin-wght-normal-[^/]+\.woff2$/.test(f))
+        if (latin) {
+          out = out.replace('<title>', () => `<link rel="preload" href="/${latin}" as="font" type="font/woff2" crossorigin />\n    <title>`)
+        }
+        return out
+      },
+    },
+  }
+}
+
 const workerProxy = {
   '/api': 'http://127.0.0.1:8787',
   '/mcp': 'http://127.0.0.1:8787',
@@ -104,6 +142,7 @@ export default defineConfig({
     react(),
     staticMounts(STATIC_MOUNTS),
     themeColorMeta(),
+    inlineFontCss(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -143,5 +182,7 @@ export default defineConfig({
   ],
   server: { proxy: workerProxy },
   preview: { proxy: workerProxy },
-  build: { sourcemap: true },
+  // 'hidden': maps are written for local debugging but never referenced from the bundles, and public/.assetsignore
+  // keeps *.map out of the Worker's static assets, so they are never uploaded or served.
+  build: { sourcemap: 'hidden' },
 })

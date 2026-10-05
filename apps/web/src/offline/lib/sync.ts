@@ -1,16 +1,18 @@
 // Owns: replaying the queue to the Worker — one flush at a time, strictly in order, with backoff — and what triggers a replay
-// (app start, `online`, the app becoming visible, any successful API call, a new queued write). The page flushes, not the
-// service worker: iOS has no Background Sync.
+// (app start once the page is idle, `online`, the app becoming visible, any successful API call, a new queued write). The
+// page flushes, not the service worker: iOS has no Background Sync. A head write the Worker keeps failing on (5 HTTP 5xx
+// in a row) moves to the rejected list, so one poisoned write never wedges every write behind it.
 import { db } from './db'
 import { pruneCache } from './cache'
+import { whenIdle } from './idle'
 import { addWrite, type NewWrite, type PendingWrite } from './queue'
 
 /** What happened when one queued write was sent. The sender classifies; the queue only acts on the outcome. */
 export type SendOutcome =
   /** Stored by the Worker (or already stored: replays are idempotent). */
   | { kind: 'sent' }
-  /** Network down, timeout, 429 or 5xx: keep it and try again later. */
-  | { kind: 'retry'; error: string }
+  /** Network down, timeout, 429 or 5xx: keep it and try again later. `status` is set when the Worker answered (HTTP). */
+  | { kind: 'retry'; error: string; status?: number }
   /** The Access session expired: keep everything and stop until Aaron signs in again. */
   | { kind: 'auth-expired' }
   /** A 4xx the Worker will never accept: move it to the rejected list so it is visible, not lost. */
@@ -27,6 +29,8 @@ export interface OfflineSyncOptions {
 /** Backoff after a retryable failure: 2 s × 2^(attempts − 1), capped at 5 minutes. */
 const RETRY_BASE_MS = 2_000
 const RETRY_MAX_MS = 5 * 60_000
+/** Consecutive HTTP 5xx on one write before it is set aside as rejected (network failures never count). */
+export const MAX_SERVER_ERRORS = 5
 const PERSIST_REQUESTED_KEY = 'fitness.storage-persist-requested'
 
 let sync: OfflineSyncOptions | null = null
@@ -44,9 +48,13 @@ export function startOfflineSync(options: OfflineSyncOptions): () => void {
   }
   window.addEventListener('online', onOnline)
   document.addEventListener('visibilitychange', onVisibility)
-  void requestPersistentStorage()
-  void pruneCache().catch((error: unknown) => console.warn('[offline] cache prune failed', error))
-  void flushNow()
+  // The first screen renders first; the startup replay, the storage request and the prune follow when the page is idle.
+  whenIdle(() => {
+    if (sync !== options) return
+    void requestPersistentStorage()
+    void pruneCache().catch((error: unknown) => console.warn('[offline] cache prune failed', error))
+    void flushNow()
+  })
   return () => {
     window.removeEventListener('online', onOnline)
     document.removeEventListener('visibilitychange', onVisibility)
@@ -90,8 +98,8 @@ export async function queueWrite(write: NewWrite): Promise<PendingWrite> {
   return pending
 }
 
-/** A fresh chance (back online, app reopened): drop any backoff and replay now. */
-function flushNow(): Promise<void> {
+/** A fresh chance (back online, app reopened, Aaron taps "Try now"): drop any backoff and replay now. */
+export function flushNow(): Promise<void> {
   clearTimeout(retryTimer)
   retryAt = 0
   return requestFlush()
@@ -111,26 +119,33 @@ async function flushOnce(send: QueueSender): Promise<number> {
         delivered += 1
         break
       case 'rejected':
-        await db.transaction('rw', db.queue, db.rejected, async () => {
-          await db.queue.delete(seq)
-          await db.rejected.put({
-            ...pending,
-            status: outcome.status,
-            last_error: outcome.error,
-            rejected_at: new Date().toISOString(),
-          })
-        })
+        await reject(seq, pending, outcome.status, outcome.error)
         break
       case 'auth-expired':
         return delivered
       case 'retry': {
         const attempts = write.attempts + 1
-        await db.queue.update(seq, { attempts, last_error: outcome.error })
+        // A 5xx adds one; any other HTTP answer (429, 408) ends the run; a network failure leaves it as it was.
+        const serverErrors =
+          outcome.status === undefined ? (write.server_errors ?? 0) : outcome.status >= 500 ? (write.server_errors ?? 0) + 1 : 0
+        if (serverErrors >= MAX_SERVER_ERRORS) {
+          await reject(seq, { ...pending, attempts }, outcome.status!, outcome.error)
+          break
+        }
+        await db.queue.update(seq, { attempts, last_error: outcome.error, server_errors: serverErrors })
         scheduleRetry(attempts)
         return delivered
       }
     }
   }
+}
+
+/** Move the head write to the rejected list (one IndexedDB transaction), so the writes behind it can go. */
+async function reject(seq: number, pending: PendingWrite, status: number, error: string): Promise<void> {
+  await db.transaction('rw', db.queue, db.rejected, async () => {
+    await db.queue.delete(seq)
+    await db.rejected.put({ ...pending, status, last_error: error, rejected_at: new Date().toISOString() })
+  })
 }
 
 function scheduleRetry(attempts: number): void {

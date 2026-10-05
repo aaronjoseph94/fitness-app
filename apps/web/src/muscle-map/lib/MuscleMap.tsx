@@ -56,6 +56,12 @@ export function MuscleMap({
   // Separation strokes in screen px, thinner on thumbnails.
   const stroke = Math.max(0.6, Math.min(1.6, (size ?? 360) / 220))
   const interactive = !!onSelect
+  // As a picture (not interactive), the name carries what it shows: trained muscles, hardest first.
+  const trained = (Object.entries(levels) as [Muscle, MuscleLevel][])
+    .filter(([, level]) => level > 0)
+    .sort((a, b) => b[1] - a[1] || MUSCLE_LABELS[a[0]].localeCompare(MUSCLE_LABELS[b[0]]))
+    .map(([muscle, level]) => `${MUSCLE_LABELS[muscle]} ${levelLabel(level).toLowerCase()}`)
+  const imgLabel = `${title}: ${trained.length ? trained.join(', ') : 'no muscles trained'}`
 
   const onClick = (e: MouseEvent<SVGSVGElement>) => {
     const m = muscleFrom(e.target)
@@ -88,12 +94,12 @@ export function MuscleMap({
         viewBox={`0 0 ${width} ${height}`}
         width="100%"
         role={interactive ? 'group' : 'img'}
-        aria-label={title}
+        aria-label={interactive ? title : imgLabel}
         onClick={interactive ? onClick : undefined}
         onKeyDown={interactive ? onKeyDown : undefined}
         style={{ display: 'block', height: 'auto', overflow: 'visible' }}
       >
-        <title>{title}</title>
+        <title>{interactive ? title : imgLabel}</title>
         {placed.map((p) => {
           const g = GEOMETRY[p.view]
           // One <g> per muscle per view, so its <title> and level apply to every path of that muscle.

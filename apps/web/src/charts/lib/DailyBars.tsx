@@ -2,17 +2,6 @@
 // date axis, stacked or single bars with 4 px rounded tops and 2 px surface gaps, a dashed target line, an optional
 // overlay line (e.g. a rolling median) and optional baseline markers (e.g. fast days). Charts configure it; they
 // do not re-implement it.
-import {
-  Bar,
-  BarStack,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ReferenceLine,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
@@ -22,11 +11,14 @@ import {
   animated,
   barCursor,
   barGap,
+  tickInterval,
   dotStyle,
   gridStyle,
   lineStyle,
   niceScale,
   rechartsSize,
+  seriesSummary,
+  surfaceText,
   targetStyle,
   tooltip,
   xAxisStyle,
@@ -36,6 +28,8 @@ import {
   field,
   num,
 } from './frame'
+import { Plot } from './plot'
+import type { RechartsModule } from '../preload'
 
 export interface DaySeries {
   key: string
@@ -136,30 +130,41 @@ export function DailyBars({
   ]
   const Tip = tooltip<DayRow>((r) => r.date, tipLines)
   const anim = animated(width)
-
-  const barEls = bars.map((b) =>
-    stacked ? (
-      <Bar
-        key={b.key}
-        dataKey={b.key}
-        name={b.label}
-        fill={b.color}
-        maxBarSize={BAR_MAX}
-        {...barGap}
-        isAnimationActive={anim}
-      />
-    ) : (
-      <Bar
-        key={b.key}
-        dataKey={b.key}
-        name={b.label}
-        fill={b.color}
-        maxBarSize={BAR_MAX}
-        radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}
-        isAnimationActive={anim}
-      />
+  // Per-day total (a day with no value in any bar is a gap, not a zero), then the target.
+  const summary = [
+    seriesSummary(
+      data.map((r) => ({ date: r.date, value: bars.every((b) => val(r, b.key) === null) ? null : bars.reduce((s, b) => s + (val(r, b.key) ?? 0), 0) })),
+      format,
     ),
-  )
+    target ? `${target.label} ${format(target.value)}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const barEls = (R: RechartsModule) =>
+    bars.map((b) =>
+      stacked ? (
+        <R.Bar
+          key={b.key}
+          dataKey={b.key}
+          name={b.label}
+          fill={b.color}
+          maxBarSize={BAR_MAX}
+          {...barGap}
+          isAnimationActive={anim}
+        />
+      ) : (
+        <R.Bar
+          key={b.key}
+          dataKey={b.key}
+          name={b.label}
+          fill={b.color}
+          maxBarSize={BAR_MAX}
+          radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}
+          isAnimationActive={anim}
+        />
+      ),
+    )
 
   return (
     <ChartFrame
@@ -171,42 +176,57 @@ export function DailyBars({
       height={height}
       empty={rows.length === 0}
     >
-      <ComposedChart data={data} margin={MARGIN} barCategoryGap="22%" {...rechartsSize(width, height)}>
-        <CartesianGrid {...gridStyle} />
-        <XAxis {...xAxisStyle} dataKey="date" tickFormatter={(d: string) => formatShortDate(d)} />
-        <YAxis {...yAxisStyle} domain={y.domain} ticks={y.ticks} tickFormatter={ticks} />
-        <Tooltip content={Tip} cursor={barCursor} />
-        {stacked ? (
-          <BarStack stackId="day" radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}>
-            {barEls}
-          </BarStack>
-        ) : (
-          barEls
+      <Plot width={width} height={height}>
+        {(R, plotWidth) => (
+          <R.ComposedChart
+            data={data}
+            margin={MARGIN}
+            barCategoryGap="22%"
+            {...rechartsSize(width, height)}
+            {...surfaceText(label, summary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis
+              {...xAxisStyle}
+              dataKey="date"
+              tickFormatter={(d: string) => formatShortDate(d)}
+              interval={tickInterval(data.length, plotWidth)}
+            />
+            <R.YAxis {...yAxisStyle} domain={y.domain} ticks={y.ticks} tickFormatter={ticks} />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            {stacked ? (
+              <R.BarStack stackId="day" radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}>
+                {barEls(R)}
+              </R.BarStack>
+            ) : (
+              barEls(R)
+            )}
+            {target && <R.ReferenceLine y={target.value} {...targetStyle} />}
+            {line && (
+              <R.Line
+                dataKey={line.key}
+                name={line.label}
+                stroke={line.color}
+                {...lineStyle}
+                dot={false}
+                activeDot={dotStyle(line.color)}
+                connectNulls
+                isAnimationActive={false}
+              />
+            )}
+            {marker && (
+              <R.Line
+                dataKey="__marker"
+                stroke="none"
+                dot={dotStyle(marker.color, 4)}
+                activeDot={false}
+                isAnimationActive={false}
+                legendType="none"
+              />
+            )}
+          </R.ComposedChart>
         )}
-        {target && <ReferenceLine y={target.value} {...targetStyle} />}
-        {line && (
-          <Line
-            dataKey={line.key}
-            name={line.label}
-            stroke={line.color}
-            {...lineStyle}
-            dot={false}
-            activeDot={dotStyle(line.color)}
-            connectNulls
-            isAnimationActive={false}
-          />
-        )}
-        {marker && (
-          <Line
-            dataKey="__marker"
-            stroke="none"
-            dot={dotStyle(marker.color, 4)}
-            activeDot={false}
-            isAnimationActive={false}
-            legendType="none"
-          />
-        )}
-      </ComposedChart>
+      </Plot>
     </ChartFrame>
   )
 }

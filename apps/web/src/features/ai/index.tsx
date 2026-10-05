@@ -24,9 +24,10 @@ export function AskAiPanel({ open, onClose }: AskAiPanelProps) {
       anchor="bottom"
       open={open}
       onClose={onClose}
-      aria-label="Ask AI"
       slotProps={{
         paper: {
+          // The paper carries role="dialog", so its name goes here (on the Drawer root it names nothing).
+          'aria-label': 'Ask AI',
           'data-testid': 'ask-ai-panel',
           sx: {
             height: 'calc(100dvh - 48px - env(safe-area-inset-top, 0px))',

@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { formatNumber, LoadProblem, MetricRing, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, dateOf, formatDateTime, formatDuration, instantAt, relativeDay, shiftDate, todayLocal } from './dates'
-import { plannedInMonth, useFasts, useNow, type FastView } from './fasts'
+import { fastsInMonth, useFasts, useNow, type FastView } from './fasts'
 import { useLogSettings } from './reads'
 import { noticeFor, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
@@ -148,6 +148,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
           <PlanFastForm
             initialDate={date > today ? date : shiftDate(today, 1)}
             fasts={fasting.fasts}
+            fastHours={fastHours}
             fastsPerMonth={fastsPerMonth}
             onPlanned={(n) => {
               setPlanOpen(false)
@@ -234,11 +235,13 @@ function formatClockDuration(ms: number): string {
 function PlanFastForm({
   initialDate,
   fasts,
+  fastHours,
   fastsPerMonth,
   onPlanned,
 }: {
   initialDate: string
   fasts: readonly FastView[]
+  fastHours: number
   fastsPerMonth: number
   onPlanned: (notice: LogNotice) => void
 }) {
@@ -246,7 +249,7 @@ function PlanFastForm({
   const [time, setTime] = useState(DEFAULT_PLAN_TIME)
   const plan = useLogMutation(endpoints.fasting.plan)
   const today = todayLocal()
-  const count = plannedInMonth(fasts, date)
+  const count = fastsInMonth(fasts, date, fastHours)
   const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(Date.parse(`${date}T12:00:00Z`))
   const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}$/.test(time) && date >= today
 

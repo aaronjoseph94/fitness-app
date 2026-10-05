@@ -6,7 +6,7 @@ import type { TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
-import { MilestoneTimeline, WaistWhrChart, WeeklyLossChart, WeightTrendChart } from '../../../charts'
+import { frameHeight, MilestoneTimeline, WaistWhrChart, WeeklyLossChart, WeightTrendChart } from '../../../charts'
 import { ChartCard, formatNumber, isQueryLoading, QueryStateCard, SectionHeader } from '../../../components'
 import { PhotosLink } from '../../photos'
 import type { RangeKey } from './range'
@@ -30,7 +30,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumn
     return (
       <Stack spacing={4}>
         {header}
-        <QueryStateCard query={trend} what="the weight trend" height={240} />
+        <QueryStateCard query={trend} what="the weight trend" height={frameHeight(240)} />
         {isQueryLoading(trend) && <QueryStateCard query={trend} what="the weight trend" />}
       </Stack>
     )

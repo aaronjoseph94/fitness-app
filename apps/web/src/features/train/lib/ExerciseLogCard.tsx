@@ -56,7 +56,9 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
           <ButtonBase
             onClick={() => onAbout(id)}
             sx={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              minHeight: tokens.tapTarget,
               textAlign: 'left',
               fontSize: tokens.font.size.body,
               fontWeight: tokens.font.weight.heading,

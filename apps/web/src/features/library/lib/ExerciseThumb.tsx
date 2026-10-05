@@ -1,5 +1,7 @@
 // Owns: the exercise thumbnail — the first step image (lazy, square-cropped, rounded) or a dumbbell icon when the
-// exercise has no image or it fails to load (images are fetched at build time and may be missing in dev).
+// exercise has no image or it fails to load (images are fetched at build time and may be missing in dev). It shows the
+// 112 px WebP thumbnail next to the step image (/exercises/<id>/thumb.webp, ~2 KB, written by the exercises fetch
+// script), falling back to the full step JPEG (~70 KB) when the browser has no WebP or the thumbnail is missing.
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import Box from '@mui/material/Box'
 import { useState } from 'react'
@@ -11,10 +13,28 @@ export interface ExerciseThumbProps {
   size?: number
 }
 
+/** "/exercises/Barbell_Squat/0.jpg" → "/exercises/Barbell_Squat/thumb.webp". */
+const thumbOf = (src: string) => src.replace(/\/[^/]+$/, '/thumb.webp')
+
 export function ExerciseThumb({ exercise, size = 56 }: ExerciseThumbProps) {
   const src = exercise?.image_paths[0]
-  const [failed, setFailed] = useState<string | null>(null)
-  const showImage = src !== undefined && failed !== src
+  // What failed to load for this src: the thumbnail (show the step JPEG) or the JPEG too (show the icon).
+  const [failed, setFailed] = useState<{ src: string; stage: 'thumb' | 'image' } | null>(null)
+  const stage = failed && failed.src === src ? failed.stage : null
+  const showImage = src !== undefined && stage !== 'image'
+  const img = (
+    <Box
+      component="img"
+      src={src}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      onError={() => src && setFailed({ src, stage: stage === 'thumb' ? 'image' : 'thumb' })}
+      sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+    />
+  )
   return (
     <Box
       sx={{
@@ -30,16 +50,15 @@ export function ExerciseThumb({ exercise, size = 56 }: ExerciseThumbProps) {
         color: tokens.ink.secondary,
       }}
     >
-      {showImage ? (
-        <Box
-          component="img"
-          src={src}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(src)}
-          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
+      {showImage && src ? (
+        stage === 'thumb' ? (
+          img
+        ) : (
+          <Box component="picture" sx={{ display: 'contents' }}>
+            <source type="image/webp" srcSet={thumbOf(src)} />
+            {img}
+          </Box>
+        )
       ) : (
         <FitnessCenterRounded sx={{ fontSize: size * 0.45 }} aria-hidden />
       )}

@@ -158,7 +158,7 @@ function DayRows({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; to
                 `${formatNumber(d.kcal)} kcal · ${formatNumber(d.protein_g)} g protein`
               )}
               {d.scan && (
-                <Box component="span" sx={{ ml: 1, color: tokens.metric.lean, fontWeight: tokens.font.weight.label }}>
+                <Box component="span" sx={{ ml: 1, color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
                   · Scan
                 </Box>
               )}

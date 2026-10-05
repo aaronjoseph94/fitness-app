@@ -26,6 +26,8 @@ export const tokens = {
     text: '#1A1A2E',
     secondary: '#6B7280',
     border: '#E5E7EB',
+    /** Outline of a form control a value is typed into: ≥3:1 on card, page and chart grid (WCAG 1.4.11). */
+    control: '#868B94',
     card: '#FFFFFF',
     page: '#FAFAFC',
   },
@@ -43,8 +45,8 @@ export const tokens = {
     lean: '#059669',
     fasting: '#64748B',
   },
-  /** Status only — never used for a metric. */
-  status: { good: '#16A34A', warning: '#D97706', flag: '#DC2626' },
+  /** Status only — never used for a metric. Each is ≥4.5:1 on white both ways (as text, and white text on it). */
+  status: { good: '#15803D', warning: '#B45309', flag: '#DC2626' },
   /** The printed report (SPEC §11 print: black text on white): body text, secondary text, the running header. */
   print: { text: '#000000', secondary: '#333333', header: '#444444', page: '#FFFFFF' },
   chart: {
@@ -68,10 +70,31 @@ export const tokens = {
   /** 4 px base spacing scale. */
   space: (n: number) => n * 4,
   tapTarget: 44,
-  layout: { phoneWidth: 390, maxContent: 1120, bottomNavHeight: 64 },
+  /** Keyboard focus ring (WCAG 2.4.7): ink, never a data colour. */
+  focusRing: { width: 2, offset: 2 },
+  layout: {
+    phoneWidth: 390,
+    maxContent: 1120,
+    bottomNavHeight: 64,
+    /** Scroll padding so a focused control never lands under the sticky top bar or the bottom nav + log button (WCAG 2.4.11). */
+    scrollPadding: { top: 72, bottom: 152 },
+  },
 } as const
 
 export type MetricKey = keyof typeof tokens.metric
+
+/** Media query for the reduced-motion preference (WCAG 2.3.3): no transitions, ripples or smooth scrolling. */
+export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+
+/** True when the viewer asked for reduced motion. Safe outside a browser (false). */
+export function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(REDUCED_MOTION_QUERY).matches
+}
+
+/** Scroll behaviour that honours the reduced-motion preference. */
+export function scrollBehavior(): ScrollBehavior {
+  return prefersReducedMotion() ? 'auto' : 'smooth'
+}
 
 /** Hex colour with alpha (0–1), e.g. the 12 % forecast band. */
 export function withAlpha(hex: string, alpha: number): string {
@@ -156,6 +179,15 @@ export const theme = createTheme({
         body: { backgroundColor: ink.page, color: ink.text, WebkitFontSmoothing: 'antialiased' },
       },
     },
+    // Every custom button (ButtonBase in an sx) gets the same visible keyboard focus ring; MUI's own buttons keep their
+    // focus tint underneath it.
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focusVisible': { outline: `${tokens.focusRing.width}px solid ${ink.text}`, outlineOffset: tokens.focusRing.offset },
+        },
+      },
+    },
     MuiPaper: { defaultProps: { elevation: 0 } },
     MuiCard: {
       defaultProps: { elevation: 0 },
@@ -170,11 +202,30 @@ export const theme = createTheme({
     MuiIconButton: { styleOverrides: { root: { minWidth: tokens.tapTarget, minHeight: tokens.tapTarget } } },
     // A tappable chip or menu row is a tap target too (SPEC §11: 44 px), whatever size an sx asks for.
     MuiChip: { styleOverrides: { root: { fontWeight: font.weight.label }, clickable: { minHeight: tokens.tapTarget } } },
-    MuiMenuItem: { styleOverrides: { root: { minHeight: tokens.tapTarget } } },
+    // Full-width rows sit flush with a scrolling (clipping) parent, so their focus ring is drawn inside the row.
+    MuiMenuItem: { styleOverrides: { root: { minHeight: tokens.tapTarget, '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width } } } },
+    MuiListItemButton: { styleOverrides: { root: { '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width } } } },
+    MuiCardActionArea: { styleOverrides: { root: { '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width } } } },
     MuiTextField: { defaultProps: { fullWidth: true, size: 'medium' } },
+    // A switch's touch target (its input fills the thumb's button) is 44 px tall, not MUI's 38: the button gets 12 px
+    // around the 20 px thumb, the track (34 × 14) keeps its place centred under it, so it looks the same.
+    MuiSwitch: {
+      styleOverrides: {
+        root: {
+          '&.MuiSwitch-sizeMedium': {
+            width: 34 + 2 * 15,
+            height: tokens.tapTarget,
+            padding: 15,
+            '& .MuiSwitch-switchBase': { padding: (tokens.tapTarget - 20) / 2 },
+          },
+        },
+      },
+    },
     MuiBottomNavigation: {
       styleOverrides: { root: { height: tokens.layout.bottomNavHeight, borderTop: `1px solid ${ink.border}` } },
     },
-    MuiBottomNavigationAction: { styleOverrides: { root: { minWidth: 0, paddingTop: 6 } } },
+    MuiBottomNavigationAction: {
+      styleOverrides: { root: { minWidth: 0, paddingTop: 6, '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width } } },
+    },
   },
 })

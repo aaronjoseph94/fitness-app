@@ -1,6 +1,7 @@
 // Owns: Today's header card — trend weight as the one big number, the change since the start weight, kg to go, the
 // projected finish date from the active plan's forecast and the 7-day trend change; today's raw weigh-in de-emphasised
-// (marked pending while it waits to sync), or a calm prompt for the first weigh-in.
+// (marked pending while it waits to sync), or a calm prompt for the first weigh-in. While the day loads the card keeps
+// the same rows with placeholders in the values, so nothing below it moves when they arrive.
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import Box from '@mui/material/Box'
@@ -22,12 +23,17 @@ export interface TodayHeaderProps {
   goalKg: number
   forecast: Pick<Forecast, 'finish_date' | 'weekly_rate_kg'> | null
   loading: boolean
+  /** Settings (the start weight) are still loading: the "since start" line keeps its place. */
+  startLoading?: boolean
   /** Neither the day nor the trend could be read (offline with nothing saved, or an error): no claim about weigh-ins. */
   unavailable: boolean
   onWeighIn: () => void
 }
 
-function Fact({ label, value, unit, testId }: { label: string; value: string; unit?: string; testId: string }) {
+/** A value still loading: a text-line placeholder in the value's own font, so the line keeps its height. */
+const pending = (width: number) => <Skeleton variant="text" width={width} />
+
+function Fact({ label, value, unit, testId }: { label: string; value: string | null; unit?: string; testId: string }) {
   return (
     <Box data-testid={testId} sx={{ minWidth: 0 }}>
       <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
@@ -43,8 +49,8 @@ function Fact({ label, value, unit, testId }: { label: string; value: string; un
           whiteSpace: 'nowrap',
         }}
       >
-        {value}
-        {unit && value !== '—' && (
+        {value ?? pending(56)}
+        {unit && value !== null && value !== '—' && (
           <Box component="span" sx={{ ml: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
             {unit}
           </Box>
@@ -56,14 +62,7 @@ function Fact({ label, value, unit, testId }: { label: string; value: string; un
 
 export function TodayHeader(props: TodayHeaderProps) {
   const { trendKg, rawKg, rawPending, change7dKg, startKg, startDate, goalKg, forecast, loading, unavailable, onWeighIn } = props
-  if (loading)
-    return (
-      <Card sx={{ p: 4 }} aria-busy="true">
-        <Skeleton variant="text" width={110} />
-        <Skeleton variant="text" width={180} sx={{ fontSize: 40 }} />
-        <Skeleton variant="text" width={200} />
-      </Card>
-    )
+  const startLoading = props.startLoading ?? false
 
   const sinceStart = trendKg !== null && startKg !== null ? trendKg - startKg : null
   const toGo = trendKg !== null ? Math.max(0, trendKg - goalKg) : null
@@ -73,13 +72,13 @@ export function TodayHeader(props: TodayHeaderProps) {
   const DeltaIcon = sinceStart !== null && sinceStart < 0 ? ArrowDownwardRounded : ArrowUpwardRounded
 
   return (
-    <Card data-testid="today-header" sx={{ p: 4 }}>
+    <Card data-testid="today-header" sx={{ p: 4 }} aria-busy={loading || undefined}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 24 }}>
         <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, bgcolor: tokens.metric.weight }} />
         <Box sx={{ flex: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
           Trend weight
         </Box>
-        {rawKg !== null && (
+        {!loading && rawKg !== null && (
           <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             Weigh-in {formatNumber(rawKg, 1)} kg
           </Box>
@@ -87,7 +86,7 @@ export function TodayHeader(props: TodayHeaderProps) {
         {rawPending && <PendingBadge />}
       </Box>
 
-      {trendKg === null ? (
+      {!loading && trendKg === null ? (
         <Box sx={{ mt: 2 }}>
           <Box sx={{ fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
             {unavailable ? 'The trend isn’t on this phone yet' : 'No weigh-ins yet'}
@@ -116,12 +115,15 @@ export function TodayHeader(props: TodayHeaderProps) {
                 color: tokens.ink.text,
               }}
             >
-              {formatNumber(trendKg, 1)}
+              {loading ? pending(110) : formatNumber(trendKg, 1)}
             </Box>
             <Box component="span" sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
               kg
             </Box>
           </Box>
+          {(loading || startLoading) && sinceStart === null && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, fontSize: tokens.font.size.small }}>{pending(180)}</Box>
+          )}
           {sinceStart !== null && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
               {!flat && <DeltaIcon aria-hidden sx={{ fontSize: tokens.font.size.body, color: deltaColor }} />}
@@ -144,16 +146,21 @@ export function TodayHeader(props: TodayHeaderProps) {
               gap: 3,
             }}
           >
-            <Fact label="To go" value={toGo === null ? '—' : formatNumber(toGo, 1)} unit="kg" testId="today-to-go" />
-            <Fact label="Projected finish" value={finish ?? '—'} testId="today-finish" />
+            <Fact
+              label="To go"
+              value={loading ? null : toGo === null ? '—' : formatNumber(toGo, 1)}
+              unit="kg"
+              testId="today-to-go"
+            />
+            <Fact label="Projected finish" value={loading ? null : (finish ?? '—')} testId="today-finish" />
             <Fact
               label="7-day trend"
-              value={change7dKg === null ? '—' : formatSigned(change7dKg, 1)}
+              value={loading ? null : change7dKg === null ? '—' : formatSigned(change7dKg, 1)}
               unit="kg"
               testId="today-change-7d"
             />
           </Box>
-          {forecast && !finish && (
+          {!loading && forecast && !finish && (
             <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
               No finish date while the forecast rate is {formatNumber(forecast.weekly_rate_kg, 2)} kg/week.
             </Box>

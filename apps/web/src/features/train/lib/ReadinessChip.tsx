@@ -1,12 +1,12 @@
-// Owns: the readiness chip (SPEC §7, §9 readiness) — the 0–100 score coloured by status (under 40 flags reduced
-// volume), and on tap what it is made of: last night's sleep vs 7.5 h, yesterday's steps vs the 14-day median, days
+// Owns: the readiness chip (SPEC §7, §9 readiness) — the 0–100 score in ink with a status-coloured icon and tint (under
+// 40 flags reduced volume), and on tap what it is made of: last night's sleep vs 7.5 h, yesterday's steps vs the 14-day median, days
 // since the last session.
 import BoltRounded from '@mui/icons-material/BoltRounded'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Popover from '@mui/material/Popover'
 import type { Readiness } from '@fitness/shared/schemas'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { formatNumber } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
 
@@ -24,6 +24,7 @@ export function readinessTone(score: number): string {
 
 export function ReadinessChip({ readiness }: { readiness: Readiness }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const detailsId = useId()
   const tone = readinessTone(readiness.score)
   const rows: [string, string][] = [
     [
@@ -50,6 +51,9 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
       <ButtonBase
         onClick={(e) => setAnchor(e.currentTarget)}
         aria-label={`Readiness ${readiness.score} of 100. Details`}
+        aria-haspopup="dialog"
+        aria-expanded={anchor !== null}
+        aria-controls={anchor !== null ? detailsId : undefined}
         data-testid="readiness-chip"
         sx={{
           minHeight: tokens.tapTarget,
@@ -57,14 +61,15 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
           gap: 1,
           borderRadius: tokens.radius.chip,
           bgcolor: withAlpha(tone, 0.1),
-          color: tone,
+          // Status colour on the icon and tint only; the label stays ink so it reads at any score (WCAG 1.4.3).
+          color: tokens.ink.text,
           fontSize: tokens.font.size.small,
           fontWeight: tokens.font.weight.heading,
           fontVariantNumeric: 'tabular-nums',
           flex: 'none',
         }}
       >
-        <BoltRounded sx={{ fontSize: tokens.font.size.cardTitle }} aria-hidden />
+        <BoltRounded sx={{ fontSize: tokens.font.size.cardTitle, color: tone }} aria-hidden />
         Readiness {readiness.score}
       </ButtonBase>
       <Popover
@@ -75,6 +80,9 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{
           paper: {
+            id: detailsId,
+            role: 'dialog',
+            'aria-label': 'Readiness details',
             sx: {
               p: 4,
               maxWidth: 320,

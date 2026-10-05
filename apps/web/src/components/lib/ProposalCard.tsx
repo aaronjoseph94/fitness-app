@@ -33,6 +33,8 @@ export interface ProposalCardProps {
   /** Expanded content under the summary, e.g. the "why" text once loaded. */
   children?: ReactNode
   testId?: string
+  /** Heading level of the title, so the page outline never skips a level. Default h3. */
+  headingComponent?: 'h2' | 'h3' | 'h4'
 }
 
 const STATUS_TEXT: Record<Exclude<ProposalStatus, 'pending'>, { text: string; color: string }> = {
@@ -53,6 +55,7 @@ export function ProposalCard({
   busy = false,
   children,
   testId,
+  headingComponent = 'h3',
 }: ProposalCardProps) {
   const decided = status !== 'pending' ? STATUS_TEXT[status] : null
   return (
@@ -73,7 +76,7 @@ export function ProposalCard({
         {status === 'pending' && <PendingBadge />}
       </Box>
       <Box
-        component="h3"
+        component={headingComponent}
         sx={{
           m: 0,
           mt: 1.5,

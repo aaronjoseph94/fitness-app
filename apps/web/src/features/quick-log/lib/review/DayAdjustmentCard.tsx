@@ -68,7 +68,9 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
 
       {kcal !== null && (
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mt: 2 }}>
-          <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', color: tokens.metric.calories, lineHeight: 1.1 }}>
+          {/* The metric colour marks the number with a dot; the number itself stays ink (calorie orange is 2.8:1 on white). */}
+          <Box aria-hidden sx={{ width: 10, height: 10, borderRadius: tokens.radius.chip, bgcolor: tokens.metric.calories, flex: 'none', alignSelf: 'center' }} />
+          <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', color: tokens.ink.text, lineHeight: 1.1 }}>
             {formatNumber(Math.abs(kcal))}
           </Box>
           <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary }}>{kcal >= 0 ? 'kcal left' : 'kcal over'}</Box>

@@ -28,6 +28,9 @@ interface MealCardProps {
 
 const STATUS_LABEL = { parsing: 'Analysing', review: 'To review', confirmed: null } as const
 
+/** Height of a confirmed meal's card with one line of items at phone width: what a slot holds while its meals load. */
+export const MEAL_CARD_PX = 104
+
 export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: MealCardProps) {
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   const confirm = useLogMutation(endpoints.nutrition.updateMeal)

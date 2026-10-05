@@ -15,7 +15,7 @@ import Skeleton from '@mui/material/Skeleton'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { formatShortDate } from '../../../components'
 import { useOnline } from '../../../offline'
-import { tokens } from '../../../theme'
+import { scrollBehavior, tokens } from '../../../theme'
 import { Composer } from './Composer'
 import { useThreadStore } from './thread-store'
 import { TurnView } from './TurnView'
@@ -125,7 +125,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   }, [chat.failedText])
 
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end', behavior: lastKey ? 'smooth' : 'auto' })
+    end.current?.scrollIntoView({ block: 'end', behavior: lastKey ? scrollBehavior() : 'auto' })
   }, [lastKey, replied, chat.threadId])
 
   const send = (value: string) => {
@@ -145,10 +145,13 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       )}
       {chat.loadError && <Alert severity="warning">{chat.loadError}</Alert>}
       {empty && <Starters onPick={send} disabled={!online || chat.sending} />}
-      <Box component="ol" data-testid="ask-ai-turns" sx={{ m: 0, p: 0, display: 'grid', gap: 6 }}>
-        {chat.turns.map((t) => (
-          <TurnView key={t.key} turn={t} />
-        ))}
+      {/* A log region: screen readers announce each new question and reply as it arrives (WCAG 4.1.3). */}
+      <Box role="log" aria-live="polite" aria-label="Conversation">
+        <Box component="ol" data-testid="ask-ai-turns" sx={{ m: 0, p: 0, display: 'grid', gap: 6 }}>
+          {chat.turns.map((t) => (
+            <TurnView key={t.key} turn={t} />
+          ))}
+        </Box>
       </Box>
       {chat.error && (
         <Alert severity="error" onClose={chat.clearError}>

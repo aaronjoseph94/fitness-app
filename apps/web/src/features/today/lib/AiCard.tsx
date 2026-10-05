@@ -1,5 +1,5 @@
 // Owns: Today's AI slot — the newest safety flag of the last 7 days (rapid loss, plateau, protein low; shown, never
-// applied) as a warning above everything else; the latest pending proposal as a ProposalCard (Accept / Reject / Why →
+// applied) as a warning at the top of the slot; the latest pending proposal as a ProposalCard (Accept / Reject / Why →
 // POST /api/proposals/:id/accept|reject through the shared decision hook; Why links to the plan history), or else the
 // latest AI event (review, note, change) from the live feed; and under it today's day adjustment card (remaining kcal
 // and macros, protein status, next-meal ideas) when the AI has made one today.
@@ -96,6 +96,7 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
     <Box>
       <ProposalCard
         testId="today-proposal"
+        headingComponent="h2"
         title={view.title}
         source={`${view.source} · ${whenLabel(proposal.created_at)}`}
         summary={proposal.summary}
@@ -148,7 +149,7 @@ function EventCard({ event }: { event: AiEvent }) {
         <Box sx={{ flex: 1, minWidth: 0 }}>{view.source}</Box>
         <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{whenLabel(event.created_at)}</Box>
       </Box>
-      <Box component="h3" sx={{ m: 0, mt: 1.5, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
+      <Box component="h2" sx={{ m: 0, mt: 1.5, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
         {view.title}
       </Box>
       {view.text && <Box sx={{ mt: 1.5, fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>{view.text}</Box>}

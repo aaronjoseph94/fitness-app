@@ -2,10 +2,11 @@
 // fast state (GET /api/day/:date) and starts / ends / plans / removals not yet synced, so the sheet and the Log tab
 // agree. A missed fast (planned, never ended) is resolved in the fast sheet: end it at its real end, or "Didn't fast".
 import { endpoints } from '@fitness/shared/api'
+import { fastDay } from '@fitness/shared/engine'
 import type { Fast } from '@fitness/shared/schemas'
 import { useEffect, useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
-import { dateOf, todayLocal } from './dates'
+import { todayLocal } from './dates'
 import { useDay, useLogSettings } from './reads'
 import { usePendingLogs } from './writes'
 
@@ -118,8 +119,11 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
   }, [list.data, list.isLoading, list.error, list.refetch, today.data, starts, ends, plans, cancels, fastHours, now])
 }
 
-/** Planned fasts starting in the month of `date` ("2026-10"), for the "1 of 2 planned" line. */
-export function plannedInMonth(fasts: readonly FastView[], date: string): number {
+/**
+ * Fasts in the month of `date` ("2026-10"), for the "1 of 2 planned" line — counted the way the Worker's monthly cap
+ * counts them: every fast, planned or not, whose fast day (engine fastDay with settings.fast_hours) is in that month.
+ */
+export function fastsInMonth(fasts: readonly FastView[], date: string, fastHours: number): number {
   const month = date.slice(0, 7)
-  return fasts.filter((f) => f.planned && dateOf(f.startedAt).slice(0, 7) === month).length
+  return fasts.filter((f) => fastDay({ started_at: f.startedAt, ended_at: f.endedAt }, fastHours)?.slice(0, 7) === month).length
 }

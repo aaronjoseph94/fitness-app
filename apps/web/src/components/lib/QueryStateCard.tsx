@@ -1,5 +1,6 @@
-// Owns: the card a read shows before it has data — a chart-shaped skeleton while it loads, then a calm error card that
-// says why (offline with nothing saved on this phone yet, sign-in expired, or the server's answer) with a retry.
+// Owns: the card a read shows before it has data — a chart-shaped skeleton while it loads (the title and subtitle lines
+// of a ChartCard, line for line, over a block of the chart's height), then a calm error card that says why (offline
+// with nothing saved on this phone yet, sign-in expired, or the server's answer) with a retry.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -38,7 +39,7 @@ export interface QueryStateCardProps {
   query: Pick<UseQueryResult<unknown, ApiError>, 'isPending' | 'fetchStatus' | 'error' | 'refetch'>
   /** What it reads, for the error text: "the weight trend". */
   what: string
-  /** Height of the skeleton's chart block. Default 200. */
+  /** Height of the skeleton's chart block: the chart's whole frame (legend, unit caption and plot). Default 200. */
   height?: number
 }
 
@@ -47,8 +48,13 @@ export function QueryStateCard({ query, what, height = 200 }: QueryStateCardProp
   if (isQueryLoading(query))
     return (
       <Card data-testid="chart-skeleton" aria-busy="true" sx={{ p: 4 }}>
-        <Skeleton variant="text" width="45%" sx={{ fontSize: tokens.font.size.body }} />
-        <Skeleton variant="text" width="65%" sx={{ fontSize: tokens.font.size.label }} />
+        {/* The same line boxes as ChartCard's title and subtitle, so the loaded card has the skeleton's height. */}
+        <Box sx={{ fontSize: tokens.font.size.body, lineHeight: 1.35 }}>
+          <Skeleton variant="text" width="45%" />
+        </Box>
+        <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, lineHeight: 1.4 }}>
+          <Skeleton variant="text" width="65%" />
+        </Box>
         <Skeleton variant="rounded" height={height} sx={{ mt: 3, borderRadius: `${tokens.radius.control}px` }} />
       </Card>
     )

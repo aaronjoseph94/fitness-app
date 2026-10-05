@@ -1,7 +1,6 @@
 // Owns: the sleep chart — hours asleep as bars against the 7.5 h target, and bedtime as dots in a second panel
 // on the same date axis (two panels, never a second y-axis). Bedtimes span midnight on one continuous scale.
 import { useId } from 'react'
-import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
@@ -9,18 +8,23 @@ import {
   BAR_MAX,
   ChartFrame,
   MARGIN,
+  dateSpan,
   animated,
   barCursor,
+  tickInterval,
   dotStyle,
   gridStyle,
   niceScale,
   rechartsSize,
+  seriesSummary,
+  surfaceText,
   targetStyle,
   tooltip,
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
 } from './frame'
+import { Plot } from './plot'
 import { bedtimeLabel, bedtimeMinutes } from './stats'
 
 export interface SleepNight {
@@ -80,6 +84,13 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
     { label: 'Bedtime', color: C, mark: 'dot' },
   ]
   if (target !== undefined) items.push({ label: 'Target', color: tokens.chart.target, mark: 'dashed' })
+  const hoursSummary =
+    `Hours asleep ${seriesSummary(rows.map((r) => ({ date: r.date, value: r.hours })), (v) => `${formatNumber(v, 1)} h`)}` +
+    (target !== undefined ? ` Target ${formatNumber(target, 1)} h.` : '')
+  const lastBed = rows.filter((r) => r.bed !== null).at(-1)
+  const bedSummary = lastBed
+    ? `Bedtimes ${dateSpan(rows.map((r) => r.date))}: last ${bedtimeLabel(lastBed.bed!)}, earliest ${bedtimeLabel(Math.min(...beds))}, latest ${bedtimeLabel(Math.max(...beds))}.`
+    : 'No bedtimes yet.'
 
   return (
     <ChartFrame
@@ -91,48 +102,68 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
       empty={nights.length === 0}
     >
       <AxisCaption>Hours asleep</AxisCaption>
-      <ComposedChart
-        data={rows}
-        margin={MARGIN}
-        syncId={syncId}
-        barCategoryGap="22%"
-        {...rechartsSize(width, topH)}
-      >
-        <CartesianGrid {...gridStyle} />
-        <XAxis {...xAxisStyle} dataKey="date" hide />
-        <YAxis {...yAxisStyle} domain={hours.domain} ticks={hours.ticks} />
-        <Tooltip content={Tip} cursor={barCursor} />
-        <Bar
-          dataKey="hours"
-          fill={C}
-          maxBarSize={BAR_MAX}
-          radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}
-          isAnimationActive={anim}
-        />
-        {target !== undefined && <ReferenceLine y={target} {...targetStyle} />}
-      </ComposedChart>
+      <Plot width={width} height={topH}>
+        {(R) => (
+          <R.ComposedChart
+            data={rows}
+            margin={MARGIN}
+            syncId={syncId}
+            barCategoryGap="22%"
+            {...rechartsSize(width, topH)}
+            {...surfaceText('Hours asleep per night', hoursSummary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis {...xAxisStyle} dataKey="date" hide />
+            <R.YAxis {...yAxisStyle} domain={hours.domain} ticks={hours.ticks} />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.Bar
+              dataKey="hours"
+              fill={C}
+              maxBarSize={BAR_MAX}
+              radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}
+              isAnimationActive={anim}
+            />
+            {target !== undefined && <R.ReferenceLine y={target} {...targetStyle} />}
+          </R.ComposedChart>
+        )}
+      </Plot>
       <AxisCaption first={false}>Bedtime</AxisCaption>
-      <ComposedChart data={rows} margin={MARGIN} syncId={syncId} {...rechartsSize(width, bottomH)}>
-        <CartesianGrid {...gridStyle} />
-        <XAxis {...xAxisStyle} dataKey="date" tickFormatter={(d: string) => formatShortDate(d)} />
-        <YAxis
-          {...yAxisStyle}
-          width={48}
-          domain={[bedMin - 10, bedTicks.at(-1)! + 10]}
-          ticks={bedTicks}
-          interval={0}
-          tickFormatter={bedtimeLabel}
-          reversed
-        />
-        <Tooltip content={Tip} cursor={barCursor} />
-        <Line
-          dataKey="bed"
-          stroke="none"
-          dot={dotStyle(C)}
-          activeDot={dotStyle(C, 5)}
-          isAnimationActive={false}
-        />
-      </ComposedChart>
+      <Plot width={width} height={bottomH}>
+        {(R, plotWidth) => (
+          <R.ComposedChart
+            data={rows}
+            margin={MARGIN}
+            syncId={syncId}
+            {...rechartsSize(width, bottomH)}
+            {...surfaceText('Bedtime per night', bedSummary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis
+              {...xAxisStyle}
+              dataKey="date"
+              tickFormatter={(d: string) => formatShortDate(d)}
+              interval={tickInterval(rows.length, plotWidth, 48)}
+            />
+            <R.YAxis
+              {...yAxisStyle}
+              width={48}
+              domain={[bedMin - 10, bedTicks.at(-1)! + 10]}
+              ticks={bedTicks}
+              interval={0}
+              tickFormatter={bedtimeLabel}
+              reversed
+            />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.Line
+              dataKey="bed"
+              stroke="none"
+              dot={dotStyle(C)}
+              activeDot={dotStyle(C, 5)}
+              isAnimationActive={false}
+            />
+          </R.ComposedChart>
+        )}
+      </Plot>
     </ChartFrame>
   )
 }

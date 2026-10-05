@@ -1,7 +1,9 @@
 // Owns: the Today tab (SPEC §6 dashboard): the pinned coach note, the trend-weight header, today's rings (with the fast
-// badge and queued logs), the quick-log row, the latest proposal or AI event (live: polled every 15 s while visible),
-// the hero weight chart with the forecast to the goal, and "This week". Reads: GET /api/day/:date, /api/trend,
-// /api/plan, /api/settings, /api/notes, /api/week-plans, /api/events.
+// badge and queued logs), the quick-log row, the hero weight chart with the forecast to the goal, the latest proposal or
+// AI event (live: polled every 15 s while visible), and "This week". Reads: GET /api/day/:date (with the note and the
+// active plan's forecast), /api/trend, /api/settings, /api/week-plans, /api/events. The cards that arrive last (AI,
+// This week) sit below the hero chart, so they never push the cards above them down.
+// Second entry point: ./queries (the reads' inputs).
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { useState } from 'react'
@@ -25,7 +27,7 @@ const DEFAULT_WATER_ML = 3000
 
 export function TodayPage() {
   const date = useLocalToday()
-  const { day, trend, plan, settings, weekPlan, note, pending } = useTodayData(date)
+  const { day, trend, settings, weekPlan, note, pending } = useTodayData(date)
   const feed = useEventFeed()
   const openQuickLog = useUiStore((s) => s.openQuickLog)
   const [healthOpen, setHealthOpen] = useState(false)
@@ -33,7 +35,8 @@ export function TodayPage() {
 
   const profile = settings.data?.profile
   const goalKg = profile?.goal_weight_kg ?? DEFAULT_GOAL_KG
-  const forecast = plan.data?.forecast ?? day.data?.forecast ?? null
+  // The day carries the active plan's forecast (the same one GET /api/plan returns).
+  const forecast = day.data?.forecast ?? null
   const lastPoint = trend.data?.points.findLast((p) => p.trend_kg !== null)
   const trendKg = day.data?.weight.trend_kg ?? lastPoint?.trend_kg ?? null
   const fasting = pending.fast === 'started' || (pending.fast !== 'ended' && day.data?.fast.state === 'active')
@@ -45,6 +48,7 @@ export function TodayPage() {
 
       <TodayHeader
         loading={isQueryLoading(day) && isQueryLoading(trend)}
+        startLoading={isQueryLoading(settings)}
         unavailable={!day.data && !trend.data}
         trendKg={trendKg}
         rawKg={pending.weighInKg ?? day.data?.weight.raw_kg ?? null}
@@ -71,9 +75,9 @@ export function TodayPage() {
 
       <QuickLogRow fasting={fasting} />
 
-      <AiCard latest={day.data?.proposals.latest ?? null} pendingCount={day.data?.proposals.pending_count ?? 0} events={feed.data?.events ?? []} />
-
       <HeroChart trend={trend} forecast={forecast} goalKg={goalKg} onWeighIn={weighIn} />
+
+      <AiCard latest={day.data?.proposals.latest ?? null} pendingCount={day.data?.proposals.pending_count ?? 0} events={feed.data?.events ?? []} />
 
       <ThisWeekCard date={date} day={day.data} weekPlan={weekPlan} trainingDays={settings.data?.settings.training_days ?? null} />
 

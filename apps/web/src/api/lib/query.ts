@@ -12,7 +12,7 @@ import {
   type UseQueryOptions,
   type UseQueryResult,
 } from '@tanstack/react-query'
-import { responseCache } from '../../offline'
+import { responseCache, whenIdle } from '../../offline'
 import { exchange, parseResponse, toWireRequest } from './call'
 import { isApiError, type ApiError } from './errors'
 import { write, type WriteOutcome } from './write'
@@ -44,12 +44,15 @@ export function useApiQuery<E extends Endpoint, TData = EndpointOutput<E>>(
   return useQuery({
     // Run the query function even offline so it can answer from the cache.
     networkMode: 'offlineFirst',
-    retry: (failureCount, error) => error.transient && failureCount < 2,
+    retry: retryTransient,
     ...options,
     queryKey: apiQueryKey(endpoint, input),
     queryFn: ({ signal }) => readThrough(endpoint, input, signal),
   })
 }
+
+/** Transient failures (network, 5xx, 429) are tried twice more; everything else fails at once. */
+const retryTransient = (failureCount: number, error: ApiError) => error.transient && failureCount < 2
 
 async function readThrough<E extends Endpoint>(endpoint: E, input: EndpointInput<E>, signal: AbortSignal): Promise<EndpointOutput<E>> {
   const request = toWireRequest(endpoint, input)
@@ -66,7 +69,8 @@ async function readThrough<E extends Endpoint>(endpoint: E, input: EndpointInput
     throw error
   }
   const data = parseResponse(endpoint, request, body)
-  responseCache.write(cacheKey, body).catch((error: unknown) => console.warn('[api] cache write failed', error))
+  // The offline copy is not needed to show this response: write it once the page is idle.
+  whenIdle(() => void responseCache.write(cacheKey, body).catch((error: unknown) => console.warn('[api] cache write failed', error)))
   return data
 }
 

@@ -6,12 +6,11 @@ import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { apiQueryKey, useApiQuery } from '../../../api'
-
-const ALL = { query: { scope: 'all' as const } }
+import { ALL_EXERCISES, EXERCISES_STALE_MS } from '../queries'
 
 /** The whole library (allowed and not); each row carries `allowed`. Cached for 10 minutes, offline-capable. */
 export function useExercises() {
-  return useApiQuery(endpoints.training.listExercises, ALL, { staleTime: 10 * 60_000, gcTime: 60 * 60_000 })
+  return useApiQuery(endpoints.training.listExercises, ALL_EXERCISES, { staleTime: EXERCISES_STALE_MS, gcTime: 60 * 60_000 })
 }
 
 export interface ExerciseIndex {
@@ -63,7 +62,7 @@ export function useMarkHidden(): (exerciseId: string) => void {
   const queryClient = useQueryClient()
   return useCallback(
     (exerciseId: string) =>
-      queryClient.setQueryData<ExerciseSummary[]>(apiQueryKey(endpoints.training.listExercises, ALL), (list) =>
+      queryClient.setQueryData<ExerciseSummary[]>(apiQueryKey(endpoints.training.listExercises, ALL_EXERCISES), (list) =>
         list?.map((e) => (e.id === exerciseId ? { ...e, allowed: false } : e)),
       ),
     [queryClient],

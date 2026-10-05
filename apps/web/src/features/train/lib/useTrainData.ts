@@ -2,17 +2,14 @@
 // last night's sleep), four weeks of sessions (recent list, days since the last one), the 15 days of steps readiness
 // needs, the templates — plus today's readiness and the session in progress on this phone, if any.
 import { endpoints } from '@fitness/shared/api'
-import { addDays } from '@fitness/shared/engine'
 import type { Readiness, SleepLog } from '@fitness/shared/schemas'
 import { useMemo } from 'react'
 import { useApiQuery } from '../../../api'
 import { setCounts, type LoggerSession } from './logger-model'
 import { useLoggerStore } from './logger-store'
-import { readinessToday, STEP_WINDOW_DAYS } from './readiness'
+import { recentSessionsInput, stepsWindowInput } from '../queries'
+import { readinessToday } from './readiness'
 import { useTemplates } from './session'
-
-/** Recent sessions shown and read: four weeks. */
-const RECENT_DAYS = 28
 
 /** Last night's minutes asleep: the logged value, else woke − in bed. */
 function sleepMinutes(sleep: Pick<SleepLog, 'asleep_min' | 'in_bed_at' | 'woke_at'> | null): number | null {
@@ -25,12 +22,8 @@ function sleepMinutes(sleep: Pick<SleepLog, 'asleep_min' | 'in_bed_at' | 'woke_a
 
 export function useTrainData(date: string) {
   const day = useApiQuery(endpoints.day.get, { params: { date } })
-  const sessions = useApiQuery(endpoints.training.listSessions, {
-    query: { from: addDays(date, -(RECENT_DAYS - 1)), to: date },
-  })
-  const days = useApiQuery(endpoints.day.range, {
-    query: { from: addDays(date, -(STEP_WINDOW_DAYS + 1)), to: addDays(date, -1) },
-  })
+  const sessions = useApiQuery(endpoints.training.listSessions, recentSessionsInput(date))
+  const days = useApiQuery(endpoints.day.range, stepsWindowInput(date))
   const templates = useTemplates()
   const copies = useLoggerStore((s) => s.sessions)
 

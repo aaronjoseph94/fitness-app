@@ -1,6 +1,5 @@
 // Owns: weekly trend change as bars about zero (a loss hangs below the line) against the forecast's expected
 // change per week (dashed grey markers joined by a dashed line).
-import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatShortDate, formatSigned, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
@@ -9,15 +8,19 @@ import {
   MARGIN,
   animated,
   barCursor,
+  tickInterval,
   dataEndBarPath,
   gridStyle,
   niceScale,
   rechartsSize,
+  seriesSummary,
+  surfaceText,
   tooltip,
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
 } from './frame'
+import { Plot } from './plot'
 
 export interface WeeklyLossPoint {
   /** Monday of the week, "2026-10-05". */
@@ -68,46 +71,63 @@ export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: W
     { label: 'Trend change', color: C, mark: 'bar' },
     { label: 'Expected', color: tokens.chart.target, mark: 'dashed' },
   ]
+  const label = 'Weekly trend change versus expected'
+  const summary = `Weeks of ${seriesSummary(weeks.map((w) => ({ date: w.week, value: w.change })), (v) => `${formatSigned(v, 2)} kg`)}`
   return (
     <ChartFrame
       testId="chart-weekly-loss"
-      label="Weekly trend change versus expected"
+      label={label}
       legend={legend ? items : undefined}
       unit="kg / week"
       width={width}
       height={height}
       empty={weeks.length === 0}
     >
-      <ComposedChart data={weeks} margin={MARGIN} barCategoryGap="30%" {...rechartsSize(width, height)}>
-        <CartesianGrid {...gridStyle} />
-        <XAxis {...xAxisStyle} dataKey="week" tickFormatter={(d: string) => formatShortDate(d)} />
-        <YAxis
-          {...yAxisStyle}
-          domain={y.domain}
-          ticks={y.ticks}
-          tickFormatter={(v: number) => v.toFixed(1)}
-        />
-        <Tooltip content={Tip} cursor={barCursor} />
-        <ReferenceLine y={0} stroke={tokens.ink.border} strokeWidth={1} />
-        <Bar
-          dataKey="change"
-          fill={C}
-          maxBarSize={BAR_MAX}
-          shape={LossBar}
-          isAnimationActive={animated(width)}
-        />
-        <Line
-          dataKey="expected"
-          stroke={tokens.chart.target}
-          strokeWidth={1.5}
-          strokeDasharray={tokens.chart.targetDash}
-          dot={{ r: 3, fill: tokens.chart.target, stroke: tokens.ink.card, strokeWidth: 1.5 }}
-          activeDot={false}
-          type="linear"
-          connectNulls
-          isAnimationActive={false}
-        />
-      </ComposedChart>
+      <Plot width={width} height={height}>
+        {(R, plotWidth) => (
+          <R.ComposedChart
+            data={weeks}
+            margin={MARGIN}
+            barCategoryGap="30%"
+            {...rechartsSize(width, height)}
+            {...surfaceText(label, summary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis
+              {...xAxisStyle}
+              dataKey="week"
+              tickFormatter={(d: string) => formatShortDate(d)}
+              interval={tickInterval(weeks.length, plotWidth)}
+            />
+            <R.YAxis
+              {...yAxisStyle}
+              domain={y.domain}
+              ticks={y.ticks}
+              tickFormatter={(v: number) => v.toFixed(1)}
+            />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.ReferenceLine y={0} stroke={tokens.ink.border} strokeWidth={1} />
+            <R.Bar
+              dataKey="change"
+              fill={C}
+              maxBarSize={BAR_MAX}
+              shape={LossBar}
+              isAnimationActive={animated(width)}
+            />
+            <R.Line
+              dataKey="expected"
+              stroke={tokens.chart.target}
+              strokeWidth={1.5}
+              strokeDasharray={tokens.chart.targetDash}
+              dot={{ r: 3, fill: tokens.chart.target, stroke: tokens.ink.card, strokeWidth: 1.5 }}
+              activeDot={false}
+              type="linear"
+              connectNulls
+              isAnimationActive={false}
+            />
+          </R.ComposedChart>
+        )}
+      </Plot>
     </ChartFrame>
   )
 }

@@ -2,6 +2,7 @@
 // colour with their date, the next one ringed with its forecast date, later ones grey; tap one for the full date.
 // A label wider than the room at either end is anchored to that edge instead of centred, so it is never clipped; when
 // labels are wider than the gap between milestones (six composition goals on a phone) they alternate between two rows.
+// Screen readers get one image whose name lists every milestone with its date (tapping only shows the full date).
 import Box from '@mui/material/Box'
 import { useState } from 'react'
 import { formatShortDate } from '../../components'
@@ -55,6 +56,9 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
     next === -1
       ? 'Every milestone reached'
       : `${reachedCount} of ${n} reached · next ${milestones[next]!.label}${milestones[next]!.expectedOn ? ` around ${milestones[next]!.expectedOn}` : ''}`
+  const spoken = milestones
+    .map((m) => `${m.label} ${m.reachedOn ? `reached ${formatShortDate(m.reachedOn)}` : m.expectedOn ? `forecast around ${formatShortDate(m.expectedOn)}` : 'not yet forecast'}`)
+    .join('; ')
 
   return (
     <ChartFrame testId="chart-milestones" label="Milestone timeline" width={width} height={H} empty={n === 0}>
@@ -63,7 +67,7 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
           width={w}
           height={H}
           role="img"
-          aria-label={`Milestones: ${summary}`}
+          aria-label={`Milestones: ${reachedCount} of ${n} reached. ${spoken}.`}
           style={{ display: 'block', overflow: 'visible' }}
         >
           <line
@@ -97,8 +101,6 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
                 key={m.label}
                 onClick={() => setSelected(selected === i ? null : i)}
                 style={{ cursor: 'pointer' }}
-                role="button"
-                aria-label={`${m.label}: ${reached ? `reached ${m.reachedOn}` : date ? `forecast ${date}` : 'not yet'}`}
               >
                 <rect x={x - 22} y={0} width={44} height={H} fill="transparent" />
                 <text

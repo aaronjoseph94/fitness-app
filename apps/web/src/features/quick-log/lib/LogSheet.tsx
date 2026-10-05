@@ -140,7 +140,7 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
               onLogged={setNotice}
             />
           ) : !selected ? (
-            <List data-testid="quick-log-kinds" sx={{ mx: -5 }}>
+            <List component="div" data-testid="quick-log-kinds" sx={{ mx: -5 }}>
               {KINDS.map(({ kind: option, label, Icon, color }) => (
                 <ListItemButton key={option} onClick={() => onPickKind?.(option)} sx={{ minHeight: tokens.tapTarget + 8, px: 5 }}>
                   <ListItemIcon sx={{ color, minWidth: tokens.space(10) }}>

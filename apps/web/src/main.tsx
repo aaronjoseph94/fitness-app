@@ -1,4 +1,5 @@
-// Owns: booting the page — the self-hosted Outfit font, startup wiring, and mounting React.
+// Owns: booting the page — the self-hosted Outfit font, startup wiring, and mounting React. (Zod's settings are applied
+// before any module loads, by public/zod-config.js from index.html.)
 import '@fontsource-variable/outfit'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

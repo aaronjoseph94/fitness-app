@@ -1,9 +1,12 @@
-// Owns: downloading free-exercise-db at a pinned commit — dist/exercises.json into data/ (committed) and, with --images, the step images into images/ (gitignored).
-// Usage: pnpm --filter @fitness/exercises run fetch:data   (JSON only)  |  run fetch:images  (JSON + ~1,750 step images)
-import { mkdir, writeFile } from 'node:fs/promises'
+// Owns: downloading free-exercise-db at a pinned commit — dist/exercises.json into data/ (committed) and, with --images, the step images into images/ (gitignored)
+// plus a 112 px WebP thumbnail per exercise (images/<id>/thumb.webp, ./lib/thumbs).
+// Usage: pnpm --filter @fitness/exercises run fetch:data   (JSON only)  |  run fetch:images  (JSON + ~1,750 step images + thumbnails)
+//        pnpm --filter @fitness/exercises exec tsx scripts/fetch.ts --thumbs   (thumbnails only, from the images on disk; no network)
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { FREE_EXERCISE_DB_SHA } from '../src/lib/source'
 import { download, exists, pool } from './lib/download'
+import { writeThumbnails } from './lib/thumbs'
 
 const RAW = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${FREE_EXERCISE_DB_SHA}`
 const ROOT = path.resolve(import.meta.dirname, '..')
@@ -11,7 +14,15 @@ const DATA_FILE = path.join(ROOT, 'data', 'free-exercise-db.json')
 const IMAGES_DIR = path.join(ROOT, 'images')
 const CONCURRENCY = 8
 
+/** First step image of each record ('<id>/0.jpg'): the thumbnail's source. */
+const firstImages = (records: readonly { images: string[] }[]) => records.flatMap((r) => r.images.slice(0, 1))
+
 async function main(): Promise<void> {
+  if (process.argv.includes('--thumbs')) {
+    const records = JSON.parse(await readFile(DATA_FILE, 'utf8')) as { id: string; images: string[] }[]
+    if (!(await writeThumbnails(IMAGES_DIR, firstImages(records)))) process.exitCode = 1
+    return
+  }
   const withImages = process.argv.includes('--images')
 
   const json = await download(`${RAW}/dist/exercises.json`)
@@ -52,6 +63,7 @@ async function main(): Promise<void> {
     console.error(failed.join('\n'))
     process.exitCode = 1
   }
+  await writeThumbnails(IMAGES_DIR, firstImages(records))
 }
 
 await main()

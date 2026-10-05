@@ -1,5 +1,5 @@
 // Owns: the floating quick-log button (Today and Log) — above the bottom nav and the home indicator, aligned to the
-// content column's right edge — which opens the quick-log sheet.
+// content column's right edge — which opens the quick-log sheet (and starts loading its code as a press approaches).
 import Add from '@mui/icons-material/Add'
 import Box from '@mui/material/Box'
 import Fab from '@mui/material/Fab'
@@ -7,6 +7,7 @@ import { tokens } from '../../../theme'
 import { useUiStore } from '../../ui-store'
 import type { PageWidth } from '../route-handle'
 import { columnSx, safeArea } from './layout'
+import { preloadQuickLog } from './QuickLogHost'
 
 export function QuickLogFab({ width }: { width: PageWidth }) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
@@ -27,6 +28,10 @@ export function QuickLogFab({ width }: { width: PageWidth }) {
           aria-label="Quick log"
           data-testid="quick-log-fab"
           onClick={() => openQuickLog()}
+          // The sheet's code loads on first open; start it as the finger or pointer arrives.
+          onPointerEnter={preloadQuickLog}
+          onPointerDown={preloadQuickLog}
+          onFocus={preloadQuickLog}
           sx={{
             pointerEvents: 'auto',
             bgcolor: 'text.primary',

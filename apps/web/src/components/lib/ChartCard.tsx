@@ -18,9 +18,11 @@ export interface ChartCardProps {
   empty?: boolean | Omit<EmptyStateProps, 'compact'>
   children?: ReactNode
   testId?: string
+  /** Heading level of the title, so the page outline never skips a level. Default h3 (a chart inside a section). */
+  headingComponent?: 'h2' | 'h3' | 'h4'
 }
 
-export function ChartCard({ title, subtitle, legend, action, empty, children, testId }: ChartCardProps) {
+export function ChartCard({ title, subtitle, legend, action, empty, children, testId, headingComponent = 'h3' }: ChartCardProps) {
   const emptyProps: Omit<EmptyStateProps, 'compact'> | null =
     empty === true
       ? {
@@ -34,7 +36,7 @@ export function ChartCard({ title, subtitle, legend, action, empty, children, te
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box
-            component="h3"
+            component={headingComponent}
             sx={{
               m: 0,
               fontSize: tokens.font.size.body,

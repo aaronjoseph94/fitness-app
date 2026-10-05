@@ -4,7 +4,7 @@ import BottomNavigation from '@mui/material/BottomNavigation'
 import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import Box from '@mui/material/Box'
 import { Link } from 'react-router'
-import { tokens } from '../../../theme'
+import { scrollBehavior, tokens } from '../../../theme'
 import type { TabKey } from '../../ui-store'
 import { TABS } from '../tabs'
 import { safeArea } from './layout'
@@ -29,7 +29,7 @@ export function BottomTabs({ active }: { active: TabKey | undefined }) {
               component={Link}
               to={tab.path}
               aria-current={selected ? 'page' : undefined}
-              onClick={selected ? () => window.scrollTo({ top: 0, behavior: 'smooth' }) : undefined}
+              onClick={selected ? () => window.scrollTo({ top: 0, behavior: scrollBehavior() }) : undefined}
               sx={{
                 color: 'text.secondary',
                 '&.Mui-selected': { color: 'text.primary' },

@@ -3,7 +3,7 @@
 import type { Forecast, TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../../api'
-import { WeightTrendChart } from '../../../charts'
+import { frameHeight, WeightTrendChart } from '../../../charts'
 import { ChartCard, formatNumber, QueryStateCard } from '../../../components'
 import { forecastPath, lastTrend, weightMilestones, weightPoints } from '../../progress/series'
 
@@ -16,7 +16,7 @@ interface HeroChartProps {
 }
 
 export function HeroChart({ trend, forecast, goalKg, onWeighIn }: HeroChartProps) {
-  if (!trend.data) return <QueryStateCard query={trend} what="the weight trend" height={240} />
+  if (!trend.data) return <QueryStateCard query={trend} what="the weight trend" height={frameHeight(240)} />
 
   const data = trend.data
   const rate = forecast ?? data.forecast
@@ -30,6 +30,7 @@ export function HeroChart({ trend, forecast, goalKg, onWeighIn }: HeroChartProps
   return (
     <ChartCard
       title="Weight trend"
+      headingComponent="h2"
       subtitle={subtitle}
       testId="today-hero"
       empty={

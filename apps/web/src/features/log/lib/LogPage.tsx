@@ -9,7 +9,9 @@ import { useSearchParams } from 'react-router'
 import { useApiQuery } from '../../../api'
 import { useLocalToday } from '../../../app/local-today'
 import type { QuickLogKind } from '../../../app/ui-store'
-import { LogSheet, useDay, useLogSettings } from '../../quick-log'
+import { useDay, useLogSettings } from '../../quick-log'
+import { LogSheet } from '../../quick-log/sheet'
+import { logDate } from '../queries'
 import { DateSwitcher } from './DateSwitcher'
 import { DayHeader } from './DayHeader'
 import { FastingCard } from './FastingCard'
@@ -20,15 +22,12 @@ import { useDayMeals } from './meals'
 import { SleepStepsCard } from './SleepStepsCard'
 import { WaterCard } from './WaterCard'
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
 /** The day in the URL (?date=2026-10-04), never after today; today when absent. */
 function useLogDate(): [string, string, (date: string) => void] {
   const [params, setParams] = useSearchParams()
   // Midnight passes while the app is open: "today" follows it.
   const today = useLocalToday()
-  const raw = params.get('date')
-  const date = raw && ISO_DATE.test(raw) && raw <= today ? raw : today
+  const date = logDate(params.get('date'), today)
   const setDate = (next: string) => {
     const clamped = next > today ? today : next
     setParams(clamped === today ? {} : { date: clamped }, { replace: true })

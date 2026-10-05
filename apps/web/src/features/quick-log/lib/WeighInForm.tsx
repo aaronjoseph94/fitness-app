@@ -1,13 +1,15 @@
 // Owns: the weigh-in form — one number prefilled with that day's weigh-in or the last one, ±0.1 kg nudges, the date
-// (today by default), an optional note — saved with POST /api/weights, which replaces any weigh-in on that date.
+// (today by default), an optional note — saved with POST /api/weights, which replaces any weigh-in on that date. An
+// out-of-range weight or a future date says what is wrong in words, not only in red.
 import AddRounded from '@mui/icons-material/AddRounded'
 import RemoveRounded from '@mui/icons-material/RemoveRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { formatNumber, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
@@ -37,6 +39,11 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
 
   const kg = parseNumber(text)
   const valid = kg !== null && kg >= MIN_KG && kg <= MAX_KG && date <= today
+  const weightProblem =
+    text.trim() === '' ? null : kg === null ? 'Enter a number, e.g. 92.4' : kg < MIN_KG || kg > MAX_KG ? `Enter a weight between ${MIN_KG} and ${MAX_KG} kg` : null
+  const showWeightProblem = touched && weightProblem !== null
+  const dateProblem = date > today ? 'Pick today or an earlier day' : null
+  const weightHelpId = useId()
 
   const nudge = (delta: number) => {
     const base = kg ?? prefill ?? 0
@@ -78,10 +85,11 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
           }}
           unit="kg"
           autoFocus
-          error={touched && text !== '' && !valid}
+          error={showWeightProblem}
           slotProps={{
             htmlInput: {
               'aria-label': 'Weight in kg',
+              'aria-describedby': showWeightProblem ? weightHelpId : undefined,
               style: { fontSize: 32, fontWeight: tokens.font.weight.number, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
             },
           }}
@@ -90,6 +98,12 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
           <AddRounded />
         </IconButton>
       </Box>
+      {/* Under the whole row (not inside the field) so the ± buttons stay level with the number. */}
+      {showWeightProblem && (
+        <FormHelperText id={weightHelpId} error sx={{ mt: -2, mx: 0, textAlign: 'center' }} data-testid="weigh-in-problem">
+          {weightProblem}
+        </FormHelperText>
+      )}
 
       <Box sx={{ minHeight: 20, fontSize: tokens.font.size.label, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
         {isLoading && !last ? (
@@ -116,6 +130,8 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
           type="date"
           value={date}
           onChange={(e) => e.target.value && setDate(e.target.value)}
+          error={dateProblem !== null}
+          helperText={dateProblem ?? undefined}
           slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: today } }}
         />
         {!noteOpen && (

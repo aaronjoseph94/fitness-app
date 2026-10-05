@@ -1,7 +1,10 @@
 // Owns: the route table (React Router data mode) — every path, its lazily loaded page, and its shell settings (`handle`).
-// Adding a page means one entry here; the shell reads title, tab, width and quick-log from the handle.
+// Adding a page means one entry here; the shell reads title, tab, width and quick-log from the handle. No route loaders
+// start reads: measured (Lighthouse mobile, 2026-10-05), starting them before the page's code made every tab's LCP
+// later, because the responses are parsed before the page's first render.
 import type { ComponentType } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
+import { preloadCharts } from '../../charts/preload'
 import type { TabKey } from '../ui-store'
 import type { RouteHandle } from './route-handle'
 import { AppShell } from './shell/AppShell'
@@ -35,17 +38,53 @@ const routes: RouteObject[] = [
         // Page errors render inside the shell, so the tabs still work.
         ErrorBoundary: RouteError,
         children: [
-          { index: true, handle: tab('today', { quickLog: true }), lazy: page(() => import('../../features/today'), 'TodayPage') },
-          { path: 'log', handle: tab('log', { quickLog: true }), lazy: page(() => import('../../features/log'), 'LogPage') },
-          { path: 'train', handle: tab('train'), lazy: page(() => import('../../features/train'), 'TrainPage') },
+          {
+            index: true,
+            handle: tab('today', { quickLog: true }),
+            lazy: page(() => import('../../features/today'), 'TodayPage'),
+          },
+          {
+            path: 'log',
+            handle: tab('log', { quickLog: true }),
+            lazy: page(() => import('../../features/log'), 'LogPage'),
+          },
+          {
+            path: 'train',
+            handle: tab('train'),
+            lazy: page(() => import('../../features/train'), 'TrainPage'),
+          },
           { path: 'train/session/:id', handle: { title: 'Session' } satisfies RouteHandle, lazy: page(() => import('../../features/train'), 'SessionPage') },
-          { path: 'train/library', handle: { title: 'Exercise library' } satisfies RouteHandle, lazy: page(() => import('../../features/library'), 'LibraryPage') },
-          { path: 'train/library/:id', handle: { title: 'Exercise' } satisfies RouteHandle, lazy: page(() => import('../../features/library'), 'ExercisePage') },
+          {
+            path: 'train/library',
+            handle: { title: 'Exercise library' } satisfies RouteHandle,
+            lazy: page(() => import('../../features/library'), 'LibraryPage'),
+          },
+          {
+            path: 'train/library/:id',
+            handle: { title: 'Exercise' } satisfies RouteHandle,
+            lazy: page(() => import('../../features/library'), 'ExercisePage'),
+          },
           { path: 'train/equipment', handle: { title: 'Equipment' } satisfies RouteHandle, lazy: page(() => import('../../features/library'), 'EquipmentPage') },
-          { path: 'train/builder', handle: { title: 'Workout builder' } satisfies RouteHandle, lazy: page(() => import('../../features/builder'), 'BuilderPage') },
-          { path: 'train/builder/:templateId', handle: { title: 'Edit template' } satisfies RouteHandle, lazy: page(() => import('../../features/builder'), 'BuilderPage') },
-          { path: 'train/ai', handle: { title: 'AI workout' } satisfies RouteHandle, lazy: page(() => import('../../features/builder'), 'AiWorkoutPage') },
-          { path: 'progress', handle: tab('progress', { width: 'wide' }), lazy: page(() => import('../../features/progress'), 'ProgressPage') },
+          {
+            path: 'train/builder',
+            handle: { title: 'Workout builder' } satisfies RouteHandle,
+            lazy: page(() => import('../../features/builder'), 'BuilderPage'),
+          },
+          {
+            path: 'train/builder/:templateId',
+            handle: { title: 'Edit template' } satisfies RouteHandle,
+            lazy: page(() => import('../../features/builder'), 'BuilderPage'),
+          },
+          {
+            path: 'train/ai',
+            handle: { title: 'AI workout' } satisfies RouteHandle,
+            lazy: page(() => import('../../features/builder'), 'AiWorkoutPage'),
+          },
+          {
+            path: 'progress',
+            handle: tab('progress', { width: 'wide' }),
+            lazy: page(() => import('../../features/progress'), 'ProgressPage'),
+          },
           { path: 'ai', handle: tab('ai'), lazy: page(() => import('../../features/ai'), 'AskAiPage') },
           { path: 'settings', handle: { title: 'Settings' } satisfies RouteHandle, lazy: page(() => import('../../features/settings'), 'SettingsPage') },
           { path: 'settings/data', handle: { title: 'Export and restore' } satisfies RouteHandle, lazy: page(() => import('../../features/data'), 'DataPage') },
@@ -76,7 +115,13 @@ const routes: RouteObject[] = [
     Component: PrintLayout,
     ErrorBoundary: RouteError,
     HydrateFallback: BootScreen,
-    children: [{ index: true, lazy: page(() => import('../../features/reports'), 'WeeklyReportPage') }],
+    // Recharts loads with the page: the report draws its charts on the first render, so "ready" means drawn.
+    children: [
+      {
+        index: true,
+        lazy: page(() => Promise.all([import('../../features/reports'), preloadCharts()]).then(([module]) => module), 'WeeklyReportPage'),
+      },
+    ],
   },
 ]
 

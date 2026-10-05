@@ -1,6 +1,5 @@
 // Owns: the training charts — weekly volume stacked by muscle group, strength per exercise (top-set load and
 // Epley e1RM), and the week plan vs actuals (planned vs eaten kcal per weekday with the session status under it).
-import { Bar, BarStack, CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis, BarChart } from 'recharts'
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
 import { tokens, withAlpha } from '../../theme'
 import {
@@ -13,11 +12,14 @@ import {
   gridStyle,
   niceScale,
   rechartsSize,
+  surfaceText,
+  tickInterval,
   tooltip,
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
 } from './frame'
+import { Plot } from './plot'
 import { TimePanels } from './TimePanels'
 
 interface Common extends ChartSizeProps {
@@ -80,40 +82,61 @@ export function TrainingVolumeChart({
     ],
   )
   const items: LegendItem[] = series.map((s) => ({ label: s.label, color: s.color, mark: 'bar' }))
+  const label = 'Training volume per week by muscle group'
+  const last = weeks.at(-1)
+  const summary = last
+    ? `${weeks.length} ${weeks.length === 1 ? 'week' : 'weeks'}; week of ${weekLabel(last.week)}: ${fmt(totals.at(-1)!)}` +
+      (weeks.length > 1 ? `; highest week ${fmt(Math.max(...totals))}.` : '.')
+    : 'No sessions yet.'
   return (
     <ChartFrame
       testId="chart-training-volume"
-      label="Training volume per week by muscle group"
+      label={label}
       legend={legend ? items : undefined}
       unit="kg (sets × reps × load)"
       width={width}
       height={height}
       empty={weeks.length === 0}
     >
-      <BarChart data={rows} margin={MARGIN} barCategoryGap="28%" {...rechartsSize(width, height)}>
-        <CartesianGrid {...gridStyle} />
-        <XAxis {...xAxisStyle} dataKey="week" tickFormatter={weekLabel} />
-        <YAxis
-          {...yAxisStyle}
-          domain={y.domain}
-          ticks={y.ticks}
-          tickFormatter={(v: number) => formatNumber(v, 0, v > 9999)}
-        />
-        <Tooltip content={Tip} cursor={barCursor} />
-        <BarStack stackId="volume" radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}>
-          {series.map((s) => (
-            <Bar
-              key={s.key}
-              dataKey={s.key}
-              name={s.label}
-              fill={s.color}
-              maxBarSize={BAR_MAX}
-              {...barGap}
-              isAnimationActive={animated(width)}
+      <Plot width={width} height={height}>
+        {(R, plotWidth) => (
+          <R.BarChart
+            data={rows}
+            margin={MARGIN}
+            barCategoryGap="28%"
+            {...rechartsSize(width, height)}
+            {...surfaceText(label, summary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis
+              {...xAxisStyle}
+              dataKey="week"
+              tickFormatter={weekLabel}
+              interval={tickInterval(rows.length, plotWidth)}
             />
-          ))}
-        </BarStack>
-      </BarChart>
+            <R.YAxis
+              {...yAxisStyle}
+              domain={y.domain}
+              ticks={y.ticks}
+              tickFormatter={(v: number) => formatNumber(v, 0, v > 9999)}
+            />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.BarStack stackId="volume" radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}>
+              {series.map((s) => (
+                <R.Bar
+                  key={s.key}
+                  dataKey={s.key}
+                  name={s.label}
+                  fill={s.color}
+                  maxBarSize={BAR_MAX}
+                  {...barGap}
+                  isAnimationActive={animated(width)}
+                />
+              ))}
+            </R.BarStack>
+          </R.BarChart>
+        )}
+      </Plot>
     </ChartFrame>
   )
 }
@@ -253,49 +276,68 @@ export function WeekPlanVsActualChart({
   ]
   if (days.some((d) => d.fast)) items.push({ label: 'Fast', color: tokens.metric.fasting, mark: 'bar' })
   const radius: [number, number, number, number] = [tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]
+  const label = 'Week plan versus actuals per weekday'
+  const summary = days
+    .map((d) =>
+      [
+        d.day,
+        d.eatenKcal != null ? `ate ${kcal(d.eatenKcal)}` : null,
+        d.plannedKcal != null ? `planned ${kcal(d.plannedKcal)}` : null,
+        d.session ? SESSION_TEXT[d.session].toLowerCase() : null,
+        d.fast ? 'fast day' : null,
+      ]
+        .filter(Boolean)
+        .join(', '),
+    )
+    .join('; ')
   return (
     <ChartFrame
       testId="chart-week-plan"
-      label="Week plan versus actuals per weekday"
+      label={label}
       legend={legend ? items : undefined}
       unit="kcal"
       width={width}
       height={height}
       empty={days.length === 0}
     >
-      <ComposedChart
-        data={days}
-        margin={MARGIN}
-        barCategoryGap="24%"
-        barGap={2}
-        {...rechartsSize(width, height)}
-      >
-        <CartesianGrid {...gridStyle} />
-        <XAxis {...xAxisStyle} dataKey="day" interval={0} height={44} tick={<DayTick days={days} />} />
-        <YAxis
-          {...yAxisStyle}
-          domain={y.domain}
-          ticks={y.ticks}
-          tickFormatter={(v: number) => formatNumber(v)}
-        />
-        <Tooltip content={Tip} cursor={barCursor} />
-        <Bar
-          dataKey="plannedKcal"
-          name="Planned"
-          fill={planned}
-          maxBarSize={14}
-          radius={radius}
-          isAnimationActive={animated(width)}
-        />
-        <Bar
-          dataKey="eatenKcal"
-          name="Eaten"
-          fill={tokens.metric.calories}
-          maxBarSize={14}
-          radius={radius}
-          isAnimationActive={animated(width)}
-        />
-      </ComposedChart>
+      <Plot width={width} height={height}>
+        {(R) => (
+          <R.ComposedChart
+            data={days}
+            margin={MARGIN}
+            barCategoryGap="24%"
+            barGap={2}
+            {...rechartsSize(width, height)}
+            {...surfaceText(label, summary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis {...xAxisStyle} dataKey="day" interval={0} height={44} tick={<DayTick days={days} />} />
+            <R.YAxis
+              {...yAxisStyle}
+              domain={y.domain}
+              ticks={y.ticks}
+              tickFormatter={(v: number) => formatNumber(v)}
+            />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.Bar
+              dataKey="plannedKcal"
+              name="Planned"
+              fill={planned}
+              maxBarSize={14}
+              radius={radius}
+              isAnimationActive={animated(width)}
+            />
+            <R.Bar
+              dataKey="eatenKcal"
+              name="Eaten"
+              fill={tokens.metric.calories}
+              maxBarSize={14}
+              radius={radius}
+              isAnimationActive={animated(width)}
+            />
+          </R.ComposedChart>
+        )}
+      </Plot>
     </ChartFrame>
   )
 }

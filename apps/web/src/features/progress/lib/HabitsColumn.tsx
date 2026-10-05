@@ -6,7 +6,7 @@ import type { DaySummary, Fast, LocalDate } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
-import { CalendarHeatmap, CaloriesChart, FastingStrip, MacrosChart, SleepChart, StepsChart, WaterChart } from '../../../charts'
+import { CalendarHeatmap, CaloriesChart, FastingStrip, frameHeight, MacrosChart, SleepChart, StepsChart, WaterChart } from '../../../charts'
 import { ChartCard, formatNumber, isQueryLoading, QueryStateCard, SectionHeader } from '../../../components'
 import {
   caloriesDays,
@@ -39,8 +39,8 @@ export function HabitsColumn({ days, fasts, from, to, fastHours }: HabitsColumnP
     return (
       <Stack spacing={4}>
         {header}
-        <QueryStateCard query={days} what="your days" height={220} />
-        {isQueryLoading(days) && <QueryStateCard query={days} what="your days" height={220} />}
+        <QueryStateCard query={days} what="your days" height={frameHeight(220)} />
+        {isQueryLoading(days) && <QueryStateCard query={days} what="your days" height={frameHeight(220)} />}
       </Stack>
     )
 

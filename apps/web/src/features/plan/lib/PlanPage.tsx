@@ -110,7 +110,9 @@ function ActiveTargets({ active, rails }: { active: PlanVersion; rails: Rails | 
         Daily targets · version {active.version}
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mt: 1 }}>
-        <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', color: tokens.metric.calories }}>
+        {/* Calorie colour on the dot only: the number stays ink (orange text is 2.8:1 on white). */}
+        <Box aria-hidden sx={{ width: 10, height: 10, borderRadius: tokens.radius.chip, bgcolor: tokens.metric.calories, flex: 'none', alignSelf: 'center' }} />
+        <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', color: tokens.ink.text }}>
           {amount('kcal', active.targets.defaults.kcal).replace(' kcal', '')}
         </Box>
         <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary }}>kcal a day</Box>
@@ -138,7 +140,8 @@ function ActiveTargets({ active, rails }: { active: PlanVersion; rails: Rails | 
             Rails:{' '}
           </Box>
           {railsText(rails)}.{' '}
-          <Link component={RouterLink} to="/settings" color="inherit" underline="always">
+          {/* Vertical padding on an inline link grows its touch target to 44 px without changing the line's height. */}
+          <Link component={RouterLink} to="/settings" color="inherit" underline="always" sx={{ py: '14px' }}>
             Only you change them, in Settings
           </Link>
           .

@@ -17,9 +17,14 @@ export interface QueuedWrite<Body = unknown> {
   created_at: string
   attempts: number
   last_error: string | null
+  /** Consecutive HTTP 5xx answers to this write (network failures don't count). Absent on rows queued before it existed. */
+  server_errors?: number
 }
 
-/** A queued write the Worker answered with a 4xx: kept so Aaron sees it was not saved, never silently dropped. */
+/**
+ * A queued write the Worker refused (a 4xx) or kept failing on (5 HTTP 5xx in a row): kept so Aaron sees it was not
+ * saved, never silently dropped, and moved out of the queue so later writes are not wedged behind it.
+ */
 export interface RejectedWrite extends QueuedWrite {
   status: number
   rejected_at: string

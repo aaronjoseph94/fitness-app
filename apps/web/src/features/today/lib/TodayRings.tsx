@@ -1,5 +1,6 @@
 // Owns: Today's rings card — calories left of the day's target, protein, water, steps and last night's sleep, with the
-// fast badge (fasting now, or a fast day), queued logs added in and marked pending, and the manual steps/sleep entry.
+// fast badge (fasting now, or a fast day), queued logs added in and marked pending, and the manual steps/sleep entry;
+// while the day loads, a placeholder card with the loaded card's box.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -140,19 +141,40 @@ interface TodayRingsProps {
   onAddHealth: () => void
 }
 
+/** Ring diameter (RingsRow's default). */
+const RING = 58
+
+/**
+ * The card while the day loads, row for row the loaded card's box: header line, five rings with their label and detail
+ * lines, and the "Add steps or sleep" row (shown on most days until both arrive), so nothing below moves.
+ */
+function RingsSkeleton() {
+  return (
+    <Card sx={{ p: 4 }} aria-busy="true" data-testid="today-rings-loading">
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, minHeight: 24, fontSize: tokens.font.size.label }}>
+        <Skeleton variant="text" width={120} />
+      </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${RING}px, 1fr))`, columnGap: 1, rowGap: 4 }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Box key={i} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
+            <Skeleton variant="circular" width={RING} height={RING} />
+            <Box sx={{ mt: 2, fontSize: tokens.font.size.label, lineHeight: 1.2 }}>
+              <Skeleton variant="text" width={44} />
+            </Box>
+            <Box sx={{ mt: 0.5, fontSize: 11, lineHeight: 1.3 }}>
+              <Skeleton variant="text" width={52} />
+            </Box>
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ mt: 3, minHeight: tokens.tapTarget }} />
+    </Card>
+  )
+}
+
 export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }: TodayRingsProps) {
   const now = useMinuteClock()
-  if (loading || !day)
-    return (
-      <Card sx={{ p: 4 }} aria-busy="true">
-        <Skeleton variant="text" width={120} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} variant="circular" width={58} height={58} />
-          ))}
-        </Box>
-      </Card>
-    )
+  if (loading || !day) return <RingsSkeleton />
 
   const missingHealth = (day.steps ?? pending.steps) === null || (day.sleep?.asleep_min ?? pending.sleepMin) === null
   return (
@@ -164,7 +186,7 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
         <FastBadge day={day} pending={pending} now={now} />
         {pending.count > 0 && <PendingBadge count={pending.count} />}
       </Box>
-      <RingsRow rings={ringsFor(day, pending, waterTargetMl)} />
+      <RingsRow rings={ringsFor(day, pending, waterTargetMl)} size={RING} />
       {(pending.meals > 0 || missingHealth) && (
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: 3 }}>
           {pending.meals > 0 && (

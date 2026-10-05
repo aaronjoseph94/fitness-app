@@ -1,11 +1,13 @@
 <!doctype html>
-<!-- Owns: the HTML shell — viewport with safe areas, icons, iOS home-screen metas, the root element. The theme-color meta and the manifest link are injected at build (vite.config.ts). -->
+<!-- Owns: the HTML shell — viewport with safe areas, icons, iOS home-screen metas, robots noindex, the root element. The theme-color meta and the manifest link are injected at build (vite.config.ts). -->
 <html lang="en-CA">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light" />
     <meta name="description" content="Aaron's AI-first fitness tracker" />
+    <!-- A private app: never indexed (also robots.txt and the X-Robots-Tag header in public/_headers). -->
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Fitness" />
@@ -14,6 +16,8 @@
     <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Fitness</title>
+    <!-- Classic (blocking) script so it runs before every module chunk: Zod jitless, no eval probe under the CSP. -->
+    <script src="/zod-config.js"></script>
   </head>
   <body>
     <div id="root"></div>

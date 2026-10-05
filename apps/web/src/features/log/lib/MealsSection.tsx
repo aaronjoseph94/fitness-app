@@ -4,13 +4,14 @@
 import AddRounded from '@mui/icons-material/AddRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Skeleton from '@mui/material/Skeleton'
 import type { DayView, Favourite, MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { formatNumber, LoadProblem } from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, visibleSlots } from '../../quick-log'
 import { LoadingRows, LogCard } from './LogCard'
-import { MealCard } from './MealCard'
+import { MEAL_CARD_PX, MealCard } from './MealCard'
 import { DeleteMealDialog, MealEditor, SaveFavouriteDialog } from './MealDialogs'
 import { MealReviewDialog } from './MealReviewDialog'
 import type { DayMeals, MealView } from './meals'
@@ -59,7 +60,14 @@ export function MealsSection({ day, meals, favourites, breakfastEnabled, onAdd }
             testId={`slot-${slot}`}
           >
             {meals.isLoading && inSlot.length === 0 ? (
-              <LoadingRows rows={1} />
+              // The day already says which slots have a meal: hold a meal card's space there, an empty line elsewhere.
+              day?.intake.by_slot[slot] ? (
+                <LoadingRows rows={1} height={MEAL_CARD_PX} />
+              ) : (
+                <Box sx={{ fontSize: tokens.font.size.small, pb: 1 }} aria-busy="true">
+                  <Skeleton variant="text" width={120} />
+                </Box>
+              )
             ) : inSlot.length === 0 ? (
               <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', pb: 1 }}>
                 {meals.error != null ? "Didn't load. Anything you add still saves." : fastDay ? 'Fast day.' : 'Nothing logged.'}

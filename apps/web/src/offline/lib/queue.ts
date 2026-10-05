@@ -1,4 +1,5 @@
-// Owns: queue storage operations — add a write, read pending writes (all, by endpoint, or by path prefix), dismiss a refused one.
+// Owns: queue storage operations — add a write, read pending writes (all, by endpoint, or by path prefix), discard a pending
+// one (Aaron's choice, from the sync status), dismiss a refused one.
 import type { Endpoint } from '@fitness/shared/api'
 import type * as z from 'zod'
 import { db, type QueuedWrite } from './db'
@@ -47,6 +48,11 @@ export function filterWrites(writes: PendingWrite[], filter: PendingFilter): Pen
   if (typeof filter === 'string') return writes.filter((w) => w.path.startsWith(filter))
   const pattern = pathPattern(filter.path)
   return writes.filter((w) => w.method === filter.method && pattern.test(w.path))
+}
+
+/** Drop a write that has not reached the Worker yet (by its queue `id`). Only ever on Aaron's tap. */
+export async function discardPendingWrite(id: string): Promise<void> {
+  await db.queue.where('id').equals(id).delete()
 }
 
 export async function dismissRejectedWrite(id: string): Promise<void> {

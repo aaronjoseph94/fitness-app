@@ -1,6 +1,5 @@
 // Owns: segmental fat change — one row per segment (arms, torso, legs), baseline vs latest fat kg as grouped
 // horizontal bars, the change written at the end of each row.
-import { Bar, BarChart, CartesianGrid, LabelList, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatNumber, formatSigned, type LegendItem } from '../../components'
 import { tokens, withAlpha } from '../../theme'
 import {
@@ -9,11 +8,14 @@ import {
   barCursor,
   niceScale,
   rechartsSize,
+  surfaceText,
+  tickInterval,
   tooltip,
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
 } from './frame'
+import { Plot } from './plot'
 
 export interface SegmentFat {
   /** Display label, e.g. "Left arm". */
@@ -62,52 +64,60 @@ export function SegmentalFatChart({
     { label: latestLabel, color: C, mark: 'bar' },
   ]
   const radius: [number, number, number, number] = [0, tokens.chart.barRadius, tokens.chart.barRadius, 0]
+  const label = 'Segmental fat at baseline and latest scan'
+  const summary = rows.map((r) => `${r.segment}: ${kg(r.baseline)} to ${kg(r.latest)} (${r.delta})`).join('; ')
   return (
     <ChartFrame
       testId="chart-segmental-fat"
-      label="Segmental fat at baseline and latest scan"
+      label={label}
       legend={legend ? items : undefined}
       width={width}
       height={h}
       empty={segments.length === 0}
     >
-      <BarChart
-        data={rows}
-        layout="vertical"
-        margin={{ top: 0, right: 56, bottom: 0, left: 0 }}
-        barCategoryGap="22%"
-        barGap={2}
-        {...rechartsSize(width, h)}
-      >
-        <CartesianGrid stroke={tokens.chart.grid} horizontal={false} />
-        <XAxis
-          {...xAxisStyle}
-          type="number"
-          domain={x.domain}
-          ticks={x.ticks}
-          tickFormatter={(v: number) => `${formatNumber(v)}`}
-          unit=" kg"
-        />
-        <YAxis {...yAxisStyle} type="category" dataKey="segment" width={84} />
-        <Tooltip content={Tip} cursor={barCursor} />
-        <Bar
-          dataKey="baseline"
-          fill={withAlpha(C, 0.35)}
-          maxBarSize={12}
-          radius={radius}
-          isAnimationActive={animated(width)}
-        />
-        <Bar dataKey="latest" fill={C} maxBarSize={12} radius={radius} isAnimationActive={animated(width)}>
-          <LabelList
-            dataKey="delta"
-            position="right"
-            offset={8}
-            fill={tokens.ink.text}
-            fontSize={12}
-            fontWeight={600}
-          />
-        </Bar>
-      </BarChart>
+      <Plot width={width} height={h}>
+        {(R, plotWidth) => (
+          <R.BarChart
+            data={rows}
+            layout="vertical"
+            margin={{ top: 0, right: 56, bottom: 0, left: 0 }}
+            barCategoryGap="22%"
+            barGap={2}
+            {...rechartsSize(width, h)}
+            {...surfaceText(label, summary)}
+          >
+            <R.CartesianGrid stroke={tokens.chart.grid} horizontal={false} />
+            <R.XAxis
+              {...xAxisStyle}
+              type="number"
+              domain={x.domain}
+              ticks={x.ticks}
+              tickFormatter={(v: number) => `${formatNumber(v)}`}
+              unit=" kg"
+              interval={tickInterval(x.ticks.length, plotWidth, 84)}
+            />
+            <R.YAxis {...yAxisStyle} type="category" dataKey="segment" width={84} />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.Bar
+              dataKey="baseline"
+              fill={withAlpha(C, 0.35)}
+              maxBarSize={12}
+              radius={radius}
+              isAnimationActive={animated(width)}
+            />
+            <R.Bar dataKey="latest" fill={C} maxBarSize={12} radius={radius} isAnimationActive={animated(width)}>
+              <R.LabelList
+                dataKey="delta"
+                position="right"
+                offset={8}
+                fill={tokens.ink.text}
+                fontSize={12}
+                fontWeight={600}
+              />
+            </R.Bar>
+          </R.BarChart>
+        )}
+      </Plot>
     </ChartFrame>
   )
 }

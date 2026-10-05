@@ -1,8 +1,9 @@
 // Owns: what every chart shares — the frame (testid, legend chips, unit caption, empty placeholder, responsive vs
-// fixed print width), axis/grid/target styling from `tokens.chart`, and the tap tooltip (value first, line keys).
+// fixed print width), axis/grid/target styling from `tokens.chart`, the tap tooltip (value first, line keys), and the
+// text that names a chart for screen readers (its label and a one-line summary, never its tick numbers).
 import Box from '@mui/material/Box'
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { LegendChips, type LegendItem } from '../../components'
+import { formatShortDate, LegendChips, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 
 /** Size props shared by every chart. */
@@ -34,7 +35,25 @@ export const MARGIN = { top: 8, right: 8, bottom: 0, left: 0 } as const
 const tick = { fontSize: tokens.chart.axisFontSize, fill: tokens.chart.axis }
 
 export const xAxisStyle = { axisLine: false, tickLine: false, tick, tickMargin: 8, minTickGap: 18 } as const
-export const yAxisStyle = { axisLine: false, tickLine: false, tick, width: 44, tickMargin: 6 } as const
+/**
+ * Every y-axis passes its own ticks (niceScale), so `interval: 0` shows them all: Recharts then skips measuring each
+ * tick label in the DOM to decide which ones fit. X-axes pass `interval={tickInterval(…)}` for the same reason.
+ */
+export const yAxisStyle = { axisLine: false, tickLine: false, tick, width: 44, tickMargin: 6, interval: 0 } as const
+
+/** Plot width one short date label needs on an x-axis: "Oct 12" at 12 px (~34 px) plus the 18 px tick gap. */
+const X_LABEL_PX = 52
+
+/**
+ * Recharts `interval` for an x-axis with `count` candidate ticks (every category, or a time axis's explicit ticks):
+ * a label on every (interval + 1)-th tick from the first, so at most one label sits in each X_LABEL_PX of plot.
+ * fit = max(1, ⌊(plotWidth − y-axis width) / 52⌋), interval = max(0, ⌈count / fit⌉ − 1).
+ * A number here means Recharts never measures tick text to thin the labels itself.
+ */
+export function tickInterval(count: number, plotWidth: number, yAxisWidth: number = yAxisStyle.width): number {
+  const fit = Math.max(1, Math.floor((plotWidth - yAxisWidth) / X_LABEL_PX))
+  return Math.max(0, Math.ceil(count / fit) - 1)
+}
 export const gridStyle = { stroke: tokens.chart.grid, vertical: false } as const
 export const targetStyle = {
   stroke: tokens.chart.target,
@@ -67,6 +86,62 @@ export const field = (r: DayRow, key: string): unknown => (r as unknown as Recor
 export const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
 // ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Accessible text for a Recharts surface. With the accessibility layer on, the SVG is a keyboard stop (arrow keys move
+ * the tooltip), so it needs a name: <title> is the chart's label and <desc> a one-line summary — without them a screen
+ * reader names the chart by its axis numbers.
+ */
+export function surfaceText(label: string, summary: string): { title: string; desc: string } {
+  return { title: label, desc: summary }
+}
+
+/** "Sep 8 to Oct 5" (or one date) for a series' first and last date; dates are "YYYY-MM-DD". */
+export function dateSpan(dates: readonly string[]): string {
+  const first = dates[0]
+  const last = dates.at(-1)
+  if (!first || !last) return ''
+  return first === last ? formatShortDate(first) : `${formatShortDate(first)} to ${formatShortDate(last)}`
+}
+
+/**
+ * One-line summary of a dated series for a chart's <desc>, e.g. "Sep 8 to Oct 5: latest 92.1 kg, lowest 91.8 kg,
+ * highest 98.2 kg." Points without a value are skipped; no values at all reads "no values yet".
+ */
+export function seriesSummary(
+  points: readonly { date: string; value: number | null | undefined }[],
+  format: (v: number) => string,
+): string {
+  const have = points.filter((p): p is { date: string; value: number } => typeof p.value === 'number' && Number.isFinite(p.value))
+  const span = dateSpan(points.map((p) => p.date))
+  if (have.length === 0) return span ? `${span}: no values yet.` : 'No values yet.'
+  const values = have.map((p) => p.value)
+  const latest = have.at(-1)!.value
+  if (have.length === 1) return `${span}: ${format(latest)}.`
+  return `${span}: latest ${format(latest)}, lowest ${format(Math.min(...values))}, highest ${format(Math.max(...values))}.`
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+
+/** One legend row: 12 px text at line-height 1.4; rows wrap 4 px apart; 12 px (mb 3) under the legend. */
+const LEGEND_ROW_PX = 12 * 1.4
+const LEGEND_ROW_GAP_PX = 4
+const LEGEND_GAP_PX = 12
+/** The unit caption over the y ticks (AxisCaption): 11 px text at line-height 1, then 2 px. */
+const CAPTION_PX = 11 + 2
+
+/**
+ * Height of a ChartFrame drawn around a plot of `plot` px:
+ * legendRows × 16.8 + (legendRows − 1) × 4 + 12 (when there is a legend) + 13 (unit caption) + plot.
+ * Loading skeletons take it, so the chart that replaces them has their height.
+ */
+export function frameHeight(
+  plot: number,
+  { legendRows = 1, caption = true }: { legendRows?: number; caption?: boolean } = {},
+): number {
+  const legend = legendRows > 0 ? legendRows * LEGEND_ROW_PX + (legendRows - 1) * LEGEND_ROW_GAP_PX + LEGEND_GAP_PX : 0
+  return legend + (caption ? CAPTION_PX : 0) + plot
+}
 
 export interface ChartFrameProps {
   testId: string

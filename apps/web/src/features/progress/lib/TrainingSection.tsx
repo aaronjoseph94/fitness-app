@@ -16,7 +16,7 @@ import { useApiQuery, type ApiError } from '../../../api'
 import { StrengthChart, TrainingVolumeChart } from '../../../charts'
 import { ChartCard, formatNumber, formatShortDate, QueryStateCard, SectionHeader } from '../../../components'
 import { MuscleMap, MuscleMapLegend } from '../../../muscle-map'
-import { tokens } from '../../../theme'
+import { tokens, withAlpha } from '../../../theme'
 import { strengthSessions, useExerciseIndex, type ExerciseIndex } from '../../library'
 import { exercisesByUse, sessionVolumeWeeks, volumeBetween, VOLUME_GROUPS } from './series'
 
@@ -106,7 +106,7 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
               getAriaValueText={(v) => `7 days to ${addDays(from, v)}`}
               aria-label="Week shown on the map"
               data-testid="volume-map-slider"
-              sx={{ color: tokens.muscleMap.steps[tokens.muscleMap.steps.length - 1] }}
+              sx={sliderSx}
             />
           </Box>
         )}
@@ -114,6 +114,30 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
     </ChartCard>
   )
 }
+
+const SLIDER_COLOR = tokens.muscleMap.steps[tokens.muscleMap.steps.length - 1]
+const DOT = 20
+
+/**
+ * The week slider with 44 px touch targets (SPEC §11): the rail's hit area and the thumb are tapTarget tall, while
+ * the thumb still draws MUI's 20 px dot (its ::before) with the hover, focus and drag halos around the dot.
+ */
+const sliderSx = {
+  color: SLIDER_COLOR,
+  py: `${(tokens.tapTarget - 4) / 2}px`,
+  '& .MuiSlider-thumb': {
+    width: tokens.tapTarget,
+    height: tokens.tapTarget,
+    bgcolor: 'transparent',
+    '&::before': { width: DOT, height: DOT, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'currentColor' },
+    '&::after': { width: tokens.tapTarget, height: tokens.tapTarget },
+    '&:hover, &.Mui-focusVisible, &.Mui-active': { boxShadow: 'none' },
+    '&:hover::before, &.Mui-focusVisible::before': { boxShadow: `0 0 0 8px ${withAlpha(SLIDER_COLOR, 0.16)}` },
+    '&.Mui-active::before': { boxShadow: `0 0 0 14px ${withAlpha(SLIDER_COLOR, 0.16)}` },
+  },
+  // The value label sits over the dot as before (the thumb box grew by 12 px above it).
+  '& .MuiSlider-valueLabel': { top: (tokens.tapTarget - DOT) / 2 - 10 },
+} as const
 
 function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>) {
   const options = useMemo(
@@ -136,7 +160,6 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
         options.length > 0 && id ? (
           <TextField
             select
-            size="small"
             label="Exercise"
             value={id}
             onChange={(e) => setPicked(e.target.value)}

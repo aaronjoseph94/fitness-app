@@ -8,7 +8,7 @@ import { FastingStrip, type FastEntry } from '../../../charts'
 import { formatNumber, LoadProblem, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { endpoints } from '@fitness/shared/api'
-import { dateOf, formatDateTime, plannedInMonth, useFasts, useLogMutation, useLogSettings, useNow, type FastView } from '../../quick-log'
+import { dateOf, formatDateTime, fastsInMonth, useFasts, useLogMutation, useLogSettings, useNow, type FastView } from '../../quick-log'
 import { LoadingRows, LogCard } from './LogCard'
 
 const HISTORY_MAX = 6
@@ -36,7 +36,7 @@ const STATUS_TEXT: Record<FastView['status'], string> = {
 
 export function FastingCard({ today, onPlan }: { today: string; onPlan: () => void }) {
   const now = useNow(60_000)
-  const { fastsPerMonth } = useLogSettings()
+  const { fastHours, fastsPerMonth } = useLogSettings()
   const from = monthStart(today, -2)
   const to = monthEnd(today, 2)
   const fasting = useFasts({ from, to }, now)
@@ -48,7 +48,7 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
     hours: f.hours,
   }))
   const history = fasting.fasts.filter((f) => f.status !== 'planned').slice(0, HISTORY_MAX)
-  const planned = plannedInMonth(fasting.fasts, today)
+  const planned = fastsInMonth(fasting.fasts, today, fastHours)
   const anyPending = fasting.fasts.some((f) => f.pending)
 
   return (

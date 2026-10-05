@@ -2,12 +2,14 @@
 // point (WeeklyReportPage). It loads the week (review or live engine metrics, days, trend, history, next week's plan),
 // lays it out for screen or Letter paper, and marks itself ready (data-report-ready) for the Browser Rendering PDF.
 // `?print=1` (what the Worker renders) and the browser's beforeprint event both switch the charts to fixed widths.
+// Charts draw on the first render (EagerCharts; the route loads Recharts with the page), so "ready" means drawn.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import { useCallback, useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useParams, useSearchParams } from 'react-router'
+import { EagerCharts } from '../../charts'
 import { formatNumber, formatSigned } from '../../components'
 import { PrintStyles } from './lib/parts'
 import { ReportToolbar } from './lib/ReportToolbar'
@@ -49,6 +51,10 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
   const fixed = params.get('print') === '1' || printing
   const data = useWeeklyReport(range)
   const { refetch } = data
+  // The document title names the week: it is the tab title and the saved PDF's title.
+  useEffect(() => {
+    document.title = `Week ${Number(range.week.slice(-2))} report · Fitness`
+  }, [range.week])
   const onDrafted = useCallback(() => void refetch(), [refetch])
   const m = data.metrics
   const header = m
@@ -75,20 +81,22 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
       {data.reviewError ? (
         <Alert severity="error">Could not load the review: {data.reviewError.message}</Alert>
       ) : m && data.days ? (
-        <WeeklyReport
-          week={range.week}
-          from={range.from}
-          to={range.to}
-          review={data.review}
-          metrics={m}
-          days={data.days}
-          trend={data.trend}
-          history={data.history}
-          nextPlan={data.nextPlan}
-          nextStart={data.nextStart}
-          goalKg={data.goalKg}
-          fixed={fixed}
-        />
+        <EagerCharts>
+          <WeeklyReport
+            week={range.week}
+            from={range.from}
+            to={range.to}
+            review={data.review}
+            metrics={m}
+            days={data.days}
+            trend={data.trend}
+            history={data.history}
+            nextPlan={data.nextPlan}
+            nextStart={data.nextStart}
+            goalKg={data.goalKg}
+            fixed={fixed}
+          />
+        </EagerCharts>
       ) : data.ready ? (
         <Alert severity="error">Could not load this week. Check the connection and reload.</Alert>
       ) : (

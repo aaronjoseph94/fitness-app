@@ -3,7 +3,6 @@
 // with its own unit, lines and/or dots, and an optional dashed target. Used by body composition, body fat and
 // visceral level, waist and WHR, and strength.
 import { useId } from 'react'
-import { CartesianGrid, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import Box from '@mui/material/Box'
 import { formatShortDate, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
@@ -19,12 +18,16 @@ import {
   niceScale,
   num,
   rechartsSize,
+  seriesSummary,
+  surfaceText,
   targetStyle,
+  tickInterval,
   tooltip,
   xAxisStyle,
   yAxisStyle,
   type DayRow,
 } from './frame'
+import { Plot } from './plot'
 import { dateToTime, timeAxis } from './time'
 
 export interface TimeSeries {
@@ -93,6 +96,14 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
           if (p.target) values.push(p.target.value)
           const y = niceScale(values, { count: 3, minStep: 10 ** -(p.tickPrecision ?? 0) })
           const h = p.height ?? 180
+          // Each panel is its own keyboard stop: named by the chart and its unit, described series by series.
+          const panelLabel = panels.length > 1 ? `${label}: ${p.unit}` : label
+          const summary = [
+            ...p.series.map((s) => `${s.label} ${seriesSummary(data.map((r) => ({ date: r.date, value: num(field(r, s.key)) })), s.format)}`),
+            p.target ? `${p.target.label} ${p.series[0]!.format(p.target.value)}.` : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
           const Tip = tooltip<DayRow>(
             (r) => r.date,
             [
@@ -119,56 +130,62 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
           return (
             <Box key={i}>
               <AxisCaption first={i === 0}>{p.unit}</AxisCaption>
-              <ComposedChart
-                data={data}
-                margin={MARGIN}
-                syncId={syncId}
-                {...rechartsSize(width, last ? h : h - 24)}
-              >
-                <CartesianGrid {...gridStyle} />
-                <XAxis
-                  {...xAxisStyle}
-                  dataKey="t"
-                  type="number"
-                  scale="time"
-                  domain={[axis.domain[0] - pad, axis.domain[1] + pad]}
-                  ticks={everyPoint ? times : axis.ticks}
-                  tickFormatter={everyPoint ? (t: number) => formatShortDate(t) : axis.format}
-                  hide={!last}
-                />
-                <YAxis
-                  {...yAxisStyle}
-                  domain={y.domain}
-                  ticks={y.ticks}
-                  tickFormatter={(v: number) => v.toFixed(p.tickPrecision ?? 0)}
-                />
-                <Tooltip content={Tip} cursor={lineCursor} />
-                {p.target && <ReferenceLine y={p.target.value} {...targetStyle} />}
-                {p.series.map((s) =>
-                  s.kind === 'dots' ? (
-                    <Line
-                      key={s.key}
-                      dataKey={s.key}
-                      stroke="none"
-                      dot={dotStyle(s.color)}
-                      activeDot={dotStyle(s.color, 5)}
-                      isAnimationActive={false}
+              <Plot width={width} height={last ? h : h - 24}>
+                {(R, plotWidth) => (
+                  <R.ComposedChart
+                    data={data}
+                    margin={MARGIN}
+                    syncId={syncId}
+                    {...rechartsSize(width, last ? h : h - 24)}
+                    {...surfaceText(panelLabel, summary)}
+                  >
+                    <R.CartesianGrid {...gridStyle} />
+                    <R.XAxis
+                      {...xAxisStyle}
+                      dataKey="t"
+                      type="number"
+                      scale="time"
+                      domain={[axis.domain[0] - pad, axis.domain[1] + pad]}
+                      ticks={everyPoint ? times : axis.ticks}
+                      tickFormatter={everyPoint ? (t: number) => formatShortDate(t) : axis.format}
+                      interval={tickInterval((everyPoint ? times : axis.ticks).length, plotWidth)}
+                      hide={!last}
                     />
-                  ) : (
-                    <Line
-                      key={s.key}
-                      dataKey={s.key}
-                      stroke={s.color}
-                      {...lineStyle}
-                      type="linear"
-                      dot={dotStyle(s.color)}
-                      activeDot={dotStyle(s.color, 5)}
-                      connectNulls
-                      isAnimationActive={false}
+                    <R.YAxis
+                      {...yAxisStyle}
+                      domain={y.domain}
+                      ticks={y.ticks}
+                      tickFormatter={(v: number) => v.toFixed(p.tickPrecision ?? 0)}
                     />
-                  ),
+                    <R.Tooltip content={Tip} cursor={lineCursor} />
+                    {p.target && <R.ReferenceLine y={p.target.value} {...targetStyle} />}
+                    {p.series.map((s) =>
+                      s.kind === 'dots' ? (
+                        <R.Line
+                          key={s.key}
+                          dataKey={s.key}
+                          stroke="none"
+                          dot={dotStyle(s.color)}
+                          activeDot={dotStyle(s.color, 5)}
+                          isAnimationActive={false}
+                        />
+                      ) : (
+                        <R.Line
+                          key={s.key}
+                          dataKey={s.key}
+                          stroke={s.color}
+                          {...lineStyle}
+                          type="linear"
+                          dot={dotStyle(s.color)}
+                          activeDot={dotStyle(s.color, 5)}
+                          connectNulls
+                          isAnimationActive={false}
+                        />
+                      ),
+                    )}
+                  </R.ComposedChart>
                 )}
-              </ComposedChart>
+              </Plot>
             </Box>
           )
         })}

@@ -52,7 +52,12 @@ async function renderImage(file: File): Promise<HTMLCanvasElement> {
 }
 
 async function renderPdfFirstPage(file: File): Promise<HTMLCanvasElement> {
-  const [pdfjs, worker] = await Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')])
+  // The legacy build: pdf.js 6 calls Map.prototype.getOrInsertComputed, which older Safari/Chromium lack; the legacy
+  // build polyfills it (and the rest) in both the page and the worker.
+  const [pdfjs, worker] = await Promise.all([
+    import('pdfjs-dist/legacy/build/pdf.mjs'),
+    import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+  ])
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default
   const task = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) })
   const doc = await task.promise.catch(() => {

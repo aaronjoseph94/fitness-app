@@ -8,6 +8,7 @@ import type { SessionCreate, SessionOrigin, Template, TemplateExerciseInput } fr
 import { useCallback, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router'
 import { useApiQuery } from '../../../api'
+import { TEMPLATES_STALE_MS } from '../queries'
 import { usePendingWrites } from '../../../offline'
 import { fromServer, mergeServer, seedSession, type LoggerSession } from './logger-model'
 import { loggerState, useLoggerSession } from './logger-store'
@@ -51,7 +52,7 @@ export interface SessionRead {
 
 /** The templates list (names for headers and recent sessions), shared and cached. */
 export function useTemplates() {
-  return useApiQuery(endpoints.training.listTemplates, {}, { staleTime: 5 * 60_000 })
+  return useApiQuery(endpoints.training.listTemplates, {}, { staleTime: TEMPLATES_STALE_MS })
 }
 
 export function templateName(templates: readonly Template[] | undefined, id: string | null): string | null {
