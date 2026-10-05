@@ -49,7 +49,60 @@ registerRoute(
 )
 
 // ─── Phase 5: Web Push (SPEC §8 Reminders) ───────────────────────────────────────────────────────────────────────────
-// Add here: a 'push' listener that shows the notification from the JSON payload (title, body, url, tag), and a
-// 'notificationclick' listener that focuses an open window on payload.url or opens one. Subscription is page-side
-// (POST /api/push/subscribe with the VAPID public key).
+// 'push' shows the notification from the JSON payload the Worker sends (PushNotification: title, body, url, tag);
+// every push must show one (Safari revokes a subscription whose pushes stay silent). 'notificationclick' focuses an
+// open window (navigating it to payload.url when it is elsewhere) or opens one. Subscribing is page-side
+// (features/reminders: GET /api/push/key, PushManager.subscribe, POST /api/push/subscribe).
+
+/** The payload contract shared with the Worker (type only: no Zod in the service worker bundle). */
+type PushNotification = import('@fitness/shared/schemas').PushNotification
+
+/** The payload, read defensively: a malformed push still shows something and opens the app. */
+function readPush(data: PushMessageData | null): PushNotification {
+  const fallback: PushNotification = { title: 'Fitness', body: '', url: '/', tag: 'fitness' }
+  if (!data) return fallback
+  try {
+    const p = data.json() as Partial<Record<keyof PushNotification, unknown>>
+    const text = (v: unknown, or: string) => (typeof v === 'string' && v.length > 0 ? v : or)
+    return { title: text(p.title, fallback.title), body: text(p.body, ''), url: inAppPath(p.url), tag: text(p.tag, fallback.tag) }
+  } catch {
+    return { ...fallback, body: data.text() }
+  }
+}
+
+/** Only same-origin in-app paths ('/…', never '//host'); anything else opens Today. */
+function inAppPath(url: unknown): string {
+  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? url : '/'
+}
+
+self.addEventListener('push', (event) => {
+  const n = readPush(event.data)
+  event.waitUntil(
+    self.registration.showNotification(n.title, {
+      body: n.body,
+      tag: n.tag,
+      data: { url: n.url },
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL(inAppPath((event.notification.data as { url?: unknown } | null)?.url), self.location.origin)
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const open = windows.find((w) => new URL(w.url).origin === target.origin)
+      if (!open) {
+        await self.clients.openWindow(target.href)
+        return
+      }
+      const focused = await open.focus()
+      if (new URL(focused.url).pathname + new URL(focused.url).search !== target.pathname + target.search)
+        await focused.navigate(target.href).catch(() => undefined)
+    })(),
+  )
+})
 // ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
