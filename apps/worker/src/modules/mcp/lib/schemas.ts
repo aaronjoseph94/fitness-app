@@ -6,13 +6,15 @@
 // plus the same JSON as text. (toolJsonSchemas builds the input side here, at start-up; output sides are built only if
 // something reads them, which saves ~80 ms per isolate.)
 import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server'
+import { redactNameDeep } from '../../../lib/redact'
 import { allTools, toolJsonSchemas, type ToolDefinition } from '../../tools'
 
 export type ToolArgs = Record<string, unknown>
 
 const byTool = new Map<string, StandardSchemaWithJSON<ToolArgs>>()
 
-function passThrough(json: Record<string, unknown>): StandardSchemaWithJSON<ToolArgs> {
+function passThrough(schema: Record<string, unknown>): StandardSchemaWithJSON<ToolArgs> {
+  const json = redactNameDeep(schema) // parameter descriptions are read by the model too
   const convert = () => json
   return {
     '~standard': {

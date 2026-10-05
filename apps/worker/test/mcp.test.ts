@@ -158,6 +158,26 @@ describe('MCP over the static bearer', () => {
     expect(JSON.parse(plan.result!.contents[0]!.text)).toMatchObject({ rails: { calorie_floor: 1400 } })
   })
 
+  it("never shows the model the user's name: instructions, tool descriptions and schemas, prompts, procedures, results", async () => {
+    const name = /aaron/i
+    const init = await initialize(token)
+    expect(init.result?.instructions).not.toMatch(name)
+    const { result } = await rpc<{ tools: ListedTool[] }>('tools/list', {}, token)
+    expect(JSON.stringify(result)).not.toMatch(name)
+    const prompts = await rpc<{ prompts: unknown[] }>('prompts/list', {}, token)
+    expect(JSON.stringify(prompts.result)).not.toMatch(name)
+    for (const procedure of ['coach_review', 'scan_debrief', 'program_design', 'plateau_check']) {
+      const prompt = await rpc('prompts/get', { name: procedure }, token)
+      expect(JSON.stringify(prompt.result), procedure).not.toMatch(name)
+      const text = await rpc('tools/call', { name: 'get_procedure', arguments: { name: procedure } }, token)
+      expect(JSON.stringify(text.result), procedure).not.toMatch(name)
+    }
+    // Text Aaron typed himself reaches the coach without his name too.
+    await rpc('tools/call', { name: 'set_dashboard_note', arguments: { text: "Aaron's week: protein first" } }, token)
+    const today = await rpc('tools/call', { name: 'get_today', arguments: {} }, token)
+    expect(JSON.stringify(today.result)).toContain("the user's week: protein first")
+  })
+
   it('tools/call get_today returns the day as structured content and JSON text; bad input is a tool error', async () => {
     const { result } = await rpc<{ structuredContent: { date: string; targets: { kcal: number } }; content: { text: string }[] }>(
       'tools/call',

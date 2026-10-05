@@ -1,6 +1,7 @@
 // Owns: one MCP server instance for one request (SPEC §8 "MCP connector", §10): every tool in the tools layer, the four
 // coach procedures as prompts, the fitness:// resources, and the server instructions. Tools run through callTool with
-// deps.actor = 'mcp', so the same Zod validation, guards and versioning apply as for the app and Ask AI.
+// deps.actor = 'mcp', so the same Zod validation, guards and versioning apply as for the app and Ask AI. Everything the
+// model reads — descriptions, procedures, results, errors — passes the name redaction (SPEC §9 privacy).
 import { addDays, isoWeek, isoWeekRange, today } from '@fitness/shared/engine'
 import {
   McpServer,
@@ -12,6 +13,7 @@ import {
 } from '@modelcontextprotocol/server'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
+import { redactName, redactNameDeep } from '../../../lib/redact'
 import { allTools, callTool, PROCEDURE_NAMES, PROCEDURES } from '../../tools'
 import { inputSchemaFor, type ToolArgs } from './schemas'
 
@@ -38,7 +40,7 @@ export function buildServer(deps: Deps): McpServer {
       tool.name,
       {
         title: tool.title,
-        description: tool.description,
+        description: redactName(tool.description),
         inputSchema: inputSchemaFor(tool),
         annotations: { title: tool.title, ...tool.annotations },
       },
@@ -48,9 +50,10 @@ export function buildServer(deps: Deps): McpServer {
 
   for (const name of PROCEDURE_NAMES) {
     const p = PROCEDURES[name]
-    server.registerPrompt(name, { title: p.title, description: p.description }, () => ({
-      description: p.description,
-      messages: [{ role: 'user', content: { type: 'text', text: p.text } }],
+    const description = redactName(p.description)
+    server.registerPrompt(name, { title: redactName(p.title), description }, () => ({
+      description,
+      messages: [{ role: 'user', content: { type: 'text', text: redactName(p.text) } }],
     }))
   }
 
@@ -97,7 +100,7 @@ export function buildServer(deps: Deps): McpServer {
 }
 
 function json(uri: URL, value: unknown): ReadResourceResult {
-  return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(value) }] }
+  return { contents: [{ uri: uri.href, mimeType: 'application/json', text: redactName(JSON.stringify(value)) }] }
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -106,7 +109,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 async function runTool(deps: Deps, name: string, args: ToolArgs): Promise<CallToolResult> {
   const started = Date.now()
   try {
-    const out = await callTool(deps, name, args)
+    const out = redactNameDeep(await callTool(deps, name, args))
     log('info', name, started)
     return {
       content: [{ type: 'text', text: JSON.stringify(out ?? null) }],
@@ -122,7 +125,7 @@ function toolError(name: string, err: unknown, started: number): CallToolResult 
   if (err instanceof HttpError) {
     log(err.status >= 500 ? 'error' : 'warn', name, started, `${err.code}: ${err.message}`)
     const details = err.details === undefined ? '' : `\n${JSON.stringify(err.details)}`
-    return { isError: true, content: [{ type: 'text', text: `${err.code}: ${err.message}${details}` }] }
+    return { isError: true, content: [{ type: 'text', text: redactName(`${err.code}: ${err.message}${details}`) }] }
   }
   const message = err instanceof Error ? err.message : String(err)
   log('error', name, started, message, err instanceof Error ? err.stack : undefined)
