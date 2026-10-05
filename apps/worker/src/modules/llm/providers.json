@@ -1,0 +1,186 @@
+{
+  "$comment": "Owns: the LLM router's data — free-tier providers, exact model ids, per-quota RPM/RPD/TPM/TPD limits and the chains per job kind. Limits change: update the numbers and `checked`, not the code. Moved from SPEC §9's src/ai/providers.json into the llm module (apps/worker/src/modules/llm/providers.json).",
+  "checked": "2026-10-05",
+  "background_share": 0.8,
+  "retry": { "max_retries": 1, "base_ms": 400, "max_wait_ms": 3000 },
+  "providers": {
+    "gemini": {
+      "api": "gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "key_env": "GEMINI_API_KEY",
+      "source": "https://ai.google.dev/gemini-api/docs/rate-limits — free-tier numbers are shown only in AI Studio (https://aistudio.google.com/rate-limit); limits are per project, RPD resets at midnight Pacific."
+    },
+    "zai": {
+      "api": "openai",
+      "base_url": "https://api.z.ai/api/paas/v4",
+      "key_env": "ZAI_API_KEY",
+      "source": "https://docs.z.ai/guides/overview/pricing (GLM-4.7-Flash, GLM-4.5-Flash, GLM-4.6V-Flash are Free). Free Flash models are limited by concurrency (1 request in flight per model); no published daily cap — see https://z.ai/manage-apikey/rate-limits."
+    },
+    "openrouter": {
+      "api": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "key_env": "OPENROUTER_API_KEY",
+      "headers": { "X-Title": "Fitness Tracker" },
+      "source": "https://openrouter.ai/docs/api/reference/limits — :free models: 20 RPM; 50 RPD account-wide (1,000 RPD after $10 of credits ever purchased)."
+    },
+    "groq": {
+      "api": "openai",
+      "base_url": "https://api.groq.com/openai/v1",
+      "key_env": "GROQ_API_KEY",
+      "source": "https://console.groq.com/docs/rate-limits (Free plan table)."
+    }
+  },
+  "quotas": {
+    "gemini-3.8-flash": {
+      "rpm": 10,
+      "rpd": 250,
+      "tpm": 250000,
+      "tpd": null,
+      "day_tz": "America/Los_Angeles",
+      "note": "Estimate (SPEC §9: roughly 5–15 RPM, up to 1,000/day). Google does not publish free-tier numbers outside AI Studio; replace with the values shown there."
+    },
+    "gemini-3.5-flash-lite": {
+      "rpm": 15,
+      "rpd": 1000,
+      "tpm": 250000,
+      "tpd": null,
+      "day_tz": "America/Los_Angeles",
+      "note": "Estimate, as above."
+    },
+    "glm-4.7-flash": {
+      "rpm": 30,
+      "rpd": null,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Concurrency 1; rpm is our own pacing."
+    },
+    "glm-4.5-flash": {
+      "rpm": 30,
+      "rpd": null,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Concurrency 1; rpm is our own pacing."
+    },
+    "glm-4.6v-flash": {
+      "rpm": 30,
+      "rpd": null,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Concurrency 1; rpm is our own pacing."
+    },
+    "openrouter-free": {
+      "rpm": 20,
+      "rpd": 50,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Shared by every :free model on the account."
+    },
+    "groq-gpt-oss-120b": { "rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "day_tz": "UTC" },
+    "groq-qwen3.8-27b": { "rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "day_tz": "UTC" }
+  },
+  "models": {
+    "gemini-flash": {
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "quota": "gemini-3.8-flash",
+      "vision": true,
+      "tools": true,
+      "json": "native",
+      "params": { "thinkingConfig": { "thinkingLevel": "low" } },
+      "timeout_ms": 20000
+    },
+    "gemini-flash-lite": {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "quota": "gemini-3.5-flash-lite",
+      "vision": true,
+      "tools": true,
+      "json": "native",
+      "timeout_ms": 15000
+    },
+    "glm-4.7-flash": {
+      "provider": "zai",
+      "model": "glm-4.7-flash",
+      "quota": "glm-4.7-flash",
+      "vision": false,
+      "tools": true,
+      "json": "json_object",
+      "timeout_ms": 20000
+    },
+    "glm-4.5-flash": {
+      "provider": "zai",
+      "model": "glm-4.5-flash",
+      "quota": "glm-4.5-flash",
+      "vision": false,
+      "tools": true,
+      "json": "json_object",
+      "params": { "thinking": { "type": "disabled" } },
+      "timeout_ms": 20000
+    },
+    "glm-4.6v-flash": {
+      "provider": "zai",
+      "model": "glm-4.6v-flash",
+      "quota": "glm-4.6v-flash",
+      "vision": true,
+      "tools": true,
+      "json": "prompt",
+      "timeout_ms": 20000
+    },
+    "openrouter-qwen3.8-27b": {
+      "provider": "openrouter",
+      "model": "qwen/qwen3.8-27b:free",
+      "quota": "openrouter-free",
+      "vision": true,
+      "tools": true,
+      "json": "json_schema",
+      "params": { "reasoning": { "effort": "low" } },
+      "timeout_ms": 20000
+    },
+    "openrouter-nemotron-3-super": {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "quota": "openrouter-free",
+      "vision": false,
+      "tools": true,
+      "json": "json_schema",
+      "params": { "reasoning": { "effort": "low" } },
+      "timeout_ms": 20000
+    },
+    "groq-gpt-oss-120b": {
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "quota": "groq-gpt-oss-120b",
+      "vision": false,
+      "tools": true,
+      "json": "json_schema",
+      "params": { "reasoning_effort": "low" },
+      "timeout_ms": 15000
+    },
+    "groq-qwen3.8-27b": {
+      "provider": "groq",
+      "model": "qwen/qwen3.8-27b",
+      "quota": "groq-qwen3.8-27b",
+      "vision": false,
+      "tools": true,
+      "json": "json_schema",
+      "timeout_ms": 15000
+    }
+  },
+  "chains": {
+    "text": [
+      "gemini-flash",
+      "gemini-flash-lite",
+      "glm-4.7-flash",
+      "glm-4.5-flash",
+      "openrouter-qwen3.8-27b",
+      "openrouter-nemotron-3-super",
+      "groq-gpt-oss-120b",
+      "groq-qwen3.8-27b"
+    ],
+    "vision": ["gemini-flash", "gemini-flash-lite", "glm-4.6v-flash"]
+  }
+}
