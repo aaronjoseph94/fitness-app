@@ -21,7 +21,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 
 ## Stack
 
-- **Web** (`apps/web`): React 19, Vite, TypeScript strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Outfit font self-hosted.
+- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Outfit font self-hosted.
 - **Worker** (`apps/worker`, config `wrangler.jsonc`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp` (`@modelcontextprotocol/server` v2 + `@modelcontextprotocol/hono`, stateless, new server per request), job runner (`ai_jobs` + `ctx.waitUntil()` + one 5-minute cron). D1 via Drizzle ORM, R2 for files, Browser Rendering (`BROWSER.quickAction('pdf')`) for archived PDFs, Cloudflare Access JWT on every request.
 - **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/engine`), guardrails (`packages/shared/engine/guards.ts`).
 - **Exercises** (`packages/exercises`): free-exercise-db seed, muscle-group mapping, images served as static assets.
@@ -90,7 +90,7 @@ Read `.claude/skills/codebase-design/SKILL.md` before designing any module, and 
 
 ## Engineering rules (from the 2026-10-05 stack check — see docs/PROGRESS.md for the why)
 
-**Dependencies.** Every version is pinned once in the `catalog:` of `pnpm-workspace.yaml` and already installed. Do not run `pnpm add`/`pnpm install` with new packages from a parallel agent; if something is missing, say so in your result. TypeScript 6.0 (not 7), Vitest 4.1 (not 5), Playwright 1.56.1 (matches the preinstalled Chromium), Zod 4 (`import * as z from 'zod'`), MUI 9 (Grid uses `size`, not `xs`), React Router 8 (data mode), Recharts 3 (use the `responsive` prop or fixed widths).
+**Dependencies.** Every version is pinned once in the `catalog:` of `pnpm-workspace.yaml` and already installed. Do not run `pnpm add`/`pnpm install` with new packages from a parallel agent; if something is missing, say so in your result. TypeScript 7 (Go-native `tsc`; no compiler API, so dependency-cruiser keeps its own TypeScript 6 via `packageExtensions` — don't remove it or the boundary check silently cruises nothing), Vitest 4.1 (not 5), Playwright 1.56.1 (matches the preinstalled Chromium), Zod 4 (`import * as z from 'zod'`), MUI 9 (Grid uses `size`, not `xs`), React Router 8 (data mode), Recharts 3 (use the `responsive` prop or fixed widths).
 
 **Time.** Instants are stored as UTC strings `YYYY-MM-DDTHH:MM:SS.sssZ`. The Edmonton local `date` (`YYYY-MM-DD`) is computed in code (`@fitness/shared/engine` dates helpers using `Intl` with `America/Edmonton`) and stored beside the instant when a row belongs to a day. Never compare offset strings in SQL.
 

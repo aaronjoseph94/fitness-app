@@ -17,6 +17,7 @@
 
 ## Decisions made on Aaron's behalf
 
+- 2026-10-05 · **TypeScript 7.0.2 (Aaron's direction).** Every package typechecks with the Go-native `tsc` (about 14 s for the whole repo). TypeScript 7 publishes no compiler API, and dependency-cruiser reads `.ts` sources through that API: under TS 7 it silently cruised 4 of 586 modules and still reported "no violations". `pnpm-workspace.yaml` therefore gives dependency-cruiser its own TypeScript 6.0.3 (`packageExtensions`); nothing else loads the `typescript` package. Also: `drizzle-kit`'s loader esbuild 0.18 (GHSA-67mh-4wv8-2f99, dev-only) is overridden to ^0.25 — `pnpm audit` is clean.
 - 2026-10-05 · **Code review fixes:**
   - *Web, rest alert (stack check):* the rest-over alert is a local notification plus vibration fired by the page's own timer. iOS suspends a backgrounded or locked Home Screen PWA, so the alert fires only while the app is in front (or on platforms that keep timers running); the rest bar says "Keep the app open for the alert". A real background alert would need a Worker-scheduled Web Push (e.g. a Durable Object alarm) — a future option, not built.
   - *Web, proposals:* every proposal is decided through `POST /api/proposals/:id/accept|reject` (the Worker's per-kind handlers; the card links to the returned `applied` entity), and an Ask AI week plan through `/api/week-plans/:id/apply|reject`. One `useProposalDecision` hook and one label module (`features/proposals`) serve Today, the AI tab and the plan page.
@@ -42,7 +43,7 @@
   - **MCP:** `@modelcontextprotocol/server` 2.3 + `@modelcontextprotocol/hono` (official, stateless per request) instead of `@hono/mcp` (reuses one transport across requests, which collides in stateless mode).
   - **Claude connector auth:** static request headers are a limited beta in Claude. The Worker supports three paths: OAuth via `@cloudflare/workers-oauth-provider` (single-user consent page behind Cloudflare Access; works in Claude web/desktop/mobile), the static `Authorization: Bearer <MCP_BEARER_TOKEN>` header (Claude Code, or Claude if the Request headers field is available), and nothing else. An extra read-only `get_procedure(name)` tool returns the coach_review / scan_debrief / program_design / plateau_check procedures, because Claude does not invoke MCP prompts from a typed phrase.
   - **Tests:** `@cloudflare/vitest-plugin` (renamed from `@cloudflare/vitest-pool-workers`), Vitest 4.1.11 (pool not ready for Vitest 5), Playwright 1.56.1 (matches the preinstalled Chromium).
-  - **TypeScript 6.0** (TS 7 has no compiler API yet, which breaks tooling).
+  - **TypeScript 6.0** (TS 7 has no compiler API yet, which breaks tooling). *Superseded 2026-10-05: moved to TypeScript 7.0.2 at Aaron's request — see below.*
   - **Recharts has no calendar heatmap/strip**: those are small custom SVG components using the same tokens.
   - **Barcode:** `barcode-detector` (zxing-cpp WASM, BarcodeDetector API shape) instead of `@zxing/browser`; WASM served from our own assets.
   - **Voice:** iOS Home Screen web apps may not expose SpeechRecognition. The voice button uses it where available, otherwise focuses the text box with a hint to use the keyboard mic (same text path).

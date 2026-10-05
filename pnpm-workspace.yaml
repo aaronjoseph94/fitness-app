@@ -9,7 +9,7 @@ allowBuilds:
 
 catalog:
   # Language and tooling (versions verified 2026-10-05; see docs/PROGRESS.md)
-  typescript: ~6.0.3
+  typescript: 7.0.2
   "@types/node": 22.20.5
   tsx: 4.23.15
   prettier: 3.9.9
@@ -64,3 +64,15 @@ catalog:
   "@dnd-kit/core": 6.3.1
   "@dnd-kit/sortable": 10.0.0
   "@dnd-kit/utilities": 3.2.2
+
+# dependency-cruiser needs the TypeScript compiler API to read .ts sources, which TypeScript 7 (Go-native) doesn't
+# publish yet. It gets its own TypeScript 6 copy; everything else compiles with the catalog's TypeScript 7.
+packageExtensions:
+  dependency-cruiser:
+    dependencies:
+      typescript: 6.0.3
+
+# drizzle-kit's loader pins esbuild 0.18, which carries GHSA-67mh-4wv8-2f99 (dev server reads any request). Dev-only,
+# but the patched line is a drop-in for the loader.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": ^0.25.0
