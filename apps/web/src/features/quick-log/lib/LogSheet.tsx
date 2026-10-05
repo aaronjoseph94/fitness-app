@@ -65,7 +65,10 @@ export interface LogSheetProps {
 }
 
 export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogSheetProps) {
-  const [notice, setNotice] = useState<LogNotice | null>(null)
+  const [notice, setNoticeState] = useState<(LogNotice & { seq: number }) | null>(null)
+  /** Each notice gets its own sequence number, used as the snackbar's key: MUI only restarts the auto-hide timer when
+   * `open` changes, so without a remount a notice shown while the previous one is still up would close on the old timer. */
+  const setNotice = (n: LogNotice | null) => setNoticeState((prev) => (n ? { ...n, seq: (prev?.seq ?? 0) + 1 } : null))
   /** A captured meal under review; the sheet shows it instead of the form until closed. */
   const [review, setReview] = useState<CapturedMeal | null>(null)
   const day = date ?? todayLocal()
@@ -161,6 +164,7 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
         </Box>
       </Drawer>
       <Snackbar
+        key={notice?.seq ?? 0}
         open={notice !== null}
         autoHideDuration={notice?.queued ? 6000 : 3500}
         onClose={(_, reason) => reason !== 'clickaway' && setNotice(null)}
