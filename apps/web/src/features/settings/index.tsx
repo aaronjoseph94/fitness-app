@@ -65,7 +65,7 @@ export function SettingsPage() {
       >
         {query.fetchStatus === 'paused' || query.error?.kind === 'network'
           ? 'You’re offline and settings haven’t been loaded on this phone yet.'
-          : `Couldn't load settings. ${query.error?.message ?? ''}`}
+          : `Couldn't load settings. ${problemText(query.error)}`}
       </Alert>
     )
 
