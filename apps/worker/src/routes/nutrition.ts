@@ -1,4 +1,30 @@
 // Owns: the /api nutrition route group (thin: validate via the shared contract, call module entry points).
+// POST /api/meals/:id/photos (R2 upload + meal_analysis on photos) arrives with phase 2's photo pipeline.
+import { endpoints } from '@fitness/shared/api'
 import type { App } from '../env'
+import { route } from '../lib/route'
+import {
+  createFavourite,
+  createFood,
+  createMeal,
+  deleteMeal,
+  listFavourites,
+  listMeals,
+  searchFoods,
+  updateFavourite,
+  updateMeal,
+} from '../modules/nutrition'
 
-export function mountNutritionRoutes(_app: App): void {}
+export function mountNutritionRoutes(app: App): void {
+  route(app, endpoints.nutrition.listMeals, ({ query }, deps) => listMeals(deps, query.date))
+  route(app, endpoints.nutrition.createMeal, ({ body }, deps) => createMeal(deps, body), { status: 201 })
+  route(app, endpoints.nutrition.updateMeal, ({ params, body }, deps) => updateMeal(deps, params.id, body))
+  route(app, endpoints.nutrition.deleteMeal, ({ params }, deps) => deleteMeal(deps, params.id))
+  route(app, endpoints.nutrition.searchFoods, ({ query }, deps) => searchFoods(deps, query))
+  route(app, endpoints.nutrition.createFood, ({ body }, deps) => createFood(deps, body), { status: 201 })
+  route(app, endpoints.nutrition.listFavourites, (_, deps) => listFavourites(deps))
+  route(app, endpoints.nutrition.createFavourite, ({ body }, deps) => createFavourite(deps, body), { status: 201 })
+  route(app, endpoints.nutrition.updateFavourite, ({ params, body }, deps) =>
+    updateFavourite(deps, params.id, body),
+  )
+}

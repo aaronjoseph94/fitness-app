@@ -15,7 +15,8 @@
     "seed:local": "tsx scripts/build-seed.ts && wrangler d1 execute DB --local --file seed.generated.sql",
     "seed:remote": "tsx scripts/build-seed.ts && wrangler d1 execute DB --remote --file seed.generated.sql",
     "setup:local": "pnpm db:migrate:local && pnpm seed:local",
-    "db:view": "drizzle-kit generate --custom --name v_day && tsx scripts/postprocess-migrations.ts"
+    "db:view": "drizzle-kit generate --custom --name v_day && tsx scripts/postprocess-migrations.ts",
+    "seed:cnf": "NODE_USE_ENV_PROXY=1 tsx scripts/build-cnf.ts"
   },
   "dependencies": {
     "@block65/webcrypto-web-push": "catalog:",

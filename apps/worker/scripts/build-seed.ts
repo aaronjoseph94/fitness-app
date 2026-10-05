@@ -1,4 +1,4 @@
-// Owns: building apps/worker/seed.generated.sql (gitignored) — Aaron's baseline: profile, rails, baseline scan, milestones, equipment, exercise library + exclusions, plan v1, daily targets, first weigh-in.
+// Owns: building apps/worker/seed.generated.sql (gitignored) — Aaron's baseline: profile, rails, baseline scan, milestones, equipment, exercise library + exclusions, plan v1, daily targets, first weigh-in, Canadian Nutrient File foods.
 // Run: pnpm --filter @fitness/worker seed:local (builds, then `wrangler d1 execute DB --local --file seed.generated.sql`).
 // Idempotent: deterministic ids + INSERT OR IGNORE (Aaron's later edits win); library exercises upsert by slug so a new pinned commit syncs.
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -11,6 +11,7 @@ import {
   equipment_profile,
   exercise_exclusions,
   exercises,
+  foods,
   milestones,
   plan_versions,
   profile,
@@ -261,6 +262,47 @@ for (let date = START_DATE; date <= TARGETS_THROUGH; date = addDays(date, 1)) {
   })
 }
 
+// ── Canadian Nutrient File foods (seed/foods/cnf.json, built by scripts/build-cnf.ts) ──────────────────────────
+// Generic foods for food matching without an API call: source 'cnf', source_id = CNF food code, nutrients per 100 g.
+
+const n = z.number().nullable()
+const CnfSeed = z.object({
+  columns: z.tuple([
+    z.literal('code'),
+    z.literal('name'),
+    z.literal('group'),
+    z.literal('kcal'),
+    z.literal('protein_g'),
+    z.literal('carbs_g'),
+    z.literal('fat_g'),
+    z.literal('fibre_g'),
+    z.literal('sugar_g'),
+    z.literal('sodium_mg'),
+    z.literal('serving_g'),
+  ]),
+  foods: z.array(z.tuple([z.number().int(), z.string().min(1), z.number().int(), z.number(), n, n, n, n, n, n, n])),
+})
+const cnf = CnfSeed.parse(readJson('foods/cnf.json'))
+const cnfRows: NewRow<typeof foods>[] = cnf.foods.map(
+  ([code, name, group, kcal, protein_g, carbs_g, fat_g, fibre_g, sugar_g, sodium_mg, serving_g]) => ({
+    id: seedId(`food:cnf:${code}`),
+    source: 'cnf',
+    source_id: String(code),
+    barcode: null,
+    name,
+    brand: null,
+    serving_g,
+    kcal_per_100g: kcal,
+    protein_g: protein_g ?? 0,
+    carbs_g: carbs_g ?? 0,
+    fat_g: fat_g ?? 0,
+    fibre_g: fibre_g ?? 0,
+    sugar_g,
+    sodium_mg,
+    raw: { cnf_food_group: group },
+  }),
+)
+
 const weightRows: NewRow<typeof weight_logs>[] = [
   {
     id: seedId(`weight_log:${START_DATE}`),
@@ -303,6 +345,7 @@ const sections: [string, string[]][] = [
   ['plan version 1', insertSql(plan_versions, planRows, 'ignore')],
   [`daily targets ${START_DATE} … ${TARGETS_THROUGH}`, insertSql(daily_targets, targetRows, 'ignore')],
   ['first weigh-in', insertSql(weight_logs, weightRows, 'ignore')],
+  [`Canadian Nutrient File foods (${cnfRows.length})`, insertSql(foods, cnfRows, 'ignore')],
 ]
 
 const body = sections.map(([title, statements]) => `-- ${title}\n${statements.join('\n')}`).join('\n\n')
@@ -312,5 +355,5 @@ writeFileSync(
 )
 const count = sections.reduce((n, [, s]) => n + s.length, 0)
 console.log(
-  `seed: ${count} statements → ${path.relative(process.cwd(), OUT)} (${library.length} exercises, ${exclusionRows.length} excluded, ${targetRows.length} target days)`,
+  `seed: ${count} statements → ${path.relative(process.cwd(), OUT)} (${library.length} exercises, ${exclusionRows.length} excluded, ${targetRows.length} target days, ${cnfRows.length} CNF foods)`,
 )
