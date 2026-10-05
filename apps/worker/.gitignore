@@ -1,0 +1,2 @@
+# Owns: worker-local files git must not track.
+seed.generated.sql

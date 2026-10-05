@@ -43,6 +43,7 @@ pnpm --filter @fitness/worker db:generate        # drizzle-kit generate → apps
 pnpm --filter @fitness/worker db:migrate:local   # wrangler d1 migrations apply fitness --local
 pnpm --filter @fitness/worker db:migrate:remote  # wrangler d1 migrations apply fitness --remote (CI, before deploy)
 pnpm --filter @fitness/worker seed:local         # load seed/ into local D1
+pnpm --filter @fitness/exercises run fetch:images # download exercise step images (gitignored) before a web build
 pnpm --filter @fitness/worker deploy     # wrangler deploy (Aaron/Cursor only — see docs/DEPLOY.md)
 pnpm e2e                                 # Playwright flows against the local Worker
 ```

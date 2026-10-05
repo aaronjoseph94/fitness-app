@@ -1,0 +1,143 @@
+{
+  "$comment": "Owns: Aaron's default equipment profile (Anytime Fitness) and default exercise exclusions. Loaded by apps/worker/scripts/build-seed.ts; exclusions are resolved to exercise ids there. Statuses: have | dont_have | dislike | cant_use. Name patterns are case-insensitive regexes over the exercise name; the first matching rule gives the reason; except_equipment skips a rule for those equipment values.",
+  "gym": "Anytime Fitness",
+  "equipment": [
+    { "equipment": "barbell", "kind": "library", "status": "have", "note": null },
+    { "equipment": "dumbbell", "kind": "library", "status": "have", "note": null },
+    { "equipment": "cable", "kind": "library", "status": "have", "note": null },
+    { "equipment": "machine", "kind": "library", "status": "have", "note": null },
+    { "equipment": "kettlebells", "kind": "library", "status": "have", "note": null },
+    { "equipment": "bands", "kind": "library", "status": "have", "note": null },
+    { "equipment": "e-z curl bar", "kind": "library", "status": "have", "note": null },
+    { "equipment": "medicine ball", "kind": "library", "status": "have", "note": null },
+    { "equipment": "exercise ball", "kind": "library", "status": "have", "note": null },
+    {
+      "equipment": "foam roll",
+      "kind": "library",
+      "status": "have",
+      "note": "Foam rolling is floor work; excluded through the stretching category."
+    },
+    {
+      "equipment": "body only",
+      "kind": "library",
+      "status": "have",
+      "note": "Bodyweight moves are excluded by default (see exclusions), not by status."
+    },
+    {
+      "equipment": "other",
+      "kind": "library",
+      "status": "have",
+      "note": "Mixed bag (plates, benches, bars, sleds); unsuitable moves are excluded by name."
+    },
+
+    { "equipment": "leg press", "kind": "machine", "status": "have", "note": null },
+    {
+      "equipment": "hack squat",
+      "kind": "machine",
+      "status": "have",
+      "note": "Not in every Anytime Fitness club; confirm at yours."
+    },
+    { "equipment": "smith machine", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "squat rack", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "lat pulldown", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "seated cable row", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "pec deck", "kind": "machine", "status": "have", "note": "Fly and rear-delt fly." },
+    { "equipment": "chest press machine", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "shoulder press machine", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "leg extension", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "seated leg curl", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "lying leg curl", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "hip abductor", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "hip adductor", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "standing calf raise", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "seated calf raise", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "cable crossover", "kind": "machine", "status": "have", "note": null },
+    {
+      "equipment": "functional trainer",
+      "kind": "machine",
+      "status": "have",
+      "note": "Dual adjustable cable stack."
+    },
+    { "equipment": "preacher curl bench", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "assisted pull-up / dip machine", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "ab crunch machine", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "back extension bench", "kind": "machine", "status": "have", "note": null },
+    {
+      "equipment": "adjustable bench",
+      "kind": "machine",
+      "status": "have",
+      "note": "Flat, incline and decline."
+    },
+    {
+      "equipment": "t-bar row",
+      "kind": "machine",
+      "status": "have",
+      "note": "Often a landmine attachment; confirm at your club."
+    },
+    {
+      "equipment": "glute kickback machine",
+      "kind": "machine",
+      "status": "have",
+      "note": "Not in every club; confirm at yours."
+    },
+    { "equipment": "treadmill", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "stationary bike", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "elliptical", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "rowing machine", "kind": "machine", "status": "have", "note": null },
+    { "equipment": "stair climber", "kind": "machine", "status": "have", "note": null }
+  ],
+  "exclusions": {
+    "name_patterns": [
+      { "pattern": "lunge", "reason": "Lunges are excluded by default (SPEC §2).", "except_equipment": [] },
+      { "pattern": "plank", "reason": "Floor hold (plank).", "except_equipment": [] },
+      { "pattern": "burpee", "reason": "Bodyweight floor move (burpee).", "except_equipment": [] },
+      {
+        "pattern": "mountain climber",
+        "reason": "Bodyweight floor move (mountain climber).",
+        "except_equipment": []
+      },
+      {
+        "pattern": "crunch",
+        "reason": "Floor crunch; cable and machine crunches stay allowed.",
+        "except_equipment": ["cable", "machine"]
+      },
+      { "pattern": "sit-?ups?\\b", "reason": "Floor sit-up.", "except_equipment": [] },
+      { "pattern": "push[- ]?ups?\\b", "reason": "Bodyweight push-up.", "except_equipment": [] },
+      { "pattern": "bridge", "reason": "Glute or hip bridge on the floor.", "except_equipment": [] },
+      { "pattern": "superman", "reason": "Floor back extension (superman).", "except_equipment": [] },
+      { "pattern": "flutter kick", "reason": "Floor core move (flutter kick).", "except_equipment": [] },
+      { "pattern": "\\bfloor\\b", "reason": "Performed lying on the floor.", "except_equipment": [] },
+      {
+        "pattern": "roll ?out|ab roller",
+        "reason": "Kneeling roll-out on the floor.",
+        "except_equipment": []
+      },
+      { "pattern": "^suspended\\b", "reason": "Suspension-trainer bodyweight move.", "except_equipment": [] },
+      {
+        "pattern": "\\bchins?\\b|chin-ups?|pull-?ups?\\b|muscle up|\\bdips?\\b|parallel bars?",
+        "reason": "Bodyweight hang or dip; use the assisted pull-up/dip machine or lat pulldown instead.",
+        "except_equipment": ["machine", "barbell", "dumbbell", "cable", "kettlebells", "e-z curl bar"]
+      }
+    ],
+    "categories": [
+      {
+        "category": "stretching",
+        "reason": "Mobility and stretching, mostly on the floor; not part of the lifting plan."
+      },
+      {
+        "category": "plyometrics",
+        "reason": "Jumps, throws and sprint drills: bodyweight or explosive, outside machines and free weights."
+      },
+      {
+        "category": "strongman",
+        "reason": "Strongman implements (stones, yokes, tyres, logs, sleds) are not at Anytime Fitness."
+      }
+    ],
+    "equipment": [
+      {
+        "equipment": "body only",
+        "reason": "Bodyweight exercise; Aaron trains with machines and free weights only (SPEC §2)."
+      }
+    ]
+  }
+}

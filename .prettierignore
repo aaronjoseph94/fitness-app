@@ -4,3 +4,4 @@ apps/worker/drizzle
 packages/exercises/data
 packages/exercises/images
 **/dist
+seed/scans
