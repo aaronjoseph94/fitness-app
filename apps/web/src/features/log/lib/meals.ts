@@ -1,12 +1,12 @@
-// Owns: the day's meals as the Log tab shows them — GET /api/meals for the date, plus meals created, edited or deleted
-// on this phone that have not synced yet (created ones appear with what is known; deleted ones disappear; edited ones
-// show the edit) — and turning a shown meal back into the items list a PATCH sends.
+// Owns: the day's meals as the Log tab shows them — GET /api/meals for the date (re-read every few seconds while one is
+// being analysed), plus meals created, edited or deleted on this phone that have not synced yet (created ones appear
+// with what is known; deleted ones disappear; edited ones show the edit) — and turning a shown meal back into the items
+// a PATCH sends.
 import { endpoints } from '@fitness/shared/api'
 import type { Favourite, Meal, MealItemInput, MealSlot, MealStatus, Nutrients } from '@fitness/shared/schemas'
 import type * as z from 'zod'
 import { useMemo } from 'react'
-import { useApiQuery } from '../../../api'
-import { dateOf, scaled, sum, usePendingLogs } from '../../quick-log'
+import { dateOf, scaled, sum, useDayMealsLive, usePendingLogs, type DraftItem } from '../../quick-log'
 
 export interface ItemView {
   id: string
@@ -31,6 +31,8 @@ export interface MealView {
   /** A create or edit for it is waiting (queued offline or still saving). */
   pending: 'create' | 'edit' | null
   queued: boolean
+  /** Signed photo URLs (photo meals). */
+  photos: string[]
   /** The server row, when there is one. */
   meal: Meal | null
 }
@@ -58,6 +60,7 @@ function fromServer(meal: Meal): MealView {
     totals: meal.totals,
     pending: null,
     queued: false,
+    photos: meal.photos.map((p) => p.url),
     meal,
   }
 }
@@ -101,7 +104,7 @@ export interface DayMeals {
 }
 
 export function useDayMeals(date: string, favourites: readonly Favourite[]): DayMeals {
-  const list = useApiQuery(endpoints.nutrition.listMeals, { query: { date } })
+  const list = useDayMealsLive(date)
   const creates = usePendingLogs(endpoints.nutrition.createMeal)
   const updates = usePendingLogs(endpoints.nutrition.updateMeal)
   const deletes = usePendingLogs(endpoints.nutrition.deleteMeal)
@@ -140,6 +143,7 @@ export function useDayMeals(date: string, favourites: readonly Favourite[]): Day
         totals,
         pending: 'create',
         queued: p.queued,
+        photos: [],
         meal: null,
       })
     }
@@ -172,21 +176,16 @@ export function useDayMeals(date: string, favourites: readonly Favourite[]): Day
   return { meals, isLoading: list.isLoading, error: list.error, refetch: () => void list.refetch() }
 }
 
-/** A shown item as a PATCH item: a food reference keeps the server's per-100 g maths; custom nutrition is rescaled. */
-export function toItemInput(item: ItemView, grams: number): MealItemInput {
-  if (item.foodId) return { id: item.id, food_id: item.foodId, grams, description: item.description }
-  const n = item.nutrients ?? { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0 }
-  const f = item.grams > 0 ? grams / item.grams : 1
-  const r = (v: number) => Math.round(v * f * 10) / 10
+/** A shown item as the review editor's draft (its nutrients rescale with the grams until the server re-prices it). */
+export function draftFromView(item: ItemView): DraftItem {
   return {
     id: item.id,
     description: item.description,
-    grams,
-    kcal: r(n.kcal),
-    protein_g: r(n.protein_g),
-    carbs_g: r(n.carbs_g),
-    fat_g: r(n.fat_g),
-    fibre_g: r(n.fibre_g),
+    grams: String(Math.round(item.grams * 10) / 10),
+    foodId: item.foodId,
+    per100: null,
+    base: item.nutrients && item.grams > 0 ? { grams: item.grams, nutrients: item.nutrients } : null,
+    confidence: null,
     estimated: item.estimated,
   }
 }

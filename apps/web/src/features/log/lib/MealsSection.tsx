@@ -1,5 +1,6 @@
 // Owns: the day's meals by slot — Lunch, Dinner, Snack (Breakfast when enabled or used) — each card with planned vs
-// logged kcal, its meals, and "Add" opening the meal form for that slot and day; plus the meal dialogs.
+// logged kcal, its meals, and "Add" opening the meal form for that slot and day; plus the meal dialogs (review, edit,
+// delete, save as favourite).
 import AddRounded from '@mui/icons-material/AddRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -11,6 +12,7 @@ import { LoadProblem, SLOT_LABEL, slotShare, visibleSlots } from '../../quick-lo
 import { LoadingRows, LogCard } from './LogCard'
 import { MealCard } from './MealCard'
 import { DeleteMealDialog, MealEditor, SaveFavouriteDialog } from './MealDialogs'
+import { MealReviewDialog } from './MealReviewDialog'
 import type { DayMeals, MealView } from './meals'
 
 interface MealsSectionProps {
@@ -21,7 +23,7 @@ interface MealsSectionProps {
   onAdd: (slot: MealSlot) => void
 }
 
-type Open = { kind: 'edit' | 'delete' | 'favourite'; meal: MealView } | null
+type Open = { kind: 'review' | 'edit' | 'delete' | 'favourite'; meal: MealView } | null
 
 export function MealsSection({ day, meals, favourites, breakfastEnabled, onAdd }: MealsSectionProps) {
   const [open, setOpen] = useState<Open>(null)
@@ -67,6 +69,7 @@ export function MealsSection({ day, meals, favourites, breakfastEnabled, onAdd }
                 <MealCard
                   key={meal.id}
                   meal={meal}
+                  onReview={() => setOpen({ kind: 'review', meal })}
                   onEdit={() => setOpen({ kind: 'edit', meal })}
                   onDelete={() => setOpen({ kind: 'delete', meal })}
                   onFavourite={() => setOpen({ kind: 'favourite', meal })}
@@ -76,6 +79,7 @@ export function MealsSection({ day, meals, favourites, breakfastEnabled, onAdd }
           </LogCard>
         )
       })}
+      {open?.kind === 'review' && <MealReviewDialog meal={open.meal} onClose={() => setOpen(null)} />}
       {open?.kind === 'edit' && <MealEditor meal={open.meal} breakfastEnabled={breakfastEnabled} onClose={() => setOpen(null)} />}
       {open?.kind === 'delete' && <DeleteMealDialog meal={open.meal} onClose={() => setOpen(null)} />}
       {open?.kind === 'favourite' && <SaveFavouriteDialog meal={open.meal} favourites={favourites} onClose={() => setOpen(null)} />}

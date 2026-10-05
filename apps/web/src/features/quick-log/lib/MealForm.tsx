@@ -1,20 +1,34 @@
-// Owns: the meal form — the slot (default by time of day), then one of three ways in: favourites and recents (one tap),
-// foods (search or a new food, grams each, live kcal), or a free-text description saved as a text meal that phase 2's
-// AI analyses. Every meal is POST /api/meals with a client id and eaten_at.
+// Owns: the meal form (SPEC §6, five input methods) — the slot (default by time of day), three capture tiles (photo:
+// camera or gallery, several; barcode scan; voice into the text box) and three panes (favourites and recents, one
+// tap; foods by search, grams each, live kcal; a free-text description). Every meal is POST /api/meals with a client
+// id and eaten_at. Text, voice and photo meals hand over to the review (analysis, then items to confirm); the rest
+// close the sheet with a notice.
 import CloseRounded from '@mui/icons-material/CloseRounded'
+import MicNoneRounded from '@mui/icons-material/MicNoneRounded'
+import MicRounded from '@mui/icons-material/MicRounded'
+import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
+import QrCodeScannerRounded from '@mui/icons-material/QrCodeScannerRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import type SvgIcon from '@mui/material/SvgIcon'
 import { endpoints } from '@fitness/shared/api'
 import type { MealCreate, MealSlot } from '@fitness/shared/schemas'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import { flushSync } from 'react-dom'
 import { useApiQuery } from '../../../api'
 import { formatNumber } from '../../../components'
 import { tokens } from '../../../theme'
+import { BarcodePane } from './capture/BarcodePane'
+import { PhotoPane } from './capture/PhotoPane'
+import { usePhotoMeal } from './capture/photo-meal'
+import { appendPhrase, useDictation, type Dictation } from './capture/voice'
 import { clockOf, instantAt, todayLocal } from './dates'
 import { FavouritesPane, type QuickMeal } from './FavouritesPane'
 import { FoodPicker, type PickedFood } from './FoodPicker'
@@ -23,9 +37,24 @@ import { useLogSettings, useRecentFoods } from './reads'
 import { NumberField, noticeFor, parseNumber, problemText, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 
-type Mode = 'favourites' | 'foods' | 'describe'
+type Mode = 'favourites' | 'foods' | 'describe' | 'photo' | 'barcode'
 
-export function MealForm({ date, slot: initialSlot, onLogged }: { date: string; slot?: MealSlot; onLogged: (notice: LogNotice) => void }) {
+/** A meal the AI is analysing: the sheet switches to its review. `previews` are thumbnails made on this phone. */
+export interface CapturedMeal {
+  mealId: string
+  date: string
+  previews: string[]
+}
+
+interface MealFormProps {
+  date: string
+  slot?: MealSlot
+  onLogged: (notice: LogNotice) => void
+  /** A text, voice or photo meal reached the server: show its analysis and review. */
+  onCaptured: (meal: CapturedMeal) => void
+}
+
+export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: MealFormProps) {
   const { breakfastEnabled } = useLogSettings()
   const isToday = date === todayLocal()
   const [slot, setSlot] = useState<MealSlot>(initialSlot ?? (isToday ? defaultSlot(clockOf(Date.now()), breakfastEnabled) : 'lunch'))
@@ -40,6 +69,19 @@ export function MealForm({ date, slot: initialSlot, onLogged }: { date: string; 
   const shown: Mode = mode ?? 'favourites'
   const create = useLogMutation(endpoints.nutrition.createMeal)
 
+  // Describe / voice share one text box. The voice tile starts dictation (or focuses the box with a hint) in the tap.
+  const [text, setText] = useState('')
+  const [spoken, setSpoken] = useState(false)
+  const [keyboardMicHint, setKeyboardMicHint] = useState(false)
+  const dictation = useDictation((phrase) => {
+    setSpoken(true)
+    setText((t) => appendPhrase(t, phrase))
+  })
+  const textBox = useRef<HTMLTextAreaElement>(null)
+
+  const photo = usePhotoMeal()
+  const fileInput = useRef<HTMLInputElement>(null)
+
   const slots = visibleSlots(breakfastEnabled || slot === 'breakfast')
   const eatenAt = () => (isToday ? new Date().toISOString() : instantAt(date, SLOT_TIME[slot]))
 
@@ -52,6 +94,43 @@ export function MealForm({ date, slot: initialSlot, onLogged }: { date: string; 
     const message = `${SLOT_LABEL[slot]}: ${meal.label} · ${formatNumber(meal.nutrients.kcal)} kcal`
     if (meal.kind === 'favourite') save({ ...base, input_method: 'favorite', favorite_id: meal.favouriteId, scale: meal.scale }, message)
     else save({ ...base, input_method: 'manual', items: [{ id: crypto.randomUUID(), food_id: meal.foodId, grams: meal.grams, description: meal.label }] }, message)
+  }
+
+  const saveText = (raw: string) => {
+    const id = crypto.randomUUID()
+    const body: MealCreate = { id, slot, eaten_at: eatenAt(), input_method: spoken ? 'voice' : 'text', raw_text: raw }
+    create.mutate(
+      { body },
+      {
+        onSuccess: (outcome) => {
+          // Queued offline: the analysis starts once it syncs; nothing to watch here.
+          if (outcome.status === 'queued') onLogged(noticeFor(outcome, `${SLOT_LABEL[slot]} saved; it's analysed when it syncs`))
+          else onCaptured({ mealId: id, date, previews: [] })
+        },
+      },
+    )
+  }
+
+  const sendPhotos = async (note: string) => {
+    const mealId = await photo.send({ slot, eatenAt: eatenAt(), note })
+    if (mealId) onCaptured({ mealId, date, previews: photo.handOff() })
+  }
+
+  // Taps: each runs inside the user gesture (iOS opens the picker, the keyboard or the mic only from one).
+  const pickPhotos = () => {
+    flushSync(() => setMode('photo'))
+    fileInput.current?.click()
+  }
+  const speak = () => {
+    flushSync(() => {
+      setMode('describe')
+      setKeyboardMicHint(!dictation.supported)
+    })
+    textBox.current?.focus()
+    if (dictation.supported) {
+      setSpoken(true)
+      dictation.start()
+    }
   }
 
   return (
@@ -75,8 +154,31 @@ export function MealForm({ date, slot: initialSlot, onLogged }: { date: string; 
         ))}
       </Box>
 
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }} aria-label="Capture">
+        <CaptureTile Icon={PhotoCameraOutlined} label="Photo" active={shown === 'photo'} onClick={pickPhotos} testId="capture-photo" />
+        <CaptureTile Icon={QrCodeScannerRounded} label="Barcode" active={shown === 'barcode'} onClick={() => setMode('barcode')} testId="capture-barcode" />
+        <CaptureTile Icon={dictation.listening ? MicRounded : MicNoneRounded} label={dictation.listening ? 'Listening…' : 'Voice'} active={dictation.listening} onClick={speak} testId="capture-voice" />
+      </Box>
+      {/* No `capture` attribute: iOS and Android then offer both the camera and the photo library. */}
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          const files = e.target.files
+          if (files && files.length > 0) {
+            setMode('photo')
+            void photo.add([...files])
+          }
+          e.target.value = ''
+        }}
+        data-testid="photo-input"
+      />
+
       <ToggleButtonGroup
-        value={shown}
+        value={shown === 'photo' || shown === 'barcode' ? null : shown}
         exclusive
         fullWidth
         onChange={(_, v: Mode | null) => v && setMode(v)}
@@ -103,9 +205,25 @@ export function MealForm({ date, slot: initialSlot, onLogged }: { date: string; 
       )}
       {shown === 'describe' && (
         <DescribePane
+          text={text}
+          onText={setText}
+          textBox={textBox}
+          dictation={dictation}
+          keyboardMicHint={keyboardMicHint}
+          onMic={speak}
           busy={create.isPending}
-          onSave={(text) =>
-            save({ id: crypto.randomUUID(), slot, eaten_at: eatenAt(), input_method: 'text', raw_text: text }, `${SLOT_LABEL[slot]} saved as text`)
+          onSave={saveText}
+        />
+      )}
+      {shown === 'photo' && <PhotoPane capture={photo} onPick={() => fileInput.current?.click()} onSend={(note) => void sendPhotos(note)} onDescribe={() => setMode('describe')} />}
+      {shown === 'barcode' && (
+        <BarcodePane
+          busy={create.isPending}
+          onSave={(item, kcal) =>
+            save(
+              { id: crypto.randomUUID(), slot, eaten_at: eatenAt(), input_method: 'barcode', items: [item] },
+              `${SLOT_LABEL[slot]}: ${item.description} · ${formatNumber(kcal)} kcal`,
+            )
           }
         />
       )}
@@ -116,6 +234,44 @@ export function MealForm({ date, slot: initialSlot, onLogged }: { date: string; 
         </Box>
       )}
     </Box>
+  )
+}
+
+function CaptureTile({
+  Icon,
+  label,
+  active,
+  onClick,
+  testId,
+}: {
+  Icon: typeof SvgIcon
+  label: string
+  active: boolean
+  onClick: () => void
+  testId: string
+}) {
+  return (
+    <ButtonBase
+      onClick={onClick}
+      data-testid={testId}
+      aria-pressed={active}
+      sx={{
+        minHeight: 64,
+        borderRadius: `${tokens.radius.control}px`,
+        border: `1px solid ${active ? tokens.ink.text : tokens.ink.border}`,
+        bgcolor: tokens.ink.card,
+        display: 'grid',
+        placeItems: 'center',
+        gap: 0.5,
+        py: 1.5,
+        fontSize: 13,
+        fontWeight: tokens.font.weight.label,
+        color: tokens.ink.text,
+      }}
+    >
+      <Icon sx={{ color: tokens.metric.calories }} />
+      {label}
+    </ButtonBase>
   )
 }
 
@@ -187,8 +343,19 @@ function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave
   )
 }
 
-function DescribePane({ busy, onSave }: { busy: boolean; onSave: (text: string) => void }) {
-  const [text, setText] = useState('')
+interface DescribePaneProps {
+  text: string
+  onText: (text: string) => void
+  textBox: RefObject<HTMLTextAreaElement | null>
+  dictation: Dictation
+  /** The browser can't transcribe (iOS Home Screen app): point at the keyboard's mic. */
+  keyboardMicHint: boolean
+  onMic: () => void
+  busy: boolean
+  onSave: (text: string) => void
+}
+
+function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic, busy, onSave }: DescribePaneProps) {
   const trimmed = text.trim()
   return (
     <Box
@@ -204,19 +371,51 @@ function DescribePane({ busy, onSave }: { busy: boolean; onSave: (text: string) 
       <TextField
         label="What did you eat?"
         placeholder="2 eggs, toast with butter, black coffee"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={dictation.interim ? appendPhrase(text, dictation.interim) : text}
+        onChange={(e) => onText(e.target.value)}
         multiline
         minRows={3}
-        autoFocus
-        slotProps={{ htmlInput: { maxLength: 2000 } }}
+        inputRef={textBox}
+        slotProps={{
+          htmlInput: { maxLength: 2000 },
+          input: dictation.supported
+            ? {
+                endAdornment: (
+                  <InputAdornment position="end" sx={{ alignSelf: 'flex-end', mb: 1 }}>
+                    <IconButton
+                      aria-label={dictation.listening ? 'Stop dictation' : 'Dictate'}
+                      onClick={dictation.listening ? dictation.stop : onMic}
+                      sx={{ color: dictation.listening ? tokens.metric.calories : tokens.ink.secondary }}
+                    >
+                      {dictation.listening ? <MicRounded /> : <MicNoneRounded />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }
+            : undefined,
+        }}
       />
+      {keyboardMicHint && !dictation.supported && (
+        <Box role="status" data-testid="keyboard-mic-hint" sx={{ fontSize: 14, color: tokens.ink.text, display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <MicNoneRounded fontSize="small" sx={{ color: tokens.metric.calories }} />
+          Tap the mic on your keyboard to dictate.
+        </Box>
+      )}
+      {dictation.listening && (
+        <Box role="status" sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+          Listening… say what you ate, then pause.
+        </Box>
+      )}
+      {dictation.error && (
+        <Box role="alert" sx={{ fontSize: 14, color: tokens.ink.secondary }}>
+          {dictation.error}
+        </Box>
+      )}
       <Box sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.5 }}>
-        Saved as written. From phase 2 the AI turns it into items with grams and kcal for you to check; until then it
-        counts as a logged meal without numbers.
+        The AI turns it into items with grams and kcal for you to check before it counts.
       </Box>
-      <Button type="submit" variant="contained" size="large" disabled={!trimmed || busy} data-testid="meal-save-text">
-        {busy ? 'Saving…' : 'Save meal'}
+      <Button type="submit" variant="contained" size="large" disabled={!trimmed || busy || dictation.listening} data-testid="meal-save-text">
+        {busy ? 'Saving…' : 'Analyse'}
       </Button>
     </Box>
   )

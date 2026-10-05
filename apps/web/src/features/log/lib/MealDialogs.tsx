@@ -1,6 +1,6 @@
-// Owns: the meal dialogs on the Log tab — edit a meal (slot, time, item grams, remove or add items; confirms a meal in
-// review) with PATCH /api/meals/:id, delete it with DELETE, and save it as a favourite (one food → a food favourite
-// with its grams; several → a recipe) with POST /api/favorites.
+// Owns: the meal dialogs on the Log tab — edit a meal (slot, time, and its items in the shared item editor: grams
+// stepper, swap, remove, add; confirms a meal in review) with PATCH /api/meals/:id, delete it with DELETE, and save it
+// as a favourite (one food → a food favourite with its grams; several → a recipe) with POST /api/favorites.
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -21,48 +21,32 @@ import { tokens } from '../../../theme'
 import {
   clockOf,
   dateOf,
-  FoodPicker,
+  draftTotals,
   instantAt,
-  NumberField,
-  parseNumber,
-  portion,
+  ItemsEditor,
   problemText,
-  scaled,
   SLOT_LABEL,
-  sum,
+  toItemInputs,
   useLogMutation,
   visibleSlots,
-  type PickedFood,
+  type DraftItem,
 } from '../../quick-log'
-import { toItemInput, type ItemView, type MealView } from './meals'
-
-interface DraftItem {
-  item: ItemView
-  grams: string
-  /** Per-100 g values when the item was just picked, for live kcal. */
-  food?: PickedFood
-}
-
-const MAX_ITEMS = 50
+import { draftFromView, type MealView } from './meals'
 
 export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView; breakfastEnabled: boolean; onClose: () => void }) {
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const [slot, setSlot] = useState<MealSlot>(meal.slot)
   const [time, setTime] = useState(clockOf(meal.eatenAt))
-  const [items, setItems] = useState<DraftItem[]>(meal.items.map((item) => ({ item, grams: String(Math.round(item.grams * 10) / 10) })))
-  const [adding, setAdding] = useState(false)
+  const [items, setItems] = useState<DraftItem[]>(() => meal.items.map(draftFromView))
   const update = useLogMutation(endpoints.nutrition.updateMeal)
 
-  const parsed = items.map((d) => ({ ...d, g: parseNumber(d.grams) }))
-  const valid = parsed.every(({ g }) => g !== null && g > 0 && g <= 5000) && /^\d{2}:\d{2}$/.test(time)
-  const kcalOf = (d: (typeof parsed)[number]) =>
-    d.g === null ? null : d.food ? portion(d.food.per100, d.g) : d.item.nutrients && d.item.grams > 0 ? scaled(d.item.nutrients, d.g / d.item.grams) : null
-  const totals = parsed.map(kcalOf)
-  const total = totals.every((n) => n !== null) ? sum(totals as NonNullable<(typeof totals)[number]>[]) : null
+  const inputs = toItemInputs(items)
+  const valid = inputs !== null && /^\d{2}:\d{2}$/.test(time)
+  const { totals, complete } = draftTotals(items)
   const slots = visibleSlots(breakfastEnabled || meal.slot === 'breakfast')
 
   const save = (confirm: boolean) => {
-    if (!valid) return
+    if (!valid || !inputs) return
     const eatenAt = time === clockOf(meal.eatenAt) ? undefined : instantAt(dateOf(meal.eatenAt), time)
     update.mutate(
       {
@@ -70,7 +54,7 @@ export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView
         body: {
           slot: slot === meal.slot ? undefined : slot,
           eaten_at: eatenAt,
-          items: parsed.map(({ item, g }) => toItemInput(item, g ?? item.grams)),
+          items: inputs,
           confirm: confirm ? true : undefined,
         },
       },
@@ -104,57 +88,8 @@ export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView
 
         {meal.rawText && <Box sx={{ fontSize: 14, color: 'text.secondary' }}>Logged as “{meal.rawText}”</Box>}
 
-        <Box component="ul" aria-label="Items" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 2 }}>
-          {parsed.map((d, i) => {
-            const n = totals[i]
-            return (
-              <Box component="li" key={d.item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.item.description}</Box>
-                  <Box sx={{ fontSize: 13, color: 'text.secondary' }}>
-                    {n ? `${formatNumber(n.kcal)} kcal` : d.g === null ? 'Enter grams' : 'kcal after it syncs'}
-                    {d.item.estimated ? ' · estimated' : ''}
-                  </Box>
-                </Box>
-                <NumberField
-                  value={d.grams}
-                  onChange={(v) => setItems((list) => list.map((x) => (x.item.id === d.item.id ? { ...x, grams: v } : x)))}
-                  unit="g"
-                  size="small"
-                  sx={{ width: 104 }}
-                  slotProps={{ htmlInput: { 'aria-label': `Grams of ${d.item.description}` } }}
-                />
-                <IconButton aria-label={`Remove ${d.item.description}`} onClick={() => setItems((list) => list.filter((x) => x.item.id !== d.item.id))}>
-                  <CloseRounded />
-                </IconButton>
-              </Box>
-            )
-          })}
-        </Box>
+        <ItemsEditor items={items} onChange={setItems} disabled={update.isPending} />
         {items.length === 0 && <Box sx={{ fontSize: 14, color: 'text.secondary' }}>No items. Add one, or delete the meal from its menu.</Box>}
-
-        {adding ? (
-          <FoodPicker
-            autoFocus
-            onPick={(food) => {
-              setAdding(false)
-              setItems((list) => [
-                ...list,
-                {
-                  item: { id: crypto.randomUUID(), foodId: food.id, description: food.name, grams: food.servingG ?? 100, nutrients: portion(food.per100, food.servingG ?? 100), estimated: false },
-                  grams: String(Math.round(food.servingG ?? 100)),
-                  food,
-                },
-              ])
-            }}
-          />
-        ) : (
-          items.length < MAX_ITEMS && (
-            <Button variant="outlined" onClick={() => setAdding(true)} sx={{ justifySelf: 'start' }}>
-              Add an item
-            </Button>
-          )
-        )}
         {update.isError && (
           <Box role="alert" sx={{ color: 'error.main', fontSize: 14 }}>
             {problemText(update.error)}
@@ -162,7 +97,9 @@ export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView
         )}
       </DialogContent>
       <DialogActions sx={{ px: 6, pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`, gap: 2 }}>
-        <Box sx={{ flex: 1, fontSize: 14, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{total ? `${formatNumber(total.kcal)} kcal` : ''}</Box>
+        <Box sx={{ flex: 1, fontSize: 14, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+          {items.length > 0 ? `${formatNumber(totals.kcal)}${complete ? '' : '+'} kcal` : ''}
+        </Box>
         {meal.status === 'review' ? (
           <>
             <Button onClick={() => save(false)} disabled={!valid || update.isPending}>

@@ -1,10 +1,12 @@
 // Owns: Today's AI slot — the latest pending proposal as a ProposalCard (Accept / Reject / Why → POST
-// /api/proposals/:id/accept|reject, shown decided at once and rolled back if the server refuses), or else the latest
-// AI event (day adjustment, review, note, change) from the live feed.
+// /api/proposals/:id/accept|reject, shown decided at once and rolled back if the server refuses; Why links to the plan
+// history), or else the latest AI event (review, note, change) from the live feed; and under it today's day
+// adjustment card (remaining kcal and macros, protein status, next-meal ideas) when the AI has made one today.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import Link from '@mui/material/Link'
+import Stack from '@mui/material/Stack'
 import { endpoints } from '@fitness/shared/api'
 import type { AiEvent, Proposal } from '@fitness/shared/schemas'
 import { useState } from 'react'
@@ -13,6 +15,7 @@ import { useApiMutation, useApiQuery } from '../../../api'
 import { useOnline } from '../../../offline'
 import { ProposalCard, type ProposalStatus } from '../../../components'
 import { tokens } from '../../../theme'
+import { DayAdjustmentCard, latestAdjustment, todayLocal } from '../../quick-log'
 import { eventView, proposalView, whenLabel } from './event-view'
 import { useRefreshAfterDecision } from './useEventFeed'
 
@@ -33,10 +36,20 @@ function freshest(latest: Proposal | null, events: readonly AiEvent[]): Proposal
 }
 
 export function AiCard({ latest, pendingCount, events }: AiCardProps) {
+  const today = todayLocal()
+  const adjustment = latestAdjustment(events, today)
   const proposal = freshest(latest, events)
-  if (proposal) return <ProposalSlot proposal={proposal} pendingCount={pendingCount} />
-  const event = events.find((e) => e.kind !== 'proposal' || e.proposal_status !== 'pending')
-  return event ? <EventCard event={event} /> : null
+  // Adjustments show as their own card (today's only; an older one is stale), so the event slot skips them.
+  const first = proposal ? null : events.find((e) => e.kind !== 'proposal' || e.proposal_status !== 'pending')
+  const event = first && first.kind !== 'adjustment' ? first : null
+  const main = proposal ? <ProposalSlot proposal={proposal} pendingCount={pendingCount} /> : event ? <EventCard event={event} /> : null
+  if (!adjustment) return main
+  return (
+    <Stack spacing={4}>
+      {main}
+      <DayAdjustmentCard date={today} adjustment={adjustment} />
+    </Stack>
+  )
 }
 
 function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingCount: number }) {
@@ -81,10 +94,15 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
         {(showWhy || error || !online) && (
           <Box sx={{ display: 'grid', gap: 2 }}>
             {showWhy && (
-              <Box component="ul" data-testid="proposal-why" sx={{ m: 0, pl: 5, fontSize: 14, color: tokens.ink.text, lineHeight: 1.5 }}>
-                {view.why.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
+              <Box>
+                <Box component="ul" data-testid="proposal-why" sx={{ m: 0, pl: 5, fontSize: 14, color: tokens.ink.text, lineHeight: 1.5 }}>
+                  {view.why.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </Box>
+                <Link component={RouterLink} to="/plan" sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: 14, fontWeight: tokens.font.weight.label }}>
+                  Plan history and the rails it was checked against
+                </Link>
               </Box>
             )}
             {!online && status === 'pending' && (

@@ -71,7 +71,8 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
   }
 
   return (
-    <Box sx={{ display: 'grid', gap: 2 }} data-testid="food-picker">
+    // minmax(0, 1fr): long food names ellipsize instead of widening the sheet or dialog.
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }} data-testid="food-picker">
       <TextField
         label="Search foods"
         placeholder="chicken breast, greek yogurt…"

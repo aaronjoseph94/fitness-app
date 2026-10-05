@@ -1,6 +1,8 @@
 // Owns: the logging bottom sheet — handle, title, back to the kinds list, close — around the form for one kind
-// (weigh-in, meal, water, fast; photo arrives in phase 5), and the snackbar that confirms a log after the sheet closes
-// ("saved on this phone" when it was queued offline). Controlled by its caller: the shell's quick-log or the Log tab.
+// (weigh-in, meal, water, fast; photo hands over to the /photos/new capture screen), the review stage a
+// text/voice/photo meal moves to once it reaches the server (analysis, items to confirm, then the day adjustment),
+// and the snackbar that confirms a log ("saved on this phone" when it was queued offline). Controlled by its
+// caller: the shell's quick-log or the Log tab.
 import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew'
 import Close from '@mui/icons-material/Close'
 import MonitorWeightOutlined from '@mui/icons-material/MonitorWeightOutlined'
@@ -22,11 +24,13 @@ import Typography from '@mui/material/Typography'
 import type { MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import type { QuickLogKind } from '../../../app/ui-store'
-import { EmptyState, PendingBadge } from '../../../components'
+import { PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { relativeDay, todayLocal } from './dates'
 import { FastForm } from './FastForm'
-import { MealForm } from './MealForm'
+import { MealForm, type CapturedMeal } from './MealForm'
+import { MealReview } from './review/MealReview'
+import { PhotoKind } from './PhotoKind'
 import type { LogNotice } from './ui'
 import { WaterForm } from './WaterForm'
 import { WeighInForm } from './WeighInForm'
@@ -62,9 +66,18 @@ export interface LogSheetProps {
 
 export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogSheetProps) {
   const [notice, setNotice] = useState<LogNotice | null>(null)
+  /** A captured meal under review; the sheet shows it instead of the form until closed. */
+  const [review, setReview] = useState<CapturedMeal | null>(null)
   const day = date ?? todayLocal()
   const selected = KINDS.find((option) => option.kind === kind)
   const isToday = day === todayLocal()
+
+  /** Once the sheet has slid away: drop the review (and its thumbnails) so the next open starts at the form. */
+  const onExited = () => {
+    if (!review) return
+    review.previews.forEach((url) => URL.revokeObjectURL(url))
+    setReview(null)
+  }
 
   const logged = (n: LogNotice) => {
     setNotice(n)
@@ -78,8 +91,9 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
         open={open}
         onClose={onClose}
         slotProps={{
+          transition: { onExited },
           paper: {
-            'aria-label': selected ? `Log ${selected.label.toLowerCase()}` : 'Quick log',
+            'aria-label': review ? 'Review meal' : selected ? `Log ${selected.label.toLowerCase()}` : 'Quick log',
             sx: {
               maxWidth: (theme) => theme.breakpoints.values.sm,
               mx: 'auto',
@@ -92,15 +106,15 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
         }}
       >
         <Box sx={{ width: 36, height: 4, borderRadius: tokens.radius.chip, bgcolor: 'divider', mx: 'auto', mt: 2, flex: 'none' }} />
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pl: selected && onPickKind ? 2 : 5, pr: 2, pt: 1, flex: 'none' }}>
-          {selected && onPickKind && (
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pl: selected && onPickKind && !review ? 2 : 5, pr: 2, pt: 1, flex: 'none' }}>
+          {selected && onPickKind && !review && (
             <IconButton aria-label="All kinds" onClick={() => onPickKind(null)}>
               <ArrowBackIosNew fontSize="small" />
             </IconButton>
           )}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="sectionTitle" component="h2" noWrap>
-              {selected?.label ?? 'Quick log'}
+              {review ? 'Review meal' : (selected?.label ?? 'Quick log')}
             </Typography>
             {selected && selected.kind !== 'fast' && selected.kind !== 'photo' && !isToday && (
               <Box sx={{ fontSize: 13, color: 'text.secondary' }}>
@@ -113,32 +127,36 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
           </IconButton>
         </Stack>
         <Box sx={{ overflowY: 'auto', px: 5, pt: 3, pb: 2 }}>
-          {!selected ? (
+          {review ? (
+            <MealReview
+              key={review.mealId}
+              date={review.date}
+              mealId={review.mealId}
+              localPreviews={review.previews}
+              onClose={onClose}
+              onLogged={setNotice}
+            />
+          ) : !selected ? (
             <List data-testid="quick-log-kinds" sx={{ mx: -5 }}>
               {KINDS.map(({ kind: option, label, Icon, color }) => (
                 <ListItemButton key={option} onClick={() => onPickKind?.(option)} sx={{ minHeight: tokens.tapTarget + 8, px: 5 }}>
                   <ListItemIcon sx={{ color, minWidth: tokens.space(10) }}>
                     <Icon />
                   </ListItemIcon>
-                  <ListItemText primary={label} secondary={option === 'photo' ? 'Arrives in phase 5' : undefined} />
+                  <ListItemText primary={label} secondary={option === 'photo' ? 'Opens the camera' : undefined} />
                 </ListItemButton>
               ))}
             </List>
           ) : selected.kind === 'weigh-in' ? (
             <WeighInForm date={day} onLogged={logged} />
           ) : selected.kind === 'meal' ? (
-            <MealForm date={day} slot={slot} onLogged={logged} />
+            <MealForm date={day} slot={slot} onLogged={logged} onCaptured={setReview} />
           ) : selected.kind === 'water' ? (
             <WaterForm date={day} onLogged={(n) => n.queued && setNotice(n)} />
           ) : selected.kind === 'fast' ? (
             <FastForm date={day} onLogged={logged} />
           ) : (
-            <EmptyState
-              compact
-              illustration="progress"
-              title="Progress photos arrive in phase 5"
-              body="Front, side and back, with a faint pose overlay. They stay private and never go to any AI."
-            />
+            <PhotoKind onLeave={onClose} />
           )}
         </Box>
       </Drawer>

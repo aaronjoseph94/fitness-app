@@ -1,10 +1,12 @@
-// Owns: one meal on the Log tab — time, status (analysing / review / confirmed), items with grams and kcal, the text it
-// was logged as, pending state — and its actions: confirm a meal in review, edit, save as favourite, delete.
+// Owns: one meal on the Log tab — time, status (analysing / review / confirmed), its photos, items with grams and kcal,
+// the text it was logged as, pending state — and its actions: open the review (while analysing, or to check items),
+// confirm a meal in review as it is, edit, save as favourite, delete. A failed analysis reads calmly with "Add items".
 import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import LinearProgress from '@mui/material/LinearProgress'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { endpoints } from '@fitness/shared/api'
@@ -16,18 +18,22 @@ import type { MealView } from './meals'
 
 interface MealCardProps {
   meal: MealView
+  /** Open the review (analysis progress, then the item list and Confirm). */
+  onReview: () => void
   onEdit: () => void
   onFavourite: () => void
   onDelete: () => void
 }
 
-const STATUS_LABEL = { parsing: 'Waiting for analysis', review: 'Review', confirmed: null } as const
+const STATUS_LABEL = { parsing: 'Analysing', review: 'To review', confirmed: null } as const
 
-export function MealCard({ meal, onEdit, onFavourite, onDelete }: MealCardProps) {
+export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: MealCardProps) {
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   const confirm = useLogMutation(endpoints.nutrition.updateMeal)
   const status = STATUS_LABEL[meal.status]
   const canAct = meal.meal !== null && meal.pending !== 'create'
+  const analysed = meal.inputMethod === 'text' || meal.inputMethod === 'voice' || meal.inputMethod === 'photo'
+  const failed = meal.status === 'review' && analysed && meal.items.length === 0
 
   return (
     <Box data-testid="meal-card" sx={{ py: 2, borderTop: 1, borderColor: 'divider' }}>
@@ -37,7 +43,7 @@ export function MealCard({ meal, onEdit, onFavourite, onDelete }: MealCardProps)
         {meal.pending && (meal.queued || meal.pending === 'create') && <PendingBadge label={meal.pending === 'edit' ? 'Edit pending' : 'Pending'} />}
         <Box sx={{ flex: 1 }} />
         <Box sx={{ fontSize: 15, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
-          {meal.status === 'parsing' && meal.items.length === 0 ? '' : meal.totals ? `${formatNumber(meal.totals.kcal)} kcal` : '— kcal'}
+          {(meal.status === 'parsing' || failed) && meal.items.length === 0 ? '' : meal.totals ? `${formatNumber(meal.totals.kcal)} kcal` : '— kcal'}
         </Box>
         {canAct && (
           <IconButton aria-label="Meal actions" onClick={(e) => setMenu(e.currentTarget)} edge="end">
@@ -46,14 +52,44 @@ export function MealCard({ meal, onEdit, onFavourite, onDelete }: MealCardProps)
         )}
       </Box>
 
+      {meal.photos.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5 }} aria-label="Meal photos">
+          {meal.photos.map((src) => (
+            <Box key={src} component="img" src={src} alt="" sx={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 2, border: 1, borderColor: 'divider' }} />
+          ))}
+        </Box>
+      )}
+
       {meal.rawText && (meal.items.length === 0 || meal.status !== 'confirmed') && (
-        <Box sx={{ fontSize: 14, lineHeight: 1.5, mb: 1 }}>
-          “{meal.rawText}”
-          {meal.status === 'parsing' && meal.items.length === 0 && (
-            <Box sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
-              Saved as text. The AI analysis (phase 2) will add the items and kcal for you to check.
-            </Box>
+        <Box sx={{ fontSize: 14, lineHeight: 1.5, mb: 1 }}>“{meal.rawText}”</Box>
+      )}
+
+      {meal.status === 'parsing' && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }} data-testid="meal-analysing-row">
+          <Box sx={{ flex: 1 }}>
+            {canAct ? (
+              <>
+                <LinearProgress sx={{ height: 4, borderRadius: tokens.radius.chip, bgcolor: tokens.ink.border, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }} />
+                <Box sx={{ fontSize: 13, color: 'text.secondary', mt: 1 }}>The AI is working out the items.</Box>
+              </>
+            ) : (
+              <Box sx={{ fontSize: 13, color: 'text.secondary' }}>Saved on this phone. It's analysed once it syncs.</Box>
+            )}
+          </Box>
+          {canAct && (
+            <Button variant="text" onClick={onReview}>
+              Open
+            </Button>
           )}
+        </Box>
+      )}
+
+      {failed && canAct && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }} data-testid="meal-analysis-failed">
+          <Box sx={{ flex: 1, fontSize: 13, color: 'text.secondary', lineHeight: 1.5 }}>The AI couldn't read this one. Add the items yourself.</Box>
+          <Button variant="contained" onClick={onReview}>
+            Add items
+          </Button>
         </Box>
       )}
 
@@ -86,10 +122,10 @@ export function MealCard({ meal, onEdit, onFavourite, onDelete }: MealCardProps)
         </Box>
       )}
 
-      {meal.status === 'review' && canAct && (
+      {meal.status === 'review' && canAct && !failed && (
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
-          <Button variant="outlined" onClick={onEdit}>
-            Edit items
+          <Button variant="outlined" onClick={onReview} data-testid="meal-review-open">
+            Review
           </Button>
           <Button variant="contained" disabled={confirm.isPending} onClick={() => confirm.mutate({ params: { id: meal.id }, body: { confirm: true } })}>
             {confirm.isPending ? 'Saving…' : 'Confirm'}
