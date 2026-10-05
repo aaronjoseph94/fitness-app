@@ -75,10 +75,12 @@ pnpm e2e                                 # Playwright flows against the local Wo
 
 ## Decided defaults (from Aaron's build prompt, SPEC §12 open decisions)
 
+<!-- Aaron's direction 2026-10-05: don't reinvent visuals. Reuse muscle graphics, exercise GIFs/images, icons and illustrations from the web, not only open-source ones. The app is non-commercial and for Aaron only. Prefer downloading once and serving from static assets or R2 over hotlinking. -->
+
 - Hosting: all-Cloudflare.
 - `auto_apply_safe`: off for the first month; everything behind a tap. MCP writes apply immediately (Aaron approves in the Claude chat).
 - Calorie ceiling for review proposals: 1,700 kcal.
 - Scan interval: 4 weeks.
 - Apple Watch: manual entry and the Shortcut webhook both in phase 1.
-- Muscle map: our own SVG, 17 paths keyed by the free-exercise-db muscle enum.
+- Muscle map: an existing body graphic from the web (component or SVG), mapped to the 17 free-exercise-db muscle keys. Not drawn by us (Aaron, 2026-10-05).
 - Default weekly split: upper / lower / upper / lower, Mon–Thu.
