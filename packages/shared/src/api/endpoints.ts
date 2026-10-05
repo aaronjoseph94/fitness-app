@@ -102,8 +102,12 @@ import {
   WaterLogCreate,
   WaterListQuery,
   WeekPlan,
+  WeekPlanApplied,
   WeekPlanCreate,
+  WeekPlanProposal,
   WeekPlanQuery,
+  WeekPlanView,
+  WeekPlanViewQuery,
   WeeklyMetrics,
   WeeklyReview,
   WeighIn,
@@ -117,6 +121,20 @@ const IdParams = z.object({ id: Id })
 const DateParams = z.object({ date: LocalDate })
 const WeekParams = z.object({ week: IsoWeek })
 const FileKeyParams = z.object({ key: FileKey })
+
+/** Week plans (SPEC §8 "Next-week plan"): the plans of a week, the week view, propose, apply, revert. */
+const weekPlans = {
+  /** Newest week first; filter by week (its Monday) and status. */
+  list: defineEndpoint({ method: 'GET', path: '/api/week-plans', query: WeekPlanQuery, response: z.array(WeekPlan) }),
+  /** A week's active and proposed plans with this week's and last week's actuals and what changed (default: this week). */
+  get: defineEndpoint({ method: 'GET', path: '/api/week-plans/view', query: WeekPlanViewQuery, response: WeekPlanView }),
+  /** Aaron's own plan for a week, stored as proposed after the guards (replaying an id returns the stored plan). */
+  propose: defineEndpoint({ method: 'POST', path: '/api/week-plans', body: WeekPlanCreate, response: WeekPlanProposal }),
+  /** Make a plan the week's active one: rebuilds that week's daily targets as one plan version. */
+  apply: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/apply', params: IdParams, response: WeekPlanApplied }),
+  /** Undo applying the active plan: the week's previous active plan comes back (or the plan version's targets). */
+  revert: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/revert', params: IdParams, response: WeekPlanApplied }),
+}
 
 export const endpoints = {
   system: {
@@ -356,15 +374,13 @@ export const endpoints = {
       params: IdParams,
       response: ProposalDecision,
     }),
-    listWeekPlans: defineEndpoint({ method: 'GET', path: '/api/week-plans', query: WeekPlanQuery, response: z.array(WeekPlan) }),
-    createWeekPlan: defineEndpoint({ method: 'POST', path: '/api/week-plans', body: WeekPlanCreate, response: WeekPlan }),
-    applyWeekPlan: defineEndpoint({
-      method: 'POST',
-      path: '/api/week-plans/:id/apply',
-      params: IdParams,
-      response: WeekPlan,
-    }),
+    /** Aliases of weekPlans.list / propose / apply (the phase 1 names). */
+    listWeekPlans: weekPlans.list,
+    createWeekPlan: weekPlans.propose,
+    applyWeekPlan: weekPlans.apply,
   },
+
+  weekPlans,
 
   ai: {
     workout: defineEndpoint({ method: 'POST', path: '/api/ai/workout', body: AiWorkoutRequest, response: JobRef }),
