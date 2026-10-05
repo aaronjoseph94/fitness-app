@@ -1,0 +1,2 @@
+Vendored from https://github.com/addyosmani/agent-skills (MIT) at 1401c8b and https://github.com/addyosmani/web-quality-skills (MIT) at afa8da9.
+Skills: code-review-and-quality, security-and-hardening, test-driven-development, performance-optimization, frontend-ui-engineering, browser-testing-with-devtools, shipping-and-launch, web-quality-audit, accessibility, performance, core-web-vitals, best-practices, seo. Shared checklists in addy-references/. Personas in .claude/agents/.
