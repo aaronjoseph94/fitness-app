@@ -6,8 +6,10 @@ import { library, type LibraryExercise } from './lib/library'
 // The value enums (ExerciseCategory, LibraryEquipment, Mechanic, Force, Level) live in @fitness/shared/schemas.
 export { FreeExerciseDbRecord, toSlug, videoSearchUrl, type LibraryExercise } from './lib/library'
 export { FREE_EXERCISE_DB_SHA } from './lib/source'
+export { GIF_ATTRIBUTION, type LibraryMedia } from './lib/media'
 
-/** Every library exercise, normalised (slug, typed muscles, '/exercises/<id>/<n>.jpg' image paths, video search link). */
+/** Every library exercise, normalised (slug, typed muscles, '/exercises/<id>/<n>.jpg' image paths, video search link,
+ *  and — for the ~460 with an ExerciseDB match — gif_url '/media/exercises/<id>.gif' plus `media` provenance; else null / []). */
 export const exercises = library
 
 /** Exercises that train `muscle` as a primary target (or as primary or secondary with `{ secondary: true }`). */

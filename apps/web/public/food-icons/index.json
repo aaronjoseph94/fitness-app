@@ -1,0 +1,651 @@
+{
+  "//": "Owns: the food-icon keyword map. Lower-case the food name; among entries whose keyword appears in it as a whole word or phrase, the longest keyword wins (ties: first entry); no match uses `fallback`. Icons are Microsoft Fluent Emoji Flat (MIT) — see SOURCE.md.",
+  "fallback": "meal",
+  "icons": [
+    {
+      "icon": "apple",
+      "src": "/food-icons/apple.svg",
+      "keywords": ["apple", "apples", "applesauce"],
+      "fluent": "red-apple"
+    },
+    {
+      "icon": "green-apple",
+      "src": "/food-icons/green-apple.svg",
+      "keywords": ["green apple", "granny smith"],
+      "fluent": "green-apple"
+    },
+    {
+      "icon": "banana",
+      "src": "/food-icons/banana.svg",
+      "keywords": ["banana", "bananas", "plantain"],
+      "fluent": "banana"
+    },
+    { "icon": "pear", "src": "/food-icons/pear.svg", "keywords": ["pear", "pears"], "fluent": "pear" },
+    {
+      "icon": "peach",
+      "src": "/food-icons/peach.svg",
+      "keywords": ["peach", "peaches", "nectarine", "apricot"],
+      "fluent": "peach"
+    },
+    {
+      "icon": "cherries",
+      "src": "/food-icons/cherries.svg",
+      "keywords": ["cherry", "cherries"],
+      "fluent": "cherries"
+    },
+    {
+      "icon": "grapes",
+      "src": "/food-icons/grapes.svg",
+      "keywords": ["grape", "grapes", "raisin", "raisins"],
+      "fluent": "grapes"
+    },
+    {
+      "icon": "melon",
+      "src": "/food-icons/melon.svg",
+      "keywords": ["melon", "cantaloupe", "honeydew"],
+      "fluent": "melon"
+    },
+    {
+      "icon": "watermelon",
+      "src": "/food-icons/watermelon.svg",
+      "keywords": ["watermelon"],
+      "fluent": "watermelon"
+    },
+    {
+      "icon": "strawberry",
+      "src": "/food-icons/strawberry.svg",
+      "keywords": ["strawberry", "strawberries", "raspberry", "raspberries"],
+      "fluent": "strawberry"
+    },
+    {
+      "icon": "blueberries",
+      "src": "/food-icons/blueberries.svg",
+      "keywords": ["blueberry", "blueberries", "berries", "blackberries", "cranberries"],
+      "fluent": "blueberries"
+    },
+    {
+      "icon": "orange",
+      "src": "/food-icons/orange.svg",
+      "keywords": ["orange", "oranges", "tangerine", "clementine", "mandarin", "orange juice"],
+      "fluent": "tangerine"
+    },
+    { "icon": "lemon", "src": "/food-icons/lemon.svg", "keywords": ["lemon", "lemons"], "fluent": "lemon" },
+    { "icon": "lime", "src": "/food-icons/lime.svg", "keywords": ["lime", "limes"], "fluent": "lime" },
+    { "icon": "mango", "src": "/food-icons/mango.svg", "keywords": ["mango", "mangoes"], "fluent": "mango" },
+    {
+      "icon": "pineapple",
+      "src": "/food-icons/pineapple.svg",
+      "keywords": ["pineapple"],
+      "fluent": "pineapple"
+    },
+    {
+      "icon": "kiwi",
+      "src": "/food-icons/kiwi.svg",
+      "keywords": ["kiwi", "kiwifruit"],
+      "fluent": "kiwi-fruit"
+    },
+    {
+      "icon": "coconut",
+      "src": "/food-icons/coconut.svg",
+      "keywords": ["coconut", "coconut milk", "coconut water"],
+      "fluent": "coconut"
+    },
+    {
+      "icon": "avocado",
+      "src": "/food-icons/avocado.svg",
+      "keywords": ["avocado", "guacamole"],
+      "fluent": "avocado"
+    },
+    {
+      "icon": "olive",
+      "src": "/food-icons/olive.svg",
+      "keywords": ["olive", "olives", "olive oil", "oil"],
+      "fluent": "olive"
+    },
+    {
+      "icon": "tomato",
+      "src": "/food-icons/tomato.svg",
+      "keywords": ["tomato", "tomatoes", "tomato sauce", "salsa", "marinara"],
+      "fluent": "tomato"
+    },
+    {
+      "icon": "broccoli",
+      "src": "/food-icons/broccoli.svg",
+      "keywords": ["broccoli", "cauliflower", "brussels sprouts"],
+      "fluent": "broccoli"
+    },
+    {
+      "icon": "leafy-greens",
+      "src": "/food-icons/leafy-greens.svg",
+      "keywords": ["spinach", "kale", "lettuce", "greens", "cabbage", "bok choy", "arugula", "chard"],
+      "fluent": "leafy-green"
+    },
+    {
+      "icon": "carrot",
+      "src": "/food-icons/carrot.svg",
+      "keywords": ["carrot", "carrots"],
+      "fluent": "carrot"
+    },
+    {
+      "icon": "corn",
+      "src": "/food-icons/corn.svg",
+      "keywords": ["corn", "sweet corn", "corn on the cob"],
+      "fluent": "ear-of-corn"
+    },
+    {
+      "icon": "potato",
+      "src": "/food-icons/potato.svg",
+      "keywords": ["potato", "potatoes", "mashed potatoes", "hash browns"],
+      "fluent": "potato"
+    },
+    {
+      "icon": "sweet-potato",
+      "src": "/food-icons/sweet-potato.svg",
+      "keywords": ["sweet potato", "sweet potatoes", "yam"],
+      "fluent": "roasted-sweet-potato"
+    },
+    {
+      "icon": "cucumber",
+      "src": "/food-icons/cucumber.svg",
+      "keywords": ["cucumber", "pickle", "pickles", "zucchini"],
+      "fluent": "cucumber"
+    },
+    {
+      "icon": "bell-pepper",
+      "src": "/food-icons/bell-pepper.svg",
+      "keywords": ["bell pepper", "peppers", "capsicum"],
+      "fluent": "bell-pepper"
+    },
+    {
+      "icon": "hot-pepper",
+      "src": "/food-icons/hot-pepper.svg",
+      "keywords": ["chili", "chilli", "jalapeno", "hot sauce", "sriracha"],
+      "fluent": "hot-pepper"
+    },
+    {
+      "icon": "eggplant",
+      "src": "/food-icons/eggplant.svg",
+      "keywords": ["eggplant", "aubergine"],
+      "fluent": "eggplant"
+    },
+    { "icon": "garlic", "src": "/food-icons/garlic.svg", "keywords": ["garlic"], "fluent": "garlic" },
+    {
+      "icon": "onion",
+      "src": "/food-icons/onion.svg",
+      "keywords": ["onion", "onions", "shallot"],
+      "fluent": "onion"
+    },
+    {
+      "icon": "mushroom",
+      "src": "/food-icons/mushroom.svg",
+      "keywords": ["mushroom", "mushrooms"],
+      "fluent": "brown-mushroom"
+    },
+    {
+      "icon": "peas",
+      "src": "/food-icons/peas.svg",
+      "keywords": ["peas", "pea", "green beans", "snap peas", "edamame"],
+      "fluent": "pea-pod"
+    },
+    {
+      "icon": "beans",
+      "src": "/food-icons/beans.svg",
+      "keywords": [
+        "beans",
+        "black beans",
+        "kidney beans",
+        "lentils",
+        "chickpeas",
+        "hummus",
+        "baked beans",
+        "tofu"
+      ],
+      "fluent": "beans"
+    },
+    { "icon": "ginger", "src": "/food-icons/ginger.svg", "keywords": ["ginger"], "fluent": "ginger-root" },
+    {
+      "icon": "herbs",
+      "src": "/food-icons/herbs.svg",
+      "keywords": ["herbs", "basil", "parsley", "cilantro", "mint"],
+      "fluent": "herb"
+    },
+    {
+      "icon": "salad",
+      "src": "/food-icons/salad.svg",
+      "keywords": ["salad", "caesar salad", "coleslaw"],
+      "fluent": "green-salad"
+    },
+    {
+      "icon": "egg",
+      "src": "/food-icons/egg.svg",
+      "keywords": ["egg", "eggs", "boiled egg", "egg whites"],
+      "fluent": "egg"
+    },
+    {
+      "icon": "fried-egg",
+      "src": "/food-icons/fried-egg.svg",
+      "keywords": ["fried egg", "scrambled eggs", "omelette", "omelet"],
+      "fluent": "cooking"
+    },
+    { "icon": "bacon", "src": "/food-icons/bacon.svg", "keywords": ["bacon"], "fluent": "bacon" },
+    {
+      "icon": "steak",
+      "src": "/food-icons/steak.svg",
+      "keywords": ["steak", "beef", "pork", "ground beef", "sirloin", "roast", "pork chop", "lamb", "meat"],
+      "fluent": "cut-of-meat"
+    },
+    {
+      "icon": "chicken",
+      "src": "/food-icons/chicken.svg",
+      "keywords": ["chicken", "turkey", "chicken breast", "chicken thigh", "drumstick", "poultry"],
+      "fluent": "poultry-leg"
+    },
+    {
+      "icon": "ribs",
+      "src": "/food-icons/ribs.svg",
+      "keywords": ["ribs", "brisket", "jerky"],
+      "fluent": "meat-on-bone"
+    },
+    {
+      "icon": "fish",
+      "src": "/food-icons/fish.svg",
+      "keywords": ["fish", "salmon", "tuna", "cod", "tilapia", "trout", "halibut", "sardines", "mackerel"],
+      "fluent": "fish"
+    },
+    {
+      "icon": "shrimp",
+      "src": "/food-icons/shrimp.svg",
+      "keywords": ["shrimp", "prawns", "prawn"],
+      "fluent": "shrimp"
+    },
+    { "icon": "crab", "src": "/food-icons/crab.svg", "keywords": ["crab"], "fluent": "crab" },
+    { "icon": "lobster", "src": "/food-icons/lobster.svg", "keywords": ["lobster"], "fluent": "lobster" },
+    {
+      "icon": "oyster",
+      "src": "/food-icons/oyster.svg",
+      "keywords": ["oyster", "oysters", "mussels", "clams", "scallops"],
+      "fluent": "oyster"
+    },
+    {
+      "icon": "squid",
+      "src": "/food-icons/squid.svg",
+      "keywords": ["squid", "calamari", "octopus"],
+      "fluent": "squid"
+    },
+    {
+      "icon": "protein-powder",
+      "src": "/food-icons/protein-powder.svg",
+      "keywords": ["protein", "protein powder", "whey", "casein", "protein scoop"],
+      "fluent": "flexed-biceps"
+    },
+    {
+      "icon": "protein-shake",
+      "src": "/food-icons/protein-shake.svg",
+      "keywords": ["shake", "protein shake", "smoothie", "milkshake", "protein drink"],
+      "fluent": "cup-with-straw"
+    },
+    {
+      "icon": "nuts",
+      "src": "/food-icons/nuts.svg",
+      "keywords": [
+        "peanut",
+        "peanuts",
+        "peanut butter",
+        "nuts",
+        "almonds",
+        "almond butter",
+        "cashews",
+        "walnuts",
+        "pecans",
+        "pistachios",
+        "trail mix"
+      ],
+      "fluent": "peanuts"
+    },
+    {
+      "icon": "chestnut",
+      "src": "/food-icons/chestnut.svg",
+      "keywords": ["chestnut", "chestnuts", "hazelnut", "hazelnuts"],
+      "fluent": "chestnut"
+    },
+    {
+      "icon": "milk",
+      "src": "/food-icons/milk.svg",
+      "keywords": ["milk", "skim milk", "chocolate milk", "almond milk", "oat milk", "soy milk", "kefir"],
+      "fluent": "glass-of-milk"
+    },
+    {
+      "icon": "cheese",
+      "src": "/food-icons/cheese.svg",
+      "keywords": ["cheese", "cheddar", "mozzarella", "parmesan", "cottage cheese", "cream cheese", "feta"],
+      "fluent": "cheese-wedge"
+    },
+    {
+      "icon": "butter",
+      "src": "/food-icons/butter.svg",
+      "keywords": ["butter", "margarine", "ghee"],
+      "fluent": "butter"
+    },
+    {
+      "icon": "yogurt",
+      "src": "/food-icons/yogurt.svg",
+      "keywords": [
+        "yogurt",
+        "yoghurt",
+        "greek yogurt",
+        "skyr",
+        "oatmeal",
+        "porridge",
+        "oats",
+        "cereal",
+        "granola",
+        "muesli"
+      ],
+      "fluent": "bowl-with-spoon"
+    },
+    {
+      "icon": "ice-cream",
+      "src": "/food-icons/ice-cream.svg",
+      "keywords": ["ice cream", "gelato", "frozen yogurt"],
+      "fluent": "ice-cream"
+    },
+    {
+      "icon": "bread",
+      "src": "/food-icons/bread.svg",
+      "keywords": ["bread", "toast", "loaf", "sourdough", "whole wheat bread", "rye"],
+      "fluent": "bread"
+    },
+    {
+      "icon": "baguette",
+      "src": "/food-icons/baguette.svg",
+      "keywords": ["baguette", "french bread", "sub roll"],
+      "fluent": "baguette-bread"
+    },
+    {
+      "icon": "croissant",
+      "src": "/food-icons/croissant.svg",
+      "keywords": ["croissant", "pastry"],
+      "fluent": "croissant"
+    },
+    { "icon": "bagel", "src": "/food-icons/bagel.svg", "keywords": ["bagel", "bagels"], "fluent": "bagel" },
+    {
+      "icon": "flatbread",
+      "src": "/food-icons/flatbread.svg",
+      "keywords": ["tortilla", "wrap", "pita", "naan", "flatbread"],
+      "fluent": "flatbread"
+    },
+    {
+      "icon": "pretzel",
+      "src": "/food-icons/pretzel.svg",
+      "keywords": ["pretzel", "pretzels"],
+      "fluent": "pretzel"
+    },
+    {
+      "icon": "pancakes",
+      "src": "/food-icons/pancakes.svg",
+      "keywords": ["pancake", "pancakes", "crepe", "french toast"],
+      "fluent": "pancakes"
+    },
+    {
+      "icon": "waffle",
+      "src": "/food-icons/waffle.svg",
+      "keywords": ["waffle", "waffles"],
+      "fluent": "waffle"
+    },
+    {
+      "icon": "rice",
+      "src": "/food-icons/rice.svg",
+      "keywords": ["rice", "white rice", "brown rice", "jasmine rice", "basmati", "quinoa", "couscous"],
+      "fluent": "cooked-rice"
+    },
+    {
+      "icon": "rice-ball",
+      "src": "/food-icons/rice-ball.svg",
+      "keywords": ["onigiri", "rice ball"],
+      "fluent": "rice-ball"
+    },
+    {
+      "icon": "rice-cake",
+      "src": "/food-icons/rice-cake.svg",
+      "keywords": ["rice cake", "rice cakes", "rice cracker", "crackers"],
+      "fluent": "rice-cracker"
+    },
+    {
+      "icon": "grain",
+      "src": "/food-icons/grain.svg",
+      "keywords": ["grain", "grains", "barley", "wheat", "bran"],
+      "fluent": "sheaf-of-rice"
+    },
+    {
+      "icon": "pasta",
+      "src": "/food-icons/pasta.svg",
+      "keywords": ["pasta", "spaghetti", "noodles", "macaroni", "penne", "lasagna", "mac and cheese"],
+      "fluent": "spaghetti"
+    },
+    { "icon": "popcorn", "src": "/food-icons/popcorn.svg", "keywords": ["popcorn"], "fluent": "popcorn" },
+    {
+      "icon": "soup",
+      "src": "/food-icons/soup.svg",
+      "keywords": ["soup", "ramen", "pho", "broth", "chowder", "noodle soup"],
+      "fluent": "steaming-bowl"
+    },
+    {
+      "icon": "stew",
+      "src": "/food-icons/stew.svg",
+      "keywords": ["stew", "chili con carne", "casserole", "goulash", "hot pot"],
+      "fluent": "pot-of-food"
+    },
+    {
+      "icon": "curry",
+      "src": "/food-icons/curry.svg",
+      "keywords": ["curry", "butter chicken", "tikka masala"],
+      "fluent": "curry-rice"
+    },
+    {
+      "icon": "paella",
+      "src": "/food-icons/paella.svg",
+      "keywords": ["paella", "stir fry", "fried rice", "skillet"],
+      "fluent": "shallow-pan-of-food"
+    },
+    {
+      "icon": "sandwich",
+      "src": "/food-icons/sandwich.svg",
+      "keywords": ["sandwich", "sub", "panini", "club sandwich", "blt"],
+      "fluent": "sandwich"
+    },
+    {
+      "icon": "burger",
+      "src": "/food-icons/burger.svg",
+      "keywords": ["burger", "hamburger", "cheeseburger", "veggie burger"],
+      "fluent": "hamburger"
+    },
+    { "icon": "pizza", "src": "/food-icons/pizza.svg", "keywords": ["pizza"], "fluent": "pizza" },
+    {
+      "icon": "hot-dog",
+      "src": "/food-icons/hot-dog.svg",
+      "keywords": ["hot dog", "sausage", "bratwurst"],
+      "fluent": "hot-dog"
+    },
+    {
+      "icon": "taco",
+      "src": "/food-icons/taco.svg",
+      "keywords": ["taco", "tacos", "nachos"],
+      "fluent": "taco"
+    },
+    {
+      "icon": "burrito",
+      "src": "/food-icons/burrito.svg",
+      "keywords": ["burrito", "burrito bowl", "quesadilla"],
+      "fluent": "burrito"
+    },
+    {
+      "icon": "wrap",
+      "src": "/food-icons/wrap.svg",
+      "keywords": ["shawarma", "gyro", "kebab", "doner"],
+      "fluent": "stuffed-flatbread"
+    },
+    {
+      "icon": "falafel",
+      "src": "/food-icons/falafel.svg",
+      "keywords": ["falafel", "meatballs"],
+      "fluent": "falafel"
+    },
+    {
+      "icon": "sushi",
+      "src": "/food-icons/sushi.svg",
+      "keywords": ["sushi", "sashimi", "maki", "poke"],
+      "fluent": "sushi"
+    },
+    {
+      "icon": "dumpling",
+      "src": "/food-icons/dumpling.svg",
+      "keywords": ["dumpling", "dumplings", "gyoza", "perogies", "pierogi"],
+      "fluent": "dumpling"
+    },
+    {
+      "icon": "bento",
+      "src": "/food-icons/bento.svg",
+      "keywords": ["bento", "meal prep", "lunch box"],
+      "fluent": "bento-box"
+    },
+    {
+      "icon": "takeout",
+      "src": "/food-icons/takeout.svg",
+      "keywords": ["takeout", "chinese food", "lo mein", "chow mein"],
+      "fluent": "takeout-box"
+    },
+    {
+      "icon": "fries",
+      "src": "/food-icons/fries.svg",
+      "keywords": ["fries", "french fries", "chips", "poutine"],
+      "fluent": "french-fries"
+    },
+    {
+      "icon": "canned-food",
+      "src": "/food-icons/canned-food.svg",
+      "keywords": ["canned", "can of", "soup can"],
+      "fluent": "canned-food"
+    },
+    {
+      "icon": "chocolate",
+      "src": "/food-icons/chocolate.svg",
+      "keywords": ["chocolate", "dark chocolate", "protein bar", "granola bar", "candy bar", "bar"],
+      "fluent": "chocolate-bar"
+    },
+    {
+      "icon": "cookie",
+      "src": "/food-icons/cookie.svg",
+      "keywords": ["cookie", "cookies", "biscuit"],
+      "fluent": "cookie"
+    },
+    {
+      "icon": "doughnut",
+      "src": "/food-icons/doughnut.svg",
+      "keywords": ["donut", "doughnut", "donuts", "doughnuts"],
+      "fluent": "doughnut"
+    },
+    {
+      "icon": "cake",
+      "src": "/food-icons/cake.svg",
+      "keywords": ["cake", "cheesecake", "brownie"],
+      "fluent": "shortcake"
+    },
+    {
+      "icon": "cupcake",
+      "src": "/food-icons/cupcake.svg",
+      "keywords": ["cupcake", "muffin", "muffins"],
+      "fluent": "cupcake"
+    },
+    { "icon": "pie", "src": "/food-icons/pie.svg", "keywords": ["pie", "tart", "quiche"], "fluent": "pie" },
+    {
+      "icon": "candy",
+      "src": "/food-icons/candy.svg",
+      "keywords": ["candy", "sweets", "gummies", "gummy bears"],
+      "fluent": "candy"
+    },
+    {
+      "icon": "pudding",
+      "src": "/food-icons/pudding.svg",
+      "keywords": ["pudding", "custard", "flan"],
+      "fluent": "custard"
+    },
+    {
+      "icon": "honey",
+      "src": "/food-icons/honey.svg",
+      "keywords": ["honey", "maple syrup", "syrup", "jam", "jelly"],
+      "fluent": "honey-pot"
+    },
+    {
+      "icon": "salt",
+      "src": "/food-icons/salt.svg",
+      "keywords": ["salt", "seasoning", "spices"],
+      "fluent": "salt"
+    },
+    {
+      "icon": "water",
+      "src": "/food-icons/water.svg",
+      "keywords": ["water", "sparkling water", "mineral water", "electrolytes"],
+      "fluent": "droplet"
+    },
+    {
+      "icon": "coffee",
+      "src": "/food-icons/coffee.svg",
+      "keywords": ["coffee", "espresso", "latte", "cappuccino", "americano", "hot chocolate", "cocoa"],
+      "fluent": "hot-beverage"
+    },
+    {
+      "icon": "tea",
+      "src": "/food-icons/tea.svg",
+      "keywords": ["tea", "green tea", "matcha", "herbal tea", "chai"],
+      "fluent": "teacup-without-handle"
+    },
+    {
+      "icon": "bubble-tea",
+      "src": "/food-icons/bubble-tea.svg",
+      "keywords": ["bubble tea", "boba"],
+      "fluent": "bubble-tea"
+    },
+    {
+      "icon": "juice",
+      "src": "/food-icons/juice.svg",
+      "keywords": ["juice", "juice box", "apple juice"],
+      "fluent": "beverage-box"
+    },
+    {
+      "icon": "soda",
+      "src": "/food-icons/soda.svg",
+      "keywords": ["soda", "pop", "cola", "coke", "diet coke", "energy drink"],
+      "fluent": "cup-with-straw"
+    },
+    {
+      "icon": "beer",
+      "src": "/food-icons/beer.svg",
+      "keywords": ["beer", "lager", "ale", "ipa"],
+      "fluent": "beer-mug"
+    },
+    {
+      "icon": "wine",
+      "src": "/food-icons/wine.svg",
+      "keywords": ["wine", "red wine", "white wine"],
+      "fluent": "wine-glass"
+    },
+    {
+      "icon": "cocktail",
+      "src": "/food-icons/cocktail.svg",
+      "keywords": ["cocktail", "martini", "margarita"],
+      "fluent": "cocktail-glass"
+    },
+    {
+      "icon": "spirits",
+      "src": "/food-icons/spirits.svg",
+      "keywords": ["whisky", "whiskey", "vodka", "rum", "gin", "liquor"],
+      "fluent": "tumbler-glass"
+    },
+    {
+      "icon": "meal",
+      "src": "/food-icons/meal.svg",
+      "keywords": ["meal", "dinner", "lunch", "breakfast", "snack", "food"],
+      "fluent": "fork-and-knife-with-plate"
+    }
+  ]
+}

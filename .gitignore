@@ -16,3 +16,4 @@ test-results/
 .vite/
 *.tsbuildinfo
 packages/exercises/images/
+packages/exercises/media/

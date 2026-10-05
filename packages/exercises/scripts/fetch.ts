@@ -1,51 +1,15 @@
 // Owns: downloading free-exercise-db at a pinned commit — dist/exercises.json into data/ (committed) and, with --images, the step images into images/ (gitignored).
 // Usage: pnpm --filter @fitness/exercises run fetch:data   (JSON only)  |  run fetch:images  (JSON + ~1,750 step images)
-import { mkdir, stat, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { FREE_EXERCISE_DB_SHA } from '../src/lib/source'
+import { download, exists, pool } from './lib/download'
 
 const RAW = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${FREE_EXERCISE_DB_SHA}`
 const ROOT = path.resolve(import.meta.dirname, '..')
 const DATA_FILE = path.join(ROOT, 'data', 'free-exercise-db.json')
 const IMAGES_DIR = path.join(ROOT, 'images')
 const CONCURRENCY = 8
-const RETRIES = 3
-
-async function download(url: string): Promise<Uint8Array> {
-  let lastError: unknown
-  for (let attempt = 1; attempt <= RETRIES; attempt++) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
-      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`)
-      return new Uint8Array(await res.arrayBuffer())
-    } catch (error) {
-      lastError = error
-      await new Promise((r) => setTimeout(r, 500 * attempt))
-    }
-  }
-  throw lastError
-}
-
-async function exists(file: string): Promise<boolean> {
-  try {
-    return (await stat(file)).size > 0
-  } catch {
-    return false
-  }
-}
-
-/** Runs `worker` over `items` with at most `limit` in flight. */
-async function pool<T>(
-  items: readonly T[],
-  limit: number,
-  worker: (item: T) => Promise<void>,
-): Promise<void> {
-  let next = 0
-  const lanes = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) await worker(items[next++] as T)
-  })
-  await Promise.all(lanes)
-}
 
 async function main(): Promise<void> {
   const withImages = process.argv.includes('--images')

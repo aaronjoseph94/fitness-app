@@ -2,6 +2,7 @@
 import * as z from 'zod'
 import { ExerciseCategory, Force, LibraryEquipment, Level, Mechanic, Muscle } from '@fitness/shared/schemas'
 import raw from '../../data/free-exercise-db.json' with { type: 'json' }
+import { mediaFor } from './media'
 
 /** 'Barbell_Bench_Press_-_Medium_Grip' → 'barbell-bench-press-medium-grip'. */
 export const toSlug = (s: string) =>
@@ -14,7 +15,8 @@ export const toSlug = (s: string) =>
 export const videoSearchUrl = (name: string) =>
   `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} form`)}`
 
-/** One free-exercise-db record in, one normalised library exercise out. Image paths are served from /exercises/<id>/<n>.jpg. */
+/** One free-exercise-db record in, one normalised library exercise out. Image paths are served from /exercises/<id>/<n>.jpg;
+ *  a matched animated demo from /media/exercises/<id>.gif. */
 export const FreeExerciseDbRecord = z
   .object({
     id: z.string().regex(/^[A-Za-z0-9_-]+$/),
@@ -43,6 +45,7 @@ export const FreeExerciseDbRecord = z
     instructions: r.instructions,
     image_paths: r.images.map((p) => `/exercises/${p}`),
     video_search_url: videoSearchUrl(r.name),
+    ...mediaFor(r.id), // gif_url '/media/exercises/<id>.gif' + media provenance when an ExerciseDB GIF matched
     source: 'free-exercise-db' as const,
   }))
 

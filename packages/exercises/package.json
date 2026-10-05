@@ -9,6 +9,8 @@
   "scripts": {
     "fetch:data": "tsx scripts/fetch.ts",
     "fetch:images": "tsx scripts/fetch.ts --images",
+    "match:media": "tsx scripts/match-media.ts",
+    "fetch:media": "tsx scripts/fetch-media.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
