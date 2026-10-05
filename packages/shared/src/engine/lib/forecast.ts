@@ -1,12 +1,14 @@
 // Owns: the forecast (SPEC §3, §9) — weekly loss rate from the expenditure estimate and planned intake, weeks to the
 // goal from the current trend weight, the finish date, and the ±20 % confidence band.
 import type { LocalDate } from '../../schemas/common'
-import { addDays } from './dates'
+import { addDays, daysBetween } from './dates'
 
 /** Energy in one kg of body weight lost (SPEC §3). */
 export const KCAL_PER_KG = 7700
 /** Half-width of the forecast band as a share of the rate (SPEC §9). */
 export const FORECAST_BAND = 0.2
+/** The last date a LocalDate ("YYYY-MM-DD") can hold; a finish later than this is no date at all. */
+const LAST_DATE = '9999-12-31'
 
 export type ForecastInput = {
   /** The date the forecast starts from (the date of `trend_kg`). */
@@ -40,7 +42,8 @@ export type ForecastResult = {
  *   weekly_rate = (tdee_est − intake_kcal) × 7 / 7,700
  *   band       = [weekly_rate × (1 − 0.20), weekly_rate × (1 + 0.20)]
  *   weeks      = (trend_kg − goal_kg) / weekly_rate            (0 when already at or under the goal)
- *   finish     = as_of + ⌈weeks × 7⌉ days                      (null when weekly_rate ≤ 0 and the goal is not reached)
+ *   finish     = as_of + ⌈weeks × 7⌉ days                      (null when weekly_rate ≤ 0 and the goal is not reached,
+ *                                                                 or when that is after 9999-12-31, the last LocalDate)
  */
 export function forecast(input: ForecastInput): ForecastResult {
   const rate = ((input.tdee_est - input.intake_kcal) * 7) / KCAL_PER_KG
@@ -51,7 +54,9 @@ export function forecast(input: ForecastInput): ForecastResult {
   const weeksAt = (r: number): number | null => (toGo <= 0 ? 0 : r > 0 ? toGo / r : null)
   const finishAt = (r: number): LocalDate | null => {
     const weeks = weeksAt(r)
-    return weeks === null ? null : addDays(input.as_of, Math.ceil(weeks * 7))
+    if (weeks === null) return null
+    const days = Math.ceil(weeks * 7)
+    return days <= daysBetween(input.as_of, LAST_DATE) ? addDays(input.as_of, days) : null
   }
 
   return {

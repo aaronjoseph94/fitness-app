@@ -3,7 +3,7 @@
 import type { LocalDate } from '../../schemas/common'
 import { adherence } from './adherence'
 import { addDays } from './dates'
-import { mean } from './math'
+import { mean, round } from './math'
 import { trendOn } from './trend'
 import type { DayRow } from './types'
 
@@ -31,7 +31,7 @@ const fmt = (x: number, dp = 1) => x.toFixed(dp)
 
 /**
  * Flags as of a date, from v_day rows with the trend merged in (pass at least the last 22 days). Trend loss over
- * [a, b] = trend(a) − trend(b).
+ * [a, b] = round(trend(a) − trend(b), 0.001 kg) — whole grams, so 95.1 → 94.9 is 0.2 kg, not 0.19999999999998863.
  *   rapid_loss:        for each of the last 3 weeks (b = as_of − 7k, a = b − 7, k = 0…2):
  *                      loss / trend(a) × 100 > 1 % — all three weeks
  *   plateau:           loss over [as_of − 21, as_of] < 0.2 kg ∧ adherence share over as_of − 20 … as_of ≥ 80 %
@@ -47,7 +47,7 @@ export function safetyFlags(input: { as_of: LocalDate; days: readonly DayRow[] }
   const lossOver = (a: number, b: number): number | null => {
     const start = at(a)
     const end = at(b)
-    return start === null || end === null ? null : start - end
+    return start === null || end === null ? null : round(start - end, 3)
   }
   const within = (n: number) => days.filter((d) => d.date > addDays(as_of, -n) && d.date <= as_of)
 

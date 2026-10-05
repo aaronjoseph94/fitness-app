@@ -27,3 +27,31 @@ describe('milestones', () => {
     ])
   })
 })
+
+describe('weight milestones', () => {
+  test('90 kg is reached on the first date the trend is at or under 90.0 (input in any order), with the nearest scan', () => {
+    const result = milestones({
+      trend: [
+        { date: '2026-11-03', trend_kg: 89.8 },
+        { date: '2026-11-01', trend_kg: 90.05 },
+        { date: '2026-11-02', trend_kg: 90.0 },
+        { date: '2026-10-31', trend_kg: null },
+      ],
+      scans: [
+        { id: 'sep', scanned_at: '2026-09-26T16:13:00.000Z' },
+        { id: 'oct', scanned_at: '2026-10-24T16:00:00.000Z' },
+        { id: 'nov', scanned_at: '2026-11-21T16:00:00.000Z' },
+      ],
+      definitions: [
+        { id: 'w90', kind: 'weight', target_value: 90 },
+        { id: 'w85', kind: 'weight', target_value: 85 },
+      ],
+    })
+
+    // 2026-11-02 is 9 days after the October scan and 19 days before November's
+    expect(result).toEqual([
+      { id: 'w90', kind: 'weight', target_value: 90, reached_on: '2026-11-02', scan_id: 'oct' },
+      { id: 'w85', kind: 'weight', target_value: 85, reached_on: null, scan_id: null },
+    ])
+  })
+})

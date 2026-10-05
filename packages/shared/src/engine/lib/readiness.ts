@@ -43,7 +43,7 @@ export function readiness(input: {
   const parts: [weight: number, value: number][] = []
   if (sleep_h !== null) parts.push([0.5, clamp((sleep_h - 3.5) / (SLEEP_GOAL_H - 3.5), 0, 1)])
   if (steps_vs_median !== null) parts.push([0.2, clamp(1 - (steps_vs_median - 1.25), 0, 1)])
-  if (input.days_since_last_session !== null) parts.push([0.3, Math.min(1, 0.4 + 0.3 * input.days_since_last_session)])
+  if (input.days_since_last_session !== null) parts.push([0.3, clamp(0.4 + 0.3 * input.days_since_last_session, 0, 1)])
 
   const weights = parts.reduce((s, [w]) => s + w, 0)
   const score = weights === 0 ? 100 : Math.round((100 * parts.reduce((s, [w, v]) => s + w * v, 0)) / weights)

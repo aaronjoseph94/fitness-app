@@ -48,7 +48,7 @@ export type ScanComparison = {
 /**
  * Compare two scans (previous → next):
  *   Δ = next − previous for each metric and segment
- *   weight_lost = −Δweight, lean_lost = −Δlean, water_lost = −Δwater
+ *   weight_lost = −Δweight, lean_lost = −Δlean, water_lost = −Δwater   (in whole grams, so a decimal 25 % is exactly 25 %)
  *   lean_share  = lean_lost / weight_lost                       (when weight_lost > 0)
  *   guard       = lean_share > 0.25 → (water_lost ≥ 0.9 × lean_lost ? hydration : lean_loss), else ok
  */
@@ -72,9 +72,10 @@ export function compareScans(previous: ScanLike, next: ScanLike): ScanComparison
     lean_kg: next.lean_body_mass_kg - previous.lean_body_mass_kg,
     water_kg: next.total_body_water_kg - previous.total_body_water_kg,
   }
-  const weightLost = -fat_vs_lean.weight_kg
-  const leanLost = -fat_vs_lean.lean_kg
-  const waterLost = -fat_vs_lean.water_kg
+  const grams = (kg: number) => Math.round(kg * 1000)
+  const weightLost = -grams(fat_vs_lean.weight_kg)
+  const leanLost = -grams(fat_vs_lean.lean_kg)
+  const waterLost = -grams(fat_vs_lean.water_kg)
   const share = weightLost > 0 ? leanLost / weightLost : null
   const lean_loss = share !== null && share > LEAN_LOSS_SHARE ? (waterLost >= HYDRATION_MATCH * leanLost ? 'hydration' : 'lean_loss') : 'ok'
 

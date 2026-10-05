@@ -2,7 +2,8 @@
 // ≥ 130 g, fat ≥ 45 g, ≤150 kcal per proposal (over a rolling 7 days), 12–28 sets, allowed exercise set only, and
 // macros that never imply more energy than the day's kcal (carbs are the remainder).
 import { describe, expect, test } from 'vitest'
-import { applyGuards, type GuardContext } from '../guards'
+import type { Weekday } from '../../schemas/common'
+import { applyGuards, LOCKED_SETTINGS, type GuardContext } from '../guards'
 
 const ctx: GuardContext = {
   actor: 'ai',
@@ -22,7 +23,7 @@ const ctx: GuardContext = {
   auto_apply_safe: false,
 }
 
-const kcal = (from: number, to: number, weekday: 'mon' | null = null) => ({ kind: 'target' as const, field: 'kcal' as const, weekday, from, to })
+const kcal = (from: number, to: number, weekday: Weekday | null = null) => ({ kind: 'target' as const, field: 'kcal' as const, weekday, from, to })
 const at1550 = { ...ctx.plan, defaults: { ...ctx.plan.defaults, kcal: 1550 } }
 
 describe('guards', () => {
@@ -182,5 +183,92 @@ describe('guards: auto_apply', () => {
 
   test('mcp: always (Aaron approves in the Claude chat)', () => {
     expect(applyGuards([kcal(1400, 1450), swap], { ...ctx, actor: 'mcp' }).accepted.map((a) => a.auto_apply)).toEqual([true, true])
+  })
+})
+
+describe('guards: one proposal moves a day by at most 150 kcal, however the batch splits it', () => {
+  test('a +150 default and a +150 Monday override in one batch (no kcal_base) move Monday 150 now, the rest a week later', () => {
+    const result = applyGuards([kcal(1400, 1550), kcal(1550, 1700, 'mon')], ctx)
+
+    expect(result.accepted.map((a) => a.change)).toEqual([kcal(1400, 1550)])
+    expect(result.scheduled).toEqual([{ change: kcal(1550, 1700, 'mon'), week_offset: 1 }])
+  })
+})
+
+describe('guards: sets per session count whole sets', () => {
+  const workout = (sets: number[]) => ({ kind: 'workout' as const, exercises: sets.map((n, i) => ({ exercise_id: ['bench', 'press', 'fly'][i]!, sets: n })) })
+
+  test('set counts that are not whole numbers of at least 1 are session_sets, even when they add up to 12–28', () => {
+    // NaN + 6 + 6 is NaN; 20 + 10 − 5 = 25; 6.5 + 6.5 = 13
+    const result = applyGuards([workout([Number.NaN, 6, 6]), workout([20, 10, -5]), workout([6.5, 6.5])], ctx)
+
+    expect(result.accepted).toEqual([])
+    expect(result.rejected.map((r) => r.rule)).toEqual(['session_sets', 'session_sets', 'session_sets'])
+  })
+})
+
+describe('guards: rails per weekday and per macro', () => {
+  const mcp = { ...ctx, actor: 'mcp' as const, plan: at1550 }
+  const target = (field: 'protein_g' | 'fat_g', weekday: 'thu' | null, from: number, to: number) => ({ kind: 'target' as const, field, weekday, from, to })
+
+  test('a Thursday override at 1,399 kcal is calorie_floor; Thursday at 1,400 passes', () => {
+    expect(applyGuards([kcal(1550, 1399, 'thu')], mcp).rejected.map((r) => r.rule)).toEqual(['calorie_floor'])
+    expect(applyGuards([kcal(1550, 1400, 'thu')], mcp).accepted.map((a) => a.change.to)).toEqual([1400])
+  })
+
+  test('a Thursday protein of 129 g is protein_min and a Thursday fat of 44 g is fat_min', () => {
+    const result = applyGuards([target('protein_g', 'thu', 130, 129), target('fat_g', 'thu', 45, 44)], mcp)
+    expect(result.rejected.map((r) => r.rule)).toEqual(['protein_min', 'fat_min'])
+  })
+
+  test('two macro raises that each fit 1,400 kcal but not together: the second is macro_energy (800 + 630 = 1,430)', () => {
+    // protein 200 g × 4 + fat 45 g × 9 = 1,205 kcal fits; then fat 70 g: 200 × 4 + 70 × 9 = 1,430 kcal > 1,400
+    const result = applyGuards([target('protein_g', null, 130, 200), target('fat_g', null, 45, 70)], { ...ctx, actor: 'mcp' })
+
+    expect(result.accepted.map((a) => a.change.field)).toEqual(['protein_g'])
+    expect(result.rejected.map((r) => r.rule)).toEqual(['macro_energy'])
+  })
+
+  test('kcal sent as a string is target_range, never compared as text', () => {
+    const result = applyGuards([kcal(1400, '1500' as unknown as number)], ctx)
+    expect(result.rejected.map((r) => r.rule)).toEqual(['target_range'])
+  })
+})
+
+describe('guards: the 150 kcal step at its boundary (ai)', () => {
+  test('+150 exactly applies whole; +151 applies 150 now and schedules the last 1 kcal', () => {
+    expect(applyGuards([kcal(1400, 1550)], ctx)).toMatchObject({ accepted: [{ change: kcal(1400, 1550) }], scheduled: [] })
+    expect(applyGuards([kcal(1400, 1551)], ctx)).toMatchObject({
+      accepted: [{ change: kcal(1400, 1550) }],
+      scheduled: [{ change: kcal(1550, 1551), week_offset: 1 }],
+    })
+  })
+})
+
+describe('guards: fasting pattern (two a month)', () => {
+  const fast = (date: string) => ({ kind: 'fast' as const, date })
+
+  test('a third fast in October is fasting_pattern; 1 November starts a new calendar month', () => {
+    const result = applyGuards([fast('2026-10-31'), fast('2026-11-01')], { ...ctx, planned_fast_dates: ['2026-10-08', '2026-10-22'] })
+
+    expect(result.rejected.map((r) => [r.change.date, r.rule])).toEqual([['2026-10-31', 'fasting_pattern']])
+    expect(result.accepted.map((a) => a.change.date)).toEqual(['2026-11-01'])
+  })
+})
+
+describe('guards: the allowed exercise set', () => {
+  test('"Body Only" equipment matches the "body only" exclusion whatever its case', () => {
+    const exercises = [...ctx.exercises, { id: 'dip', category: 'strength', equipment: 'Body Only', primary_muscles: ['triceps' as const], secondary_muscles: [], allowed: true }]
+    const result = applyGuards([{ kind: 'exercise_swap' as const, from_exercise_id: 'bench', to_exercise_id: 'dip' }], { ...ctx, exercises })
+
+    expect(result.rejected.map((r) => r.rule)).toEqual(['excluded_category'])
+  })
+})
+
+describe('LOCKED_SETTINGS', () => {
+  test('locks every rail (floor, ceiling, protein and fat minimums, the fasting pattern) and auto_apply_safe', () => {
+    expect([...LOCKED_SETTINGS].sort()).toEqual(
+      ['auto_apply_safe', 'calorie_ceiling', 'calorie_floor', 'fast_hours', 'fasts_per_month', 'fat_min_g', 'protein_min_g'],
+    )
   })
 })

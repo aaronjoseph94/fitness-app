@@ -36,3 +36,46 @@ describe('estimateExpenditure', () => {
     expect(r.tdee_est).toBe(3526)
   })
 })
+
+/** 15 days 2026-10-01 … 10-15, trend falling linearly 95.1 → 94.1 kg; `meals` days at 1,400 kcal, fast days at 0 kcal. */
+const withFasts = (kind: (i: number) => 'meals' | 'fast' | 'none'): ExpenditureDay[] =>
+  Array.from({ length: 15 }, (_, i) => ({
+    date: `2026-10-${String(i + 1).padStart(2, '0')}`,
+    trend_kg: 95.1 - i / 14,
+    meals_logged: kind(i) === 'meals' ? 2 : 0,
+    is_fast_day: kind(i) === 'fast',
+    intake: { kcal: kind(i) === 'meals' ? 1400 : 0 },
+  }))
+
+describe('estimateExpenditure: fast days', () => {
+  test('two fast days count as logged days at 0 kcal: mean 1,200, raw 1,200 + 550 = 1,750, smoothed → 2,151', () => {
+    // window 10-02 … 10-15: 12 days × 1,400 + 2 fast days × 0 = 16,800 / 14 = 1,200; 1 kg × 7,700 / 14 = 550
+    // round(0.5 × 1,750 + 0.5 × 2,551) = round(2,150.5) = 2,151
+    const r = estimateExpenditure({ as_of: '2026-10-15', days: withFasts((i) => (i === 4 || i === 11 ? 'fast' : 'meals')), previous_kcal: 2551 })
+
+    expect(r).toMatchObject({ tdee_est: 2151, days_logged: 14, updated: true })
+    expect(r.raw_kcal).toBeCloseTo(1750, 6)
+  })
+
+  test('a fast day is not a missed day: 8 meal days + 2 fast days reach the 10 logged days', () => {
+    // logged 10-06 … 10-15: 8 × 1,400 / 10 = 1,120; raw 1,120 + 550 = 1,670; round(0.5 × 1,670 + 0.5 × 2,551) = 2,111
+    const r = estimateExpenditure({ as_of: '2026-10-15', days: withFasts((i) => (i < 5 ? 'none' : i === 7 || i === 8 ? 'fast' : 'meals')), previous_kcal: 2551 })
+
+    expect(r).toMatchObject({ tdee_est: 2111, days_logged: 10, updated: true })
+  })
+})
+
+describe('estimateExpenditure: clamp and missing trend', () => {
+  test('a raw value under 1,200 is clamped before smoothing: trend up 3 kg → raw −250 → round(0.5 × 1,200 + 0.5 × 2,551) = 1,876', () => {
+    const up: ExpenditureDay[] = days(94.1, 97.1)
+    const r = estimateExpenditure({ as_of: '2026-10-15', days: up, previous_kcal: 2551 })
+
+    expect(r.raw_kcal).toBeCloseTo(-250, 6)
+    expect(r.tdee_est).toBe(1876)
+  })
+
+  test('no trend on as_of − 14 (first weigh-in inside the window) keeps the previous estimate', () => {
+    const r = estimateExpenditure({ as_of: '2026-10-15', days: days(95.1, 94.1).slice(1), previous_kcal: 2551 })
+    expect(r).toMatchObject({ tdee_est: 2551, updated: false })
+  })
+})

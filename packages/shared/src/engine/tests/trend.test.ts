@@ -35,3 +35,28 @@ describe('trend weight', () => {
     expect(trendChange(series, '2026-10-05')).toBeNull()
   })
 })
+
+describe('trend weight: input order, duplicates, leap day, empty', () => {
+  test('unsorted weigh-ins with a re-weigh on one date: sorted by date, the later entry for that date wins', () => {
+    const series = trendWeights([
+      { date: '2026-10-03', weight_kg: 94.0 },
+      { date: '2026-10-01', weight_kg: 96.0 },
+      { date: '2026-10-01', weight_kg: 95.0 },
+    ])
+    // 10-01 = 95.0 (the re-weigh) → 10-02 carries 95.0 → 10-03 = 95.0 + 0.25 × (94.0 − 95.0) = 94.75
+    expect(series.map((p) => [p.date, p.weight_kg])).toEqual([['2026-10-01', 95.0], ['2026-10-02', null], ['2026-10-03', 94.0]])
+    expect(series.map((p) => p.trend_kg)).toEqual([95.0, 95.0, 94.75])
+  })
+
+  test('a missed 2028-02-29 is a day of its own: the trend is carried across it', () => {
+    const series = trendWeights([
+      { date: '2028-02-28', weight_kg: 80.0 },
+      { date: '2028-03-01', weight_kg: 76.0 },
+    ])
+    expect(series.map((p) => [p.date, p.trend_kg])).toEqual([['2028-02-28', 80.0], ['2028-02-29', 80.0], ['2028-03-01', 79.0]])
+  })
+
+  test('no weigh-ins, no trend', () => {
+    expect(trendWeights([])).toEqual([])
+  })
+})

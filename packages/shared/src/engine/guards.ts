@@ -108,13 +108,15 @@ type Verdict<C> = { ok: true; change: C | null; later?: C[]; rest?: { change: C;
  *                      earlier accepted changes applied)
  *   macro energy:      on every weekday the change reaches, with the rails applied (kcal ≥ floor, protein ≥ min,
  *                      fat ≥ min): protein × 4 + fat × 9 ≤ kcal — carbs, the remainder, never go negative
- *   ai/mcp kcal moves: f = from, t = to, b = kcal_base's value (default f), the value a week ago. Now the move may end at
+ *   ai/mcp kcal moves: f = from, t = to, b = kcal_base's value, the value a week ago (default: ctx.plan's, as it was
+ *                      before the batch — never the batch's own earlier moves). Now the move may end at
  *                        t > f: min(t, f + 150, max(f, b + 150));   t < f: max(t, f − 150, min(f, b − 150))
  *                      (≤ 150 per proposal, and ≤ 150 away from b over the rolling 7 days; back toward b is free).
  *                      The rest becomes steps of ≤ 150 from where the move ends now, a week apart (week_offset 1, 2, …;
  *                      when nothing applies now the first step is the whole change's first 150), or with
  *                      schedule_steps false it is dropped as `kcal_step`
- *   workout:           every exercise in the allowed set and in no excluded category; 12 ≤ Σ sets ≤ 28
+ *   workout:           every exercise in the allowed set and in no excluded category; each sets a whole number ≥ 1;
+ *                      12 ≤ Σ sets ≤ 28
  *   exercise_swap:     the new exercise in the allowed set and in no excluded category
  *   fast:              planned fasts in that calendar month ≤ fasts_per_month
  * (The settings rails are locked outside the guards: updateSettings refuses LOCKED_SETTINGS to any actor but `user`.)
@@ -167,6 +169,8 @@ function check<C extends GuardChange>(change: C, ctx: GuardContext, state: Batch
         const bad = checkExercise(exercise_id, state)
         if (bad) return bad
       }
+      const odd = workout.exercises.find((e) => !Number.isInteger(e.sets) || e.sets < 1)
+      if (odd) return reject('session_sets', `Exercise ${odd.exercise_id} has ${String(odd.sets)} sets; a set count is a whole number of at least 1`)
       const sets = workout.exercises.reduce((n, e) => n + e.sets, 0)
       if (sets < SESSION_SETS.min || sets > SESSION_SETS.max)
         return reject('session_sets', `${sets} sets; a session has ${SESSION_SETS.min}–${SESSION_SETS.max}`)
@@ -227,7 +231,9 @@ function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: Guard
 
   const from = targetValue(state.plan, field, weekday)
   const stepped = field === 'kcal' && ctx.actor !== 'user'
-  const now = stepped ? kcalNow(from, to, ctx.kcal_base ? targetValue(ctx.kcal_base, 'kcal', weekday) : from) : to
+  // b is read from the plan as it was before this batch (kcal_base, else ctx.plan), never from the batch's own state:
+  // a default move and a weekday move in one batch would otherwise each take 150 kcal from the same day.
+  const now = stepped ? kcalNow(from, to, targetValue(ctx.kcal_base ?? ctx.plan, 'kcal', weekday)) : to
   const moves = now !== from || to === from
   if (moves) {
     const over = macroOverflow(state.plan, { field, weekday, to: now }, rails)

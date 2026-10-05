@@ -38,3 +38,28 @@ describe('safetyFlags', () => {
     expect(safetyFlags({ as_of: AS_OF, days: series(95.1, 92.4) })).toEqual([])
   })
 })
+
+describe('safetyFlags: plateau boundary', () => {
+  test('plateau: exactly 0.2 kg down in 21 days (95.1 → 94.9) is not under 0.2 kg, so no flag', () => {
+    const days = series(95.1, 94.9)
+    days[0] = { ...days[0]!, trend_kg: 95.1 }
+    days[21] = { ...days[21]!, trend_kg: 94.9 }
+
+    expect(safetyFlags({ as_of: AS_OF, days })).toEqual([])
+  })
+})
+
+describe('safetyFlags: plateau needs adherence ≥ 80 %', () => {
+  test('16 of 21 days adherent (76 %) is no plateau; 17 of 21 (81 %) is', () => {
+    const missWater = (n: number) => series(95.1, 95.0).map((d, i) => (i >= 1 && i <= n ? { ...d, water_ml: 0 } : d))
+
+    expect(safetyFlags({ as_of: AS_OF, days: missWater(5) })).toEqual([])
+    expect(safetyFlags({ as_of: AS_OF, days: missWater(4) })).toEqual([expect.objectContaining({ kind: 'plateau', adherence: 17 / 21 })])
+  })
+
+  test('fast days (no meals) are adherent days, not missed ones: plateau at 100 %', () => {
+    const days = series(95.1, 95.0).map((d, i) => (i === 7 || i === 18 ? { ...d, meals_logged: 0, is_fast_day: true, intake: { ...d.intake, kcal: 0, protein_g: 0 } } : d))
+
+    expect(safetyFlags({ as_of: AS_OF, days })).toEqual([expect.objectContaining({ kind: 'plateau', adherence: 1 })])
+  })
+})
