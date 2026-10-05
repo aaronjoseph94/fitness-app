@@ -1,0 +1,9 @@
+{
+  "//": "Owns: type-checking the Playwright flows and config (pnpm exec tsc -p e2e).",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts", "../playwright.config.ts"]
+}
