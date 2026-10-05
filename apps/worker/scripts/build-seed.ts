@@ -226,6 +226,7 @@ const equipmentRows: NewRow<typeof equipment_profile>[] = equipment.equipment.ma
   id: seedId(`equipment:${e.equipment}`),
 }))
 
+/** gif_url ('/media/exercises/<id>.gif') and `media` (ExerciseDB provenance) come with the library when a GIF matched. */
 const exerciseRows: NewRow<typeof exercises>[] = library.map((ex) => ({
   ...ex,
   id: exerciseId(ex.slug),
@@ -337,6 +338,8 @@ const sections: [string, string[]][] = [
         'instructions',
         'image_paths',
         'video_search_url',
+        'gif_url',
+        'media',
         'source_id',
       ],
     }),
