@@ -171,8 +171,10 @@ export function SettingsPage() {
       </SettingsGroup>
 
       <SettingsGroup id="more" title="More">
+        <LinkRow label="Plan history" help="Every plan version with its reason; revert in one tap" to="/plan" />
         <LinkRow label="Reminders" help="Notifications for weigh-in, water, workouts, fasts, scans and reviews" to="/settings/reminders" />
         <LinkRow label="Scans" help="Evolt 360 results" to="/scans" />
+        <LinkRow label="Apple Watch import" help="Steps, active energy and sleep from a CSV or JSON export" to="/imports/health" />
         <LinkRow label="Progress photos" to="/photos" />
         <LinkRow label="Export and restore" help="Everything in one zip; restore a fresh instance" to="/settings/data" />
         <LinkRow label="Styleguide" help="Every colour, card and chart with sample data" to="/styleguide" />

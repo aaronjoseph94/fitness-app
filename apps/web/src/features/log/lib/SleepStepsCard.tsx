@@ -1,14 +1,16 @@
 // Owns: the Apple Watch manual route (SPEC §8 route 1) — steps for the day and last night's sleep (the night that
 // ended on this date), as in-bed and wake times or as hours asleep, prefilled from what is logged. Thirty seconds.
-// POST /api/steps and POST /api/sleep both upsert by date.
+// POST /api/steps and POST /api/sleep both upsert by date. Links to the file import (route 2) for many days at once.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
+import { Link as RouterLink } from 'react-router'
 import { formatNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, instantAt, NumberField, parseNumber, problemText, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
@@ -135,6 +137,14 @@ export function SleepStepsCard({ date, day }: { date: string; day: DayView | und
         <Button type="submit" variant="contained" disabled={!canSave}>
           {steps.isPending || sleep.isPending ? 'Saving…' : 'Save'}
         </Button>
+        <Link
+          component={RouterLink}
+          to="/imports/health"
+          data-testid="log-health-import"
+          sx={{ justifySelf: 'center', display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: 14, fontWeight: tokens.font.weight.label }}
+        >
+          Import an Apple Watch export
+        </Link>
       </Box>
     </LogCard>
   )

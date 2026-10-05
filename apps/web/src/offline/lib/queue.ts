@@ -9,12 +9,13 @@ export type NewWrite = Pick<QueuedWrite, 'method' | 'path' | 'body'>
 /** Which pending writes to read: every one, those for one endpoint (method + path pattern), or those under a path prefix. */
 export type PendingFilter = Endpoint | string | undefined
 
-/** The request body type of an endpoint, as the caller wrote it. */
-export type BodyOf<E extends Endpoint> = E['body'] extends z.ZodType ? z.input<E['body']> : undefined
+/** The request body type of an endpoint as stored: what the caller wrote, or a Blob for a binary (ArrayBuffer) body. */
+export type BodyOf<E extends Endpoint> = E['body'] extends z.ZodType ? Stored<z.input<E['body']>> : undefined
+type Stored<T> = T extends ArrayBuffer ? Blob : T
 
 /**
  * Persist a write. Every write gets its own `id` (two offline edits of one entity are two writes); replays stay
- * idempotent on the Worker because the body carries the entity's client-generated UUID.
+ * idempotent on the Worker because the body (or a binary upload's query) carries the entity's client-generated UUID.
  */
 export async function addWrite(write: NewWrite): Promise<PendingWrite> {
   const row: QueuedWrite = {

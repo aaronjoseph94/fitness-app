@@ -6,10 +6,11 @@ import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Stack from '@mui/material/Stack'
 import { useSearchParams } from 'react-router'
+import { useLocalToday } from '../../app/local-today'
 import { ChartCard, SectionHeader } from '../../components'
 import { tokens } from '../../theme'
 import { HabitsColumn } from './lib/HabitsColumn'
-import { isRangeKey, useLocalDate, type RangeKey } from './lib/range'
+import { isRangeKey, type RangeKey } from './lib/range'
 import { RangeToggle } from './lib/RangeToggle'
 import { latestTargets, rangeDays, rangeSummary } from './lib/series'
 import { SummaryStats } from './lib/SummaryStats'
@@ -26,7 +27,7 @@ export function ProgressPage() {
   const [params, setParams] = useSearchParams()
   const requested = params.get('range')
   const range: RangeKey = isRangeKey(requested) ? requested : '4w'
-  const date = useLocalDate()
+  const date = useLocalToday()
   const { from, to, settings, days, trend, fasts } = useProgressData(range, date)
   const length = rangeDays(from, to)
   const goalKg = settings.data?.profile.goal_weight_kg ?? DEFAULT_GOAL_KG

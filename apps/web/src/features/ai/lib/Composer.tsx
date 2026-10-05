@@ -7,7 +7,7 @@ import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import InputBase from '@mui/material/InputBase'
 import { tokens } from '../../../theme'
-import { useDictation } from './dictation'
+import { appendPhrase, useDictation } from '../../quick-log'
 
 interface ComposerProps {
   value: string
@@ -19,9 +19,7 @@ interface ComposerProps {
 }
 
 export function Composer({ value, onChange, onSend, sending, online, autoFocus }: ComposerProps) {
-  const dictation = useDictation((phrase) => {
-    if (phrase) onChange(value.trim() ? `${value.trimEnd()} ${phrase}` : phrase)
-  })
+  const dictation = useDictation((phrase) => onChange(appendPhrase(value, phrase)))
   const canSend = online && !sending && value.trim().length > 0
   const hint = !online ? 'Ask AI needs a connection; logging still works offline.' : dictation.error
   return (

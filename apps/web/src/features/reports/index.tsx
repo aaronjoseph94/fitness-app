@@ -61,10 +61,6 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
       data-testid="weekly-report"
       data-report-ready={data.ready ? 'true' : 'false'}
       sx={{
-        // The print frame pads 15 mm on every screen; give phones their 16 px gutter back.
-        mx: { xs: 'calc(16px - 15mm)', sm: 0 },
-        my: { xs: 'calc(16px - 15mm)', sm: 0 },
-        '@media print': { m: 0 },
         color: 'text.primary',
       }}
     >

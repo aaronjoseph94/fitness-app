@@ -94,10 +94,23 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
       )}
 
       {meal.items.length > 0 && (
-        <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 0.75 }}>
+        // minmax(0, 1fr): a long name must not widen the column past the card. It wraps to two lines, then ellipsis;
+        // grams and kcal stay on its first line, kcal right-aligned.
+        <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75 }}>
           {meal.items.map((item) => (
             <Box component="li" key={item.id} sx={{ display: 'flex', gap: 2, fontSize: 14, alignItems: 'baseline' }}>
-              <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  lineHeight: 1.4,
+                  overflowWrap: 'anywhere',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
                 {item.description}
                 {item.estimated && (
                   <Box component="span" sx={{ color: 'text.secondary', fontSize: 12 }}>

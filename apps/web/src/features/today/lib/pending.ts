@@ -1,83 +1,57 @@
-// Owns: what Today adds on top of the server's day while logs wait in the offline queue — water added, a weigh-in,
-// meals, a fast started or ended, steps and sleep — read from the queued writes' bodies (pure; no React).
-import { endpoints, type Endpoint } from '@fitness/shared/api'
+// Owns: what Today adds on top of the server's day while logs are saving or wait in the offline queue — water added, a
+// weigh-in, meals, a fast started or ended, steps and sleep — from the logging kit's usePendingLogs (one per endpoint).
+import { endpoints } from '@fitness/shared/api'
 import { localDate } from '@fitness/shared/engine'
-import { MealCreate, SleepLogCreate, StepLogCreate, WaterLogCreate, WeighInCreate, type LocalDate } from '@fitness/shared/schemas'
-import type { PendingWrite } from '../../../offline'
+import type { LocalDate } from '@fitness/shared/schemas'
+import { useMemo } from 'react'
+import { usePendingLogs, type PendingLog } from '../../quick-log'
 
 export interface PendingToday {
-  /** Queued writes that change this date. */
+  /** Pending writes that change this date. */
   count: number
-  /** Water queued for this date, ml. */
+  /** Water pending for this date, ml. */
   waterMl: number
-  /** The latest queued weigh-in for this date, kg. */
+  /** The latest pending weigh-in for this date, kg. */
   weighInKg: number | null
-  /** Meals queued for this date (their nutrition is known once the Worker has them). */
+  /** Meals pending for this date (their nutrition is known once the Worker has them). */
   meals: number
-  /** The latest queued fast action. */
+  /** The latest pending fast action. */
   fast: 'started' | 'ended' | null
   steps: number | null
   sleepMin: number | null
 }
 
-const NO_PENDING: PendingToday = { count: 0, waterMl: 0, weighInKg: null, meals: 0, fast: null, steps: null, sleepMin: null }
+const last = <T,>(list: readonly T[]): T | undefined => list[list.length - 1]
+const latestAt = (logs: readonly PendingLog<unknown>[]) => last(logs)?.at ?? ''
 
-/** '/api/fasts/:id/end' → /^\/api\/fasts\/[^/]+\/end$/ */
-function matcher(endpoint: Endpoint): (write: PendingWrite) => boolean {
-  const pattern = new RegExp(`^${endpoint.path.replace(/:[A-Za-z_]+/g, '[^/]+')}$`)
-  return (write) => write.method === endpoint.method && pattern.test(write.path.split('?')[0] ?? write.path)
-}
-
-const isWater = matcher(endpoints.water.create)
-const isWeighIn = matcher(endpoints.body.createWeight)
-const isMeal = matcher(endpoints.nutrition.createMeal)
-const isFastStart = matcher(endpoints.fasting.start)
-const isFastEnd = matcher(endpoints.fasting.end)
-const isSteps = matcher(endpoints.health.createSteps)
-const isSleep = matcher(endpoints.health.createSleep)
-
-/** Queued writes, oldest first, folded into what they change on `date` (later writes win). */
-export function pendingFor(writes: readonly PendingWrite[], date: LocalDate): PendingToday {
-  const out: PendingToday = { ...NO_PENDING }
-  for (const write of writes) {
-    if (isWater(write)) {
-      const body = WaterLogCreate.safeParse(write.body)
-      if (body.success && localDate(body.data.logged_at ?? write.created_at) === date) {
-        out.waterMl += body.data.amount_ml
-        out.count++
-      }
-    } else if (isWeighIn(write)) {
-      const body = WeighInCreate.safeParse(write.body)
-      if (body.success && body.data.date === date) {
-        out.weighInKg = body.data.weight_kg
-        out.count++
-      }
-    } else if (isMeal(write)) {
-      const body = MealCreate.safeParse(write.body)
-      if (body.success && localDate(body.data.eaten_at) === date) {
-        out.meals++
-        out.count++
-      }
-    } else if (isFastStart(write)) {
-      out.fast = 'started'
-      out.count++
-    } else if (isFastEnd(write)) {
-      out.fast = 'ended'
-      out.count++
-    } else if (isSteps(write)) {
-      const body = StepLogCreate.safeParse(write.body)
-      if (body.success && body.data.date === date) {
-        out.steps = body.data.steps
-        out.count++
-      }
-    } else if (isSleep(write)) {
-      const body = SleepLogCreate.safeParse(write.body)
-      if (body.success && body.data.date === date) {
-        const { asleep_min, in_bed_at, woke_at } = body.data
-        out.sleepMin = asleep_min ?? (in_bed_at && woke_at ? Math.round((Date.parse(woke_at) - Date.parse(in_bed_at)) / 60_000) : null)
-        out.count++
-      }
+/** Pending logs, oldest first per endpoint, folded into what they change on `date` (later writes win). */
+export function usePendingToday(date: LocalDate): PendingToday {
+  const water = usePendingLogs(endpoints.water.create)
+  const weighIns = usePendingLogs(endpoints.body.createWeight)
+  const meals = usePendingLogs(endpoints.nutrition.createMeal)
+  const fastStarts = usePendingLogs(endpoints.fasting.start)
+  const fastEnds = usePendingLogs(endpoints.fasting.end)
+  const steps = usePendingLogs(endpoints.health.createSteps)
+  const sleep = usePendingLogs(endpoints.health.createSleep)
+  return useMemo(() => {
+    const waterToday = water.filter((w) => localDate(w.body.logged_at ?? w.at) === date)
+    const weighInToday = weighIns.filter((w) => w.body.date === date)
+    const mealsToday = meals.filter((m) => localDate(m.body.eaten_at) === date)
+    const stepsToday = steps.filter((s) => s.body.date === date)
+    const sleepToday = sleep.filter((s) => s.body.date === date)
+    const night = last(sleepToday)?.body
+    const fasts = fastStarts.length + fastEnds.length
+    return {
+      count: waterToday.length + weighInToday.length + mealsToday.length + fasts + stepsToday.length + sleepToday.length,
+      waterMl: waterToday.reduce((sum, w) => sum + w.body.amount_ml, 0),
+      weighInKg: last(weighInToday)?.body.weight_kg ?? null,
+      meals: mealsToday.length,
+      fast: fasts === 0 ? null : latestAt(fastEnds) >= latestAt(fastStarts) ? 'ended' : 'started',
+      steps: last(stepsToday)?.body.steps ?? null,
+      sleepMin: !night
+        ? null
+        : (night.asleep_min ??
+          (night.in_bed_at && night.woke_at ? Math.round((Date.parse(night.woke_at) - Date.parse(night.in_bed_at)) / 60_000) : null)),
     }
-  }
-  return out
+  }, [date, water, weighIns, meals, fastStarts, fastEnds, steps, sleep])
 }

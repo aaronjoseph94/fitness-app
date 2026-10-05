@@ -1,5 +1,7 @@
 // Owns: the milestone timeline (custom SVG): milestones evenly spaced on a line, reached ones filled in the metric
 // colour with their date, the next one ringed with its forecast date, later ones grey; tap one for the full date.
+// A label wider than the room at either end is anchored to that edge instead of centred, so it is never clipped; when
+// labels are wider than the gap between milestones (six composition goals on a phone) they alternate between two rows.
 import Box from '@mui/material/Box'
 import { useState } from 'react'
 import { formatShortDate } from '../../components'
@@ -25,6 +27,16 @@ export interface MilestoneTimelineProps {
 const H = 86
 const LINE_Y = 42
 const PAD = 26
+/** Outfit's average glyph width as a share of the font size (labels are short: digits, units, a few letters). */
+const GLYPH = 0.58
+
+/** Centre `text` on `x` unless it would cross 0 or `width`; then pin it to that edge. */
+function placeText(x: number, text: string, fontSize: number, width: number): { x: number; textAnchor: 'start' | 'middle' | 'end' } {
+  const half = (text.length * fontSize * GLYPH) / 2
+  if (x - half < 0) return { x: 0, textAnchor: 'start' }
+  if (x + half > width) return { x: width, textAnchor: 'end' }
+  return { x, textAnchor: 'middle' }
+}
 
 export function MilestoneTimeline({ milestones, metric = 'weight', width }: MilestoneTimelineProps) {
   const [ref, w] = useWidth(width)
@@ -32,6 +44,9 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
   const C = tokens.metric[metric]
   const n = milestones.length
   const xs = milestones.map((_, i) => (n === 1 ? w / 2 : PAD + (i * (w - 2 * PAD)) / (n - 1)))
+  const gap = n > 1 ? (w - 2 * PAD) / (n - 1) : w
+  const stagger = milestones.some((m) => m.label.length * 12 * GLYPH + 6 > gap)
+  const labelY = (i: number) => (!stagger ? 20 : i % 2 === 0 ? 11 : 27)
   const lastReached = milestones.reduce((acc, m, i) => (m.reachedOn ? i : acc), -1)
   const next = lastReached + 1 < n ? lastReached + 1 : -1
   const pick = selected === null ? null : milestones[selected]
@@ -76,6 +91,7 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
             const reached = !!m.reachedOn
             const isNext = i === next
             const date = m.reachedOn ?? m.expectedOn
+            const dateText = date ? `${reached ? '' : '~'}${formatShortDate(date)}` : '—'
             return (
               <g
                 key={m.label}
@@ -86,9 +102,8 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
               >
                 <rect x={x - 22} y={0} width={44} height={H} fill="transparent" />
                 <text
-                  x={x}
-                  y={20}
-                  textAnchor="middle"
+                  {...placeText(x, m.label, 12, w)}
+                  y={labelY(i)}
                   fontSize={12}
                   fontWeight={reached || isNext ? 600 : 500}
                   fill={reached || isNext ? tokens.ink.text : tokens.ink.secondary}
@@ -120,14 +135,8 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
                 {selected === i && (
                   <circle cx={x} cy={LINE_Y} r={12} fill="none" stroke={tokens.ink.text} strokeWidth={1} />
                 )}
-                <text
-                  x={x}
-                  y={70}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={reached ? tokens.ink.text : tokens.ink.secondary}
-                >
-                  {date ? `${reached ? '' : '~'}${formatShortDate(date)}` : '—'}
+                <text {...placeText(x, dateText, 11, w)} y={70} fontSize={11} fill={reached ? tokens.ink.text : tokens.ink.secondary}>
+                  {dateText}
                 </text>
               </g>
             )

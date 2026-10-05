@@ -5,7 +5,7 @@ import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ListItemButton from '@mui/material/ListItemButton'
-import type { Exercise } from '@fitness/shared/schemas'
+import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
@@ -15,16 +15,16 @@ import { equipmentLabel } from './labels'
 const PAGE = 40
 
 export interface ExerciseListProps {
-  exercises: readonly Exercise[]
-  onSelect: (exercise: Exercise) => void
+  exercises: readonly ExerciseSummary[]
+  onSelect: (exercise: ExerciseSummary) => void
   /** Rendered at the right end of a row (outside the row's button). */
-  trailing?: (exercise: Exercise) => ReactNode
+  trailing?: (exercise: ExerciseSummary) => ReactNode
   /** Exercises shown with an "Added" check. */
   pickedIds?: ReadonlySet<string>
   testId?: string
 }
 
-export function musclesLine(e: Pick<Exercise, 'primary_muscles' | 'equipment'>): string {
+export function musclesLine(e: Pick<ExerciseSummary, 'primary_muscles' | 'equipment'>): string {
   const muscles = e.primary_muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
   return [muscles, equipmentLabel(e.equipment)].filter(Boolean).join(' · ')
 }

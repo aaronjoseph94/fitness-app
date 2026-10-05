@@ -1,8 +1,7 @@
-// Owns: the Progress range selector's model — the three ranges (4 w, 12 w, all), the dates each covers, and the
-// local date the page counts back from (Edmonton, refreshed when the day turns or the app comes back into view).
-import { addDays, daysBetween, today } from '@fitness/shared/engine'
+// Owns: the Progress range selector's model — the three ranges (4 w, 12 w, all) and the dates each covers, counted back
+// from the local date (app/local-today).
+import { addDays, daysBetween } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
-import { useEffect, useState } from 'react'
 
 export type RangeKey = '4w' | '12w' | 'all'
 
@@ -30,19 +29,4 @@ export function rangeDates(key: RangeKey, date: LocalDate, startDate: LocalDate 
   const sinceStart = startDate && startDate <= date ? daysBetween(startDate, date) + 1 : Infinity
   const days = Math.max(7, Math.min(MAX_DAYS, key === 'all' && sinceStart !== Infinity ? sinceStart : Math.min(wanted, sinceStart)))
   return { from: addDays(date, -(days - 1)), to: date }
-}
-
-/** Today in America/Edmonton, re-read every minute and whenever the page becomes visible again. */
-export function useLocalDate(): LocalDate {
-  const [date, setDate] = useState(() => today(Date.now()))
-  useEffect(() => {
-    const check = () => setDate(today(Date.now()))
-    const timer = window.setInterval(check, 60_000)
-    document.addEventListener('visibilitychange', check)
-    return () => {
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', check)
-    }
-  }, [])
-  return date
 }

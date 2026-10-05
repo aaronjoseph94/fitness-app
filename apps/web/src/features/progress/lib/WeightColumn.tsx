@@ -1,16 +1,17 @@
 // Owns: the "Weight and body" column of Progress — weight trend with the forecast, weekly loss vs the expected rate,
-// milestones, waist and WHR from tape measurements (all from GET /api/trend), and the scans section (GET /api/scans).
+// milestones, waist and WHR from tape measurements (all from GET /api/trend), the scans section (GET /api/scans) and
+// the progress photos card.
 import Stack from '@mui/material/Stack'
 import type { TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
 import { MilestoneTimeline, WaistWhrChart, WeeklyLossChart, WeightTrendChart } from '../../../charts'
-import { ChartCard, formatNumber, SectionHeader } from '../../../components'
+import { ChartCard, formatNumber, isQueryLoading, QueryStateCard, SectionHeader } from '../../../components'
+import { PhotosLink } from '../../photos'
 import type { RangeKey } from './range'
 import { ScansSection } from './ScansSection'
 import { effectiveRate, forecastPath, lastTrend, milestoneTimelines, waistPoints, weeklyLoss, weightMilestones, weightPoints } from './series'
-import { ChartSkeleton, ErrorCard, isLoading } from './states'
 
 /** SPEC §3: waist-to-hip ratio under 0.90. */
 const WHR_TARGET = 0.9
@@ -25,19 +26,12 @@ interface WeightColumnProps {
 export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumnProps) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
   const header = <SectionHeader title="Weight and body" subtitle="Trend first; the raw weigh-ins are the faint dots." />
-  if (isLoading(trend))
-    return (
-      <Stack spacing={4}>
-        {header}
-        <ChartSkeleton height={240} />
-        <ChartSkeleton height={200} />
-      </Stack>
-    )
   if (!trend.data)
     return (
       <Stack spacing={4}>
         {header}
-        <ErrorCard query={trend} what="the weight trend" />
+        <QueryStateCard query={trend} what="the weight trend" height={240} />
+        {isQueryLoading(trend) && <QueryStateCard query={trend} what="the weight trend" />}
       </Stack>
     )
 
@@ -111,6 +105,8 @@ export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumn
       </ChartCard>
 
       <ScansSection />
+
+      <PhotosLink />
     </Stack>
   )
 }

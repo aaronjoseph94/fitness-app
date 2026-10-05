@@ -253,11 +253,12 @@ export function dataEndBarPath(
 
 /**
  * Clean y-axis ticks (steps of 1, 2, 2.5 or 5 × 10ⁿ) covering the values, e.g. 64.2…96.8 → 60, 70, 80, 90, 100.
- * `zero` forces the axis to start at 0 (bars).
+ * `zero` forces the axis to start at 0 (bars). `minStep` keeps every step a multiple of it (10^−decimals when ticks are
+ * printed with that many decimals), so a narrow range never prints the same label twice (100.2…100.8 → 100, 101).
  */
 export function niceScale(
   values: readonly number[],
-  { count = 4, zero = false }: { count?: number; zero?: boolean } = {},
+  { count = 4, zero = false, minStep }: { count?: number; zero?: boolean; minStep?: number } = {},
 ) {
   const finite = values.filter((v) => Number.isFinite(v))
   let lo = finite.length ? Math.min(...finite) : 0
@@ -269,7 +270,9 @@ export function niceScale(
   if (hi === lo) hi = lo + 1
   const raw = (hi - lo) / count
   const mag = 10 ** Math.floor(Math.log10(raw))
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? 10 * mag
+  const fits = (s: number) => !minStep || Math.abs(s / minStep - Math.round(s / minStep)) < 1e-9
+  const nice = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw && fits(s)) ?? 10 * mag
+  const step = minStep ? Math.max(minStep, nice) : nice
   const start = Math.floor(lo / step) * step
   const end = Math.ceil(hi / step) * step
   const ticks: number[] = []

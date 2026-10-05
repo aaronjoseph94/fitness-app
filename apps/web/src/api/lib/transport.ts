@@ -1,14 +1,23 @@
 // Owns: the wire — one HTTP request to the Worker with the Access cookie, no redirect following, a timeout, JSON in and
-// out — and the classification of every failure into an ApiError, including spotting an expired Access session.
+// out (a binary body goes as application/octet-stream) — and the classification of every failure into an ApiError,
+// including spotting an expired Access session.
 import type { HttpMethod } from '@fitness/shared/api'
 import { ApiError } from './errors'
 import { markAuthExpired } from './session'
 
 export interface WireRequest {
   method: HttpMethod
-  /** Built path including the query string. */
+  /** Built path including the query string (a binary body's metadata travels here). */
   path: string
+  /** JSON-serialisable, or a BinaryBody sent as raw bytes. */
   body?: unknown
+}
+
+/** A raw body (a Binary endpoint's ArrayBuffer, or the Blob the offline queue stored it as). */
+export type BinaryBody = Blob | ArrayBuffer
+
+export function isBinaryBody(body: unknown): body is BinaryBody {
+  return body instanceof Blob || body instanceof ArrayBuffer
 }
 
 export interface SendOptions {
@@ -26,13 +35,13 @@ const SESSION_PROBE_PATH = '/api/health'
 export async function send(request: WireRequest, options: SendOptions = {}): Promise<unknown> {
   const label = `${request.method} ${request.path}`
   const timeout = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
-  const hasBody = request.body !== undefined
+  const encoded = encodeBody(request.body)
   let response: Response
   try {
     response = await fetch(request.path, {
       method: request.method,
-      headers: hasBody ? { Accept: 'application/json', 'Content-Type': 'application/json' } : { Accept: 'application/json' },
-      body: hasBody ? JSON.stringify(request.body) : undefined,
+      headers: encoded.headers,
+      body: encoded.body,
       credentials: 'include',
       // Access answers an expired session with a redirect to its login page: see it, never follow it.
       redirect: 'manual',
@@ -47,6 +56,12 @@ export async function send(request: WireRequest, options: SendOptions = {}): Pro
   const body = await readBody(response)
   if (!response.ok) throw httpError(label, response.status, body)
   return body
+}
+
+function encodeBody(body: unknown): { headers: Record<string, string>; body: BodyInit | undefined } {
+  if (body === undefined) return { headers: { Accept: 'application/json' }, body: undefined }
+  if (isBinaryBody(body)) return { headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream' }, body }
+  return { headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
 }
 
 function isAccessBounce(response: Response): boolean {

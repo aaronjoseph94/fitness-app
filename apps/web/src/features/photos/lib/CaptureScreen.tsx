@@ -19,7 +19,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { clockOf, dateOf, instantAt, problemText } from '../../quick-log'
 import { tokens, withAlpha } from '../../../theme'
-import { POSE_LABEL, POSES, uploadPhoto, useRefreshPhotos } from './data'
+import { POSE_LABEL, POSES, useRefreshPhotos, useUploadPhoto } from './data'
 import { photoFromFile, photoFromVideo, releasePhoto, type PreparedPhoto } from './prepare'
 
 type Facing = 'environment' | 'user'
@@ -109,8 +109,11 @@ export function CaptureScreen() {
   const [countdown, setCountdown] = useState<number | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  /** Photos saved to this phone's offline queue (they upload when it is back online). */
+  const [queued, setQueued] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const refresh = useRefreshPhotos()
+  const uploadPhoto = useUploadPhoto()
   const { videoRef, state: camera } = useCamera(prefs.facing, true)
 
   const updatePrefs = (next: Partial<CapturePrefs>) => {
@@ -176,7 +179,9 @@ export function CaptureScreen() {
     setUploading(true)
     setProblem(null)
     try {
-      await uploadPhoto(shot, { pose, takenAt: instantAt(date, time.slice(0, 5)), note })
+      const outcome = await uploadPhoto(shot, { pose, takenAt: instantAt(date, time.slice(0, 5)), note })
+      const queuedNow = queued + (outcome.status === 'queued' ? 1 : 0)
+      setQueued(queuedNow)
       refresh()
       const done = saved.includes(pose) ? saved : [...saved, pose]
       setSaved(done)
@@ -184,7 +189,8 @@ export function CaptureScreen() {
       setNote('')
       const next = POSES.find((p) => !done.includes(p))
       if (next) setPose(next)
-      else navigate('/photos', { replace: true })
+      // A queued photo is not in the library yet: stay here with the note rather than show a set without it.
+      else if (queuedNow === 0) navigate('/photos', { replace: true })
     } catch (err) {
       setProblem(`The photo is still here. ${problemText(err)}`)
     } finally {
@@ -270,6 +276,11 @@ export function CaptureScreen() {
       {problem && (
         <Alert severity="warning" variant="outlined" onClose={() => setProblem(null)}>
           {problem}
+        </Alert>
+      )}
+      {queued > 0 && (
+        <Alert severity="info" variant="outlined" data-testid="capture-queued">
+          {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this phone and will upload when you're back online.
         </Alert>
       )}
 

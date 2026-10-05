@@ -5,25 +5,26 @@
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { useState } from 'react'
+import { isQueryLoading, QueryStateCard } from '../../components'
+import { useLocalToday } from '../../app/local-today'
 import { useUiStore } from '../../app/ui-store'
 import { AiCard } from './lib/AiCard'
 import { CoachNote } from './lib/CoachNote'
 import { HealthDialog } from './lib/HealthDialog'
 import { HeroChart } from './lib/HeroChart'
 import { QuickLogRow } from './lib/QuickLogRow'
-import { isLoading, LoadError } from './lib/states'
 import { ThisWeekCard } from './lib/ThisWeekCard'
 import { TodayHeader } from './lib/TodayHeader'
 import { TodayRings } from './lib/TodayRings'
 import { useEventFeed } from './lib/useEventFeed'
-import { useLocalDate, useTodayData } from './lib/useToday'
+import { useTodayData } from './lib/useToday'
 
 /** Fallbacks while settings load: the goal (SPEC §3) and the water target (SPEC §6). */
 const DEFAULT_GOAL_KG = 65
 const DEFAULT_WATER_ML = 3000
 
 export function TodayPage() {
-  const date = useLocalDate()
+  const date = useLocalToday()
   const { day, trend, plan, settings, weekPlan, note, pending } = useTodayData(date)
   const feed = useEventFeed()
   const openQuickLog = useUiStore((s) => s.openQuickLog)
@@ -43,7 +44,7 @@ export function TodayPage() {
       {note && <CoachNote note={note} />}
 
       <TodayHeader
-        loading={isLoading(day) && isLoading(trend)}
+        loading={isQueryLoading(day) && isQueryLoading(trend)}
         unavailable={!day.data && !trend.data}
         trendKg={trendKg}
         rawKg={pending.weighInKg ?? day.data?.weight.raw_kg ?? null}
@@ -56,12 +57,12 @@ export function TodayPage() {
         onWeighIn={weighIn}
       />
 
-      {!day.data && !isLoading(day) ? (
-        <LoadError query={day} what="today" />
+      {!day.data && !isQueryLoading(day) ? (
+        <QueryStateCard query={day} what="today" />
       ) : (
         <TodayRings
           day={day.data}
-          loading={isLoading(day)}
+          loading={isQueryLoading(day)}
           pending={pending}
           waterTargetMl={settings.data?.settings.water_target_ml ?? DEFAULT_WATER_ML}
           onAddHealth={() => setHealthOpen(true)}

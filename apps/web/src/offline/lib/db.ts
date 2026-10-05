@@ -11,6 +11,7 @@ export interface QueuedWrite<Body = unknown> {
   method: HttpMethod
   /** Built path including any query string, e.g. '/api/fasts/4c1…/end'. */
   path: string
+  /** The JSON body, or a Blob for a binary upload (whose id and metadata are in `path`'s query). */
   body: Body
   /** UTC instant the write was made on this device. */
   created_at: string

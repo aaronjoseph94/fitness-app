@@ -91,7 +91,7 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
             .flatMap((r) => p.series.map((s) => num(field(r, s.key))))
             .filter((v): v is number => v !== null)
           if (p.target) values.push(p.target.value)
-          const y = niceScale(values, { count: 3 })
+          const y = niceScale(values, { count: 3, minStep: 10 ** -(p.tickPrecision ?? 0) })
           const h = p.height ?? 180
           const Tip = tooltip<DayRow>(
             (r) => r.date,

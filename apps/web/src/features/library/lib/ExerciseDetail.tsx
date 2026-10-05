@@ -1,5 +1,7 @@
-// Owns: the body of an exercise's detail view (SPEC §7) — animated demo when matched, both step images, tags, the
-// muscle map (primary at level 4, secondary at level 2), instructions, the YouTube form-video search, the strength chart
+// Owns: the body of an exercise's detail view (SPEC §7) — animated demo when matched (with the Gym visual credit its
+// terms require; a GIF that fails to load leaves the step images), both step images, tags, the
+// muscle map (primary at level 4, secondary at level 2), instructions (GET /api/exercises/:id: the cached list has
+// none), the YouTube form-video search, the strength chart
 // with PRs and next session's suggestion from GET /api/history/exercises/:id, and "Hide forever". Shared by the
 // detail sheet and the /train/library/:id page.
 import BlockRounded from '@mui/icons-material/BlockRounded'
@@ -8,9 +10,10 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import { endpoints } from '@fitness/shared/api'
-import type { Exercise, ExerciseHistory, Muscle } from '@fitness/shared/schemas'
+import type { Exercise, ExerciseHistory, ExerciseSummary, Muscle } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
 import { StrengthChart, type StrengthSession } from '../../../charts'
@@ -40,7 +43,12 @@ export function strengthSessions(history: ExerciseHistory): StrengthSession[] {
   return points.sort((a, b) => a.date.localeCompare(b.date))
 }
 
-function Media({ exercise }: { exercise: Exercise }) {
+/** Gym visual's terms: every use of an ExerciseDB GIF shows this line (packages/exercises/SOURCE.md). */
+const GIF_CREDIT = '© Gym visual — gymvisual.com'
+const GIF_CREDIT_URL = 'https://gymvisual.com/'
+const isExerciseDbGif = (url: string) => url.startsWith('/media/exercises/')
+
+function Media({ exercise }: { exercise: ExerciseSummary }) {
   const [broken, setBroken] = useState<ReadonlySet<string>>(new Set())
   const fail = (src: string) => setBroken((s) => new Set(s).add(src))
   const gif = exercise.gif_url && !broken.has(exercise.gif_url) ? exercise.gif_url : null
@@ -56,7 +64,18 @@ function Media({ exercise }: { exercise: Exercise }) {
   }
   return (
     <Stack spacing={2} data-testid="exercise-media">
-      {gif && <Box component="img" src={gif} alt={`${exercise.name} demonstration`} onError={() => fail(gif)} sx={{ ...frame, aspectRatio: '1 / 1', maxHeight: 320 }} />}
+      {gif && (
+        <Box component="figure" sx={{ m: 0 }}>
+          <Box component="img" src={gif} alt={`${exercise.name} demonstration`} onError={() => fail(gif)} sx={{ ...frame, aspectRatio: '1 / 1', maxHeight: 320 }} />
+          {isExerciseDbGif(gif) && (
+            <Box component="figcaption" data-testid="exercise-gif-credit" sx={{ mt: 1, fontSize: 12, color: tokens.ink.secondary, textAlign: 'center' }}>
+              <Box component="a" href={GIF_CREDIT_URL} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
+                {GIF_CREDIT}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      )}
       {steps.length > 0 && (
         <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, 1fr)`, gap: 2 }}>
           {steps.map((src, i) => (
@@ -111,6 +130,33 @@ function History({ exerciseId }: { exerciseId: string }) {
   )
 }
 
+/** "How to": the steps from GET /api/exercises/:id (kept for an hour; offline it answers from the read cache). */
+function Instructions({ exerciseId }: { exerciseId: string }) {
+  const full = useApiQuery(endpoints.training.getExercise, { params: { id: exerciseId } }, { staleTime: 60 * 60_000 })
+  const steps: Exercise['instructions'] = full.data?.instructions ?? []
+  if (!full.isPending && steps.length === 0) return null
+  return (
+    <Box data-testid="exercise-instructions">
+      <Box component="h3" sx={{ m: 0, mb: 2, fontSize: 16, fontWeight: tokens.font.weight.heading }}>
+        How to
+      </Box>
+      {full.isPending ? (
+        <Stack spacing={1} aria-busy="true" aria-label="Loading the steps">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="text" sx={{ fontSize: 15 }} />
+          ))}
+        </Stack>
+      ) : (
+        <Box component="ol" sx={{ m: 0, pl: 5, '& li': { mb: 2, lineHeight: 1.5, fontSize: 15 } }}>
+          {steps.map((step, i) => (
+            <li key={i}>{step}</li>
+          ))}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
 function MuscleList({ label, muscles }: { label: string; muscles: readonly Muscle[] }) {
   if (muscles.length === 0) return null
   return (
@@ -124,7 +170,8 @@ function MuscleList({ label, muscles }: { label: string; muscles: readonly Muscl
 }
 
 export interface ExerciseDetailProps {
-  exercise: Exercise
+  /** A row of the cached library list; the instructions are fetched here. */
+  exercise: ExerciseSummary
   /** Called after the exercise was hidden (e.g. close the sheet). */
   onHidden?: () => void
 }
@@ -178,18 +225,7 @@ export function ExerciseDetail({ exercise, onHidden }: ExerciseDetailProps) {
         Watch form videos
       </Button>
 
-      {exercise.instructions.length > 0 && (
-        <Box>
-          <Box component="h3" sx={{ m: 0, mb: 2, fontSize: 16, fontWeight: tokens.font.weight.heading }}>
-            How to
-          </Box>
-          <Box component="ol" sx={{ m: 0, pl: 5, '& li': { mb: 2, lineHeight: 1.5, fontSize: 15 } }}>
-            {exercise.instructions.map((step, i) => (
-              <li key={i}>{step}</li>
-            ))}
-          </Box>
-        </Box>
-      )}
+      <Instructions exerciseId={exercise.id} />
 
       <History exerciseId={exercise.id} />
 

@@ -50,6 +50,12 @@ async function decide(p: ChatProposal, decision: Decision): Promise<{ to: string
     case 'week_plan':
       await call(endpoints.weekPlans.apply, { params: { id: p.body.week_plan_id } })
       return { to: '/progress', label: 'See the week on Progress' }
+    case 'reminder_time':
+      await call(endpoints.plan.acceptProposal, { params: { id: p.id } })
+      return { to: '/settings/reminders', label: 'Reminders' }
+    case 'template_swap':
+      await call(endpoints.plan.acceptProposal, { params: { id: p.id } })
+      return { to: `/train/builder/${p.body.template_id}`, label: 'Open the template' }
   }
 }
 

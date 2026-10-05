@@ -4,11 +4,12 @@
 import Box from '@mui/material/Box'
 import { endpoints } from '@fitness/shared/api'
 import type { MealSlot } from '@fitness/shared/schemas'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useApiQuery } from '../../../api'
+import { useLocalToday } from '../../../app/local-today'
 import type { QuickLogKind } from '../../../app/ui-store'
-import { LogSheet, todayLocal, useDay, useLogSettings } from '../../quick-log'
+import { LogSheet, useDay, useLogSettings } from '../../quick-log'
 import { DateSwitcher } from './DateSwitcher'
 import { DayHeader } from './DayHeader'
 import { FastingCard } from './FastingCard'
@@ -24,13 +25,8 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 /** The day in the URL (?date=2026-10-04), never after today; today when absent. */
 function useLogDate(): [string, string, (date: string) => void] {
   const [params, setParams] = useSearchParams()
-  const [today, setToday] = useState(() => todayLocal())
-  // Midnight passes while the app is open: keep "today" honest when the page becomes visible again.
-  useEffect(() => {
-    const onVisible = () => document.visibilityState === 'visible' && setToday(todayLocal())
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [])
+  // Midnight passes while the app is open: "today" follows it.
+  const today = useLocalToday()
   const raw = params.get('date')
   const date = raw && ISO_DATE.test(raw) && raw <= today ? raw : today
   const setDate = (next: string) => {

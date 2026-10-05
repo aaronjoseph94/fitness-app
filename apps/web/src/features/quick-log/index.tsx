@@ -5,7 +5,7 @@
 // - Meal capture (photo, barcode, voice, text, favourites, foods) inside the meal form, then MealReview: analysis
 //   progress, the editable item list (ItemsEditor) and Confirm, then the DayAdjustmentCard.
 // - The logging kit the Log tab builds on: writes that know what they make stale and show as pending until synced
-//   (useLogMutation, usePendingLogs), the shared reads (day, settings, water, fasts, the day's meals polled while one
+//   (useLogMutation, usePendingLogs), dictation (useDictation, also behind Ask AI's mic), the shared reads (day, settings, water, fasts, the day's meals polled while one
 //   is analysed), the food picker, food icons, the food maths and slots, Edmonton dates, and the small form pieces.
 import { useUiStore } from '../../app/ui-store'
 import { LogSheet } from './lib/LogSheet'
@@ -33,3 +33,4 @@ export { useDayMealsLive, analysisState, type AnalysisState } from './lib/review
 export { DayAdjustmentCard, type DayAdjustmentCardProps } from './lib/review/DayAdjustmentCard'
 export { latestAdjustment, useDayAdjustment, type AdjustmentEvent } from './lib/review/adjustment'
 export { FoodIcon, useFoodIcons } from './lib/review/food-icons'
+export { useDictation, appendPhrase, type Dictation } from './lib/capture/voice'

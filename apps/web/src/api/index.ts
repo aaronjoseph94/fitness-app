@@ -1,5 +1,6 @@
 // Owns: the public surface of the typed API client over the shared endpoint contract (@fitness/shared/api):
-// one-off calls, TanStack Query hooks (offline-aware reads, queue-aware writes), errors, and the Access session signal.
+// one-off calls (JSON bodies, or Binary ones as octet-stream), TanStack Query hooks (offline-aware reads, queue-aware
+// writes, a queued upload kept as a Blob), errors, and the Access session signal.
 export { ApiError, isApiError, type ApiErrorKind } from './lib/errors'
 export { call } from './lib/call'
 export { apiQueryKey, useApiMutation, useApiQuery, type ApiMutationOptions, type ApiQueryOptions } from './lib/query'

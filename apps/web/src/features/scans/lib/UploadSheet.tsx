@@ -16,11 +16,14 @@ import type { ScanUploaded } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { endpoints } from '@fitness/shared/api'
-import { apiQueryKey } from '../../../api'
+import { apiQueryKey, call } from '../../../api'
 import { tokens } from '../../../theme'
+import { problemText } from '../../quick-log'
 import { MaskEditor } from './MaskEditor'
 import { ACCEPT, DEFAULT_MASK, maskedSheet, renderSheet, type MaskBox } from './sheet'
-import { uploadSheet } from './upload'
+
+/** A scan PDF can be a few MB; give the upload a minute. Never queued: reading the sheet needs the server now. */
+const UPLOAD_TIMEOUT_MS = 60_000
 
 type Step = { kind: 'pick' } | { kind: 'rendering'; name: string } | { kind: 'mask'; sheet: HTMLCanvasElement; name: string } | { kind: 'uploading' }
 
@@ -64,12 +67,16 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
     setStep({ kind: 'uploading' })
     try {
       const { blob, content_type } = await maskedSheet(sheet, box)
-      const result = await uploadSheet({ id: crypto.randomUUID(), content_type }, blob)
+      const result = await call(
+        endpoints.scans.upload,
+        { query: { id: crypto.randomUUID(), content_type }, body: await blob.arrayBuffer() },
+        { timeoutMs: UPLOAD_TIMEOUT_MS },
+      )
       void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.scans.list) })
       reset()
       onUploaded(result)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed. Try again.')
+      setError(problemText(e))
       setStep({ kind: 'mask', sheet, name: '' })
     }
   }

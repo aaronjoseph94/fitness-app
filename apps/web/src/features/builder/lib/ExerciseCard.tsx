@@ -19,7 +19,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Exercise, TemplateExerciseInput } from '@fitness/shared/schemas'
+import type { ExerciseSummary, TemplateExerciseInput } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
 import { formatNumber } from '../../../components'
 import { tokens } from '../../../theme'
@@ -82,7 +82,7 @@ function NumberBox({
 
 export interface ExerciseCardProps {
   item: BuilderItem
-  exercise: Exercise | undefined
+  exercise: ExerciseSummary | undefined
   index: number
   expanded: boolean
   onToggle: () => void

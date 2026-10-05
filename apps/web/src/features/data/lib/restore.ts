@@ -13,7 +13,6 @@ import {
 } from '@fitness/shared/schemas'
 import { strFromU8, unzipSync } from 'fflate'
 import { call } from '../../../api'
-import { uploadImportFile } from './upload'
 
 /** Soft cap on one import page's JSON size. */
 const PAGE_BYTES = 256 * 1024
@@ -146,10 +145,10 @@ export async function runRestore(
       } else {
         const bytes = unzipSync(opened.zip, { filter: (entry) => entry.name === step.path })[step.path]
         if (!bytes) throw new Error(`${step.path} is missing from the zip`)
-        await uploadImportFile(
-          { key: step.key, restore_id: options.restoreId, overwrite: options.overwrite },
-          bytes,
-          options.signal,
+        await call(
+          endpoints.export.importFile,
+          { query: { key: step.key, restore_id: options.restoreId, overwrite: options.overwrite }, body: ownBuffer(bytes) },
+          { signal: options.signal, timeoutMs: 60_000 },
         )
       }
     } catch (error) {
@@ -158,4 +157,10 @@ export async function runRestore(
     }
     onStep(i + 1)
   }
+}
+
+/** The bytes as a standalone ArrayBuffer (an unzipped entry may be a view into a larger one). */
+function ownBuffer(bytes: Uint8Array): ArrayBuffer {
+  const whole = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength && bytes.buffer instanceof ArrayBuffer
+  return whole ? (bytes.buffer as ArrayBuffer) : bytes.slice().buffer
 }

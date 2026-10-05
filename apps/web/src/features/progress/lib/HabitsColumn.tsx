@@ -7,7 +7,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
 import { CalendarHeatmap, CaloriesChart, FastingStrip, MacrosChart, SleepChart, StepsChart, WaterChart } from '../../../charts'
-import { ChartCard, formatNumber, SectionHeader } from '../../../components'
+import { ChartCard, formatNumber, isQueryLoading, QueryStateCard, SectionHeader } from '../../../components'
 import {
   caloriesDays,
   fastEntries,
@@ -20,7 +20,6 @@ import {
   stepsDays,
   waterDays,
 } from './series'
-import { ChartSkeleton, ErrorCard, isLoading } from './states'
 
 /** SPEC §9 readiness compares sleep with 7.5 h. */
 const SLEEP_TARGET_H = 7.5
@@ -36,19 +35,12 @@ interface HabitsColumnProps {
 export function HabitsColumn({ days, fasts, from, to, fastHours }: HabitsColumnProps) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
   const header = <SectionHeader title="Food, water and recovery" subtitle="Each day against its target. Fast days are marked, not missed." />
-  if (isLoading(days))
-    return (
-      <Stack spacing={4}>
-        {header}
-        <ChartSkeleton height={220} />
-        <ChartSkeleton height={220} />
-      </Stack>
-    )
   if (!days.data)
     return (
       <Stack spacing={4}>
         {header}
-        <ErrorCard query={days} what="your days" />
+        <QueryStateCard query={days} what="your days" height={220} />
+        {isQueryLoading(days) && <QueryStateCard query={days} what="your days" height={220} />}
       </Stack>
     )
 
@@ -155,10 +147,8 @@ export function HabitsColumn({ days, fasts, from, to, fastHours }: HabitsColumnP
         />
       </ChartCard>
 
-      {isLoading(fasts) ? (
-        <ChartSkeleton height={90} />
-      ) : !fasts.data ? (
-        <ErrorCard query={fasts} what="your fasts" />
+      {!fasts.data ? (
+        <QueryStateCard query={fasts} what="your fasts" height={90} />
       ) : (
         <ChartCard title="Fasting" subtitle={`Planned and completed ${fastHours} h fasts`}>
           <FastingStrip fasts={entries} from={from} to={stripTo} />

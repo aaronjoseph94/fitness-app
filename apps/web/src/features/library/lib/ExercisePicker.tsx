@@ -7,7 +7,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
-import type { Exercise, Muscle } from '@fitness/shared/schemas'
+import type { ExerciseSummary, Muscle } from '@fitness/shared/schemas'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { EmptyState } from '../../../components'
 import { LoadProblem } from '../../quick-log'
@@ -23,7 +23,7 @@ export type { ExerciseFilter } from './filter'
 export interface ExercisePickerProps {
   open: boolean
   onClose: () => void
-  onPick: (exercise: Exercise) => void
+  onPick: (exercise: ExerciseSummary) => void
   /** Filters set when the picker opens. */
   initialFilter?: { muscle?: Muscle; equipment?: string }
   /** Swap mode: only allowed exercises sharing a primary muscle with this exercise. */
@@ -71,7 +71,7 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
     return filterExercises(index.all, { ...filter, q: query, includeHidden })
   }, [swap, target, index.all, filter, query, includeHidden])
 
-  const pick = (e: Exercise) => {
+  const pick = (e: ExerciseSummary) => {
     onPick(e)
     if (keepOpen) setAdded((n) => n + 1)
     else onClose()

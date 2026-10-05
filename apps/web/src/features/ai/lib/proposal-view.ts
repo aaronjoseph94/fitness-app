@@ -1,6 +1,6 @@
 // Owns: how something Ask AI proposed reads on its card (pure) — title, source line, before → after rows with units,
-// the card status — for a plan change, a workout, or a week plan.
-import type { ChatProposal, PlanChange, TargetField, Weekday } from '@fitness/shared/schemas'
+// the card status — for a plan change, a workout, a week plan, a reminder time or an exercise swap.
+import type { ChatProposal, ClockReminder, PlanChange, TargetField, Weekday } from '@fitness/shared/schemas'
 import { formatNumber, formatShortDate, type ProposalChange, type ProposalStatus } from '../../../components'
 
 const FIELD: Record<TargetField, { label: string; unit: string }> = {
@@ -12,6 +12,8 @@ const FIELD: Record<TargetField, { label: string; unit: string }> = {
   water_ml: { label: 'Water', unit: 'ml' },
   steps: { label: 'Steps', unit: 'steps' },
 }
+
+const REMINDER: Record<ClockReminder, string> = { weigh_in: 'Weigh-in', workout: 'Workout', scan_due: 'Scan due' }
 
 const WEEKDAY: Record<Weekday, string> = {
   mon: 'Mondays',
@@ -70,5 +72,21 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
     }
     case 'week_plan':
       return { title: 'Plan for the week', summary: p.summary, changes: [], status: p.status, replaced: false }
+    case 'reminder_time':
+      return {
+        title: `Move the ${REMINDER[body.reminder].toLowerCase()} reminder`,
+        summary: p.summary,
+        changes: [{ label: REMINDER[body.reminder], from: '—', to: body.time }],
+        status: p.status,
+        replaced: false,
+      }
+    case 'template_swap':
+      return {
+        title: `Swap an exercise in ${body.template_name}`,
+        summary: p.summary,
+        changes: [{ label: 'Exercise', from: body.from_name, to: body.to_name }],
+        status: p.status,
+        replaced: false,
+      }
   }
 }

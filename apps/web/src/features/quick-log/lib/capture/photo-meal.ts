@@ -1,6 +1,6 @@
 // Owns: a photo meal from pick to analysis — photos picked (camera or gallery, several), each downscaled and re-encoded
 // on this phone; then the meal is created (input_method 'photo', with an optional note as raw_text) and every photo
-// uploaded, which starts the Worker's meal_analysis. Needs a connection: a photo can't wait in the offline queue.
+// uploaded, which starts the Worker's meal_analysis. Needs a connection: the review waits on that analysis, so photos go now.
 // A failed upload keeps the meal and what already went up, so "Try again" sends only the rest.
 import { endpoints } from '@fitness/shared/api'
 import type { MealSlot } from '@fitness/shared/schemas'

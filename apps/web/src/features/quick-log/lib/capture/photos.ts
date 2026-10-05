@@ -1,10 +1,9 @@
 // Owns: meal photos on their way to the Worker (SPEC §9 privacy rail) — decode, downscale to at most 1,024 px on the
 // long side, re-encode with canvas as WebP (JPEG where the browser cannot encode WebP), which drops EXIF and GPS since
-// only pixels survive a canvas — and the binary upload POST /api/meals/:id/photos (octet-stream, metadata in the
-// query; the shared JSON client cannot send binary bodies, so this is the one raw fetch in the logging kit).
-import { buildPath, endpoints } from '@fitness/shared/api'
-import { MAX_UPLOAD_BYTES, MealPhotoUploadQuery, type ImageType, type MealPhoto } from '@fitness/shared/schemas'
-import { ApiError } from '../../../../api'
+// only pixels survive a canvas — and the binary upload POST /api/meals/:id/photos.
+import { endpoints } from '@fitness/shared/api'
+import type { ImageType, MealPhoto } from '@fitness/shared/schemas'
+import { call } from '../../../../api'
 
 /** SPEC §9: meal photos are downscaled to 1,024 px before upload. */
 export const MAX_PHOTO_EDGE = 1024
@@ -78,45 +77,17 @@ export function releasePhoto(photo: PreparedPhoto): void {
 }
 
 /**
- * Upload one prepared photo to a meal. Resolves with the stored MealPhoto (validated); throws ApiError like every
- * other call ('network' when offline or timed out, 'auth-expired' on an Access bounce, 'http' otherwise).
+ * Upload one prepared photo to a meal through the shared client (octet-stream body, metadata in the query). Resolves
+ * with the stored MealPhoto; throws ApiError like every other call. Never queued: the review needs the analysis now.
  */
 export async function uploadMealPhoto(mealId: string, photo: PreparedPhoto, signal?: AbortSignal): Promise<MealPhoto> {
-  const endpoint = endpoints.nutrition.addMealPhoto
-  const query = { photo_id: photo.id, width: String(photo.width), height: String(photo.height), content_type: photo.contentType }
-  const path = `${buildPath(endpoint.path, { id: mealId })}?${new URLSearchParams(query).toString()}`
-  const label = `POST ${path}`
-  const checked = MealPhotoUploadQuery.safeParse(query)
-  if (!checked.success || photo.blob.size === 0 || photo.blob.size > MAX_UPLOAD_BYTES) {
-    throw new ApiError({ kind: 'invalid-request', request: label, message: 'The photo is empty or too large' })
-  }
-  const timeout = AbortSignal.timeout(UPLOAD_TIMEOUT_MS)
-  let response: Response
-  try {
-    response = await fetch(path, {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream' },
-      body: photo.blob,
-      credentials: 'include',
-      // Access answers an expired session with a redirect: see it, never follow it.
-      redirect: 'manual',
-      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    })
-  } catch (cause) {
-    if (signal?.aborted) throw cause
-    throw new ApiError({ kind: 'network', request: label, message: navigator.onLine ? 'Could not reach the server' : 'You are offline' })
-  }
-  if (response.type === 'opaqueredirect' || response.status === 401) {
-    throw new ApiError({ kind: 'auth-expired', request: label, message: 'Your sign-in expired' })
-  }
-  const body: unknown = await response.json().catch(() => undefined)
-  if (!response.ok) {
-    const fields = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
-    const code = typeof fields.error === 'string' ? fields.error : null
-    const message = typeof fields.message === 'string' ? fields.message : (code ?? `HTTP ${response.status}`)
-    throw new ApiError({ kind: 'http', request: label, status: response.status, code, message, detail: body })
-  }
-  const parsed = endpoint.response.safeParse(body)
-  if (!parsed.success) throw new ApiError({ kind: 'invalid-response', request: label, message: 'Unexpected photo response', detail: parsed.error.issues })
-  return parsed.data
+  return call(
+    endpoints.nutrition.addMealPhoto,
+    {
+      params: { id: mealId },
+      query: { photo_id: photo.id, width: photo.width, height: photo.height, content_type: photo.contentType },
+      body: await photo.blob.arrayBuffer(),
+    },
+    { signal, timeoutMs: UPLOAD_TIMEOUT_MS },
+  )
 }

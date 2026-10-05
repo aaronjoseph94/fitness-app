@@ -4,9 +4,8 @@ import type { Forecast, TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../../api'
 import { WeightTrendChart } from '../../../charts'
-import { ChartCard, formatNumber } from '../../../components'
+import { ChartCard, formatNumber, QueryStateCard } from '../../../components'
 import { forecastPath, lastTrend, weightMilestones, weightPoints } from '../../progress/series'
-import { CardSkeleton, isLoading, LoadError } from './states'
 
 interface HeroChartProps {
   trend: UseQueryResult<TrendSeries, ApiError>
@@ -17,8 +16,7 @@ interface HeroChartProps {
 }
 
 export function HeroChart({ trend, forecast, goalKg, onWeighIn }: HeroChartProps) {
-  if (isLoading(trend)) return <CardSkeleton height={240} />
-  if (!trend.data) return <LoadError query={trend} what="the weight trend" />
+  if (!trend.data) return <QueryStateCard query={trend} what="the weight trend" height={240} />
 
   const data = trend.data
   const rate = forecast ?? data.forecast

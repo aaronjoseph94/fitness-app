@@ -1,7 +1,7 @@
 // Owns: how an AI event reads on Today (pure) — a proposal as the ProposalCard's title, before → after rows (with units)
 // and its "why", and any other event (day adjustment, review, note, change) as a source line, title, text and details.
 import { isoWeek, localDate, localTime } from '@fitness/shared/engine'
-import type { Actor, AiEvent, PlanChange, Proposal, TargetField, Weekday } from '@fitness/shared/schemas'
+import type { Actor, AiEvent, ClockReminder, PlanChange, Proposal, TargetField, Weekday } from '@fitness/shared/schemas'
 import { formatNumber, formatSigned, type ProposalChange } from '../../../components'
 
 const FIELD: Record<TargetField, { label: string; unit: string }> = {
@@ -13,6 +13,8 @@ const FIELD: Record<TargetField, { label: string; unit: string }> = {
   water_ml: { label: 'Water', unit: 'ml' },
   steps: { label: 'Steps', unit: 'steps' },
 }
+
+const REMINDER: Record<ClockReminder, string> = { weigh_in: 'Weigh-in', workout: 'Workout', scan_due: 'Scan due' }
 
 const WEEKDAY: Record<Weekday, string> = {
   mon: 'Mondays',
@@ -72,6 +74,15 @@ export function proposalView(p: Proposal): ProposalView {
       }
     case 'week_plan':
       return { title: 'Next week’s plan', source, changes: [], why: [] }
+    case 'reminder_time':
+      return { title: `Move the ${REMINDER[body.reminder].toLowerCase()} reminder`, source, changes: [{ label: REMINDER[body.reminder], from: '—', to: body.time }], why: [] }
+    case 'template_swap':
+      return {
+        title: `Swap an exercise in ${body.template_name}`,
+        source,
+        changes: [{ label: 'Exercise', from: body.from_name, to: body.to_name }],
+        why: [],
+      }
   }
 }
 

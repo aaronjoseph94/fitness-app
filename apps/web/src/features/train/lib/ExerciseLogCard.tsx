@@ -13,7 +13,7 @@ import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
-import type { Exercise } from '@fitness/shared/schemas'
+import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { memo, useState } from 'react'
 import { formatShortDate } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
@@ -25,7 +25,7 @@ import { SET_GRID, SetRow } from './SetRow'
 export interface ExerciseLogCardProps {
   exercise: LoggerExercise
   /** The library entry (name, image); undefined while the library loads. */
-  info: Exercise | undefined
+  info: ExerciseSummary | undefined
   actions: LoggerActions
   onAbout: (exerciseId: string) => void
 }

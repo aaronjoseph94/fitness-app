@@ -1,6 +1,6 @@
-// Owns: dictating a meal (SPEC §6 voice → the text path). Where the browser has SpeechRecognition (Chrome, Safari in a
-// tab) the mic button transcribes into the text box; iOS Home Screen apps may not expose it, so `supported` is false
-// there and the form falls back to focusing the box with a hint to use the keyboard's mic. Same text either way.
+// Owns: dictation (SPEC §6 voice → the text path) for the meal form and Ask AI's composer. Where the browser has
+// SpeechRecognition (Chrome, Safari in a tab) the mic button transcribes into the text box; iOS Home Screen apps may not
+// expose it, so `supported` is false there and the form falls back to the keyboard's mic. Same text either way.
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 /** The slice of the Web Speech API we use (lib.dom declares the events but not the recogniser itself). */

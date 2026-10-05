@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
-// Owns: the service worker — the precached app shell (offline launch), navigation fallback to index.html, runtime image
-// caches, and (phase 5) Web Push. No Background Sync: iOS lacks it, so the page flushes the offline queue itself.
+// Owns: the service worker — the precached app shell (offline launch), navigation fallback to index.html, runtime
+// caches (exercise media, illustrations, food icons, the barcode WASM, pdf.js), and Web Push. No Background Sync: iOS
+// lacks it, so the page flushes the offline queue itself.
 import { clientsClaim, type WorkboxPlugin } from 'workbox-core'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
@@ -22,11 +23,17 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denyl
 
 const DAY_SECONDS = 24 * 60 * 60
 
-/** Store only real images: an Access login page or the SPA fallback must never be cached as a picture. */
-const imagesOnly: WorkboxPlugin = {
-  cacheWillUpdate: async ({ response }) =>
-    response.status === 200 && (response.headers.get('content-type') ?? '').startsWith('image/') ? response : null,
-}
+/**
+ * Store only a 200 whose content type starts with one of `types`: an Access login page or the SPA fallback (both HTML)
+ * must never be cached as a picture, a WASM module or a script.
+ */
+const only = (...types: string[]): WorkboxPlugin => ({
+  cacheWillUpdate: async ({ response }) => {
+    const type = response.headers.get('content-type') ?? ''
+    return response.status === 200 && types.some((t) => type.startsWith(t)) ? response : null
+  },
+})
+const imagesOnly = only('image/')
 
 const isSameOrigin = (url: URL) => url.origin === self.location.origin
 
@@ -45,6 +52,34 @@ registerRoute(
   new StaleWhileRevalidate({
     cacheName: 'illustrations',
     plugins: [imagesOnly, new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true })],
+  }),
+)
+
+// Food icons (~115 SVGs and their index.json), kept out of the precache: fetched the first time a meal shows them.
+registerRoute(
+  ({ url }) => isSameOrigin(url) && url.pathname.startsWith('/food-icons/'),
+  new StaleWhileRevalidate({
+    cacheName: 'food-icons',
+    plugins: [only('image/', 'application/json'), new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true })],
+  }),
+)
+
+// The barcode reader's WASM (~1 MB, not precached): cached on the first scan, so scanning works offline after that.
+// Its URL is not hashed, so a new barcode-detector version needs a new cache name here.
+registerRoute(
+  ({ url }) => isSameOrigin(url) && url.pathname.startsWith('/wasm/'),
+  new CacheFirst({
+    cacheName: 'wasm-v1',
+    plugins: [only('application/wasm'), new ExpirationPlugin({ maxEntries: 4, purgeOnQuotaError: true })],
+  }),
+)
+
+// pdf.js and its worker (~1.7 MB, hashed names, kept out of the precache): loaded only when a scan sheet PDF is opened.
+registerRoute(
+  ({ url }) => isSameOrigin(url) && /^\/assets\/pdf(\.worker\.min)?-[\w-]+\.m?js$/.test(url.pathname),
+  new CacheFirst({
+    cacheName: 'pdfjs',
+    plugins: [only('application/javascript', 'text/javascript'), new ExpirationPlugin({ maxEntries: 6, maxAgeSeconds: 90 * DAY_SECONDS, purgeOnQuotaError: true })],
   }),
 )
 

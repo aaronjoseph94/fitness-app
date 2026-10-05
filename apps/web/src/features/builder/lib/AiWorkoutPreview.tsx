@@ -11,7 +11,7 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
-import type { Exercise, WorkoutDraft } from '@fitness/shared/schemas'
+import type { ExerciseSummary, WorkoutDraft } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
@@ -22,7 +22,7 @@ import { draftMuscleLevels } from './scores'
 export interface WorkoutSwap {
   index: number
   from: string
-  to: Exercise
+  to: ExerciseSummary
 }
 
 export interface AiWorkoutPreviewProps {
@@ -49,7 +49,7 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
   const swapping = swapAt !== null ? draft.exercises[swapAt] : undefined
   const pickedIds = useMemo(() => new Set(draft.exercises.map((e) => e.exercise_id)), [draft.exercises])
 
-  const swap = (to: Exercise) => {
+  const swap = (to: ExerciseSummary) => {
     if (swapAt === null || !swapping) return
     // Same prescription; the load was chosen for the old exercise, so it starts empty.
     const exercises = draft.exercises.map((e, i) => (i === swapAt ? { ...e, exercise_id: to.id, target_load_kg: null } : e))

@@ -4,16 +4,14 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { useNavigate } from 'react-router'
-import { ChartCard } from '../../../components'
+import { ChartCard, QueryStateCard } from '../../../components'
 import { confirmedScans, ScanCharts, useScans } from '../../scans/charts'
-import { ChartSkeleton, ErrorCard, isLoading } from './states'
 
 export function ScansSection() {
   const navigate = useNavigate()
   const scans = useScans()
   const all = <Button size="small" onClick={() => void navigate('/scans')}>All scans</Button>
-  if (isLoading(scans)) return <ChartSkeleton height={220} />
-  if (!scans.data) return <ErrorCard query={scans} what="the scans" />
+  if (!scans.data) return <QueryStateCard query={scans} what="the scans" height={220} />
   const confirmed = confirmedScans(scans.data)
   if (confirmed.length === 0)
     return (

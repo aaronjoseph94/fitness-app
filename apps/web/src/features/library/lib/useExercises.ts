@@ -1,8 +1,8 @@
-// Owns: reading the exercise library — one GET /api/exercises?scope=all per session (the list is ~880 rows and rarely
-// changes), shared by the picker, the library, the detail sheet and the builder; an id index; and what goes stale when
-// the allowed set changes (equipment statuses, exclusions).
+// Owns: reading the exercise library — one GET /api/exercises?scope=all per session (the list is ~880 rows without
+// instructions and rarely changes; filtering happens on the phone), shared by the picker, the library, the detail sheet
+// and the builder; an id index; and what goes stale when the allowed set changes (equipment statuses, exclusions).
 import { endpoints } from '@fitness/shared/api'
-import type { Exercise } from '@fitness/shared/schemas'
+import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { apiQueryKey, useApiQuery } from '../../../api'
@@ -15,16 +15,16 @@ export function useExercises() {
 }
 
 export interface ExerciseIndex {
-  all: readonly Exercise[]
+  all: readonly ExerciseSummary[]
   /** The allowed exercise set (what the AI sees). */
-  allowed: readonly Exercise[]
-  byId: ReadonlyMap<string, Exercise>
+  allowed: readonly ExerciseSummary[]
+  byId: ReadonlyMap<string, ExerciseSummary>
   isLoading: boolean
   error: unknown
   refetch: () => void
 }
 
-const EMPTY: readonly Exercise[] = []
+const EMPTY: readonly ExerciseSummary[] = []
 
 /** The library as an index: every exercise by id, plus the allowed subset. */
 export function useExerciseIndex(): ExerciseIndex {
@@ -63,7 +63,7 @@ export function useMarkHidden(): (exerciseId: string) => void {
   const queryClient = useQueryClient()
   return useCallback(
     (exerciseId: string) =>
-      queryClient.setQueryData<Exercise[]>(apiQueryKey(endpoints.training.listExercises, ALL), (list) =>
+      queryClient.setQueryData<ExerciseSummary[]>(apiQueryKey(endpoints.training.listExercises, ALL), (list) =>
         list?.map((e) => (e.id === exerciseId ? { ...e, allowed: false } : e)),
       ),
     [queryClient],

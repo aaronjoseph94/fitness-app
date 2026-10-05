@@ -115,9 +115,9 @@ export default defineConfig({
       useCredentials: true,
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
-        // Exercise media is runtime-cached by the service worker (CacheFirst), not precached; the barcode WASM (1 MB)
-        // loads only when a barcode is scanned.
-        globIgnores: ['exercises/**', 'media/**', 'wasm/**'],
+        // Runtime-cached by src/sw.ts instead of precached: exercise media, food icons (loaded with a meal), the barcode
+        // WASM (1 MB, on the first scan) and pdf.js with its worker (~1.7 MB, only when a scan PDF is opened).
+        globIgnores: ['exercises/**', 'media/**', 'wasm/**', 'food-icons/**', 'assets/pdf-*.js', 'assets/pdf.worker.min-*'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {
