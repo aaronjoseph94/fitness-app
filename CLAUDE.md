@@ -73,6 +73,17 @@ pnpm e2e                                 # Playwright flows against the local Wo
 5. When something in the spec is impossible or a better option exists (a library, a Cloudflare limit, a free-tier change), say so and propose the smallest change. Never substitute silently. Record the decision in `docs/PROGRESS.md`.
 6. Show the running app (local Worker) at the end of each feature; Playwright flows for the main paths at the end of each phase.
 
+## Engineering approach (Matt Pocock's skills — `.claude/skills/`)
+
+Read `.claude/skills/codebase-design/SKILL.md` before designing any module, and use its vocabulary (module, interface, depth, seam, adapter, leverage, locality). Use `GLOSSARY.md` terms in names, tests and UI copy.
+
+- **Deep modules.** A module is a folder whose root files are its entry points (usually just `index.ts`); implementation lives in `lib/`, tests in `tests/`. Small interface, lots of behaviour behind it. `pnpm lint:boundaries` (dependency-cruiser, `.dependency-cruiser.cjs`) fails on any import that reaches into another module's subfolders. Module roots: `packages/shared/src/*`, `apps/worker/src/modules/*`, `apps/web/src/features/*`.
+- **Accept dependencies, return results.** Worker modules take `(deps, input)` — `deps` holds `db`, `env`, `now`, `actor`, and any adapter (LLM router, food sources, file store) — and return values. No module constructs its own adapters, so tests swap in fakes at the seam.
+- **Seams that matter get adapters.** LLM providers, nutrition sources, the file store and push are adapters behind one interface each. Don't add a seam with only one hypothetical adapter.
+- **Tests at agreed seams only** (`.claude/skills/tdd`): the engine's public functions, `guards.ts`, and each worker module's `index.ts`. Write one failing test, then the code, in vertical slices. Assert against known-good literals from the spec (e.g. the 2,551 − 1,400 kcal → ~1.0 kg/week example), never values recomputed the way the code does. Keep it to a few tests per seam during the build.
+- **Review** each phase with `.claude/skills/code-review` (Standards axis = this file + the smell baseline; Spec axis = `docs/SPEC.md`), then fix findings in one pass.
+- **Decisions** that future work must not re-litigate go in `docs/PROGRESS.md` (and `docs/adr/` for the big ones).
+
 ## Engineering rules (from the 2026-10-05 stack check — see docs/PROGRESS.md for the why)
 
 **Dependencies.** Every version is pinned once in the `catalog:` of `pnpm-workspace.yaml` and already installed. Do not run `pnpm add`/`pnpm install` with new packages from a parallel agent; if something is missing, say so in your result. TypeScript 6.0 (not 7), Vitest 4.1 (not 5), Playwright 1.56.1 (matches the preinstalled Chromium), Zod 4 (`import * as z from 'zod'`), MUI 9 (Grid uses `size`, not `xs`), React Router 8 (data mode), Recharts 3 (use the `responsive` prop or fixed widths).
@@ -90,7 +101,7 @@ pnpm e2e                                 # Playwright flows against the local Wo
 - Index every `date` column, `ai_jobs(status, run_after)`, `ai_events(created_at)`.
 
 **Worker (free plan: 10 ms CPU per request/cron, 50 external subrequests, waitUntil ≤ 30 s).**
-- Business logic lives in `apps/worker/src/services/*` as functions over `(ctx: { db, env, actor }, input)`; REST routes and the tools layer (Ask AI + MCP) both call services. Routes are thin: validate with the shared Zod schema, call a service, return JSON.
+- Business logic lives in deep modules under `apps/worker/src/modules/<name>/` (entry `index.ts`, internals in `lib/`) as functions over `(deps, input)`. REST routes (`apps/worker/src/routes/*`) and the tools layer (Ask AI + MCP) both call module entry points. Routes are thin: validate with the shared Zod schema, call a module, return JSON.
 - Keep per-request CPU small: build JSON Schemas for tools once per isolate (module scope), never zip or process images in the Worker (export zip is built in the browser; backups are per-table JSON in R2).
 - One cron (`*/5 * * * *`). `src/cron.ts` sweeps `ai_jobs` and dispatches nightly / weekly / monthly work by **Edmonton local time**, made idempotent by a `cron_runs` row per (kind, local period).
 - Jobs run in `ctx.waitUntil()` with a 25 s deadline (per-attempt `AbortSignal.timeout`); on deadline set `status=queued`. `ai_jobs.lease_until` lets the sweep requeue stuck `running` rows.

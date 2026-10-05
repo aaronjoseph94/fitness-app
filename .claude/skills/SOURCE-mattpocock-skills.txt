@@ -1,0 +1,2 @@
+Vendored from https://github.com/mattpocock/skills (MIT) at commit:
+24fe0ef
