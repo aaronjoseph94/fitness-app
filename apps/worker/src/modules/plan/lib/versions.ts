@@ -1,7 +1,7 @@
 // Owns: writing plan versions — guard a batch of target changes, apply the accepted ones to the active targets, and
 // build every write of one change as a single db.batch: deactivate old + insert new + the ai_events record + scheduled
 // later steps as future proposals + the rebuilt daily_targets (today … last materialised date) + a plan_reforecast job.
-import { addDays, applyGuards, today, type GuardRule, type TargetChange } from '@fitness/shared/engine'
+import { addDays, applyGuards, today, weekdayOf, type GuardRule, type TargetChange } from '@fitness/shared/engine'
 import { Weekday, type Actor, type FieldChange, type PlanChange, type PlanDiff, type PlanTargets, type TargetField } from '@fitness/shared/schemas'
 import { eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
@@ -10,7 +10,7 @@ import type { Deps } from '../../../lib/deps'
 import { eventInsert } from '../../events'
 import { jobInsert } from '../../jobs'
 import type { PlanContext, PlanVersionRow } from './context'
-import { computeTargetRows, targetHorizon, targetStatements } from './targets'
+import { computeTargetRows, targetHorizon, targetStatements, type WeekOverride } from './targets'
 
 export type RejectedChange = { change: PlanChange; rule: GuardRule; reason: string }
 export type ScheduledChange = { change: PlanChange; week_offset: number; due: string; proposal_id: string }
@@ -111,21 +111,50 @@ const fieldChanges = (diff: PlanDiff): FieldChange[] =>
 export const describeDiff = (diff: PlanDiff) => diff.map((d) => `${label(d)} ${d.from ?? '—'} → ${d.to ?? '—'}`).join('; ')
 
 /**
+ * The materialised moves of one week (from today on) when `week` replaces its stored week plan: one diff line per
+ * (date, field) that differs between `before` (stored state) and `after`, keyed by the date's weekday.
+ */
+function weekDiff(before: readonly NewTargetRow[], after: readonly NewTargetRow[]): PlanDiff {
+  const next = new Map(after.map((r) => [r.date, r]))
+  const diff: PlanDiff = []
+  for (const b of before) {
+    const a = next.get(b.date)
+    if (!a) continue
+    for (const field of FIELDS) if (b[field] !== a[field]) diff.push({ field, weekday: weekdayOf(b.date), from: b[field], to: a[field] })
+  }
+  return diff
+}
+
+type NewTargetRow = Awaited<ReturnType<typeof computeTargetRows>>[number]
+
+/**
  * Every write of a new active version, as batch statements (callers may append their own before running them):
  *   UPDATE plan_versions SET active = 0 WHERE active = 1 · INSERT the new version (version = max + 1, active) ·
  *   INSERT ai_events 'change' (diff as FieldChanges + `extra`) · daily_targets for today … max(last, today + 14)
  *   rebuilt from the new targets · a queued plan_reforecast job (the forecast is carried over until it runs).
+ * With `week` (a week plan applied or reverted) that week's targets come from `week.week_plan`, the rebuild reaches
+ * at least the week's Sunday, and the diff is the week's materialised moves from today on; `rows` returns the rebuilt
+ * daily_targets rows.
  */
 export async function versionStatements(
   deps: Deps,
   ctx: PlanContext,
-  input: { targets: PlanTargets; reason: string; created_by: Actor; extra?: Record<string, unknown> },
-): Promise<{ row: PlanVersionRow; statements: BatchItem<'sqlite'>[]; job_id: string }> {
+  input: { targets: PlanTargets; reason: string; created_by: Actor; extra?: Record<string, unknown>; week?: WeekOverride; summary?: string },
+): Promise<{ row: PlanVersionRow; statements: BatchItem<'sqlite'>[]; job_id: string; rows: NewTargetRow[] }> {
   const now = deps.now().toISOString()
   const date = today(deps.now())
-  const diff = diffTargets(ctx.active.targets, input.targets)
+  const id = crypto.randomUUID()
+  const horizon = await targetHorizon(deps)
+  const weekEnd = input.week ? addDays(input.week.week_start, 6) : null
+  const rows = await computeTargetRows(deps, ctx, { from: date, to: weekEnd && weekEnd > horizon ? weekEnd : horizon }, { id, targets: input.targets }, input.week)
+  let diff = diffTargets(ctx.active.targets, input.targets)
+  if (input.week && weekEnd) {
+    const from = input.week.week_start > date ? input.week.week_start : date
+    const before = await computeTargetRows(deps, ctx, { from, to: weekEnd })
+    diff = [...diff, ...weekDiff(before, rows)]
+  }
   const row: PlanVersionRow = {
-    id: crypto.randomUUID(),
+    id,
     version: ctx.max_version + 1,
     active: true,
     created_by: input.created_by,
@@ -136,10 +165,9 @@ export async function versionStatements(
     created_at: now,
     updated_at: now,
   }
-  const rows = await computeTargetRows(deps, ctx, { from: date, to: await targetHorizon(deps) }, row)
   const event = eventInsert(deps, {
     kind: 'change',
-    summary: `Plan v${row.version}: ${describeDiff(diff) || 'no target changed'}`,
+    summary: input.summary ?? `Plan v${row.version}: ${describeDiff(diff) || 'no target changed'}`,
     body: { entity: 'plan_versions', changes: fieldChanges(diff), version: row.version, ...input.extra },
     date,
     plan_version_id: row.id,
@@ -148,6 +176,7 @@ export async function versionStatements(
   return {
     row,
     job_id: job.id,
+    rows,
     statements: [
       deps.db.update(plan_versions).set({ active: false, updated_at: now }).where(eq(plan_versions.active, true)),
       deps.db.insert(plan_versions).values(row),

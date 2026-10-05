@@ -13,10 +13,13 @@
 //        settings, fasts and active week plans (call after any of them changes); `to` defaults to the materialised
 //        horizon, max(last date with targets, today + 14)
 //   ensureTargetsThrough(deps, date)                    → rows added       start_date … date all have targets
+//   weekPlanVersion(deps, { week_start, week_plan, reason, summary, extra }) → statements (not run) making a week
+//        plan the source of its week's targets (or, with null, handing the week back to the plan version) as one
+//        new version: same targets, diff = the week's target moves from today on, rebuilt daily_targets
 //   reforecast(deps, { as_of, reestimate? })            → Forecast         written into the active version
 // Registers the 'plan_reforecast' job handler (engine only, no external fetches).
-import { today } from '@fitness/shared/engine'
-import type { Actor, DailyTargets, PlanChange, PlanVersion, Proposal, ProposalDecision } from '@fitness/shared/schemas'
+import { addDays, today } from '@fitness/shared/engine'
+import type { Actor, DailyTargets, PlanChange, PlanVersion, Proposal, ProposalDecision, WeekPlanContent } from '@fitness/shared/schemas'
 import { desc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { plan_versions } from '../../db'
@@ -26,7 +29,7 @@ import { eventInsert, getProposalRow, proposalDecisionUpdate, toProposal } from 
 import { registerJobHandler, runSoon } from '../jobs'
 import { loadPlanContext, toPlanVersion, type PlanVersionRow } from './lib/context'
 import { reforecast } from './lib/forecast'
-import { ensureThrough, materialise, runStatements, targetHorizon } from './lib/targets'
+import { ensureThrough, materialise, newRowTargets, runStatements, targetHorizon } from './lib/targets'
 import { applyChanges, guardChanges, versionStatements, type RejectedChange, type ScheduledChange } from './lib/versions'
 
 export type { RejectedChange, ScheduledChange } from './lib/versions'
@@ -191,6 +194,46 @@ export async function materialiseTargets(deps: Deps, range: { from: string; to?:
 
 export function ensureTargetsThrough(deps: Deps, date: string): Promise<number> {
   return ensureThrough(deps, date)
+}
+
+export interface WeekPlanVersion {
+  plan_version: PlanVersion
+  /** The week's daily targets from max(week_start, today) to its Sunday, as the statements write them. */
+  targets: DailyTargets[]
+  /** Not yet run: the caller appends its own writes and runs everything as ONE db.batch, then runSoon(job_id). */
+  statements: BatchItem<'sqlite'>[]
+  job_id: string
+}
+
+/**
+ * Applying or reverting a week plan as one plan version: the active targets carried over, `reason`, diff = the week's
+ * materialised target moves from today on, the 'change' event (`summary`; `extra` merged into its body), daily_targets
+ * from today through max(horizon, the week's Sunday) rebuilt with `week_plan` as that week's source (null: the plan
+ * version's targets), and a plan_reforecast job. Past days keep their targets.
+ */
+export async function weekPlanVersion(
+  deps: Deps,
+  input: {
+    week_start: string
+    week_plan: { id: string; plan: WeekPlanContent } | null
+    reason: string
+    summary: string
+    extra: Record<string, unknown>
+  },
+): Promise<WeekPlanVersion> {
+  const ctx = await loadPlanContext(deps)
+  const week_plan = input.week_plan && { id: input.week_plan.id, week_start: input.week_start, plan: input.week_plan.plan }
+  const v = await versionStatements(deps, ctx, {
+    targets: ctx.active.targets,
+    reason: input.reason,
+    created_by: deps.actor,
+    extra: input.extra,
+    summary: input.summary,
+    week: { week_start: input.week_start, week_plan },
+  })
+  const end = addDays(input.week_start, 6)
+  const targets = v.rows.filter((r) => r.date >= input.week_start && r.date <= end).map(newRowTargets)
+  return { plan_version: toPlanVersion(v.row), targets, statements: v.statements, job_id: v.job_id }
 }
 
 // On-demand reforecast after a plan change: the forecast moves, the expenditure estimate keeps its weekly cadence.

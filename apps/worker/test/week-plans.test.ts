@@ -1,0 +1,168 @@
+// Owns: tests at the week-plans seam (and its tools) — the guards on propose (calorie floor, the allowed exercise
+// set), apply rebuilding the week's daily targets with the plan's literal kcal (a fast date at 0 kcal, +500 ml water),
+// revert walking back to the previous plan and then to the plan version, and a Gemini draft never replacing Claude's
+// plan. Rails from SPEC §2/§6 (floor 1,400, ceiling 1,700, protein 130 g, fat 45 g); today is Monday 2026-10-05.
+import { ReminderKind, Weekday, type ReminderPrefs, type WeekPlanContentInput } from '@fitness/shared/schemas'
+import { env } from 'cloudflare:workers'
+import { asc, between } from 'drizzle-orm'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { createDb, daily_targets, exercises, plan_versions, profile, settings, type NewRow } from '../src/db'
+import type { Deps } from '../src/lib/deps'
+import { callTool, findTool, toolJsonSchemas } from '../src/modules/tools'
+import { applyWeekPlan, getWeekPlan, proposeWeekPlan, revertWeekPlan } from '../src/modules/week-plans'
+
+const db = createDb(env.DB)
+const pending: Promise<unknown>[] = []
+const NOW = '2026-10-05T15:00:00.000Z'
+const at = (actor: Deps['actor'] = 'mcp'): Deps => ({
+  db,
+  env,
+  now: () => new Date(NOW),
+  actor,
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+})
+afterEach(async () => {
+  await Promise.all(pending.splice(0))
+})
+
+type Ex = NewRow<typeof exercises> & { id: string }
+const ex = (slug: string, equipment: string, primary: Ex['primary_muscles']): Ex => ({
+  id: crypto.randomUUID(),
+  slug,
+  name: slug,
+  category: 'strength',
+  equipment,
+  mechanic: 'compound',
+  level: 'beginner',
+  primary_muscles: primary,
+  secondary_muscles: [],
+  instructions: [],
+  image_paths: [],
+  source: 'free-exercise-db',
+})
+const bench = ex('barbell-bench-press', 'barbell', ['chest'])
+const pulldown = ex('wide-grip-lat-pulldown', 'cable', ['lats'])
+const row = ex('seated-cable-rows', 'cable', ['middle back'])
+const press = ex('dumbbell-shoulder-press', 'dumbbell', ['shoulders'])
+const pushups = ex('pushups', 'body only', ['chest'])
+
+const NEXT_MONDAY = '2026-10-12'
+const day = (kcal: number) => ({ kcal, protein_g: 130, carbs_g: 150, fat_g: 45, fibre_g: 30 })
+const set = (e: Ex, sets = 4) => ({ exercise_id: e.id, sets, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null })
+const upper = { template_id: null, name: 'Upper A', exercises: [set(bench), set(pulldown), set(row), set(press)] }
+
+/** Next week: Mon 1,550 · Tue 1,500 · Wed 1,450 · Thu fast · Fri–Sun 1,400; Upper A on Monday. */
+function plan(over: Partial<Record<Weekday, number>> = {}, sessions: Partial<WeekPlanContentInput['sessions']> = {}): WeekPlanContentInput {
+  const kcal = { mon: 1550, tue: 1500, wed: 1450, thu: 1400, fri: 1400, sat: 1400, sun: 1400, ...over }
+  return {
+    targets: Object.fromEntries(Weekday.options.map((w) => [w, day(kcal[w])])) as WeekPlanContentInput['targets'],
+    sessions: { mon: upper, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null, ...sessions },
+    water_ml: 3000,
+    steps: 9000,
+    fast_dates: ['2026-10-15'],
+    scan_date: null,
+    focus_note: 'Protein first; Thursday is a fast day, keep it light.',
+  }
+}
+
+const weekTargets = () =>
+  db.select().from(daily_targets).where(between(daily_targets.date, NEXT_MONDAY, '2026-10-18')).orderBy(asc(daily_targets.date))
+
+const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+
+beforeAll(async () => {
+  await db.batch([
+    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db.insert(settings).values({
+      calorie_floor: 1400,
+      calorie_ceiling: 1700,
+      protein_min_g: 130,
+      fat_min_g: 45,
+      fibre_target_g: 30,
+      water_target_ml: 3000,
+      training_days: ['mon', 'tue', 'wed', 'thu'],
+      reminders,
+    }),
+    db.insert(plan_versions).values({
+      version: 1,
+      active: true,
+      created_by: 'user',
+      reason: 'Baseline rails from doctor and dietitian',
+      diff: [],
+      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+    }),
+    ...[bench, pulldown, row, press, pushups].map((e) => db.insert(exercises).values(e)),
+  ])
+})
+
+describe('propose_week_plan', () => {
+  it('rejects a day at 1,350 kcal and a body-only exercise, and stores nothing', async () => {
+    const pushupDay = { template_id: null, name: 'Push', exercises: [set(pushups, 4), set(bench, 4), set(press, 4)] }
+    const result = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan({ wed: 1350 }, { tue: pushupDay }) })
+
+    expect(result.week_plan).toBeNull()
+    expect(result.rejected).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ where: 'wed.kcal', rule: 'calorie_floor' }),
+        expect.objectContaining({ where: 'tue.session', rule: 'excluded_category' }),
+      ]),
+    )
+    expect((await getWeekPlan(at(), NEXT_MONDAY)).proposed).toBeNull()
+  })
+})
+
+describe('apply and revert', () => {
+  it('apply rebuilds the seven days of daily_targets with the plan’s kcal (the fast date at 0 kcal, +500 ml water)', async () => {
+    const { week_plan } = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan() })
+    expect(week_plan).toMatchObject({ status: 'proposed', author: 'claude_mcp' })
+    expect(week_plan!.plan.sessions.mon?.muscle_scores).toEqual({ chest: 4, lats: 4, 'middle back': 4, shoulders: 4 })
+
+    const applied = await applyWeekPlan(at(), week_plan!.id)
+    expect(applied.active).toMatchObject({ id: week_plan!.id, status: 'active' })
+
+    const rows = await weekTargets()
+    expect(rows.map((r) => r.kcal)).toEqual([1550, 1500, 1450, 0, 1400, 1400, 1400])
+    expect(rows.map((r) => r.week_plan_id)).toEqual(Array(7).fill(week_plan!.id))
+    expect(rows[3]).toMatchObject({ date: '2026-10-15', is_fast_day: true, water_ml: 3500 })
+    expect(rows.map((r) => r.training_planned)).toEqual([true, false, false, false, false, false, false])
+    expect(rows.every((r) => r.plan_version_id === applied.plan_version_id)).toBe(true)
+  })
+
+  it('revert restores the previous plan, and reverting that hands the week back to the plan version', async () => {
+    const first = (await getWeekPlan(at(), NEXT_MONDAY)).active!
+    const second = await callTool(at(), 'propose_week_plan', { week_start: NEXT_MONDAY, plan: plan({ mon: 1450 }) })
+    const secondId = (second as { week_plan: { id: string } }).week_plan.id
+    await callTool(at(), 'apply_week_plan', { id: secondId })
+    expect((await weekTargets())[0]!.kcal).toBe(1450)
+
+    const reverted = await revertWeekPlan(at(), secondId)
+    expect(reverted.active?.id).toBe(first.id)
+    expect(reverted.superseded).toMatchObject({ id: secondId, status: 'superseded' })
+    expect((await weekTargets())[0]).toMatchObject({ kcal: 1550, week_plan_id: first.id })
+
+    await revertWeekPlan(at(), first.id)
+    const rows = await weekTargets()
+    expect(rows.map((r) => r.kcal)).toEqual(Array(7).fill(1400))
+    expect(rows.every((r) => r.week_plan_id === null)).toBe(true)
+  })
+
+  it('a Gemini draft does not replace a plan by Claude', async () => {
+    const claude = await proposeWeekPlan(at(), { week_start: NEXT_MONDAY, plan: plan() })
+    const draft = await proposeWeekPlan(at('ai'), { week_start: NEXT_MONDAY, plan: plan(), author: 'gemini' })
+    expect(draft.week_plan).toBeNull()
+    expect(draft.note).toContain('by Claude')
+
+    const view = (await callTool(at(), 'get_week_plan', { week_start: '2026-10-14' })) as Awaited<ReturnType<typeof getWeekPlan>>
+    expect(view.proposed?.id).toBe(claude.week_plan!.id)
+    await expect(applyWeekPlan(at('ai'), claude.week_plan!.id)).rejects.toMatchObject({ status: 403 })
+  })
+})
+
+describe('week-plan tools', () => {
+  it('build their JSON Schemas (the model sees every weekday of targets and sessions)', () => {
+    const propose = findTool('propose_week_plan')!
+    const input = toolJsonSchemas(propose).input as { properties: { plan: { properties: { targets: { required: string[] } } } } }
+    expect(input.properties.plan.properties.targets.required).toEqual(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
+    for (const name of ['get_week_plan', 'apply_week_plan', 'revert_week_plan', 'replace_week_plan']) expect(toolJsonSchemas(findTool(name)!).output).toBeTruthy()
+  })
+})

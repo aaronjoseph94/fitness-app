@@ -52,18 +52,26 @@ async function activeWeekPlans(deps: Deps, from: string, to: string): Promise<We
   })
 }
 
-/** Targets for from..to computed (not written) from `version` (default: the active one). */
+/**
+ * One week whose targets come from `week_plan` instead of the stored active week plan (applying or reverting a week
+ * plan inside one batch, before the row is active); null hands the week back to the plan version.
+ */
+export type WeekOverride = { week_start: string; week_plan: WeekPlanLike | null }
+
+/** Targets for from..to computed (not written) from `version` (default: the active one) and the active week plans. */
 export async function computeTargetRows(
   deps: Deps,
   ctx: PlanContext,
   range: { from: string; to: string },
   version: { id: string; targets: PlanTargets } = ctx.active,
+  week?: WeekOverride,
 ): Promise<NewRow<typeof daily_targets>[]> {
   if (range.to < range.from) return []
-  const [fasts, weeks] = await Promise.all([
+  const [fasts, stored] = await Promise.all([
     fastDates(deps, range.from, range.to, ctx.settings.fast_hours),
     activeWeekPlans(deps, range.from, range.to),
   ])
+  const weeks = week ? [...stored.filter((w) => w.week_start !== week.week_start), ...(week.week_plan ? [week.week_plan] : [])] : stored
   const now = deps.now().toISOString()
   return computeTargets({
     from: range.from,
@@ -133,6 +141,24 @@ export function toDailyTargets(row: DailyTargetsRow): DailyTargets {
     steps: row.steps,
     is_fast_day: row.is_fast_day,
     training_planned: row.training_planned,
+  }
+}
+
+/** A computed (not yet stored) row as the contract shows it. */
+export function newRowTargets(row: NewRow<typeof daily_targets>): DailyTargets {
+  return {
+    date: row.date,
+    plan_version_id: row.plan_version_id,
+    week_plan_id: row.week_plan_id ?? null,
+    kcal: row.kcal,
+    protein_g: row.protein_g,
+    carbs_g: row.carbs_g,
+    fat_g: row.fat_g,
+    fibre_g: row.fibre_g,
+    water_ml: row.water_ml,
+    steps: row.steps,
+    is_fast_day: row.is_fast_day ?? false,
+    training_planned: row.training_planned ?? false,
   }
 }
 
