@@ -1,7 +1,8 @@
 // Owns: the food icon next to a meal item — the keyword map in /food-icons/index.json (Fluent Emoji Flat, see SOURCE.md
 // there) loaded once and cached, the matching rule it documents (lower-cased name; among keywords found as a whole
-// word or phrase the longest wins, ties to the first entry; else the fallback), and the icon itself. A missing or
-// broken index degrades to a plain glyph, never an error.
+// word or phrase the longest wins, ties to the first entry; else the fallback), and the icon itself. Database names put
+// the food first ("Egg, chicken, whole" is an egg, not chicken), so a keyword in the name's first comma-separated part
+// beats one found later. A missing or broken index degrades to a plain glyph, never an error.
 import RestaurantRounded from '@mui/icons-material/RestaurantRounded'
 import Box from '@mui/material/Box'
 import { useQuery } from '@tanstack/react-query'
@@ -38,12 +39,18 @@ export function foodIconMatcher(index: IconIndex): FoodIconMatcher {
     const key = name.toLowerCase()
     const hit = cache.get(key)
     if (hit !== undefined) return hit
-    let best: (typeof rules)[number] | null = null
+    const head = key.split(',')[0]!
+    let best: { rule: (typeof rules)[number]; inHead: boolean } | null = null
     for (const rule of rules) {
       if (!rule.pattern.test(key)) continue
-      if (!best || rule.length > best.length || (rule.length === best.length && rule.order < best.order)) best = rule
+      const inHead = rule.pattern.test(head)
+      const better =
+        !best ||
+        (inHead && !best.inHead) ||
+        (inHead === best.inHead && (rule.length > best.rule.length || (rule.length === best.rule.length && rule.order < best.rule.order)))
+      if (better) best = { rule, inHead }
     }
-    const src = best?.src ?? fallback
+    const src = best?.rule.src ?? fallback
     cache.set(key, src)
     return src
   }

@@ -22,6 +22,7 @@ const REFRESHES = new Map<Endpoint, readonly Endpoint[]>([
   [nutrition.createFavourite, [nutrition.listFavourites]],
   [nutrition.updateFavourite, [nutrition.listFavourites]],
   [water.create, [day.get, day.range]],
+  [water.delete, [day.get, day.range]],
   [fasting.start, [fasting.list, day.get, day.range]],
   [fasting.end, [fasting.list, day.get, day.range]],
   [fasting.plan, [fasting.list, day.get, day.range]],

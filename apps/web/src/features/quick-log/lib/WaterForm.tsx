@@ -1,5 +1,6 @@
 // Owns: the water quick-add — the day's total against its target, one-tap 250 / 500 / 750 ml chips and a custom
-// amount (POST /api/water with a client id and the time it was drunk). The sheet stays open so taps can repeat.
+// amount (POST /api/water with a client id and the time it was drunk), and Undo for the last tap (DELETE /api/water/:id,
+// queued like the add when offline). The sheet stays open so taps can repeat.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -18,17 +19,34 @@ const QUICK_ML = [250, 500, 750] as const
 export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice: LogNotice) => void }) {
   const water = useWater(date)
   const add = useLogMutation(endpoints.water.create)
+  const remove = useLogMutation(endpoints.water.delete)
   const [customOpen, setCustomOpen] = useState(false)
   const [custom, setCustom] = useState('')
-  const [last, setLast] = useState<{ ml: number; queued: boolean } | null>(null)
+  const [last, setLast] = useState<{ id: string; ml: number; queued: boolean } | null>(null)
 
   const log = (ml: number) => {
+    const id = crypto.randomUUID()
     add.mutate(
-      { body: { id: crypto.randomUUID(), amount_ml: ml, logged_at: instantOnDate(date) } },
+      { body: { id, amount_ml: ml, logged_at: instantOnDate(date) } },
       {
         onSuccess: (outcome) => {
-          setLast({ ml, queued: outcome.status === 'queued' })
+          setLast({ id, ml, queued: outcome.status === 'queued' })
           onLogged?.({ message: `Added ${formatNumber(ml)} ml`, queued: outcome.status === 'queued' })
+        },
+      },
+    )
+  }
+
+  /** Take back the last tap (a mis-tap on 750 ml): the entry is deleted, or its delete queued behind it offline. */
+  const undo = () => {
+    if (!last) return
+    const { id, ml } = last
+    remove.mutate(
+      { params: { id } },
+      {
+        onSuccess: (outcome) => {
+          setLast(null)
+          onLogged?.({ message: `Removed ${formatNumber(ml)} ml`, queued: outcome.status === 'queued' })
         },
       },
     )
@@ -109,14 +127,17 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
       )}
 
       <Box sx={{ minHeight: 24, display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.small, color: 'text.secondary' }} aria-live="polite">
-        {add.isError ? (
+        {add.isError || remove.isError ? (
           <Box component="span" sx={{ color: 'error.main' }}>
-            {problemText(add.error)}
+            {problemText(add.error ?? remove.error)}
           </Box>
         ) : last ? (
           <>
             Added {formatNumber(last.ml)} ml
             {last.queued && <PendingBadge />}
+            <Button size="small" onClick={undo} disabled={remove.isPending} sx={{ minHeight: tokens.tapTarget, ml: 'auto' }} data-testid="water-undo">
+              Undo
+            </Button>
           </>
         ) : water.pending.some((p) => p.queued) ? (
           <PendingBadge count={water.pending.filter((p) => p.queued).length} />

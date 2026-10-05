@@ -6,6 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
+import { fastDay } from '@fitness/shared/engine'
 import { useState } from 'react'
 import { formatNumber, LoadProblem, MetricRing, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
@@ -177,9 +178,9 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
 }
 
 /**
- * A planned fast that started on its own and was never ended: record its real end ("End at…", default the planned end
- * or now if sooner) so the review reports its real duration, or remove it ("Didn't fast") so it is no fast day and no
- * longer counts toward the month's fasts.
+ * A fast never ended (a planned one that started on its own, or one Aaron started and forgot): record its real end
+ * ("End at…", default the planned end or now if sooner) so the review reports its real duration, or, for a planned one,
+ * remove it ("Didn't fast") so it is no fast day and no longer counts toward the month's fasts.
  */
 function MissedFast({
   fast,
@@ -205,7 +206,7 @@ function MissedFast({
   return (
     <Box sx={{ display: 'grid', gap: 2, borderTop: 1, borderColor: 'divider', pt: 4 }} data-testid="fast-missed">
       <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
-        The fast planned for {formatDateTime(fast.startedAt)} was never ended. When did it end?
+        The fast {fast.planned ? 'planned for' : 'started'} {formatDateTime(fast.startedAt)} was never ended. When did it end?
       </Box>
       <TextField
         label="Ended at"
@@ -214,13 +215,16 @@ function MissedFast({
         onChange={(e) => e.target.value && setValue(e.target.value)}
         slotProps={{ inputLabel: { shrink: true } }}
       />
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+      {/* "Didn't fast" removes a planned fast that never began; a fast Aaron started himself did begin (409 otherwise). */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: fast.planned ? '1fr 1fr' : '1fr', gap: 2 }}>
         <Button variant="contained" onClick={() => endedAt && onEndAt(endedAt)} disabled={!valid || busy} data-testid="fast-end-at">
           End at this time
         </Button>
-        <Button variant="outlined" onClick={onSkip} disabled={busy} data-testid="fast-skip-missed">
-          Didn't fast
-        </Button>
+        {fast.planned && (
+          <Button variant="outlined" onClick={onSkip} disabled={busy} data-testid="fast-skip-missed">
+            Didn't fast
+          </Button>
+        )}
       </Box>
     </Box>
   )
@@ -249,9 +253,12 @@ function PlanFastForm({
   const [time, setTime] = useState(DEFAULT_PLAN_TIME)
   const plan = useLogMutation(endpoints.fasting.plan)
   const today = todayLocal()
-  const count = fastsInMonth(fasts, date, fastHours)
-  const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(Date.parse(`${date}T12:00:00Z`))
   const valid = /^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}$/.test(time) && date >= today
+  // The month a fast counts in is its fast day's (the date holding most of it), as the Worker's cap counts it: a fast
+  // from 31 Oct 19:00 is one of November's.
+  const day = (valid && fastDay({ started_at: instantAt(date, time), ended_at: null }, fastHours)) || date
+  const count = fastsInMonth(fasts, day, fastHours)
+  const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(Date.parse(`${day}T12:00:00Z`))
 
   return (
     <Box
@@ -278,7 +285,8 @@ function PlanFastForm({
         />
         <TextField label="Start" type="time" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       </Box>
-      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }} data-testid="fast-plan-count">
+        {day !== date && `Fast day ${day}. `}
         {monthName}: {formatNumber(count)} of {formatNumber(fastsPerMonth)} planned
         {count >= fastsPerMonth ? ". That's the month's fasts already on the calendar." : '.'}
       </Box>

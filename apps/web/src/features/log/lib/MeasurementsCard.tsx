@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { problemText, useApiQuery } from '../../../api'
 import { formatNumber, NumberField, parseNumber, PendingBadge } from '../../../components'
 import { tokens } from '../../../theme'
-import { shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
+import { shiftDate, todayLocal, useLogMutation, usePendingLogs } from '../../quick-log'
 import { LogCard } from './LogCard'
 
 const SITES: { site: MeasurementSite; label: string }[] = [
@@ -99,7 +99,7 @@ export function MeasurementsCard({ date }: { date: string }) {
                 onChange={(v) => setValues((s) => ({ ...s, [site]: v }))}
                 unit="cm"
                 placeholder={prev ? formatNumber(prev.cm, 1) : undefined}
-                helperText={prev ? `last ${prev.date === date ? 'today' : prev.date}` : ' '}
+                helperText={prev ? `last ${prev.date === todayLocal() ? 'today' : prev.date}` : ' '}
                 error={n !== null && (n <= 0 || n > 300)}
                 slotProps={{ inputLabel: { shrink: true } }}
               />

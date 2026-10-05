@@ -27,6 +27,7 @@ const latestAt = (logs: readonly PendingLog<unknown>[]) => last(logs)?.at ?? ''
 /** Pending logs, oldest first per endpoint, folded into what they change on `date` (later writes win). */
 export function usePendingToday(date: LocalDate): PendingToday {
   const water = usePendingLogs(endpoints.water.create)
+  const waterUndos = usePendingLogs(endpoints.water.delete)
   const weighIns = usePendingLogs(endpoints.body.createWeight)
   const meals = usePendingLogs(endpoints.nutrition.createMeal)
   const fastStarts = usePendingLogs(endpoints.fasting.start)
@@ -34,7 +35,9 @@ export function usePendingToday(date: LocalDate): PendingToday {
   const steps = usePendingLogs(endpoints.health.createSteps)
   const sleep = usePendingLogs(endpoints.health.createSleep)
   return useMemo(() => {
-    const waterToday = water.filter((w) => localDate(w.body.logged_at ?? w.at) === date)
+    // A water tap taken back (Undo) while both still wait counts for nothing.
+    const undone = new Set(waterUndos.map((u) => u.path.split('/').pop()))
+    const waterToday = water.filter((w) => localDate(w.body.logged_at ?? w.at) === date && !undone.has(w.body.id))
     const weighInToday = weighIns.filter((w) => w.body.date === date)
     const mealsToday = meals.filter((m) => localDate(m.body.eaten_at) === date)
     const stepsToday = steps.filter((s) => s.body.date === date)
@@ -53,5 +56,5 @@ export function usePendingToday(date: LocalDate): PendingToday {
         : (night.asleep_min ??
           (night.in_bed_at && night.woke_at ? Math.round((Date.parse(night.woke_at) - Date.parse(night.in_bed_at)) / 60_000) : null)),
     }
-  }, [date, water, weighIns, meals, fastStarts, fastEnds, steps, sleep])
+  }, [date, water, waterUndos, weighIns, meals, fastStarts, fastEnds, steps, sleep])
 }

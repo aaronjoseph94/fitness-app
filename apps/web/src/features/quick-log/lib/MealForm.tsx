@@ -33,7 +33,7 @@ import { clockOf, instantAt, todayLocal } from './dates'
 import { FavouritesPane, type QuickMeal } from './FavouritesPane'
 import { FoodPicker, type PickedFood } from './FoodPicker'
 import { defaultSlot, portion, SLOT_LABEL, SLOT_TIME, sum, visibleSlots } from './nutrition'
-import { useLogSettings, useRecentFoods } from './reads'
+import { useLogSettings, useRecentFoods, useRecentFoodsState } from './reads'
 import { noticeFor, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 
@@ -59,13 +59,15 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
   const isToday = date === todayLocal()
   const [slot, setSlot] = useState<MealSlot>(initialSlot ?? (isToday ? defaultSlot(clockOf(Date.now()), breakfastEnabled) : 'lunch'))
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {})
-  const recents = useRecentFoods(date)
-  const hasQuick = (favourites.data?.length ?? 0) > 0 || recents.length > 0
+  const recents = useRecentFoodsState(date)
+  const hasQuick = (favourites.data?.length ?? 0) > 0 || recents.foods.length > 0
   const [mode, setMode] = useState<Mode | null>(null)
-  // Decide once favourites have loaded, then hold it, so a late answer never swaps the pane under Aaron's thumb.
+  // Decide once favourites and recent foods have both loaded (whichever answers last), then hold it, so a late answer
+  // never swaps the pane under Aaron's thumb.
+  const quickLoading = favourites.isLoading || recents.isLoading
   useEffect(() => {
-    if (mode === null && !favourites.isLoading) setMode(hasQuick ? 'favourites' : 'describe')
-  }, [mode, favourites.isLoading, hasQuick])
+    if (mode === null && !quickLoading) setMode(hasQuick ? 'favourites' : 'describe')
+  }, [mode, quickLoading, hasQuick])
   const shown: Mode = mode ?? 'favourites'
   const create = useLogMutation(endpoints.nutrition.createMeal)
 
@@ -127,10 +129,9 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
       setKeyboardMicHint(!dictation.supported)
     })
     textBox.current?.focus()
-    if (dictation.supported) {
-      setSpoken(true)
-      dictation.start()
-    }
+    // The meal counts as spoken once a phrase arrives (useDictation's onFinal), not on the tap: with the mic refused,
+    // what Aaron then types is a text meal.
+    if (dictation.supported) dictation.start()
   }
 
   return (

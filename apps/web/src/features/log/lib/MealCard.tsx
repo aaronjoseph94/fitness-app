@@ -144,7 +144,11 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
           <Button variant="outlined" onClick={onReview} data-testid="meal-review-open">
             Review
           </Button>
-          <Button variant="contained" disabled={confirm.isPending} onClick={() => confirm.mutate({ params: { id: meal.id }, body: { confirm: true } })}>
+          <Button
+            variant="contained"
+            disabled={confirm.isPending || meal.items.length === 0}
+            onClick={() => confirm.mutate({ params: { id: meal.id }, body: { confirm: true } })}
+          >
             {confirm.isPending ? 'Saving…' : 'Confirm'}
           </Button>
         </Box>

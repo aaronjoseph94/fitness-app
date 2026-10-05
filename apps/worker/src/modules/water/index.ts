@@ -1,19 +1,30 @@
 // Owns: the water module's interface — quick-add water entries stored with their UTC instant and Edmonton local date
 // (day totals are computed by v_day): log one (idempotent by the client id, so a replayed offline write returns the
-// first row), list a date's entries, delete one (a replayed delete is a no-op).
-import { localDate } from '@fitness/shared/engine'
+// first row), list a date's entries, delete one (a replayed delete is a no-op). Water drunk on a later local date than
+// today is refused (a replay of a stored entry still returns it).
+import { localDate, today } from '@fitness/shared/engine'
 import type { Ok, WaterLog, WaterLogCreate } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
 import { water_logs, type Row } from '../../db'
 import type { Deps } from '../../lib/deps'
+import { badRequest } from '../../lib/http-error'
+
+/** A phone clock a few minutes ahead of the Worker's at midnight still logs "today". */
+const CLOCK_SKEW_MS = 5 * 60_000
 
 /** Log one entry; `logged_at` defaults to now and `date` = its Edmonton local date. */
 export async function logWater(deps: Deps, input: WaterLogCreate): Promise<WaterLog> {
   const logged_at = input.logged_at ?? deps.now().toISOString()
+  const date = localDate(logged_at)
+  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS))) {
+    const [stored] = await deps.db.select().from(water_logs).where(eq(water_logs.id, input.id))
+    if (stored) return toWaterLog(stored)
+    throw badRequest(`${date} has not happened yet; log water drunk today or earlier`)
+  }
   const [, [row]] = await deps.db.batch([
     deps.db
       .insert(water_logs)
-      .values({ id: input.id, logged_at, date: localDate(logged_at), amount_ml: input.amount_ml, actor: deps.actor })
+      .values({ id: input.id, logged_at, date, amount_ml: input.amount_ml, actor: deps.actor })
       .onConflictDoNothing({ target: water_logs.id }),
     deps.db.select().from(water_logs).where(eq(water_logs.id, input.id)),
   ])

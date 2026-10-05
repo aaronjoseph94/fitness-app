@@ -56,8 +56,14 @@ export function SleepStepsCard({ date, day }: { date: string; day: DayView | und
   const timesGiven = /^\d{2}:\d{2}$/.test(bed) && /^\d{2}:\d{2}$/.test(wake)
   const hoursValid = hoursN !== null && hoursN > 0 && hoursN <= 24
   const sleepGiven = mode === 'times' ? timesGiven : hoursValid
+  // Only a night Aaron changed is sent: re-saving the prefilled one would replace the watch's own asleep minutes and
+  // stages with time in bed (a manual entry), just because the day's steps were saved.
+  const serverTimes = serverSleep?.in_bed_at && serverSleep.woke_at ? { bed: clockOf(serverSleep.in_bed_at), wake: clockOf(serverSleep.woke_at) } : null
+  const serverHours = serverSleep ? Math.round((serverSleep.asleep_min / 60) * 10) / 10 : null
+  const sleepChanged =
+    sleepGiven && (mode === 'times' ? !serverTimes || serverTimes.bed !== bed || serverTimes.wake !== wake : hoursN !== serverHours)
   const stepsChanged = stepsN !== null && stepsN !== serverSteps
-  const canSave = stepsValid && (stepsChanged || sleepGiven) && !steps.isPending && !sleep.isPending
+  const canSave = stepsValid && (stepsChanged || sleepChanged) && !steps.isPending && !sleep.isPending
 
   const save = () => {
     const done: string[] = []
@@ -68,7 +74,7 @@ export function SleepStepsCard({ date, day }: { date: string; day: DayView | und
     if (stepsChanged && stepsN !== null) {
       steps.mutate({ body: { id: crypto.randomUUID(), date, steps: stepsN } }, { onSuccess: after('steps') })
     }
-    if (sleepGiven) {
+    if (sleepChanged) {
       if (mode === 'times') {
         // In bed after the wake time on the clock means the evening before (22:45 → 06:30).
         const bedDate = bed > wake ? shiftDate(date, -1) : date

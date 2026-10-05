@@ -83,10 +83,16 @@ function itemNutrients(item: MealItem): Nutrients {
  * reads (one per day) that the Log tab already caches.
  */
 export function useRecentFoods(date: string): RecentFood[] {
+  return useRecentFoodsState(date).foods
+}
+
+/** useRecentFoods with whether any of its three reads is still loading (the meal form waits for them to pick its pane). */
+export function useRecentFoodsState(date: string): { foods: RecentFood[]; isLoading: boolean } {
   const day0 = useApiQuery(endpoints.nutrition.listMeals, { query: { date } })
   const day1 = useApiQuery(endpoints.nutrition.listMeals, { query: { date: shiftDate(date, -1) } })
   const day2 = useApiQuery(endpoints.nutrition.listMeals, { query: { date: shiftDate(date, -2) } })
-  return useMemo(() => {
+  const isLoading = day0.isLoading || day1.isLoading || day2.isLoading
+  const foods = useMemo(() => {
     const meals: Meal[] = [day0.data, day1.data, day2.data].slice(0, RECENT_DAYS).flatMap((list) => list ?? [])
     meals.sort((a, b) => b.eaten_at.localeCompare(a.eaten_at))
     const out = new Map<string, RecentFood>()
@@ -104,6 +110,7 @@ export function useRecentFoods(date: string): RecentFood[] {
     }
     return [...out.values()]
   }, [day0.data, day1.data, day2.data])
+  return { foods, isLoading }
 }
 
 export interface WaterDay {
@@ -124,10 +131,13 @@ export function useWater(date: string): WaterDay {
   const day = useDay(date)
   const settings = useLogSettings()
   const pendingLogs = usePendingLogs(endpoints.water.create)
+  const pendingDeletes = usePendingLogs(endpoints.water.delete)
   return useMemo(() => {
+    // An entry whose delete (Undo) is also waiting never counts; a synced entry's delete shows once the day refetches.
+    const undone = new Set(pendingDeletes.map((p) => p.path.split('/').pop()))
     const pending = pendingLogs
       .map((p) => ({ id: p.body.id, amountMl: p.body.amount_ml, loggedAt: p.body.logged_at ?? p.at, queued: p.queued }))
-      .filter((p) => dateOf(p.loggedAt) === date)
+      .filter((p) => dateOf(p.loggedAt) === date && !undone.has(p.id))
     const serverMl = day.data?.water_ml ?? 0
     return {
       totalMl: serverMl + pending.reduce((a, p) => a + p.amountMl, 0),
@@ -138,5 +148,5 @@ export function useWater(date: string): WaterDay {
       error: day.error,
       refetch: () => void day.refetch(),
     }
-  }, [day.data, day.isLoading, day.error, day.refetch, settings.waterTargetMl, pendingLogs, date])
+  }, [day.data, day.isLoading, day.error, day.refetch, settings.waterTargetMl, pendingLogs, pendingDeletes, date])
 }

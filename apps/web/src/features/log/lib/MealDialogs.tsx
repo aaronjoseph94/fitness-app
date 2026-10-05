@@ -99,7 +99,8 @@ export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView
             </Button>
           </>
         ) : (
-          <Button variant="contained" onClick={() => save(false)} disabled={!valid || update.isPending}>
+          // A confirmed meal keeps at least one item (the Worker refuses an empty one): remove it from its menu instead.
+          <Button variant="contained" onClick={() => save(false)} disabled={!valid || update.isPending || items.length === 0}>
             {update.isPending ? 'Saving…' : 'Save'}
           </Button>
         )}

@@ -1,6 +1,7 @@
 // Owns: the body module's interface — weigh-ins (one per local date; logging a date that has one replaces it), tape
 // measurements (one per date and site; replaced likewise) and the trend series for a range. Creates are idempotent by
-// the client id: a replay returns the stored row untouched.
+// the client id: a replay returns the stored row untouched. A date after today (Edmonton) is refused: a weigh-in or tape
+// for a day that has not happened would move the trend, the forecast and milestones.
 import type {
   DateRange,
   Measurement,
@@ -10,18 +11,28 @@ import type {
   WeighInCreate,
   WeighInUpdate,
 } from '@fitness/shared/schemas'
+import { today } from '@fitness/shared/engine'
 import { and, eq, inArray, ne } from 'drizzle-orm'
 import { measurements, weight_logs } from '../../db'
 import type { Deps } from '../../lib/deps'
-import { notFound } from '../../lib/http-error'
+import { badRequest, notFound } from '../../lib/http-error'
 import { toMeasurement, toWeighIn } from './lib/rows'
 import { buildTrend } from './lib/trend'
+
+/** A phone clock a few minutes ahead of the Worker's at midnight still logs "today". */
+const CLOCK_SKEW_MS = 5 * 60_000
+
+/** 400 when `date` is after today in Edmonton. */
+function assertPast(deps: Deps, date: string): void {
+  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS))) throw badRequest(`${date} has not happened yet; log today or an earlier day`)
+}
 
 /** POST /api/weights: store the weigh-in for its date, replacing any other weigh-in on that date. */
 export async function logWeighIn(deps: Deps, input: WeighInCreate): Promise<WeighIn> {
   const { db } = deps
   const [existing] = await db.select().from(weight_logs).where(eq(weight_logs.id, input.id))
   if (existing) return toWeighIn(existing)
+  assertPast(deps, input.date)
   const [, , [row]] = await db.batch([
     db.delete(weight_logs).where(eq(weight_logs.date, input.date)),
     db.insert(weight_logs).values({
@@ -41,6 +52,7 @@ export async function updateWeighIn(deps: Deps, id: string, input: WeighInUpdate
   const { db } = deps
   const [existing] = await db.select({ id: weight_logs.id }).from(weight_logs).where(eq(weight_logs.id, id))
   if (!existing) throw notFound('Weigh-in')
+  assertPast(deps, input.date)
   const [, , [row]] = await db.batch([
     db.delete(weight_logs).where(and(eq(weight_logs.date, input.date), ne(weight_logs.id, id))),
     db
@@ -61,6 +73,7 @@ export async function logMeasurements(deps: Deps, input: MeasurementsCreate): Pr
   const fresh = input.entries.filter((e) => !replayed.has(e.id))
   const select = db.select().from(measurements).where(inArray(measurements.id, ids))
   if (fresh.length === 0) return (await select).map(toMeasurement)
+  assertPast(deps, input.date)
 
   const sites = fresh.map((e) => e.site)
   const [, , rows] = await db.batch([

@@ -65,18 +65,34 @@ export function fallbackWhy(p: SuggestionPick, remaining: Remaining): string {
   return `${r0(p.kcal)} kcal and ${r0(p.protein_g)} g protein, inside the ${r0(remaining.kcal)} kcal left.`
 }
 
-/** The card's note when no LLM wrote one. */
-export function fallbackNote(status: DayStatus, remaining: Remaining, fast: { fast_day: boolean; water_target_ml: number | null }): string {
+/**
+ * The card's note when no LLM wrote one. `fast_day`: the date is the fast's 0 kcal day; `fasting`: a fast runs now;
+ * `fast_day_tomorrow`: the running fast's fast day is tomorrow (it began this afternoon).
+ */
+export function fallbackNote(
+  status: DayStatus,
+  remaining: Remaining,
+  fast: { fast_day: boolean; fasting?: boolean; fast_day_tomorrow?: boolean; water_target_ml: number | null },
+): string {
   if (fast.fast_day)
     return `Fast day: keep drinking water${fast.water_target_ml ? ` (${r0(fast.water_target_ml)} ml today)` : ''} and keep training light, a walk or an easy session.`
+  if (fast.fasting)
+    return fast.fast_day_tomorrow
+      ? 'Fasting now: keep drinking water. Tomorrow is the fast day: 0 kcal, more water and a light session.'
+      : 'Fasting now: keep drinking water, and end the fast in the app when you eat.'
   if (status === 'over') return `${r0(-remaining.kcal)} kcal over today. One day is fine; the weekly trend is what counts.`
   if (status === 'protein_short') return `${r0(remaining.protein_g)} g protein still to go in ${r0(remaining.kcal)} kcal: pick protein-dense food.`
   return `${r0(remaining.kcal)} kcal and ${r0(Math.max(0, remaining.protein_g))} g protein left today.`
 }
 
 /** The event summary line for a card. */
-export function adjustmentSummary(status: DayStatus, remaining: Remaining, fast_day: boolean): string {
-  if (fast_day) return 'Fast day: water and a light session'
+export function adjustmentSummary(
+  status: DayStatus,
+  remaining: Remaining,
+  fast: { fast_day: boolean; fasting?: boolean; fast_day_tomorrow?: boolean },
+): string {
+  if (fast.fast_day) return 'Fast day: water and a light session'
+  if (fast.fasting) return fast.fast_day_tomorrow ? 'Fasting now: water; tomorrow is the fast day' : 'Fasting now: water'
   if (status === 'over') return `${r0(-remaining.kcal)} kcal over today`
   if (status === 'protein_short') return `${r0(remaining.kcal)} kcal left, protein short by ${r0(remaining.protein_g)} g`
   return `${r0(remaining.kcal)} kcal left today`

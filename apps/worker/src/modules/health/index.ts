@@ -1,7 +1,8 @@
 // Owns: the health module's interface — Apple Watch inputs (SPEC §8): sleep (one row per night, date = wake date) and
 // steps (one row per date) from the manual form, the iOS Shortcut webhook and file imports. Everything upserts by date;
-// manual creates are also idempotent by their client id (a replay returns the stored row).
-import { localDate } from '@fitness/shared/engine'
+// manual creates are also idempotent by their client id (a replay returns the stored row). A date after today (Edmonton)
+// is refused: steps and sleep are what happened.
+import { localDate, today } from '@fitness/shared/engine'
 import type {
   HealthImport,
   HealthImportResult,
@@ -15,14 +16,24 @@ import type {
 import { eq, sql } from 'drizzle-orm'
 import { sleep_logs, step_logs } from '../../db'
 import type { Deps } from '../../lib/deps'
+import { badRequest } from '../../lib/http-error'
 import { upsertImport } from './lib/import'
 import { minutesInBed, toSleepLog, toStepLog } from './lib/rows'
+
+/** A phone clock a few minutes ahead of the Worker's at midnight still logs "today". */
+const CLOCK_SKEW_MS = 5 * 60_000
+
+/** 400 when `date` is after today in Edmonton. */
+function assertPast(deps: Deps, date: string): void {
+  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS))) throw badRequest(`${date} has not happened yet; log today or an earlier day`)
+}
 
 /** POST /api/sleep: last night's sleep for its wake date, replacing any other entry for that date. */
 export async function logSleep(deps: Deps, input: SleepLogCreate): Promise<SleepLog> {
   const { db } = deps
   const [existing] = await db.select().from(sleep_logs).where(eq(sleep_logs.id, input.id))
   if (existing) return toSleepLog(existing)
+  assertPast(deps, input.date)
   const [, , [row]] = await db.batch([
     db.delete(sleep_logs).where(eq(sleep_logs.date, input.date)),
     db.insert(sleep_logs).values({
@@ -45,6 +56,7 @@ export async function logSteps(deps: Deps, input: StepLogCreate): Promise<StepLo
   const { db } = deps
   const [existing] = await db.select().from(step_logs).where(eq(step_logs.id, input.id))
   if (existing) return toStepLog(existing)
+  assertPast(deps, input.date)
   const [, , [row]] = await db.batch([
     db.delete(step_logs).where(eq(step_logs.date, input.date)),
     db.insert(step_logs).values({
@@ -68,6 +80,8 @@ export async function ingestHealth(deps: Deps, input: HealthIngest): Promise<Hea
   const { db } = deps
   const now = deps.now().toISOString()
   const sleepDate = input.sleep ? localDate(input.sleep.woke_at) : null
+  assertPast(deps, input.date)
+  if (sleepDate) assertPast(deps, sleepDate)
   const upsertSteps = db
     .insert(step_logs)
     .values({

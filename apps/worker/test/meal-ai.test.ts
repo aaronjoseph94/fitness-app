@@ -1,7 +1,8 @@
 // Owns: tests at the meal-ai seam (through the job queue, with a fake LLM router and fake food sources): a text meal
 // becomes an editable item list in review; a router failure leaves the meal in review with its raw text and fails or
 // requeues the job; a photo upload is analysed from its R2 bytes; the sweep auto-confirms a sure meal after 10 min;
-// the day_adjustment card's numbers come from the day's targets and intake, never from the LLM.
+// the day_adjustment card's numbers come from the day's targets and intake, never from the LLM, and a fast started
+// today whose fast day is tomorrow is not called today's fast day.
 import type { MealAnalysisOutput } from '@fitness/shared/schemas'
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
@@ -14,6 +15,7 @@ import { enqueue, runJob, sweep } from '../src/modules/jobs'
 import { ProvidersExhaustedError, type CompleteRequest, type CompleteResult, type LlmRouter } from '../src/modules/llm'
 import { registerMealAiJobs } from '../src/modules/meal-ai'
 import { addMealPhoto, createFavourite, createFood, createMeal, getMeal, updateMeal } from '../src/modules/nutrition'
+import { startFast } from '../src/modules/fasting'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -270,5 +272,25 @@ describe('day_adjustment', () => {
       suggestions: [{ favorite_id: fits.id, why: '248 kcal and 47 g protein, inside the 875 kcal left.' }],
       note: '875 kcal and 64 g protein left today.',
     })
+  })
+})
+
+describe('day_adjustment after a fast starts', () => {
+  it('a fast begun at noon is fasting now, but its fast day (0 kcal, water up) is tomorrow: no meal ideas, no "fast day" today', async () => {
+    reply = () => {
+      throw new ProvidersExhaustedError([{ provider: 'gemini', model: 'gemini-3.8-flash', reason: 'no_key' }])
+    }
+    const deps = at(T0)
+    const fast = { id: crypto.randomUUID(), started_at: T0 } // 12:00 → 12:00: 12 h on each date, the tie goes to 10-06
+    await startFast(deps, fast)
+    await settle()
+    const job = await enqueue(deps, { type: 'day_adjustment', payload: { date: '2026-10-05', trigger: 'fast_started', meal_id: null, fast_id: fast.id } })
+    expect(await runJob(deps, job.id)).toEqual({ id: job.id, status: 'done' })
+
+    const [card] = await db.select().from(ai_events).where(eq(ai_events.job_id, job.id))
+    const body = card!.body as { suggestions: unknown[]; note: string }
+    expect(body.suggestions).toEqual([])
+    expect(body.note).not.toMatch(/^Fast day/)
+    expect(body.note).toMatch(/tomorrow/i)
   })
 })

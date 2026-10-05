@@ -1,6 +1,7 @@
 // Owns: what each fast is right now — active, planned, completed, partial or missed — from GET /api/fasts, today's
 // fast state (GET /api/day/:date) and starts / ends / plans / removals not yet synced, so the sheet and the Log tab
-// agree. A missed fast (planned, never ended) is resolved in the fast sheet: end it at its real end, or "Didn't fast".
+// agree. A missed fast (never ended, past 2 × fast_hours) is resolved in the fast sheet: end it at its real end, or
+// (a planned one) "Didn't fast".
 import { endpoints } from '@fitness/shared/api'
 import { fastDay } from '@fitness/shared/engine'
 import type { Fast } from '@fitness/shared/schemas'
@@ -25,8 +26,12 @@ export interface FastView {
   pending: boolean
 }
 
-/** A planned fast past its start, not ended, counts as running this long (it may have started automatically). */
-const AUTO_START_WINDOW_H = 48
+/**
+ * A fast past its start and not ended counts as running for 2 × fast_hours (a planned one may have started on its own),
+ * as the Worker counts it; after that it is missed: its real end is asked for (an ad-hoc fast left running for days is
+ * not an 89 h fast).
+ */
+const RUNNING_WINDOW_FASTS = 2
 /** An ended fast within this share of the planned length counts as completed. */
 const COMPLETE_SHARE = 0.95
 const HOUR_MS = 3_600_000
@@ -102,7 +107,7 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
       }
       if (start > now || (f.id === scheduledId && !pendingStarted.has(f.id))) return { ...view, hours: null, status: 'planned' }
       const hours = (now - start) / HOUR_MS
-      const running = f.id === activeId || pendingStarted.has(f.id) || !f.planned || hours < AUTO_START_WINDOW_H
+      const running = f.id === activeId || pendingStarted.has(f.id) || hours < RUNNING_WINDOW_FASTS * fastHours
       return { ...view, hours: running ? hours : null, status: running ? 'active' : 'missed' }
     })
     fasts.sort((a, b) => b.startedAt.localeCompare(a.startedAt))

@@ -38,11 +38,16 @@ Return only JSON: {"why": [one reason per suggestion, in the given order, at mos
 - status "ok": the note says what is left in a helpful way.
 - status "over": the note is calm (one day over is fine, the weekly trend matters) and suggests a light, protein-first rest of day.
 - status "protein_short": the note points to protein-dense choices for what is left.
-- fast_day true: no suggestions; the note is about drinking water through the day (water_target_ml) and keeping any training light (a walk or an easy session).`
+- fast_day true: no suggestions; the note is about drinking water through the day (water_target_ml) and keeping any training light (a walk or an easy session).
+- fasting_now true (a fast runs, but this date is not its fast day): no suggestions; the note says to keep drinking water now, and when fast_day_tomorrow is true that tomorrow is the fast day (0 kcal, more water, light training).`
 
 export interface AdjustmentFacts {
   date: string
   fast_day: boolean
+  /** A fast runs now but the date is not its fast day. */
+  fasting_now: boolean
+  /** The running fast's fast day is tomorrow (it began this afternoon). */
+  fast_day_tomorrow: boolean
   status: 'ok' | 'over' | 'protein_short'
   remaining: { kcal: number; protein_g: number; carbs_g: number; fat_g: number }
   eaten: { kcal: number; protein_g: number }
