@@ -25,13 +25,13 @@ const VALUES: Record<string, string> = {
   'Bio age': '37',
   'BWI score': '5.6',
 }
-/** Lean and fat kg per segment, in the form's order: left arm, right arm, torso, left leg, right leg. */
-const SEGMENTS = [
-  ['3.60', '2.05'],
-  ['3.50', '2.15'],
-  ['27.8', '19.4'],
-  ['7.55', '4.95'],
-  ['7.53', '5.05'],
+/** Lean and fat kg per segment, by the segment's name as the form announces it ("Torso lean mass, kg"). */
+const SEGMENTS: [string, string, string][] = [
+  ['Left arm', '3.60', '2.05'],
+  ['Right arm', '3.50', '2.15'],
+  ['Torso', '27.8', '19.4'],
+  ['Left leg', '7.55', '4.95'],
+  ['Right leg', '7.53', '5.05'],
 ]
 
 test('a scan entered by hand is confirmed and charted', async ({ page }) => {
@@ -43,9 +43,9 @@ test('a scan entered by hand is confirmed and charted', async ({ page }) => {
     await page.getByRole('textbox', { name: label, exact: true }).fill(value)
   }
   const segments = page.getByTestId('scan-segments')
-  for (const [i, [lean, fat]] of SEGMENTS.entries()) {
-    await segments.getByRole('textbox', { name: 'Lean', exact: true }).nth(i).fill(lean)
-    await segments.getByRole('textbox', { name: 'Fat', exact: true }).nth(i).fill(fat)
+  for (const [segment, lean, fat] of SEGMENTS) {
+    await segments.getByRole('textbox', { name: `${segment} lean mass, kg`, exact: true }).fill(lean)
+    await segments.getByRole('textbox', { name: `${segment} fat mass, kg`, exact: true }).fill(fat)
   }
   await page.getByRole('button', { name: 'Confirm scan' }).click()
 

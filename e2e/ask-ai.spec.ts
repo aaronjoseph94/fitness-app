@@ -1,4 +1,4 @@
-// Owns: the Ask AI tab with no LLM keys — a question gets the calm "can't reach the AI right now" reply in the thread,
+// Owns: the Ask AI tab with no LLM keys — a question gets the calm "isn't set up yet" reply in the thread,
 // the page keeps working (composer ready for the next message), and nothing crashes.
 import { expect, test } from './support'
 
@@ -12,7 +12,7 @@ test('Ask AI answers calmly when no model is reachable', async ({ page }) => {
 
   const turn = page.getByTestId('ask-ai-turn').last()
   await expect(turn.getByTestId('ask-ai-question')).toHaveText('How is my weight trend this week?')
-  await expect(turn.getByTestId('ask-ai-reply')).toContainText("I can't reach the AI right now", {
+  await expect(turn.getByTestId('ask-ai-reply')).toContainText("Ask AI isn't set up yet", {
     timeout: 30_000,
   })
   await expect(turn.getByTestId('ask-ai-reply')).toContainText('Nothing is lost')
