@@ -1,6 +1,7 @@
 // Owns: the auth seam (middleware/auth.ts through the app) — Access is required on /api unless DEV_AUTH_BYPASS is on
 // AND the host is local; a real Access JWT (RS256, team JWKS) is accepted only for our AUD, only for ACCESS_EMAIL when
-// set, and the PDF service token only reads; the iOS Shortcut webhook needs its bearer token and is idempotent by date.
+// set (expired, foreign-key, unsigned and HS256 tokens are refused), and the PDF service token only reads; hosts that
+// only look local get no bypass; the iOS Shortcut webhook needs its bearer token and is idempotent by date.
 import { env } from 'cloudflare:workers'
 import { exportJWK, generateKeyPair, SignJWT, type JWTPayload } from 'jose'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -80,6 +81,48 @@ describe('a real Cloudflare Access JWT', () => {
     expect(await stranger.json()).toMatchObject({ error: 'forbidden' })
   })
 
+  it('rejects an expired token, one signed by another key, and an unsigned or HS256 token (alg confusion)', async () => {
+    stubJwks()
+    const expired = await new SignJWT({ email: 'aaron@example.com' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+      .setIssuer(TEAM)
+      .setAudience(AUD)
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 3600)
+      .sign(keys.privateKey)
+    const stranger = await generateKeyPair('RS256')
+    const forged = await new SignJWT({ email: 'aaron@example.com' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+      .setIssuer(TEAM)
+      .setAudience(AUD)
+      .setExpirationTime('5m')
+      .sign(stranger.privateKey)
+    const hs256 = await new SignJWT({ email: 'aaron@example.com' })
+      .setProtectedHeader({ alg: 'HS256', kid: 'test-key' })
+      .setIssuer(TEAM)
+      .setAudience(AUD)
+      .setExpirationTime('5m')
+      .sign(new TextEncoder().encode(JSON.stringify(jwk)))
+    const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+    const unsigned = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({ email: 'aaron@example.com', iss: TEAM, aud: AUD, exp: 9_999_999_999 })}.`
+    for (const token of [expired, forged, hs256, unsigned]) {
+      const res = await app.request(`${HOST}/api/health`, withAccess(token), accessEnv())
+      expect(res.status).toBe(401)
+    }
+  })
+
+  it('a token without email whose common_name is not the service token, or a user token while ACCESS_EMAIL differs, cannot write', async () => {
+    stubJwks()
+    const other = await accessToken({ common_name: 'someone-else.access', sub: '' })
+    expect((await app.request(`${HOST}/api/health`, withAccess(other), accessEnv())).status).toBe(403)
+    const write = await app.request(
+      `${HOST}/api/weights`,
+      withAccess(await accessToken({ email: 'someone@example.com' }), weighIn()),
+      accessEnv({ ACCESS_EMAIL: 'aaron@example.com' }),
+    )
+    expect(write.status).toBe(403)
+  })
+
   it('the PDF service token may read (GET) but never write', async () => {
     stubJwks()
     const service = await accessToken({ common_name: SERVICE_ID, sub: '' })
@@ -115,6 +158,10 @@ describe('Access on /api', () => {
 
     const remote = await app.request('https://fitness.example.workers.dev/api/health', {}, env)
     expect(remote.status).toBe(401)
+
+    // Hosts that only look local are not local.
+    for (const host of ['http://localhost.evil.example', 'http://127.0.0.1.nip.io', 'http://0.0.0.0:8787', 'http://[::ffff:127.0.0.1]'])
+      expect((await app.request(`${host}/api/health`, {}, env)).status, host).toBe(401)
   })
 })
 

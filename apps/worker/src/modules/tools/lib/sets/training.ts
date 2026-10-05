@@ -188,7 +188,7 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     title: 'Generate a workout',
     area: 'training',
     description:
-      "Ask the app's workout generator for one session for a date: mode 'generate' (optional focus such as \"arms\") or 'fill' (complete a partial exercise list into a balanced session). It uses the allowed set, readiness (sleep, steps, days since the last session), recovery, deload and history, sets loads by progression, and stores the draft as a pending workout proposal Aaron can start from the Train tab. Waits up to 20 s; if still running, returns the job id and the draft appears in the app.",
+      "Ask the app's workout generator for one session for a date: mode 'generate' (optional focus such as \"arms\") or 'fill' (complete a partial exercise list into a balanced session). It uses the allowed set, readiness (sleep, steps, days since the last session), recovery, deload and history, sets loads by progression, and stores the draft as a pending workout proposal Aaron can start from the Train tab. Waits up to 20 s; if still running (or waiting to retry after a failed attempt, with `error` saying why), returns the job id and the draft appears in the app when it is done.",
     input: z.object({
       mode: z.enum(['generate', 'fill']).default('generate'),
       date: LocalDate.optional().describe('Default today'),
@@ -227,6 +227,9 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
         }
         if (job.status === 'failed')
           return { job_id, status: 'failed' as const, draft: null, error: job.error }
+        // An attempt failed and the job waits for its retry (minutes away): say why now instead of waiting it out.
+        if (job.status === 'queued' && job.attempts > 0 && job.error)
+          return { job_id, status: 'running' as const, draft: null, error: `Waiting to retry: ${job.error}` }
       }
       return { job_id, status: 'running' as const, draft: null, error: null }
     },

@@ -4,9 +4,18 @@
 // targets (training days, the floor and macro minimums, fast hours) rebuild the targets from today on in the same
 // db.batch as the edit. The daily water and fibre targets come from the plan version, so a new water_target_ml or
 // fibre_target_g also writes a plan version (defaults.water_ml / fibre_g, as deps.actor, through the guards) in that
-// batch, which rebuilds the targets from today on.
+// batch, which rebuilds the targets from today on. Training days are stored once each in week order, and no path can
+// put a clock reminder in the quiet hours (22:00–07:00).
 import { LOCKED_SETTINGS, today } from '@fitness/shared/engine'
-import type { Profile, Settings, SettingsUpdate, SettingsView } from '@fitness/shared/schemas'
+import {
+  CLOCK_REMINDERS,
+  REMINDER_HOURS,
+  Weekday,
+  type Profile,
+  type Settings,
+  type SettingsUpdate,
+  type SettingsView,
+} from '@fitness/shared/schemas'
 import { eq } from 'drizzle-orm'
 import { profile, settings } from '../../db'
 import type { Deps } from '../../lib/deps'
@@ -29,13 +38,32 @@ export async function getSettings(deps: Deps): Promise<SettingsView> {
 }
 
 /**
+ * A settings patch as it is stored, whoever sends it (the app, or a coach review's week_split / reminder_time):
+ * training days once each in week order (a repeated day would plan its session twice), and 400 for a clock reminder
+ * moved into the quiet hours, where it would never fire (the rule set_reminder_time applies). Unchanged reminders are
+ * not re-checked.
+ */
+function normalise(current: Settings, patch: SettingsPatchInput): SettingsPatchInput {
+  if (!patch) return patch
+  for (const kind of CLOCK_REMINDERS) {
+    const time = patch.reminders?.[kind]?.time
+    if (time && time !== current.reminders[kind]?.time && (time < REMINDER_HOURS.from || time >= REMINDER_HOURS.to))
+      throw badRequest(`The ${kind} reminder can't be at ${time}: reminders are quiet outside ${REMINDER_HOURS.from}–${REMINDER_HOURS.to}`)
+  }
+  const days = patch.training_days
+  return days ? { ...patch, training_days: Weekday.options.filter((d) => days.includes(d)) } : patch
+}
+type SettingsPatchInput = SettingsUpdate['settings']
+
+/**
  * PATCH /api/settings. Applies the fields that differ, logs them, and returns the new view. 403 rails_locked when a
- * non-user actor tries to move a rail; 400 when the resulting calorie floor would exceed the ceiling.
+ * non-user actor tries to move a rail; 400 when the resulting calorie floor would exceed the ceiling, or a clock
+ * reminder would be in the quiet hours.
  */
 export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise<SettingsView> {
   const { db } = deps
   const current = await getSettings(deps)
-  const settingsChanges = fieldChanges(current.settings, input.settings)
+  const settingsChanges = fieldChanges(current.settings, normalise(current.settings, input.settings))
   const profileChanges = fieldChanges(current.profile, input.profile)
 
   const locked = settingsChanges.filter((c) => LOCKED_SETTINGS.includes(c.path))

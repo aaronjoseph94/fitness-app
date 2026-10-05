@@ -1,7 +1,8 @@
 // Owns: tests at the tools-layer seam (modules/tools callTool + the coach module behind it) — get_today for the
 // baseline date, the review bundle's size for a seeded week (2026-W40, Mon 2026-09-28 … Sun 2026-10-04), apply_review
-// applying one change and dropping one below the calorie floor as a single plan version, revert_review, and every
-// tool exposing JSON Schemas and both annotations.
+// applying one change and dropping one below the calorie floor as a single plan version, revert_review, every
+// tool exposing JSON Schemas and both annotations, input read strictly (an unknown or misspelled argument is refused,
+// an unreadable instant is a 400), and generate_workout answering at once when the generator can't run now.
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
@@ -298,5 +299,54 @@ describe('tools layer', () => {
     await expect(
       callTool({ ...deps, actor: 'ai' }, 'apply_review', { summary: 's', narrative: 'n', changes: [] }),
     ).rejects.toMatchObject({ status: 403, code: 'needs_approval' })
+  })
+})
+
+describe('tool input is read strictly', () => {
+  it('a misspelled or unknown argument is refused naming it (400 invalid_tool_input), and nothing is written', async () => {
+    const weighIns = await db.$count(weight_logs)
+    // `dat` instead of `date` must not log (and replace) today's weigh-in.
+    await expect(callTool(deps, 'log_weight', { weight_kg: 94.4, dat: '2026-09-30' })).rejects.toMatchObject({
+      status: 400,
+      code: 'invalid_tool_input',
+      message: expect.stringContaining('dat'),
+    })
+    // REST's `logged_at` is the tool's `at`: refused rather than logged now.
+    await expect(callTool(deps, 'log_water', { amount_ml: 250, logged_at: '2026-09-30T18:00:00Z' })).rejects.toMatchObject({
+      code: 'invalid_tool_input',
+    })
+    // Nested: `week_day` must not turn a Saturday change into an every-day one.
+    await expect(
+      callTool(deps, 'propose_plan_change', { changes: [{ field: 'kcal', to: 1450, week_day: 'sat' }], reason: 'Saturday' }),
+    ).rejects.toMatchObject({ code: 'invalid_tool_input', message: expect.stringContaining('changes[0].week_day') })
+    expect(await db.$count(weight_logs)).toBe(weighIns)
+    // Union members keep their own fields (a review change of each kind), and an empty object stays valid.
+    await expect(callTool(deps, 'get_plan', {})).resolves.toBeTruthy()
+  })
+
+  it('generate_workout answers with the reason as soon as the generator cannot run now (no provider), not after 20 s', async () => {
+    const started = Date.now()
+    const out = (await callTool(deps, 'generate_workout', { mode: 'generate', date: '2026-10-05' })) as {
+      status: string
+      error: string | null
+    }
+    expect(Date.now() - started).toBeLessThan(10_000)
+    // failed (no provider is set up at all) or running with "Waiting to retry: …" (an attempt failed, a retry is minutes away).
+    expect(['failed', 'running'], JSON.stringify(out)).toContain(out.status)
+    expect(out.error).toMatch(/provider/i)
+  }, 30_000)
+
+  it('get_trend takes at most 400 days, like query_metric', async () => {
+    await expect(callTool(deps, 'get_trend', { from: '1900-01-01', to: '2100-01-01' })).rejects.toMatchObject({
+      code: 'invalid_tool_input',
+      message: expect.stringContaining('400 days'),
+    })
+  })
+
+  it('an instant that is not a date ("now") is a 400 invalid_tool_input, not a server error', async () => {
+    await expect(callTool(deps, 'log_water', { amount_ml: 250, at: 'now' })).rejects.toMatchObject({
+      status: 400,
+      code: 'invalid_tool_input',
+    })
   })
 })

@@ -1,6 +1,6 @@
 // Owns: SPEC §12 phase 4 — the MCP endpoint Claude's connector uses: /mcp refuses a request without credentials (401
 // with the OAuth challenge), and with the static bearer token it initializes, lists the review and week-plan tools,
-// and answers get_today.
+// answers get_today, and refuses a misspelled argument as a tool error.
 import type { APIRequestContext } from '@playwright/test'
 import { expect, mcpToken, test, todayLocal } from './support'
 
@@ -54,4 +54,9 @@ test('MCP: 401 without auth; with the bearer token it lists the tools and answer
   expect(today.content.length).toBeGreaterThan(0)
   expect(today.content[0].type).toBe('text')
   expect(today.content[0].text).toContain(todayLocal())
+
+  // A misspelled argument is a tool error naming it, never a silent default (here: today's weigh-in replaced).
+  const typo = await rpc(request, 4, 'tools/call', { name: 'log_weight', arguments: { weight_kg: 94, dat: '2026-01-01' } })
+  expect(typo.isError).toBe(true)
+  expect(typo.content[0].text).toContain('Unknown argument: dat')
 })

@@ -210,12 +210,16 @@ export function mountMcp(app: App, serve: McpServe): void {
   )
 }
 
-/** Expected consent failures: redirect to the client only when the library validated where to; else render locally. */
+/**
+ * Expected consent failures: redirect to the client only when the library validated where to; else render locally.
+ * The redirect is built with mutable headers (not Response.redirect, whose headers are immutable): the security-headers
+ * middleware still has to add its headers to it.
+ */
 async function consentStep(step: () => Promise<Response>): Promise<Response> {
   try {
     return await step()
   } catch (err) {
-    if (err instanceof AuthorizationError && err.redirectTo) return Response.redirect(err.redirectTo, 302)
+    if (err instanceof AuthorizationError && err.redirectTo) return new Response(null, { status: 302, headers: { Location: err.redirectTo } })
     if (err instanceof AuthorizationError) return errorPage(err.description)
     if (err instanceof CimdFetchError) return errorPage('This app could not be verified (its client metadata could not be fetched).')
     throw err

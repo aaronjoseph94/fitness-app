@@ -62,7 +62,13 @@ async function readBody(c: Context<AppEnv>, schema: z.ZodType | undefined): Prom
 
 function parse<T extends z.ZodType | undefined>(schema: T, value: unknown, part: string): Parsed<T> {
   if (!schema) return undefined as Parsed<T>
-  const r = schema.safeParse(value)
+  let r: z.ZodSafeParseResult<unknown>
+  try {
+    r = schema.safeParse(value)
+  } catch (err) {
+    // A schema step that throws on a value it cannot read (e.g. an unparseable instant) is still the caller's input.
+    throw new HttpError(400, 'invalid_request', `Invalid ${part}: a value could not be read (${err instanceof Error ? err.message : String(err)})`)
+  }
   if (!r.success) throw new HttpError(400, 'invalid_request', `Invalid ${part}: ${z.prettifyError(r.error)}`, r.error.issues)
   return r.data as Parsed<T>
 }

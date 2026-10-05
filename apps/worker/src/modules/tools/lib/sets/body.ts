@@ -2,7 +2,7 @@
 import { today } from '@fitness/shared/engine'
 import {
   Cm,
-  DateRange,
+  DaysQuery,
   Kg,
   LocalDate,
   Measurement,
@@ -20,8 +20,8 @@ export const BODY_TOOLS: readonly ToolDefinition[] = [
     title: 'Get the weight trend',
     area: 'body',
     description:
-      'Raw weigh-ins and the trend weight (EWMA, α = 0.25; gaps carry the trend forward) per day for a date range, the 7-day trend change, tape measurements in the range, the active forecast (weekly rate, finish date, band) and the milestones with the dates reached. Lead with the trend, not the raw scale weight. Read-only.',
-    input: DateRange,
+      'Raw weigh-ins and the trend weight (EWMA, α = 0.25; gaps carry the trend forward) per day for a date range, the 7-day trend change, tape measurements in the range, the active forecast (weekly rate, finish date, band) and the milestones with the dates reached. At most 400 days per call. Lead with the trend, not the raw scale weight. Read-only.',
+    input: DaysQuery,
     output: TrendSeries,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     run: (deps, range) => getTrend(deps, range),

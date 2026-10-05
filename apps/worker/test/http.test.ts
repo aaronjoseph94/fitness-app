@@ -1,6 +1,7 @@
 // Owns: tests at the HTTP edge (app.ts, lib/route.ts, middleware/auth.ts and errors.ts through the app) — request
 // bodies must say what they are (JSON or octet-stream; a cross-site text/plain form can't reach validation), a
-// cross-site write is refused before anything runs, path params are decoded once, every Worker response carries the
+// cross-site write is refused before anything runs, an unreadable value (instant "now") is a 400 and a trend range at
+// most 400 days, path params are decoded once, every Worker response carries the
 // security headers, a D1 constraint violation is a 409 the offline queue stops retrying, and signed file links
 // (keys with %2F) serve the bytes and refuse a tampered or expired signature.
 import { env } from 'cloudflare:workers'
@@ -79,6 +80,26 @@ describe('cross-site writes', () => {
     expect(res.status).toBe(403)
     const read = await app.request(`${LOCAL}/api/health`, { headers: { 'Sec-Fetch-Site': 'cross-site' } }, env)
     expect(read.status).toBe(200)
+  })
+})
+
+describe('unreadable values', () => {
+  it('an instant that is not a date ("now", "yesterday") is a 400 invalid_request, never a 500', async () => {
+    const water = await app.request(
+      `${LOCAL}/api/water`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: crypto.randomUUID(), amount_ml: 250, logged_at: 'now' }) },
+      env,
+    )
+    expect(water.status).toBe(400)
+    expect(await water.json()).toMatchObject({ error: 'invalid_request' })
+    const events = await app.request(`${LOCAL}/api/events?since=yesterday`, {}, env)
+    expect(events.status).toBe(400)
+  })
+
+  it('a trend range is at most 400 days (one point per day: 2026–2100 would be ~27,000 points, far past the CPU budget)', async () => {
+    const huge = await app.request(`${LOCAL}/api/trend?from=2026-01-01&to=2100-01-01`, {}, env)
+    expect(huge.status).toBe(400)
+    expect(await huge.json()).toMatchObject({ error: 'invalid_request' })
   })
 })
 

@@ -174,7 +174,8 @@ export const endpoints = {
       response: z.array(Measurement),
       offline: 'queue',
     }),
-    trend: defineEndpoint({ method: 'GET', path: '/api/trend', query: DateRange, response: TrendSeries }),
+    /** At most 400 days (one point per day; the Progress tab asks for at most 400). */
+    trend: defineEndpoint({ method: 'GET', path: '/api/trend', query: DaysQuery, response: TrendSeries }),
   },
 
   nutrition: {

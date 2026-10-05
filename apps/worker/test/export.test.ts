@@ -1,7 +1,8 @@
 // Owns: tests at the export seam (modules/export through the /api routes) — an export restores into a fresh instance
 // row for row (a second export deep-equals the first, table by table), a restore refuses a used instance unless told
 // to overwrite and keeps the rails Aaron's, a page whose settings, plan versions or daily targets break their schemas
-// (or the floor ≤ ceiling rail) is refused whole with 422, and the monthly backup writes one table per cron tick.
+// (or the floor ≤ ceiling rail), or that holds more than one settings / profile row, is refused whole with 422, and
+// the monthly backup writes one table per cron tick.
 import {
   ExportTable,
   ReminderKind,
@@ -337,6 +338,19 @@ describe('restore validates what it writes', () => {
       await expect(page('settings', [bad])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
     const [s] = await db.select().from(settings)
     expect(s).toMatchObject({ calorie_floor: row.calorie_floor, calorie_ceiling: row.calorie_ceiling })
+  })
+
+  it('refuses a settings or profile page with more than one row (one set of rails), and stores nothing', async () => {
+    const { tables } = await exportAll()
+    const row = tables.settings![0]!
+    const second = { ...row, id: crypto.randomUUID(), calorie_floor: 800, calorie_ceiling: 900 }
+    await expect(page('settings', [row, second])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    expect(await db.$count(settings)).toBe(1)
+    const me = tables.profile![0]!
+    await expect(
+      importTablePage(deps(), { restore_id: crypto.randomUUID(), overwrite: true, table: 'profile', rows: [me, { ...me, id: crypto.randomUUID() }] }),
+    ).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    expect(await db.$count(profile)).toBe(1)
   })
 
   it('refuses plan versions whose targets break PlanTargets and daily targets that break DailyTargets', async () => {

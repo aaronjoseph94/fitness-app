@@ -2,7 +2,8 @@
 // plan's numbers. A restore writes rows verbatim (SQL upserts, no module in between), so the rows that hold the rails
 // (settings) and the targets everything else is computed from (plan_versions, daily_targets) are decoded from their
 // export cells (JSON text, 0/1 booleans) and parsed with their shared Zod schemas; settings also need
-// calorie_floor ≤ calorie_ceiling. One bad row refuses the whole page (422), so nothing half-valid is stored.
+// calorie_floor ≤ calorie_ceiling; profile and settings take exactly one row. One bad row refuses the whole page (422),
+// so nothing half-valid is stored.
 import { DailyTargets, PlanVersion, Settings, type ExportRow, type ExportTable } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import { HttpError } from '../../../lib/http-error'
@@ -59,8 +60,14 @@ function decode(spec: TableSpec, row: ExportRow): Record<string, unknown> {
   return out
 }
 
-/** Throw 422 invalid_rows (naming the row and the rule) unless every row of a validated table parses. */
+/**
+ * Throw 422 invalid_rows (naming the row and the rule) unless every row of a validated table parses, and unless a
+ * single-row table (profile, settings: one set of rails) gets exactly one row — the page replaces the stored row, so a
+ * second one would leave two sets of rails for `limit 1` reads to pick from.
+ */
 export function validateRows(spec: TableSpec, rows: readonly ExportRow[]): void {
+  if (spec.singleRow && rows.length > 1)
+    throw new HttpError(422, 'invalid_rows', `${spec.name} holds exactly one row; this page has ${rows.length}`)
   const schema = VALIDATORS[spec.name]
   if (!schema) return
   for (const row of rows) {

@@ -2,7 +2,8 @@
 // RFC 9728 resource metadata, the static bearer (initialize, tools/list with annotations, tools/call get_today with
 // structured content, a tool error), writes over the transport (apply_review makes a plan version the app serves; a
 // week plan under the calorie floor is refused), prompts and resources, Dynamic Client Registration only for Claude's
-// callbacks and loopback (anything else writes nothing to KV), and the OAuth 2.1 path end to end (DCR → consent →
+// callbacks and loopback (anything else writes nothing to KV), consent errors (a refused /authorize redirects back to
+// the client with the OAuth error; a cross-site POST is 403), and the OAuth 2.1 path end to end (DCR → consent →
 // code + PKCE → token → /mcp).
 import { addDays, today, weekStart } from '@fitness/shared/engine'
 import { ReminderKind, Weekday, type ReminderPrefs } from '@fitness/shared/schemas'
@@ -264,6 +265,45 @@ describe('Dynamic Client Registration', () => {
       ['http://127.0.0.1:33418/'],
     ])
       expect((await register(uris)).status, uris.join(' ')).toBe(201)
+  })
+})
+
+describe('consent errors', () => {
+  it('an /authorize request the library refuses (no PKCE) is sent back to the client as an OAuth error redirect, not a 500', async () => {
+    const origin = 'http://localhost:8787'
+    const redirect = 'https://claude.ai/api/mcp/auth_callback'
+    const reg = await app.request(
+      `${origin}/register`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_name: 'Claude', redirect_uris: [redirect], token_endpoint_auth_method: 'none' }),
+      },
+      env,
+    )
+    const { client_id } = (await reg.json()) as { client_id: string }
+    const query = new URLSearchParams({ response_type: 'code', client_id, redirect_uri: redirect, state: 'abc' })
+    const res = await app.request(`${origin}/authorize?${query}`, {}, env)
+    expect(res.status).toBe(302)
+    const location = new URL(res.headers.get('Location')!)
+    expect(`${location.origin}${location.pathname}`).toBe(redirect)
+    expect(location.searchParams.get('error')).toBe('invalid_request')
+    expect(location.searchParams.get('state')).toBe('abc')
+    expect(res.headers.get('X-Frame-Options')).toBe('DENY')
+  })
+
+  it('a cross-site POST to the consent page is refused before anything is approved', async () => {
+    const res = await app.request(
+      'http://localhost:8787/authorize',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Sec-Fetch-Site': 'cross-site' },
+        body: 'handle=x&decision=approve',
+      },
+      env,
+    )
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ error: 'cross_site' })
   })
 })
 
