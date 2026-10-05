@@ -11,7 +11,7 @@ Aaron's single-user, AI-first fitness tracker: an installable React PWA and one 
 
 ## Run it locally
 
-Node 22.22+ and pnpm 10.
+Node 24.21+ and pnpm 12 (`corepack enable`).
 
 ```sh
 pnpm install

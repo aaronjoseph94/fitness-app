@@ -6,7 +6,7 @@ Everything runs in one Cloudflare Worker on the free plan: static assets (the PW
 
 ## 0. Prerequisites
 
-- Node 22.22+ and pnpm 10 (`corepack enable`), then `pnpm install`.
+- Node 24.21+ and pnpm 12 (`corepack enable`), then `pnpm install`.
 - A Cloudflare account. Add a payment method to the account: **R2 and Zero Trust require one on file even though this app stays inside their free tiers** (nothing is charged within the free limits).
 - `cd apps/worker && npx wrangler login`
 
@@ -57,7 +57,7 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push keys | `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts` |
 | `VAPID_SUBJECT` | `mailto:` contact for push services | your email |
 
-Vars in `wrangler.jsonc`: set `APP_ORIGIN` to the deployed URL (e.g. `https://fitness.<subdomain>.workers.dev`). `TZ_NAME` stays `America/Edmonton`.
+Vars in `wrangler.jsonc`: `APP_ORIGIN` is the deployed URL (`https://fitness.ajcan.site`, the custom domain; `workers_dev` and `preview_urls` are off so only that hostname, behind Access, serves). `TZ_NAME` stays `America/Edmonton`.
 
 Never set `DEV_AUTH_BYPASS` in production (it is only honoured on localhost anyway).
 

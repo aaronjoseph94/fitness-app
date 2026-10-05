@@ -367,7 +367,7 @@ describe('POST /api/reviews/:week/pdf', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ key: 'reports/2026-W40.pdf', url: expect.stringMatching(/^\/api\/files\/reports%2F2026-W40\.pdf\?exp=/) })
     expect(calls[0]).toMatchObject({
-      url: 'http://localhost:8787/reports/week/2026-W40?print=1',
+      url: `${env.APP_ORIGIN}/reports/week/2026-W40?print=1`,
       setExtraHTTPHeaders: { 'CF-Access-Client-Id': 'id.access', 'CF-Access-Client-Secret': 'secret' },
       pdfOptions: { format: 'letter', printBackground: true },
     })
