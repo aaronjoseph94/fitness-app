@@ -1,0 +1,38 @@
+{
+  "name": "@fitness/worker",
+  "private": true,
+  "description": "The one Cloudflare Worker: static assets, REST /api, MCP /mcp, job runner and cron (Hono + D1/Drizzle + R2).",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787 --ip 127.0.0.1 --show-interactive-dev-session=false",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --project worker",
+    "db:generate": "drizzle-kit generate && tsx scripts/postprocess-migrations.ts",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "seed:build": "tsx scripts/build-seed.ts",
+    "seed:local": "tsx scripts/build-seed.ts && wrangler d1 execute DB --local --file seed.generated.sql",
+    "seed:remote": "tsx scripts/build-seed.ts && wrangler d1 execute DB --remote --file seed.generated.sql",
+    "setup:local": "pnpm db:migrate:local && pnpm seed:local"
+  },
+  "dependencies": {
+    "@fitness/shared": "workspace:*",
+    "@fitness/exercises": "workspace:*",
+    "@hono/zod-validator": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "jose": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "@types/node": "catalog:",
+    "drizzle-kit": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

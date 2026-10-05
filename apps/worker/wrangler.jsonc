@@ -1,0 +1,32 @@
+// Owns: the Worker's Cloudflare config — bindings (DB, FILES, ASSETS), vars, the single cron, static-asset routing.
+// Secrets are NOT here: set them with `wrangler secret put` (prod) or apps/worker/.dev.vars (local). See docs/DEPLOY.md.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fitness",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-04",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Navigations to these paths must reach the Worker, not the SPA shell.
+    "run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/.well-known/*", "/authorize", "/token", "/register"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fitness",
+      // Replace with the id printed by `wrangler d1 create fitness` before the first remote deploy.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "fitness-files" }],
+  // One cron: a 5-minute sweep that also dispatches nightly/weekly/monthly work by Edmonton local time (DST-safe, uses 1 of 5 free cron slots).
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "vars": {
+    "APP_ORIGIN": "http://localhost:8787",
+    "TZ_NAME": "America/Edmonton"
+  }
+}

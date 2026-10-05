@@ -1,0 +1,17 @@
+{
+  "name": "@fitness/shared",
+  "private": true,
+  "description": "Zod schemas (types inferred from them), the pure engine and the guardrails, shared by web, worker and MCP.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./engine": "./src/engine/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --project engine"
+  },
+  "dependencies": { "zod": "catalog:" },
+  "devDependencies": { "typescript": "catalog:", "vitest": "catalog:" }
+}

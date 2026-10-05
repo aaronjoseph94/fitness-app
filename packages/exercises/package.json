@@ -1,0 +1,13 @@
+{
+  "name": "@fitness/exercises",
+  "private": true,
+  "description": "Exercise library: free-exercise-db seed (pinned), muscle-group mapping, images served as static assets, plus extra media sources.",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "fetch": "tsx scripts/fetch.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": { "@fitness/shared": "workspace:*", "zod": "catalog:" },
+  "devDependencies": { "typescript": "catalog:", "tsx": "catalog:", "@types/node": "catalog:" }
+}

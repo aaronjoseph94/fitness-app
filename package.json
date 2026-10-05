@@ -1,0 +1,27 @@
+{
+  "name": "fitness",
+  "private": true,
+  "description": "Aaron's single-user AI-first fitness tracker: React PWA + one Cloudflare Worker (see docs/SPEC.md).",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22.22.0" },
+  "scripts": {
+    "dev": "node scripts/ensure-web-dist.mjs && concurrently -k -n worker,web -c blue,magenta \"pnpm --filter @fitness/worker dev\" \"pnpm --filter @fitness/web dev\"",
+    "build": "pnpm --filter @fitness/web build",
+    "preview": "pnpm build && pnpm --filter @fitness/worker dev",
+    "test": "vitest run",
+    "test:engine": "vitest run --project engine",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "e2e": "playwright test",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "concurrently": "catalog:",
+    "prettier": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

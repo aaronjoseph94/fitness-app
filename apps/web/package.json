@@ -1,0 +1,42 @@
+{
+  "name": "@fitness/web",
+  "private": true,
+  "description": "The React PWA: Today, Log, Train, Progress, AI tabs, styleguide, print report pages.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@emotion/react": "catalog:",
+    "@emotion/styled": "catalog:",
+    "@fitness/shared": "workspace:*",
+    "@fontsource-variable/outfit": "catalog:",
+    "@mui/icons-material": "catalog:",
+    "@mui/material": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "dexie": "catalog:",
+    "dexie-react-hooks": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-is": "catalog:",
+    "react-router": "catalog:",
+    "recharts": "catalog:",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "workbox-core": "catalog:",
+    "workbox-expiration": "catalog:",
+    "workbox-precaching": "catalog:",
+    "workbox-routing": "catalog:",
+    "workbox-strategies": "catalog:"
+  }
+}
