@@ -76,7 +76,8 @@ Zero Trust (free plan, up to 50 users) → pick a team name → Access → Appli
 2. **Bypass apps** (Policy action: Bypass, Include: Everyone), one per path — paths match exactly, so add each:
    - `<host>/api/ingest/health` (the Shortcut webhook; it checks its own bearer token)
    - `<host>/mcp` (MCP; it checks its own token / OAuth)
-   - MCP OAuth endpoints (phase 4): `<host>/token`, `<host>/register`, `<host>/.well-known/oauth-authorization-server`, `<host>/.well-known/oauth-protected-resource`
+   - MCP OAuth endpoints: `<host>/token`, `<host>/register`, `<host>/.well-known/oauth-authorization-server`, `<host>/.well-known/oauth-protected-resource/mcp` (the one the `/mcp` 401 challenge names) and `<host>/.well-known/oauth-protected-resource`
+   - Do **not** bypass `<host>/authorize`: it is the consent page and must stay behind your Access login (the Worker checks the Access JWT there too).
 3. **Service token** for PDFs: Access → Service auth → create token → add a **Service Auth** policy for it on the "Fitness" app → secrets `ACCESS_CLIENT_ID` / `ACCESS_CLIENT_SECRET`.
 4. Keep Bot Fight Mode off for this hostname (Claude's connector calls come from Anthropic's cloud).
 
@@ -96,7 +97,8 @@ The endpoint is idempotent by date, so a re-run just replaces the day.
 Claude → Settings → Connectors → Add custom connector → URL `https://<host>/mcp`.
 
 - If the dialog shows **Request headers**, add `Authorization: Bearer <MCP_BEARER_TOKEN>`.
-- Otherwise leave auth to OAuth: Claude discovers it, opens the consent page (behind your Cloudflare Access login), and you approve once.
+- Otherwise leave auth to OAuth: Claude gets a `401` from `/mcp`, reads `/.well-known/oauth-protected-resource/mcp` and `/.well-known/oauth-authorization-server`, registers itself (Client ID Metadata Document, or `/register`), and opens `/authorize`. Sign in through Cloudflare Access, then tap **Allow** on "Allow Claude to read and change your fitness data within the rails". Access tokens last 1 hour and refresh silently; the grant lapses only after 60 days without use (approve again then). Needs the `OAUTH_KV` namespace from step 1.
+- Claude Code: `claude mcp add --transport http fitness https://<host>/mcp --header "Authorization: Bearer <MCP_BEARER_TOKEN>"`.
 
 Then in any Claude chat with the connector on, say "run my coach review" — Claude calls `get_procedure("coach_review")`, reads `get_review_bundle`, discusses, and applies on your approval.
 

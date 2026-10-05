@@ -1,6 +1,7 @@
 // Owns: who may call /api — Cloudflare Access JWT verification (Aaron's login and the PDF renderer's service token),
 // the localhost-only DEV_AUTH_BYPASS, and the bearer tokens of paths Access excludes (the iOS Shortcut webhook).
-// Every request that passes is attributed to actor 'user'. /mcp is not under /api and brings its own auth (phase 4).
+// Every request that passes is attributed to actor 'user'. /mcp is not under /api and brings its own auth
+// (middleware/mcp-auth.ts); its OAuth consent page (/authorize) is guarded by this same Access check.
 import type { MiddlewareHandler } from 'hono'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import type { AppEnv, Env } from '../env'
@@ -77,7 +78,7 @@ async function checkBearer(header: string | undefined, secret: string | undefine
 }
 
 /** Compare SHA-256(a) with SHA-256(b) in constant time (equal-length digests, so neither length nor content leaks). */
-async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+export async function constantTimeEqual(a: string, b: string): Promise<boolean> {
   const enc = new TextEncoder()
   const [da, db] = await Promise.all([
     crypto.subtle.digest('SHA-256', enc.encode(a)),

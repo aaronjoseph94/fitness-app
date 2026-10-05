@@ -1,10 +1,13 @@
-// Owns: the Worker's Cloudflare config — bindings (DB, FILES, ASSETS), vars, the single cron, static-asset routing.
+// Owns: the Worker's Cloudflare config — bindings (DB, FILES, ASSETS, BROWSER, OAUTH_KV), vars, the single cron, static-asset routing.
 // Secrets are NOT here: set them with `wrangler secret put` (prod) or apps/worker/.dev.vars (local). See docs/DEPLOY.md.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "fitness",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-04",
+  // MCP OAuth accepts Client ID Metadata Documents (Claude's connector); the provider requires this flag so its
+  // metadata fetches never take same-zone shortcuts (SSRF protection). Nothing else here fetches our own zone.
+  "compatibility_flags": ["global_fetch_strictly_public"],
   "observability": { "enabled": true },
   "assets": {
     "directory": "../web/dist",
@@ -23,6 +26,11 @@
     }
   ],
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "fitness-files" }],
+  // MCP OAuth 2.1 (Claude connector): clients, grants and tokens. Replace the id with the one printed by
+  // `wrangler kv namespace create OAUTH_KV` before the first remote deploy (docs/DEPLOY.md §1).
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  // Browser Rendering: POST /api/reviews/:week/pdf renders the weekly report page into R2 (reports/<week>.pdf).
+  "browser": { "binding": "BROWSER" },
   // One cron: a 5-minute sweep that also dispatches nightly/weekly/monthly work by Edmonton local time (DST-safe, uses 1 of 5 free cron slots).
   "triggers": { "crons": ["*/5 * * * *"] },
   "vars": {

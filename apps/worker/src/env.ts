@@ -6,7 +6,10 @@ export interface Env {
   DB: D1Database
   FILES: R2Bucket
   ASSETS: Fetcher
-  BROWSER?: Fetcher
+  /** Browser Rendering (quickAction('pdf') archives the weekly report). wrangler dev's local binding has no quickAction. */
+  BROWSER?: BrowserRun
+  /** MCP OAuth 2.1 (@cloudflare/workers-oauth-provider): registered clients, grants and tokens (hashed / encrypted). */
+  OAUTH_KV: KVNamespace
   // vars
   APP_ORIGIN: string
   TZ_NAME: string
