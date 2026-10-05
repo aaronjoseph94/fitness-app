@@ -1,5 +1,5 @@
 // Owns: the "Weight and body" column of Progress — weight trend with the forecast, weekly loss vs the expected rate,
-// milestones, waist and WHR from tape measurements, and the scans placeholder — all from GET /api/trend.
+// milestones, waist and WHR from tape measurements (all from GET /api/trend), and the scans section (GET /api/scans).
 import Stack from '@mui/material/Stack'
 import type { TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import { useUiStore } from '../../../app/ui-store'
 import { MilestoneTimeline, WaistWhrChart, WeeklyLossChart, WeightTrendChart } from '../../../charts'
 import { ChartCard, formatNumber, SectionHeader } from '../../../components'
 import type { RangeKey } from './range'
+import { ScansSection } from './ScansSection'
 import { effectiveRate, forecastPath, lastTrend, milestoneTimelines, waistPoints, weeklyLoss, weightMilestones, weightPoints } from './series'
 import { ChartSkeleton, ErrorCard, isLoading } from './states'
 
@@ -109,12 +110,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumn
         <WaistWhrChart points={waist} whrTarget={WHR_TARGET} />
       </ChartCard>
 
-      <ChartCard
-        title="Body composition across scans"
-        subtitle="Fat and lean mass, body fat % and visceral level per Evolt scan"
-        empty={{ title: 'Arrives in phase 4', body: 'Scan upload and extraction bring fat vs lean mass across scans.', illustration: null }}
-        testId="placeholder-scans"
-      />
+      <ScansSection />
     </Stack>
   )
 }

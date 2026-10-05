@@ -27,7 +27,7 @@ function mergeEvents(previous: readonly AiEvent[], page: readonly AiEvent[]): Ai
 }
 
 function refreshDependents(queryClient: QueryClient): void {
-  for (const endpoint of [endpoints.day.get, endpoints.day.note, endpoints.plan.get, endpoints.body.trend, endpoints.plan.listWeekPlans]) {
+  for (const endpoint of [endpoints.day.get, endpoints.day.note, endpoints.plan.get, endpoints.body.trend, endpoints.weekPlans.list, endpoints.weekPlans.get]) {
     void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoint) })
   }
 }

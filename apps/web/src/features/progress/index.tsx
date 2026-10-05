@@ -15,6 +15,8 @@ import { latestTargets, rangeDays, rangeSummary } from './lib/series'
 import { SummaryStats } from './lib/SummaryStats'
 import { useProgressData } from './lib/useProgressData'
 import { WeightColumn } from './lib/WeightColumn'
+import { WeeklyReviewsSection } from './lib/WeeklyReviewsSection'
+import { WeekViewSection } from './lib/WeekViewSection'
 
 /** Fallbacks while settings load: the goal (SPEC §3) and the fast length (SPEC §2). */
 const DEFAULT_GOAL_KG = 65
@@ -75,6 +77,10 @@ export function ProgressPage() {
           />
         </Box>
       </Box>
+
+      <WeekViewSection date={date} />
+
+      <WeeklyReviewsSection />
     </Stack>
   )
 }

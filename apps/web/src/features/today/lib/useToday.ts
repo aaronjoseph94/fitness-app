@@ -1,12 +1,13 @@
 // Owns: the reads behind Today for one local date — the day (GET /api/day/:date), the last eight weeks of trend for the
 // hero chart, the active plan (its forecast), settings (start and goal weight), the pinned note (GET /api/notes), this
-// week's active week plan (phase 4; absent until then), and the offline queue folded into the day — plus the local date.
+// week's active week plan (GET /api/week-plans/view), and the offline queue folded into the day — plus the local date.
 import { endpoints } from '@fitness/shared/api'
-import { addDays, today, weekStart } from '@fitness/shared/engine'
+import { addDays, today } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useEffect, useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
 import { usePendingWrites } from '../../../offline'
+import { useWeekPlan } from '../../week'
 import { pendingFor } from './pending'
 
 /** The hero chart's history: about eight weeks. */
@@ -17,18 +18,14 @@ export function useTodayData(date: LocalDate) {
   const trend = useApiQuery(endpoints.body.trend, { query: { from: addDays(date, -(HERO_DAYS - 1)), to: date } })
   const plan = useApiQuery(endpoints.plan.get, {})
   const settings = useApiQuery(endpoints.settings.get, {}, { staleTime: 5 * 60_000 })
-  // Week plans arrive in phase 4: until the Worker serves them this read fails quietly and the card shows daily targets.
-  const weekPlans = useApiQuery(
-    endpoints.plan.listWeekPlans,
-    { query: { week_start: weekStart(date), status: 'active' } },
-    { retry: false, staleTime: 5 * 60_000 },
-  )
+  // The week view (shared with the This week card, same query): its active plan.
+  const week = useWeekPlan(date)
   // The pinned note has its own read (GET /api/notes); the day's copy covers the moment before it answers.
   const notes = useApiQuery(endpoints.day.note, {})
   const note = notes.isSuccess ? notes.data.note : (day.data?.note ?? null)
   const writes = usePendingWrites()
   const pending = useMemo(() => pendingFor(writes, date), [writes, date])
-  return { day, trend, plan, settings, weekPlan: weekPlans.data?.[0] ?? null, note, pending }
+  return { day, trend, plan, settings, weekPlan: week.data?.active ?? null, note, pending }
 }
 
 /** Today in America/Edmonton, re-read every minute and whenever the app comes back into view (it may be a new day). */

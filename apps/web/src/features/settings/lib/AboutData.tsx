@@ -47,7 +47,10 @@ export function AboutData({ timezone }: { timezone: string }) {
           <Item title="Times and units">
             Instants are stored in UTC and shown for {timezone}; dates read 2026-10-05. Units are kg, cm, ml, kcal and g.
           </Item>
-          <Item title="Export">One-tap export of every table and your photos arrives in phase 5.</Item>
+          <Item title="Export">
+            Export and restore (under More) zips every table and your photos on this phone; the server also keeps a
+            per-table JSON backup each month.
+          </Item>
         </Box>
       </Card>
     </Box>
