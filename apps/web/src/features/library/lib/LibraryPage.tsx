@@ -63,10 +63,11 @@ export function LibraryPage() {
   return (
     <Stack spacing={4} data-testid="library-page">
       <Box sx={{ display: 'flex', gap: 2 }}>
-        <Button component={RouterLink} to="/train/equipment" variant="outlined" startIcon={<TuneRounded />} sx={{ flex: 1 }}>
+        {/* One line each down to a 320 px phone. */}
+        <Button component={RouterLink} to="/train/equipment" variant="outlined" startIcon={<TuneRounded />} sx={{ flex: 1, px: 2, whiteSpace: 'nowrap' }}>
           Equipment
         </Button>
-        <Button variant="outlined" startIcon={<AddRounded />} onClick={() => setCreating(true)} sx={{ flex: 1 }}>
+        <Button variant="outlined" startIcon={<AddRounded />} onClick={() => setCreating(true)} sx={{ flex: 1, px: 2, whiteSpace: 'nowrap' }}>
           New exercise
         </Button>
       </Box>

@@ -1,6 +1,7 @@
 // Owns: one exercise in the builder — drag handle (touch-friendly, the only drag target so the page still scrolls),
 // thumbnail, name and a one-line prescription; expanded, the editors: sets stepper, rep range min–max, target load kg,
-// rest seconds (one-tap presets), note; and the row menu (about, swap, remove).
+// rest seconds (one-tap presets), note; and the row menu (about, swap, remove). An exercise outside the allowed set
+// (hidden, or its equipment marked since the template was saved) says so in place of its prescription.
 import AddRounded from '@mui/icons-material/AddRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import DragIndicatorRounded from '@mui/icons-material/DragIndicatorRounded'
@@ -98,6 +99,7 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
   const [noteOpen, setNoteOpen] = useState(item.note !== null && item.note !== '')
   const name = exercise?.name ?? 'Unknown exercise'
   const repsInvalid = item.rep_min > item.rep_max
+  const hidden = exercise !== undefined && !exercise.allowed
 
   return (
     <Card
@@ -132,8 +134,8 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
             <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
             </Box>
-            <Box sx={{ fontSize: tokens.font.size.label, color: repsInvalid ? tokens.status.flag : tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>
-              {repsInvalid ? 'Rep min is above max' : prescription(item)}
+            <Box sx={{ fontSize: tokens.font.size.label, color: repsInvalid || hidden ? tokens.status.flag : tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>
+              {hidden ? 'Hidden now: swap or remove it' : repsInvalid ? 'Rep min is above max' : prescription(item)}
             </Box>
           </Box>
         </ButtonBase>

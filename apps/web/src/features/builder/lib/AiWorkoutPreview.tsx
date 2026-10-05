@@ -1,5 +1,6 @@
 // Owns: the AI workout preview (SPEC §7) — the draft's rationale, its muscle map (engine scores → levels) with total
-// sets, each exercise with its prescription, swap (picker limited to the same primary muscle) and about, then "Start
+// sets, what the guards dropped or repaired (guard_notes), each exercise with its prescription, swap (picker limited to
+// the same primary muscle) and about, then "Start
 // session" or "Save as template". Controlled: the caller holds the draft and applies swaps through `onSwap`.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
@@ -60,8 +61,18 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
     <Stack spacing={4} data-testid="ai-workout-preview">
       <Card sx={{ p: 4, display: 'flex', gap: 3, alignItems: 'flex-start' }}>
         <AutoAwesomeRounded sx={{ color: tokens.metric.weight, mt: 0.25 }} aria-hidden />
-        <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }} data-testid="ai-rationale">
-          {draft.rationale || 'A balanced session from your allowed exercises.'}
+        <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }} data-testid="ai-rationale">
+            {draft.rationale || 'A balanced session from your allowed exercises.'}
+          </Box>
+          {/* What the guards dropped or repaired: a change that fails a rail is reported, not hidden (SPEC §9). */}
+          {draft.guard_notes && draft.guard_notes.length > 0 && (
+            <Box component="ul" sx={{ m: 0, mt: 2, pl: 4, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.5 }} data-testid="ai-guard-notes">
+              {draft.guard_notes.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </Box>
+          )}
         </Box>
       </Card>
 

@@ -2,24 +2,24 @@
 // terms require; a GIF that fails to load leaves the step images), both step images, tags, the
 // muscle map (primary at level 4, secondary at level 2), instructions (GET /api/exercises/:id: the cached list has
 // none), the YouTube form-video search, the strength chart
-// with PRs and next session's suggestion from GET /api/history/exercises/:id, and "Hide forever". Shared by the
-// detail sheet and the /train/library/:id page.
+// with PRs and next session's suggestion from GET /api/history/exercises/:id, and "Hide forever" (or, when hidden, why
+// and "Un-hide"). Shared by the detail sheet and the /train/library/:id page.
 import BlockRounded from '@mui/icons-material/BlockRounded'
 import OndemandVideoRounded from '@mui/icons-material/OndemandVideoRounded'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import { endpoints } from '@fitness/shared/api'
-import type { Exercise, ExerciseHistory, ExerciseSummary, Muscle } from '@fitness/shared/schemas'
+import type { Exercise, ExerciseHistory, ExerciseSummary, Muscle, PersonalRecord } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
 import { StrengthChart, type StrengthSession } from '../../../charts'
 import { ChartCard, formatNumber, formatShortDate } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, type MuscleLevel } from '../../../muscle-map'
 import { tokens, withAlpha } from '../../../theme'
+import { HiddenNotice } from './HiddenNotice'
 import { HideForeverDialog } from './HideForeverDialog'
 import { categoryLabel, equipmentLabel, sentence } from './labels'
 
@@ -31,10 +31,13 @@ export function exerciseLevels(e: Pick<Exercise, 'primary_muscles' | 'secondary_
   return levels
 }
 
-/** One point per session with a loaded set, oldest first: top-set load, the reps done at it, best Epley e1RM. */
+/**
+ * One point per session with a loaded set, oldest first: top-set load, the reps done at it, best Epley e1RM. Entries
+ * come newest first; read oldest first so two sessions on one day keep their order through the (stable) date sort.
+ */
 export function strengthSessions(history: ExerciseHistory): StrengthSession[] {
   const points: StrengthSession[] = []
-  for (const entry of history.entries) {
+  for (const entry of [...history.entries].reverse()) {
     if (entry.top_load_kg === null) continue
     const atTop = entry.sets.filter((s) => s.load_kg === entry.top_load_kg && s.reps !== null)
     const reps = atTop.length ? Math.max(...atTop.map((s) => s.reps ?? 0)) : null
@@ -68,8 +71,9 @@ function Media({ exercise }: { exercise: ExerciseSummary }) {
         <Box component="figure" sx={{ m: 0 }}>
           <Box component="img" src={gif} alt={`${exercise.name} demonstration`} onError={() => fail(gif)} sx={{ ...frame, aspectRatio: '1 / 1', maxHeight: 320 }} />
           {isExerciseDbGif(gif) && (
-            <Box component="figcaption" data-testid="exercise-gif-credit" sx={{ mt: 1, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, textAlign: 'center' }}>
-              <Box component="a" href={GIF_CREDIT_URL} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit' }}>
+            <Box component="figcaption" data-testid="exercise-gif-credit" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, textAlign: 'center' }}>
+              {/* A full-height tap target (44 px), not just the 15 px line of text. */}
+              <Box component="a" href={GIF_CREDIT_URL} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, px: 2 }}>
                 {GIF_CREDIT}
               </Box>
             </Box>
@@ -108,7 +112,8 @@ function History({ exerciseId }: { exerciseId: string }) {
   const history = useApiQuery(endpoints.training.exerciseHistory, { params: { id: exerciseId } }, { retry: false })
   const points = useMemo(() => (history.data ? strengthSessions(history.data) : []), [history.data])
   if (!history.data || points.length === 0) return null
-  const best = history.data.prs.find((p) => p.kind === 'best_e1rm')
+  // The highest e1RM PR (PRs of one day come in no particular order).
+  const best = history.data.prs.filter((p) => p.kind === 'best_e1rm').reduce<PersonalRecord | null>((b, p) => (b && b.e1rm_kg >= p.e1rm_kg ? b : p), null)
   const next = history.data.next
   return (
     <ChartCard
@@ -188,11 +193,7 @@ export function ExerciseDetail({ exercise, onHidden }: ExerciseDetailProps) {
 
   return (
     <Stack spacing={5} data-testid="exercise-detail">
-      {!exercise.allowed && (
-        <Alert severity="warning" variant="outlined">
-          Hidden: outside your allowed exercise set (equipment profile or an exclusion). The AI never suggests it.
-        </Alert>
-      )}
+      {!exercise.allowed && <HiddenNotice exercise={exercise} />}
       <Media exercise={exercise} />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
         {tags.map((t) => (

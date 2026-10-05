@@ -1,6 +1,7 @@
 // Owns: workout templates — ordered exercises (sets, rep range, target load, rest, note) with the engine's muscle-score
 // snapshot, written as one db.batch (template row + replaced exercise rows [+ the accepted proposal]).
-// Templates written by ai/mcp pass the workout guards; Aaron's own may hold any library exercise.
+// Every exercise list a template is given passes the workout guards, Aaron's own too (CLAUDE.md rails: the allowed
+// exercise set, 12–28 sets per session); a patch that keeps the list (rename, notes) does not re-check it.
 import { muscleScores } from '@fitness/shared/engine'
 import type { Template, TemplateCreate, TemplateExerciseInput, TemplatePatch } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
@@ -46,13 +47,18 @@ export function scoresOf(exercises: readonly TemplateExerciseInput[], tags: Read
   return muscleScores(exercises.flatMap((e) => (tags.has(e.exercise_id) ? [{ ...tags.get(e.exercise_id)!, sets: e.sets }] : [])))
 }
 
-/** Exercises exist (400) and, for ai/mcp, pass the workout guards (422); returns the tags. Sessions use it too. */
+/**
+ * Exercises exist (400) and pass the workout guards (422: allowed exercise set, no excluded category, 12–28 sets);
+ * returns the tags. Templates check every list; sessions check the explicit lists of ai/mcp.
+ */
 export async function checkExercises(deps: Deps, exercises: readonly TemplateExerciseInput[]) {
   const tags = await requireExercises(deps, exercises.map((e) => e.exercise_id))
-  if (deps.actor !== 'user') {
-    const ctx = await guardContext(deps, await loadLibrary(deps))
-    const { rejected } = guardWorkout(ctx, exercises)
-    if (rejected.length) throw new HttpError(422, rejected[0]!.rule, rejected.map((r) => r.reason).join('; '), rejected)
+  const library = await loadLibrary(deps)
+  const { rejected } = guardWorkout(await guardContext(deps, library), exercises)
+  if (rejected.length) {
+    // Name the exercise instead of its id: the builder shows this message as it is.
+    const named = (reason: string) => reason.replace(/Exercise ([0-9a-f-]{36})/g, (all, id: string) => library.byId.get(id)?.name ?? all)
+    throw new HttpError(422, rejected[0]!.rule, rejected.map((r) => named(r.reason)).join('; '), rejected)
   }
   return tags
 }

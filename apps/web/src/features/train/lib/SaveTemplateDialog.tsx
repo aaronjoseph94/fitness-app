@@ -1,5 +1,6 @@
 // Owns: "Save as template" from the finish screen — name it, then POST /api/templates with the session's exercises
-// (ticked sets, rep range, top load, rest, note); queued offline like any write. Reports the new template's id.
+// (ticked sets, rep range, top load, rest, note); queued offline like any write. Reports the new template's id. A
+// template keeps the 12–28 sets rail (the Worker refuses one outside it), so a session outside it says so instead.
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -7,6 +8,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
+import { SESSION_SETS } from '@fitness/shared/engine'
 import { useEffect, useState } from 'react'
 import { problemText, useApiMutation } from '../../../api'
 import { tokens } from '../../../theme'
@@ -33,6 +35,8 @@ export function SaveTemplateDialog({
     invalidates: [endpoints.training.listTemplates],
   })
   const exercises = asTemplateExercises(session)
+  const sets = exercises.reduce((n, e) => n + e.sets, 0)
+  const outsideRail = exercises.length > 0 && (sets < SESSION_SETS.min || sets > SESSION_SETS.max)
 
   useEffect(() => {
     if (open) {
@@ -67,12 +71,14 @@ export function SaveTemplateDialog({
             formHelperText: { sx: { color: error ? undefined : tokens.ink.secondary } },
           }}
           sx={{ mt: 2 }}
-          error={error !== null}
+          error={error !== null || outsideRail}
           helperText={
             error ??
-            (exercises.length
-              ? `${exercises.length} exercise${exercises.length === 1 ? '' : 's'}, ${exercises.reduce((n, e) => n + e.sets, 0)} sets, with today's top loads as targets.`
-              : 'Tick at least one set to save this session as a template.')
+            (outsideRail
+              ? `A template holds ${SESSION_SETS.min}–${SESSION_SETS.max} sets; this session ticked ${sets}. Build one in the workout builder instead.`
+              : exercises.length
+                ? `${exercises.length} exercise${exercises.length === 1 ? '' : 's'}, ${sets} sets, with today's top loads as targets.`
+                : 'Tick at least one set to save this session as a template.')
           }
         />
       </DialogContent>
@@ -83,7 +89,7 @@ export function SaveTemplateDialog({
         <Button
           variant="contained"
           onClick={() => void save()}
-          disabled={create.isPending || !name.trim() || exercises.length === 0}
+          disabled={create.isPending || !name.trim() || exercises.length === 0 || outsideRail}
           data-testid="save-template"
         >
           {create.isPending ? 'Saving…' : 'Save'}

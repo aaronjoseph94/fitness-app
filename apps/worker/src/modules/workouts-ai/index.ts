@@ -9,7 +9,8 @@
 //                                           (background) for today when it is a training day with no session, week-plan
 //                                           session, pending workout proposal or queued job (yesterday's steps and
 //                                           session are known by then)
-// Registers the 'workout_generate' and 'workout_fill' job handlers (≤ 8 external fetches each).
+// Registers the 'workout_generate' and 'workout_fill' job handlers (≤ 8 external fetches each). A job no provider could
+// answer fails at once when Aaron asked for it or no provider has a key (JobFailed); otherwise the runner retries it.
 import { muscleScores, today, weekdayOf, weekStart } from '@fitness/shared/engine'
 import {
   WeekPlanContent,
@@ -23,8 +24,8 @@ import { ai_events, ai_jobs, daily_targets, settings, week_plans, workout_sessio
 import type { Deps } from '../../lib/deps'
 import { notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
-import { enqueue, registerJobHandler, runSoon, type JobContext } from '../jobs'
-import { createLlmRouter, type LlmRouter, type Priority } from '../llm'
+import { enqueue, JobFailed, registerJobHandler, runSoon, type JobContext } from '../jobs'
+import { createLlmRouter, ProvidersExhaustedError, type LlmRouter, type Priority } from '../llm'
 import { guardContext, planningContext, progressionFor } from '../training'
 import { buildPrompt, dayFocus, focusFromNote, LlmWorkout, selectCandidates, SYSTEM_PROMPT, type Focus } from './lib/plan'
 import { repairDraft } from './lib/repair'
@@ -163,6 +164,19 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   return { ...workout, muscle_scores, proposal_id }
 }
 
+/**
+ * When no provider answered (and not only for daily quotas, which the runner waits out), fail the job at once rather
+ * than retry for minutes: Aaron's own request has him looking at the page, and a chain where no provider has a key
+ * cannot answer on any retry. The page shows the message and its way on (builder, templates).
+ */
+function unanswered(e: unknown, priority: Priority): JobFailed | null {
+  if (!(e instanceof ProvidersExhaustedError) || e.quotaOnly) return null
+  const noKeys = e.failures.length > 0 && e.failures.every((f) => f.reason === 'no_key')
+  if (!noKeys && priority !== 'user') return null
+  const why = noKeys ? 'no AI provider is set up (no API key)' : 'no AI provider could answer right now'
+  return new JobFailed(`${why}. Build the session in the workout builder or start a template instead. ${e.message}`)
+}
+
 /** One run of a workout job: priority from the job row, a router capped at LLM_FETCHES, the draft as the output. */
 async function runWorkoutJob(deps: Deps, job: JobContext<'workout_generate'> | JobContext<'workout_fill'>) {
   const [row] = await deps.db.select({ priority: ai_jobs.priority }).from(ai_jobs).where(eq(ai_jobs.id, job.id))
@@ -176,11 +190,15 @@ async function runWorkoutJob(deps: Deps, job: JobContext<'workout_generate'> | J
       return r
     },
   }
-  const output =
-    job.type === 'workout_fill'
-      ? await draftWorkout(deps, tracked, { mode: 'fill', date: job.payload.date, exercises: job.payload.exercises, priority, job_id: job.id, signal: job.signal })
-      : await draftWorkout(deps, tracked, { mode: 'generate', date: job.payload.date, note: job.payload.focus, priority, job_id: job.id, signal: job.signal })
-  return { output, meta: provider }
+  try {
+    const output =
+      job.type === 'workout_fill'
+        ? await draftWorkout(deps, tracked, { mode: 'fill', date: job.payload.date, exercises: job.payload.exercises, priority, job_id: job.id, signal: job.signal })
+        : await draftWorkout(deps, tracked, { mode: 'generate', date: job.payload.date, note: job.payload.focus, priority, job_id: job.id, signal: job.signal })
+    return { output, meta: provider }
+  } catch (e) {
+    throw unanswered(e, priority) ?? e
+  }
 }
 
 registerJobHandler('workout_generate', { fetches: LLM_FETCHES, run: runWorkoutJob })

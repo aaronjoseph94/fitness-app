@@ -1,4 +1,5 @@
-// Owns: opening a session — starting one here (seed the working copy from a template, the week plan or blank, issue
+// Owns: opening a session — starting one here (seed the working copy from a template, the week plan or blank, leaving
+// out planned exercises the cached library says are outside the allowed set by now, each with a note; issue
 // POST /api/sessions through the write chain, open the logger at once, online or not) and reading one (the working
 // copy, folded together with GET /api/sessions/:id whenever the Worker has it; read straight from the Worker when
 // this phone has no copy, e.g. a session from history).
@@ -10,7 +11,8 @@ import { useNavigate } from 'react-router'
 import { useApiQuery } from '../../../api'
 import { TEMPLATES_STALE_MS } from '../queries'
 import { usePendingWrites } from '../../../offline'
-import { fromServer, mergeServer, seedSession, type LoggerSession } from './logger-model'
+import { useExerciseIndex } from '../../library'
+import { fromServer, LEFT_OUT, mergeServer, seedSession, type LoggerSession } from './logger-model'
 import { loggerState, useLoggerSession } from './logger-store'
 import { flushSession, syncStart, useTrainingWriters } from './sync'
 
@@ -28,16 +30,25 @@ export interface StartInput {
 /** Start a session and open the logger; the start write is queued when offline. */
 export function useStartSession(): (input: StartInput) => void {
   const navigate = useNavigate()
+  const index = useExerciseIndex()
   useTrainingWriters()
   return useCallback(
     (input: StartInput) => {
       const id = crypto.randomUUID()
       const started_at = new Date().toISOString()
-      loggerState().put(seedSession({ id, date: localDate(started_at), started_at, ...input }))
+      // The allowed set now: equipment statuses or exclusions may have changed since the template or plan was made
+      // (the Worker leaves the same exercises out of a template's plan). Unknown ids (not cached yet) stay.
+      const left_out: string[] = []
+      const exercises = input.exercises.filter((e) => {
+        const x = index.byId.get(e.exercise_id)
+        if (x && !x.allowed) left_out.push(`${LEFT_OUT}${x.name}: ${x.excluded_reason ?? 'outside your allowed exercise set'}`)
+        return !x || x.allowed
+      })
+      loggerState().put(seedSession({ id, date: localDate(started_at), started_at, ...input, exercises, left_out }))
       void syncStart(id)
       void navigate(sessionPath(id))
     },
-    [navigate],
+    [navigate, index.byId],
   )
 }
 

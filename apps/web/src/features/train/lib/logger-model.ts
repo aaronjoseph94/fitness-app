@@ -83,9 +83,17 @@ export interface LoggerSession {
   /** 'pending' until POST /api/sessions was issued (saved or queued). */
   start: 'pending' | 'sent'
   finished: LoggerFinish | null
+  /**
+   * Planned exercises left out when the session was started here, being outside the allowed set by then (equipment
+   * status or an exclusion changed since the template or plan was made), as notes in the Worker's format (LEFT_OUT).
+   */
+  left_out?: string[]
   /** Last local change (ms), for pruning old copies. */
   touched: number
 }
+
+/** Start of a "left out" note: `Left out <name>: <reason>` (the Worker's session recovery notes use the same). */
+export const LEFT_OUT = 'Left out '
 
 const uuid = () => crypto.randomUUID()
 
@@ -139,6 +147,7 @@ export function seedSession(input: {
   template_id: string | null
   name: string | null
   exercises: readonly TemplateExerciseInput[]
+  left_out?: string[]
 }): LoggerSession {
   return {
     id: input.id,
@@ -156,6 +165,7 @@ export function seedSession(input: {
     to_delete: [],
     start: 'pending',
     finished: null,
+    ...(input.left_out?.length ? { left_out: input.left_out } : {}),
     touched: Date.now(),
   }
 }

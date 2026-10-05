@@ -11,6 +11,12 @@ const POLL_MS = 1_500
 const SLOW_MS = 20_000
 const GIVE_UP_MS = 180_000
 
+/** A job error without the per-provider detail the Worker keeps for the audit trail ("No LLM provider could answer: …"). */
+function readableJobError(error: string | null): string | null {
+  const text = error?.replace(/\s*No LLM provider could answer:.*$/s, '').trim()
+  return text || null
+}
+
 export type AiWorkoutState =
   | { status: 'idle' }
   | { status: 'working'; slow: boolean }
@@ -55,7 +61,8 @@ export function useAiWorkout(): AiWorkout {
         setState({ status: 'failed', message: 'The AI finished without a workout. Try again.' })
       }
     } else if (data.status === 'failed') {
-      setState({ status: 'failed', message: data.error ? `The AI couldn't build it: ${data.error}` : "The AI couldn't build a workout. Try again." })
+      const why = readableJobError(data.error)
+      setState({ status: 'failed', message: why ? `The AI couldn't build it: ${why}` : "The AI couldn't build a workout. Try again." })
     }
   }, [data, state.status])
 

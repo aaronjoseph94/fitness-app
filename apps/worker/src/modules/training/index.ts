@@ -5,10 +5,12 @@
 //   listExercises(deps, query) / getExercise(deps, id) / createExercise(deps, body)        → Exercise(s) with `allowed`
 //   setExercisePhoto(deps, id, query, bytes)  → Exercise   a custom exercise's photo (R2 exercise-photos/, signed URL)
 //   getEquipment(deps) / updateEquipment(deps, body)                                        → EquipmentItem[]
-//   createExclusion(deps, body) / deleteExclusion(deps, id)                                 → ExerciseExclusion / Ok
-//   listTemplates / getTemplate / createTemplate / updateTemplate / deleteTemplate          → Template (ai/mcp: guarded)
+//   createExclusion(deps, body) / deleteExclusion(deps, id: exclusion or exercise id)      → ExerciseExclusion / Ok
+//   listTemplates / getTemplate / createTemplate / updateTemplate / deleteTemplate          → Template
+//        every exercise list a template is given passes the workout guards (allowed set, 12–28 sets), any actor's
 //   startSession(deps, body) / getSession(deps, id) / listSessions(deps, { from, to })      → WorkoutSession
-//        start/get carry `plan` (last sets + progression default per exercise), `recovery` and `deload`
+//        start/get carry `plan` (last sets + progression default per exercise), `recovery` and `deload`; an explicit
+//        list from ai/mcp is guarded (422), any other plan leaves out exercises outside the allowed set (a note each)
 //   logSet(deps, session_id, body) / updateSet(deps, id, patch) / deleteSet(deps, id)       → SessionSet / Ok
 //   finishSession(deps, id, body)                                                           → { session, summary }
 //   exerciseHistory(deps, id)                                                               → ExerciseHistory

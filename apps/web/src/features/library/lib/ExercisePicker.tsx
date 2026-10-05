@@ -1,10 +1,10 @@
-// Owns: the exercise picker sheet (SPEC §7) — search and filter the library (allowed exercises only unless "Show
-// hidden"), tap a row to pick, ⓘ to look at the exercise first. With `sameMuscleAs` it becomes the swap list: allowed
+// Owns: the exercise picker sheet (SPEC §7) — search and filter the allowed exercise set (never a hidden exercise: the
+// picker fills templates, sessions and AI drafts, and the rails keep those to the allowed set; the library page browses
+// hidden ones), tap a row to pick, ⓘ to look at the exercise first. With `sameMuscleAs` it becomes the swap list: allowed
 // exercises sharing a primary muscle with that exercise, closest first. With `keepOpen` it stays up for several picks.
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import type { ExerciseSummary, Muscle } from '@fitness/shared/schemas'
@@ -39,7 +39,6 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
   const index = useExerciseIndex()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<ExerciseFilter>({})
-  const [includeHidden, setIncludeHidden] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
   const [added, setAdded] = useState(0)
   const query = useDeferredValue(q)
@@ -51,7 +50,6 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
     if (!open) return
     setQ('')
     setFilter({ muscle: initialMuscle, equipment: initialEquipment })
-    setIncludeHidden(false)
     setAdded(0)
   }, [open, initialMuscle, initialEquipment, sameMuscleAs])
 
@@ -67,8 +65,8 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
       // Keep the closeness order unless a search re-ranks it.
       return query.trim() ? narrowed : pool.filter((e) => narrowed.includes(e))
     }
-    return filterExercises(index.all, { ...filter, q: query, includeHidden })
-  }, [swap, target, index.all, filter, query, includeHidden])
+    return filterExercises(index.all, { ...filter, q: query })
+  }, [swap, target, index.all, filter, query])
 
   const pick = (e: ExerciseSummary) => {
     onPick(e)
@@ -81,7 +79,7 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
     ? target
       ? `Same primary muscle as ${target.name}`
       : undefined
-    : `${results.length} ${includeHidden ? 'exercises' : 'allowed exercises'}`
+    : `${results.length} allowed exercises`
 
   return (
     <>
@@ -99,16 +97,6 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
             onFilter={setFilter}
             equipment={equipment}
             hide={swap ? ['muscle'] : []}
-            extra={
-              swap ? undefined : (
-                <Chip
-                  label="Show hidden"
-                  variant={includeHidden ? 'filled' : 'outlined'}
-                  color={includeHidden ? 'warning' : 'default'}
-                  onClick={() => setIncludeHidden((v) => !v)}
-                />
-              )
-            }
           />
         }
         footer={

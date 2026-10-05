@@ -1,6 +1,7 @@
 // Owns: one set row in the session logger — set number, last session's set greyed (tap to copy), kg and reps
 // fields with greyed hints (what a tick logs when they are left empty), optional RPE 6–10, and the done tick.
-// Sized for a 390 px phone: 28 / flex / 68 / 52 / 40 / 44 px columns, 16 px inputs (no iOS zoom), 44 px taps.
+// Sized for a 390 px phone: 28 / flex / 68 / 52 / 44 / 44 px columns, 16 px inputs (no iOS zoom), 44 px taps; tighter
+// gaps under 375 px, and no Previous column under 360 px (SET_GRID_SX), so the done tick stays inside the card.
 // A problem (a tick with no load, a load or reps out of range) is said in words under the row, not only in red.
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import RadioButtonUncheckedRounded from '@mui/icons-material/RadioButtonUncheckedRounded'
@@ -15,8 +16,21 @@ import { formatNumber, parseNumber } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
 import type { LastSet, LoggerSet } from './logger-model'
 
-/** Shared with the column header row so the two line up. */
-export const SET_GRID = '28px minmax(48px, 1fr) 68px 52px 44px 44px'
+/**
+ * The set table's grid, shared with the column header row so the two line up. Content width = viewport − 56 px (page
+ * gutters, card padding); the columns need 236 px + Previous (≥ 48) + gaps: 6 px gaps fit from 375 px, 4 px gaps from
+ * 360 px, and under 360 px (a 320 px phone) the Previous column goes; the kg / reps hints still show last session.
+ */
+export const SET_GRID_SX = {
+  display: 'grid',
+  gridTemplateColumns: '28px minmax(48px, 1fr) 68px 52px 44px 44px',
+  gap: 1.5,
+  '@media (max-width: 374.95px)': { gap: 1 },
+  '@media (max-width: 359.95px)': {
+    gridTemplateColumns: '28px 68px 52px 44px 44px',
+    '& > [data-col="previous"]': { display: 'none' },
+  },
+} as const
 
 const RPE_STEPS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const
 
@@ -71,9 +85,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
       data-testid="set-row"
       data-done={set.done || undefined}
       sx={{
-        display: 'grid',
-        gridTemplateColumns: SET_GRID,
-        gap: 1.5,
+        ...SET_GRID_SX,
         alignItems: 'center',
         mx: -1.5,
         px: 1.5,
@@ -99,6 +111,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
         {n}
       </Box>
       <ButtonBase
+        data-col="previous"
         onClick={onCopyPrevious}
         disabled={!previous}
         aria-label={

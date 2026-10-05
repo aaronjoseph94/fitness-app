@@ -20,7 +20,7 @@ import { tokens, withAlpha } from '../../../theme'
 import { ExerciseThumb } from '../../library'
 import type { LoggerActions } from './actions'
 import { previousSet, progressionHint, setHint, type LoggerExercise } from './logger-model'
-import { SET_GRID, SetRow } from './SetRow'
+import { SET_GRID_SX, SetRow } from './SetRow'
 
 export interface ExerciseLogCardProps {
   exercise: LoggerExercise
@@ -142,10 +142,8 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
       <Box
         aria-hidden
         sx={{
+          ...SET_GRID_SX,
           mt: 2.5,
-          display: 'grid',
-          gridTemplateColumns: SET_GRID,
-          gap: 1.5,
           fontSize: tokens.font.size.caption,
           fontWeight: tokens.font.weight.label,
           color: tokens.ink.secondary,
@@ -154,7 +152,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
         }}
       >
         <span>Set</span>
-        <span>Previous</span>
+        <span data-col="previous">Previous</span>
         <span>kg</span>
         <span>Reps</span>
         <span>RPE</span>
@@ -175,7 +173,7 @@ function ExerciseLogCardInner({ exercise, info, actions, onAbout }: ExerciseLogC
         ))}
       </Box>
 
-      <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+      <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', '& .MuiButton-root': { whiteSpace: 'nowrap' } }}>
         <Button startIcon={<AddRounded />} onClick={() => actions.addSet(id)} data-testid="add-set">
           Add set
         </Button>

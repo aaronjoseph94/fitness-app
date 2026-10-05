@@ -1,5 +1,6 @@
 // Owns: the session logger screen (SPEC §7 session logging) — header (name, running clock, sets ticked, volume,
-// readiness), the start notes (recovery conflicts, deload week, low readiness), one card per exercise, add an exercise
+// readiness), the start notes (recovery conflicts, deload week, low readiness, planned exercises left out for being
+// outside the allowed set), one card per exercise, add an exercise
 // mid-session (picker), finish with a confirm, the sticky rest timer and the write-problem snackbar.
 import AddRounded from '@mui/icons-material/AddRounded'
 import FlagRounded from '@mui/icons-material/FlagRounded'
@@ -21,7 +22,7 @@ import { ExerciseDetailSheet, ExercisePicker, useExerciseIndex } from '../../lib
 import { useNow } from '../../quick-log'
 import { loggerActions } from './actions'
 import { ExerciseLogCard } from './ExerciseLogCard'
-import { setCounts, type LoggerSession } from './logger-model'
+import { LEFT_OUT, setCounts, type LoggerSession } from './logger-model'
 import { useLoggerStore } from './logger-store'
 import { ReadinessChip } from './ReadinessChip'
 import { RestTimerBar } from './RestTimerBar'
@@ -76,6 +77,8 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
     ...(session.recovery?.reduced_volume || session.readiness?.reduced_volume
       ? ['Readiness is low: consider one set fewer per exercise.']
       : []),
+    // Left out here at the start, or by the Worker (same wording, so a note shows once).
+    ...new Set([...(session.left_out ?? []), ...(session.recovery?.notes.filter((n) => n.startsWith(LEFT_OUT)) ?? [])]),
   ]
 
   return (

@@ -1,12 +1,13 @@
 // Owns: the workout builder page (/train/builder, /train/builder/:templateId, /train/builder?from=<id> to duplicate;
 // SPEC §7) — name, a live muscle map of the template's scores, the exercise list (tap to add from the picker, drag to
 // reorder, per-exercise sets / rep range / load / rest / note), notes, "Fill with AI" into a preview, and a sticky
-// Start / Save bar. The fill's pending workout proposal goes with the next create or start (accepting it). Leaving with
-// unsaved changes asks first.
+// Start / Save bar, and "Delete template" (asks first; sessions started from it keep their sets). The fill's pending
+// workout proposal goes with the next create or start (accepting it). Leaving with unsaved changes asks first.
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded'
+import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -26,10 +27,11 @@ import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { endpoints } from '@fitness/shared/api'
 import { SESSION_SETS, today } from '@fitness/shared/engine'
-import type { WorkoutDraft } from '@fitness/shared/schemas'
+import type { Template, WorkoutDraft } from '@fitness/shared/schemas'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router'
-import { problemText, useApiQuery } from '../../../api'
+import { apiQueryKey, problemText, useApiMutation, useApiQuery } from '../../../api'
 import { EmptyState, formatShortDate, LoadProblem, SectionHeader } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
@@ -63,6 +65,9 @@ export function BuilderPage() {
   const [aiOpen, setAiOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [showProblems, setShowProblems] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const queryClient = useQueryClient()
+  const remove = useApiMutation(endpoints.training.deleteTemplate, { invalidates: [endpoints.training.listTemplates] })
   /** The pending workout proposal of the AI fill now in the builder; sent with the next create or start, then cleared. */
   const [proposalId, setProposalId] = useState<string | null>(null)
   /** Set before a navigation the builder makes itself (after a save, into a session), so it is not blocked. */
@@ -91,7 +96,7 @@ export function BuilderPage() {
 
   const training = useMemo(() => draftMuscleLevels(state.items, index.byId), [state.items, index.byId])
   const pickedIds = useMemo(() => new Set(state.items.map((i) => i.exercise_id)), [state.items])
-  const issues = problems(state)
+  const issues = problems(state, index.byId)
 
   const blocker = useBlocker(({ currentLocation, nextLocation }) => builder.dirty && !leaving.current && currentLocation.pathname !== nextLocation.pathname)
 
@@ -154,6 +159,21 @@ export function BuilderPage() {
     }
   }
 
+  /** Delete the template being edited; the Train tab's list drops it at once, even while the write is queued. */
+  const deleteTemplate = async () => {
+    if (!templateId) return
+    try {
+      await remove.mutateAsync({ params: { id: templateId } })
+      queryClient.setQueriesData<Template[]>({ queryKey: apiQueryKey(endpoints.training.listTemplates) }, (list) => list?.filter((t) => t.id !== templateId))
+      setConfirmDelete(false)
+      leaving.current = true
+      void navigate('/train', { replace: true })
+    } catch (e) {
+      setConfirmDelete(false)
+      setNotice(problemText(e))
+    }
+  }
+
   const fillWithAi = () => {
     setAiOpen(true)
     ai.run({ mode: 'fill', exercises: toExercises(state.items) })
@@ -187,6 +207,11 @@ export function BuilderPage() {
         {templateId && (
           <IconButton aria-label="Duplicate template" onClick={() => navigate(`/train/builder?from=${templateId}`)} sx={{ mt: 1 }}>
             <ContentCopyRounded />
+          </IconButton>
+        )}
+        {templateId && (
+          <IconButton aria-label="Delete template" onClick={() => setConfirmDelete(true)} sx={{ mt: 1 }} data-testid="builder-delete">
+            <DeleteOutlineRounded />
           </IconButton>
         )}
       </Box>
@@ -297,7 +322,9 @@ export function BuilderPage() {
         pickedIds={pickedIds}
         sameMuscleAs={picker?.mode === 'swap' ? state.items.find((i) => i.key === picker.key)?.exercise_id : undefined}
         onPick={(e) => {
-          if (picker?.mode === 'swap') builder.update(picker.key, { exercise_id: e.id, target_load_kg: null })
+          // One row per exercise: the session logger keeps one card per exercise, so a second row's sets would be lost.
+          if (pickedIds.has(e.id)) setNotice(`${e.name} is already in this template`)
+          else if (picker?.mode === 'swap') builder.update(picker.key, { exercise_id: e.id, target_load_kg: null })
           else setExpanded(builder.add(defaultPrescription(e)))
         }}
       />
@@ -346,6 +373,19 @@ export function BuilderPage() {
             )}
           </Box>
         </Box>
+      </Dialog>
+
+      <Dialog open={confirmDelete} onClose={() => !remove.isPending && setConfirmDelete(false)} aria-labelledby="delete-template-title">
+        <DialogTitle id="delete-template-title">Delete {state.name.trim() || 'this template'}?</DialogTitle>
+        <DialogContent sx={{ color: 'text.secondary' }}>Sessions you started from it keep their sets and history.</DialogContent>
+        <DialogActions sx={{ px: 6, pb: 4 }}>
+          <Button onClick={() => setConfirmDelete(false)} disabled={remove.isPending}>
+            Keep it
+          </Button>
+          <Button color="error" onClick={() => void deleteTemplate()} disabled={remove.isPending} data-testid="confirm-delete-template">
+            Delete
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog open={blocker.state === 'blocked'} onClose={() => blocker.reset?.()} aria-labelledby="discard-title">

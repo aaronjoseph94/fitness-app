@@ -23,10 +23,13 @@ import type { Deps } from '../../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../../lib/http-error'
 import { eventInsert } from '../../events'
 import { acceptStatement, loadWorkoutProposal } from './guard'
-import { exerciseTags, requireExercises } from './library'
+import { exclusionReason, exerciseTags, loadRules, requireExercises } from './library'
 import { bySetOrder, chunk, round, startPlan, startReadiness, toSessionSet, toWorkoutSession, unique, type ExerciseTags, type SessionRow, type StartPlan } from './rows'
 import { DEFAULT_REP_RANGE, deloadOn, neighbourSessions, pastSessions, readinessOn, recoveryFor, suggestionFor, topLoad } from './state'
 import { checkExercises, scoresOf, templatePlan } from './templates'
+
+/** Start of the recovery note for a planned exercise left out of a session (the logger shows these notes). */
+const LEFT_OUT = 'Left out '
 
 async function sessionRow(deps: Deps, id: string): Promise<SessionRow | null> {
   const [row] = await deps.db.select().from(workout_sessions).where(eq(workout_sessions.id, id))
@@ -46,7 +49,8 @@ async function weekPlanSession(deps: Deps, date: string): Promise<{ template_id:
 /**
  * POST /api/sessions. The plan is `exercises` when given, else the template's, else the proposal's draft, else the
  * active week plan's session (origin week_plan); blank has none. Replaying the same id returns the stored session.
- * `exercises` from ai/mcp must pass the workout guards (422, as for templates); Aaron's own list is not checked.
+ * `exercises` from ai/mcp must pass the workout guards (422, as for templates). Any other plan is never refused: its
+ * exercises outside the allowed set are left out, each with a recovery note starting LEFT_OUT.
  */
 export async function startSession(deps: Deps, input: SessionCreate): Promise<WorkoutSession> {
   if (await sessionRow(deps, input.id)) return getSession(deps, input.id)
@@ -68,12 +72,25 @@ export async function startSession(deps: Deps, input: SessionCreate): Promise<Wo
     if (planned?.template_id && (await deps.db.select({ id: workout_templates.id }).from(workout_templates).where(eq(workout_templates.id, planned.template_id))).length)
       template_id = planned.template_id
   }
-  // An explicit list from ai/mcp passes the workout guards (allowed set, 12–28 sets), as a template would.
-  const tags = input.exercises ? await checkExercises(deps, plan) : await requireExercises(deps, plan.map((p) => p.exercise_id))
+  // An explicit list from ai/mcp passes the workout guards (allowed set, 12–28 sets), as a template would. Any other
+  // plan (Aaron's list, a template, a draft, the week plan) is never refused, since the session is his log: exercises
+  // outside the allowed set now (equipment marked since, hidden since) are left out of it, each with a note.
+  const guarded = !!input.exercises && deps.actor !== 'user'
+  const tags = guarded ? await checkExercises(deps, plan) : await requireExercises(deps, plan.map((p) => p.exercise_id))
+  const leftOut: string[] = []
+  if (!guarded && plan.length) {
+    const rules = await loadRules(deps)
+    plan = plan.filter((p) => {
+      const reason = exclusionReason(tags.get(p.exercise_id)!, rules)
+      if (reason) leftOut.push(`${LEFT_OUT}${tags.get(p.exercise_id)!.name}: ${reason}`)
+      return reason === null
+    })
+  }
 
   const [readiness, deload, neighbours] = await Promise.all([readinessOn(deps, date), deloadOn(deps, date), neighbourSessions(deps, date)])
   const primaries = unique(plan.flatMap((p) => tags.get(p.exercise_id)?.primary_muscles ?? []))
-  const start: StartPlan = { exercises: plan, recovery: recoveryFor(date, primaries, neighbours, readiness), deload }
+  const recovery = recoveryFor(date, primaries, neighbours, readiness)
+  const start: StartPlan = { exercises: plan, recovery: { ...recovery, notes: [...recovery.notes, ...leftOut] }, deload }
   const now = deps.now().toISOString()
   const statements: BatchItem<'sqlite'>[] = [
     deps.db

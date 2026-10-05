@@ -10,7 +10,7 @@ export interface DraftTraining {
   totalSets: number
   /** Muscles by score, highest first (trained only). */
   top: Muscle[]
-  /** Outside the 12–28 sets per session rail (the AI is held to it; a custom template only gets a hint). */
+  /** Outside the 12–28 sets per session rail (shown live; a template outside it is not saved, by the builder or the Worker). */
   outsideRail: 'under' | 'over' | null
 }
 

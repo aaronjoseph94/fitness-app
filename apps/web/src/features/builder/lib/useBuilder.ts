@@ -1,6 +1,8 @@
 // Owns: the builder's editable state — name, notes, origin and the ordered exercise list (each with a stable key for
-// drag and drop) — loaded once from a template being edited or duplicated, with dirty tracking and validation.
-import type { Template, TemplateExerciseInput, TemplateOrigin } from '@fitness/shared/schemas'
+// drag and drop) — loaded once from a template being edited or duplicated, with dirty tracking and validation (the
+// rails a template must keep, which the Worker also enforces: the allowed exercise set and 12–28 sets).
+import { SESSION_SETS } from '@fitness/shared/engine'
+import type { ExerciseSummary, Template, TemplateExerciseInput, TemplateOrigin } from '@fitness/shared/schemas'
 import { useCallback, useState } from 'react'
 import type { BuilderItem } from './ExerciseCard'
 
@@ -36,12 +38,21 @@ export function toExercises(items: readonly BuilderItem[]): TemplateExerciseInpu
   return items.map(({ key: _key, note, ...rest }) => ({ ...rest, note: note?.trim() ? note.trim() : null }))
 }
 
-export function problems(s: BuilderState): string[] {
+/** What stops a save, in words; `byId` (the cached library) finds exercises outside the allowed set. */
+export function problems(s: BuilderState, byId?: ReadonlyMap<string, Pick<ExerciseSummary, 'name' | 'allowed'>>): string[] {
   const out: string[] = []
   if (!s.name.trim()) out.push('Give the template a name.')
   if (s.items.length === 0) out.push('Add at least one exercise.')
   if (s.items.length > 20) out.push('A template holds at most 20 exercises.')
   if (s.items.some((i) => i.rep_min > i.rep_max)) out.push('A rep range has its minimum above its maximum.')
+  const hidden = s.items.flatMap((i) => {
+    const x = byId?.get(i.exercise_id)
+    return x && !x.allowed ? [x.name] : []
+  })
+  if (hidden.length) out.push(`${hidden.join(', ')} ${hidden.length > 1 ? 'are' : 'is'} outside your allowed exercises: swap or remove ${hidden.length > 1 ? 'them' : 'it'}.`)
+  const sets = s.items.reduce((n, i) => n + i.sets, 0)
+  if (s.items.length && (sets < SESSION_SETS.min || sets > SESSION_SETS.max))
+    out.push(`A session has ${SESSION_SETS.min}–${SESSION_SETS.max} sets; this template has ${sets}.`)
   return out
 }
 

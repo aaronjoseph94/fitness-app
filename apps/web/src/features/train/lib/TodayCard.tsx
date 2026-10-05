@@ -148,13 +148,15 @@ export function TodayCard({ day, active, activeCounts, templates, onStart }: Tod
   }
 
   if (planned) {
-    const training = draftMuscleLevels(planned.exercises, index.byId)
+    // What Start will log: exercises outside the allowed set by now are left out (useStartSession).
+    const startable = planned.exercises.filter((e) => index.byId.get(e.exercise_id)?.allowed !== false)
+    const training = draftMuscleLevels(startable, index.byId)
     const templateExists = planned.template_id !== null && templates.some((t) => t.id === planned.template_id)
     return (
       <Shell
         eyebrow="Today's plan"
         title={planned.name}
-        body={`${planned.exercises.length} exercises · ${training.totalSets} sets`}
+        body={`${startable.length} exercises · ${training.totalSets} sets`}
         aside={<MuscleMap levels={training.levels} size={96} title={`Muscles in ${planned.name}`} />}
         testId="today-planned"
       >

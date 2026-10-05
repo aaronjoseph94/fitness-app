@@ -119,7 +119,8 @@ export function recoveryFor(
   }
   if (r.sleep_h !== null && r.sleep_h < 5) notes.push(`Under 5 h sleep last night (${r.sleep_h} h): reduced volume suggested`)
   else if (r.reduced_volume) notes.push(`Readiness ${r.score}/100: reduced volume suggested`)
-  return { conflicts, reduced_volume: r.reduced_volume, notes }
+  // Several sessions on one neighbouring day say the same thing: once is enough.
+  return { conflicts, reduced_volume: r.reduced_volume, notes: unique(notes) }
 }
 
 // ── Deload ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -226,19 +227,24 @@ export async function pastSessions(
   return out
 }
 
-/** The engine's double-progression suggestion for one planned exercise (SPEC §7). */
+/**
+ * The engine's double-progression suggestion for one planned exercise (SPEC §7). The history goes oldest first by
+ * start time: the engine orders sessions by local date only (stable), so two sessions on one day stay in order and the
+ * later one is "last session".
+ */
 export function suggestionFor(
   tags: Pick<ExerciseTags, 'primary_muscles' | 'equipment'>,
   plan: { sets: number; rep_min: number; rep_max: number },
   past: readonly PastSession[],
   deload_week: boolean,
 ): Progression {
+  const chronological = [...past].sort((a, b) => a.started_at.localeCompare(b.started_at))
   return nextProgression({
     exercise: { primary_muscles: tags.primary_muscles, equipment: tags.equipment },
     rep_min: plan.rep_min,
     rep_max: plan.rep_max,
     sets: plan.sets,
-    history: past.map((p) => ({ date: p.date, sets: p.sets })),
+    history: chronological.map((p) => ({ date: p.date, sets: p.sets })),
     deload_week,
   })
 }
