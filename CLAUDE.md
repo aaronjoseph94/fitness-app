@@ -13,11 +13,11 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 | Phase | Scope (SPEC §12) | Status |
 | --- | --- | --- |
 | 0 | Spec saved, CLAUDE.md, PROGRESS.md | Done |
-| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | Built (e2e flows land in phase 5) |
-| 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | In progress (router + food sources done) |
-| 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | In progress |
-| 4 | Scans, reviews, week plans, Ask AI, MCP + Claude connector | Not started |
-| 5 | Photos, push reminders, export/import, full chart inventory, polish | Not started |
+| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | Built |
+| 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | Built |
+| 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | Built |
+| 4 | Scans, reviews, week plans, Ask AI, MCP + Claude connector | Built (connector untested with live Claude until deployed) |
+| 5 | Photos, push reminders, export/import, full chart inventory, polish | Built; final polish, e2e flows and code review in progress |
 
 ## Stack
 
@@ -44,8 +44,11 @@ pnpm --filter @fitness/worker db:migrate:local   # wrangler d1 migrations apply 
 pnpm --filter @fitness/worker db:migrate:remote  # wrangler d1 migrations apply fitness --remote (CI, before deploy)
 pnpm --filter @fitness/worker seed:local         # load seed/ into local D1
 pnpm --filter @fitness/exercises run fetch:images # download exercise step images (gitignored) before a web build
+pnpm --filter @fitness/exercises run fetch:media  # download matched ExerciseDB GIFs (gitignored)
+pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts  # new Web Push key pair
 pnpm --filter @fitness/worker deploy     # wrangler deploy (Aaron/Cursor only — see docs/DEPLOY.md)
-pnpm e2e                                 # Playwright flows against the local Worker
+pnpm e2e                                 # Playwright flows against a seeded local Worker
+pnpm check                               # typecheck + deep-module boundaries
 ```
 
 ## Conventions (SPEC §4)

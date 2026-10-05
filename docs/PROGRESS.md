@@ -4,6 +4,7 @@
 
 ## Done
 
+- 2026-10-05 · Phases 2–5 built: AI on every log, training, scans, weekly reviews and the printable report, week plans, the tools layer (46 tools), the MCP server (bearer + OAuth), Ask AI, progress photos, Web Push reminders, export/restore and the monthly backup. 94 Vitest tests pass; every screen smoke-tested against a local Worker.
 - 2026-10-05 · Phase 1 built: Worker auth (Access JWT + localhost dev bypass), every logging endpoint, plan versions through the guards, targets, nightly reforecast, day view, jobs queue, one-cron dispatcher; web Today/Log/Progress/Settings, quick-log sheet, offline queue. Smoke-tested end to end against a local Worker (weigh-ins, water, manual and text meals, sleep, health webhook → trend 93.8 kg, finish 2027-04-16).
 - 2026-10-05 · Phase 2 adapters: LLM router and food sources (OFF, USDA FDC, CNF 2026 with 5,894 foods).
 - 2026-10-05 · Scaffold: pnpm monorepo (shared, exercises, worker, web), pinned catalog, wrangler.jsonc, Vitest projects, PWA skeleton; Worker serves `/api/health` from local D1 and the SPA.
@@ -11,7 +12,8 @@
 
 ## Next
 
-- Phases 2 and 3 in progress in parallel; then phase 4 (scans, reviews, week plans, Ask AI, MCP) and phase 5 (photos, push, export, polish, e2e flows, review).
+- Final polish (cross-agent follow-ups), Playwright e2e flows, and a two-axis code review (Standards + Spec) with a fix pass.
+- After deploy (Aaron): connect the Claude connector and run a live coach review; upload the 2026-09-26 Evolt sheet to check extraction against SPEC §2; try barcode, voice and push on the iPhone.
 
 ## Decisions made on Aaron's behalf
 
@@ -30,6 +32,11 @@
   - **Offline sync:** no Background Sync on iOS; the Dexie queue flushes from the page (start, online, focus, after successful calls).
   - **Cloudflare Access + PWA:** the manifest is requested with credentials; the browser-rendered PDF uses an Access service token (`ACCESS_CLIENT_ID`/`ACCESS_CLIENT_SECRET` secrets).
   - **New secrets** beyond SPEC §4: `FILE_URL_SECRET` (signed file URLs), `USDA_FDC_API_KEY` (free key from api.data.gov), `ACCESS_CLIENT_ID`/`ACCESS_CLIENT_SECRET` (PDF rendering), `VAPID_SUBJECT`. New binding: `OAUTH_KV` (KV, for MCP OAuth).
+- 2026-10-05 · **Phase 4b decisions (agents):**
+  - *Week plans:* a proposal that breaks any rail (floor, ceiling, protein, fat, allowed exercise set, 12–28 sets, fasts per month, dates outside the week) is not stored and every reason comes back; for Claude and the AI, a kcal move larger than 150 is cut to the step and reported as `adjusted` (measured from last week's active plan). Apply and revert each write one plan version plus the change event and rebuilt `daily_targets` in one batch; past days keep their targets. A Gemini draft never replaces an active plan or a proposed one by Claude or Aaron. Ask AI cannot apply or revert week plans (403); its plans wait for a tap.
+  - *Tools layer:* 46 tools. The default review week is this week on Saturday/Sunday, otherwise last week. The review bundle covers at most 56 days of whole weeks and reuses `buildWeeklyMetrics`, so it matches the weekly report. `apply_review` makes one plan version for all target changes (none if every target change fails a rail); other changes go through their modules and refusals are reported. `revert_review` restores the plan version from before the review and undoes the other changes newest first. A scheduled scan date is an `ai_events` note (`scan_scheduled`). For actor `ai`, apply_review, revert_review, restore_plan_version, apply_proposal and reject_proposal return 403 `needs_approval`.
+  - *MCP:* one `McpServer` per request over `createMcpHandler`; input JSON Schemas are precomputed per isolate; output schemas are not listed (they would add ~440 KB to tools/list). Static bearer is checked first (constant time), then OAuth 2.1 via `@cloudflare/workers-oauth-provider` (scope `fitness`, user id `owner` so no name is in tokens, 1 h access tokens, 60-day idle grant, DCR and client metadata documents). `/authorize` sits behind the same Access check as `/api` and serves a plain one-button consent page. The issuer is the request's own origin. Added the `global_fetch_strictly_public` compatibility flag (the OAuth library needs it to fetch Claude's client metadata). `@modelcontextprotocol/hono` wasn't needed.
+  - *Ask AI:* runs in the request; a resent message id replays the stored turn; ≤ 5 model calls and ~16 tools per turn; logging tools apply at once; plan, workout and week-plan changes become proposals; write tools not in the policy are never offered. Aaron's name is stripped from text and tool descriptions before anything reaches the model.
 - 2026-10-05 · **Phases 2, 3, 4a and 5a decisions (agents):**
   - *Meal analysis:* an item's confidence is the lower of the LLM's and the food match's; LLM-estimated items are capped at 0.6 so a meal with a guess never auto-confirms. Auto-confirm is a sweep step (review meals from the last 2 days, untouched 10 min, every item ≥ 0.8). With no provider available, the meal goes to review with its raw text for manual items. Day-adjustment numbers are computed in code (over budget when kcal left < 0; protein short when 4 × protein left > half the kcal left); the LLM only writes the note. Food matching penalises qualifier words (chocolate, cookie, butter, juice…) and uses an FTS5 index (`foods_fts`, trigger-synced).
   - *Job runner:* deadline, fetch budget and daily-quota errors requeue (≤ 6 attempts); every job writes as actor `ai`.
