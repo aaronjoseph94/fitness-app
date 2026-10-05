@@ -1,7 +1,8 @@
 // Owns: the Playwright setup for the e2e flows in e2e/ (SPEC §12 acceptance): one Chromium project at phone size
 // (390×844) in Edmonton time, run one test at a time against the local Worker on :8799 started by e2e/server.mjs
 // (web build + fresh D1 migrated and seeded into apps/worker/.wrangler/e2e). No LLM keys, so AI paths take their
-// fallbacks. Browsers come preinstalled (PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers); never run `playwright install`.
+// fallbacks. Locally: `pnpm exec playwright install chromium` once. Where a different Chromium is preinstalled (the cloud
+// container: Playwright's own build is newer than /opt/pw-browsers), set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to it.
 import { defineConfig } from '@playwright/test'
 
 const PORT = 8799
@@ -25,6 +26,7 @@ export default defineConfig({
     locale: 'en-CA',
     // The built PWA registers a service worker; keep it out so every run talks to the Worker directly.
     serviceWorkers: 'block',
+    launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

@@ -31,7 +31,7 @@ To run the built app the way it deploys: `pnpm preview` (Vite build served by `w
 ```sh
 pnpm check            # typecheck every package + deep-module boundaries (dependency-cruiser)
 pnpm test             # Vitest: engine (Node) + Worker routes and modules (workerd + local D1)
-pnpm e2e              # Playwright flows against a seeded local Worker (uses the preinstalled Chromium)
+pnpm e2e              # Playwright flows against a seeded local Worker (`pnpm exec playwright install chromium` once)
 ```
 
 ## Layout
