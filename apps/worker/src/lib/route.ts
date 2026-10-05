@@ -7,7 +7,11 @@ import type { App, AppEnv } from '../env'
 import { depsFromContext, type Deps } from './deps'
 import { HttpError } from './http-error'
 
-type Parsed<T> = T extends z.ZodType ? z.output<T> : undefined
+type Parsed<T> = [Exclude<T, undefined>] extends [never]
+  ? undefined
+  : Exclude<T, undefined> extends z.ZodType
+    ? z.output<Exclude<T, undefined>>
+    : undefined
 
 /** What a handler receives: parsed (validated, transformed) params, query and body. */
 export interface RouteInput<E extends Endpoint> {
@@ -22,14 +26,18 @@ export type RouteHandler<E extends Endpoint> = (
   c: Context<AppEnv>,
 ) => Promise<EndpointOutput<E> | Response> | EndpointOutput<E> | Response
 
+/** A Binary/Upload body accepts an ArrayBuffer but not a plain object (an all-optional object schema accepts both). */
 const isBinary = (schema: z.ZodType | undefined) =>
-  !!schema && (schema as z.ZodType).safeParse(new ArrayBuffer(1)).success
+  !!schema && schema.safeParse(new ArrayBuffer(1)).success && !schema.safeParse({}).success
 
 async function readBody(c: Context<AppEnv>, schema: z.ZodType | undefined): Promise<unknown> {
   if (!schema) return undefined
   if (isBinary(schema)) return c.req.arrayBuffer()
+  const text = await c.req.text()
+  // An empty body is an empty object, so all-optional bodies (e.g. FastEnd) may be omitted.
+  if (text.trim() === '') return {}
   try {
-    return await c.req.json()
+    return JSON.parse(text) as unknown
   } catch {
     throw new HttpError(400, 'invalid_json', 'Request body must be JSON')
   }
