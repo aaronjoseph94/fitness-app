@@ -1,10 +1,10 @@
 # Deploy
 
-<!-- Owns: the one-time Cloudflare setup and the repeatable deploy, written for Aaron (or Cursor acting for him). Nothing in the repo deploys automatically. -->
+<!-- Owns: the one-time Cloudflare setup and the repeatable deploy, written for Aaron (or an agent acting for him). Nothing in the repo deploys automatically. -->
 
 Everything runs in one Cloudflare Worker on the free plan: static assets (the PWA), `/api`, `/mcp`, jobs and one cron. Data lives in D1, files in R2. Commands run from the repo root unless noted.
 
-Cursor (or any agent) deploying for Aaron follows [`CURSOR-RUNBOOK.md`](CURSOR-RUNBOOK.md): the same steps in order, each with its command, expected output and stop condition.
+An agent deploying for Aaron follows [`DEPLOY-RUNBOOK.md`](DEPLOY-RUNBOOK.md): the same steps in order, each with its command, expected output and stop condition.
 
 ## 0. Prerequisites
 
@@ -59,7 +59,7 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push keys | `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts` |
 | `VAPID_SUBJECT` | `mailto:` contact for push services | your email |
 
-Vars in `wrangler.jsonc`: `APP_ORIGIN` is the deployed URL (`https://fitness.ajcan.site`, the custom domain; `workers_dev` and `preview_urls` are off so only that hostname, behind Access, serves). `TZ_NAME` stays `America/Edmonton`.
+Vars in `wrangler.jsonc`: `APP_ORIGIN` is the deployed URL (`https://fitness.aarontjoseph94.workers.dev`; `workers_dev` is on, `preview_urls` off, so only that hostname, behind Access, serves). `TZ_NAME` stays `America/Edmonton`.
 
 Never set `DEV_AUTH_BYPASS` in production (it is only honoured on localhost anyway).
 

@@ -20,3 +20,6 @@ packages/exercises/media/
 # Superpowers skills: git worktrees and per-plan scratch workspaces stay local
 .worktrees/
 .superpowers/
+
+# local helper binaries
+.tools/

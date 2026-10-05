@@ -10,7 +10,7 @@
   "compatibility_flags": ["global_fetch_strictly_public"],
   "observability": { "enabled": true },
   // No preview URLs (<version>-fitness.<subdomain>.workers.dev): they are hostnames the Access application doesn't
-  // cover, so every uploaded version would be reachable outside the login. Only the production hostname serves.
+  // cover, so every uploaded version would be reachable outside the login. Only the production workers.dev hostname serves.
   "preview_urls": false,
   "assets": {
     "directory": "../web/dist",
@@ -35,10 +35,10 @@
   "browser": { "binding": "BROWSER" },
   // One cron: a 5-minute sweep that also dispatches nightly/weekly/monthly work by Edmonton local time (DST-safe, uses 1 of 5 free cron slots).
   "triggers": { "crons": ["*/5 * * * *"] },
-  // workers.dev Access login is broken on this account; use fitness.ajcan.site only.
-  "workers_dev": false,
+  // Production hostname: https://fitness.aarontjoseph94.workers.dev (no custom domain).
+  "workers_dev": true,
   "vars": {
-    "APP_ORIGIN": "https://fitness.ajcan.site",
+    "APP_ORIGIN": "https://fitness.aarontjoseph94.workers.dev",
     "TZ_NAME": "America/Edmonton"
   }
 }

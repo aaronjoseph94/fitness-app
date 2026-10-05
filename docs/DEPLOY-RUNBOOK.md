@@ -1,8 +1,8 @@
-# Cursor runbook: ship the tested build to Cloudflare
+# Deploy runbook: ship the tested build to Cloudflare
 
-<!-- Owns: the step-by-step deploy and post-deploy checklist for Cursor's agent (acting for Aaron) after the 2026-10-05 thorough test pass. Background and the one-time setup live in docs/DEPLOY.md; decisions in docs/PROGRESS.md. -->
+<!-- Owns: the step-by-step deploy and post-deploy checklist for the deploying agent (acting for Aaron) after the 2026-10-05 thorough test pass. Background and the one-time setup live in docs/DEPLOY.md; decisions in docs/PROGRESS.md. -->
 
-**Who runs this:** Cursor's agent, in this repo, on Aaron's machine, with Aaron at hand for logins, secret values and dashboard clicks.
+**Who runs this:** the deploying agent, in this repo, on Aaron's machine, with Aaron at hand for logins, secret values and dashboard clicks.
 **What it ships:** `main` at or after `4b599e9`. That commit holds:
 
 - the TypeScript 7 / Node 24 upgrade;
@@ -197,23 +197,23 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
    - wrangler uploads the Worker and the static assets (`apps/web/dist`);
    - it lists the cron `*/5 * * * *` and prints a version id.
 
-   `workers_dev` and `preview_urls` are off on purpose, so no `*.workers.dev` URL is printed. Copy the version id into the report.
+   `workers_dev` is on; `preview_urls` stay off. Expect the deploy to print `https://fitness.aarontjoseph94.workers.dev`. Copy the version id into the report.
 
-2. Check the custom domain:
+2. Check the workers.dev hostname:
 
    ```sh
-   curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" https://fitness.ajcan.site/api/health
+   curl -sS -o /dev/null -w "%{http_code} %{redirect_url}\n" https://fitness.aarontjoseph94.workers.dev/api/health
    ```
 
    **Expect:** `302` to `https://<team>.cloudflareaccess.com/…` (Access is guarding it).
 
-   🧑 **If** you get `404`, `522` or a DNS error, the custom domain isn't attached to the Worker. Aaron adds it in the dashboard: Workers & Pages → `fitness` → Settings → Domains & Routes → Add → Custom domain `fitness.ajcan.site`.
+   🧑 **If** you get `404` or a DNS error, workers.dev may be disabled on the script: Workers & Pages → `fitness` → Settings → Domains & Routes → enable `*.workers.dev`.
 
 ## 9. Cloudflare dashboard (🧑 Aaron; the agent verifies afterwards)
 
 Full background is in `docs/DEPLOY.md` §6.
 
-1. **Access application "Fitness"** (`fitness.ajcan.site`):
+1. **Access application "Fitness"** (`fitness.aarontjoseph94.workers.dev`):
    - Settings → Cookie settings → **SameSite = Lax**, with HTTP Only on. This is new this round.
    - The policy allows only Aaron's email; session duration is 1 month.
 2. **Bypass apps** (action Bypass, include Everyone), one per exact path:
@@ -228,19 +228,14 @@ Full background is in `docs/DEPLOY.md` §6.
    **Not** `/authorize`: the consent page stays behind Access.
 
 3. **Service token** with a Service Auth policy on the Fitness app. Its id and secret are the two `ACCESS_CLIENT_*` secrets.
-4. **Bot Fight Mode off** for the hostname, because Claude's connector calls come from Anthropic's cloud.
-5. **WAF rate-limiting rule.** This is new this round; it works because `fitness.ajcan.site` is on Aaron's zone. Go to Security → WAF → Rate limiting rules → Create:
-   - **If incoming requests match:** `(http.request.uri.path in {"/register" "/token" "/mcp" "/api/ingest/health"})`
-   - **Characteristics:** IP
-   - **Rate:** 30 requests per 10 seconds
-   - **Action:** Block for 10 seconds
+4. **Bot Fight Mode / AI bot block off** on the account (Claude's connector calls come from Anthropic's cloud). Zone WAF rate limits do **not** apply to `*.workers.dev`; `/register` is capped only by Worker validation (Claude/loopback callbacks only).
 
 ## 10. Smoke test the live Worker (agent)
 
 Run each of these without Access cookies. Put the bearer tokens in shell variables Aaron sets in his own terminal (`read -s HWT` and `read -s MCPT`), never inline.
 
 ```sh
-H=https://fitness.ajcan.site
+H=https://fitness.aarontjoseph94.workers.dev
 curl -sS -o /dev/null -w "api-health %{http_code}\n" $H/api/health                                 # 302 (to Access)
 curl -sS -o /dev/null -w "mcp-noauth %{http_code}\n" -X POST $H/mcp                                 # 401
 curl -sS -D - -o /dev/null -X POST $H/mcp | grep -i www-authenticate                                # resource_metadata=".../.well-known/oauth-protected-resource/mcp"
@@ -262,7 +257,7 @@ cd apps/worker && npx wrangler tail --format pretty
 
 ## 11. On the iPhone (🧑 Aaron; the agent records results)
 
-1. Open `https://fitness.ajcan.site` in Safari, sign in through Access, then Share → **Add to Home Screen**. Open it from the Home Screen icon.
+1. Open `https://fitness.aarontjoseph94.workers.dev` in Safari, sign in through Access, then Share → **Add to Home Screen**. Open it from the Home Screen icon.
 2. **Today** loads: weight trend, rings, targets 1,400 kcal / 130 g protein (the seed).
 3. **Settings → Reminders → Enable notifications:** allow it, and a test reminder arrives at its time.
 4. **Log a weigh-in and water**, then turn on Airplane Mode and log water again. The pending badge shows. Turn Airplane Mode off and it syncs once.
@@ -272,7 +267,7 @@ cd apps/worker && npx wrangler tail --format pretty
 
 ## 12. Claude connector
 
-1. 🧑 In Claude → Settings → Connectors → Add custom connector, enter URL `https://fitness.ajcan.site/mcp`.
+1. 🧑 In Claude → Settings → Connectors → Add custom connector, enter URL `https://fitness.aarontjoseph94.workers.dev/mcp`.
    - If the dialog offers **Request headers**, add `Authorization: Bearer <MCP_BEARER_TOKEN>`.
    - Otherwise sign in through Access and tap **Allow**.
 2. 🧑 In a Claude chat with the connector on, say: **"run my coach review"**. Claude calls `get_procedure("coach_review")` and `get_review_bundle`.

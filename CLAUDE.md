@@ -46,7 +46,7 @@ pnpm --filter @fitness/worker seed:local         # load seed/ into local D1
 pnpm --filter @fitness/exercises run fetch:images # download exercise step images (gitignored) before a web build
 pnpm --filter @fitness/exercises run fetch:media  # download matched ExerciseDB GIFs (gitignored)
 pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts  # new Web Push key pair
-pnpm --filter @fitness/worker deploy     # wrangler deploy (Aaron/Cursor only — see docs/DEPLOY.md)
+pnpm --filter @fitness/worker deploy     # wrangler deploy (Aaron only — see docs/DEPLOY.md)
 pnpm e2e                                 # Playwright flows against a seeded local Worker
 pnpm check                               # typecheck + deep-module boundaries
 ```
@@ -137,7 +137,7 @@ It documents TesterArmy's agentic `e2e` runner (`npx e2e`, `e2e.config.ts`, `tes
 
 **Testing during the build.** Typecheck the package you touched and run one quick targeted test at most. No full suites, no exhaustive tests — Aaron runs the in-depth testing later.
 
-**Deploy.** Never deploy from an agent. Aaron deploys via Cursor using `docs/DEPLOY.md`.
+**Deploy.** Never deploy from an agent. Aaron deploys using `docs/DEPLOY.md`.
 
 ## Decided defaults (from Aaron's build prompt, SPEC §12 open decisions)
 
