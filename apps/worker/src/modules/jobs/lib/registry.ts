@@ -1,5 +1,6 @@
 // Owns: the job handler registry — one handler per job type, registered by the module that owns that work
-// (plan registers plan_reforecast; phase 2 adds meal_analysis, day_adjustment, …). A type with no handler stays queued.
+// (plan registers plan_reforecast; meal-ai registers meal_analysis and day_adjustment). A type with no handler stays
+// queued. Also the sweep steps: small idempotent chores the 5-minute sweep runs before due jobs (meal auto-confirm).
 import type { JobOutput, JobPayload, JobType } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 
@@ -43,4 +44,18 @@ export function handlerFor(type: string): JobHandler<JobType> | undefined {
 
 export function registeredTypes(): JobType[] {
   return [...handlers.keys()]
+}
+
+/** A chore the sweep runs every tick before picking due jobs (so jobs it queues run in the same tick). Idempotent. */
+export type SweepStep = (deps: Deps) => Promise<number>
+
+const steps = new Map<string, SweepStep>()
+
+/** Register (or replace) a sweep step by name. Its result (rows touched) is reported in SweepResult.steps. */
+export function registerSweepStep(name: string, step: SweepStep): void {
+  steps.set(name, step)
+}
+
+export function sweepSteps(): [string, SweepStep][] {
+  return [...steps]
 }

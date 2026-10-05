@@ -1,7 +1,7 @@
-// Owns: the `foods` table as the nutrition cache — lookups by barcode, by (source, source_id) and by name tokens, and the
+// Owns: the `foods` table as the nutrition cache — lookups by barcode, by (source, source_id) and full-text by name, and the
 // upsert by (source, source_id) that stores what a source returned. LLM estimates (source 'llm') never count as matches.
 // Also counts external calls per source and UTC day in `provider_usage` (keys 'openfoodfacts', 'usda_fdc').
-import { and, asc, desc, eq, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
 import { foods, provider_usage, type Db, type Row } from '../../../db'
 import type { RemoteSource } from './gate'
 import type { FoodDraft } from './normalise'
@@ -12,7 +12,7 @@ type SourceRef = { source: FoodRow['source']; source_id: string }
 /** 15 bound values per row and D1 allows 100 per statement: 6 rows (90) + 1 for updated_at. */
 const ROWS_PER_STATEMENT = 6
 /** Rows the name search hands to the scorer (the scorer runs in the Worker's 10 ms CPU budget). */
-const SEARCH_ROWS = 30
+const SEARCH_ROWS = 40
 
 /** Barcode variants that name one product: UPC-A (12) and its EAN-13 form with a leading 0. */
 export function barcodeVariants(code: string): string[] {
@@ -40,22 +40,25 @@ export async function findBySourceIds(db: Db, refs: SourceRef[]): Promise<FoodRo
     .where(or(...refs.map((r) => and(eq(foods.source, r.source), eq(foods.source_id, r.source_id)))))
 }
 
+/** Every foods column but `raw` (a cached USDA record is ~25 KB; search never needs it). */
+const { raw: _raw, ...SEARCH_COLUMNS } = getTableColumns(foods)
+
 /**
- * Foods whose name or brand contains any of the stems (`LIKE '%stem%'`), most stems matched first, then names that
- * start with a stem, then shorter names. Ranking happens in SQL so only SEARCH_ROWS rows reach the scorer.
+ * Foods matching an FTS5 query over foods_fts(name, brand) (porter tokenizer; kept in sync with `foods` by triggers,
+ * migration 0002_foods_fts), best bm25 first (name weighted over brand), at most SEARCH_ROWS. An indexed lookup, never a
+ * scan of `foods`. LLM estimates are left out. `raw` is not read (null in the result).
  */
-export async function searchByStems(db: Db, stems: string[]): Promise<FoodRow[]> {
-  if (stems.length === 0) return []
-  const hay = sql`(${foods.name} || ' ' || coalesce(${foods.brand}, ''))`
-  const esc = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`) // "2%" must match a literal percent sign
-  const hits = stems.map((s) => sql`(${hay} LIKE ${`%${esc(s)}%`} ESCAPE '\\')`)
-  const leads = stems.map((s) => sql`(${foods.name} LIKE ${`${esc(s)}%`} ESCAPE '\\')`)
-  return db
-    .select()
+export async function searchLocal(db: Db, match: string): Promise<FoodRow[]> {
+  const rows = await db
+    .select(SEARCH_COLUMNS)
     .from(foods)
-    .where(and(ne(foods.source, 'llm'), or(...hits)))
-    .orderBy(desc(sql.join(hits, sql` + `)), desc(sql.join(leads, sql` + `)), asc(sql`length(${foods.name})`))
-    .limit(SEARCH_ROWS)
+    .where(
+      and(
+        ne(foods.source, 'llm'),
+        sql`${foods.id} IN (SELECT food_id FROM foods_fts WHERE foods_fts MATCH ${match} ORDER BY bm25(foods_fts, 0, 1.0, 0.5) LIMIT ${SEARCH_ROWS})`,
+      ),
+    )
+  return rows.map((r) => ({ ...r, raw: null }))
 }
 
 const excluded = (col: string): SQL => sql.raw(`excluded."${col}"`)

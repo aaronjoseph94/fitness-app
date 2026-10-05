@@ -1,4 +1,4 @@
-// Owns: how a meal item's name is compared with a food — normalised tokens, the SQL LIKE stems for the local cache,
+// Owns: how a meal item's name is compared with a food — normalised tokens, the FTS5 query for the local cache,
 // the branded-item guess, and the match score (0–1) that becomes meal_items.confidence. Pure; no I/O.
 import type { FoodSource } from '@fitness/shared/schemas'
 
@@ -25,48 +25,76 @@ function stem(t: string): string {
   return t
 }
 
+/** Stems that name the same thing: CNF says "prepared" where USDA says "cooked", "boiled" for steamed; spellings. */
+const SYNONYM: Record<string, string> = { prepar: 'cook', steam: 'boil', yogourt: 'yogurt', flavor: 'flavour' }
+const canon = (t: string) => SYNONYM[t] ?? t
+
 /** Default forms: when the item does not say otherwise, "egg" means a whole egg and "banana" a raw one. */
-const DEFAULT_FORM = new Set(['whole', 'raw', 'plain', 'regular'].map(stem))
+const DEFAULT_FORM = new Set(['whole', 'raw', 'plain', 'regular'].map((w) => canon(stem(w))))
 /** Processed or partial forms that are rarely what a plain item name means ("egg" is not dried egg or yolk). */
 const UNLIKELY_FORM = new Set(
   [
     'dehydrated', 'powder', 'powdered', 'mix', 'concentrate', 'instant', 'flakes', 'flour', 'yolk', 'substitute',
-    'imitation', 'meatless', 'babyfood', 'unprepared',
-  ].map(stem),
+    'imitation', 'meatless', 'babyfood', 'unprepared', 'dry', 'evaporated', 'condensed', 'undiluted',
+  ].map((w) => canon(stem(w))),
+)
+/**
+ * Qualifiers that make a different product or an unusual variety of the plain food: "milk" is not chocolate milk or
+ * buttermilk, "oatmeal" is not an oatmeal cookie, "almonds" are not almond butter, "orange" is not orange juice,
+ * "eggs" are not duck eggs. Penalised only when the item does not say them.
+ */
+const QUALIFIER = new Set(
+  [
+    'chocolate', 'cocoa', 'cookie', 'butter', 'buttermilk', 'flavour', 'flavor', 'cake', 'pie', 'bar', 'candy', 'candies',
+    'sauce', 'soup', 'syrup', 'milkshake', 'shake', 'pudding', 'dessert', 'pastry', 'muffin', 'cracker', 'granola',
+    'paste', 'spread', 'oil', 'meal', 'beverage', 'drink', 'smoothie', 'juice', 'nectar', 'jam', 'jelly', 'sweetened',
+    'honey', 'salt', 'vanilla', 'strawberry', 'latte', 'whitener', 'creamer', 'peel', 'producer', 'goat', 'sheep',
+    'human', 'buffalo', 'duck', 'goose', 'quail', 'turkey',
+  ].map((w) => canon(stem(w))),
 )
 
 /**
  * Normalised tokens of a name, unique and in order: accents stripped, lower case, "2%" → "2pct", quantities
- * ("120", "120g") and STOP words dropped, each word stemmed.
+ * ("120", "120g") and STOP words dropped, each word stemmed and synonyms folded ("prepared" → "cook").
  */
 export function tokens(text: string): string[] {
-  const s = text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/(\d+(?:\.\d+)?)\s*%/g, (_, n: string) => ` ${n.replace('.', 'p')}pct `)
   const out: string[] = []
-  for (const word of s.split(/[^a-z0-9]+/)) {
-    if (word.length < 2 || STOP.has(word) || /^\d+(\.\d+)?(g|kg|ml|l|oz|lb)?$/.test(word)) continue
-    const t = stem(word)
+  for (const word of words(text)) {
+    const t = canon(stem(word))
     if (!out.includes(t)) out.push(t)
   }
   return out
 }
 
+/** The meaningful words of a name, unstemmed: accents stripped, lower case, "2%" → "2pct", quantities and STOP dropped. */
+function words(text: string): string[] {
+  const s = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/(\d+(?:\.\d+)?)\s*%/g, (_, n: string) => ` ${n.replace('.', 'p')}pct `)
+  return s.split(/[^a-z0-9]+/).filter((w) => w.length >= 2 && !STOP.has(w) && !/^\d+(\.\d+)?(g|kg|ml|l|oz|lb)?$/.test(w))
+}
+
+/** Words searched with their synonyms (the FTS index holds the words as written). */
+const FTS_ALSO: Record<string, string[]> = { cook: ['cooked', 'prepared'], boil: ['boiled', 'steamed'], yogurt: ['yogourt'] }
+
 /**
- * Up to four substrings for SQL `LIKE '%…%'`, longest (most specific) first, written as they appear in food names:
- * "berry" → "berr" (so "berries" matches), "2pct" → "2%", "3p25pct" → "3.25%".
+ * The FTS5 MATCH expression for the local cache (foods_fts uses the porter tokenizer, so "almonds", "cooked" and
+ * "berries" find "almond", "cook", "berry"; "cookie" stays "cooki"). Up to six words, any of them (OR), and each of the
+ * first two again as the name's first word (^"milk"), so bm25 ranks foods matching more words, and foods named after
+ * the item ("Milk, …" before "Cheese, … with whole milk"), first. "2%" → the number 2. Null when nothing is left.
  */
-export function likeStems(query: string[]): string[] {
-  return [...query]
-    .sort((a, b) => b.length - a.length)
-    .slice(0, 4)
-    .map((t) => {
-      const pct = t.match(/^(\d+)(?:p(\d+))?pct$/)
-      if (pct) return pct[2] ? `${pct[1]}.${pct[2]}%` : `${pct[1]}%`
-      return t.length > 3 && t.endsWith('y') ? t.slice(0, -1) : t
-    })
+export function ftsQuery(text: string): string | null {
+  const terms = new Set<string>()
+  for (const [i, w] of words(text).slice(0, 6).entries()) {
+    const pct = w.match(/^(\d+)(?:p(\d+))?pct$/)
+    const phrase = pct ? (pct[2] ? `"${pct[1]} ${pct[2]}"` : `"${pct[1]}"`) : `"${w}"`
+    terms.add(phrase)
+    if (i < 2 && !pct) terms.add(`name : ^${phrase}`)
+    for (const also of FTS_ALSO[canon(stem(w))] ?? []) terms.add(`"${also}"`)
+  }
+  return terms.size ? [...terms].join(' OR ') : null
 }
 
 /**
@@ -107,7 +135,9 @@ export interface Ranked<T extends Scorable> {
  *         + 0.15 if every brand token is in Q       brand hit
  *         − 0.20 if branded and the brand is not in Q  generic items prefer generic foods
  *         + 0.04 per default-form word in N (max 2) whole, raw, plain, regular
- *         − 0.12 if N has a processed/partial form word Q lacks (powder, flour, yolk, instant, …)
+ *         − 0.12 if N has a processed/partial form word Q lacks (powder, flour, yolk, instant, dry, …)
+ *         − 0.15 if N has a qualifier Q lacks (chocolate, cookie, butter, flavoured, juice, goat, …), − 0.05 more for a
+ *                second one                    the plainest food wins: "milk" → milk, not chocolate milk
  *         + source bonus (user 0.10, cnf 0.05, usda 0.03, off 0) + the entry's own bonus (LLM-suggested candidates)
  * clamped to 0–1 and rounded to 0.001. It becomes meal_items.confidence.
  */
@@ -133,6 +163,8 @@ export function rank<T extends Scorable>(query: string[], pool: { food: T; bonus
       else if (brand.length > 0 || food.source === 'off') s -= 0.2
       s += 0.04 * Math.min(2, name.filter((t) => DEFAULT_FORM.has(t)).length)
       if (name.some((t) => UNLIKELY_FORM.has(t) && !q.has(t))) s -= 0.12
+      const qualifiers = name.filter((t) => QUALIFIER.has(t) && !q.has(t)).length
+      if (qualifiers > 0) s -= qualifiers > 1 ? 0.2 : 0.15
       s += SOURCE_BONUS[food.source] + bonus
       return { food, score: Math.max(0, Math.min(1, Math.round(s * 1000) / 1000)) }
     })

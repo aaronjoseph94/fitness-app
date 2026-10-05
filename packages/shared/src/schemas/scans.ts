@@ -1,7 +1,9 @@
 // Owns: Evolt 360 scans — the confirmed scan record (exactly the SPEC §2 seed-record shape), the scan_extract LLM
-// output (sheet units, per-field confidence), the kg draft awaiting confirmation, and the upload/confirm bodies.
+// output (sheet units, per-field confidence), the kg draft awaiting confirmation, the upload/confirm bodies, and the
+// scan as the API returns it (extraction job state; engine comparison, flags and debrief once confirmed).
 import * as z from 'zod'
-import { Count, Fraction, Id, Instant, Kcal, Kg, Percent, Row } from './common'
+import { MilestoneKind } from './body'
+import { Count, Fraction, Id, Instant, Kcal, Kg, LocalDate, Percent, Row } from './common'
 import { FileUrl } from './files'
 import { Sex } from './profile-settings'
 
@@ -33,6 +35,8 @@ export const ScanConditions = z.object({
   fasted: z.boolean().nullable(),
   hours_since_training: z.number().nonnegative().nullable(),
   hydration: z.string().max(200).nullable().default(null),
+  /** Aaron's answer to "same conditions as the baseline?" (null = not said). A "no" is called out in the analysis. */
+  matches_baseline: z.boolean().nullable().default(null),
   notes: z.string().max(1000).nullable(),
 })
 export type ScanConditions = z.infer<typeof ScanConditions>
@@ -116,12 +120,84 @@ export type ScanExtractOutput = z.infer<typeof ScanExtractOutput>
 export const ScanDraft = ScanReading.extend({ source_units: MassUnit })
 export type ScanDraft = z.infer<typeof ScanDraft>
 
+/** A whole-body metric of a scan (the numeric seed-record fields). */
+export const ScanMetricField = ScanMetrics.keyof()
+export type ScanMetricField = z.infer<typeof ScanMetricField>
+
+/** The lean-loss guard (SPEC §3): ok, lean_loss (lean > 25 % of the weight lost), or hydration (matched by water). */
+export const LeanLossGuard = z.enum(['ok', 'lean_loss', 'hydration'])
+export type LeanLossGuard = z.infer<typeof LeanLossGuard>
+
+const SegmentChange = z.object({ lean_kg: z.number(), fat_kg: z.number() })
+
+/** The engine's comparison of a scan with an earlier one (`compareScans`): signed changes, newer − earlier. */
+export const ScanChange = z.object({
+  /** The earlier scan. */
+  scan_id: Id,
+  date: LocalDate,
+  days: z.number().int(),
+  deltas: z.partialRecord(ScanMetricField, z.number()),
+  segments: z.partialRecord(ScanSegment, SegmentChange),
+  fat_vs_lean: z.object({ weight_kg: z.number(), fat_kg: z.number(), lean_kg: z.number(), water_kg: z.number() }),
+  /** lean lost / weight lost when weight was lost; else null. */
+  lean_share_of_loss: z.number().nullable(),
+  lean_loss: LeanLossGuard,
+  /** Composition milestones this scan meets and the earlier one did not. */
+  milestones_reached: z.array(z.object({ kind: MilestoneKind, label: z.string(), target_value: z.number() })),
+})
+export type ScanChange = z.infer<typeof ScanChange>
+
+/** A call-out of the scan analysis (same codes as the scan_analysis job output). */
+export const ScanFlag = z.object({
+  code: z.enum(['lean_loss', 'water_shift', 'visceral_up', 'fat_gain', 'conditions_mismatch', 'other']),
+  message: z.string().max(300),
+})
+export type ScanFlag = z.infer<typeof ScanFlag>
+
+/** A milestone the analysis re-anchored to this scan (reached_on null = no longer met). */
+export const ScanMilestoneUpdate = z.object({ milestone_id: Id, kind: MilestoneKind, label: z.string(), reached_on: LocalDate.nullable() })
+export type ScanMilestoneUpdate = z.infer<typeof ScanMilestoneUpdate>
+
+/**
+ * A confirmed scan's analysis. The comparisons and flags are the engine's, computed on read; the narrative, the
+ * milestone re-anchoring and the proposals come from the scan_analysis job (`status`).
+ */
+export const ScanAnalysis = z.object({
+  vs_previous: ScanChange.nullable(),
+  vs_baseline: ScanChange.nullable(),
+  flags: z.array(ScanFlag),
+  status: z.enum(['none', 'pending', 'done', 'failed']),
+  job_id: Id.nullable(),
+  narrative: z.string().nullable(),
+  /** 'ai': the Clerk wrote the narrative; 'engine': the plain engine summary (no LLM answered). */
+  narrative_by: z.enum(['ai', 'engine']).nullable(),
+  /** Pending plan proposals (protein, steps, …) the analysis made; each passed the guards. */
+  proposal_ids: z.array(Id),
+  milestone_updates: z.array(ScanMilestoneUpdate),
+})
+export type ScanAnalysis = z.infer<typeof ScanAnalysis>
+
+/** The sheet-reading job of an unconfirmed scan: while queued or running, poll it; after an error, offer manual entry. */
+export const ScanExtraction = z.object({
+  job_id: Id,
+  status: z.enum(['queued', 'running', 'done', 'failed']),
+  attempts: z.number().int().nonnegative(),
+  error: z.string().nullable(),
+})
+export type ScanExtraction = z.infer<typeof ScanExtraction>
+
 /** A scan as the API returns it: the sheet, the pending draft, and the confirmed record once Aaron confirms. */
 export const Scan = Row.extend({
+  /** Local date of the scan (the upload date until a record with scanned_at is confirmed). */
+  date: LocalDate,
   sheet_url: FileUrl.nullable(),
   confirmed: z.boolean(),
   extracted: ScanDraft.nullable(),
   record: ScanRecord.nullable(),
+  /** Unconfirmed scans: the latest scan_extract job (null when none ran). */
+  extraction: ScanExtraction.nullable(),
+  /** Confirmed scans: the comparison with the previous scan and the baseline, and the debrief. */
+  analysis: ScanAnalysis.nullable(),
 })
 export type Scan = z.infer<typeof Scan>
 

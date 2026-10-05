@@ -1,8 +1,9 @@
 // Owns: the water module's interface — quick-add water entries stored with their UTC instant and Edmonton local date
-// (day totals are computed by v_day). Idempotent by the client id, so a replayed offline write returns the first row.
+// (day totals are computed by v_day): log one (idempotent by the client id, so a replayed offline write returns the
+// first row), list a date's entries, delete one (a replayed delete is a no-op).
 import { localDate } from '@fitness/shared/engine'
-import type { WaterLog, WaterLogCreate } from '@fitness/shared/schemas'
-import { eq } from 'drizzle-orm'
+import type { Ok, WaterLog, WaterLogCreate } from '@fitness/shared/schemas'
+import { asc, eq } from 'drizzle-orm'
 import { water_logs, type Row } from '../../db'
 import type { Deps } from '../../lib/deps'
 
@@ -17,6 +18,18 @@ export async function logWater(deps: Deps, input: WaterLogCreate): Promise<Water
     deps.db.select().from(water_logs).where(eq(water_logs.id, input.id)),
   ])
   return toWaterLog(row!)
+}
+
+/** GET /api/water?date=: the date's entries, oldest first. */
+export async function listWater(deps: Deps, date: string): Promise<WaterLog[]> {
+  const rows = await deps.db.select().from(water_logs).where(eq(water_logs.date, date)).orderBy(asc(water_logs.logged_at))
+  return rows.map(toWaterLog)
+}
+
+/** DELETE /api/water/:id (an entry logged by mistake). */
+export async function deleteWater(deps: Deps, id: string): Promise<Ok> {
+  await deps.db.delete(water_logs).where(eq(water_logs.id, id))
+  return { ok: true }
 }
 
 export const toWaterLog = (r: Row<typeof water_logs>): WaterLog => ({

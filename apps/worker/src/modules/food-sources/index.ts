@@ -2,29 +2,39 @@
 // cache (Canadian Nutrient File seed + everything fetched before), Open Food Facts and USDA FoodData Central, plus the
 // portion maths for meal_items. SPEC §6 "Nutrition logging" pipeline; §9 meal_analysis writes meal_items after matching.
 //
-// Order of a match: barcode → the cache by name together with the LLM's suggested foods → USDA (generic items) or
-// OFF (branded items) → the other one. The cache is always read before any external call; whatever a source returns is upserted into
-// `foods` by (source, source_id) so the next lookup is local. Score and thresholds: lib/match.ts.
+// Order of a match: barcode → the cache by name (FTS5 index foods_fts) together with the LLM's suggested foods → USDA
+// (generic items) or OFF (branded items) → the other one. The cache is always read before any external call; whatever a
+// source returns is upserted into `foods` by (source, source_id) so the next lookup is local. Score and thresholds:
+// lib/match.ts (the plainest food wins: "milk" is milk, not chocolate milk).
 //
 // Budget: one instance (create one per request or job run) makes at most `maxExternalCalls` external calls (default 12;
 // OFF ≤ 6, USDA ≤ 8), so a 30-item meal stays inside the free plan's 50 subrequests with room for the LLM router.
 // When the budget is spent, matching continues from the cache only and unmatched items fall back to the LLM estimate.
+// A job passes the router's FetchBudget as `budget` so both draw on one subrequest limit, and `until` to stop asking
+// remote sources before its deadline.
 import type { FoodSource, Nutrients } from '@fitness/shared/schemas'
 import type { Deps } from '../../lib/deps'
 import { HttpError } from '../../lib/http-error'
-import { findByBarcode, findBySourceIds, recordUsage, remember, searchByStems, type FoodRow } from './lib/cache'
-import { createGate, SourceUnavailable, type Fetch } from './lib/gate'
-import { ACCEPT, likeStems, looksBranded, rank, STRONG, tokens } from './lib/match'
+import { findByBarcode, findBySourceIds, recordUsage, remember, searchLocal, type FoodRow } from './lib/cache'
+import { createGate, SourceUnavailable, type Fetch, type SharedBudget } from './lib/gate'
+import { ACCEPT, ftsQuery, looksBranded, rank, STRONG, tokens } from './lib/match'
 import { nutritionFor, type FoodDraft, type Per100g } from './lib/normalise'
 import { createRemote } from './lib/remote'
 
-export { nutritionFor, type FoodRow, type Fetch, type Per100g }
+export { nutritionFor, type FoodRow, type Fetch, type Per100g, type SharedBudget }
 
 export interface FoodSourcesOptions {
   /** Injected so tests use fakes; defaults to the Worker's global fetch. */
   fetch?: Fetch
   /** External calls this instance may make (default 12). */
   maxExternalCalls?: number
+  /**
+   * A fetch budget shared with other fetching adapters of the same invocation (the LLM router's `budget`): every
+   * external call counts against it too, so a job's LLM call and its food lookups stay inside one subrequest limit.
+   */
+  budget?: SharedBudget
+  /** No external call starts after this instant (epoch ms); matching continues from the cache. Keeps a job in its deadline. */
+  until?: number
 }
 
 /** One item from meal_analysis (MealAnalysisOutput item) or a scanned product. */
@@ -88,6 +98,8 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     maxCalls,
     perSource: { off: Math.min(6, maxCalls), usda: Math.min(8, maxCalls) },
     timeoutMs: 6000,
+    ...(opts.budget ? { shared: opts.budget } : {}),
+    ...(opts.until !== undefined ? { until: opts.until, now: () => deps.now().getTime() } : {}),
     onCall: (source) => deps.waitUntil(recordUsage(deps.db, source, deps.now()).catch(() => undefined)),
   })
   const remote = createRemote(gate, deps.env.USDA_FDC_API_KEY)
@@ -123,9 +135,10 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     }
   }
 
-  /** Cached foods whose name or brand shares a stem with the query (ranked in SQL, scored by rank()). */
-  async function localEntries(query: string[]): Promise<Entry[]> {
-    return (await searchByStems(deps.db, likeStems(query))).map((food) => ({ food }))
+  /** Cached foods the full-text index finds for the text (best bm25 first in SQL, then scored by rank()). */
+  async function localEntries(text: string): Promise<Entry[]> {
+    const match = ftsQuery(text)
+    return match ? (await searchLocal(deps.db, match)).map((food) => ({ food })) : []
   }
 
   /** The LLM's suggested foods: from the cache, plus at most one fetched by id (its ids are guesses; each costs a call). */
@@ -151,7 +164,7 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
 
     const query = tokens(item.name)
     if (query.length === 0) return null
-    let pool = merge(await suggestedEntries(item.candidates), await localEntries(query))
+    let pool = merge(await suggestedEntries(item.candidates), await localEntries(item.name))
     let top = rank(query, pool)[0]
 
     // Generic foods ask USDA (Foundation / SR Legacy) first and products ask Open Food Facts first, only when the cache
@@ -176,7 +189,7 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     const limit = Math.max(1, Math.min(25, o.limit ?? 10))
     const query = tokens(text)
     if (query.length === 0) return []
-    let pool = await localEntries(query)
+    let pool = await localEntries(text)
     if (o.remote !== false && rank(query, pool).filter((r) => r.score >= ACCEPT).length < limit) {
       const q = query.join(' ')
       const [usda, off] = await Promise.all([

@@ -25,8 +25,19 @@ export interface GateOptions {
   /** Per-source caps inside that budget. OFF search is rate-limited hardest (10 req/min). */
   perSource: Record<RemoteSource, number>
   timeoutMs: number
+  /** A budget shared with other adapters of the same invocation; each call also needs room in it and counts in it. */
+  shared?: SharedBudget
+  /** No call starts at or after this instant (epoch ms, read with `now`). */
+  until?: number
+  now?: () => number
   /** Told about every call made (usage accounting). */
   onCall?: (source: RemoteSource) => void
+}
+
+/** Structurally the LLM router's FetchBudget: one object counted by every fetching adapter of an invocation. */
+export interface SharedBudget {
+  limit: number
+  used: number
 }
 
 export interface Gate {
@@ -42,9 +53,12 @@ export function createGate(opts: GateOptions): Gate {
 
   async function call(source: RemoteSource, url: string): Promise<unknown> {
     if (down.has(source)) throw new SourceUnavailable(source, 'unavailable for this run')
-    if (calls >= opts.maxCalls || used[source] >= opts.perSource[source]) throw new SourceUnavailable(source, 'subrequest budget spent')
+    if (calls >= opts.maxCalls || used[source] >= opts.perSource[source] || (opts.shared && opts.shared.used >= opts.shared.limit))
+      throw new SourceUnavailable(source, 'subrequest budget spent')
+    if (opts.until !== undefined && (opts.now ?? Date.now)() >= opts.until) throw new SourceUnavailable(source, 'out of time')
     calls++
     used[source]++
+    if (opts.shared) opts.shared.used++
     opts.onCall?.(source)
     let res: Response
     try {

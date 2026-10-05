@@ -1,5 +1,5 @@
 // Owns: tests at the nutrition seam — a manual meal priced from foods per 100 g, idempotent replays of a create, and a
-// free-text meal waiting in 'parsing' with a queued meal_analysis job.
+// free-text meal that runs meal_analysis (and falls back to review when no LLM provider answers).
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -68,7 +68,7 @@ describe('meals', () => {
     expect(replay).toEqual(first)
   })
 
-  it('stores a free-text meal as parsing and queues a meal_analysis job for it', async () => {
+  it('stores a free-text meal and runs meal_analysis; with no LLM keys the meal falls back to review with its text', async () => {
     const meal = await createMeal(deps, {
       id: crypto.randomUUID(),
       slot: 'lunch',
@@ -76,10 +76,10 @@ describe('meals', () => {
       input_method: 'text',
       raw_text: '2 eggs, toast with butter, black coffee',
     })
-    await Promise.all(pending.splice(0)) // runSoon: no meal_analysis handler yet, so the job stays queued
+    await Promise.all(pending.splice(0)) // runSoon runs meal_analysis; no provider keys in tests → it fails fast
 
     expect(meal).toMatchObject({ status: 'parsing', raw_text: '2 eggs, toast with butter, black coffee', items: [] })
     const jobs = await db.select().from(ai_jobs).where(eq(ai_jobs.type, 'meal_analysis'))
-    expect(jobs).toEqual([expect.objectContaining({ status: 'queued', attempts: 0, payload: { meal_id: meal.id } })])
+    expect(jobs).toEqual([expect.objectContaining({ status: 'failed', attempts: 1, payload: { meal_id: meal.id } })])
   })
 })

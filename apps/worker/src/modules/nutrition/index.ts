@@ -1,4 +1,5 @@
-// Owns: nutrition — meals (each with items, computed totals and photos), foods and favourites (incl. recipes).
+// Owns: nutrition — meals (each with items, computed totals and photos), foods and favourites (incl. recipes), and the
+// meal side of the AI pipeline (what meal_analysis reads and when its items may land; auto-confirm).
 // Interface:
 //   listMeals(deps, date) / getMeal(deps, id)   → Meal[] / Meal
 //   createMeal(deps, MealCreate)  → Meal   by input method: manual/barcode items (food items priced per 100 g) and a
@@ -6,9 +7,17 @@
 //        meal_analysis job in the same batch; photo waits as 'parsing' for its photos. A replayed id returns the meal.
 //   updateMeal(deps, id, MealPatch) → Meal  slot / eaten_at (date recomputed) / items (replace all) / confirm
 //   deleteMeal(deps, id)          → Ok     items, photos and the meal in one batch; R2 objects removed after
+//   addMealPhoto(deps, id, query, bytes) → MealPhoto   R2 meal-photos/<meal>/<photo>.(jpg|webp); a photo meal not yet
+//        confirmed goes (back) to 'parsing' with one queued meal_analysis job
+//   Confirming a meal of today (create, patch, auto-confirm) queues one day_adjustment job for the date.
+//   analysisInput / applyAnalysis / releaseForReview   the meal_analysis job's reads and guarded writes (lib/analysis)
+//   autoConfirmMeals(deps)        → count  registered as the 'meal_auto_confirm' sweep step: review meals untouched
+//        for 10 min whose every item has confidence ≥ 0.8
 //   searchFoods(deps, { q?, barcode? }) → Food[]   barcode (cache, then Open Food Facts) and text (cache, then OFF/USDA)
+//   recentFoods(deps, { days?, limit? }) → RecentFood[]   foods of the last 30 days' confirmed meals, most used first
 //   createFood(deps, FoodCreate)  → Food   source 'user'; idempotent by id
-//   listFavourites / createFavourite / updateFavourite → Favourite(s) with the nutrition of one default portion
+//   listFavourites / createFavourite / updateFavourite / deleteFavourite → Favourite(s) with the nutrition and named
+//        foods of one default portion
 import { localDate } from '@fitness/shared/engine'
 import type { Food, FoodCreate, FoodSearchQuery, Meal, MealCreate, MealItemInput, MealPatch, Ok } from '@fitness/shared/schemas'
 import { eq } from 'drizzle-orm'
@@ -17,17 +26,21 @@ import { meal_items, meal_photos, meals } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { notFound } from '../../lib/http-error'
 import { createFoodSources } from '../food-sources'
-import { jobInsert, runSoon } from '../jobs'
+import { jobInsert, registerSweepStep, runSoon } from '../jobs'
+import { autoConfirmMeals, dayAdjustmentAfterConfirm } from './lib/confirm'
 import { favouriteItemInputs } from './lib/favourites'
 import { createUserFood, toFood } from './lib/foods'
 import { itemInserts, itemRows, mealById, mealsOn, runBatch } from './lib/meals'
+import { MEAL_ANALYSIS_PRIORITY } from './lib/photos'
 
-export { createFavourite, listFavourites, updateFavourite } from './lib/favourites'
+export { analysisInput, applyAnalysis, releaseForReview, type AnalysedItem, type AnalysisInput } from './lib/analysis'
+export { AUTO_CONFIRM_AFTER_MS, AUTO_CONFIRM_MIN_CONFIDENCE, autoConfirmMeals } from './lib/confirm'
+export { createFavourite, deleteFavourite, listFavourites, updateFavourite } from './lib/favourites'
+export { addMealPhoto } from './lib/photos'
+export { recentFoods } from './lib/recent'
 
 /** Most foods a search returns. */
 const SEARCH_LIMIT = 20
-/** meal_analysis is user-facing: it runs before nightly work. */
-const MEAL_ANALYSIS_PRIORITY = 10
 
 export function listMeals(deps: Deps, date: string): Promise<Meal[]> {
   return mealsOn(deps, date)
@@ -68,6 +81,7 @@ export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
       break
   }
   const items = await itemRows(deps, body.id, inputs)
+  const adjust = status === 'confirmed' ? await dayAdjustmentAfterConfirm(deps, { id: body.id, date: localDate(body.eaten_at) }) : null
   const statements: BatchItem<'sqlite'>[] = [
     deps.db.insert(meals).values({
       id: body.id,
@@ -83,6 +97,7 @@ export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
     }),
     ...itemInserts(deps, items),
     ...(job ? [job.statement] : []),
+    ...(adjust ? [adjust.statement] : []),
   ]
   try {
     await runBatch(deps, statements)
@@ -92,10 +107,14 @@ export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
     throw e
   }
   if (job) runSoon(deps, job.id)
+  if (adjust) runSoon(deps, adjust.id)
   return getMeal(deps, body.id)
 }
 
-/** Items replace the whole list (a 'parsing' meal moves to 'review'); confirm: true confirms it. */
+/**
+ * Items replace the whole list (a 'parsing' meal moves to 'review'); confirm: true confirms it, and confirming a meal
+ * of today queues the day_adjustment card.
+ */
 export async function updateMeal(deps: Deps, id: string, patch: MealPatch): Promise<Meal> {
   const [meal] = await deps.db.select().from(meals).where(eq(meals.id, id))
   if (!meal) throw notFound('Meal')
@@ -106,6 +125,9 @@ export async function updateMeal(deps: Deps, id: string, patch: MealPatch): Prom
     statements.push(deps.db.delete(meal_items).where(eq(meal_items.meal_id, id)), ...itemInserts(deps, await itemRows(deps, id, patch.items)))
     if (status === 'parsing') status = 'review'
   }
+  const date = patch.eaten_at ? localDate(patch.eaten_at) : meal.date
+  const adjust = patch.confirm && meal.status !== 'confirmed' ? await dayAdjustmentAfterConfirm(deps, { id, date }) : null
+  if (adjust) statements.push(adjust.statement)
   if (patch.confirm) status = 'confirmed'
   await runBatch(deps, [
     deps.db
@@ -119,6 +141,7 @@ export async function updateMeal(deps: Deps, id: string, patch: MealPatch): Prom
       .where(eq(meals.id, id)),
     ...statements,
   ])
+  if (adjust) runSoon(deps, adjust.id)
   return getMeal(deps, id)
 }
 
@@ -149,3 +172,6 @@ export async function searchFoods(deps: Deps, query: FoodSearchQuery): Promise<F
 export function createFood(deps: Deps, body: FoodCreate): Promise<Food> {
   return createUserFood(deps, body)
 }
+
+// Meals the AI is sure of confirm themselves after 10 minutes in review (SPEC §6).
+registerSweepStep('meal_auto_confirm', autoConfirmMeals)

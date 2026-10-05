@@ -29,7 +29,8 @@ export function sumNutrients(items: readonly Nutrients[]): Nutrients {
   return t
 }
 
-async function toPhoto(deps: Deps, p: PhotoRow): Promise<MealPhoto> {
+/** A meal_photos row as the API returns it, with a signed, expiring URL. */
+export async function toPhoto(deps: Deps, p: PhotoRow): Promise<MealPhoto> {
   const signed = await signFileUrl(deps.env, p.storage_path as FileKey, undefined, deps.now())
   return { id: p.id, meal_id: p.meal_id, width: p.width ?? 1, height: p.height ?? 1, exif_stripped: p.exif_stripped, url: signed.url }
 }

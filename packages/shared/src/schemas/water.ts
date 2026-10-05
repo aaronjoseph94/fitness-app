@@ -10,3 +10,7 @@ export type WaterLog = z.infer<typeof WaterLog>
 /** Body of POST /api/water. `logged_at` defaults to now; the PWA always sends it so a queued entry keeps its time. */
 export const WaterLogCreate = z.object({ id: Id, amount_ml: WaterAmountMl, logged_at: Instant.optional() })
 export type WaterLogCreate = z.infer<typeof WaterLogCreate>
+
+/** Query of GET /api/water: the entries of one local date, oldest first. */
+export const WaterListQuery = z.object({ date: LocalDate })
+export type WaterListQuery = z.infer<typeof WaterListQuery>

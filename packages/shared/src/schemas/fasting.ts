@@ -1,4 +1,4 @@
-// Owns: fasts — the fast log row, the start / end / plan bodies and the list query.
+// Owns: fasts — the fast log row, the start / end / plan / move bodies and the list query.
 // A planned fast is a row with planned = true whose started_at is the planned start; starting it with its id begins it.
 import * as z from 'zod'
 import { Id, Instant, LocalDate, Row } from './common'
@@ -31,6 +31,10 @@ export type FastEnd = z.infer<typeof FastEnd>
 /** Body of POST /api/fasts/plan: put one of the month's fasts on the calendar. */
 export const FastPlan = z.object({ id: Id, started_at: Instant, note: FastNote.optional() })
 export type FastPlan = z.infer<typeof FastPlan>
+
+/** Body of PATCH /api/fasts/:id: move a planned fast that has not started (same monthly pattern check as planning). */
+export const FastMove = z.object({ started_at: Instant, note: FastNote.optional() })
+export type FastMove = z.infer<typeof FastMove>
 
 /** Query of GET /api/fasts (fasts overlapping the range; both ends optional). */
 export const FastListQuery = z.object({ from: LocalDate.optional(), to: LocalDate.optional() })

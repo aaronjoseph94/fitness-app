@@ -31,6 +31,7 @@ import {
   Fast,
   FastEnd,
   FastListQuery,
+  FastMove,
   FastPlan,
   FastStart,
   Favourite,
@@ -66,8 +67,14 @@ import {
   PlanVersion,
   ProgressPhoto,
   ProposalDecision,
+  PushKey,
+  PushResult,
   PushSubscribe,
   PushSubscription,
+  PushTest,
+  PushUnsubscribe,
+  RecentFood,
+  RecentFoodsQuery,
   Scan,
   ScanPatch,
   ScanUploaded,
@@ -93,9 +100,11 @@ import {
   Upload,
   WaterLog,
   WaterLogCreate,
+  WaterListQuery,
   WeekPlan,
   WeekPlanCreate,
   WeekPlanQuery,
+  WeeklyMetrics,
   WeeklyReview,
   WeighIn,
   WeighInCreate,
@@ -184,10 +193,15 @@ export const endpoints = {
       response: Favourite,
       offline: 'queue',
     }),
+    deleteFavourite: defineEndpoint({ method: 'DELETE', path: '/api/favorites/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    /** Foods of confirmed meals in the last 30 days, most used first, with the grams last used. */
+    recentFoods: defineEndpoint({ method: 'GET', path: '/api/foods/recent', query: RecentFoodsQuery, response: z.array(RecentFood) }),
   },
 
   water: {
     create: defineEndpoint({ method: 'POST', path: '/api/water', body: WaterLogCreate, response: WaterLog, offline: 'queue' }),
+    list: defineEndpoint({ method: 'GET', path: '/api/water', query: WaterListQuery, response: z.array(WaterLog) }),
+    delete: defineEndpoint({ method: 'DELETE', path: '/api/water/:id', params: IdParams, response: Ok, offline: 'queue' }),
   },
 
   fasting: {
@@ -202,6 +216,17 @@ export const endpoints = {
     }),
     plan: defineEndpoint({ method: 'POST', path: '/api/fasts/plan', body: FastPlan, response: Fast, offline: 'queue' }),
     list: defineEndpoint({ method: 'GET', path: '/api/fasts', query: FastListQuery, response: z.array(Fast) }),
+    /** Move a planned fast that has not started (409 fast_started once it has). */
+    move: defineEndpoint({
+      method: 'PATCH',
+      path: '/api/fasts/:id',
+      params: IdParams,
+      body: FastMove,
+      response: Fast,
+      offline: 'queue',
+    }),
+    /** Cancel a planned fast that has not started (409 fast_started once it has; end it instead). */
+    cancel: defineEndpoint({ method: 'DELETE', path: '/api/fasts/:id', params: IdParams, response: Ok, offline: 'queue' }),
   },
 
   health: {
@@ -226,6 +251,7 @@ export const endpoints = {
 
   training: {
     listExercises: defineEndpoint({ method: 'GET', path: '/api/exercises', query: ExerciseQuery, response: z.array(Exercise) }),
+    getExercise: defineEndpoint({ method: 'GET', path: '/api/exercises/:id', params: IdParams, response: Exercise }),
     createExercise: defineEndpoint({
       method: 'POST',
       path: '/api/exercises',
@@ -249,6 +275,7 @@ export const endpoints = {
       offline: 'queue',
     }),
     listTemplates: defineEndpoint({ method: 'GET', path: '/api/templates', response: z.array(Template) }),
+    getTemplate: defineEndpoint({ method: 'GET', path: '/api/templates/:id', params: IdParams, response: Template }),
     createTemplate: defineEndpoint({
       method: 'POST',
       path: '/api/templates',
@@ -264,6 +291,9 @@ export const endpoints = {
       response: Template,
       offline: 'queue',
     }),
+    deleteTemplate: defineEndpoint({ method: 'DELETE', path: '/api/templates/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    /** Sessions started on local dates from…to (newest first), with their sets; no plan. */
+    listSessions: defineEndpoint({ method: 'GET', path: '/api/sessions', query: DateRange, response: z.array(WorkoutSession) }),
     startSession: defineEndpoint({
       method: 'POST',
       path: '/api/sessions',
@@ -345,8 +375,15 @@ export const endpoints = {
 
   scans: {
     upload: defineEndpoint({ method: 'POST', path: '/api/scans', query: ScanUploadQuery, body: Upload, response: ScanUploaded }),
+    /** Confirm (or re-confirm) with every value as edited; an id with no scan yet is manual entry without a sheet. */
     confirm: defineEndpoint({ method: 'PATCH', path: '/api/scans/:id', params: IdParams, body: ScanPatch, response: Scan }),
+    /** Newest first. */
     list: defineEndpoint({ method: 'GET', path: '/api/scans', response: z.array(Scan) }),
+    get: defineEndpoint({ method: 'GET', path: '/api/scans/:id', params: IdParams, response: Scan }),
+    /** Read the stored sheet again (a new scan_extract job) for an unconfirmed scan. */
+    extract: defineEndpoint({ method: 'POST', path: '/api/scans/:id/extract', params: IdParams, response: ScanUploaded }),
+    /** Discard an unconfirmed scan and its sheet (409 for a confirmed one). */
+    remove: defineEndpoint({ method: 'DELETE', path: '/api/scans/:id', params: IdParams, response: Ok }),
   },
 
   photos: {
@@ -359,18 +396,30 @@ export const endpoints = {
       offline: 'queue',
     }),
     list: defineEndpoint({ method: 'GET', path: '/api/photos', query: PhotoListQuery, response: z.array(ProgressPhoto) }),
+    remove: defineEndpoint({ method: 'DELETE', path: '/api/photos/:id', params: IdParams, response: Ok, offline: 'queue' }),
   },
 
   reviews: {
+    /** Newest week first. */
     list: defineEndpoint({ method: 'GET', path: '/api/reviews', response: z.array(WeeklyReview) }),
+    /** 404 not_found when the week has no review yet. */
     get: defineEndpoint({ method: 'GET', path: '/api/reviews/:week', params: WeekParams, response: WeeklyReview }),
+    /** The engine's live aggregate of the week (the report page shows it while a week has no review). */
+    metrics: defineEndpoint({ method: 'GET', path: '/api/reviews/:week/metrics', params: WeekParams, response: WeeklyMetrics }),
+    /** Queue the weekly_review job for the week now (Gemini draft; replaces an earlier Gemini draft). 409 when a Claude review exists. */
+    draft: defineEndpoint({ method: 'POST', path: '/api/reviews/:week/draft', params: WeekParams, response: JobRef }),
+    /** Render /reports/week/:week with Browser Rendering into R2 reports/<week>.pdf. 501 pdf_unavailable without the binding (local dev). */
     pdf: defineEndpoint({ method: 'POST', path: '/api/reviews/:week/pdf', params: WeekParams, response: SignedFile }),
   },
 
   export: {
+    /** Tables (restore order, row counts) and signed URLs for every stored file; the browser builds the zip. */
     manifest: defineEndpoint({ method: 'GET', path: '/api/export', response: ExportManifest }),
+    /** One page of one table in id order (≤ 500 rows); follow next_cursor until null. */
     table: defineEndpoint({ method: 'GET', path: '/api/export/tables', query: ExportTableQuery, response: ExportPage }),
+    /** Restore one page of rows (upsert by id). 409 not_fresh on a used instance without overwrite; 403 rails_locked for settings unless actor user. */
     importTable: defineEndpoint({ method: 'POST', path: '/api/import', body: ImportPage, response: ImportResult, offline: 'never' }),
+    /** Restore one stored file under its key (same gate as importTable). */
     importFile: defineEndpoint({
       method: 'POST',
       path: '/api/import/files',
@@ -387,7 +436,14 @@ export const endpoints = {
   },
 
   push: {
+    /** The VAPID public key the page subscribes with (public_key null when the Worker has no VAPID keys). */
+    key: defineEndpoint({ method: 'GET', path: '/api/push/key', response: PushKey }),
+    /** Upsert this device's subscription by endpoint. */
     subscribe: defineEndpoint({ method: 'POST', path: '/api/push/subscribe', body: PushSubscribe, response: PushSubscription }),
+    /** Forget this device's subscription (Ok when it was never stored). */
+    unsubscribe: defineEndpoint({ method: 'DELETE', path: '/api/push/subscribe', body: PushUnsubscribe, response: Ok }),
+    /** Send a test notification to one device (endpoint) or all; drops subscriptions the push service says are gone. */
+    test: defineEndpoint({ method: 'POST', path: '/api/push/test', body: PushTest, response: PushResult }),
   },
 
   files: {

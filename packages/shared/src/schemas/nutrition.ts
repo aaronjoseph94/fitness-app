@@ -2,7 +2,7 @@
 // create/patch bodies for every input method (text, voice, photo, barcode, manual items, favourite).
 // Wire names follow SPEC spelling ("favorite"); schema names follow GLOSSARY ("Favourite").
 import * as z from 'zod'
-import { Fraction, Grams, Id, Instant, Kcal, LocalDate, MealSlot, QueryInt, Row } from './common'
+import { Count, Fraction, Grams, Id, Instant, Kcal, LocalDate, MealSlot, QueryInt, Row } from './common'
 import { FileUrl, ImageType } from './files'
 
 /** Energy and macros of a portion, a day's intake or a day's targets. */
@@ -57,6 +57,24 @@ export const FoodCreate = z.object({
 })
 export type FoodCreate = z.infer<typeof FoodCreate>
 
+/** One food from recent meals (GET /api/foods/recent): how often it was eaten, and the grams and nutrition last used. */
+export const RecentFood = z.object({
+  food: Food,
+  uses: Count,
+  grams: Grams.positive(),
+  /** Nutrients of `grams`. */
+  nutrients: Nutrients,
+  last_used_at: Instant,
+})
+export type RecentFood = z.infer<typeof RecentFood>
+
+/** Query of GET /api/foods/recent: foods from confirmed meals of the last `days` days (default 30), most used first. */
+export const RecentFoodsQuery = z.object({
+  days: QueryInt.pipe(z.number().int().min(1).max(90)).optional(),
+  limit: QueryInt.pipe(z.number().int().min(1).max(50)).optional(),
+})
+export type RecentFoodsQuery = z.infer<typeof RecentFoodsQuery>
+
 /** Query of GET /api/foods/search: text, a scanned barcode, or both. */
 export const FoodSearchQuery = z
   .object({ q: z.string().trim().min(2).max(200).optional(), barcode: Barcode.optional() })
@@ -69,11 +87,20 @@ export type FoodSearchQuery = z.infer<typeof FoodSearchQuery>
 export const RecipeItem = z.object({ food_id: Id, grams: Grams.positive() })
 export type RecipeItem = z.infer<typeof RecipeItem>
 
+/** One food of a favourite as the list shows it: the food's name ("Name (Brand)"), grams and their kcal. */
+export const FavouriteItem = z.object({ food_id: Id, name: z.string(), grams: Grams, kcal: Kcal })
+export type FavouriteItem = z.infer<typeof FavouriteItem>
+
 const FavouriteFields = Row.extend({
   label: z.string().min(1),
   sort_order: z.number().int(),
   /** Nutrients of one default portion (food × default_grams, or the whole recipe). */
   totals: Nutrients,
+  /**
+   * The foods of one default portion with their names (a food favourite has one). The server always sends it; it is
+   * optional so a favourite drawn before the server answers (offline) can leave it out.
+   */
+  items: z.array(FavouriteItem).optional(),
 })
 
 /** A one-tap repeat: a food with default grams, or a recipe (a list of foods with grams). */
@@ -196,7 +223,10 @@ export type MealPatch = z.infer<typeof MealPatch>
 export const MealListQuery = z.object({ date: LocalDate })
 export type MealListQuery = z.infer<typeof MealListQuery>
 
-/** Query of POST /api/meals/:id/photos (body: the downscaled, EXIF-stripped image as Binary). */
+/**
+ * Query of POST /api/meals/:id/photos (body: the downscaled, EXIF-stripped image as Binary). Stored at
+ * meal-photos/<meal_id>/<photo_id>.jpg|webp; a photo meal goes (back) to 'parsing' and is analysed with all its photos.
+ */
 export const MealPhotoUploadQuery = z.object({
   photo_id: Id,
   width: QueryInt,

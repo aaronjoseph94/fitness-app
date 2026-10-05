@@ -29,7 +29,12 @@ export type JobStatus = z.infer<typeof JobStatus>
 
 // ── Outputs ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** meal_analysis: the foods in a text/photo meal with grams and confidence; `estimate` is used only when no food matches. */
+/**
+ * meal_analysis: the foods in a text/photo meal. `name` carries the cooking state ("white rice, cooked") and a brand as
+ * printed ("Oikos Pro greek yogurt"); `grams` is the edible weight as eaten; `confidence` covers the food and the grams;
+ * `candidates` are database foods the model is sure of (USDA fdcId, OFF barcode); `estimate` is nutrition PER 100 g,
+ * used only when no database food matches (the item is then `estimated`).
+ */
 export const MealAnalysisOutput = z.object({
   items: z
     .array(
@@ -67,6 +72,17 @@ export const DayAdjustmentOutput = z.object({
   note: z.string().max(300),
 })
 export type DayAdjustmentOutput = z.infer<typeof DayAdjustmentOutput>
+
+/**
+ * What the LLM writes for a day_adjustment card: one short reason per suggestion (in order) and the one-line note. The
+ * numbers (remaining, status) and the suggestions themselves are computed in code; the card is written without this
+ * text when no provider answers.
+ */
+export const DayAdjustmentWording = z.object({
+  why: z.array(z.string().max(200)).max(3),
+  note: z.string().max(300),
+})
+export type DayAdjustmentWording = z.infer<typeof DayAdjustmentWording>
 
 /** scan_analysis: narrative over the engine's comparison with the previous scan and the baseline. Signed kg changes. */
 export const ScanAnalysisOutput = z.object({

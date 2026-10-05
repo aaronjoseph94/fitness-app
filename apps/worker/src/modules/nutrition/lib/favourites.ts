@@ -1,29 +1,49 @@
 // Owns: favourites — one-tap repeats: a food with default grams, or a recipe (foods with grams) — with the nutrition of
-// one default portion, their sort order, and the meal items a favourite expands to.
-import type { Favourite, FavouriteCreate, FavouritePatch, MealItemInput, Nutrients, RecipeItem } from '@fitness/shared/schemas'
+// one default portion and the named foods in it, their sort order, deleting one, and the meal items it expands to.
+import type { Favourite, FavouriteCreate, FavouriteItem, FavouritePatch, MealItemInput, Nutrients, Ok, RecipeItem } from '@fitness/shared/schemas'
 import { asc, eq, max } from 'drizzle-orm'
 import { favorites, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { badRequest, notFound } from '../../../lib/http-error'
 import { nutritionFor } from '../../food-sources'
-import { foodsByIds, type FoodRow } from './foods'
+import { foodLabel, foodsByIds, type FoodRow } from './foods'
 import { sumNutrients } from './meals'
 
 type FavouriteRow = Row<typeof favorites>
 
 const foodIdsOf = (r: Pick<FavouriteRow, 'food_id' | 'recipe'>) => (r.food_id ? [r.food_id] : (r.recipe ?? []).map((i) => i.food_id))
 
-/** Row → Favourite; totals = nutrition of one default portion (food × default_grams, or Σ recipe items). */
+/**
+ * Row → Favourite; totals = nutrition of one default portion (food × default_grams, or Σ recipe items); `items` names
+ * each food ("Name (Brand)") with its grams and kcal. A food that no longer exists counts as 0.
+ */
 function toFavourite(r: FavouriteRow, foodMap: Map<string, FoodRow>): Favourite | null {
   const portion = (food_id: string, grams: number): Nutrients => {
     const food = foodMap.get(food_id)
     return food ? nutritionFor(food, grams) : { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0 }
   }
+  const item = (food_id: string, grams: number): FavouriteItem => {
+    const food = foodMap.get(food_id)
+    return { food_id, name: food ? foodLabel(food) : 'Unknown food', grams, kcal: portion(food_id, grams).kcal }
+  }
   const base = { id: r.id, created_at: r.created_at, updated_at: r.updated_at, label: r.label, sort_order: r.sort_order }
   if (r.food_id && r.default_grams)
-    return { ...base, kind: 'food', food_id: r.food_id, default_grams: r.default_grams, totals: portion(r.food_id, r.default_grams) }
+    return {
+      ...base,
+      kind: 'food',
+      food_id: r.food_id,
+      default_grams: r.default_grams,
+      totals: portion(r.food_id, r.default_grams),
+      items: [item(r.food_id, r.default_grams)],
+    }
   if (r.recipe && r.recipe.length > 0)
-    return { ...base, kind: 'recipe', recipe: r.recipe, totals: sumNutrients(r.recipe.map((i) => portion(i.food_id, i.grams))) }
+    return {
+      ...base,
+      kind: 'recipe',
+      recipe: r.recipe,
+      totals: sumNutrients(r.recipe.map((i) => portion(i.food_id, i.grams))),
+      items: r.recipe.map((i) => item(i.food_id, i.grams)),
+    }
   return null
 }
 
@@ -88,6 +108,12 @@ export async function updateFavourite(deps: Deps, id: string, patch: FavouritePa
     })
     .where(eq(favorites.id, id))
   return present(deps, (await favouriteRow(deps, id))!)
+}
+
+/** DELETE /api/favorites/:id. Meals logged from it keep their items; replaying the delete is a no-op. */
+export async function deleteFavourite(deps: Deps, id: string): Promise<Ok> {
+  await deps.db.delete(favorites).where(eq(favorites.id, id))
+  return { ok: true }
 }
 
 /** The meal item inputs a favourite expands to, each scaled by `scale` (fresh item ids). Unknown favourite → 400. */

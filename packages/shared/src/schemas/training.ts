@@ -60,13 +60,17 @@ export const Exercise = Row.extend({
   source: z.enum(['free-exercise-db', 'user']),
   /** In the allowed exercise set (not excluded by equipment status or exclusions). Computed per request. */
   allowed: z.boolean(),
+  /** Why it is not allowed (an exclusion's reason, the body-only rail, or an equipment status); null when allowed. */
+  excluded_reason: z.string().nullable().optional(),
 })
 export type Exercise = z.infer<typeof Exercise>
 
-/** Query of GET /api/exercises. `scope` defaults to the allowed set. */
+/** Query of GET /api/exercises. `scope` defaults to the allowed set; `muscle` matches a primary muscle. */
 export const ExerciseQuery = z.object({
   muscle: Muscle.optional(),
   equipment: EquipmentName.optional(),
+  category: ExerciseCategory.optional(),
+  level: Level.optional(),
   q: z.string().trim().max(100).optional(),
   scope: z.enum(['allowed', 'all']).optional(),
 })
@@ -92,7 +96,16 @@ export type ExerciseCreate = z.infer<typeof ExerciseCreate>
 export const EquipmentStatus = z.enum(['have', 'dont_have', 'dislike', 'cant_use'])
 export type EquipmentStatus = z.infer<typeof EquipmentStatus>
 
-export const EquipmentItem = Row.extend({ equipment: EquipmentName, status: EquipmentStatus, note: z.string().nullable() })
+/** A library equipment value, or a named machine Aaron added ("leg press"). */
+export const EquipmentKind = z.enum(['library', 'machine'])
+export type EquipmentKind = z.infer<typeof EquipmentKind>
+
+export const EquipmentItem = Row.extend({
+  equipment: EquipmentName,
+  status: EquipmentStatus,
+  note: z.string().nullable(),
+  kind: EquipmentKind.optional(),
+})
 export type EquipmentItem = z.infer<typeof EquipmentItem>
 
 /** Body of PUT /api/equipment: statuses to set, upserted by equipment name. */
@@ -204,6 +217,8 @@ export const TemplateCreate = z.object({
   origin: TemplateOrigin.default('custom'),
   notes: z.string().max(1000).optional(),
   exercises: z.array(TemplateExerciseInput).min(1).max(20),
+  /** Saving an AI workout proposal as this template accepts the proposal. */
+  proposal_id: Id.optional(),
 })
 export type TemplateCreate = z.infer<typeof TemplateCreate>
 
@@ -222,6 +237,12 @@ export type TemplatePatch = z.infer<typeof TemplatePatch>
 export const WorkoutDraft = z.object({
   exercises: z.array(TemplateExerciseInput).min(1).max(20),
   rationale: z.string().max(400),
+  /** Engine muscle scores of `exercises` (set by the job, never by the LLM). */
+  muscle_scores: MuscleScores.optional(),
+  /** What the guards dropped or repaired (an excluded pick, sets trimmed to 28, …), for the preview. */
+  guard_notes: z.array(z.string()).optional(),
+  /** The pending `workout` proposal the job wrote; pass it to POST /api/templates or /api/sessions to accept it. */
+  proposal_id: Id.optional(),
 })
 export type WorkoutDraft = z.infer<typeof WorkoutDraft>
 
@@ -253,6 +274,48 @@ export const SessionSet = z.object({
 })
 export type SessionSet = z.infer<typeof SessionSet>
 
+/** One logged set as the greyed default of the next session (reps × kg). */
+const PastSet = z.object({ set_index: Count, reps: Count.nullable(), load_kg: Kg.nullable(), rpe: Rpe.nullable() })
+
+/**
+ * One exercise of a session's plan (the template / week-plan / AI snapshot it started from, plus exercises added
+ * mid-session), with last session's sets and the engine's progression suggestion for this session.
+ */
+export const SessionPlanExercise = z.object({
+  exercise_id: Id,
+  sets: z.number().int().min(1).max(50),
+  rep_min: z.number().int().min(1).max(50),
+  rep_max: z.number().int().min(1).max(50),
+  target_load_kg: Kg.nullable(),
+  rest_sec: z.number().int().min(0).max(600),
+  note: z.string().nullable(),
+  /** The default load to show: suggestion.load_kg, else target_load_kg, else last session's top load. */
+  default_load_kg: Kg.nullable(),
+  /** This exercise's sets in the latest earlier session that logged it. */
+  last: z.object({ session_id: Id, date: LocalDate, sets: z.array(PastSet) }).nullable(),
+  suggestion: ProgressionSuggestion.nullable(),
+})
+export type SessionPlanExercise = z.infer<typeof SessionPlanExercise>
+
+/** Recovery rule at session start: primary muscles also trained as a primary target on the day before or after. */
+export const SessionRecovery = z.object({
+  conflicts: z.array(Muscle),
+  /** Readiness under 40, or under 5 h sleep last night. */
+  reduced_volume: z.boolean(),
+  notes: z.array(z.string()),
+})
+export type SessionRecovery = z.infer<typeof SessionRecovery>
+
+/** Deload check at session start (engine deloadCheck); `active` = this session is in a deload week (60 % of sets). */
+export const DeloadStatus = z.object({
+  due: z.boolean(),
+  reason: z.enum(['scheduled', 'missed_reps']).nullable(),
+  weeks_since: Count,
+  sets_factor: z.number().positive().max(1),
+  active: z.boolean(),
+})
+export type DeloadStatus = z.infer<typeof DeloadStatus>
+
 export const WorkoutSession = Row.extend({
   date: LocalDate,
   template_id: Id.nullable(),
@@ -261,18 +324,29 @@ export const WorkoutSession = Row.extend({
   origin: SessionOrigin,
   readiness: Readiness.nullable(),
   notes: z.string().nullable(),
+  /** Planned scores at start (from the plan), the trained scores once finished (completed sets). */
   muscle_scores: MuscleScores.nullable(),
   prs: z.array(PersonalRecord).nullable(),
   sets: z.array(SessionSet),
+  /** POST /api/sessions and GET /api/sessions/:id only: the plan with greyed defaults, recovery and deload. */
+  plan: z.array(SessionPlanExercise).optional(),
+  recovery: SessionRecovery.optional(),
+  deload: DeloadStatus.optional(),
 })
 export type WorkoutSession = z.infer<typeof WorkoutSession>
 
-/** Body of POST /api/sessions. The local `date` is computed from `started_at`. */
+/**
+ * Body of POST /api/sessions. The local `date` is computed from `started_at`. The plan is `exercises` when given (a
+ * week-plan session, an edited AI draft), else the template's, else the proposal's draft, else the active week plan's
+ * session for that day when origin is week_plan; a blank session has none. `proposal_id` accepts an AI workout proposal.
+ */
 export const SessionCreate = z.object({
   id: Id,
   template_id: Id.nullable(),
   origin: SessionOrigin,
   started_at: Instant,
+  exercises: z.array(TemplateExerciseInput).min(1).max(20).optional(),
+  proposal_id: Id.optional(),
 })
 export type SessionCreate = z.infer<typeof SessionCreate>
 

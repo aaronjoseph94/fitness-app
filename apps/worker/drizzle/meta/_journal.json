@@ -15,6 +15,13 @@
       "when": 1791179937990,
       "tag": "0001_v_day",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791182532853,
+      "tag": "0002_foods_fts",
+      "breakpoints": true
     }
   ]
 }
