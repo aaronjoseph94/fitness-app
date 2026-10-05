@@ -22,12 +22,19 @@ export interface Endpoint<
 }
 
 type Infer<T> = T extends z.ZodType ? z.infer<T> : undefined
-type InferIn<T> = T extends z.ZodType ? z.input<T> : undefined
+
+/**
+ * `{ [K]: input of S }` when the endpoint defines that part, else `{}`. Parts are optional properties, so `E['body']`
+ * reads as `S | undefined`; strip the undefined before testing, or every part would collapse to `{}`.
+ */
+type Part<K extends string, S> = [Exclude<S, undefined>] extends [never]
+  ? {}
+  : Exclude<S, undefined> extends z.ZodType
+    ? { [P in K]: z.input<Exclude<S, undefined>> }
+    : {}
 
 /** Everything a caller supplies: path params, query and body (absent parts are omitted). */
-export type EndpointInput<E extends Endpoint> = (E['params'] extends z.ZodType ? { params: InferIn<E['params']> } : {}) &
-  (E['query'] extends z.ZodType ? { query: InferIn<E['query']> } : {}) &
-  (E['body'] extends z.ZodType ? { body: InferIn<E['body']> } : {})
+export type EndpointInput<E extends Endpoint> = Part<'params', E['params']> & Part<'query', E['query']> & Part<'body', E['body']>
 
 export type EndpointOutput<E extends Endpoint> = Infer<E['response']>
 
