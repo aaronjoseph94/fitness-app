@@ -1,8 +1,9 @@
 // Owns: writing one import page — the restore gate (fresh instance, or overwrite, or a restore already under way),
-// the column check, and the single D1 batch that upserts the rows by id. The batch defers foreign keys to its end,
-// removes stored rows that would collide on another unique key (a day's targets materialised under another id),
-// writes rows leaving a partial unique index first, and upserts with ON CONFLICT(id) DO UPDATE (not REPLACE, so the
-// foods_fts triggers stay in step). Rows travel as one JSON parameter (?1) and are unpacked in SQL with json_each.
+// the column check, the schema check of the rails and targets (lib/validate.ts), and the single D1 batch that upserts
+// the rows by id. The batch defers foreign keys to its end, removes stored rows that would collide on another unique
+// key (a day's targets materialised under another id), writes rows leaving a partial unique index first, and upserts
+// with ON CONFLICT(id) DO UPDATE (not REPLACE, so the foods_fts triggers stay in step). Rows travel as one JSON
+// parameter (?1) and are unpacked in SQL with json_each.
 // Statements go straight to D1's batch: Drizzle's D1 batch cannot run raw SQL that has bound parameters.
 import type { ExportRow, ImportPage } from '@fitness/shared/schemas'
 import { sql } from 'drizzle-orm'
@@ -10,6 +11,7 @@ import type { Deps } from '../../../lib/deps'
 import { badRequest, HttpError } from '../../../lib/http-error'
 import { eventInsert } from '../../events'
 import { ident, tableSpec, type TableSpec } from './tables'
+import { validateRows } from './validate'
 
 /** cron_runs kind that marks a restore under way (period_key = restore_id): later pages of it pass the gate. */
 const RESTORE_KIND = 'restore'
@@ -127,12 +129,16 @@ export function upsertStatements(deps: Deps, spec: TableSpec, columns: string[],
   return statements
 }
 
-/** Restore one page. Only actor 'user' (Aaron in the app) may restore the settings rails. */
+/**
+ * Restore one page. Only actor 'user' (Aaron in the app) may restore the settings rails; settings, plan versions and
+ * daily targets must parse with their schemas (422 invalid_rows otherwise, nothing written).
+ */
 export async function importPage(deps: Deps, page: ImportPage): Promise<number> {
   if (page.table === 'settings' && deps.actor !== 'user')
     throw new HttpError(403, 'rails_locked', 'Only Aaron restores the settings rails')
   const spec = tableSpec(page.table)
   const columns = checkRows(spec, page.rows)
+  validateRows(spec, page.rows)
   const gate = await restoreGate(deps, page)
   await runBatch(deps, [...gate, ...upsertStatements(deps, spec, columns, JSON.stringify(page.rows))])
   return page.rows.length

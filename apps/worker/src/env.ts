@@ -16,6 +16,8 @@ export interface Env {
   // secrets
   ACCESS_AUD?: string
   ACCESS_TEAM_DOMAIN?: string
+  /** Aaron's Access login email. When set, any other Access identity (a policy widened by mistake) gets 403. */
+  ACCESS_EMAIL?: string
   DEV_AUTH_BYPASS?: string
   HEALTH_WEBHOOK_TOKEN?: string
   MCP_BEARER_TOKEN?: string

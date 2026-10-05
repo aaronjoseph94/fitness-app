@@ -48,14 +48,14 @@ export function createRemote(gate: Gate, usdaKey: string | undefined): Remote {
     },
     async usdaSearch(q, n) {
       if (!usdaKey) return []
-      const url = `${FDC}/foods/search?api_key=${encodeURIComponent(usdaKey)}&query=${encodeURIComponent(q)}&dataType=${FDC_GENERIC}&pageSize=${n}`
-      const body = UsdaSearchResponse.safeParse(await gate.getJson('usda', url))
+      const url = `${FDC}/foods/search?query=${encodeURIComponent(q)}&dataType=${FDC_GENERIC}&pageSize=${n}`
+      const body = UsdaSearchResponse.safeParse(await gate.getJson('usda', url, { 'X-Api-Key': usdaKey }))
       return body.success ? drafts(body.data.foods, UsdaFood, fromUsda) : []
     },
     async usdaFood(fdcId) {
       if (!usdaKey || !/^\d+$/.test(fdcId)) return null
-      const url = `${FDC}/food/${fdcId}?api_key=${encodeURIComponent(usdaKey)}&nutrients=${USDA_NUTRIENT_FILTER}`
-      const food = UsdaFood.safeParse(await gate.getJson('usda', url))
+      const url = `${FDC}/food/${fdcId}?nutrients=${USDA_NUTRIENT_FILTER}`
+      const food = UsdaFood.safeParse(await gate.getJson('usda', url, { 'X-Api-Key': usdaKey }))
       return food.success ? fromUsda(food.data) : null
     },
   }

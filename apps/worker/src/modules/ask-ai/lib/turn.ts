@@ -2,6 +2,9 @@
 // offer the model the tools picked by intent, run its tool calls through the tools layer as actor 'ai' for at most
 // MAX_ROUNDS model calls, store the user / tool / assistant rows, and return the reply with the calls it made and the
 // proposals it created (status now). A router failure becomes a calm stored reply, never an HTTP error.
+// Prompt injection (OWASP LLM01): a tool result reaches the model as {"data": …} (data, never instructions), and a
+// logging call (which applies at once) runs only when the user's own message asks to log in that area; otherwise the
+// model gets needs_confirmation and must ask. Text from a food database or a note can't trigger a write by itself.
 import type { ChatSend, ChatSent, ChatTurnError } from '@fitness/shared/schemas'
 import { chat_messages } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -12,7 +15,7 @@ import { callTool, toolJsonSchemas, type ToolDefinition } from '../../tools'
 import { redact, systemPrompt } from './prompt'
 import { withProposals } from './history'
 import { createdBy } from './proposals'
-import { selectTools } from './select'
+import { asksToLog, selectTools, type OfferedTool } from './select'
 import {
   FALLBACK,
   history,
@@ -51,8 +54,17 @@ function toolDef(tool: ToolDefinition): ToolDef {
 
 interface ToolRun {
   call: StoredCall
+  /** The result as stored and shown in the app (JSON). */
   content: string
+  /** What the model reads: a result wrapped as {"data": …}; a refusal or error ({error, message}) as is. */
+  forModel: string
   at: Date
+}
+
+/** What the turn knows about the user's own words, to decide whether a logging call may apply. */
+interface Asked {
+  message: string
+  previousQuestion: string | null
 }
 
 export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Promise<ChatSent> {
@@ -65,7 +77,8 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
 
   const offered = selectTools([input.content, ...(past.lastQuestion ? [past.lastQuestion] : [])], settings.auto_apply_safe)
   const tools = offered.map(({ tool }) => toolDef(tool))
-  const allowed = new Set(tools.map((t) => t.name))
+  const allowed = new Map(offered.map((o) => [o.tool.name, o]))
+  const asked: Asked = { message: input.content, previousQuestion: past.lastQuestion }
   const system = systemPrompt(started, settings)
   const messages: Msg[] = [
     ...past.messages.map((m) => ({ ...m, content: redact(m.content) })),
@@ -98,9 +111,9 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
       }
       messages.push(result.message)
       for (const call of result.toolCalls) {
-        const run = await runCall(ai, call, allowed, runs)
+        const run = await runCall(ai, call, allowed, asked, runs)
         runs.push(run)
-        messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: run.content })
+        messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: run.forModel })
       }
     } catch (e) {
       console.warn(JSON.stringify({ at: 'ask_ai', event: 'llm_failed', error: e instanceof Error ? e.name : 'unknown' }))
@@ -136,21 +149,37 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
 }
 
 /** Run one model call through the tools layer; failures go back to the model as {error, message}. */
-async function runCall(deps: Deps, call: ModelCall, allowed: ReadonlySet<string>, earlier: readonly ToolRun[]): Promise<ToolRun> {
+async function runCall(
+  deps: Deps,
+  call: ModelCall,
+  allowed: ReadonlyMap<string, OfferedTool>,
+  asked: Asked,
+  earlier: readonly ToolRun[],
+): Promise<ToolRun> {
   const taken = new Set(earlier.map((r) => r.call.id))
   // Providers number calls per response, so the same id can come back in a later round.
   const id = taken.has(call.id) ? `${call.id}_${earlier.length}` : call.id
   const args = JSON.parse(JSON.stringify(call.args ?? {})) as StoredCall['args']
-  const done = (ok: boolean, output: unknown, created: ProposalRef[] = []): ToolRun => ({
-    call: { id, name: call.name, args, ok, ...(created.length ? { created } : {}) },
+  const done = (ok: boolean, output: unknown, created: ProposalRef[] = []): ToolRun => {
     // Tool results carry free text (meal notes, the coach's dashboard note and narrative): the name never goes back.
-    content: redact(cap(JSON.stringify(output) ?? 'null')),
-    at: deps.now(),
-  })
-  if (!allowed.has(call.name))
+    const content = redact(cap(JSON.stringify(output) ?? 'null'))
+    return {
+      call: { id, name: call.name, args, ok, ...(created.length ? { created } : {}) },
+      content,
+      forModel: ok ? `{"data":${content}}` : content,
+      at: deps.now(),
+    }
+  }
+  const offered = allowed.get(call.name)
+  if (!offered)
     return done(false, {
       error: 'not_available',
       message: `${call.name} is not available in this chat; use the tools offered, or tell the user where in the app to do it.`,
+    })
+  if (offered.access === 'log' && !asksToLog(offered.tool.area, asked.message, asked.previousQuestion))
+    return done(false, {
+      error: 'needs_confirmation',
+      message: `The user's message did not ask to log this, so ${call.name} did not run. Ask the user to confirm the exact value first; it runs once they say yes.`,
     })
   try {
     const output = await callTool(deps, call.name, call.args ?? {})

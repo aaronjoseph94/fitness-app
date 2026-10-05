@@ -39,9 +39,27 @@ export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
   rest_timer: { enabled: true, time: null },
 }
 
+/**
+ * The browsers' push services (the Worker POSTs every reminder to a subscription's endpoint, so it must be one of them):
+ * Apple (web.push.apple.com), Google FCM (Chrome, Android), Mozilla (Firefox) and Windows (Edge). https only.
+ */
+const PUSH_HOST = /^(?:[a-z0-9-]+\.)+push\.apple\.com$|^fcm\.googleapis\.com$|^(?:[a-z0-9-]+\.)+push\.services\.mozilla\.com$|^(?:[a-z0-9-]+\.)+notify\.windows\.com$/
+
+/** The host of an https URL without user info (a port is allowed); anything else does not match. */
+const HTTPS_HOST = /^https:\/\/([a-z0-9.-]+)(?::\d{1,5})?(?:[/?#]|$)/i
+
+/** True when `url` is an https URL on a known push service. */
+export function isPushEndpoint(url: string): boolean {
+  const host = HTTPS_HOST.exec(url)?.[1]?.toLowerCase()
+  return host !== undefined && PUSH_HOST.test(host)
+}
+
+/** A subscription endpoint as a browser gives it: an https URL on a known push service. */
+export const PushEndpoint = z.url().refine(isPushEndpoint, { message: 'Not a known Web Push service URL' })
+
 /** Body of POST /api/push/subscribe — the browser PushSubscription JSON plus the kinds it wants. Upserts by endpoint. */
 export const PushSubscribe = z.object({
-  endpoint: z.url(),
+  endpoint: PushEndpoint,
   keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
   kinds: z.array(ReminderKind),
 })

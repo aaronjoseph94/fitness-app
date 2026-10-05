@@ -30,12 +30,29 @@ export type RouteHandler<E extends Endpoint> = (
 const isBinary = (schema: z.ZodType | undefined) =>
   !!schema && schema.safeParse(new ArrayBuffer(1)).success && !schema.safeParse({}).success
 
+/** The media type of the request without parameters ("application/json; charset=utf-8" → "application/json"). */
+const mediaType = (c: Context<AppEnv>) => (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+
+const unsupported = (expected: string) =>
+  new HttpError(415, 'unsupported_media_type', `Send this request body as ${expected}`)
+
+/**
+ * Read the body the endpoint declares. A body must say what it is: JSON as application/json, a Binary/Upload as
+ * application/octet-stream. A cross-site HTML form can only send text/plain, urlencoded or multipart, so it never
+ * reaches validation (CSRF). Only a request with no body at all (and no Content-Type) counts as {} for all-optional
+ * JSON bodies (e.g. FastEnd).
+ */
 async function readBody(c: Context<AppEnv>, schema: z.ZodType | undefined): Promise<unknown> {
   if (!schema) return undefined
-  if (isBinary(schema)) return c.req.arrayBuffer()
+  const type = mediaType(c)
+  if (isBinary(schema)) {
+    if (type !== 'application/octet-stream') throw unsupported('application/octet-stream')
+    return c.req.arrayBuffer()
+  }
+  if (type !== '' && type !== 'application/json') throw unsupported('application/json')
   const text = await c.req.text()
-  // An empty body is an empty object, so all-optional bodies (e.g. FastEnd) may be omitted.
   if (text.trim() === '') return {}
+  if (type === '') throw unsupported('application/json')
   try {
     return JSON.parse(text) as unknown
   } catch {
@@ -54,9 +71,9 @@ function parse<T extends z.ZodType | undefined>(schema: T, value: unknown, part:
 export function route<E extends Endpoint>(app: App, endpoint: E, handler: RouteHandler<E>, opts: { status?: 200 | 201 } = {}) {
   const method = endpoint.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete'
   app[method](endpoint.path, async (c) => {
-    const rawParams = Object.fromEntries(Object.entries(c.req.param() as Record<string, string>).map(([k, v]) => [k, decodeURIComponent(v)]))
+    // Hono has already percent-decoded each param once (a file key's %2F is a slash here); decoding again breaks "%".
     const input = {
-      params: parse(endpoint.params, rawParams, 'path params'),
+      params: parse(endpoint.params, c.req.param(), 'path params'),
       query: parse(endpoint.query, c.req.query(), 'query'),
       body: parse(endpoint.body, await readBody(c, endpoint.body), 'body'),
     } as RouteInput<E>

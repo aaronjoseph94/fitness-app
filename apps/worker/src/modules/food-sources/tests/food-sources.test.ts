@@ -108,6 +108,9 @@ describe('food sources', () => {
     expect(match?.food).toMatchObject({ source: 'usda', source_id: '1105073', name: 'Bananas, overripe, raw', kcal_per_100g: 85, sugar_g: 15.8 })
     expect(match?.nutrients).toEqual({ kcal: 170, protein_g: 1.5, carbs_g: 40.2, fat_g: 0.4, fibre_g: 3.4 })
     expect(calls.map((c) => new URL(c.url).hostname)).toEqual(['api.nal.usda.gov'])
+    // The key travels in a header, never in the URL (URLs end up in logs and error messages).
+    expect(calls[0]!.url).not.toContain('api_key')
+    expect(calls[0]!.apiKey).toBe('test-key')
 
     const cached = await createFoodSources(deps, { fetch }).matchItem({ name: 'overripe banana', grams: 200 })
     expect(cached?.food.id).toBe(match!.food.id)

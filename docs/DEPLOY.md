@@ -44,6 +44,7 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | --- | --- | --- |
 | `ACCESS_TEAM_DOMAIN` | `https://<team>.cloudflareaccess.com` | Zero Trust → Settings → Custom pages / team name (step 6) |
 | `ACCESS_AUD` | The Access application's AUD tag | Zero Trust → Access → Applications → the app → Overview (step 6) |
+| `ACCESS_EMAIL` | Your Access login email. The Worker then answers 403 to any other Access identity, even if the Access policy is ever widened by mistake (the PDF service token keeps read-only access) | the email in your Access policy (step 6) |
 | `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET` | Access service token used by Browser Rendering to open the report page for the PDF archive | Zero Trust → Access → Service auth → Create service token (step 6) |
 | `HEALTH_WEBHOOK_TOKEN` | Bearer token for the iOS Shortcut | random |
 | `MCP_BEARER_TOKEN` | Static bearer for MCP clients that support headers (Claude Code; Claude if "Request headers" is offered) | random |
@@ -73,6 +74,7 @@ The URL is `https://fitness.<your-subdomain>.workers.dev` unless you add a custo
 Zero Trust (free plan, up to 50 users) → pick a team name → Access → Applications:
 
 1. **Self-hosted app "Fitness"**: hostname = your workers.dev host (or custom domain). Policy: Allow → Emails → your email (one-time PIN or Google). Session duration: 1 month (the PWA re-authenticates when it expires). Copy the **AUD tag** → `ACCESS_AUD`.
+   - **Settings → Cookie settings: SameSite attribute = Lax** (keep HTTP Only on). The login cookie is then not sent on other sites' form posts or background requests, a second line behind the Worker's own cross-site check (it refuses any `/api` write a browser marks as coming from another site, `Sec-Fetch-Site` other than `same-origin`, and any body that isn't `application/json` / `application/octet-stream`).
 2. **Bypass apps** (Policy action: Bypass, Include: Everyone), one per path — paths match exactly, so add each:
    - `<host>/api/ingest/health` (the Shortcut webhook; it checks its own bearer token)
    - `<host>/mcp` (MCP; it checks its own token / OAuth)
@@ -80,6 +82,11 @@ Zero Trust (free plan, up to 50 users) → pick a team name → Access → Appli
    - Do **not** bypass `<host>/authorize`: it is the consent page and must stay behind your Access login (the Worker checks the Access JWT there too).
 3. **Service token** for PDFs: Access → Service auth → create token → add a **Service Auth** policy for it on the "Fitness" app → secrets `ACCESS_CLIENT_ID` / `ACCESS_CLIENT_SECRET`.
 4. Keep Bot Fight Mode off for this hostname (Claude's connector calls come from Anthropic's cloud).
+5. **Rate limit the endpoints Access bypasses** (free plan: one rate-limiting rule per zone). Security → WAF → Rate limiting rules → Create rule:
+   - *If incoming requests match:* `(http.request.uri.path in {"/register" "/token" "/mcp" "/api/ingest/health"})`
+   - *With the same characteristics:* IP. *When rate exceeds:* 30 requests per 10 seconds. *Then:* Block, for 10 seconds.
+
+   `/register` is unauthenticated by design (OAuth Dynamic Client Registration) and every accepted registration is a KV write (free plan: 1,000 a day). The Worker already refuses any client whose callback isn't Claude's (`https://claude.ai/api/mcp/auth_callback`, `https://claude.com/api/mcp/auth_callback`) or a loopback port (Claude Code), and writes nothing for it; the rule caps the rest. WAF rules apply to hostnames on your own zone, i.e. a custom domain: on the bare `*.workers.dev` hostname they do not run, so add a custom domain if you want this cap.
 
 ## 7. iOS Shortcut (Apple Watch steps and sleep)
 
@@ -90,7 +97,7 @@ Shortcuts → Automation → Time of Day 07:30 daily → Run immediately:
 3. Get Contents of URL: `POST https://<host>/api/ingest/health`, headers `Authorization: Bearer <HEALTH_WEBHOOK_TOKEN>` and `Content-Type: application/json`, body:
    `{"date": "<yesterday YYYY-MM-DD>", "steps": <sum>, "sleep": {"in_bed_at": "<ISO>", "woke_at": "<ISO>", "asleep_min": <minutes>}}`
 
-The endpoint is idempotent by date, so a re-run just replaces the day.
+The endpoint is idempotent by date, so a re-run just replaces the day. Set the request body to **JSON** (Shortcuts then sends `Content-Type: application/json`): the Worker answers 415 to a body of any other type.
 
 ## 8. Claude connector (MCP)
 

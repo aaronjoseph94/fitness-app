@@ -1,6 +1,7 @@
 // Owns: tests at the export seam (modules/export through the /api routes) — an export restores into a fresh instance
-// with the same row counts, a restore refuses a used instance unless told to overwrite and keeps the rails Aaron's,
-// and the monthly backup writes one table per cron tick.
+// row for row (a second export deep-equals the first, table by table), a restore refuses a used instance unless told
+// to overwrite and keeps the rails Aaron's, a page whose settings, plan versions or daily targets break their schemas
+// (or the floor ≤ ceiling rail) is refused whole with 422, and the monthly backup writes one table per cron tick.
 import {
   ExportTable,
   ReminderKind,
@@ -195,7 +196,7 @@ async function exportAll() {
 }
 
 describe('export and restore through the routes', () => {
-  it('restores an export into a fresh instance with the same weight_logs and meals counts', async () => {
+  it('restores an export into a fresh instance row for row: exporting again deep-equals every table', async () => {
     const before = await counted()
     expect(before).toEqual({ weight_logs: WEIGH_INS, meals: MEALS, meal_items: MEALS })
 
@@ -281,6 +282,17 @@ describe('export and restore through the routes', () => {
     const stored = await env.FILES.get(photoKey)
     expect(stored?.httpMetadata?.contentType).toBe('image/jpeg')
     expect(new Uint8Array(await stored!.arrayBuffer())).toEqual(photoBytes)
+
+    // Every exported table comes back exactly; the only addition is the restore's own "settings restored" event.
+    const again = await exportAll()
+    for (const table of ExportTable.options) {
+      const restored = again.tables[table] ?? []
+      if (table === 'ai_events') {
+        const isRestore = (r: ExportRow) => String(r.summary).startsWith('Settings and rails restored')
+        expect(restored.filter(isRestore), table).toEqual([expect.objectContaining({ kind: 'change', actor: 'user' })])
+        expect(restored.filter((r) => !isRestore(r)), table).toEqual(tables.ai_events ?? [])
+      } else expect(restored, table).toEqual(tables[table] ?? [])
+    }
   })
 
   it('refuses a restore over logged data unless overwrite is set, and replaying a page changes nothing', async () => {
@@ -306,6 +318,37 @@ describe('export and restore through the routes', () => {
         rows: tables.settings!,
       }),
     ).rejects.toMatchObject({ status: 403, code: 'rails_locked' })
+  })
+})
+
+describe('restore validates what it writes', () => {
+  const page = (table: 'settings' | 'plan_versions' | 'daily_targets', rows: ExportRow[]) =>
+    importTablePage(deps(), { restore_id: crypto.randomUUID(), overwrite: true, table, rows })
+
+  it('refuses settings whose floor is above the ceiling or outside the daily kcal bounds, and keeps the stored rails', async () => {
+    const { tables } = await exportAll()
+    const row = tables.settings![0]!
+    for (const bad of [
+      { ...row, calorie_floor: 1800, calorie_ceiling: 1700 },
+      { ...row, calorie_floor: 300 },
+      { ...row, training_days: '["someday"]' },
+      { ...row, reminders: 'not json' },
+    ])
+      await expect(page('settings', [bad])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    const [s] = await db.select().from(settings)
+    expect(s).toMatchObject({ calorie_floor: row.calorie_floor, calorie_ceiling: row.calorie_ceiling })
+  })
+
+  it('refuses plan versions whose targets break PlanTargets and daily targets that break DailyTargets', async () => {
+    const { tables } = await exportAll()
+    const version = tables.plan_versions![0]!
+    const badTargets = JSON.stringify({ defaults: { kcal: -5, protein_g: 130 }, overrides: {} })
+    await expect(page('plan_versions', [{ ...version, targets: badTargets }])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    const day = tables.daily_targets![0]!
+    await expect(page('daily_targets', [{ ...day, kcal: 'lots' }])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    await expect(page('daily_targets', [{ ...day, date: 'tomorrow' }])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    // The exported rows themselves are valid.
+    await expect(page('plan_versions', [version])).resolves.toEqual({ table: 'plan_versions', upserted: 1 })
   })
 })
 

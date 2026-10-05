@@ -1,7 +1,8 @@
 // Owns: tests at the scans seam — the 2026-09-26 sheet (SPEC §2 seed record, printed in lb) extracts within rounding
 // and round-trips through confirm in kg; a scan losing lean mass trips the lean-loss guard with the engine's debrief
-// when no LLM answers; an LLM debrief's proposals go through the guards; the scan-due note. The fake router stands in
-// for the LLM; the real one (no keys locally) shows the graceful failure path.
+// when no LLM answers; an LLM debrief's proposals go through the guards; the scan-due note; a PNG sheet carrying a text
+// chunk (metadata) is refused before it is stored. The fake router stands in for the LLM; the real one (no keys
+// locally) shows the graceful failure path.
 import { ReminderKind, ScanRecord, type ReminderPrefs, type ScanExtractOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { and, eq } from 'drizzle-orm'
@@ -131,10 +132,42 @@ beforeEach(async () => {
   ])
 })
 
+/** A PNG as the browser's canvas writes it: signature, IHDR, the given chunks, IEND (CRCs are not checked). */
+function pngSheet(...extra: [type: string, data: string][]): ArrayBuffer {
+  const enc = new TextEncoder()
+  const chunk = (type: string, data: Uint8Array) => {
+    const out = new Uint8Array(12 + data.length)
+    new DataView(out.buffer).setUint32(0, data.length)
+    out.set(enc.encode(type), 4)
+    out.set(data, 8)
+    return out
+  }
+  const parts = [
+    Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', new Uint8Array(13)),
+    ...extra.map(([type, data]) => chunk(type, enc.encode(data))),
+    chunk('IDAT', new Uint8Array(16)),
+    chunk('IEND', new Uint8Array(0)),
+  ]
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
+  parts.reduce((at, p) => (out.set(p, at), at + p.length), 0)
+  return out.buffer
+}
+
 describe('scan extraction', () => {
+  it('refuses a PNG sheet that still carries a text chunk, and stores nothing', async () => {
+    const id = crypto.randomUUID()
+    await expect(uploadScan(deps, { query: { id, content_type: 'image/png' }, body: pngSheet(['tEXt', 'Author\0Phone']) })).rejects.toMatchObject({
+      status: 422,
+      code: 'exif_present',
+    })
+    expect(await env.FILES.head(`scan-sheets/${id}.png`)).toBeNull()
+    expect(await db.select().from(scans).where(eq(scans.id, id))).toEqual([])
+  })
+
   it('reads the 2026-09-26 sheet (lb) into kg within rounding of SPEC §2, and the confirmed values round-trip', async () => {
     const id = crypto.randomUUID()
-    const sheet = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).buffer
+    const sheet = pngSheet()
     const uploaded = await uploadScan(deps, { query: { id, content_type: 'image/png' }, body: sheet })
     await settle()
 

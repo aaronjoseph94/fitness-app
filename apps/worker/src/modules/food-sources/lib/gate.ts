@@ -37,8 +37,11 @@ export interface GateOptions {
 
 
 export interface Gate {
-  /** GET a JSON document. Null on 404. Throws SourceUnavailable when the source cannot answer. */
-  getJson(source: RemoteSource, url: string): Promise<unknown>
+  /**
+   * GET a JSON document, with extra request headers (e.g. an API key: keys go in headers, never in the URL). Null on
+   * 404. Throws SourceUnavailable when the source cannot answer.
+   */
+  getJson(source: RemoteSource, url: string, headers?: Record<string, string>): Promise<unknown>
 }
 
 export function createGate(opts: GateOptions): Gate {
@@ -47,7 +50,7 @@ export function createGate(opts: GateOptions): Gate {
   const down = new Set<RemoteSource>()
   const memo = new Map<string, Promise<unknown>>()
 
-  async function call(source: RemoteSource, url: string): Promise<unknown> {
+  async function call(source: RemoteSource, url: string, headers: Record<string, string>): Promise<unknown> {
     if (down.has(source)) throw new SourceUnavailable(source, 'unavailable for this run')
     if (calls >= opts.maxCalls || used[source] >= opts.perSource[source] || opts.shared?.some((b) => b.used >= b.limit))
       throw new SourceUnavailable(source, 'subrequest budget spent')
@@ -59,7 +62,7 @@ export function createGate(opts: GateOptions): Gate {
     let res: Response
     try {
       res = await opts.fetch(url, {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+        headers: { ...headers, 'User-Agent': USER_AGENT, Accept: 'application/json' },
         signal: AbortSignal.timeout(opts.timeoutMs),
       })
     } catch {
@@ -69,7 +72,7 @@ export function createGate(opts: GateOptions): Gate {
     if (res.status === 404) return null
     if (!res.ok) {
       if (res.status === 429 || res.status >= 500) down.add(source)
-      throw new SourceUnavailable(source, `HTTP ${res.status}`) // never the URL: USDA's carries the api key
+      throw new SourceUnavailable(source, `HTTP ${res.status}`)
     }
     try {
       return await res.json()
@@ -79,10 +82,10 @@ export function createGate(opts: GateOptions): Gate {
   }
 
   return {
-    getJson(source, url) {
+    getJson(source, url, headers = {}) {
       let p = memo.get(url)
       if (!p) {
-        p = call(source, url)
+        p = call(source, url, headers)
         memo.set(url, p)
       }
       return p

@@ -9,6 +9,9 @@
   // metadata fetches never take same-zone shortcuts (SSRF protection). Nothing else here fetches our own zone.
   "compatibility_flags": ["global_fetch_strictly_public"],
   "observability": { "enabled": true },
+  // No preview URLs (<version>-fitness.<subdomain>.workers.dev): they are hostnames the Access application doesn't
+  // cover, so every uploaded version would be reachable outside the login. Only the production hostname serves.
+  "preview_urls": false,
   "assets": {
     "directory": "../web/dist",
     "binding": "ASSETS",

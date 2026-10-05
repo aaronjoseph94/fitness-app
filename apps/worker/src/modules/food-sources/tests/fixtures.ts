@@ -102,9 +102,10 @@ export const USDA_SEARCH_OVERRIPE_BANANA = {
 
 /** A fetch that answers from `routes` (first URL prefix that matches) and 404s otherwise. */
 export function fakeFetch(routes: Record<string, unknown>) {
-  const calls: { url: string; userAgent: string | null }[] = []
+  const calls: { url: string; userAgent: string | null; apiKey: string | null }[] = []
   const fetch: Fetch = async (url, init) => {
-    calls.push({ url, userAgent: new Headers(init?.headers).get('User-Agent') })
+    const headers = new Headers(init?.headers)
+    calls.push({ url, userAgent: headers.get('User-Agent'), apiKey: headers.get('X-Api-Key') })
     const prefix = Object.keys(routes).find((p) => url.startsWith(p))
     return prefix ? Response.json(routes[prefix]) : Response.json({ status: 0, status_verbose: 'product not found' }, { status: 404 })
   }

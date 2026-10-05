@@ -1,6 +1,7 @@
 // Owns: what the export module knows about each exported table, derived once per isolate from the Drizzle schema —
-// its column names (the only identifiers ever spliced into export/import SQL), its unique keys besides id, how many
-// rows one page carries, and the restore order inside a page for tables with a partial unique index.
+// its column names (the only identifiers ever spliced into export/import SQL), which of them hold JSON text or 0/1
+// booleans, its unique keys besides id, how many rows one page carries, and the restore order inside a page for
+// tables with a partial unique index.
 import { ExportTable, EXPORT_PAGE_ROWS } from '@fitness/shared/schemas'
 import { getTableColumns, is, type Table } from 'drizzle-orm'
 import { getTableConfig, SQLiteColumn, type SQLiteTable } from 'drizzle-orm/sqlite-core'
@@ -77,6 +78,10 @@ export interface TableSpec {
   name: ExportTable
   /** Column names in schema order; `id` is one of them. */
   columns: readonly string[]
+  /** Columns stored as JSON text (an export cell is the JSON string). */
+  jsonColumns: ReadonlySet<string>
+  /** Columns stored as 0/1 booleans. */
+  boolColumns: ReadonlySet<string>
   /** Full (non-partial) unique keys other than id, as column lists. */
   uniqueKeys: readonly (readonly string[])[]
   pageRows: number
@@ -91,7 +96,8 @@ export function tableSpec(name: ExportTable): TableSpec {
   let spec = specs.get(name)
   if (!spec) {
     const table = TABLES[name]
-    const columns = Object.values(getTableColumns(table as Table)).map((c) => c.name)
+    const all = Object.values(getTableColumns(table as Table))
+    const columns = all.map((c) => c.name)
     const uniqueKeys = getTableConfig(table)
       .indexes.filter((i) => i.config.unique && !i.config.where)
       .map((i) => i.config.columns.filter((c): c is SQLiteColumn => is(c, SQLiteColumn)).map((c) => c.name))
@@ -99,6 +105,8 @@ export function tableSpec(name: ExportTable): TableSpec {
     spec = {
       name,
       columns,
+      jsonColumns: new Set(all.filter((c) => c.dataType === 'json').map((c) => c.name)),
+      boolColumns: new Set(all.filter((c) => c.dataType === 'boolean').map((c) => c.name)),
       uniqueKeys,
       pageRows: PAGE_ROWS[name] ?? EXPORT_PAGE_ROWS,
       restoreOrder: RESTORE_ORDER[name] ?? null,

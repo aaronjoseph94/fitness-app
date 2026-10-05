@@ -3,7 +3,9 @@
 // Interface:
 //   exportManifest(deps)                 → ExportManifest   tables in restore order with row counts; signed file URLs
 //   exportTablePage(deps, query)         → string           ExportPage as JSON text (≤ 500 rows, id order), built by SQLite
-//   importTablePage(deps, page)          → ImportResult     upsert one page by id; 409 not_fresh, 403 rails_locked, 400
+//   importTablePage(deps, page)          → ImportResult     upsert one page by id; 409 not_fresh, 403 rails_locked, 400,
+//                                                           422 invalid_rows (settings / plan versions / daily targets
+//                                                           that break their schemas or floor ≤ ceiling)
 //   importFile(deps, query, body)        → Ok               put one file back under its key (same restore gate)
 //   monthlyBackupStep(deps, 'YYYY-MM')   → BackupStep       one table per call to reports/backup/<month>/<table>.json
 // Every call is cheap in Worker CPU: rows are serialised and unpacked by SQLite, never row by row in JS.

@@ -116,8 +116,8 @@ export async function uploadScan(deps: Deps, input: { query: ScanUploadQuery; bo
     const job_id = await queueExtraction(deps, id)
     return { scan: await getScan(deps, id), job_id }
   }
-  // The sheet goes to the vision LLM: a JPEG/WebP must be what it says and carry no EXIF (PNG comes from the canvas).
-  if (content_type !== 'image/png') checkPhotoBytes(input.body, content_type)
+  // The sheet goes to the vision LLM: it must be what it says and carry no EXIF, XMP or text metadata.
+  checkPhotoBytes(input.body, content_type)
   const key = `scan-sheets/${id}.${EXTENSION[content_type]}`
   await deps.env.FILES.put(key, input.body, { httpMetadata: { contentType: content_type } })
   const now = deps.now()

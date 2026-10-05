@@ -3,8 +3,9 @@
 //   1. Static bearer: `Authorization: Bearer <MCP_BEARER_TOKEN>` (Claude Code; Claude when Request headers exist),
 //      compared in constant time.
 //   2. OAuth 2.1 (@cloudflare/workers-oauth-provider, KV OAUTH_KV): RFC 8414 metadata, Dynamic Client Registration
-//      (/register), Client ID Metadata Documents, /token (+ revocation), and /authorize — a one-button consent page
-//      behind Cloudflare Access (app.ts runs the Access check first) that grants the single owner.
+//      (/register, only for Claude's callbacks and loopback ports: an unauthenticated endpoint must not fill KV),
+//      Client ID Metadata Documents, /token (+ revocation), and /authorize — a one-button consent page behind
+//      Cloudflare Access (app.ts runs the Access check first) that grants the single owner.
 // /mcp answers 401 with `WWW-Authenticate: Bearer resource_metadata=…` (RFC 9728) and publishes that metadata at
 // /.well-known/oauth-protected-resource/mcp (and the bare path as an alias for clients that probe it).
 // Issuer and resource are the request's own origin, so workers.dev, a custom domain and wrangler dev all work.
@@ -31,6 +32,38 @@ const OWNER = 'owner'
 /** One scope: full access within the rails. Advertised so clients ask for it; the consent page grants it. */
 const SCOPE = 'fitness'
 const DAY = 86_400
+
+/** Where Claude (web, desktop, mobile) sends the code back. */
+const CLAUDE_CALLBACKS = new Set(['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback'])
+
+/** Claude Code (and other native clients, RFC 8252 §7.3) listen on a loopback port: http, any port, any path. */
+const isLoopback = (url: URL) => url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
+
+/** True when `uri` is one of Claude's callbacks or a loopback URL. */
+function isAllowedRedirect(uri: unknown): boolean {
+  if (typeof uri !== 'string') return false
+  if (CLAUDE_CALLBACKS.has(uri)) return true
+  try {
+    const url = new URL(uri)
+    return isLoopback(url) && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
+/**
+ * DCR gate, run before the client is stored: every redirect URI must be allowed, or the registration is refused and
+ * nothing is written (each registration is a KV write, and the free plan has 1,000 a day).
+ */
+function checkRegistration({ clientMetadata }: { clientMetadata: Record<string, unknown> }) {
+  const uris = clientMetadata.redirect_uris
+  if (Array.isArray(uris) && uris.length > 0 && uris.every(isAllowedRedirect)) return undefined
+  return {
+    code: 'invalid_redirect_uri',
+    description: 'Only Claude (claude.ai / claude.com) and loopback callbacks can register with this server',
+    status: 400,
+  }
+}
 
 /** What a validated token carries into the MCP handler (ctx.props). */
 interface McpProps {
@@ -72,6 +105,7 @@ function build(origin: string): OAuthServers {
     authorizeEndpoint: '/authorize',
     tokenEndpoint: '/token',
     clientRegistrationEndpoint: '/register',
+    clientRegistrationCallback: checkRegistration,
     clientIdMetadataDocumentEnabled: true,
     scopesSupported: [SCOPE],
     accessTokenTTL: 3600,

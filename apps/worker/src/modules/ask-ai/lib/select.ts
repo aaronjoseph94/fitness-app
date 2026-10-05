@@ -1,6 +1,7 @@
 // Owns: picking the tools one Ask AI turn offers the model (≈15, so the free models read fewer schemas): the core reads
 // always, then the writes and reads of every area the message (and the previous question, for "yes, do that") talks
-// about, in that order, capped at MAX_TOOLS. Only tools the policy allows are ever picked.
+// about, in that order, capped at MAX_TOOLS. Only tools the policy allows are ever picked. Also: whether the user's own
+// words ask to log something in an area (asksToLog), which a logging call needs before it applies.
 import { allTools, type ToolArea, type ToolDefinition } from '../../tools'
 import { accessOf, type Access } from './policy'
 
@@ -40,6 +41,27 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
   [/\b(review\w*|report\w*|summary|recap|progress|how am i doing|overall)\b/, ['reviews', 'coach']],
   [/\b(average\w*|avg|mean|total|history|month\w*|january|february|march|april|may|june|july|august|september|october|november|december)\b/, ['metrics']],
 ]
+
+/**
+ * Words (or any number) that report something to record rather than ask about it: "I weighed 94.2", "had 2 eggs",
+ * "slept 7 h", "log my lunch", "ended my fast", "finished the workout", and a plain "yes" to a question the model asked.
+ */
+const LOG_INTENT =
+  /\d|\b(log\w*|record\w*|add\w*|enter\w*|track\w*|save\w*|weighed|weigh-?in|ate|eaten|had|drank|drunk|slept|woke|walked|lifted|did|done|finish\w*|complet\w*|start\w*|end\w*|broke|break\w*|began|begin\w*|stop\w*|confirm\w*|yes|yep|yeah|yup|sure|ok(ay)?|go ahead|do it)\b/
+
+/** A reply that only agrees ("yes", "ok, do it"): its area comes from the question before it. */
+const AFFIRMATION = /^\W*(yes|yep|yeah|yup|sure|ok(ay)?|please|go ahead|do it|confirm\w*|correct|right)\b/i
+const SHORT_REPLY = 80
+
+/**
+ * True when the user's own words ask to log something in `area`: the current message, or a short "yes …" with the
+ * previous question, names the area (AREA_WORDS) and reports a value or a logging verb. Tool results never count, so
+ * text from a food database or a note cannot trigger a write by itself.
+ */
+export function asksToLog(area: ToolArea, message: string, previousQuestion: string | null): boolean {
+  const own = previousQuestion && message.length <= SHORT_REPLY && AFFIRMATION.test(message) ? `${message}\n${previousQuestion}` : message
+  return areasOf([own]).has(area) && LOG_INTENT.test(own.toLowerCase())
+}
 
 export interface OfferedTool {
   tool: ToolDefinition

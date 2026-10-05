@@ -3,12 +3,13 @@
 //   uploadPhoto(deps, upload)  → ProgressPhoto    idempotent by the client id (a replay returns the stored photo)
 //   listPhotos(deps, query)    → ProgressPhoto[]  newest first, short-lived signed URLs, tags read live
 //   removePhoto(deps, id)      → Ok               row now, R2 object after the response; replaying is a no-op
-//   checkPhotoBytes(bytes, type)                   422 unless JPEG/WebP bytes of that type without EXIF (meal photos
-//                                                  and scan sheets reuse it before anything can reach a vision LLM)
+//   checkPhotoBytes(bytes, type)                   422 unless JPEG/WebP/PNG bytes of that type without EXIF, XMP or
+//                                                  text metadata (meal photos, scan sheets and exercise photos reuse
+//                                                  it before anything can be stored or reach a vision LLM)
 //
 // PRIVACY RAIL: progress photos are never sent to any LLM. This module must not import the llm module (or jobs, which
 // hand payloads to it), and no job payload, tool output or prompt may carry a photo, its URL or its key.
-// test/photos.test.ts asserts the import side.
+// test/photos.test.ts checks it by behaviour (no outbound call and no job across upload, list, view and remove).
 import type { Ok, PhotoListQuery, PhotoUploadQuery, ProgressPhoto } from '@fitness/shared/schemas'
 import { localDate } from '@fitness/shared/engine'
 import { and, desc, eq, gte, lte, type SQL } from 'drizzle-orm'
@@ -18,7 +19,7 @@ import { checkPhotoBytes } from './lib/image'
 import { loadTags, nearestScan, photoKey, toPhoto } from './lib/tags'
 
 export { PHOTO_URL_TTL_SECONDS } from './lib/tags'
-export { checkPhotoBytes } from './lib/image'
+export { checkPhotoBytes, type CheckedImageType } from './lib/image'
 
 /** POST /api/photos: the query's metadata plus the image bytes (already downscaled and re-encoded by the browser). */
 export type PhotoUpload = PhotoUploadQuery & { image: ArrayBuffer }

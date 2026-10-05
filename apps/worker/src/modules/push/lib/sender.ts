@@ -1,7 +1,7 @@
 // Owns: the push adapter seam — delivering one notification to one browser subscription — and the real adapter: Web
 // Push (RFC 8291 aes128gcm + RFC 8292 VAPID) through @block65/webcrypto-web-push and fetch. Encryption is a handful of
 // native WebCrypto calls per message (no CPU-heavy work in the Worker).
-import type { PushNotification } from '@fitness/shared/schemas'
+import { isPushEndpoint, type PushNotification } from '@fitness/shared/schemas'
 import { buildPushPayload, type VapidKeys } from '@block65/webcrypto-web-push'
 import type { Env } from '../../../env'
 
@@ -34,9 +34,16 @@ export function vapidKeys(env: Env): VapidKeys | null {
   return publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null
 }
 
-/** The real adapter for these VAPID keys. */
+/** Answered without a call for an endpoint that is not a known push service (counted as failed, the row kept). */
+const NOT_A_PUSH_SERVICE = 400
+
+/**
+ * The real adapter for these VAPID keys. It posts only to known push services: subscribe checks that too, but a row can
+ * also arrive through a restore.
+ */
 export function webPushSender(vapid: VapidKeys): PushSender {
   return async (target, notification, delivery) => {
+    if (!isPushEndpoint(target.endpoint)) return NOT_A_PUSH_SERVICE
     const payload = await buildPushPayload(
       {
         data: notification,

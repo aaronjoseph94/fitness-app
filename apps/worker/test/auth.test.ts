@@ -1,11 +1,96 @@
 // Owns: the auth seam (middleware/auth.ts through the app) — Access is required on /api unless DEV_AUTH_BYPASS is on
-// AND the host is local; the iOS Shortcut webhook needs its bearer token and is idempotent by date.
+// AND the host is local; a real Access JWT (RS256, team JWKS) is accepted only for our AUD, only for ACCESS_EMAIL when
+// set, and the PDF service token only reads; the iOS Shortcut webhook needs its bearer token and is idempotent by date.
 import { env } from 'cloudflare:workers'
-import { describe, expect, it } from 'vitest'
+import { exportJWK, generateKeyPair, SignJWT, type JWTPayload } from 'jose'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../src/app'
 
 const app = createApp()
 const noBypass = { ...env, DEV_AUTH_BYPASS: undefined }
+
+// ── A local Access team: an RS256 key pair, its JWKS served by a stubbed fetch, and tokens signed with it ──────────
+const TEAM = 'https://fitness-test.cloudflareaccess.com'
+const AUD = 'fitness-app-aud'
+const HOST = 'https://fitness.example.workers.dev'
+const SERVICE_ID = 'pdf-renderer.access'
+const keys = await generateKeyPair('RS256', { extractable: true })
+const jwk = { ...(await exportJWK(keys.publicKey)), kid: 'test-key', alg: 'RS256', use: 'sig' }
+const accessEnv = (extra: Record<string, string> = {}) => ({
+  ...noBypass,
+  ACCESS_TEAM_DOMAIN: TEAM,
+  ACCESS_AUD: AUD,
+  ACCESS_CLIENT_ID: SERVICE_ID,
+  ...extra,
+})
+
+function stubJwks() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (url === `${TEAM}/cdn-cgi/access/certs`) return Response.json({ keys: [jwk] })
+    throw new Error(`unexpected fetch ${url}`)
+  })
+}
+afterEach(() => vi.restoreAllMocks())
+
+const accessToken = (claims: JWTPayload, aud = AUD) =>
+  new SignJWT(claims)
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+    .setIssuer(TEAM)
+    .setAudience(aud)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(keys.privateKey)
+
+const withAccess = (token: string, init: RequestInit = {}) => ({
+  ...init,
+  headers: { ...(init.headers as Record<string, string> | undefined), 'Cf-Access-Jwt-Assertion': token },
+})
+const weighIn = () => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ id: crypto.randomUUID(), date: '2026-08-01', weight_kg: 95 }),
+})
+
+describe('a real Cloudflare Access JWT', () => {
+  it('accepts a token for our AUD and rejects one for another application', async () => {
+    stubJwks()
+    const ok = await app.request(`${HOST}/api/health`, withAccess(await accessToken({ email: 'aaron@example.com' })), accessEnv())
+    expect(ok.status).toBe(200)
+
+    const other = await app.request(`${HOST}/api/health`, withAccess(await accessToken({ email: 'aaron@example.com' }, 'another-app')), accessEnv())
+    expect(other.status).toBe(401)
+  })
+
+  it('with ACCESS_EMAIL set, only that identity (any case) gets in; another Access user is 403', async () => {
+    stubJwks()
+    const owner = await app.request(
+      `${HOST}/api/health`,
+      withAccess(await accessToken({ email: 'aaron@example.com' })),
+      accessEnv({ ACCESS_EMAIL: 'Aaron@Example.com' }),
+    )
+    expect(owner.status).toBe(200)
+
+    const stranger = await app.request(
+      `${HOST}/api/health`,
+      withAccess(await accessToken({ email: 'someone@example.com' })),
+      accessEnv({ ACCESS_EMAIL: 'aaron@example.com' }),
+    )
+    expect(stranger.status).toBe(403)
+    expect(await stranger.json()).toMatchObject({ error: 'forbidden' })
+  })
+
+  it('the PDF service token may read (GET) but never write', async () => {
+    stubJwks()
+    const service = await accessToken({ common_name: SERVICE_ID, sub: '' })
+    const read = await app.request(`${HOST}/api/health`, withAccess(service), accessEnv({ ACCESS_EMAIL: 'aaron@example.com' }))
+    expect(read.status).toBe(200)
+
+    const write = await app.request(`${HOST}/api/weights`, withAccess(service, weighIn()), accessEnv())
+    expect(write.status).toBe(403)
+    expect(await write.json()).toMatchObject({ error: 'read_only' })
+  })
+})
 
 describe('Access on /api', () => {
   it('rejects a request without an Access JWT when the dev bypass is off', async () => {

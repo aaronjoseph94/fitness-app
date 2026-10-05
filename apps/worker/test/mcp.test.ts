@@ -1,8 +1,11 @@
 // Owns: tests at the MCP seam (/mcp through the app: middleware/mcp-auth.ts + modules/mcp) — the 401 challenge with
 // RFC 9728 resource metadata, the static bearer (initialize, tools/list with annotations, tools/call get_today with
-// structured content, a tool error), prompts and resources, and the OAuth 2.1 path end to end (DCR → consent →
+// structured content, a tool error), writes over the transport (apply_review makes a plan version the app serves; a
+// week plan under the calorie floor is refused), prompts and resources, Dynamic Client Registration only for Claude's
+// callbacks and loopback (anything else writes nothing to KV), and the OAuth 2.1 path end to end (DCR → consent →
 // code + PKCE → token → /mcp).
-import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
+import { addDays, today, weekStart } from '@fitness/shared/engine'
+import { ReminderKind, Weekday, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app'
@@ -170,6 +173,97 @@ describe('MCP over the static bearer', () => {
     )
     expect(bad.result!.isError).toBe(true)
     expect(bad.result!.content[0]!.text).toMatch(/^invalid_tool_input: /)
+  })
+})
+
+describe('MCP writes over the transport', () => {
+  const token = env.MCP_BEARER_TOKEN!
+
+  it('apply_review with a +100 kcal target change makes a new plan version that GET /api/plan serves', async () => {
+    const { result } = await rpc<{ isError?: boolean; structuredContent: { plan_version: { version: number } | null } }>(
+      'tools/call',
+      {
+        name: 'apply_review',
+        arguments: {
+          summary: 'Raise kcal by 100 for recovery',
+          narrative: 'Steady loss of about 1 kg a week; a small raise keeps training quality up.',
+          changes: [{ kind: 'target', field: 'kcal', to: 1500, reason: 'Recovery' }],
+          record_review: false,
+        },
+      },
+      token,
+    )
+    expect(result!.isError ?? false, JSON.stringify(result)).toBe(false)
+    expect(result!.structuredContent.plan_version).toMatchObject({ version: 2 })
+
+    const plan = await app.request('http://localhost/api/plan', {}, env)
+    expect(plan.status).toBe(200)
+    expect(await plan.json()).toMatchObject({ version: 2, active: true, created_by: 'mcp', targets: { defaults: { kcal: 1500 } } })
+  })
+
+  it('propose_week_plan with a 1,350 kcal day is refused naming calorie_floor, and stores nothing', async () => {
+    const monday = weekStart(addDays(today(new Date()), 14))
+    const day = (kcal: number) => ({ kcal, protein_g: 130, carbs_g: 150, fat_g: 45, fibre_g: 30 })
+    const plan = {
+      targets: Object.fromEntries(Weekday.options.map((w) => [w, day(w === 'wed' ? 1350 : 1500)])),
+      sessions: Object.fromEntries(Weekday.options.map((w) => [w, null])),
+      water_ml: 3000,
+      steps: 9000,
+      fast_dates: [],
+      scan_date: null,
+      focus_note: 'Protein first.',
+    }
+    const { result } = await rpc<{ content: { text: string }[]; structuredContent: { week_plan: unknown; rejected: { rule: string; where: string }[] } }>(
+      'tools/call',
+      { name: 'propose_week_plan', arguments: { week_start: monday, plan } },
+      token,
+    )
+    expect(result!.structuredContent.week_plan).toBeNull()
+    expect(result!.structuredContent.rejected).toEqual(expect.arrayContaining([expect.objectContaining({ where: 'wed.kcal', rule: 'calorie_floor' })]))
+    expect(result!.content[0]!.text).toContain('calorie_floor')
+  })
+})
+
+describe('Dynamic Client Registration', () => {
+  const origin = 'http://localhost:8787'
+  const register = (redirect_uris: string[]) =>
+    app.request(
+      `${origin}/register`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_name: 'Some app', redirect_uris, token_endpoint_auth_method: 'none' }),
+      },
+      env,
+    )
+  const kvKeys = async () => (await env.OAUTH_KV.list()).keys.length
+
+  it('refuses a client whose callbacks are not Claude’s or loopback, and writes nothing to KV', async () => {
+    const before = await kvKeys()
+    expect(await (await register(['https://evil.example/cb'])).json()).toMatchObject({ error: 'invalid_redirect_uri' })
+    for (const uris of [
+      ['https://evil.example/cb'],
+      ['https://claude.ai/api/mcp/auth_callback', 'https://evil.example/cb'],
+      ['https://claude.ai.evil.example/api/mcp/auth_callback'],
+      ['http://claude.ai/api/mcp/auth_callback'],
+      ['http://192.168.1.5:3000/callback'],
+    ]) {
+      const res = await register(uris)
+      expect(res.status, uris.join(' ')).toBe(400)
+      // Ours (invalid_redirect_uri), or the library's own check for a non-https, non-loopback URI.
+      expect(['invalid_redirect_uri', 'invalid_client_metadata']).toContain(((await res.json()) as { error: string }).error)
+    }
+    expect(await kvKeys()).toBe(before)
+  })
+
+  it('registers Claude (claude.ai, claude.com) and Claude Code on a loopback port', async () => {
+    for (const uris of [
+      ['https://claude.ai/api/mcp/auth_callback'],
+      ['https://claude.com/api/mcp/auth_callback'],
+      ['http://localhost:53682/callback'],
+      ['http://127.0.0.1:33418/'],
+    ])
+      expect((await register(uris)).status, uris.join(' ')).toBe(201)
   })
 })
 
