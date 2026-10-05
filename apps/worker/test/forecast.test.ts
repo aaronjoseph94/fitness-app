@@ -1,6 +1,7 @@
 // Owns: tests at the reforecast seam (plan.reforecast) — the expenditure estimate counts a logged intake day as one
 // with a confirmed meal or the fast's own fast day (engine fastDay: a 19:00 → 19:00 fast makes the next day it), not
-// every day a fast overlaps, so it keeps the baseline 2,551 kcal (SPEC §2) with fewer than 10 logged days (SPEC §9).
+// every day a fast overlaps, so it keeps the baseline 2,551 kcal (SPEC §2) with fewer than 10 logged days (SPEC §9);
+// and the weekly re-estimate is idempotent per as_of (run twice for one night, it does not smooth against itself).
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -71,5 +72,24 @@ describe('reforecast', () => {
     const forecast = await reforecast(deps, { as_of: '2026-10-04', reestimate: true })
 
     expect(forecast.tdee_est).toBe(2551)
+  })
+})
+
+describe('reforecast run twice for the same night', () => {
+  it('re-estimates once: 1,981 kcal both times (0.5 × 1,410 + 0.5 × 2,551), not smoothed again toward 1,410', async () => {
+    // Two more eating days: 10 eating days + the fast day = 11 logged days, so the window is usable.
+    for (const date of ['2026-10-01', '2026-10-02']) {
+      const id = crypto.randomUUID()
+      await db.batch([
+        db.insert(meals).values({ id, date, slot: 'dinner', input_method: 'manual', status: 'confirmed' }),
+        db.insert(meal_items).values({ meal_id: id, description: 'dinner', grams: 500, kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }),
+      ])
+    }
+
+    const first = await reforecast(deps, { as_of: '2026-10-04', reestimate: true })
+    const again = await reforecast(deps, { as_of: '2026-10-04', reestimate: true })
+
+    expect(first.tdee_est).toBe(1981)
+    expect(again.tdee_est).toBe(1981)
   })
 })

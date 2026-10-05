@@ -4,7 +4,8 @@
 //   eventInsert(deps, input)            → { id, statement }   (put the statement in the caller's db.batch)
 //   recordEvent(deps, input)            → id                  (standalone write)
 //   listEvents(deps, { since? })        → EventsResponse      (created or updated at/after `since`, 200 a page, the next
-//                                                              `since` overlapping 5 s; else the latest 50)
+//                                                              `since` overlapping 5 s; else the latest 50 plus every
+//                                                              pending proposal due by today)
 //   pendingProposals(deps, date)        → { pending_count, latest }  (proposals due on or before `date`)
 //   getProposalRow(deps, id) / toProposal(row) / toEvent(row)    (row ↔ contract mapping; bodies parsed with Zod)
 //   proposalDecisionUpdate(deps, id, …)  → statement resolving a pending proposal (accepted/rejected/auto_applied)
@@ -33,6 +34,8 @@ export interface EventInput {
 }
 
 const LATEST_PAGE = 50
+/** Pending proposals the latest page always carries (more than a few is already a backlog). */
+const PENDING_PAGE = 50
 const SINCE_PAGE = 200
 
 /** An insert for one event, to run inside the caller's db.batch (actor and timestamps from deps). */
@@ -103,7 +106,7 @@ const POLL_OVERLAP_MS = 5_000
 
 /**
  * GET /api/events?since=: events created or updated at or after `since`, oldest change first (a client dedupes by
- * id), or the latest 50 when `since` is absent. Scheduled proposals not yet due are left out. `server_time` is the next
+ * id), or the latest 50 (plus the pending proposals due by today, however old) when `since` is absent. Scheduled proposals not yet due are left out. `server_time` is the next
  * `since`:
  *   a full page (200)  → the last row's updated_at, so the rest arrive on the next poll (+1 ms when the whole page
  *                         shares one instant, so the poll always moves on)
@@ -126,7 +129,19 @@ export async function listEvents(deps: Deps, input: { since?: string }): Promise
     if (rows.length === SINCE_PAGE && first && last)
       server_time = first.updated_at === last.updated_at ? new Date(Date.parse(last.updated_at) + 1).toISOString() : last.updated_at
   } else {
-    rows = (await deps.db.select().from(ai_events).orderBy(desc(ai_events.created_at)).limit(LATEST_PAGE)).reverse()
+    // The latest 50, plus every pending proposal due by today however old (a kcal step proposed a week ago): the AI tab
+    // and the plan page list what waits for a tap from this page.
+    const [latest, waiting] = await deps.db.batch([
+      deps.db.select().from(ai_events).orderBy(desc(ai_events.created_at)).limit(LATEST_PAGE),
+      deps.db
+        .select()
+        .from(ai_events)
+        .where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.proposal_status, 'pending'), or(isNull(ai_events.date), lte(ai_events.date, today(now)))))
+        .orderBy(desc(ai_events.created_at))
+        .limit(PENDING_PAGE),
+    ])
+    const ids = new Set(latest.map((r) => r.id))
+    rows = [...latest, ...waiting.filter((r) => !ids.has(r.id))].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id))
   }
   const due = today(now)
   const events = rows

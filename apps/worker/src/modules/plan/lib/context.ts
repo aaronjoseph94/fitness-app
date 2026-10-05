@@ -56,6 +56,11 @@ export async function loadVerdicts(deps: Deps, ids: readonly string[]): Promise<
   return out
 }
 
+/** The contract's forecast fields only (the stored row also keeps reforecast's night markers, lib/forecast). */
+function publicForecast(f: NonNullable<PlanVersionRow['forecast']>): NonNullable<PlanVersion['forecast']> {
+  return { finish_date: f.finish_date, weekly_rate_kg: f.weekly_rate_kg, band: f.band, tdee_est: f.tdee_est }
+}
+
 export function toPlanVersion(row: PlanVersionRow, verdicts: Verdicts = NONE): PlanVersion {
   return {
     id: row.id,
@@ -67,7 +72,7 @@ export function toPlanVersion(row: PlanVersionRow, verdicts: Verdicts = NONE): P
     reason: row.reason,
     diff: row.diff,
     targets: row.targets,
-    forecast: row.forecast ?? null,
+    forecast: row.forecast ? publicForecast(row.forecast) : null,
     rejected: verdicts.rejected,
     scheduled: verdicts.scheduled,
   }

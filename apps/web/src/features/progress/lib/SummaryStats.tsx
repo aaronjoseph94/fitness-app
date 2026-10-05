@@ -1,5 +1,6 @@
 // Owns: the four headline numbers for the selected range — trend change, average intake, average protein against
 // its target, and logging adherence — one big number per card, two per row on a phone and four across when wide.
+// Labels stay short enough not to be cut at 320 px; the footnote says what each number is.
 // Before the range's data arrives (`summary` null) the cards show dashes with footnotes of the same length, so the
 // grid has its final height from the first paint and the charts under it never move.
 import Box from '@mui/material/Box'
@@ -44,18 +45,18 @@ export function SummaryStats({ summary, proteinTarget, days }: SummaryStatsProps
         testId="stat-avg-kcal"
       />
       <StatCard
-        label="Average protein"
+        label="Protein"
         value={summary?.avgProteinG == null ? null : Math.round(summary.avgProteinG)}
         unit="g"
         metric="protein"
-        footnote={proteinTarget ? `Target ${proteinTarget} g` : summary === null ? 'Target' : undefined}
+        footnote={proteinTarget ? `Daily average; target ${proteinTarget} g` : 'Daily average'}
         testId="stat-avg-protein"
       />
       <StatCard
-        label="Logging adherence"
+        label="Logging"
         value={summary?.adherence == null ? null : Math.round(summary.adherence * 100)}
         unit="%"
-        footnote="Weigh-in, meals and water"
+        footnote="Adherence: weigh-in, meals and water"
         testId="stat-adherence"
       />
     </Box>

@@ -6,6 +6,7 @@ import {
   addDays,
   applyGuards,
   holdMacros,
+  KCAL_STEP,
   targetValue,
   today,
   weekdayOf,
@@ -25,14 +26,15 @@ import {
   type Settings,
   type TargetField,
 } from '@fitness/shared/schemas'
-import { eq } from 'drizzle-orm'
+import { between, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { plan_versions, week_plans } from '../../../db'
+import { daily_targets, plan_versions, week_plans } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { eventInsert } from '../../events'
 import { jobInsert } from '../../jobs'
 import type { PlanContext, PlanVersionRow } from './context'
 import { activeWeekPlans, computeTargetRows, targetHorizon, targetStatements, type StoredWeekPlan, type WeekOverride } from './targets'
+import { kcalWindow } from './window'
 
 export type RejectedChange = RejectedPlanChange & { rule: GuardRule }
 export type ScheduledChange = ScheduledPlanChange
@@ -166,6 +168,26 @@ function weekDiff(before: readonly NewTargetRow[], after: readonly NewTargetRow[
 
 type NewTargetRow = Awaited<ReturnType<typeof computeTargetRows>>[number]
 
+/** What an ai/mcp change's carried kcal is held to (carryIntoWeekPlans `step`). */
+export interface KcalStepBase {
+  /** kcal of each past non-fast day (daily_targets) in the week before the change's date. */
+  history: ReadonlyMap<string, number>
+  /** The rolling-window base (lib/window), for a past day with no stored targets. */
+  base: PlanTargetsLike
+}
+
+/** The week before `date` as it was (stored non-fast daily_targets) and the rolling-window base, for an ai/mcp change. */
+export async function kcalStepBase(deps: Deps, date: string): Promise<KcalStepBase> {
+  const [rows, window] = await Promise.all([
+    deps.db
+      .select({ date: daily_targets.date, kcal: daily_targets.kcal, is_fast_day: daily_targets.is_fast_day })
+      .from(daily_targets)
+      .where(between(daily_targets.date, addDays(date, -7), addDays(date, -1))),
+    kcalWindow(deps),
+  ])
+  return { history: new Map(rows.filter((r) => !r.is_fast_day).map((r) => [r.date, r.kcal])), base: window.base }
+}
+
 const MACROS = ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g'] as const
 const WEEK_WIDE = ['water_ml', 'steps'] as const
 const LAST_DATE = '9999-12-31'
@@ -179,6 +201,10 @@ const LAST_DATE = '9999-12-31'
  *     A delta, not the new value, so the coach's per-day shape stays and a ≤150 kcal step stays a ≤150 kcal step.
  *   water_ml / steps (one value per week plan): = after.defaults[f] when the default moved. A weekday-only move can't
  *     be expressed in a week plan and is listed in `skipped` ("sat water_ml").
+ *   with `step` (an ai/mcp change, SPEC §9): a carried day d's kcal stays within 150 of the same weekday last week, or
+ *     where it already was: min(old, b − 150) ≤ kcal(d) ≤ max(old, b + 150), b = kcal(d − 7) — history before `date`
+ *     (`step.history`, else the window base `step.base`), from `date` on as this carry leaves it (an active week plan's
+ *     day, else the new version's value at or above the floor).
  * Returns only the week plans that changed, and each day the rails cut (`clamped`: "2026-10-10 kcal 1850 → 1700").
  */
 export function carryIntoWeekPlans(
@@ -187,6 +213,7 @@ export function carryIntoWeekPlans(
   after: PlanTargets,
   rails: Pick<Settings, 'calorie_floor' | 'calorie_ceiling' | 'protein_min_g' | 'fat_min_g'>,
   date: string,
+  step?: KcalStepBase,
 ): { patched: StoredWeekPlan[]; skipped: string[]; clamped: string[] } {
   const skipped = new Set<string>()
   const clamped: string[] = []
@@ -195,7 +222,14 @@ export function carryIntoWeekPlans(
       if (targetValue(before, f, w) !== targetValue(after, f, w) && before.defaults[f] === after.defaults[f]) skipped.add(`${w} ${f}`)
   const min: Partial<Record<TargetField, number>> = { kcal: rails.calorie_floor, protein_g: rails.protein_min_g, fat_g: rails.fat_min_g }
   const patched: StoredWeekPlan[] = []
-  for (const week of weeks) {
+  /** kcal of each non-fast day of the active week plans from `date` on, as this carry leaves it (weeks in date order). */
+  const planned = new Map<string, number>()
+  const lastWeek = (day: string, w: Weekday): number => {
+    const prev = addDays(day, -7)
+    if (prev < date) return step!.history.get(prev) ?? targetValue(step!.base, 'kcal', w)
+    return planned.get(prev) ?? Math.max(targetValue(after, 'kcal', w), rails.calorie_floor)
+  }
+  for (const week of [...weeks].sort((a, b) => a.week_start.localeCompare(b.week_start))) {
     let changed = false
     const plan = { ...week.plan, targets: { ...week.plan.targets } }
     for (const f of WEEK_WIDE)
@@ -214,11 +248,19 @@ export function carryIntoWeekPlans(
         next[f] = Math.max(next[f] + delta, min[f] ?? 0, 0)
         moved = true
       }
-      if (!moved) return
-      if (next.kcal > rails.calorie_ceiling) {
-        clamped.push(`${day} kcal ${next.kcal} → ${rails.calorie_ceiling}`)
-        next.kcal = rails.calorie_ceiling
+      if (moved) {
+        const carried = next.kcal
+        if (step) {
+          const old = plan.targets[w].kcal
+          const b = lastWeek(day, w)
+          next.kcal = Math.min(Math.max(next.kcal, Math.min(old, b - KCAL_STEP)), Math.max(old, b + KCAL_STEP))
+        }
+        // The rails win over the step.
+        next.kcal = Math.max(Math.min(next.kcal, rails.calorie_ceiling), rails.calorie_floor)
+        if (next.kcal !== carried) clamped.push(`${day} kcal ${carried} → ${next.kcal}`)
       }
+      planned.set(day, next.kcal)
+      if (!moved) return
       const held = holdMacros(next, rails)
       for (const f of ['protein_g', 'fat_g'] as const)
         if (held[f] !== next[f]) {
@@ -264,9 +306,11 @@ export async function versionStatements(
   const id = input.id ?? crypto.randomUUID()
   const horizon = await targetHorizon(deps)
   const weekEnd = input.week ? addDays(input.week.week_start, 6) : null
+  const weeks = input.week ? [] : await activeWeekPlans(deps, date, LAST_DATE)
+  const step = weeks.length && input.created_by !== 'user' ? await kcalStepBase(deps, date) : undefined
   const carried = input.week
     ? { patched: [], skipped: [], clamped: [] }
-    : carryIntoWeekPlans(await activeWeekPlans(deps, date, LAST_DATE), ctx.active.targets, input.targets, ctx.settings, date)
+    : carryIntoWeekPlans(weeks, ctx.active.targets, input.targets, ctx.settings, date, step)
   const overrides: WeekOverride[] = input.week
     ? [input.week]
     : carried.patched.map((w) => ({ week_start: w.week_start, week_plan: w }))

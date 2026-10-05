@@ -6,6 +6,7 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
+import { today } from '@fitness/shared/engine'
 import { useCallback, useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useParams, useSearchParams } from 'react-router'
@@ -36,13 +37,19 @@ function usePrinting(): boolean {
 export function WeeklyReportPage() {
   const { week } = useParams()
   const range = weekRange(week)
-  if (!range)
-    return (
-      <Alert severity="warning" data-testid="report-bad-week">
-        “{week}” is not a week. Reports live at /reports/week/YYYY-Www, for example /reports/week/2026-W40.
-      </Alert>
-    )
+  if (!range) return <BadWeek week={week ?? ''} />
   return <Report key={range.week} range={range} />
+}
+
+function BadWeek({ week }: { week: string }) {
+  useEffect(() => {
+    document.title = 'Report not found · Fitness'
+  }, [])
+  return (
+    <Alert severity="warning" data-testid="report-bad-week">
+      “{week}” is not a week. Reports live at /reports/week/YYYY-Www, for example /reports/week/2026-W40.
+    </Alert>
+  )
 }
 
 function Report({ range }: { range: { week: string; from: string; to: string } }) {
@@ -76,6 +83,7 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
         prevWeek={shiftWeek(range.from, -1)}
         nextWeek={shiftWeek(range.from, 1)}
         author={data.review?.author ?? null}
+        started={range.from <= today(new Date())}
         onDrafted={onDrafted}
       />
       {data.reviewError ? (

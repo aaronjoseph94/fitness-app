@@ -24,6 +24,8 @@ export interface ReportToolbarProps {
   nextWeek: string
   /** The review's author, or null when the week has no review yet. */
   author: ReviewAuthor | null
+  /** The week has begun (a week still ahead has nothing to review: no Draft button). */
+  started: boolean
   /** Called when a drafted review is ready. */
   onDrafted: () => void
 }
@@ -32,7 +34,7 @@ type Notice = { severity: 'info' | 'warning' | 'error' | 'success'; text: string
 
 const message = (e: unknown) => (isApiError(e) || e instanceof Error ? e.message : 'Something went wrong')
 
-export function ReportToolbar({ week, prevWeek, nextWeek, author, onDrafted }: ReportToolbarProps) {
+export function ReportToolbar({ week, prevWeek, nextWeek, author, started, onDrafted }: ReportToolbarProps) {
   const [notice, setNotice] = useState<Notice>(null)
   const [savingPdf, setSavingPdf] = useState(false)
   const [jobId, setJobId] = useState<string | null>(null)
@@ -93,7 +95,7 @@ export function ReportToolbar({ week, prevWeek, nextWeek, author, onDrafted }: R
         <Button variant="outlined" startIcon={<PictureAsPdfRounded />} onClick={savePdf} disabled={savingPdf || author === null} data-testid="report-save-pdf">
           {savingPdf ? 'Saving…' : 'Save PDF'}
         </Button>
-        {author !== 'claude_mcp' && (
+        {author !== 'claude_mcp' && started && (
           <Button variant="text" startIcon={<RefreshRounded />} onClick={draft} disabled={jobId !== null} data-testid="report-draft">
             {author === null ? 'Draft review' : 'Redraft'}
           </Button>

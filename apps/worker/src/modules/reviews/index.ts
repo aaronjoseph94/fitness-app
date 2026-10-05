@@ -9,6 +9,7 @@
 //        earlier Gemini draft and withdraws its pending proposals), proposals through plan.propose as actor 'ai', and one
 //        ai_events 'review'. A router failure still writes the review (engine narrative, no proposals).
 //   requestWeeklyReview(deps, week)        → { job_id } | { skipped: 'claude_review' }   queue the job and run it soon
+//        (400 for a week that has not started)
 //   weeklyReviewHook(deps, week)           → the cron's Sunday 20:00 call (the ISO week ending that Sunday)
 //   recordCoachReview(deps, { week_start, narrative, highlights?, concerns?, proposals? }) → WeeklyReview   Claude's
 //        review (MCP apply_review) supersedes the Gemini draft: same row, author claude_mcp, the draft's pending
@@ -17,11 +18,12 @@
 //   archiveReviewPdf(deps, week)           → PdfOutcome      Browser Rendering → R2 reports/<week>.pdf → signed link;
 //        { ok: false, status: 501, error: 'pdf_unavailable' } without the BROWSER binding (local dev)
 // Registers the 'weekly_review' job handler (one router per run, at most LLM_FETCHES external fetches).
+import { today } from '@fitness/shared/engine'
 import type { WeeklyMetrics, WeeklyReview } from '@fitness/shared/schemas'
 import { desc } from 'drizzle-orm'
 import { weekly_reviews } from '../../db'
 import type { Deps } from '../../lib/deps'
-import { notFound } from '../../lib/http-error'
+import { badRequest, notFound } from '../../lib/http-error'
 import { enqueue, registerJobHandler, runSoon } from '../jobs'
 import { createLlmRouter, type LlmRouter } from '../llm'
 import { recordCoachReview, type CoachReviewInput } from './lib/coach'
@@ -49,6 +51,7 @@ export function draftWeeklyReview(deps: Deps, llm: LlmRouter, week_start: string
 /** Queue the weekly_review job for a week (Sunday cron, or Aaron's "Draft review"); skipped when Claude reviewed it. */
 export async function requestWeeklyReview(deps: Deps, week: string): Promise<{ job_id: string } | { skipped: 'claude_review' }> {
   const week_start = weekStartOf(week)
+  if (week_start > today(deps.now())) throw badRequest(`${week} has not started yet; a review looks back at days that happened`)
   const existing = await findReviewRow(deps, week_start)
   if (existing?.author === 'claude_mcp') return { skipped: 'claude_review' }
   const job = await enqueue(deps, { type: 'weekly_review', payload: { week_start } })

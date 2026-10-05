@@ -3,7 +3,7 @@
 // (a +300 kcal proposal split by the guards into two ≤150 kcal steps), the engine fallback when the router fails, the
 // skip when Claude already reviewed a week, next week's draft plan carrying the targets forward unchanged (a proposal
 // reaches the week once, when accepted), the proposals and the review written together or not at all, and the PDF
-// archive with and without the Browser Rendering binding.
+// archive with and without the Browser Rendering binding; a week that has not started cannot be reviewed.
 import { ReminderKind, type ReminderPrefs, type WeeklyReviewOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { and, eq } from 'drizzle-orm'
@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   ai_events,
+  ai_jobs,
   createDb,
   exercises,
   fast_logs,
@@ -32,7 +33,7 @@ import type { AppEnv } from '../src/env'
 import type { Deps } from '../src/lib/deps'
 import { handleError } from '../src/middleware/errors'
 import type { LlmRouter } from '../src/modules/llm'
-import { buildWeeklyMetrics, draftWeeklyReview } from '../src/modules/reviews'
+import { buildWeeklyMetrics, draftWeeklyReview, requestWeeklyReview } from '../src/modules/reviews'
 import { mountReviewsRoutes } from '../src/routes/reviews'
 
 const db = createDb(env.DB)
@@ -294,6 +295,18 @@ describe('draftWeeklyReview', () => {
     expect(llm.calls).toBe(0)
     const [row] = await db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, W41))
     expect(row).toMatchObject({ author: 'claude_mcp', narrative: 'Claude: hold 1,400 kcal, add a set on leg press.' })
+  })
+})
+
+describe('requestWeeklyReview', () => {
+  it('refuses a week that has not started (no review of days still to come, no job queued)', async () => {
+    const jobs = async () => (await db.select().from(ai_jobs).where(eq(ai_jobs.type, 'weekly_review'))).length
+    const before = await jobs()
+
+    await expect(requestWeeklyReview(deps, '2026-W42')).rejects.toMatchObject({ status: 400 })
+
+    expect(await jobs()).toBe(before)
+    expect(await db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, '2026-10-12'))).toEqual([])
   })
 })
 

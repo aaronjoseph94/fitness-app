@@ -58,8 +58,10 @@ function chartDays(view: WeekPlanView, plan: WeekPlan | null, today: LocalDate):
 function LastWeek({ d, today }: { d: WeekDayActual | undefined; today: LocalDate }) {
   if (!d || (d.target_kcal === null && d.meals_logged === 0)) return <Box sx={{ color: tokens.ink.secondary }}>—</Box>
   const ahead = d.date > today
+  // The fast day itself, or a day a fast overlapped with nothing eaten. A fast begun at 19:00 overlaps that day too, but
+  // the lunch and dinner eaten before it are what the day shows.
   const food =
-    d.is_fast_day || d.fasted
+    d.is_fast_day || (d.fasted && d.meals_logged === 0)
       ? 'Fast'
       : ahead
         ? 'Ahead'

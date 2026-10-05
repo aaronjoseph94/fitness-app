@@ -1,7 +1,7 @@
 // Owns: tests at the scans seam — the 2026-09-26 sheet (SPEC §2 seed record, printed in lb) extracts within rounding
 // and round-trips through confirm in kg; a scan losing lean mass trips the lean-loss guard with the engine's debrief
-// when no LLM answers; an LLM debrief's proposals go through the guards; the scan-due note; a PNG sheet carrying a text
-// chunk (metadata) is refused before it is stored. The fake router stands in for the LLM; the real one (no keys
+// when no LLM answers; an LLM debrief's proposals go through the guards; a scan dated in the future is refused; the
+// scan-due note; a PNG sheet carrying a text chunk (metadata) is refused before it is stored. The fake router stands in for the LLM; the real one (no keys
 // locally) shows the graceful failure path.
 import { ReminderKind, ScanRecord, type ReminderPrefs, type ScanExtractOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
@@ -11,7 +11,7 @@ import seed from '../../../seed/scans/2026-09-26.json'
 import { ai_events, ai_jobs, createDb, milestones, plan_versions, profile, scan_segments, scans, settings, weight_logs } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import type { CompleteRequest } from '../src/modules/llm'
-import { analyseScan, confirmScan, extractScan, getScan, noteScanDue, uploadScan, type ScanJobDeps } from '../src/modules/scans'
+import { analyseScan, confirmScan, extractScan, getScan, noteScanDue, scanSchedule, uploadScan, type ScanJobDeps } from '../src/modules/scans'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -182,6 +182,7 @@ describe('scan extraction', () => {
 
     const printed: ScanExtractOutput = {
       ...seed,
+      scanned_at: '2026-09-26T10:13:00Z', // the sheet's wall-clock time as printed (Z: no offset applied by the reader)
       sex: 'male',
       units: 'lb',
       ...Object.fromEntries(MASS.map((k) => [k, lb(seed[k])])),
@@ -205,6 +206,7 @@ describe('scan extraction', () => {
     }
     expect(draft).toMatchObject({ weight_kg: 95.12, body_fat_pct: 37.3, visceral_fat_area_cm2: 188, visceral_fat_level: 16, bmr_kcal: 1657, tee_kcal: 2551, waist_hip_ratio: 1.02, bio_age: 38, bwi_score: 5.4 })
     expect(draft.confidence).toContainEqual({ field: 'segments.torso.fat_kg', confidence: 0.55 })
+    expect(draft.scanned_at).toBe('2026-09-26T16:13:00.000Z') // SPEC §2: 2026-09-26 10:13 in Edmonton (MDT)
 
     // Aaron confirms the draft as shown (every value editable), with the conditions.
     const record = ScanRecord.parse({
@@ -217,6 +219,33 @@ describe('scan extraction', () => {
     expect(confirmed.confirmed).toBe(true)
     expect((await getScan(deps, id)).record).toEqual(record)
     expect(await db.select().from(scan_segments).where(eq(scan_segments.scan_id, id))).toHaveLength(5)
+  })
+})
+
+describe('scan extraction time', () => {
+  it('reads the printed wall-clock time and places it in Edmonton itself: 2026-11-20 07:15 → 13:15Z (UTC−6 all year from 2026-11-01)', async () => {
+    const id = crypto.randomUUID()
+    await uploadScan(deps, { query: { id, content_type: 'image/png' }, body: pngSheet() })
+    await settle()
+    const printed = { ...ScanRecord.parse(seed), scanned_at: '2026-11-20T07:15:00Z', units: 'lb' as const, confidence: [] }
+    const router = fakeRouter(() => printed)
+
+    await extractScan({ ...deps, router }, { scan_id: id })
+
+    expect((await getScan(deps, id)).extracted!.scanned_at).toBe('2026-11-20T13:15:00.000Z')
+    expect(router.calls[0]!.messages[0]!.content).not.toMatch(/-07:00/)
+  })
+})
+
+describe('scan confirm', () => {
+  it('refuses a scan dated after now (a typo would become the latest scan and push the next scan due date out)', async () => {
+    await insertConfirmed(BASELINE, '2026-09-26')
+    const id = crypto.randomUUID()
+
+    await expect(confirmScan(deps, id, { record: { ...LEAN_LOSS_SCAN, scanned_at: '2026-11-20T14:00:00.000Z' } })).rejects.toMatchObject({ status: 400 })
+
+    expect(await db.select().from(scans).where(eq(scans.id, id))).toEqual([])
+    expect((await scanSchedule(deps)).last_scan_date).toBe('2026-09-26')
   })
 })
 

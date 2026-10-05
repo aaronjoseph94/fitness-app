@@ -21,7 +21,10 @@ export const FALLBACK = {
   too_many_steps:
     'That needed more steps than I can take in one go. What I looked up is listed below; try asking one thing at a time.',
 } as const
-const FALLBACK_TEXTS = new Set<string>(Object.values(FALLBACK))
+/** The ai_unavailable reply when no provider has a key at all: waiting cannot help, so it doesn't say "try again". */
+export const NOT_SET_UP =
+  "Ask AI isn't set up yet: no AI provider key is configured on the server, so I can't answer. Nothing is lost; logging, the plan and every chart still work."
+const FALLBACK_TEXTS = new Set<string>([...Object.values(FALLBACK), NOT_SET_UP])
 
 /** Model turns kept as history (user questions and assistant answers only; tool rounds are not replayed). */
 const HISTORY_ROWS = 12

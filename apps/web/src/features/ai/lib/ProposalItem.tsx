@@ -44,7 +44,8 @@ async function decide(p: ChatProposal, decision: Decision): Promise<FollowUp> {
   return followUp(p.body, applied)
 }
 
-export function ProposalItem({ proposal }: { proposal: ChatProposal }) {
+/** `source`: who proposed it ("Proposal · Coach"); default Ask AI, for the cards under a chat reply. */
+export function ProposalItem({ proposal, source = 'Proposal · Ask AI' }: { proposal: ChatProposal; source?: string }) {
   const view = chatProposalView(proposal)
   const [link, setLink] = useState<FollowUp>(null)
   const d = useProposalDecision(view.status, (decision) => decide(proposal, decision), (_, created) => setLink(created))
@@ -52,7 +53,7 @@ export function ProposalItem({ proposal }: { proposal: ChatProposal }) {
   return (
     <ProposalCard
       testId="ask-ai-proposal"
-      source={view.replaced ? 'Proposal · rejected or replaced by a newer plan' : 'Proposal · Ask AI'}
+      source={view.replaced ? 'Proposal · rejected or replaced by a newer plan' : source}
       title={view.title}
       summary={view.summary}
       changes={view.changes}

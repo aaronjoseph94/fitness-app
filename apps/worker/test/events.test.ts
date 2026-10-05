@@ -1,6 +1,7 @@
 // Owns: tests at the events seam (GET /api/events?since=) — a full page hands back the last row's time as the next
 // `since` so nothing newer is skipped, and the poll overlaps a few seconds so an event stamped just before a poll but
-// written after it still arrives (clients merge by id).
+// written after it still arrives (clients merge by id); the latest page (no `since`) always carries every pending
+// proposal that is due, however many newer events there are (the AI tab and the plan page list them from it).
 import { env } from 'cloudflare:workers'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb } from '../src/db'
@@ -34,5 +35,30 @@ describe('listEvents since', () => {
     const next = await listEvents(at('2026-10-06T15:00:15.000Z'), { since: poll.server_time })
 
     expect(next.events.map((e) => e.id)).toContain(late)
+  })
+})
+
+describe('listEvents latest', () => {
+  it('keeps a due pending proposal (a kcal step proposed a week ago) under 60 newer events, and leaves a future one out', async () => {
+    const step = await recordEvent(at('2026-09-28T15:00:00.000Z'), {
+      kind: 'proposal',
+      summary: 'daily kcal 1550 → 1700 (step 2, due 2026-10-05)',
+      body: { kind: 'plan_change', changes: [{ field: 'kcal', weekday: null, from: 1550, to: 1700, reason: 'Coach' }] },
+      date: '2026-10-05',
+      proposal_status: 'pending',
+    })
+    const later = await recordEvent(at('2026-09-28T15:00:00.000Z'), {
+      kind: 'proposal',
+      summary: 'daily kcal 1700 → 1850 (step 3, due 2026-10-12)',
+      body: { kind: 'plan_change', changes: [{ field: 'kcal', weekday: null, from: 1550, to: 1700, reason: 'Coach' }] },
+      date: '2026-10-12',
+      proposal_status: 'pending',
+    })
+    for (let i = 0; i < 60; i++) await note(new Date(Date.parse('2026-09-29T14:00:00.000Z') + i * 60_000).toISOString(), `meal note ${i}`)
+
+    const { events } = await listEvents(at('2026-10-05T15:00:00.000Z'), {})
+
+    expect(events.map((e) => e.id)).toContain(step)
+    expect(events.map((e) => e.id)).not.toContain(later)
   })
 })

@@ -7,7 +7,7 @@
 //   uploadScan(deps, { query, body })  → ScanUploaded   idempotent by the client's scan id; queues scan_extract
 //   reextractScan(deps, id)            → ScanUploaded   unconfirmed only (409 otherwise)
 //   confirmScan(deps, id, patch)       → Scan           every value as Aaron edited it (a new id = manual entry);
-//                                                       (re)queues scan_analysis
+//                                                       (re)queues scan_analysis; 400 for a scan dated after now
 //   listScans(deps) / getScan(deps, id) → Scan[] / Scan  newest first; comparisons and flags computed on read
 //   deleteScan(deps, id)               → Ok             unconfirmed only (409 otherwise); removes the sheet
 //   compareScanIds(deps, a, b)         → ScanChange     the later scan against the earlier (tools: compare_scans)
@@ -36,7 +36,7 @@ import { and, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { progress_photos, runBatch, scan_segments, scans } from '../../db'
 import type { Deps } from '../../lib/deps'
-import { HttpError, notFound } from '../../lib/http-error'
+import { badRequest, HttpError, notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
 import { jobInsert, registerJobHandler, runSoon, type JobMeta } from '../jobs'
 import { createLlmRouter, type LlmRouter } from '../llm'
@@ -64,6 +64,8 @@ const ANALYSIS_FETCHES = 6
 /** Router deadlines leave room inside the job's 25 s for the reads and writes around the call. */
 const EXTRACT_DEADLINE_MS = 20_000
 const DEBRIEF_DEADLINE_MS = 15_000
+/** A scan time this far past the Worker's clock is still "now" (phone clocks drift). */
+const CLOCK_SKEW_MS = 5 * 60_000
 /** At most this many proposals per analysis. */
 const MAX_PROPOSALS = 3
 /** The engine's own proposal when the lean-loss guard fires and no LLM answered: protein + 10 g/day. */
@@ -151,6 +153,9 @@ export async function reextractScan(deps: Deps, id: string): Promise<ScanUploade
  */
 export async function confirmScan(deps: Deps, id: string, patch: ScanPatch): Promise<Scan> {
   const { db } = deps
+  // A scan taken later than now is a typo: it would become the latest scan and move the next scan due date.
+  if (Date.parse(patch.record.scanned_at) > deps.now().getTime() + CLOCK_SKEW_MS)
+    throw badRequest(`A scan on ${localDate(patch.record.scanned_at)} has not happened yet; enter the date it was taken`)
   const [existing] = await db.select({ id: scans.id }).from(scans).where(eq(scans.id, id))
   const columns = { ...recordColumns(patch.record), actor: deps.actor, updated_at: deps.now().toISOString() }
   const job = jobInsert(deps, { type: 'scan_analysis', payload: { scan_id: id }, priority: JOB_PRIORITY })

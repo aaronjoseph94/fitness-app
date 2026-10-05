@@ -15,6 +15,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { formatNumber, NumberField } from '../../../components'
 import { tokens } from '../../../theme'
 import { confidenceOf, GROUPS, LOW_CONFIDENCE, PROFILE_FIELDS, recordFrom, type FieldSpec, type FormErrors, type ScanForm, type TriState } from './form'
+import { todayLocal } from '../../quick-log'
 import { useConfirmScan } from './hooks'
 import { SEGMENT_LABEL, SEGMENTS } from './series'
 import { problemText } from '../../../api'
@@ -123,7 +124,8 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
         e.preventDefault()
         submit()
       }}
-      sx={{ display: 'grid', gap: 4 }}
+      // Compact (size="small") fields, but every input is a 44 px tap target.
+      sx={{ display: 'grid', gap: 4, '& .MuiInputBase-root': { minHeight: tokens.tapTarget } }}
     >
       {mode === 'extracted' && (
         <Alert severity={lowCount ? 'warning' : 'info'}>
@@ -135,7 +137,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
 
       <Section title="Scan" subtitle={`Evolt 360${form.source_units === 'lb' ? ', sheet printed in lb, shown here in kg' : ''}`}>
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-          <TextField label="Date" type="date" size="small" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} error={!!errors.date} helperText={errors.date} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField label="Date" type="date" size="small" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} error={!!errors.date} helperText={errors.date} slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: todayLocal(new Date()) } }} />
           <TextField label="Time" type="time" size="small" value={form.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} error={!!errors.time} helperText={errors.time} slotProps={{ inputLabel: { shrink: true } }} />
           {PROFILE_FIELDS.map(field)}
           <TextField select label="Sex" size="small" value={form.sex} onChange={(e) => setForm((f) => ({ ...f, sex: e.target.value as ScanForm['sex'] }))}>
@@ -170,7 +172,13 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
                     error={tone === 'error'}
                     helperText={helper}
                     sx={tone === 'warning' ? warnSx : undefined}
-                    slotProps={{ inputLabel: { shrink: true } }}
+                    // The section says kg: no unit per field, so a value like 27.70 stays readable at 320 px. The
+                    // accessible name carries the segment (the visible label is only "Lean" / "Fat").
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                      input: { endAdornment: null },
+                      htmlInput: { 'aria-label': `${SEGMENT_LABEL[s]} ${part === 'lean_kg' ? 'lean' : 'fat'} mass, kg` },
+                    }}
                   />
                 )
               })}

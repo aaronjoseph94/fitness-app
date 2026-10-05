@@ -28,10 +28,17 @@ const PLANNED_DAYS = 28
 const round3 = (x: number) => Math.round(x * 1000) / 1000
 
 /**
+ * The forecast as stored in plan_versions.forecast: the contract's Forecast plus the night of the last re-estimate and
+ * the estimate it smoothed from (internal; readers parse Forecast and drop them).
+ */
+type StoredForecast = Forecast & { tdee_as_of?: string; tdee_before?: number }
+
+/**
  * reforecast(as_of):
  *   trend      = trendWeights(all weigh-ins ≤ as_of)[as_of]   (profile start weight when there is none)
  *   tdee_est   = estimateExpenditure over as_of − 13 … as_of when `reestimate` (default: as_of is a Sunday, so the
- *                estimate moves weekly), else the active forecast's tdee_est (first: the latest scan TEE, 2,551 kcal)
+ *                estimate moves weekly), else the active forecast's tdee_est (first: the latest scan TEE, 2,551 kcal);
+ *                previous = the active tdee_est, or tdee_before when that night was already re-estimated (idempotent)
  *   intake     = meanPlannedIntake(daily_targets as_of + 1 … as_of + 28), else the active default kcal
  *   forecast   = forecast({ as_of, tdee_est, intake, trend, goal_kg })  → active plan_versions.forecast
  */
@@ -75,9 +82,14 @@ export async function reforecast(deps: Deps, input: { as_of: string; reestimate?
   const trendByDate = new Map(trend.map((t) => [t.date, t.trend_kg]))
   const trend_kg = trend.at(-1)?.trend_kg ?? profile.start_weight_kg
 
-  const previous = ctx.active.forecast?.tdee_est ?? scan[0]?.tee ?? BASELINE_TEE_KCAL
+  const active = ctx.active.forecast as StoredForecast | null
+  const reestimate = input.reestimate ?? weekdayOf(as_of) === 'sun'
+  // Re-estimating a night already re-estimated starts again from the estimate before it, so a rerun (cron retry,
+  // backfill) never smooths against its own output.
+  const sameNight = reestimate && active?.tdee_as_of === as_of && active.tdee_before !== undefined
+  const previous = (sameNight ? active.tdee_before : active?.tdee_est) ?? scan[0]?.tee ?? BASELINE_TEE_KCAL
   let tdee_est = previous
-  if (input.reestimate ?? weekdayOf(as_of) === 'sun') {
+  if (reestimate) {
     const byDate = new Map(window.map((d) => [d.date, d]))
     const fastDays = new Set(fasts.map((f) => fastDay(f, ctx.settings.fast_hours)))
     const days: ExpenditureDay[] = eachDate(windowFrom, as_of).map((date) => {
@@ -95,11 +107,14 @@ export async function reforecast(deps: Deps, input: { as_of: string; reestimate?
 
   const intake_kcal = meanPlannedIntake(ahead) ?? ctx.active.targets.defaults.kcal
   const f = forecast({ as_of, tdee_est, intake_kcal, trend_kg, goal_kg: profile.goal_weight_kg })
-  const stored: Forecast = {
+  const stored: StoredForecast = {
     finish_date: f.finish_date,
     weekly_rate_kg: round3(f.weekly_rate_kg),
     band: { low: round3(f.band.low), high: round3(f.band.high) },
     tdee_est: Math.round(tdee_est),
+    ...(reestimate
+      ? { tdee_as_of: as_of, tdee_before: Math.round(previous) }
+      : active?.tdee_as_of !== undefined && { tdee_as_of: active.tdee_as_of, tdee_before: active.tdee_before }),
   }
   await deps.db
     .update(plan_versions)

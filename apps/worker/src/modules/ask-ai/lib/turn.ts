@@ -9,7 +9,7 @@ import type { ChatSend, ChatSent, ChatTurnError } from '@fitness/shared/schemas'
 import { chat_messages } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
-import type { LlmRouter, ToolCall as ModelCall, Msg, ToolDef } from '../../llm'
+import { ProvidersExhaustedError, type LlmRouter, type ToolCall as ModelCall, type Msg, type ToolDef } from '../../llm'
 import { getSettings } from '../../settings'
 import { callTool, toolJsonSchemas, type ToolDefinition } from '../../tools'
 import { redact, systemPrompt } from './prompt'
@@ -18,6 +18,7 @@ import { createdBy } from './proposals'
 import { asksToLog, selectTools, type OfferedTool } from './select'
 import {
   FALLBACK,
+  NOT_SET_UP,
   history,
   insertTurn,
   messageById,
@@ -88,6 +89,8 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
   const runs: ToolRun[] = []
   let reply: string | null = null
   let error: ChatTurnError | null = null
+  /** Every provider was skipped for want of a key: the reply says Ask AI is not set up. */
+  let notSetUp = false
 
   for (let round = 0; round < MAX_ROUNDS && reply === null && error === null; round++) {
     const left = TURN_BUDGET_MS - (deps.now().getTime() - started.getTime())
@@ -118,6 +121,7 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
     } catch (e) {
       console.warn(JSON.stringify({ at: 'ask_ai', event: 'llm_failed', error: e instanceof Error ? e.name : 'unknown' }))
       error = 'ai_unavailable'
+      notSetUp = e instanceof ProvidersExhaustedError && e.failures.length > 0 && e.failures.every((f) => f.reason === 'no_key')
     }
   }
   if (reply === null && error === null) error = 'too_many_steps'
@@ -135,7 +139,7 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
     crypto.randomUUID(),
     input.thread_id,
     'assistant',
-    reply ?? FALLBACK[error ?? 'ai_unavailable'],
+    reply ?? (notSetUp ? NOT_SET_UP : FALLBACK[error ?? 'ai_unavailable']),
     calls.length ? calls : null,
     stamp(deps.now()),
   )
@@ -223,7 +227,10 @@ async function replayTurn(deps: Deps, messageId: string): Promise<ChatSent> {
   const turn = next === -1 ? after : after.slice(0, next)
   const tools = turn.filter((r) => r.role === 'tool')
   const assistant = turn.find((r) => r.role === 'assistant')
-  const fallback = Object.entries(FALLBACK).find(([, text]) => text === assistant?.content)?.[0] as ChatTurnError | undefined
+  const fallback =
+    assistant?.content === NOT_SET_UP
+      ? 'ai_unavailable'
+      : (Object.entries(FALLBACK).find(([, text]) => text === assistant?.content)?.[0] as ChatTurnError | undefined)
   return {
     message: toChatMessage(first),
     tool_messages: tools.map((r) => toChatMessage(r)),

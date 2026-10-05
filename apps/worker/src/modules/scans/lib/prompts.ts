@@ -15,8 +15,8 @@ Rules:
 - The name area of the sheet is blacked out on purpose; ignore it.`
 
 export const EXTRACT_PROMPT = `Read this Evolt 360 result sheet. Fields:
-- scanned_at: the scan date and time printed on the sheet, ISO 8601 with the America/Edmonton offset
-  (-06:00 between the second Sunday of March and the first Sunday of November, otherwise -07:00), e.g. 2026-09-26T10:13:00-06:00.
+- scanned_at: the scan date and time exactly as printed on the sheet, written as ISO 8601 with a "Z" suffix and no
+  conversion, e.g. a sheet printing 2026-09-26 10:13 AM gives 2026-09-26T10:13:00Z. The app applies the local time zone.
 - height_cm (if printed in feet and inches, convert: 1 in = 2.54 cm), age (years), sex ("male" or "female").
 - Body composition (mass unit): weight_kg (Weight), lean_body_mass_kg (Lean Body Mass), skeletal_muscle_mass_kg
   (Skeletal Muscle Mass), protein_kg (Protein), mineral_kg (Mineral).

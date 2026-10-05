@@ -232,7 +232,8 @@ export function loggingAdherence(days: readonly DaySummary[]): HeatmapDay[] {
 /** A fast counts as completed at ≥ 95 % of its planned length (the engine's rule, docs/PROGRESS.md). */
 const FAST_COMPLETE_SHARE = 0.95
 /** A planned fast past its start and not ended counts as running this long (the quick-log sheet's rule). */
-const AUTO_START_WINDOW_H = 48
+/** A fast not ended counts as under way for 2 × fast_hours after its start (quick-log's rule); later it was missed. */
+const RUNNING_WINDOW_FASTS = 2
 const HOUR_MS = 3_600_000
 
 /**
@@ -240,8 +241,7 @@ const HOUR_MS = 3_600_000
  * as planned until it ends):
  *   ended                         → completed when hours ≥ 0.95 × fast_hours, else partial (hours = ended − started)
  *   not ended, start ahead        → planned
- *   not ended, ad-hoc             → planned (running)
- *   not ended, planned, < 48 h in → planned (running); later → missed
+ *   not ended, < 2 × fast_hours in → planned (running), planned or ad-hoc; later → missed (never ended)
  */
 export function fastEntries(fasts: readonly Fast[], nowMs: number, fastHours: number): FastEntry[] {
   return fasts
@@ -252,7 +252,7 @@ export function fastEntries(fasts: readonly Fast[], nowMs: number, fastHours: nu
         const hours = round((Date.parse(f.ended_at) - start) / HOUR_MS, 1)
         return { date, status: hours >= FAST_COMPLETE_SHARE * fastHours ? 'completed' : 'partial', hours }
       }
-      const running = !f.planned || nowMs - start < AUTO_START_WINDOW_H * HOUR_MS
+      const running = nowMs - start < RUNNING_WINDOW_FASTS * fastHours * HOUR_MS
       return { date, status: start > nowMs || running ? 'planned' : 'missed' }
     })
     .sort((a, b) => (a.date < b.date ? -1 : 1))

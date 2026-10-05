@@ -22,7 +22,9 @@
 //   applySafeChange(deps, input)                        → SafeChangeResult  a safe-list change (reminder time,
 //        exercise swap): guarded as deps.actor, then applied now or stored as a pending proposal (lib/proposals)
 //   restoreVersion(deps, id, { withdraw_series? })      → PlanVersion      a new version copying an old one's targets
-//        (403 needs_approval for actor 'ai'); withdraw_series: those series' pending steps rejected in the same batch
+//        (403 needs_approval for actor 'ai', and for 'mcp' when a weekday would break the floor, the ceiling, the 150 kcal
+//        rolling-week step or a protein/fat minimum — Aaron then restores it in the app; his own restore is not
+//        stepped); withdraw_series: those series' pending steps rejected in the same batch
 //   materialiseTargets(deps, { from, to? })             → DailyTargets[]   rebuild those dates from the active version,
 //        settings, fasts and active week plans (call after any of them changes); `to` defaults to the materialised
 //        horizon, max(last date with targets, today + 14)
@@ -36,9 +38,21 @@
 //        plan the source of its week's targets (or, with null, handing the week back to the plan version) as one
 //        new version: same targets, diff = the week's target moves from today on, rebuilt daily_targets
 //   reforecast(deps, { as_of, reestimate? })            → Forecast         written into the active version
+//   kcalStepBase(deps, date)                            → KcalStepBase     what an ai/mcp kcal move on `date` is held to:
+//        the week before as it was (stored non-fast daily_targets) and the rolling-window base (week plans use it too)
 // Registers the 'plan_reforecast' job handler (engine only, no external fetches).
-import { addDays, today } from '@fitness/shared/engine'
-import type { Actor, DailyTargets, PlanChange, PlanVersion, Proposal, ProposalDecision, WeekPlanContent } from '@fitness/shared/schemas'
+import { addDays, applyGuards, targetValue, today, type GuardRule, type TargetChange } from '@fitness/shared/engine'
+import {
+  Weekday,
+  type Actor,
+  type DailyTargets,
+  type PlanChange,
+  type PlanTargets,
+  type PlanVersion,
+  type Proposal,
+  type ProposalDecision,
+  type WeekPlanContent,
+} from '@fitness/shared/schemas'
 import { desc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { plan_versions, runBatch } from '../../db'
@@ -46,7 +60,7 @@ import type { Deps } from '../../lib/deps'
 import { HttpError, notFound } from '../../lib/http-error'
 import { eventInsert, getProposalRow, proposalDecisionUpdate, seriesRejectUpdate, toProposal } from '../events'
 import { registerJobHandler, runSoon } from '../jobs'
-import { loadPlanContext, loadVerdicts, toPlanVersion, type PlanVersionRow } from './lib/context'
+import { loadPlanContext, loadVerdicts, toPlanVersion, type PlanContext, type PlanVersionRow } from './lib/context'
 import { reforecast } from './lib/forecast'
 import { proposalHandler, safeChange, type HandledKind, type ProposalOf, type SafeChangeInput, type SafeChangeResult } from './lib/proposals'
 import {
@@ -61,6 +75,7 @@ import { applyChanges, guardChanges, versionStatements, type RejectedChange, typ
 import { kcalWindow, stepFitsOn } from './lib/window'
 
 export type { RejectedChange, ScheduledChange } from './lib/versions'
+export { kcalStepBase, type KcalStepBase } from './lib/versions'
 export type { PendingFast, PendingInputs } from './lib/targets'
 export {
   registerProposalHandler,
@@ -318,6 +333,17 @@ export async function restoreVersion(deps: Deps, id: string, opts: { withdraw_se
   const ctx = await loadPlanContext(deps)
   const [target] = await deps.db.select().from(plan_versions).where(eq(plan_versions.id, id))
   if (!target) throw notFound('Plan version')
+  if (deps.actor !== 'user') {
+    // The coach's restore passes the same rails as its plan changes; one that doesn't is Aaron's one-tap revert in the app.
+    const held = restoreHeldBack(ctx, target.targets, (await kcalWindow(deps)).base, deps.actor)
+    if (held.length)
+      throw new HttpError(
+        403,
+        'needs_approval',
+        `Restoring version ${target.version} would break a rail (${held.map((r) => r.reason).join('; ')}); ask the user to restore it in the app with one tap (Plan history → Restore), or move toward it with propose_plan_change / apply_review.`,
+        held,
+      )
+  }
   const withdraw = (opts.withdraw_series ?? []).map((series) => seriesRejectUpdate(deps, series))
   if (target.id === ctx.active.id) {
     const [first, ...rest] = withdraw
@@ -334,6 +360,42 @@ export async function restoreVersion(deps: Deps, id: string, opts: { withdraw_se
   await runBatch(deps.db, v.statements)
   runSoon(deps, v.job_id)
   return toPlanVersion(v.row)
+}
+
+/**
+ * What the guards hold back when `actor` restores `targets` over the active version: per weekday w whose kcal moves,
+ * TargetChange(kcal, w, value(active, w) → value(targets, w)) guarded with the rolling-window base and no scheduling
+ * (applyGuards: floor ≤ kcal ≤ ceiling, ≤ 150 from a week ago); and per weekday, protein ≥ protein_min_g and
+ * fat ≥ fat_min_g (a minimum may have risen since that version). Empty when the restore may apply.
+ */
+function restoreHeldBack(ctx: PlanContext, targets: PlanTargets, base: PlanTargets, actor: Actor): { rule: GuardRule; reason: string }[] {
+  const { settings } = ctx
+  const minimums: { rule: GuardRule; reason: string }[] = Weekday.options.flatMap((weekday) => {
+    const protein = targetValue(targets, 'protein_g', weekday)
+    const fat = targetValue(targets, 'fat_g', weekday)
+    return [
+      ...(protein < settings.protein_min_g ? [{ rule: 'protein_min' as const, reason: `${weekday} protein ${protein} g is below the ${settings.protein_min_g} g minimum` }] : []),
+      ...(fat < settings.fat_min_g ? [{ rule: 'fat_min' as const, reason: `${weekday} fat ${fat} g is below the ${settings.fat_min_g} g minimum` }] : []),
+    ]
+  })
+  const changes: TargetChange[] = Weekday.options.flatMap((weekday) => {
+    const from = targetValue(ctx.active.targets, 'kcal', weekday)
+    const to = targetValue(targets, 'kcal', weekday)
+    return from === to ? [] : [{ kind: 'target' as const, field: 'kcal' as const, weekday, from, to }]
+  })
+  if (changes.length === 0) return minimums
+  const verdict = applyGuards(changes, {
+    actor,
+    rails: ctx.settings,
+    plan: ctx.active.targets,
+    exercises: [],
+    excluded_categories: [],
+    planned_fast_dates: [],
+    auto_apply_safe: false,
+    kcal_base: base,
+    schedule_steps: false,
+  })
+  return [...verdict.rejected.map(({ rule, reason }) => ({ rule, reason })), ...minimums]
 }
 
 export async function materialiseTargets(deps: Deps, range: { from: string; to?: string }): Promise<DailyTargets[]> {

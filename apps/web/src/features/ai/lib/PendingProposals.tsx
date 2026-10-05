@@ -1,10 +1,11 @@
 // Owns: the AI tab's "Waiting for your tap" list — every pending proposal in the live feed (from Ask AI, the nightly
 // workout draft or the weekly review) not already shown in the open thread, so Today's "more proposals wait in the
-// AI tab" has somewhere to land.
+// AI tab" has somewhere to land. Each card says who proposed it (the Coach, the AI clerk), as on Today.
 import Box from '@mui/material/Box'
 import { endpoints } from '@fitness/shared/api'
 import type { ChatProposal, Proposal } from '@fitness/shared/schemas'
 import { useApiQuery } from '../../../api'
+import { actorLabel } from '../../proposals'
 import { SectionHeader } from '../../../components'
 import { ProposalItem } from './ProposalItem'
 import { useThreadStore } from './thread-store'
@@ -33,7 +34,7 @@ export function PendingProposals() {
       />
       <Box sx={{ display: 'grid', gap: 3 }}>
         {pending.slice(0, SHOWN).map((p) => (
-          <ProposalItem key={p.id} proposal={asChatProposal(p)} />
+          <ProposalItem key={p.id} proposal={asChatProposal(p)} source={`Proposal · ${actorLabel(p.actor)}`} />
         ))}
       </Box>
     </Box>

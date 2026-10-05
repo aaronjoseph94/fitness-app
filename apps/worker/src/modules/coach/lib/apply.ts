@@ -131,10 +131,11 @@ async function applyOne(deps: Deps, c: Exclude<ReviewChange, TargetChange>): Pro
     }
     case 'week_split': {
       const { settings } = await getSettings(deps)
-      await updateSettings(deps, { settings: { training_days: c.training_days } })
+      // As stored: settings de-duplicates the days and puts them in week order.
+      const stored = (await updateSettings(deps, { settings: { training_days: c.training_days } })).settings.training_days
       return {
-        summary: `training days ${c.training_days.join(', ')}`,
-        changes: [{ path: 'settings.training_days', from: settings.training_days, to: c.training_days }],
+        summary: `training days ${stored.join(', ')}`,
+        changes: [{ path: 'settings.training_days', from: settings.training_days, to: stored }],
         undo: {
           op: 'settings',
           label: 'training days',
