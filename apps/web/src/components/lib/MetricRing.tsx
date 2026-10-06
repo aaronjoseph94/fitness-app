@@ -1,8 +1,12 @@
 // Owns: the SVG progress ring (value of target in one metric colour). Past 100 % a second lap is drawn over the
 // first with a surface-coloured ring so "over target" reads at a glance; the centre carries one number.
+//
+// Restyled 2026-10-06: the arc's transition now goes through `transitionOf` with the shared motion tokens, so the
+// duration and easing match every other animation in the app and `prefers-reduced-motion` is honoured (it used to be a
+// hard-coded 400 ms ease that ignored the preference). Geometry, props, roles and labels are unchanged.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
-import { tokens, withAlpha, type MetricKey } from '../../theme'
+import { tokens, transitionOf, withAlpha, type MetricKey } from '../../theme'
 import { formatNumber } from './format'
 
 export interface MetricRingProps {
@@ -62,7 +66,7 @@ export function MetricRing({
               stroke={color}
               strokeWidth={stroke}
               strokeDasharray={`${c * firstLap} ${c}`}
-              style={{ transition: 'stroke-dasharray 400ms ease' }}
+              style={{ transition: transitionOf(['stroke-dasharray'], tokens.motion.duration.slower, tokens.motion.easing.enter) }}
             />
           )}
           {overLap > 0 && (

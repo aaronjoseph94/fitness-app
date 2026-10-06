@@ -2,6 +2,9 @@
 // loading/error card for a read, the inline "couldn't load" row, the boundary around code loaded on demand, the number
 // field, the proposal shell and the number/date formatting every screen shares. Internals live in ./lib.
 export { StatCard, type StatCardProps, type StatDelta } from './lib/StatCard'
+export { MetricCard, type MetricCardProps } from './lib/MetricCard'
+export { Reveal, type RevealProps } from './lib/Reveal'
+export { PageHero, greetingFor, visuallyHidden, type PageHeroProps } from './lib/PageHero'
 export { MetricRing, type MetricRingProps } from './lib/MetricRing'
 export { RingsRow, type RingsRowProps, type RingItem } from './lib/RingsRow'
 export { LegendChips, type LegendChipsProps, type LegendItem, type LegendMark } from './lib/LegendChips'
@@ -31,6 +34,7 @@ export {
   formatShortDate,
   formatMonth,
   formatWeekday,
+  formatLongDate,
   dateToTime,
   timeToDate,
 } from './lib/format'

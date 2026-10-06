@@ -1,6 +1,19 @@
 // Owns: the Dashboard's headline metrics (pure) — the main numbers Aaron wants first, each with its value, a delta
 // against the start of the window (or against its target), the daily series its sparkline draws, and a footnote saying
-// exactly what the number is. Data in, tiles out: no React, no fetching.
+// exactly what the number is. Data in, tiles out: no React, no fetching (the `icon` is a component reference purely so
+// the tile and the metric read as the same thing everywhere; nothing here renders).
+import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
+import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
+import EggAltRounded from '@mui/icons-material/EggAltRounded'
+import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
+import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
+import MonitorWeightRounded from '@mui/icons-material/MonitorWeightRounded'
+import PercentRounded from '@mui/icons-material/PercentRounded'
+import SpeedRounded from '@mui/icons-material/SpeedRounded'
+import TaskAltRounded from '@mui/icons-material/TaskAltRounded'
+import TimerRounded from '@mui/icons-material/TimerRounded'
+import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
+import type { SvgIconComponent } from '@mui/icons-material'
 import { dayAdherence } from '@fitness/shared/engine'
 import type { DaySummary } from '@fitness/shared/schemas'
 import type { MetricKey } from '../../../theme'
@@ -29,6 +42,8 @@ export interface Kpi {
   precision?: number
   delta?: KpiDelta
   metric?: MetricKey
+  /** The card's leading glyph, in the metric's colour. Decoration: the label always names the metric. */
+  icon?: SvgIconComponent
   /** Daily values across the window, oldest first; null where the day has no value. */
   series?: readonly (number | null)[]
   /** A target drawn as a dashed line on the sparkline. */
@@ -107,6 +122,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     unit: 'kg',
     precision: 1,
     metric: 'weight',
+    icon: MonitorWeightRounded,
     series: weightSeries,
     delta:
       trendNow && trendStart !== null
@@ -124,6 +140,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     unit: 'kg/wk',
     precision: 2,
     metric: 'weight',
+    icon: SpeedRounded,
     footnote: data.trend?.forecast?.finish_date
       ? `On track to finish ${data.trend.forecast.finish_date}`
       : 'From the engine forecast',
@@ -136,6 +153,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     unit: '%',
     precision: 1,
     metric: 'fatMass',
+    icon: PercentRounded,
     series: fatSeries,
     delta:
       scanNow && firstScan && scanNow !== firstScan
@@ -151,6 +169,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     unit: 'kg',
     precision: 1,
     metric: 'lean',
+    icon: FitnessCenterRounded,
     series: leanSeries,
     delta:
       scanNow && firstScan && scanNow !== firstScan
@@ -165,6 +184,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     value: avgKcal === null ? null : Math.round(avgKcal),
     unit: 'kcal',
     metric: 'calories',
+    icon: LocalFireDepartmentRounded,
     series: kcalSeries,
     reference: target?.kcal,
     delta:
@@ -180,6 +200,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     value: avgProtein === null ? null : Math.round(avgProtein),
     unit: 'g',
     metric: 'protein',
+    icon: EggAltRounded,
     series: proteinSeries,
     reference: target?.protein_g,
     delta:
@@ -194,6 +215,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     label: 'Steps',
     value: avgSteps === null ? null : Math.round(avgSteps),
     metric: 'steps',
+    icon: DirectionsWalkRounded,
     series: stepsSeries,
     reference: target?.steps,
     footnote: target ? `Daily average; target ${target.steps.toLocaleString()}` : 'Daily average',
@@ -206,6 +228,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     unit: 'h',
     precision: 1,
     metric: 'sleep',
+    icon: BedtimeRounded,
     series: sleepSeries,
     reference: SLEEP_TARGET_H,
     footnote: `Hours asleep; ${SLEEP_TARGET_H} h is the readiness target`,
@@ -217,6 +240,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     value: avgWater === null ? null : Math.round(avgWater),
     unit: 'ml',
     metric: 'water',
+    icon: WaterDropRounded,
     series: waterSeries,
     reference: target?.water_ml,
     footnote: target ? `Daily average; target ${target.water_ml.toLocaleString()} ml` : 'Daily average',
@@ -231,6 +255,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     unit: '/ wk',
     precision: 1,
     metric: 'lean',
+    icon: FitnessCenterRounded,
     series: setSeries,
     footnote: `${data.sessions.length} ${data.sessions.length === 1 ? 'session' : 'sessions'} in ${Math.round(weeks)} weeks; sparkline is sets a day`,
   })
@@ -241,6 +266,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     value: adherence === null ? null : Math.round(adherence * 100),
     unit: '%',
     metric: 'weight',
+    icon: TaskAltRounded,
     series: adherenceSeries,
     footnote: 'Days with a weigh-in, meals and water',
   })
@@ -250,6 +276,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     label: 'Fasts',
     value: fastsDone,
     metric: 'fasting',
+    icon: TimerRounded,
     footnote: fastsPlanned === null ? 'Completed in this window' : `${fastsDone} of about ${fastsPlanned} planned, completed`,
   })
 

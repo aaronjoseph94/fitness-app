@@ -40,12 +40,12 @@ const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            handle: tab('today', { quickLog: true, width: 'wide' }),
+            handle: tab('today', { quickLog: true, width: 'wide', hero: true }),
             lazy: page(() => import('../../features/today'), 'TodayPage'),
           },
           {
             path: 'dashboard',
-            handle: tab('dashboard', { width: 'wide' }),
+            handle: tab('dashboard', { width: 'wide', hero: true }),
             lazy: page(() => import('../../features/dashboard'), 'DashboardPage'),
           },
           {

@@ -43,6 +43,7 @@ export function timeToDate(time: number): string {
 const shortDate = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 const monthOnly = new Intl.DateTimeFormat('en-CA', { month: 'short', timeZone: 'UTC' })
 const weekdayShort = new Intl.DateTimeFormat('en-CA', { weekday: 'short', timeZone: 'UTC' })
+const longDate = new Intl.DateTimeFormat('en-CA', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })
 
 /** "2026-10-04" → "Oct 4" (axis ticks and compact labels; full ISO dates elsewhere). */
 export function formatShortDate(date: string | number): string {
@@ -57,4 +58,9 @@ export function formatMonth(date: string | number): string {
 /** "2026-10-04" → "Sun". */
 export function formatWeekday(date: string | number): string {
   return weekdayShort.format(typeof date === 'number' ? date : dateToTime(date))
+}
+
+/** "2026-10-04" → "Sunday, October 4". Used by the greeting hero, so the whole title reads as one line. */
+export function formatLongDate(date: string | number): string {
+  return longDate.format(typeof date === 'number' ? date : dateToTime(date))
 }

@@ -1,11 +1,19 @@
-// Owns: the cards and rings sections of the styleguide — StatCards as Today uses them, the rings row and ring
-// states (under, at, over target), the pending badge and the proposal card in each status.
+// Owns: the cards and rings sections of the styleguide — the gradient MetricCards (as Today's row renders them,
+// including the no-reading case), StatCards as the Dashboard uses them, the rings row and ring states (under, at,
+// over target), the pending badge and the proposal card in each status.
+import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
+import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
+import EggAltRounded from '@mui/icons-material/EggAltRounded'
+import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
+import MonitorWeightRounded from '@mui/icons-material/MonitorWeightRounded'
+import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { useState } from 'react'
 import { Sparkline } from '../../../charts'
 import { sample } from '../../../charts/sample-data'
 import {
+  MetricCard,
   MetricRing,
   PendingBadge,
   ProposalCard,
@@ -72,6 +80,84 @@ export function CardsSection() {
           delta={{ value: -1.6, period: 'since baseline', good: 'up' }}
         />
         <StatCard label="Last scan" value={null} unit="kg" footnote="No scan yet this block" />
+      </Grid>
+    </Section>
+  )
+}
+
+/**
+ * The gradient metric card, in every shape a caller can ask for: a value with a target bar, a value with no target,
+ * over target (the bar caps at 100 %, so the caption spells the overage out) and no reading at all — which draws no bar,
+ * because "not logged" is not the same claim as zero. One card is clickable (a 44 px tap target that lifts on hover)
+ * and one carries a 40 ms stagger.
+ */
+export function MetricCardsSection() {
+  return (
+    <Section
+      id="metric"
+      title="Metric cards"
+      subtitle="The one gradient in the app: the fill says which metric the card is, and white on it was measured at 4.5:1 or better at both stops. This is exactly what Today's five-metric row renders."
+    >
+      <Grid min={240}>
+        <MetricCard
+          label="Water"
+          metric="water"
+          icon={WaterDropRounded}
+          value={2250}
+          unit="ml"
+          progress={2250 / 3000}
+          caption="of 3,000 ml"
+          testId="metric-card-water"
+        />
+        <MetricCard
+          label="Calories"
+          metric="calories"
+          icon={LocalFireDepartmentRounded}
+          value={1050}
+          unit="kcal"
+          caption="of 1,400 kcal · no target bar on a fast day"
+          testId="metric-card-calories"
+        />
+        <MetricCard
+          label="Protein"
+          metric="protein"
+          icon={EggAltRounded}
+          value={160}
+          unit="g"
+          progress={160 / 130}
+          caption="of 130 g · 30 g over"
+          testId="metric-card-protein"
+        />
+        <MetricCard
+          label="Sleep"
+          metric="sleep"
+          icon={BedtimeRounded}
+          value={null}
+          caption="not logged — no bar, rather than a bar of zero"
+          testId="metric-card-sleep"
+        />
+        <MetricCard
+          label="Trend weight"
+          metric="weight"
+          icon={MonitorWeightRounded}
+          value={trend}
+          unit="kg"
+          precision={1}
+          progress={0.72}
+          caption="onClick makes the whole card a 44 px tap target that lifts on hover"
+          onClick={() => undefined}
+          testId="metric-card-weight"
+        />
+        <MetricCard
+          label="Steps"
+          metric="steps"
+          icon={DirectionsWalkRounded}
+          value={6240}
+          progress={6240 / 8000}
+          caption="of 8,000 steps"
+          delay={40}
+          testId="metric-card-steps"
+        />
       </Grid>
     </Section>
   )

@@ -8,7 +8,7 @@ import Fab from '@mui/material/Fab'
 import { tokens } from '../../../theme'
 import { useUiStore } from '../../ui-store'
 import type { PageWidth } from '../route-handle'
-import { columnSx, FAB_SIZE, safeArea } from './layout'
+import { columnSx, FAB_SIZE, railInset, safeArea } from './layout'
 import { preloadQuickLog } from './QuickLogHost'
 
 export function QuickLogFab({ width }: { width: PageWidth }) {
@@ -16,10 +16,13 @@ export function QuickLogFab({ width }: { width: PageWidth }) {
   return (
     <Box
       sx={{
+        // This layer spans the window, so it needs the rail's footprint itself; the phone keeps the clearance the bottom
+        // nav needs, the desktop only what the home indicator needs.
+        ...railInset,
         position: 'fixed',
         left: 0,
         right: 0,
-        bottom: `calc(${tokens.layout.bottomNavHeight + tokens.space(4)}px + ${safeArea.bottom})`,
+        bottom: { xs: `calc(${tokens.layout.bottomNavHeight + tokens.space(4)}px + ${safeArea.bottom})`, md: `calc(${tokens.space(6)}px + ${safeArea.bottom})` },
         zIndex: 'speedDial',
         pointerEvents: 'none',
         displayPrint: 'none',
@@ -41,10 +44,10 @@ export function QuickLogFab({ width }: { width: PageWidth }) {
             '&, &:hover, &:active': { boxShadow: 'none' },
             '&:hover': { bgcolor: 'text.primary' },
             // The button is aligned to the content column's right edge, so on a wide page it sits over the last column
-            // of cards. From 1280 px the gutter beside that column is wide enough to hold it, and it steps out into the
-            // gutter so nothing is ever covered (1120 px of content + this button and its clearance ≈ 1232 px). Below
-            // that — which is every phone — the gutter is just the safe-area padding and the button does not move.
-            '@media (min-width: 1280px)': { mr: `-${FAB_SIZE + tokens.space(3)}px` },
+            // of cards. Once the gutter beside that column is wide enough to hold it, it steps out so nothing is ever
+            // covered: 1120 px of content + this button and its clearance is ≈ 1232 px, plus the 76 px rail it sits
+            // beside. Below that — which is every phone — the gutter is just the safe-area padding and it does not move.
+            '@media (min-width: 1308px)': { mr: `-${FAB_SIZE + tokens.space(3)}px` },
           }}
         >
           <Add />

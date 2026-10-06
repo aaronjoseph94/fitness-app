@@ -1,19 +1,42 @@
-// Owns: Today's rings card — calories left of the day's target, protein, water, steps and last night's sleep, with the
-// fast badge (fasting now, or a fast day), queued logs added in and marked pending, and the manual steps/sleep entry;
-// while the day loads, a placeholder card with the loaded card's box.
+// Owns: Today's metric row — calories, protein, water, steps and last night's sleep as one gradient metric card
+// each (value, a fill bar against the target, and a line saying what the target is), with the fast badge (fasting
+// now, or a fast day), queued logs added in and marked pending, and the manual steps/sleep entry; while the day
+// loads, a placeholder for each card in the same grid and the same box, so nothing below moves when they arrive.
+import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
+import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
+import EggAltRounded from '@mui/icons-material/EggAltRounded'
+import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
+import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
+import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import Skeleton from '@mui/material/Skeleton'
 import type { DayView } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
-import { formatNumber, PendingBadge, RingsRow, type RingItem } from '../../../components'
+import { formatNumber, MetricCard, PendingBadge, type RingItem } from '../../../components'
 import { tokens } from '../../../theme'
 import type { PendingToday } from './pending'
 
 /** SPEC §9 readiness compares sleep with 7.5 h. */
 export const SLEEP_TARGET_H = 7.5
+
+/** One icon per metric. The label always names the metric too, so the glyph is decoration, never the only signal. */
+const ICONS: Record<string, SvgIconComponent> = {
+  calories: LocalFireDepartmentRounded,
+  protein: EggAltRounded,
+  water: WaterDropRounded,
+  steps: DirectionsWalkRounded,
+  sleep: BedtimeRounded,
+}
+
+/** The card grid: two across on a phone, three from 600 px, all five in one row once there is room. */
+const GRID = {
+  display: 'grid',
+  // A slightly tighter gap on a phone buys each half-width card the few pixels a four-digit number needs.
+  gap: { xs: 2, sm: 3 },
+  gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))' },
+} as const
 
 function useMinuteClock(): number {
   const [now, setNow] = useState(() => Date.now())
@@ -24,7 +47,7 @@ function useMinuteClock(): number {
   return now
 }
 
-/** The five rings for a day, with queued logs added in. Pure. */
+/** The five metrics for a day, with queued logs added in. Pure. */
 export function ringsFor(day: DayView, pending: PendingToday, waterTargetMl: number): RingItem[] {
   const t = day.targets
   const fastDay = day.fast.is_fast_day || t?.is_fast_day === true
@@ -95,7 +118,7 @@ export function ringsFor(day: DayView, pending: PendingToday, waterTargetMl: num
       metric: 'steps',
       value: steps ?? 0,
       target: stepsTarget,
-      // Four characters fit the 58 px ring: 6,240 → "6.2K".
+      // Kept for the report and any ring still drawn from this list; the metric card shows the full number.
       centre: steps === null ? '—' : steps >= 1000 ? formatNumber(steps, 1, true) : formatNumber(steps),
       detail: steps === null ? 'not logged' : stepsTarget ? `of ${formatNumber(stepsTarget)}` : 'steps',
       unit: 'steps',
@@ -112,6 +135,16 @@ export function ringsFor(day: DayView, pending: PendingToday, waterTargetMl: num
       unit: 'h',
     },
   ]
+}
+
+/**
+ * What a metric card says under its number: the target, and — because the fill bar stops at 100 % — how far past it
+ * the day went, spelled out. Called for every ring so the over case is never silently lost.
+ */
+function captionFor(ring: RingItem): string | undefined {
+  const over = ring.target > 0 && ring.value > ring.target ? Math.round(ring.value - ring.target) : 0
+  if (!over) return ring.detail
+  return `${ring.detail ?? ''} · ${formatNumber(over)} ${ring.unit ?? ''} over`.trim()
 }
 
 function FastBadge({ day, pending, now }: { day: DayView; pending: PendingToday; now: number }) {
@@ -141,34 +174,19 @@ interface TodayRingsProps {
   onAddHealth: () => void
 }
 
-/** Ring diameter (RingsRow's default). */
-const RING = 58
-
-/**
- * The card while the day loads, row for row the loaded card's box: header line, five rings with their label and detail
- * lines, and the "Add steps or sleep" row (shown on most days until both arrive), so nothing below moves.
- */
+/** The row while the day loads: one placeholder card per metric, in the same grid, so nothing below moves. */
 function RingsSkeleton() {
   return (
-    <Card sx={{ p: 4 }} aria-busy="true" data-testid="today-rings-loading">
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, minHeight: 24, fontSize: tokens.font.size.label }}>
+    <Box aria-busy="true" data-testid="today-rings-loading">
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, minHeight: 24 }}>
         <Skeleton variant="text" width={120} />
       </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${RING}px, 1fr))`, columnGap: 1, rowGap: 4 }}>
+      <Box sx={GRID}>
         {[0, 1, 2, 3, 4].map((i) => (
-          <Box key={i} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
-            <Skeleton variant="circular" width={RING} height={RING} />
-            <Box sx={{ mt: 2, fontSize: tokens.font.size.label, lineHeight: 1.2 }}>
-              <Skeleton variant="text" width={44} />
-            </Box>
-            <Box sx={{ mt: 0.5, fontSize: 11, lineHeight: 1.3 }}>
-              <Skeleton variant="text" width={52} />
-            </Box>
-          </Box>
+          <Skeleton key={i} variant="rounded" height={172} sx={{ borderRadius: `${tokens.radius.card}px` }} />
         ))}
       </Box>
-      <Box sx={{ mt: 3, minHeight: tokens.tapTarget }} />
-    </Card>
+    </Box>
   )
 }
 
@@ -177,16 +195,44 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
   if (loading || !day) return <RingsSkeleton />
 
   const missingHealth = (day.steps ?? pending.steps) === null || (day.sleep?.asleep_min ?? pending.sleepMin) === null
+  const rings = ringsFor(day, pending, waterTargetMl)
   return (
-    <Card data-testid="today-rings" sx={{ p: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4, minHeight: 24 }}>
+    <Box data-testid="today-rings">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, minHeight: 24 }}>
         <Box sx={{ flex: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
           Today · {day.date}
         </Box>
         <FastBadge day={day} pending={pending} now={now} />
         {pending.count > 0 && <PendingBadge count={pending.count} />}
       </Box>
-      <RingsRow rings={ringsFor(day, pending, waterTargetMl)} size={RING} />
+
+      <Box sx={GRID}>
+        {rings.map((ring, i) => {
+          // `ringsFor` marks a metric the day has no reading for with an em dash in `centre`: steps and sleep are
+          // "not logged", which is not the same claim as zero, so the card shows "—" and draws no bar at all.
+          const notLogged = ring.centre === '—'
+          return (
+            <MetricCard
+              key={ring.id}
+              testId={`today-metric-${ring.id}`}
+              label={ring.label}
+              metric={ring.metric}
+              icon={ICONS[ring.id]}
+              value={notLogged ? null : ring.value}
+              unit={ring.unit}
+              precision={ring.id === 'sleep' ? 1 : 0}
+              // A fast day has no calorie target by design, so its card shows no bar rather than a bar of zero. The
+              // target is passed separately from the ratio so the card can name the amount and the target together.
+              progress={!notLogged && ring.target > 0 ? ring.value / ring.target : null}
+              target={!notLogged && ring.target > 0 ? ring.target : null}
+              caption={captionFor(ring)}
+              // A short stagger: the row assembles instead of appearing in one block, and the last card lands with it.
+              delay={i * 40}
+            />
+          )
+        })}
+      </Box>
+
       {(pending.meals > 0 || missingHealth) && (
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: 3 }}>
           {pending.meals > 0 && (
@@ -201,6 +247,6 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
           )}
         </Box>
       )}
-    </Card>
+    </Box>
   )
 }

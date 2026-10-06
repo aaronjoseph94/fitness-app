@@ -10,7 +10,7 @@ import Box from '@mui/material/Box'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { useState } from 'react'
-import { Column, Columns, isQueryLoading, QueryStateCard } from '../../components'
+import { Column, Columns, formatLongDate, greetingFor, isQueryLoading, PageHero, QueryStateCard } from '../../components'
 import { useLocalToday } from '../../app/local-today'
 import { useUiStore } from '../../app/ui-store'
 import { AiCard } from './lib/AiCard'
@@ -47,6 +47,15 @@ export function TodayPage() {
 
   return (
     <Stack spacing={4} data-testid="today-page">
+      {/* The route handle says `hero: true`, so the top bar keeps only its controls and this owns the page's h1. */}
+      <PageHero
+        testId="today-hero"
+        eyebrow={greetingFor(new Date().getHours())}
+        title="Welcome back"
+        pageName="Today"
+        subtitle={formatLongDate(date)}
+      />
+
       {note && <CoachNote note={note} />}
 
       <TodayHeader
@@ -67,17 +76,15 @@ export function TodayPage() {
       {!day.data && !isQueryLoading(day) ? (
         <QueryStateCard query={day} what="today" />
       ) : (
-        // Five 58 px rings spread across the 1120 px page would read as five dots in a lot of white, so the card keeps
-        // a width where the rings sit at a comfortable spacing.
-        <Box sx={{ maxWidth: 640 }}>
-          <TodayRings
-            day={day.data}
-            loading={isQueryLoading(day)}
-            pending={pending}
-            waterTargetMl={settings.data?.settings.water_target_ml ?? DEFAULT_WATER_ML}
-            onAddHealth={() => setHealthOpen(true)}
-          />
-        </Box>
+        // The metric cards take the page's full width: five of them at the desktop width is 214 px each, which is what
+        // lets a four-digit number and its unit sit on one line without truncating.
+        <TodayRings
+          day={day.data}
+          loading={isQueryLoading(day)}
+          pending={pending}
+          waterTargetMl={settings.data?.settings.water_target_ml ?? DEFAULT_WATER_ML}
+          onAddHealth={() => setHealthOpen(true)}
+        />
       )}
 
       <QuickLogRow fasting={fasting} />

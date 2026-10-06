@@ -20,9 +20,11 @@ interface TopBarProps {
   title: string
   width: PageWidth
   showBack: boolean
+  /** The page opens with its own heading (a greeting hero), so this bar keeps only its controls. */
+  hero: boolean
 }
 
-export function TopBar({ title, width, showBack }: TopBarProps) {
+export function TopBar({ title, width, showBack, hero }: TopBarProps) {
   const back = useBack()
   const onSettings = useMatch('/settings') !== null
   const onAskAi = useMatch('/ai') !== null
@@ -40,9 +42,14 @@ export function TopBar({ title, width, showBack }: TopBarProps) {
             <ArrowBackIosNew fontSize="small" />
           </IconButton>
         )}
-        <Typography component="h1" variant="h3" noWrap sx={{ flex: 1, minWidth: 0 }}>
-          {title}
-        </Typography>
+        {hero ? (
+          // The page's own hero carries the `h1`; this bar keeps the row for its controls and the flex spacer.
+          <Box sx={{ flex: 1, minWidth: 0 }} />
+        ) : (
+          <Typography component="h1" variant="h3" noWrap sx={{ flex: 1, minWidth: 0 }}>
+            {title}
+          </Typography>
+        )}
         <IconButton
           aria-label="Search and commands"
           data-testid="palette-open"

@@ -1,8 +1,8 @@
-// Owns: the Dashboard — the app's overview page. A band of the main metrics with their sparklines comes first, then
-// four sections of history (body, nutrition, recovery, training) built from the chart kit. The window is 30, 90 or 180
-// days (?window=). On a phone the sections fold away and open on a tap; from `md` up they are always open and their
-// charts sit in two or three columns, so a desktop shows the whole picture at once. Reads GET /api/days, /api/trend,
-// /api/fasts, /api/sessions, /api/scans and /api/settings. Needs a connection.
+// Owns: the Dashboard — the app's overview page. A greeting hero opens it, then a band of the main metrics with their
+// sparklines beside a goals rail, then four sections of history (body, nutrition, recovery, training) built from the
+// chart kit. The window is 30, 90 or 180 days (?window=). On a phone the sections fold away and open on a tap; from
+// `md` up they are always open and their charts sit in two or three columns, so a desktop shows the whole picture at
+// once. Reads GET /api/days, /api/trend, /api/fasts, /api/sessions, /api/scans and /api/settings. Needs a connection.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -14,8 +14,10 @@ import { useSearchParams } from 'react-router'
 import { problemText, signInAgain } from '../../api'
 import { useLocalToday } from '../../app/local-today'
 import { LinkRow, SettingsGroup } from '../settings/rows'
-import { tokens } from '../../theme'
+import { Column, Columns, formatLongDate, greetingFor, PageHero } from '../../components'
+import { tokens, transitionOf } from '../../theme'
 import { BodySection } from './lib/BodySection'
+import { GoalRail } from './lib/GoalRail'
 import { dashboardKpis } from './lib/kpis'
 import { KpiBand } from './lib/KpiBand'
 import { NutritionSection } from './lib/NutritionSection'
@@ -52,9 +54,9 @@ export function DashboardPage() {
 
   if (loading && !data)
     return (
-      <Stack spacing={4} data-testid="dashboard-page" aria-busy="true">
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3 }}>{picker}</Box>
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' } }}>
+      <Stack spacing={6} data-testid="dashboard-page" aria-busy="true">
+        <PageHero testId="dashboard-hero" eyebrow={greetingFor(new Date().getHours())} title="Welcome back" pageName="Dashboard" subtitle={formatLongDate(date)} action={picker} />
+        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
           {Array.from({ length: 12 }, (_, i) => (
             <Skeleton key={i} variant="rounded" height={172} sx={{ borderRadius: `${tokens.radius.card}px` }} />
           ))}
@@ -84,15 +86,27 @@ export function DashboardPage() {
     )
 
   return (
-    <Stack spacing={6} data-testid="dashboard-page" sx={{ pb: 4, opacity: refreshing ? 0.6 : 1, transition: 'opacity 150ms' }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3 }}>
-        {picker}
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
-          {data.from} – {data.to}
-        </Box>
-      </Box>
+    <Stack spacing={6} data-testid="dashboard-page" sx={{ pb: 4, opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }}>
+      {/* The route handle says `hero: true`, so this owns the page's h1 and the picker rides beside it. */}
+      <PageHero
+        testId="dashboard-hero"
+        eyebrow={greetingFor(new Date().getHours())}
+        title="Welcome back"
+        pageName="Dashboard"
+        subtitle={`${formatLongDate(date)} · ${data.from} to ${data.to}`}
+        action={picker}
+      />
 
-      <KpiBand kpis={dashboardKpis(data)} />
+      {/* Two thirds of main numbers, one third of where they sit against the plan; the rail drops under the band on a
+          narrower desktop rather than squeezing both. */}
+      <Columns md={2} lg={3} align="stretch">
+        <Column span={2}>
+          <KpiBand kpis={dashboardKpis(data)} />
+        </Column>
+        <Column span={1} mdSpan={2}>
+          <GoalRail data={data} />
+        </Column>
+      </Columns>
 
       <BodySection data={data} />
       <NutritionSection data={data} />

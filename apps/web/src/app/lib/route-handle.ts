@@ -14,6 +14,11 @@ export interface RouteHandle {
   width?: PageWidth
   /** Show the floating quick-log button. */
   quickLog?: boolean
+  /**
+   * The page opens with its own greeting heading, so the top bar drops its title instead of repeating it (the page
+   * then owns the page's `h1`, which is why this is opt-in rather than automatic).
+   */
+  hero?: boolean
 }
 
 const FALLBACK: RouteHandle = { title: 'Fitness' }

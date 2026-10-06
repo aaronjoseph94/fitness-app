@@ -4,19 +4,22 @@
 // the app shell (route /styleguide, wide column), which supplies the page gutter, title bar and bottom padding.
 import Box from '@mui/material/Box'
 import { tokens } from '../../theme'
-import { CardsSection, ProposalsSection, RingsSection } from './lib/CardsSection'
+import { CardsSection, MetricCardsSection, ProposalsSection, RingsSection } from './lib/CardsSection'
 import { ChartsSection } from './lib/ChartsSection'
 import { ControlsSection } from './lib/ControlsSection'
 import { EmptyStatesSection } from './lib/EmptyStatesSection'
 import { MuscleMapSection } from './lib/MuscleMapSection'
-import { ColourSection, SpaceSection, TypeSection } from './lib/TokensSections'
+import { ColourSection, GradientSection, MotionSection, SpaceSection, TypeSection } from './lib/TokensSections'
 
 const NAV = [
   ['colour', 'Colour'],
   ['type', 'Type'],
   ['space', 'Space'],
+  ['gradient', 'Gradients'],
+  ['motion', 'Motion'],
   ['controls', 'Controls'],
   ['cards', 'Cards'],
+  ['metric', 'Metric cards'],
   ['rings', 'Rings'],
   ['proposals', 'Proposals'],
   ['charts', 'Charts'],
@@ -79,8 +82,11 @@ export function StyleguidePage() {
       <ColourSection />
       <TypeSection />
       <SpaceSection />
+      <GradientSection />
+      <MotionSection />
       <ControlsSection />
       <CardsSection />
+      <MetricCardsSection />
       <RingsSection />
       <ProposalsSection />
       <ChartsSection />

@@ -40,16 +40,19 @@ export function isoWeek(date: string): string {
   return `${year}-W${String(week).padStart(2, '0')}`
 }
 
-/** A Today ring by metric name ("Water", "Calories", …). Its accessible name reads "Water: 500 of 3,000 ml". */
+/**
+ * One of Today's metric cards by metric name ("Water", "Calories", …). Each card is a `group` whose accessible name
+ * is the whole sentence — "Water: 500 of 3,000 ml" — so the amount and its target are read as one thing.
+ */
 export function ring(page: Page, label: string): Locator {
-  return page.getByTestId('today-rings').getByRole('img', { name: new RegExp(`^${label}: `) })
+  return page.getByTestId('today-rings').getByRole('group', { name: new RegExp(`^${label}: `) })
 }
 
-/** The current value a ring reports (the number before "of"). */
+/** The current value a metric card reports (the number before "of"). */
 export async function ringValue(page: Page, label: string): Promise<number> {
   const name = (await ring(page, label).getAttribute('aria-label')) ?? ''
   const match = name.match(/: ([\d,.]+) of /)
-  if (!match) throw new Error(`Unexpected ${label} ring label: "${name}"`)
+  if (!match) throw new Error(`Unexpected ${label} metric label: "${name}"`)
   return Number(match[1].replaceAll(',', ''))
 }
 
