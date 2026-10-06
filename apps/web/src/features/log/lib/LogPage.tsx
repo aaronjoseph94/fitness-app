@@ -1,7 +1,10 @@
 // Owns: the Log tab page (SPEC §6, §8 manual route) for one day — the date switcher (?date= in the URL), the day's
 // totals against targets and its weigh-in, meals by slot, water, sleep and steps, measurements, fasting and the
-// favourites manager — and the logging sheet it opens for that day.
+// favourites manager — and the logging sheet it opens for that day. On a phone it is one stack; from `md` up the
+// meals journal takes the wide column with water, sleep, measurements, fasting and the favourites in a rail beside it,
+// which is the same card order either way.
 import Box from '@mui/material/Box'
+import Stack from '@mui/material/Stack'
 import { endpoints } from '@fitness/shared/api'
 import type { MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
@@ -9,6 +12,7 @@ import { useSearchParams } from 'react-router'
 import { useApiQuery } from '../../../api'
 import { useLocalToday } from '../../../app/local-today'
 import type { QuickLogKind } from '../../../app/ui-store'
+import { Column, Columns } from '../../../components'
 import { useDay, useLogSettings } from '../../quick-log'
 import { LogSheet } from '../../quick-log/sheet'
 import { logDate } from '../queries'
@@ -64,12 +68,20 @@ export function LogPage() {
         pendingMeals={pendingMeals}
         onWeighIn={() => openSheet('weigh-in')}
       />
-      <MealsSection day={day.data} meals={meals} favourites={favs} breakfastEnabled={settings.breakfastEnabled} onAdd={(slot) => openSheet('meal', slot)} />
-      <WaterCard date={date} />
-      <SleepStepsCard date={date} day={day.data} />
-      <MeasurementsCard date={date} />
-      <FastingCard today={today} onPlan={() => openSheet('fast')} />
-      <FavouritesManager favourites={favs} isLoading={favourites.isLoading} error={favourites.error} onRetry={() => void favourites.refetch()} />
+      <Columns md={2} lg={3} gap={3}>
+        <Column span={2} mdSpan={1}>
+          <MealsSection day={day.data} meals={meals} favourites={favs} breakfastEnabled={settings.breakfastEnabled} onAdd={(slot) => openSheet('meal', slot)} />
+        </Column>
+        <Column span={1}>
+          <Stack spacing={3}>
+            <WaterCard date={date} />
+            <SleepStepsCard date={date} day={day.data} />
+            <MeasurementsCard date={date} />
+            <FastingCard today={today} onPlan={() => openSheet('fast')} />
+            <FavouritesManager favourites={favs} isLoading={favourites.isLoading} error={favourites.error} onRetry={() => void favourites.refetch()} />
+          </Stack>
+        </Column>
+      </Columns>
       <LogSheet open={sheet.open} kind={sheet.kind} date={date} slot={sheet.slot} onClose={() => setSheet((s) => ({ ...s, open: false }))} />
     </Box>
   )

@@ -54,6 +54,7 @@ import {
   IsoWeek,
   JobRef,
   LocalDate,
+  McpConnectionView,
   Meal,
   MealCreate,
   MealListQuery,
@@ -82,6 +83,9 @@ import {
   ScanSchedule,
   ScanUploaded,
   ScanUploadQuery,
+  SecretName,
+  SecretsView,
+  SecretSet,
   SessionCreate,
   SessionFinish,
   SessionFinishResult,
@@ -124,6 +128,7 @@ const IdParams = z.object({ id: Id })
 const DateParams = z.object({ date: LocalDate })
 const WeekParams = z.object({ week: IsoWeek })
 const FileKeyParams = z.object({ key: FileKey })
+const SecretNameParams = z.object({ name: SecretName })
 
 /** Week plans (SPEC §8 "Next-week plan"): the plans of a week, the week view, propose, apply, revert, reject. */
 const weekPlans = {
@@ -476,6 +481,27 @@ export const endpoints = {
   settings: {
     get: defineEndpoint({ method: 'GET', path: '/api/settings', response: SettingsView }),
     update: defineEndpoint({ method: 'PATCH', path: '/api/settings', body: SettingsUpdate, response: SettingsView }),
+    /** Every runtime secret with its status; never a value (write-only). */
+    secrets: defineEndpoint({ method: 'GET', path: '/api/settings/secrets', response: SecretsView }),
+    /** Store a secret in the app (actor 'user' only). The stored value wins over a Worker secret of the same name. */
+    setSecret: defineEndpoint({
+      method: 'PUT',
+      path: '/api/settings/secrets/:name',
+      params: SecretNameParams,
+      body: SecretSet,
+      response: SecretsView,
+      offline: 'never',
+    }),
+    /** Forget the app-stored secret; a Worker secret with the same name still applies afterwards. */
+    clearSecret: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/settings/secrets/:name',
+      params: SecretNameParams,
+      response: SecretsView,
+      offline: 'never',
+    }),
+    /** How Claude connects (SPEC §8): the connector URL, the discovery URLs and the bearer token's status. */
+    connection: defineEndpoint({ method: 'GET', path: '/api/settings/connection', response: McpConnectionView }),
   },
 
   push: {

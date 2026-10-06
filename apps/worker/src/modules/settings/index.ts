@@ -25,6 +25,9 @@ import { planChangeStatements, targetStatementsFor } from '../plan'
 import { runSoon } from '../jobs'
 import { changedValues, fieldChanges, summarise } from './lib/changes'
 
+/** How Claude reaches the app (SPEC §8): the connector URL, discovery URLs and the bearer token's status. */
+export { getMcpConnection } from './lib/connection'
+
 /** Settings fields the daily targets read: changing one rebuilds them. */
 const TARGET_INPUTS: readonly string[] = ['training_days', 'calorie_floor', 'protein_min_g', 'fat_min_g', 'fast_hours']
 /** Settings fields that are plan-version defaults too (the daily targets read the version): settings field → target. */

@@ -19,6 +19,7 @@ import {
 } from './errors'
 import { geminiAdapter } from './gemini'
 import { extractJson, jsonSchemaOf, repairInstruction, toBase64 } from './json'
+import { createKeyResolver } from './keys'
 import {
   coolDown,
   coolingDown,
@@ -72,6 +73,8 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
   // Its own cap and the invocation's tally (deps.budget), so jobs and requests in one invocation stay under 50.
   const budgets = deps.budget ? [budget, deps.budget] : [budget]
   const nowMs = () => deps.now().getTime()
+  // Provider keys: what Aaron stored in the app first, the Worker secret second (one read per router).
+  const resolveKey = createKeyResolver(deps)
 
   async function chat<T = string>(req: ChatRequest<T>): Promise<ChatResult<T>> {
     const start = nowMs()
@@ -146,7 +149,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
           ...(status !== undefined ? { status } : {}),
         })
 
-      const key = deps.env[c.provider.key_env]
+      const key = await resolveKey(c.provider.key_env)
       if (!key) {
         fail('no_key')
         continue

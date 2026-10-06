@@ -18,9 +18,11 @@ import {
   type OAuthResourceTokenValidation,
 } from '@cloudflare/workers-oauth-provider'
 import type { Context } from 'hono'
+import { createDb } from '../db'
 import type { App, AppEnv, Env } from '../env'
 import { depsFromContext, type Deps } from '../lib/deps'
 import { HttpError } from '../lib/http-error'
+import { resolveSecret } from '../modules/secrets'
 import { constantTimeEqual } from './auth'
 import { consentPage, errorPage } from './consent-page'
 
@@ -117,7 +119,10 @@ function build(origin: string): OAuthServers {
     resourceMetadata: { resource, authorization_servers: [origin], resource_name: 'Fitness tracker' },
     requiredScopes: [SCOPE],
     validateToken: (env) => async (forResource, token) => {
-      if (env.MCP_BEARER_TOKEN && (await constantTimeEqual(token, env.MCP_BEARER_TOKEN))) {
+      // The static bearer: the token Aaron set in Settings first, the Worker secret second. Read per request (one
+      // indexed row) so a token Aaron rotates in the app takes effect at once, with no cache to go stale.
+      const bearer = await resolveSecret(createDb(env.DB), env, 'MCP_BEARER_TOKEN')
+      if (bearer && (await constantTimeEqual(token, bearer))) {
         return { props: { via: 'bearer' }, audience: forResource, scope: [SCOPE], userId: OWNER }
       }
       const t = await authorization.validateToken<McpProps>(forResource, token, env)

@@ -7,6 +7,7 @@ export { RingsRow, type RingsRowProps, type RingItem } from './lib/RingsRow'
 export { LegendChips, type LegendChipsProps, type LegendItem, type LegendMark } from './lib/LegendChips'
 export { ChartCard, type ChartCardProps } from './lib/ChartCard'
 export { SectionHeader, type SectionHeaderProps } from './lib/SectionHeader'
+export { Column, Columns, type ColumnProps, type ColumnsProps } from './lib/Board'
 export {
   EmptyState,
   ILLUSTRATIONS,

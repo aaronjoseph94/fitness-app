@@ -1,7 +1,8 @@
 // Owns: the Settings page — the rails (set with the doctor and dietitian; each edit asks for confirmation), daily
 // targets (fibre, water), training days, app preferences (breakfast slot, auto-apply safe AI changes, scan interval),
-// the profile basics (read-only goal), links to other pages, and "About this data". Reads GET /api/settings; every
-// change is one PATCH /api/settings, shown at once and rolled back if the Worker refuses. Needs a connection.
+// the link to the AI page (model keys and the Claude connector), the profile basics (read-only goal), links to other
+// pages, and "About this data". Reads GET /api/settings; every change is one PATCH /api/settings, shown at once and
+// rolled back if the Worker refuses. Needs a connection.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -152,6 +153,18 @@ export function SettingsPage() {
           disabled={locked}
           onChange={(on) => (on ? setEditing({ kind: 'auto-apply' }) : toggle({ auto_apply_safe: false }, 'Every AI change waits for a tap.'))}
           testId="setting-auto_apply_safe"
+        />
+      </SettingsGroup>
+
+      <SettingsGroup
+        id="ai"
+        title="AI"
+        subtitle="Free-tier models do the logging work; Claude connects as the senior coach through a connector you add yourself."
+      >
+        <LinkRow
+          label="Model keys and the Claude connector"
+          help="Add a provider key, set the connector token, copy the URL to add in Claude"
+          to="/settings/ai"
         />
       </SettingsGroup>
 

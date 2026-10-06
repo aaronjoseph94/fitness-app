@@ -1,6 +1,8 @@
 // Owns: the Train tab (SPEC §7, §11) — today's date and readiness chip, the today card (in progress, done, planned,
 // or generate), templates with mini muscle maps and Start, recent sessions, and the way into the library, the
-// equipment profile, the builder and AI workouts.
+// equipment profile, the builder and AI workouts. On a desktop the sections sit on the shared board: today's session
+// takes the full width, templates and recent sessions share a row, and the library bar closes the page; on a phone the
+// board is one column in this same order, so the tab reads exactly as it did.
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import EditNoteRounded from '@mui/icons-material/EditNoteRounded'
@@ -17,7 +19,7 @@ import { today } from '@fitness/shared/engine'
 import type { Template } from '@fitness/shared/schemas'
 import { useCallback } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { EmptyState, formatShortDate, formatWeekday, LoadProblem, SectionHeader } from '../../../components'
+import { Column, Columns, EmptyState, formatShortDate, formatWeekday, LoadProblem, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
 import { useNow } from '../../quick-log'
 import { ReadinessChip } from './ReadinessChip'
@@ -81,114 +83,132 @@ export function TrainPage() {
         {readiness && <ReadinessChip readiness={readiness} />}
       </Box>
 
-      {day.isLoading && !active ? (
-        <Skeleton variant="rounded" height={148} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-      ) : (
-        <TodayCard
-          day={day.data}
-          active={active}
-          activeCounts={activeCounts}
-          templates={templates.data ?? []}
-          onStart={start}
-        />
-      )}
-
-      <Box component="section" aria-labelledby="templates-title">
-        <SectionHeader
-          id="templates"
-          title="Templates"
-          action={
-            <Button component={Link} to="/train/builder" size="small">
-              New
-            </Button>
-          }
-        />
-        {templates.isLoading ? (
-          <Stack spacing={2}>
-            <Skeleton variant="rounded" height={124} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-            <Skeleton variant="rounded" height={124} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-          </Stack>
-        ) : templates.error && !templates.data ? (
-          <LoadProblem
-            what="Your templates"
-            error={templates.error}
-            onRetry={() => void templates.refetch()}
-          />
-        ) : templates.data?.length ? (
-          <Stack spacing={2}>
-            {templates.data.map((t) => (
-              <TemplateCard key={t.id} template={t} onStart={startTemplate} />
-            ))}
-          </Stack>
-        ) : (
-          <Card>
-            <EmptyState
-              compact
-              illustration="training"
-              title="No templates yet"
-              body="Build one from the library, or finish a session and save it as a template."
-              action={{ label: 'Build a template', onClick: () => void navigate('/train/builder') }}
+      {/* `gap={5}` matches the `spacing={5}` this page used when it was one stack, so a phone sees the same rhythm. */}
+      <Columns md={2} lg={3} gap={5}>
+        <Column span={3} mdSpan={2}>
+          {day.isLoading && !active ? (
+            <Skeleton variant="rounded" height={148} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+          ) : (
+            <TodayCard
+              day={day.data}
+              active={active}
+              activeCounts={activeCounts}
+              templates={templates.data ?? []}
+              onStart={start}
             />
-          </Card>
-        )}
-      </Box>
+          )}
+        </Column>
 
-      <Box component="section" aria-labelledby="recent-title">
-        <SectionHeader id="recent" title="Recent sessions" subtitle="Last four weeks" />
-        {sessions.isLoading ? (
-          <Skeleton variant="rounded" height={160} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-        ) : sessions.error && !sessions.data ? (
-          <LoadProblem
-            what="Recent sessions"
-            error={sessions.error}
-            onRetry={() => void sessions.refetch()}
-          />
-        ) : (sessions.data?.length ?? 0) + unsynced.length > 0 ? (
-          <RecentSessions sessions={sessions.data ?? []} unsynced={unsynced} templates={templates.data} />
-        ) : (
-          <Card>
-            <EmptyState
-              compact
-              illustration="schedule"
-              title="No sessions yet"
-              body="Your sessions show here with their sets and volume."
+        <Column span={2} mdSpan={1}>
+          <Box component="section" aria-labelledby="templates-title">
+            <SectionHeader
+              id="templates"
+              title="Templates"
+              action={
+                <Button component={Link} to="/train/builder" size="small">
+                  New
+                </Button>
+              }
             />
-          </Card>
-        )}
-      </Box>
-
-      <Box component="section" aria-labelledby="more-title">
-        <SectionHeader id="more" title="Library and tools" />
-        <Card>
-          {LINKS.map(({ to, label, detail, Icon, testId }, i) => (
-            <ButtonBase
-              key={to}
-              component={Link}
-              to={to}
-              data-testid={testId}
-              sx={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-                px: 4,
-                py: 3,
-                minHeight: 60,
-                justifyContent: 'flex-start',
-                textAlign: 'left',
-                borderTop: i === 0 ? 'none' : `1px solid ${tokens.ink.border}`,
-              }}
-            >
-              <Icon sx={{ color: tokens.ink.secondary }} aria-hidden />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{label}</Box>
-                <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{detail}</Box>
+            {templates.isLoading ? (
+              <Stack spacing={2}>
+                <Skeleton variant="rounded" height={124} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+                <Skeleton variant="rounded" height={124} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+              </Stack>
+            ) : templates.error && !templates.data ? (
+              <LoadProblem
+                what="Your templates"
+                error={templates.error}
+                onRetry={() => void templates.refetch()}
+              />
+            ) : templates.data?.length ? (
+              // One column when there is no room, two or more once the board gives the templates the width.
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))' },
+                }}
+              >
+                {templates.data.map((t) => (
+                  <TemplateCard key={t.id} template={t} onStart={startTemplate} />
+                ))}
               </Box>
-              <ChevronRightRounded sx={{ color: tokens.ink.secondary }} aria-hidden />
-            </ButtonBase>
-          ))}
-        </Card>
-      </Box>
+            ) : (
+              <Card>
+                <EmptyState
+                  compact
+                  illustration="training"
+                  title="No templates yet"
+                  body="Build one from the library, or finish a session and save it as a template."
+                  action={{ label: 'Build a template', onClick: () => void navigate('/train/builder') }}
+                />
+              </Card>
+            )}
+          </Box>
+        </Column>
+
+        <Column span={1}>
+          <Box component="section" aria-labelledby="recent-title">
+            <SectionHeader id="recent" title="Recent sessions" subtitle="Last four weeks" />
+            {sessions.isLoading ? (
+              <Skeleton variant="rounded" height={160} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+            ) : sessions.error && !sessions.data ? (
+              <LoadProblem
+                what="Recent sessions"
+                error={sessions.error}
+                onRetry={() => void sessions.refetch()}
+              />
+            ) : (sessions.data?.length ?? 0) + unsynced.length > 0 ? (
+              <RecentSessions sessions={sessions.data ?? []} unsynced={unsynced} templates={templates.data} />
+            ) : (
+              <Card>
+                <EmptyState
+                  compact
+                  illustration="schedule"
+                  title="No sessions yet"
+                  body="Your sessions show here with their sets and volume."
+                />
+              </Card>
+            )}
+          </Box>
+        </Column>
+
+        <Column span={3} mdSpan={2}>
+          <Box component="section" aria-labelledby="more-title">
+            <SectionHeader id="more" title="Library and tools" />
+            <Card>
+              {LINKS.map(({ to, label, detail, Icon, testId }, i) => (
+                <ButtonBase
+                  key={to}
+                  component={Link}
+                  to={to}
+                  data-testid={testId}
+                  sx={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    px: 4,
+                    py: 3,
+                    minHeight: 60,
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    borderTop: i === 0 ? 'none' : `1px solid ${tokens.ink.border}`,
+                  }}
+                >
+                  <Icon sx={{ color: tokens.ink.secondary }} aria-hidden />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{label}</Box>
+                    <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{detail}</Box>
+                  </Box>
+                  <ChevronRightRounded sx={{ color: tokens.ink.secondary }} aria-hidden />
+                </ButtonBase>
+              ))}
+            </Card>
+          </Box>
+        </Column>
+      </Columns>
     </Stack>
   )
 }

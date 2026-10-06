@@ -40,17 +40,22 @@ const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            handle: tab('today', { quickLog: true }),
+            handle: tab('today', { quickLog: true, width: 'wide' }),
             lazy: page(() => import('../../features/today'), 'TodayPage'),
           },
           {
+            path: 'dashboard',
+            handle: tab('dashboard', { width: 'wide' }),
+            lazy: page(() => import('../../features/dashboard'), 'DashboardPage'),
+          },
+          {
             path: 'log',
-            handle: tab('log', { quickLog: true }),
+            handle: tab('log', { quickLog: true, width: 'wide' }),
             lazy: page(() => import('../../features/log'), 'LogPage'),
           },
           {
             path: 'train',
-            handle: tab('train'),
+            handle: tab('train', { width: 'wide' }),
             lazy: page(() => import('../../features/train'), 'TrainPage'),
           },
           { path: 'train/session/:id', handle: { title: 'Session' } satisfies RouteHandle, lazy: page(() => import('../../features/train'), 'SessionPage') },
@@ -85,8 +90,13 @@ const routes: RouteObject[] = [
             handle: tab('progress', { width: 'wide' }),
             lazy: page(() => import('../../features/progress'), 'ProgressPage'),
           },
-          { path: 'ai', handle: tab('ai'), lazy: page(() => import('../../features/ai'), 'AskAiPage') },
+          { path: 'ai', handle: tab('ai', { width: 'wide' }), lazy: page(() => import('../../features/ai'), 'AskAiPage') },
           { path: 'settings', handle: { title: 'Settings' } satisfies RouteHandle, lazy: page(() => import('../../features/settings'), 'SettingsPage') },
+          {
+            path: 'settings/ai',
+            handle: { title: 'AI and Claude' } satisfies RouteHandle,
+            lazy: page(() => import('../../features/settings/ai'), 'AiSettingsPage'),
+          },
           { path: 'settings/data', handle: { title: 'Export and restore' } satisfies RouteHandle, lazy: page(() => import('../../features/data'), 'DataPage') },
           { path: 'settings/reminders', handle: { title: 'Reminders' } satisfies RouteHandle, lazy: page(() => import('../../features/reminders'), 'RemindersPage') },
           { path: 'plan', handle: { title: 'Plan history' } satisfies RouteHandle, lazy: page(() => import('../../features/plan'), 'PlanPage') },

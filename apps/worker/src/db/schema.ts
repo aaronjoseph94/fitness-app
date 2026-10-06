@@ -28,6 +28,7 @@ import {
   Mechanic,
   ScanSegment,
   ScanSource,
+  SecretName,
   SessionOrigin,
   Sex,
   TemplateOrigin,
@@ -144,6 +145,22 @@ export const settings = sqliteTable('settings', {
   reminders: text({ mode: 'json' }).$type<ReminderPrefs>().notNull(),
   ...timestamps(),
 })
+
+/**
+ * One row per runtime secret Aaron sets inside the app (LLM provider keys, the MCP bearer token, the ingest token).
+ * The value is stored as given (D1 encrypts at rest) and is never returned by the API; the router and the MCP auth read
+ * it here first and fall back to the matching Worker secret, so `wrangler secret put` keeps working (docs/DEPLOY.md §5).
+ */
+export const app_secrets = sqliteTable(
+  'app_secrets',
+  {
+    id: id(),
+    name: text({ enum: values(SecretName) }).notNull(),
+    value: text().notNull(),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex('app_secrets_name_uq').on(t.name)],
+)
 
 // ---------------------------------------------------------------------------
 // Body logs

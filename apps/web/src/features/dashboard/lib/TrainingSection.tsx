@@ -1,0 +1,209 @@
+// Owns: the Dashboard's Training section — training volume per week stacked by muscle group (real kg lifted, sets ×
+// reps × kg), the muscles a week of the window actually reached with a slider choosing which 7 days it covers, and
+// strength per exercise (top-set load and e1RM, the most-logged exercises first). The sessions come from the window the
+// Dashboard already loaded; only the strength chart's per-exercise history is its own read
+// (GET /api/history/exercises/:id).
+import Box from '@mui/material/Box'
+import MenuItem from '@mui/material/MenuItem'
+import Slider from '@mui/material/Slider'
+import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
+import { endpoints } from '@fitness/shared/api'
+import { addDays, daysBetween, muscleLevels } from '@fitness/shared/engine'
+import type { LocalDate, WorkoutSession } from '@fitness/shared/schemas'
+import { useMemo, useState } from 'react'
+import { useApiQuery } from '../../../api'
+import { StrengthChart, TrainingVolumeChart } from '../../../charts'
+import { ChartCard, formatNumber, formatShortDate } from '../../../components'
+import { MuscleMap, MuscleMapLegend } from '../../../muscle-map'
+import { tokens, withAlpha } from '../../../theme'
+import { strengthSessions, useExerciseIndex, type ExerciseIndex } from '../../library'
+import { exercisesByUse, sessionVolumeWeeks, volumeBetween, VOLUME_GROUPS } from '../../progress/series'
+import { DashboardSection, Panel } from './Section'
+import type { DashboardData } from './useDashboardData'
+
+/** The volume map's window: one week. */
+const WINDOW_DAYS = 7
+/** Exercises offered in the strength picker. */
+const PICKER_SIZE = 12
+/** A uuid that matches no exercise, so the history read stays disabled until one is picked. */
+const NO_EXERCISE = '00000000-0000-4000-8000-000000000000'
+
+export function TrainingSection({ data }: { data: DashboardData }) {
+  const index = useExerciseIndex()
+  const count = data.sessions.length
+  return (
+    <DashboardSection
+      id="training"
+      title="Training"
+      subtitle={`Weekly volume by muscle group, the muscles a week reached, and strength per exercise — ${count} ${count === 1 ? 'session' : 'sessions'} in this window.`}
+    >
+      <Panel span={2}>
+        <VolumeCard sessions={data.sessions} index={index} from={data.from} to={data.to} />
+      </Panel>
+      <Panel span={3}>
+        <VolumeMapCard sessions={data.sessions} index={index} from={data.from} to={data.to} />
+      </Panel>
+      <Panel span={3}>
+        <StrengthCard sessions={data.sessions} index={index} />
+      </Panel>
+    </DashboardSection>
+  )
+}
+
+interface CardProps {
+  sessions: readonly WorkoutSession[]
+  index: ExerciseIndex
+  from: LocalDate
+  to: LocalDate
+}
+
+function VolumeCard({ sessions, index, from, to }: CardProps) {
+  const weeks = useMemo(() => sessionVolumeWeeks(sessions, index.all, from, to), [sessions, index.all, from, to])
+  const lifted = weeks.some((w) => Object.values(w.volume).some((kg) => kg > 0))
+  const total = useMemo(() => weeks.reduce((sum, w) => sum + Object.values(w.volume).reduce((s, kg) => s + kg, 0), 0), [weeks])
+  return (
+    <ChartCard
+      title="Training volume per week"
+      subtitle={`Sets × reps × kg, stacked by muscle group; ${formatNumber(total)} kg lifted in this window`}
+      empty={lifted ? undefined : { title: 'No sets logged yet', body: 'Finish a session with loads and reps and its week fills in.', illustration: null }}
+      testId="dashboard-volume"
+    >
+      <TrainingVolumeChart weeks={weeks} groups={VOLUME_GROUPS} />
+    </ChartCard>
+  )
+}
+
+function VolumeMapCard({ sessions, index, from, to }: CardProps) {
+  // The window ends on any day of the range; it starts no earlier than the range does.
+  const span = Math.max(0, daysBetween(from, to))
+  const [offset, setOffset] = useState<number | null>(null)
+  const endOffset = Math.min(span, offset ?? span)
+  const end = addDays(from, endOffset)
+  const start = addDays(end, -(WINDOW_DAYS - 1)) < from ? from : addDays(end, -(WINDOW_DAYS - 1))
+  const volume = useMemo(() => volumeBetween(sessions, index.all, start, end), [sessions, index.all, start, end])
+  const levels = muscleLevels(volume.volume_by_muscle)
+  return (
+    <ChartCard
+      title="Muscles trained"
+      subtitle={`${formatShortDate(start)} – ${formatShortDate(end)} · ${formatNumber(volume.volume_kg)} kg lifted`}
+      testId="dashboard-volume-map"
+    >
+      <Stack spacing={3} sx={{ alignItems: 'center' }}>
+        <MuscleMap levels={levels} size={280} title={`Weekly volume per muscle, ${start} to ${end}`} />
+        <MuscleMapLegend />
+        {span > 0 && (
+          <Box sx={{ width: '100%', px: 2 }}>
+            <Slider
+              value={endOffset}
+              min={0}
+              max={span}
+              step={1}
+              onChange={(_, v) => setOffset(v as number)}
+              valueLabelDisplay="auto"
+              valueLabelFormat={(v) => `7 days to ${formatShortDate(addDays(from, v))}`}
+              getAriaValueText={(v) => `7 days to ${addDays(from, v)}`}
+              aria-label="Week shown on the map"
+              data-testid="volume-map-slider"
+              sx={sliderSx}
+            />
+          </Box>
+        )}
+      </Stack>
+    </ChartCard>
+  )
+}
+
+const SLIDER_COLOR = tokens.muscleMap.steps[tokens.muscleMap.steps.length - 1]
+const DOT = 20
+
+/**
+ * The week slider with 44 px touch targets (SPEC §11): the rail's hit area and the thumb are tapTarget tall, while
+ * the thumb still draws MUI's 20 px dot (its ::before) with the hover, focus and drag halos around the dot.
+ */
+const sliderSx = {
+  color: SLIDER_COLOR,
+  py: `${(tokens.tapTarget - 4) / 2}px`,
+  '& .MuiSlider-thumb': {
+    width: tokens.tapTarget,
+    height: tokens.tapTarget,
+    bgcolor: 'transparent',
+    '&::before': { width: DOT, height: DOT, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'currentColor' },
+    '&::after': { width: tokens.tapTarget, height: tokens.tapTarget },
+    '&:hover, &.Mui-focusVisible, &.Mui-active': { boxShadow: 'none' },
+    '&:hover::before, &.Mui-focusVisible::before': { boxShadow: `0 0 0 8px ${withAlpha(SLIDER_COLOR, 0.16)}` },
+    '&.Mui-active::before': { boxShadow: `0 0 0 14px ${withAlpha(SLIDER_COLOR, 0.16)}` },
+  },
+  // The value label sits over the dot as before (the thumb box grew by 12 px above it).
+  '& .MuiSlider-valueLabel': { top: (tokens.tapTarget - DOT) / 2 - 10 },
+} as const
+
+function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>) {
+  const options = useMemo(
+    () => exercisesByUse(sessions).slice(0, PICKER_SIZE).map((e) => ({ ...e, name: index.byId.get(e.exercise_id)?.name ?? 'Exercise' })),
+    [sessions, index.byId],
+  )
+  const [picked, setPicked] = useState<string | null>(null)
+  const id = picked && options.some((o) => o.exercise_id === picked) ? picked : (options[0]?.exercise_id ?? null)
+  const history = useApiQuery(
+    endpoints.training.exerciseHistory,
+    { params: { id: id ?? NO_EXERCISE } },
+    { enabled: id !== null, retry: false },
+  )
+  const points = useMemo(() => (history.data ? strengthSessions(history.data) : []), [history.data])
+  return (
+    <ChartCard
+      title="Strength per exercise"
+      subtitle="Top set load and estimated 1RM"
+      action={
+        options.length > 0 && id ? (
+          <TextField
+            select
+            label="Exercise"
+            value={id}
+            onChange={(e) => setPicked(e.target.value)}
+            sx={{ minWidth: 160, maxWidth: 220 }}
+            slotProps={{ htmlInput: { 'data-testid': 'strength-exercise' } }}
+          >
+            {options.map((o) => (
+              <MenuItem key={o.exercise_id} value={o.exercise_id} sx={{ minHeight: tokens.tapTarget }}>
+                {o.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : undefined
+      }
+      empty={
+        options.length === 0
+          ? { title: 'No loaded sets yet', body: 'Each exercise gets its load and e1RM line once sets are logged.', illustration: null }
+          : history.data && points.length === 0
+            ? { title: 'No loaded sets yet', body: 'This exercise has no set with a load yet.', illustration: null }
+            : undefined
+      }
+      testId="dashboard-strength"
+    >
+      <Stack spacing={3}>
+        {history.data ? <StrengthChart sessions={points} /> : <EmptyHistory loading={history.isPending} />}
+      </Stack>
+    </ChartCard>
+  )
+}
+
+/** Holds the strength card's height while its per-exercise history is read. */
+function EmptyHistory({ loading }: { loading: boolean }) {
+  return (
+    <Box
+      sx={{
+        height: 220,
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: `${tokens.radius.control}px`,
+        bgcolor: tokens.ink.page,
+        color: tokens.ink.secondary,
+        fontSize: tokens.font.size.small,
+      }}
+    >
+      {loading ? 'Loading…' : 'No history for this exercise yet'}
+    </Box>
+  )
+}

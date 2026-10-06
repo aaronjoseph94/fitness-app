@@ -2,12 +2,15 @@
 // badge and queued logs), the quick-log row, the hero weight chart with the forecast to the goal, the latest proposal or
 // AI event (live: polled every 15 s while visible), and "This week". Reads: GET /api/day/:date (with the note and the
 // active plan's forecast), /api/trend, /api/settings, /api/week-plans, /api/events. The cards that arrive last (AI,
-// This week) sit below the hero chart, so they never push the cards above them down.
+// This week) sit below the hero chart, so they never push the cards above them down. From `md` up the hero chart takes
+// two thirds of the width with those two late cards as a rail beside it, and the rings keep a reading width instead of
+// spreading across the wide page; on a phone the page is the single column it always was, in the same order.
 // Second entry point: ./queries (the reads' inputs).
+import Box from '@mui/material/Box'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { useState } from 'react'
-import { isQueryLoading, QueryStateCard } from '../../components'
+import { Column, Columns, isQueryLoading, QueryStateCard } from '../../components'
 import { useLocalToday } from '../../app/local-today'
 import { useUiStore } from '../../app/ui-store'
 import { AiCard } from './lib/AiCard'
@@ -64,22 +67,34 @@ export function TodayPage() {
       {!day.data && !isQueryLoading(day) ? (
         <QueryStateCard query={day} what="today" />
       ) : (
-        <TodayRings
-          day={day.data}
-          loading={isQueryLoading(day)}
-          pending={pending}
-          waterTargetMl={settings.data?.settings.water_target_ml ?? DEFAULT_WATER_ML}
-          onAddHealth={() => setHealthOpen(true)}
-        />
+        // Five 58 px rings spread across the 1120 px page would read as five dots in a lot of white, so the card keeps
+        // a width where the rings sit at a comfortable spacing.
+        <Box sx={{ maxWidth: 640 }}>
+          <TodayRings
+            day={day.data}
+            loading={isQueryLoading(day)}
+            pending={pending}
+            waterTargetMl={settings.data?.settings.water_target_ml ?? DEFAULT_WATER_ML}
+            onAddHealth={() => setHealthOpen(true)}
+          />
+        </Box>
       )}
 
       <QuickLogRow fasting={fasting} />
 
-      <HeroChart trend={trend} forecast={forecast} goalKg={goalKg} onWeighIn={weighIn} />
-
-      <AiCard latest={day.data?.proposals.latest ?? null} pendingCount={day.data?.proposals.pending_count ?? 0} events={feed.data?.events ?? []} />
-
-      <ThisWeekCard date={date} day={day.data} weekPlan={weekPlan} trainingDays={settings.data?.settings.training_days ?? null} />
+      {/* One column on a phone (the same order as before); two thirds for the chart and a rail for the two late cards
+          from `md` up. `mdSpan` keeps the board even at 900–1200 px, where three columns would be too narrow. */}
+      <Columns md={2} lg={3}>
+        <Column span={2} mdSpan={1}>
+          <HeroChart trend={trend} forecast={forecast} goalKg={goalKg} onWeighIn={weighIn} />
+        </Column>
+        <Column span={1}>
+          <Stack spacing={4}>
+            <AiCard latest={day.data?.proposals.latest ?? null} pendingCount={day.data?.proposals.pending_count ?? 0} events={feed.data?.events ?? []} />
+            <ThisWeekCard date={date} day={day.data} weekPlan={weekPlan} trainingDays={settings.data?.settings.training_days ?? null} />
+          </Stack>
+        </Column>
+      </Columns>
 
       {healthOpen && (
         <HealthDialog

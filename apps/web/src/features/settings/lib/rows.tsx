@@ -1,7 +1,10 @@
 // Owns: the building blocks of the Settings list — a titled group card, a tappable value row (label, help, value,
-// chevron; ≥ 56 px), a read-only row, a switch row, and a link row — so every section looks and behaves the same.
+// chevron; ≥ 56 px), a read-only row, a switch row, a link row, and a copy row for a value that is meant to be pasted
+// somewhere else — so every section looks and behaves the same.
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
+import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Switch from '@mui/material/Switch'
@@ -106,6 +109,60 @@ export function SwitchRow({
         disabled={disabled}
         slotProps={{ input: { 'aria-label': label, ...(testId ? { 'data-testid': testId } : {}) } as object }}
       />
+    </Box>
+  )
+}
+
+/**
+ * A row whose value is text to copy (the connector URL, a token you just generated): the label and a Copy button on one
+ * line, the value wrapping underneath in a box that is easy to select by hand when the browser refuses the clipboard.
+ */
+export function CopyRow({
+  label,
+  help,
+  value,
+  copied,
+  onCopy,
+  testId,
+}: {
+  label: string
+  help?: ReactNode
+  value: string
+  copied: boolean
+  onCopy: () => void
+  testId?: string
+}) {
+  return (
+    <Box sx={{ ...rowSx, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <Text label={label} help={help} />
+      <Button
+        size="small"
+        onClick={onCopy}
+        startIcon={<ContentCopyRounded />}
+        disabled={value === ''}
+        data-testid={testId}
+        sx={{ flex: 'none' }}
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </Button>
+      <Box
+        sx={{
+          flexBasis: '100%',
+          px: 3,
+          py: 2,
+          borderRadius: `${tokens.radius.control}px`,
+          border: `1px solid ${tokens.ink.border}`,
+          backgroundColor: tokens.ink.page,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: tokens.font.size.small,
+          lineHeight: 1.5,
+          color: tokens.ink.text,
+          overflowWrap: 'anywhere',
+          userSelect: 'all',
+        }}
+      >
+        {value}
+      </Box>
     </Box>
   )
 }

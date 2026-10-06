@@ -1,6 +1,9 @@
-// Owns: the five bottom tabs (SPEC §11 navigation) — key, path, nav label, page title and icons — in one table.
+// Owns: the bottom tabs (SPEC §11 navigation, plus Dashboard — see docs/PROGRESS.md) — key, path, nav label, page
+// title and icons — in one table.
 import AutoAwesome from '@mui/icons-material/AutoAwesome'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
+import Dashboard from '@mui/icons-material/Dashboard'
+import DashboardOutlined from '@mui/icons-material/DashboardOutlined'
 import EditNote from '@mui/icons-material/EditNote'
 import EditNoteOutlined from '@mui/icons-material/EditNoteOutlined'
 import FitnessCenter from '@mui/icons-material/FitnessCenter'
@@ -25,6 +28,7 @@ export interface Tab {
 
 export const TABS: readonly Tab[] = [
   { key: 'today', path: '/', label: 'Today', title: 'Today', Icon: TodayOutlined, ActiveIcon: Today },
+  { key: 'dashboard', path: '/dashboard', label: 'Dashboard', title: 'Dashboard', Icon: DashboardOutlined, ActiveIcon: Dashboard },
   { key: 'log', path: '/log', label: 'Log', title: 'Log', Icon: EditNoteOutlined, ActiveIcon: EditNote },
   { key: 'train', path: '/train', label: 'Train', title: 'Train', Icon: FitnessCenterOutlined, ActiveIcon: FitnessCenter },
   { key: 'progress', path: '/progress', label: 'Progress', title: 'Progress', Icon: InsightsOutlined, ActiveIcon: Insights },

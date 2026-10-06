@@ -2,6 +2,7 @@
 export * from './common'
 export * from './files'
 export * from './push'
+export * from './secrets'
 export * from './profile-settings'
 export * from './body'
 export * from './water'

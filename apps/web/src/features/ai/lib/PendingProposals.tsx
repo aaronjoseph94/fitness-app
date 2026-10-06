@@ -14,16 +14,25 @@ const SHOWN = 5
 
 const asChatProposal = (p: Proposal): ChatProposal => ({ type: 'proposal', id: p.id, summary: p.summary, status: p.proposal_status, body: p.body })
 
-export function PendingProposals() {
+/**
+ * The proposals waiting for a tap that the open thread is not already showing. Exported so the page can tell whether
+ * there is a rail worth laying out at all — a desktop with nothing waiting hands the thread the whole width rather
+ * than leaving a rail-shaped hole beside it.
+ */
+export function usePendingProposals(): Proposal[] {
   const feed = useApiQuery(endpoints.day.events, { query: {} }, { staleTime: 30_000, refetchInterval: 60_000 })
   // The open thread already shows its own proposals under the replies that made them.
   const threadId = useThreadStore((s) => s.threadId)
   const fresh = useThreadStore((s) => s.fresh)
   const thread = useApiQuery(endpoints.ai.chatHistory, { query: { thread_id: threadId } }, { enabled: !fresh, staleTime: 60_000 })
   const inThread = new Set((thread.data ?? []).flatMap((m) => m.proposals.map((p) => p.id)))
-  const pending = (feed.data?.events ?? [])
+  return (feed.data?.events ?? [])
     .filter((e): e is Proposal => e.kind === 'proposal' && e.proposal_status === 'pending' && !inThread.has(e.id))
     .reverse()
+}
+
+export function PendingProposals() {
+  const pending = usePendingProposals()
   if (pending.length === 0) return null
   return (
     <Box component="section" aria-labelledby="ask-ai-pending-title" data-testid="ask-ai-pending">

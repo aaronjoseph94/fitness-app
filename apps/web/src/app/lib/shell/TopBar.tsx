@@ -1,8 +1,9 @@
-// Owns: the slim sticky top bar — back arrow on non-tab pages, page title, sync status, the Ask AI button (opens the
-// slide-up panel; hidden on the AI tab, which is the chat), settings gear — and the thin progress line while a lazy
-// page loads.
+// Owns: the slim sticky top bar — back arrow on non-tab pages, page title, the command-palette trigger (desktop only),
+// sync status, the Ask AI button (opens the slide-up panel; hidden on the AI tab, which is the chat), settings gear —
+// and the thin progress line while a lazy page loads.
 import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
+import SearchRounded from '@mui/icons-material/SearchRounded'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
@@ -26,6 +27,7 @@ export function TopBar({ title, width, showBack }: TopBarProps) {
   const onSettings = useMatch('/settings') !== null
   const onAskAi = useMatch('/ai') !== null
   const openAskAi = useUiStore((s) => s.setAskAiOpen)
+  const openPalette = useUiStore((s) => s.setPaletteOpen)
   const loading = useNavigation().state === 'loading'
   return (
     <Box
@@ -41,6 +43,15 @@ export function TopBar({ title, width, showBack }: TopBarProps) {
         <Typography component="h1" variant="h3" noWrap sx={{ flex: 1, minWidth: 0 }}>
           {title}
         </Typography>
+        <IconButton
+          aria-label="Search and commands"
+          data-testid="palette-open"
+          onClick={() => openPalette(true)}
+          // Keyboard-first, so it stays off the phone's bar, where there is no keyboard to finish the shortcut with.
+          sx={{ display: { xs: 'none', md: 'inline-flex' } }}
+        >
+          <SearchRounded />
+        </IconButton>
         <SyncStatus />
         {!onAskAi && (
           <IconButton aria-label="Ask AI" data-testid="ask-ai-open" onClick={() => openAskAi(true)}>

@@ -8,6 +8,7 @@ import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Stack from '@mui/material/Stack'
 import { useSearchParams } from 'react-router'
+import { Column, Columns } from '../../components'
 import { useLocalToday } from '../../app/local-today'
 import { tokens } from '../../theme'
 import { HabitsColumn } from './lib/HabitsColumn'
@@ -65,9 +66,16 @@ export function ProgressPage() {
 
       <TrainingSection sessions={sessions} from={from} to={to} />
 
-      <WeekViewSection date={date} />
-
-      <WeeklyReviewsSection />
+      {/* The week and its reviews are both lists of the recent past, so from 900 px they sit side by side and
+          together fit one screen instead of two. A phone still reads them one after the other. */}
+      <Columns md={2}>
+        <Column>
+          <WeekViewSection date={date} />
+        </Column>
+        <Column>
+          <WeeklyReviewsSection />
+        </Column>
+      </Columns>
     </Stack>
   )
 }

@@ -4,12 +4,14 @@
 import Drawer from '@mui/material/Drawer'
 import { tokens } from '../../theme'
 import { Chat } from './lib/Chat'
-import { PendingProposals } from './lib/PendingProposals'
+import { PendingProposals, usePendingProposals } from './lib/PendingProposals'
 
 export { SUGGESTIONS } from './lib/Chat'
 
 export function AskAiPage() {
-  return <Chat variant="page" aside={<PendingProposals />} />
+  const pending = usePendingProposals()
+  // Nothing waiting: no rail, so the thread takes the width instead of leaving a column-shaped gap beside it.
+  return <Chat variant="page" aside={pending.length ? <PendingProposals /> : undefined} />
 }
 
 export interface AskAiPanelProps {
