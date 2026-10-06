@@ -190,8 +190,11 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
 1. Run (from the repo root):
 
    ```sh
-   pnpm --filter @fitness/worker deploy
+   pnpm --filter @fitness/worker run deploy
    ```
+
+   Note the `run`. `pnpm --filter <pkg> deploy` is pnpm's own `deploy` subcommand and fails with
+   `ERR_PNPM_INVALID_DEPLOY_TARGET` before the script runs.
 
    **Expect:**
    - wrangler uploads the Worker and the static assets (`apps/web/dist`);

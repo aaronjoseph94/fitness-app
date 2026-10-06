@@ -14,11 +14,16 @@ import { useEntrance } from './useEntrance'
  * Rules that hide content from sight while leaving it in the accessibility tree: no size, clipped, and out of flow, so
  * it costs no layout and cannot be reached by a tap. Exported so any screen can name something for assistive tech
  * without inventing a second way of doing it.
+ *
+ * The size must be written as `'1px'`, never as the bare number `1`: MUI's `sx` treats a number between 0 and 1 as a
+ * **percentage**, so `width: 1` compiles to `width: 100%` and this "hidden" element becomes a full-viewport box that
+ * gives every page a horizontal scrollbar. The height stays `'auto'` rather than 1 px so a long string cannot be
+ * clipped mid-glyph by the 1 px box — `overflow: hidden` and the clip do the hiding either way.
  */
 export const visuallyHidden = {
   position: 'absolute',
-  width: 1,
-  height: 1,
+  width: '1px',
+  height: 'auto',
   p: 0,
   m: '-1px',
   overflow: 'hidden',

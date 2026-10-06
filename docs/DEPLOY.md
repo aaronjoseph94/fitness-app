@@ -66,8 +66,11 @@ Never set `DEV_AUTH_BYPASS` in production (it is only honoured on localhost anyw
 ## 5. Deploy
 
 ```sh
-pnpm --filter @fitness/worker deploy     # wrangler deploy; serves apps/web/dist as static assets
+pnpm --filter @fitness/worker run deploy   # wrangler deploy; serves apps/web/dist as static assets
 ```
+
+Note the `run`: `pnpm --filter <pkg> deploy` is pnpm's **own** `deploy` subcommand (it demands a target directory and fails with
+`ERR_PNPM_INVALID_DEPLOY_TARGET`), so the script is only reached with an explicit `run`.
 
 The URL is `https://fitness.<your-subdomain>.workers.dev` unless you add a custom domain (needs a domain on a Cloudflare zone).
 
