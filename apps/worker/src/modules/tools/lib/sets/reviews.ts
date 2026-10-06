@@ -1,5 +1,5 @@
 // Owns: the review tools — get_weekly_review, list_reviews (the reviews module: weekly metrics, narrative and
-// proposals per Monday–Sunday week; a Claude review supersedes the Gemini draft).
+// proposals per Monday–Sunday week; a Claude review supersedes the AI draft).
 import { Count, Id, IsoWeek, LocalDate, WeeklyReview } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import { notFound } from '../../../../lib/http-error'
@@ -10,6 +10,7 @@ const ReviewBrief = z.object({
   id: Id,
   week: IsoWeek,
   week_start: LocalDate,
+  /** 'gemini' is the shared id for a review the AI wrote, whichever model the router picked — never a provider name. */
   author: z.enum(['claude_mcp', 'gemini']),
   trend_change_kg: z.number().nullable(),
   intake_kcal_avg: z.number(),
@@ -26,7 +27,7 @@ export const REVIEW_TOOLS: readonly ToolDefinition[] = [
     title: 'Get a weekly review',
     area: 'reviews',
     description:
-      "One week's review (ISO week such as 2026-W40; default the newest): the engine's weekly metrics (trend change, intake and macro averages vs targets, protein adherence, water, steps, sleep, sessions done vs planned, volume and muscle scores, PRs, fasts, logging adherence, forecast, safety flags, scan deltas), the narrative, highlights, concerns and its proposals with their current status. author is claude_mcp when a coach review replaced the Gemini draft. Read-only.",
+      "One week's review (ISO week such as 2026-W40; default the newest): the engine's weekly metrics (trend change, intake and macro averages vs targets, protein adherence, water, steps, sleep, sessions done vs planned, volume and muscle scores, PRs, fasts, logging adherence, forecast, safety flags, scan deltas), the narrative, highlights, concerns and its proposals with their current status. author is claude_mcp when a coach review replaced the AI draft (author 'gemini', the shared id for an AI-written review). Read-only.",
     input: z.object({ week: IsoWeek.optional() }),
     output: WeeklyReview,
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },

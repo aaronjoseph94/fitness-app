@@ -31,6 +31,10 @@ test('Aaron logs a whole day from Today in under a minute', async ({ page }) => 
   await test.step('a meal from food search', async () => {
     await quickLog.getByRole('button', { name: 'Meal' }).click()
     const sheet = page.getByRole('dialog', { name: 'Log meal' })
+    // Breakfast is the first of the four slots, always: the setting that used to hide it is gone.
+    const slots = sheet.getByRole('radiogroup', { name: 'Slot' }).getByRole('radio')
+    await expect(slots).toHaveCount(4)
+    await expect(slots).toContainText(['Breakfast', 'Lunch', 'Dinner', 'Snack'])
     await sheet.getByRole('button', { name: 'Foods' }).click()
     await sheet.getByLabel('Search foods').fill('chicken breast')
     await sheet

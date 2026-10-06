@@ -33,7 +33,7 @@ interface TrainingSectionProps {
 
 export function TrainingSection({ sessions, from, to }: TrainingSectionProps) {
   const index = useExerciseIndex()
-  const header = <SectionHeader title="Training" subtitle="Weekly volume by muscle group, the muscles a week reached, and strength per exercise." />
+  const header = <SectionHeader title="Training" />
   if (!sessions.data)
     return (
       <Box>

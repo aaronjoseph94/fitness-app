@@ -51,7 +51,7 @@ export function TodayPage() {
       <PageHero
         testId="today-hero"
         eyebrow={greetingFor(new Date().getHours())}
-        title="Welcome back"
+        title="Welcome back, Aaron"
         pageName="Today"
         subtitle={formatLongDate(date)}
       />

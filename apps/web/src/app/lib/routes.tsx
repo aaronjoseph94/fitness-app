@@ -109,11 +109,6 @@ const routes: RouteObject[] = [
           },
           { path: 'photos', handle: { title: 'Progress photos' } satisfies RouteHandle, lazy: page(() => import('../../features/photos'), 'PhotosPage') },
           { path: 'photos/new', handle: { title: 'New photos' } satisfies RouteHandle, lazy: page(() => import('../../features/photos'), 'PhotoCapturePage') },
-          {
-            path: 'styleguide',
-            handle: { title: 'Styleguide', width: 'wide' } satisfies RouteHandle,
-            lazy: page(() => import('../../features/styleguide'), 'StyleguidePage'),
-          },
           { path: '*', handle: { title: 'Not found' } satisfies RouteHandle, Component: NotFound },
         ],
       },

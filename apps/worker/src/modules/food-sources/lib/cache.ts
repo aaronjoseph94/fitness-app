@@ -1,6 +1,6 @@
 // Owns: the `foods` table as the nutrition cache — lookups by barcode, by (source, source_id) and full-text by name, and the
 // upsert by (source, source_id) that stores what a source returned. LLM estimates (source 'llm') never count as matches.
-// Also counts external calls per source and UTC day in `provider_usage` (keys 'openfoodfacts', 'usda_fdc').
+// Also counts external calls per source and UTC day in `provider_usage` (key 'openfoodfacts').
 import { and, desc, eq, getTableColumns, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
 import { foods, provider_usage, type Db, type Row } from '../../../db'
 import type { RemoteSource } from './gate'
@@ -40,7 +40,7 @@ export async function findBySourceIds(db: Db, refs: SourceRef[]): Promise<FoodRo
     .where(or(...refs.map((r) => and(eq(foods.source, r.source), eq(foods.source_id, r.source_id)))))
 }
 
-/** Every foods column but `raw` (a cached USDA record is ~25 KB; search never needs it). */
+/** Every foods column but `raw` (a cached source record can be tens of KB; search never needs it). */
 const { raw: _raw, ...SEARCH_COLUMNS } = getTableColumns(foods)
 
 /**
@@ -100,7 +100,7 @@ export async function remember(db: Db, drafts: FoodDraft[], now: Date): Promise<
   return results.flat()
 }
 
-const USAGE_KEY: Record<RemoteSource, string> = { off: 'openfoodfacts', usda: 'usda_fdc' }
+const USAGE_KEY: Record<RemoteSource, string> = { off: 'openfoodfacts' }
 
 /** One more request for this source today (UTC day), insert-or-increment in one statement. */
 export async function recordUsage(db: Db, source: RemoteSource, now: Date): Promise<void> {

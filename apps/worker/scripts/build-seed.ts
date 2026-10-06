@@ -157,7 +157,7 @@ const settingsRows: NewRow<typeof settings>[] = [
     fibre_target_g: RAILS.fibre_target_g,
     water_target_ml: RAILS.water_target_ml,
     training_days: TRAINING_DAYS,
-    breakfast_enabled: false,
+    breakfast_enabled: true,
     auto_apply_safe: false,
     scan_interval_days: 28,
     reminders,

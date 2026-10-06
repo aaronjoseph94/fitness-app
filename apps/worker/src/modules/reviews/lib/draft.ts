@@ -1,8 +1,8 @@
-// Owns: writing a Gemini review for one week (the weekly_review job's work, SPEC §8–9) — skip when Claude already
+// Owns: writing the AI's review for one week (the weekly_review job's work, SPEC §8–9) — skip when Claude already
 // reviewed the week; otherwise metrics → router.complete (WeeklyReviewOutput) → proposals through the plan's guards
 // (floor, ceiling, ≤150 kcal per step, later steps scheduled a week apart) → the earlier draft's pending proposals
 // withdrawn, the new proposals, the weekly_reviews row and one ai_events 'review', ALL in one batch (a deadline
-// requeue redrafts cleanly, never leaving a second set pending) → next week's plan stored as a proposed Gemini draft
+// requeue redrafts cleanly, never leaving a second set pending) → next week's plan stored as a proposed AI draft
 // (week-plans module) with the current targets carried forward unchanged: a proposal reaches that week once, through
 // the plan version accepting it makes (carried into the week plan), never also baked into the draft.
 // When the router fails the week still gets a review: metrics plus an engine-written narrative, no proposals.
@@ -122,7 +122,7 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
     }
   }
 
-  // A redraft replaces the earlier Gemini draft: its proposals still pending are withdrawn (rejected) in the batch below.
+  // A redraft replaces the earlier AI draft: its proposals still pending are withdrawn (rejected) in the batch below.
   const withdrawn = existing ? storedProposals(existing).filter((p) => p.event_id && p.status === 'pending').map((p) => p.event_id!) : []
   const statuses = withdrawn.length ? await proposalStatuses(ai, withdrawn) : new Map()
   const withdraw = withdrawn.filter((id) => statuses.get(id) === 'pending').map((id) => proposalDecisionUpdate(ai, id, { status: 'rejected' }))
@@ -138,6 +138,7 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
   const fields = {
     metrics,
     narrative: output.narrative,
+    // The shared author id for an AI-written row (as OpenRouter or any other fallback), never a provider name.
     author: 'gemini' as const,
     proposals,
     highlights: output.highlights,
@@ -171,8 +172,8 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
 }
 
 /**
- * Next week's plan from this draft, stored as proposed with author gemini (so the week never starts without a plan;
- * a plan by Claude or Aaron is never replaced). The first candidate that passes the guards is kept — the LLM's plan,
+ * Next week's plan from this draft, stored as proposed with the AI author id (so the week never starts without a plan;
+ * a plan by Claude or Aaron is never replaced). The first candidate that passes the guards is kept — the model's plan,
  * else the carried-forward one. A failure here never fails the review.
  */
 async function storeDraftPlan(ai: Deps, input: { week_start: string; review_id: string; plans: WeekPlanContent[] }): Promise<void> {

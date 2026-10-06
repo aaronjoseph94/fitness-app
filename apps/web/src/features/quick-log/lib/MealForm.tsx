@@ -33,7 +33,7 @@ import { clockOf, instantAt, todayLocal } from './dates'
 import { FavouritesPane, type QuickMeal } from './FavouritesPane'
 import { FoodPicker, type PickedFood } from './FoodPicker'
 import { defaultSlot, portion, SLOT_LABEL, SLOT_TIME, sum, visibleSlots } from './nutrition'
-import { useLogSettings, useRecentFoods, useRecentFoodsState } from './reads'
+import { useRecentFoods, useRecentFoodsState } from './reads'
 import { noticeFor, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 
@@ -55,9 +55,8 @@ interface MealFormProps {
 }
 
 export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: MealFormProps) {
-  const { breakfastEnabled } = useLogSettings()
   const isToday = date === todayLocal()
-  const [slot, setSlot] = useState<MealSlot>(initialSlot ?? (isToday ? defaultSlot(clockOf(Date.now()), breakfastEnabled) : 'lunch'))
+  const [slot, setSlot] = useState<MealSlot>(initialSlot ?? (isToday ? defaultSlot(clockOf(Date.now())) : 'lunch'))
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {})
   const recents = useRecentFoodsState(date)
   const hasQuick = (favourites.data?.length ?? 0) > 0 || recents.foods.length > 0
@@ -84,7 +83,7 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
   const photo = usePhotoMeal()
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const slots = visibleSlots(breakfastEnabled || slot === 'breakfast')
+  const slots = visibleSlots()
   const eatenAt = () => (isToday ? new Date().toISOString() : instantAt(date, SLOT_TIME[slot]))
 
   const save = (body: MealCreate, message: string) => {

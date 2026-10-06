@@ -112,7 +112,7 @@ export function PhotosLibrary() {
         <EmptyState
           illustration="progress"
           title={pose ? `No ${POSE_LABEL[pose].toLowerCase()} photos yet` : 'No progress photos yet'}
-          body="Front, side and back with a faint pose outline, so every month lines up. They stay private and never go to any AI."
+          body="Front, side and back, lined up with the outline. Private: never sent to any AI."
           action={
             <Button component={RouterLink} to={pose ? `/photos/new?pose=${pose}` : '/photos/new'} variant="contained" startIcon={<AddAPhotoOutlined />}>
               Take {pose ? `a ${POSE_LABEL[pose].toLowerCase()} photo` : 'your first photos'}
@@ -142,7 +142,7 @@ export function PhotosLibrary() {
         <EmptyState
           illustration={null}
           title="Two photos to compare"
-          body="Compare needs at least two photos. Take another one next week, same spot, same light."
+          body="Compare needs two photos. Take one next week, same spot and light."
           testId="photos-compare-empty"
         />
       )}

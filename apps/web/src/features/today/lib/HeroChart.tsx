@@ -38,7 +38,7 @@ export function HeroChart({ trend, forecast, goalKg, onWeighIn }: HeroChartProps
           ? undefined
           : {
               title: 'The trend starts with a weigh-in',
-              body: 'Weigh in each morning after the bathroom; the line smooths out day-to-day swings.',
+              body: 'Weigh in each morning; the line smooths out day-to-day swings.',
               illustration: 'progress',
               action: { label: 'Log weigh-in', onClick: onWeighIn },
             }

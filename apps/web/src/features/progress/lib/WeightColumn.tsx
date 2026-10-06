@@ -25,7 +25,7 @@ interface WeightColumnProps {
 
 export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumnProps) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
-  const header = <SectionHeader title="Weight and body" subtitle="Trend first; the raw weigh-ins are the faint dots." />
+  const header = <SectionHeader title="Weight and body" />
   if (!trend.data)
     return (
       <Stack spacing={4}>
@@ -85,7 +85,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumn
         <WeeklyLossChart weeks={weeks} />
       </ChartCard>
 
-      <ChartCard title="Milestones" subtitle="Reached, and forecast dates for the next ones">
+      <ChartCard title="Milestones" subtitle="Reached and forecast">
         <Stack spacing={4}>
           <MilestoneTimeline milestones={timelines.weight} />
           {timelines.composition.length > 0 && <MilestoneTimeline milestones={timelines.composition} metric="fatMass" />}
@@ -94,7 +94,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumn
 
       <ChartCard
         title="Waist and WHR"
-        subtitle="Weekly tape: waist at the navel and the waist-to-hip ratio"
+        subtitle="Waist at the navel and the waist-to-hip ratio"
         empty={
           waist.length
             ? undefined

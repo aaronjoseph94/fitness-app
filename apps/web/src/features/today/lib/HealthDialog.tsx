@@ -70,7 +70,7 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
       <DialogContent>
         <Box sx={{ display: 'grid', gap: 4, pt: 1 }}>
           <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
-            From the Health app. Sleep is the night that ended on this date.
+            Sleep is the night that ended on this date.
           </Box>
           <TextField
             label="Date"

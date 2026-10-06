@@ -17,7 +17,7 @@ export function ScansSection() {
     return (
       <ChartCard
         title="Body composition across scans"
-        subtitle="Fat and lean mass, body fat % and visceral level per Evolt scan"
+        subtitle="Per Evolt scan"
         empty={{ title: 'No scans yet', body: 'Upload an Evolt sheet and every metric is charted here.', illustration: null, action: { label: 'Go to scans', onClick: () => void navigate('/scans') } }}
         testId="progress-scans"
       />

@@ -11,6 +11,7 @@ import {
   ChatMessage,
   ChatSend,
   ChatSent,
+  ChatThreadQuery,
   DateRange,
   DaysQuery,
   DaySummary,
@@ -416,6 +417,8 @@ export const endpoints = {
     workout: defineEndpoint({ method: 'POST', path: '/api/ai/workout', body: AiWorkoutRequest, response: JobRef }),
     chat: defineEndpoint({ method: 'POST', path: '/api/ai/chat', body: ChatSend, response: ChatSent }),
     chatHistory: defineEndpoint({ method: 'GET', path: '/api/ai/chat', query: ChatHistoryQuery, response: z.array(ChatMessage) }),
+    /** Forget one chat: its messages and tool rows go. Deleting an unknown thread is a no-op (still Ok). */
+    chatDelete: defineEndpoint({ method: 'DELETE', path: '/api/ai/chat', query: ChatThreadQuery, response: Ok }),
     job: defineEndpoint({ method: 'GET', path: '/api/jobs/:id', params: IdParams, response: AiJob }),
   },
 

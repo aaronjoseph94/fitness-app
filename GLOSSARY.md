@@ -5,7 +5,7 @@
 ## People and authority
 
 - **Aaron**: the one user. Every write is attributed to an **Actor**.
-- **Actor**: who made a change: `user` (Aaron in the app), `ai` (a Gemini-class job), `mcp` (Claude through the connector). Stored on every write and event.
+- **Actor**: who made a change: `user` (Aaron in the app), `ai` (a job run by the model chain), `mcp` (Claude through the connector). Stored on every write and event.
 - **Coach**: Claude via MCP doing judgement work (weekly review, scan debrief, program design, plateau check). The **Clerk** is the free-tier LLM doing per-log work (meal parsing, day adjustment, scan extraction).
 
 ## Rails and plans
@@ -16,7 +16,7 @@
 - **Daily targets**: the materialised targets for one local date (kcal, macros, fibre, water, steps, fast day, training planned), rebuilt from the active plan version and the active week plan.
 - **Week plan**: the plan for one Monday–Sunday: per-day targets, the four sessions as template snapshots, water, steps, fast dates, scan date, focus note. Status `proposed → active → superseded`.
 - **Proposal**: a suggested change (from `ai` or `mcp`) awaiting a decision: `pending → accepted | rejected | auto_applied`. Accepting creates a plan version.
-- **Review**: a weekly coaching pass (`weekly_reviews`). A Claude review supersedes the Gemini draft for that week. Applying a review is one plan version, revertible in one tap.
+- **Review**: a weekly coaching pass (`weekly_reviews`). A Claude review supersedes the AI draft for that week. Applying a review is one plan version, revertible in one tap.
 
 ## Body and progress
 
@@ -35,7 +35,7 @@
 
 - **Meal**: one eating occasion in a **slot** (`breakfast` hidden by default, `lunch`, `dinner`, `snack`) with **items**. Status `parsing → review → confirmed`.
 - **Meal item**: a food with grams and nutrition; `estimated` when no database match and the LLM guessed.
-- **Food**: a cached nutrition record from Open Food Facts, Canadian Nutrient File, USDA FDC, the LLM, or Aaron.
+- **Food**: a cached nutrition record from Open Food Facts, the Canadian Nutrient File, the LLM, or Aaron. Canada is the generic-food source: USDA FoodData Central is no longer queried, and only pre-existing cached rows still carry its `usda` tag.
 - **Favourite**: a one-tap repeat: a food with default grams, or a **recipe** (list of foods with grams).
 - **Fast**: a planned or ad-hoc 24 h fast (`started_at`, `ended_at`). A **fast day** is any local date overlapping a fast; intake expected 0, water target up, training light.
 - **Day adjustment**: the card after a meal or fast start: remaining kcal and macros, protein status, next-meal suggestions.
@@ -56,6 +56,6 @@
 
 - **Job**: a row in `ai_jobs` (`queued → running → done | failed`) with a lease; run in `waitUntil` after the response and swept by the 5-minute cron.
 - **Event**: a row in `ai_events` the dashboard and MCP read: `adjustment`, `proposal`, `review`, `note`, `change`.
-- **Router**: the LLM provider chain (Gemini → GLM → OpenRouter → Groq) with quotas, retries, schema repair and failover.
+- **Router**: the LLM provider chain (OpenRouter `:free` → GLM → Gemini → Groq) with quotas, retries, schema repair and failover.
 - **Tools layer**: the typed operations shared by Ask AI and MCP (`get_today`, `apply_review`, …); each tool calls the same worker modules as the REST routes.
 - **Review bundle**: the one compact JSON a coach reads for a period (`get_review_bundle`).

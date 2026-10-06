@@ -1,17 +1,18 @@
 // Owns: the food-sources seam — barcode lookup, cache-first matching, generic-over-branded preference, portion maths.
-// External sources are fakes serving recorded-shape responses; the foods cache is the real local D1.
+// The Canadian Nutrient File is the generic-food source (seeded locally) and Open Food Facts is the only remote one;
+// USDA FoodData Central must never be queried, which every host assertion below pins down.
 import { env } from 'cloudflare:workers'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, foods, type NewRow } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { createFoodSources } from '../index'
-import { fakeFetch, OFF_PRODUCT_NUTELLA, OFF_SEARCH_BANANA, USDA_SEARCH_OVERRIPE_BANANA } from './fixtures'
+import { fakeFetch, OFF_PRODUCT_NUTELLA, OFF_SEARCH_BANANA, OFF_SEARCH_OIKOS } from './fixtures'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
 const deps: Deps = {
   db,
-  env: { ...env, USDA_FDC_API_KEY: 'test-key' },
+  env,
   now: () => new Date('2026-10-05T18:00:00.000Z'),
   actor: 'ai',
   waitUntil: (p) => void pending.push(p),
@@ -35,8 +36,9 @@ const cnf = (code: number, name: string, kcal: number, protein: number, carbs: n
 const REMOTE = {
   'https://world.openfoodfacts.org/api/v2/product/3017624010701': OFF_PRODUCT_NUTELLA,
   'https://search.openfoodfacts.org/search': OFF_SEARCH_BANANA,
-  'https://api.nal.usda.gov/fdc/v1/foods/search': USDA_SEARCH_OVERRIPE_BANANA,
 }
+const OIKOS = { 'https://search.openfoodfacts.org/search': OFF_SEARCH_OIKOS }
+const hosts = (calls: { url: string }[]) => [...new Set(calls.map((c) => new URL(c.url).hostname))]
 
 describe('food sources', () => {
   it('maps an Open Food Facts barcode hit to a per-100 g food and caches it', async () => {
@@ -63,6 +65,8 @@ describe('food sources', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]!.url).toContain('fields=code,product_name,brands,serving_size,nutriments,image_front_small_url')
     expect(calls[0]!.userAgent).toBe('FitnessTracker/1.0 (personal, non-commercial)')
+    // Open Food Facts needs no key, so none travels (a key in a request would end up in a log line).
+    expect(calls[0]!.apiKey).toBeNull()
 
     const again = await createFoodSources(deps, { fetch }).byBarcode('3017624010701')
     expect(again?.id).toBe(food!.id)
@@ -100,21 +104,29 @@ describe('food sources', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('asks USDA (Foundation / SR Legacy), not Open Food Facts, when the cache has no good generic match', async () => {
-    const { fetch, calls } = fakeFetch(REMOTE)
+  it('falls through to Open Food Facts — never USDA — when the cache has no match for a branded item', async () => {
+    const { fetch, calls } = fakeFetch(OIKOS)
 
-    const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'overripe banana', grams: 200 })
+    const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'Oikos Pro yogurt', grams: 200 })
 
-    expect(match?.food).toMatchObject({ source: 'usda', source_id: '1105073', name: 'Bananas, overripe, raw', kcal_per_100g: 85, sugar_g: 15.8 })
-    expect(match?.nutrients).toEqual({ kcal: 170, protein_g: 1.5, carbs_g: 40.2, fat_g: 0.4, fibre_g: 3.4 })
-    expect(calls.map((c) => new URL(c.url).hostname)).toEqual(['api.nal.usda.gov'])
-    // The key travels in a header, never in the URL (URLs end up in logs and error messages).
-    expect(calls[0]!.url).not.toContain('api_key')
-    expect(calls[0]!.apiKey).toBe('test-key')
+    expect(match?.food).toMatchObject({ source: 'off', source_id: '0056800100237', name: 'Oikos Pro Yogurt', brand: 'Oikos', kcal_per_100g: 90, protein_g: 15 })
+    expect(match?.nutrients).toEqual({ kcal: 180, protein_g: 30, carbs_g: 10.6, fat_g: 4.6, fibre_g: 0 })
+    expect(hosts(calls)).toEqual(['search.openfoodfacts.org'])
+    expect(calls[0]!.apiKey).toBeNull()
 
-    const cached = await createFoodSources(deps, { fetch }).matchItem({ name: 'overripe banana', grams: 200 })
+    // The hit is cached, so the second lookup is local (a fresh instance shares the recording fetch).
+    const cached = await createFoodSources(deps, { fetch }).matchItem({ name: 'Oikos Pro yogurt', grams: 200 })
     expect(cached?.food.id).toBe(match!.food.id)
     expect(calls).toHaveLength(1)
+  })
+
+  it('leaves a generic item the cache does not carry unmatched rather than querying a database outside Canada', async () => {
+    const { fetch, calls } = fakeFetch(REMOTE)
+
+    const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'durian fruit', grams: 100 })
+
+    expect(match).toBeNull()
+    expect(hosts(calls)).toEqual(['search.openfoodfacts.org'])
   })
 
   it('scales a per-100 g food to a portion, counting unknown fibre as 0', () => {

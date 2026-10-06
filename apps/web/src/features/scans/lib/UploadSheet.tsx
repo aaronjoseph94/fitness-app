@@ -106,8 +106,8 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
         {step.kind === 'pick' && (
           <>
             <Box sx={{ color: 'text.secondary', fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>
-              Share the result sheet from the Evolt Active app, or save it from app.evoltactive.com, then pick it here. You'll hide your name
-              before anything is uploaded.
+              Share the result sheet from the Evolt Active app, or save it from app.evoltactive.com. You'll hide your name before anything
+              is uploaded.
             </Box>
             <Button variant="contained" size="large" startIcon={<UploadFileRounded />} onClick={() => input.current?.click()} data-testid="scan-pick">
               Choose the sheet (PDF, PNG or JPG)

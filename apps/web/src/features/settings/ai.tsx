@@ -132,7 +132,7 @@ export function AiSettingsPage() {
       {modelKeysSet.length === 0 && (
         <Alert severity="warning" data-testid="ai-not-set-up">
           No model key is set, so the AI paths are off: logged meals wait for you to itemise them and weekly reviews come
-          from the engine alone. Add the Gemini key to turn them back on.
+          from the engine alone. Add the OpenRouter key to turn them back on.
         </Alert>
       )}
 
@@ -142,8 +142,7 @@ export function AiSettingsPage() {
             {SECRET_FIELDS[revealed.name].label} saved
           </Box>
           <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
-            Copy it now if you need it somewhere else — a Claude connector, or your Apple Watch shortcut. Keys are
-            write-only: from here on this screen shows that it is set, never the value.
+            Copy it now if you need it elsewhere. Keys are write-only: this screen never shows the value again.
           </Box>
           <Box sx={{ mt: 3 }}>
             <CopyRow
@@ -165,7 +164,7 @@ export function AiSettingsPage() {
       <SettingsGroup
         id="models"
         title="Models"
-        subtitle="Free tiers only. The router tries them in order and only uses the ones with a key, so one key is enough to start."
+        subtitle="Free tiers, tried top to bottom; one key is enough."
       >
         {MODEL_SECRET_NAMES.map(secretRow)}
       </SettingsGroup>
@@ -173,7 +172,7 @@ export function AiSettingsPage() {
       <SettingsGroup
         id="claude"
         title="Claude"
-        subtitle="Claude is the senior coach: it reads the same data through a connector in your own Claude chats, and works inside the same rails."
+        subtitle="The senior coach, through a connector in your own Claude chats."
       >
         {connection.data ? (
           <>
@@ -223,7 +222,8 @@ export function AiSettingsPage() {
         </Box>
       </SettingsGroup>
 
-      <SettingsGroup id="key-storage" title="Where these keys live">
+      <SettingsGroup id="key-storage"        title="Where these keys live"
+      >
         <Box component="ul" sx={{ m: 0, py: 3, pl: 8, pr: 4, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.65 }}>
           <li>
             In this app’s own Cloudflare D1 database, written only through your signed-in session. They never enter the web

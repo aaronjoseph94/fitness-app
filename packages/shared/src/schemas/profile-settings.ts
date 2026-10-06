@@ -20,7 +20,21 @@ export const Profile = Row.extend({
 })
 export type Profile = z.infer<typeof Profile>
 
-export const ProfilePatch = Profile.pick({ height_cm: true, birth_date: true, goal_weight_kg: true, goal_date: true }).partial()
+/**
+ * Every editable profile field (SPEC §3). The whole profile is Aaron's to change: the goal and the start point are
+ * facts about him, not derived numbers, so nothing here is read-only. `timezone` stays free text — it is an IANA zone
+ * (always America/Edmonton) and validating the full zone list would reject a new one.
+ */
+export const ProfilePatch = Profile.pick({
+  height_cm: true,
+  birth_date: true,
+  sex: true,
+  timezone: true,
+  goal_weight_kg: true,
+  goal_date: true,
+  start_weight_kg: true,
+  start_date: true,
+}).partial()
 export type ProfilePatch = z.infer<typeof ProfilePatch>
 
 /** Whole kcal for a daily rail; bounds are sanity limits, the values themselves are Aaron's (1,400 / 1,700). */

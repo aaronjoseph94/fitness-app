@@ -1,8 +1,8 @@
 // Owns: the Dashboard's opening bento — the window's headline metrics as a board of panels of different weights rather
 // than a wall of equal cards. The trend weight is the hero (the page's one gradient surface, with the goal drawn as its
-// bar), the goals rail spans two of the board's rows beside it, and the supporting metrics fill the remaining rows one
-// category at a time. Every span is chosen so a row adds up to the board's track count — 12 at `lg`, 6 at `md`, two
-// across on a phone — so a row is never left half empty and no panel is more prominent than its own importance.
+// bar), the goals rail spans two of the board's rows beside it, and the five supporting metrics fill the rows below it
+// three to a line. Every span is chosen so a row adds up to the board's track count — 12 at `lg`, 6 at `md`, two across
+// on a phone — so a row is never left half empty and no panel is more prominent than its own importance.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { Sparkline } from '../../../charts'
@@ -14,8 +14,8 @@ const GROUP_ORDER: readonly KpiGroup[] = ['weight', 'intake', 'body', 'habits']
 
 /** The goals rail takes the third of the widest board beside the hero. */
 const RAIL_SPAN = 4
-/** How many of the board's rows the rail is tall, which is how many rows of tiles sit beside it. */
-const RAIL_ROWS = 3
+/** How many of the board's rows the rail is tall: the hero's row, plus the one row of tiles that shares it with the rail. */
+const RAIL_ROWS = 2
 
 export interface KpiBandProps {
   kpis: readonly Kpi[]

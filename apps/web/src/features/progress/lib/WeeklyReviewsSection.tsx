@@ -29,7 +29,7 @@ export function WeeklyReviewsSection() {
   const rows = reviews.data ?? []
   return (
     <Box data-testid="progress-weekly-reviews">
-      <SectionHeader title="Weekly reviews" subtitle="Each week's summary, printable, with its proposals" />
+      <SectionHeader title="Weekly reviews" subtitle="Each week's report and its proposals" />
       <Card sx={{ p: 0, overflow: 'hidden' }}>
         {reviews.isPending ? (
           <Box sx={{ p: 4, color: tokens.ink.secondary, fontSize: tokens.font.size.small }}>Loading reviews…</Box>

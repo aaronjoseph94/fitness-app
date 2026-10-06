@@ -1,21 +1,17 @@
-// Owns: the Dashboard's headline metrics (pure) — the main numbers Aaron wants first, each with its value, a delta
+// Owns: the Dashboard's headline metrics (pure) — the six numbers Aaron wants first, each with its value, a delta
 // against the start of the window (or against its target), the daily series its sparkline draws, and a footnote saying
 // exactly what the number is. Data in, tiles out: no React, no fetching (the `icon` is a component reference purely so
 // the tile and the metric read as the same thing everywhere; nothing here renders).
 import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
 import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
 import EggAltRounded from '@mui/icons-material/EggAltRounded'
-import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
 import MonitorWeightRounded from '@mui/icons-material/MonitorWeightRounded'
-import PercentRounded from '@mui/icons-material/PercentRounded'
-import SpeedRounded from '@mui/icons-material/SpeedRounded'
 import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
 import type { DaySummary } from '@fitness/shared/schemas'
 import type { MetricKey } from '../../../theme'
-import { confirmedScans } from '../../scans/charts'
-import { effectiveRate, lastTrend } from '../../progress/series'
+import { lastTrend } from '../../progress/series'
 import { goalProgress } from './GoalRail'
 import type { DashboardData } from './useDashboardData'
 
@@ -43,9 +39,9 @@ export interface Kpi {
   label: string
   group: KpiGroup
   /**
-   * The weight this metric takes on the opening band's widest board, in tracks of 12. The tiles beside the goals rail
-   * take 4 (two to a row), the ones under it take 3 (four to a row), and the hero takes 8 — the board's own track count,
-   * so the spans of any single row add up to 12 and nothing is left half a row wide.
+   * The weight this metric takes on the opening band's widest board, in tracks of 12. Every supporting tile takes 4
+   * (three to a row) and the hero takes 8 — the board's own track count, so the row beside the goals rail adds up to 12
+   * and nothing is left half a row wide.
    */
   span: number
   /** Tracks from `md` up, where the board has 6: two tiles across. Default 3. */
@@ -88,12 +84,12 @@ function last(values: readonly (number | null)[]): number | null {
 }
 
 /**
- * The window's main metrics, each tagged with the row of the band it belongs to (see `KpiGroup`); the band orders the
+ * The window's six metrics, each tagged with the row of the band it belongs to (see `KpiGroup`); the band orders the
  * rows, so the file states what belongs together rather than where a card happens to land. Every series is one entry per
- * day of `data.days`, so the sparklines line up across the whole band. Three numbers the app used to show up here are
- * deliberately absent: sessions, fasts and the share of days logged are countable facts of the window, and the goals
- * rail beside the band already states all three — a fourth card repeating them would be the crowding this band exists
- * to avoid.
+ * day of `data.days`, so the sparklines line up across the whole band. This is deliberately a short list: the weekly
+ * rate, body fat and lean mass are slow-moving scan facts, and the Body section below draws all three against their own
+ * history — repeating them as tiles was the crowding this band exists to avoid. Sessions, fasts and the share of days
+ * logged sit in the goals rail beside the band.
  */
 export function dashboardKpis(data: DashboardData): Kpi[] {
   const days = data.days
@@ -105,14 +101,6 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
   const trendNow = lastTrend(data.trend?.points ?? [])
   const trendStart = weightSeries.find((v) => v !== null) ?? null
   const goalDone = goalProgress(data.profile?.start_weight_kg ?? null, trendNow?.kg ?? null, data.profile?.goal_weight_kg ?? null)
-  const rate =
-    trendNow && data.trend?.forecast ? effectiveRate(trendNow, data.trend.forecast, data.profile?.goal_weight_kg ?? trendNow.kg) : null
-
-  const scans = confirmedScans(data.scans)
-  const firstScan = scans[0]
-  const scanNow = scans[scans.length - 1]
-  const fatSeries = scans.map((s) => s.record.body_fat_pct)
-  const leanSeries = scans.map((s) => s.record.lean_body_mass_kg)
 
   // Intake and recovery: means over the days they actually have a value (fast days have no meals by design).
   const kcalSeries = days.map((d) => (d.meals_logged > 0 && !d.is_fast_day ? Math.round(d.intake.kcal) : null))
@@ -150,57 +138,6 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     footnote: data.profile
       ? `Goal ${round(data.profile.goal_weight_kg, 1)} kg by ${data.profile.goal_date}`
       : 'Smoothed daily weight',
-  })
-
-  push({
-    key: 'rate',
-    label: 'Weekly rate',
-    group: 'body',
-    span: 4,
-    value: rate === null ? null : round(rate, 2),
-    unit: 'kg/wk',
-    precision: 2,
-    metric: 'weight',
-    icon: SpeedRounded,
-    footnote: data.trend?.forecast?.finish_date
-      ? `On track to finish ${data.trend.forecast.finish_date}`
-      : 'From the engine forecast',
-  })
-
-  push({
-    key: 'body-fat',
-    label: 'Body fat',
-    group: 'body',
-    span: 4,
-    value: scanNow ? round(scanNow.record.body_fat_pct, 1) : null,
-    unit: '%',
-    precision: 1,
-    metric: 'fatMass',
-    icon: PercentRounded,
-    series: fatSeries,
-    delta:
-      scanNow && firstScan && scanNow !== firstScan
-        ? { value: round(scanNow.record.body_fat_pct - firstScan.record.body_fat_pct, 1), unit: 'pt', period: 'across scans', good: 'down' }
-        : undefined,
-    footnote: scans.length ? `${scans.length} confirmed ${scans.length === 1 ? 'scan' : 'scans'}` : 'No confirmed scan yet',
-  })
-
-  push({
-    key: 'lean',
-    label: 'Lean mass',
-    group: 'body',
-    span: 3,
-    value: scanNow ? round(scanNow.record.lean_body_mass_kg, 1) : null,
-    unit: 'kg',
-    precision: 1,
-    metric: 'lean',
-    icon: FitnessCenterRounded,
-    series: leanSeries,
-    delta:
-      scanNow && firstScan && scanNow !== firstScan
-        ? { value: round(scanNow.record.lean_body_mass_kg - firstScan.record.lean_body_mass_kg, 1), period: 'across scans', good: 'up' }
-        : undefined,
-    footnote: 'From Evolt scans only',
   })
 
   push({
@@ -243,7 +180,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     key: 'steps',
     label: 'Steps',
     group: 'habits',
-    span: 3,
+    span: 4,
     value: avgSteps === null ? null : Math.round(avgSteps),
     metric: 'steps',
     icon: DirectionsWalkRounded,
@@ -256,7 +193,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     key: 'sleep',
     label: 'Sleep',
     group: 'habits',
-    span: 3,
+    span: 4,
     value: avgSleep === null ? null : round(avgSleep, 1),
     unit: 'h',
     precision: 1,
@@ -271,7 +208,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     key: 'water',
     label: 'Water',
     group: 'habits',
-    span: 3,
+    span: 4,
     value: avgWater === null ? null : Math.round(avgWater),
     unit: 'ml',
     metric: 'water',

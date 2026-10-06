@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Owns: the app icon — indigo rounded square, white rising trend line toward a target dot. Source of every PNG here (see SOURCE.md). -->
-  <rect width="512" height="512" rx="112" fill="#4F46E5"/>
+  <!-- Owns: the app icon — Facebook-blue rounded square, white rising trend line toward a target dot. Source of every PNG here (see SOURCE.md). -->
+  <rect width="512" height="512" rx="112" fill="#166FE5"/>
   <g transform="translate(-10 10) scale(1)">
     <polyline points="100,346 200,246 274,302 348,228" fill="none" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="408" cy="168" r="40" fill="#FFFFFF"/>

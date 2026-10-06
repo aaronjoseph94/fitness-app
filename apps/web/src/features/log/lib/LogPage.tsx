@@ -13,7 +13,7 @@ import { useApiQuery } from '../../../api'
 import { useLocalToday } from '../../../app/local-today'
 import type { QuickLogKind } from '../../../app/ui-store'
 import { Column, Columns } from '../../../components'
-import { useDay, useLogSettings } from '../../quick-log'
+import { useDay } from '../../quick-log'
 import { LogSheet } from '../../quick-log/sheet'
 import { logDate } from '../queries'
 import { DateSwitcher } from './DateSwitcher'
@@ -47,7 +47,6 @@ interface SheetState {
 
 export function LogPage() {
   const [date, today, setDate] = useLogDate()
-  const settings = useLogSettings()
   const day = useDay(date)
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {})
   const favs = favourites.data ?? []
@@ -70,7 +69,7 @@ export function LogPage() {
       />
       <Columns md={2} lg={3} gap={3}>
         <Column span={2} mdSpan={1}>
-          <MealsSection day={day.data} meals={meals} favourites={favs} breakfastEnabled={settings.breakfastEnabled} onAdd={(slot) => openSheet('meal', slot)} />
+          <MealsSection day={day.data} meals={meals} favourites={favs} onAdd={(slot) => openSheet('meal', slot)} />
         </Column>
         <Column span={1}>
           <Stack spacing={3}>

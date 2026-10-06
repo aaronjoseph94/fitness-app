@@ -1,7 +1,8 @@
 // Owns: what each runtime secret is (pure) — its label, what it unlocks, where Aaron gets one, the prefix its provider
-// uses so a pasted value can be sanity-checked, and how a stored secret reads back. Never a value: the API returns
-// status only, so nothing here can put a key on screen that the Worker would not have sent.
-import { LLM_SECRET_NAMES, type SecretName, type SecretStatus } from '@fitness/shared/schemas'
+// uses so a pasted value can be sanity-checked, and how a stored secret reads back. The list is in the router's chain
+// order (OpenRouter first, Gemini a fallback). Never a value: the API returns status only, so nothing here can put a
+// key on screen that the Worker would not have sent.
+import type { SecretName, SecretStatus } from '@fitness/shared/schemas'
 
 export interface SecretField {
   name: SecretName
@@ -18,28 +19,28 @@ export interface SecretField {
 }
 
 export const SECRET_FIELDS: Record<SecretName, SecretField> = {
-  GEMINI_API_KEY: {
-    name: 'GEMINI_API_KEY',
-    label: 'Google Gemini',
-    help: 'The primary model. Parses every log, reads meal photos, reforecasts nightly. Without it the AI paths run engine-only.',
-    where: 'Google AI Studio → Get API key (free tier)',
-    url: 'https://aistudio.google.com/apikey',
-    prefix: 'AIza',
+  OPENROUTER_API_KEY: {
+    name: 'OPENROUTER_API_KEY',
+    label: 'OpenRouter',
+    help: 'The primary model: it parses logs, reads photos and reforecasts. Free “:free” models: 50 requests a day.',
+    where: 'openrouter.ai → Keys',
+    url: 'https://openrouter.ai/settings/keys',
+    prefix: 'sk-or-',
   },
   ZAI_API_KEY: {
     name: 'ZAI_API_KEY',
     label: 'Z.ai (GLM)',
-    help: 'The first fallback when Gemini is out of free quota.',
+    help: 'First fallback when OpenRouter is busy or out of free quota.',
     where: 'z.ai → API keys (the Flash models are free)',
     url: 'https://z.ai/manage-apikey/apikey-list',
   },
-  OPENROUTER_API_KEY: {
-    name: 'OPENROUTER_API_KEY',
-    label: 'OpenRouter',
-    help: 'Free “:free” models as a second fallback: 50 requests a day, 1,000 after a one-time $10 top-up.',
-    where: 'openrouter.ai → Keys',
-    url: 'https://openrouter.ai/settings/keys',
-    prefix: 'sk-or-',
+  GEMINI_API_KEY: {
+    name: 'GEMINI_API_KEY',
+    label: 'Google Gemini',
+    help: 'Fallback for text and for the vision jobs where Gemini still reads best.',
+    where: 'Google AI Studio → Get API key (free tier)',
+    url: 'https://aistudio.google.com/apikey',
+    prefix: 'AIza',
   },
   GROQ_API_KEY: {
     name: 'GROQ_API_KEY',
@@ -52,7 +53,8 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
   USDA_FDC_API_KEY: {
     name: 'USDA_FDC_API_KEY',
     label: 'USDA FoodData Central',
-    help: 'Generic foods (USDA) when a barcode or a search is not already in our own tables.',
+    // Food matching is Canadian (CNF) and Open Food Facts only; the field stays so the name set is complete.
+    help: 'No longer used: food matching reads the Canadian Nutrient File and Open Food Facts.',
     where: 'api.data.gov → sign up (free, instant)',
     url: 'https://api.data.gov/signup',
   },
@@ -74,8 +76,11 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
   },
 }
 
-/** The provider keys in router chain order, then the food key; the order the Models section lists them in. */
-export const MODEL_SECRET_NAMES: readonly SecretName[] = [...LLM_SECRET_NAMES, 'USDA_FDC_API_KEY']
+/**
+ * The provider keys the Models section offers, in the router's chain order (OpenRouter leads; providers.json is the
+ * source of truth). The food key used to be listed here and is retired: food matching is Canadian now.
+ */
+export const MODEL_SECRET_NAMES: readonly SecretName[] = ['OPENROUTER_API_KEY', 'ZAI_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY']
 
 /** "Set here · ends 4f2a" / "Set as a Worker secret" / "Not set" — never the value itself. */
 export function sourceLabel(status: SecretStatus): string {

@@ -3,14 +3,15 @@
 // leaves a pending plan-change proposal (the water target unchanged); a router failure is a calm stored reply; a
 // replayed message id returns the stored turn without a second run; intent picks the tools; the name never reaches the
 // model (tool schemas, tool results); tool results reach the model as {"data": …} and an instruction hidden in one (a
-// crowd-edited food name) cannot make it log what the user never asked to log. Rails from SPEC §2.
+// crowd-edited food name) cannot make it log what the user never asked to log; deleting a chat removes that thread and
+// nobody else's, and an unknown id is a no-op. Rails from SPEC §2.
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { app_notes, chat_messages, createDb, foods, plan_versions, profile, settings, weight_logs } from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { chatHistory, chatTurn, MAX_TOOLS, selectTools } from '../src/modules/ask-ai'
+import { chatDelete, chatHistory, chatTurn, MAX_TOOLS, selectTools } from '../src/modules/ask-ai'
 import { ProvidersExhaustedError, type ChatRequest, type ChatResult, type LlmRouter, type ToolCall } from '../src/modules/llm'
 import { getActivePlan } from '../src/modules/plan'
 
@@ -244,5 +245,30 @@ describe('Ask AI', () => {
       for (const coachOnly of ['apply_proposal', 'apply_review', 'restore_plan_version', 'apply_week_plan', 'set_dashboard_note', 'get_procedure'])
         expect(names).not.toContain(coachOnly)
     }
+  })
+
+  it('forgets one chat for good: its rows go, another chat survives, and an unknown id is a no-op', async () => {
+    const keep = send('What did I average for protein in September?')
+    await chatTurn(deps, fakeRouter([{ reply: 'About 132 g a day.' }]), keep)
+    const drop = send('Swap Thursday to a pull day')
+    await chatTurn(deps, fakeRouter([{ reply: 'Proposed; it is waiting below for a tap.' }]), drop)
+
+    const before = await chatHistory(deps, {})
+    expect(before.map((m) => m.thread_id)).toEqual(expect.arrayContaining([keep.thread_id, drop.thread_id]))
+
+    expect(await chatDelete(deps, { thread_id: drop.thread_id })).toEqual({ ok: true })
+    expect(await chatHistory(deps, { thread_id: drop.thread_id })).toEqual([])
+    expect(await db.select().from(chat_messages).where(eq(chat_messages.thread_id, drop.thread_id))).toEqual([])
+
+    const after = await chatHistory(deps, {})
+    expect(after.map((m) => m.thread_id)).not.toContain(drop.thread_id)
+    expect(after.map((m) => m.thread_id)).toContain(keep.thread_id)
+    // The chat that was not deleted still reads back in full.
+    expect((await chatHistory(deps, { thread_id: keep.thread_id })).map((m) => m.role)).toEqual(['user', 'assistant'])
+
+    // Deleting a chat that was never stored (or was just deleted) changes nothing and still answers Ok.
+    expect(await chatDelete(deps, { thread_id: crypto.randomUUID() })).toEqual({ ok: true })
+    expect(await chatDelete(deps, { thread_id: drop.thread_id })).toEqual({ ok: true })
+    expect(await chatHistory(deps, {})).toEqual(after)
   })
 })

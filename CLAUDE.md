@@ -13,7 +13,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 | Phase | Scope (SPEC §12) | Status |
 | --- | --- | --- |
 | 0 | Spec saved, CLAUDE.md, PROGRESS.md | Done |
-| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, styleguide, logging, trend/forecast engine, Today tab, offline | Built |
+| 1 | Log and see: monorepo, D1 + migrations, seeds, Access, logging, trend/forecast engine, Today tab, offline | Built |
 | 2 | AI on every log: provider router, meal analysis, food matching, barcode, voice, proposals and plan versions | Built |
 | 3 | Training: library, equipment, builder, sessions, muscle map, progression, AI workouts | Built |
 | 4 | Scans, reviews, week plans, Ask AI, MCP + Claude connector | Built (connector untested with live Claude until deployed) |
@@ -27,7 +27,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 - **Exercises** (`packages/exercises`): free-exercise-db seed, muscle-group mapping, images served as static assets.
 - **Seed** (`seed/`): `scans/2026-09-26.json`, `equipment/anytime-fitness.json`.
 - **Tests**: Vitest (engine and schemas; Worker routes via `@cloudflare/vitest-plugin`), Playwright against the local Worker.
-- **LLMs**: free tiers only. Gemini Flash primary; Z.ai GLM, OpenRouter `:free`, Groq as fallbacks, all via plain `fetch`. Claude reaches the app only through the MCP connector from Aaron's own Claude chats.
+- **LLMs**: free tiers only. OpenRouter's `:free` models primary; Z.ai GLM, Gemini Flash and Groq as fallbacks, all via plain `fetch`. Claude reaches the app only through the MCP connector from Aaron's own Claude chats.
 
 ## Commands
 
@@ -55,7 +55,7 @@ pnpm check                               # typecheck + deep-module boundaries
 
 - Every file starts with a short comment saying what it owns. Engine functions are pure, typed, and commented with the formula they implement (write the formula, not a paraphrase).
 - Zod schema first for every API body, job output and MCP tool input. Types are inferred from schemas, never written twice by hand.
-- Visual tokens (colours, type scale, spacing, chart palette) live only in `apps/web/src/theme.ts`. The `/styleguide` route renders every token, card and chart with sample data.
+- Visual tokens (colours, type scale, spacing, chart palette) live only in `apps/web/src/theme.ts`, and no other file hard-codes a colour. The scheme is Facebook blue (`accent.main` `#166FE5`), measured for WCAG AA wherever white text sits on it.
 - No secrets in the web bundle. The web app talks only to `/api`. LLM keys live in Worker secrets.
 - Local dev against local D1 and R2; deploy with `wrangler deploy`; migrations run in CI before deploy.
 - Units kg, cm, ml, kcal, g. Timezone `America/Edmonton`. A day is an ISO date string (`2026-10-04`); instants are ISO timestamps with offset. IDs are UUID text.

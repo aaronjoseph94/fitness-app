@@ -1,5 +1,6 @@
 // Owns: mapping each nutrition source's record to one food draft per 100 g (the `foods` row minus id/timestamps), and
-// scaling a food to a portion. Open Food Facts and USDA FoodData Central shapes are validated loosely with Zod here.
+// scaling a food to a portion. Open Food Facts is the only remote source (Canadian food data is seeded locally), so its
+// product shape is the one validated loosely with Zod here.
 import { portion, type Per100gLike } from '@fitness/shared/engine'
 import type { Nutrients } from '@fitness/shared/schemas'
 import * as z from 'zod'
@@ -7,7 +8,7 @@ import type { foods, NewRow } from '../../../db'
 
 /** A food from a source, ready to cache: every nutrient per 100 g; sodium in mg; `raw` keeps the source record. */
 export type FoodDraft = Required<Omit<NewRow<typeof foods>, 'id' | 'created_at' | 'updated_at'>> & {
-  source: 'off' | 'usda'
+  source: 'off'
   source_id: string
 }
 
@@ -83,82 +84,5 @@ export function fromOff(p: OffProduct): FoodDraft | null {
     sugar_g: num(n.sugars_100g),
     sodium_mg: sodium !== null ? round(sodium * 1000, 1) : salt !== null ? round(salt * SODIUM_MG_PER_G_SALT, 1) : null,
     raw: p,
-  })
-}
-
-// ── USDA FoodData Central (search hits, and /food/{fdcId} in full or abridged format) ───────────────────────
-
-const UsdaNutrient = z.looseObject({
-  nutrientNumber: z.string().nullish(), // search
-  value: z.number().nullish(),
-  number: z.string().nullish(), // abridged details
-  amount: z.number().nullish(),
-  nutrient: z.looseObject({ number: z.string().nullish() }).nullish(), // full details
-})
-export const UsdaFood = z.looseObject({
-  fdcId: z.number().int(),
-  description: z.string().min(1),
-  dataType: z.string().nullish(),
-  brandOwner: z.string().nullish(),
-  brandName: z.string().nullish(),
-  gtinUpc: z.string().nullish(),
-  servingSize: z.number().nullish(),
-  servingSizeUnit: z.string().nullish(),
-  foodNutrients: z.array(UsdaNutrient).default([]),
-  foodPortions: z
-    .array(z.looseObject({ gramWeight: z.number().nullish(), amount: z.number().nullish(), modifier: z.string().nullish(), portionDescription: z.string().nullish() }))
-    .nullish(),
-})
-export type UsdaFood = z.infer<typeof UsdaFood>
-
-/** FDC nutrient numbers (the legacy SR numbers FDC still reports beside its ids). First present wins. */
-const USDA_NUMBERS = {
-  kcal: ['208', '958', '957'], // Energy (kcal); Atwater specific / general factors (Foundation foods)
-  kj: ['268'],
-  protein: ['203'],
-  carbs: ['205', '205.2'], // by difference; by summation
-  fat: ['204'],
-  fibre: ['291'],
-  sugar: ['269', '269.3'], // Sugars, total; Sugars, Total NLEA
-  sodium: ['307'], // mg
-} as const
-/** The details endpoint returns only these nutrients (keeps the response small); its filter takes whole numbers only. */
-export const USDA_NUTRIENT_FILTER = [...new Set(Object.values(USDA_NUMBERS).flat())].filter((n) => /^\d+$/.test(n)).join(',')
-
-/** A typical serving: the stated serving in grams, else the "medium" portion, else the first portion with a weight. */
-function usdaServing(f: UsdaFood): number | null {
-  if (f.servingSize && /^(g|grm)$/i.test(f.servingSizeUnit ?? '')) return round(f.servingSize, 1)
-  const portions = (f.foodPortions ?? []).filter((p) => (p.gramWeight ?? 0) > 0)
-  const pick = portions.find((p) => /medium/i.test(`${p.modifier ?? ''} ${p.portionDescription ?? ''}`)) ?? portions[0]
-  return pick ? round(pick.gramWeight! / (pick.amount || 1), 1) : null
-}
-
-/** FDC nutrients are per 100 g for Foundation, SR Legacy (and Branded `foodNutrients`). Null without an energy value. */
-export function fromUsda(f: UsdaFood): FoodDraft | null {
-  const values = new Map<string, number>()
-  for (const n of f.foodNutrients) {
-    const key = n.nutrientNumber ?? n.number ?? n.nutrient?.number
-    const v = num(n.value ?? n.amount)
-    if (key && v !== null && !values.has(key)) values.set(key, v)
-  }
-  const first = (keys: readonly string[]) => keys.map((k) => values.get(k)).find((v) => v !== undefined) ?? null
-  const kj = first(USDA_NUMBERS.kj)
-  const kcal = first(USDA_NUMBERS.kcal) ?? (kj === null ? null : kj / KJ_PER_KCAL)
-  if (kcal === null) return null
-  return plausible({
-    source: 'usda',
-    source_id: String(f.fdcId),
-    barcode: barcodeOf(f.gtinUpc),
-    name: f.description.trim(),
-    brand: f.brandName?.trim() || f.brandOwner?.trim() || null,
-    serving_g: usdaServing(f),
-    kcal_per_100g: round(kcal, 1),
-    protein_g: first(USDA_NUMBERS.protein) ?? 0,
-    carbs_g: first(USDA_NUMBERS.carbs) ?? 0,
-    fat_g: first(USDA_NUMBERS.fat) ?? 0,
-    fibre_g: first(USDA_NUMBERS.fibre) ?? 0,
-    sugar_g: first(USDA_NUMBERS.sugar),
-    sodium_mg: first(USDA_NUMBERS.sodium),
-    raw: { fdcId: f.fdcId, dataType: f.dataType ?? null, description: f.description, brandOwner: f.brandOwner ?? null },
   })
 }

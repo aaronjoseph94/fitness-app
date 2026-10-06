@@ -55,12 +55,12 @@ export function DashboardPage() {
   if (loading && !data)
     return (
       <Stack spacing={{ xs: 6, md: 8 }} data-testid="dashboard-page" aria-busy="true">
-        <PageHero testId="dashboard-hero" eyebrow={greetingFor(new Date().getHours())} title="Welcome back" pageName="Dashboard" subtitle={formatLongDate(date)} action={picker} />
+        <PageHero testId="dashboard-hero" eyebrow={greetingFor(new Date().getHours())} title="Welcome back, Aaron" pageName="Dashboard" action={picker} />
         {/* The skeleton is the shape of the band it replaces: one hero, the goals rail beside it, then the tiles. */}
         <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(6, minmax(0, 1fr))', lg: 'repeat(12, minmax(0, 1fr))' } }}>
           <Skeleton variant="rounded" height={244} sx={{ gridColumn: { xs: 'span 2', md: 'span 6', lg: 'span 8' }, borderRadius: `${tokens.radius.card}px` }} />
           <Skeleton variant="rounded" height={520} sx={{ gridColumn: { xs: 'span 2', md: 'span 6', lg: 'span 4' }, borderRadius: `${tokens.radius.card}px` }} />
-          {Array.from({ length: 8 }, (_, i) => (
+          {Array.from({ length: 5 }, (_, i) => (
             <Skeleton
               key={i}
               variant="rounded"
@@ -101,7 +101,7 @@ export function DashboardPage() {
       <PageHero
         testId="dashboard-hero"
         eyebrow={greetingFor(new Date().getHours())}
-        title="Welcome back"
+        title="Welcome back, Aaron"
         pageName="Dashboard"
         subtitle={`${formatLongDate(date)} · ${data.from} to ${data.to}`}
         action={picker}
@@ -110,11 +110,7 @@ export function DashboardPage() {
       {/* The opening group: the window's headline numbers, the goals rail spanning two of its rows. The heading is what
           makes the band a category rather than a pile: it says what the numbers below have in common. */}
       <Box component="section" aria-labelledby="now-title" data-testid="dashboard-now">
-        <SectionHeader
-          id="now"
-          title="Now"
-          subtitle={`The headline numbers for ${data.from} to ${data.to}, and where they sit against the plan.`}
-        />
+        <SectionHeader id="now" title="Now" />
         <KpiBand kpis={dashboardKpis(data)} rail={<GoalRail data={data} />} />
       </Box>
 
@@ -123,10 +119,10 @@ export function DashboardPage() {
       <RecoverySection data={data} />
       <TrainingSection data={data} />
 
-      <SettingsGroup id="more" title="More" subtitle="The same numbers, with a window of their own.">
-        <LinkRow label="Progress" help="Range selector, plan history and the week view" to="/progress" />
-        <LinkRow label="Scans" help="Evolt 360 results and segmental fat" to="/scans" />
-        <LinkRow label="Plan history" help="Every plan version, revertible in one tap" to="/plan" />
+      <SettingsGroup id="more" title="More">
+        <LinkRow label="Progress" to="/progress" />
+        <LinkRow label="Scans" to="/scans" />
+        <LinkRow label="Plan history" to="/plan" />
       </SettingsGroup>
     </Stack>
   )

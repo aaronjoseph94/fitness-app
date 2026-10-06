@@ -1,5 +1,5 @@
 // Owns: how a meal item's name is compared with a food — normalised tokens, the FTS5 query for the local cache,
-// the branded-item guess, and the match score (0–1) that becomes meal_items.confidence. Pure; no I/O.
+// and the match score (0–1) that becomes meal_items.confidence. Pure; no I/O.
 import type { FoodSource } from '@fitness/shared/schemas'
 
 /** A score at or above this is a match; below it the item stays unmatched and the LLM estimate is used (estimated = true). */
@@ -25,7 +25,7 @@ function stem(t: string): string {
   return t
 }
 
-/** Stems that name the same thing: CNF says "prepared" where USDA says "cooked", "boiled" for steamed; spellings. */
+/** Stems that name the same thing: some sources say "prepared" where others say "cooked", "boiled" for steamed. */
 const SYNONYM: Record<string, string> = { prepar: 'cook', steam: 'boil', yogourt: 'yogurt', flavor: 'flavour' }
 const canon = (t: string) => SYNONYM[t] ?? t
 
@@ -97,27 +97,23 @@ export function ftsQuery(text: string): string | null {
   return terms.size ? [...terms].join(' OR ') : null
 }
 
-/**
- * The item probably names a product rather than a generic food: a brand-style capital after the first letter
- * ("Oikos Pro yogurt", "greek yogurt Oikos"), or ® / ™. Generic names are lower case ("banana", "white rice").
- */
-export function looksBranded(name: string): boolean {
-  return /[®™]/.test(name) || /[A-Z]/.test(name.trim().slice(1))
-}
-
 export interface Scorable {
   name: string
   brand: string | null
   source: FoodSource
 }
 
-/** CNF/USDA names that open with a category ("Fish, tuna, …", "Nuts, almonds, …"): the next word is the lead noun. */
+/** Canadian Nutrient File names that open with a category ("Fish, tuna, …", "Nuts, almonds, …"): the next word is the lead noun. */
 const CATEGORY_LEAD = new Set(['fish', 'nut', 'grain', 'cereal', 'crustacean', 'mollusk', 'vegetable', 'beverage', 'spice'])
 /** The food's lead noun: its first name token, or the second when the first is a category. */
 const leadOf = (name: string[]) => (CATEGORY_LEAD.has(name[0]!) && name[1] ? name[1] : name[0]!)
 
-/** Small source preference: Aaron's own foods first, then Canadian (CNF), then USDA, then Open Food Facts. */
-const SOURCE_BONUS: Record<FoodSource, number> = { user: 0.1, cnf: 0.05, usda: 0.03, off: 0, llm: 0 }
+/**
+ * Small source preference: Aaron's own foods first, then the Canadian Nutrient File, then Open Food Facts. USDA
+ * FoodData Central is no longer fetched (the food data is Canadian and local), so its bonus is legacy only: rows cached
+ * while it was a live source are still in `foods` and must keep ranking sanely, below CNF but above a user's miss.
+ */
+const SOURCE_BONUS: Record<FoodSource, number> = { user: 0.1, cnf: 0.06, usda: 0.02, off: 0, llm: 0 }
 
 export interface Ranked<T extends Scorable> {
   food: T
@@ -131,14 +127,14 @@ export interface Ranked<T extends Scorable> {
  *   score = 0.60 × |Q ∩ (N ∪ B)| / |Q|              recall: how much of the item the food covers
  *         + 0.25 × (1 − mean rarity of N \ Q)        typicality: what else the name says is common among the
  *                                                   candidates ("chicken" among eggs) rather than unusual ("duck")
- *         + 0.10 × [lead noun ∈ Q]                  CNF/USDA lead with it: "Banana, raw", "Fish, tuna, …"
+ *         + 0.10 × [lead noun ∈ Q]                  the food leads with it: "Banana, raw", "Fish, tuna, …"
  *         + 0.15 if every brand token is in Q       brand hit
  *         − 0.20 if branded and the brand is not in Q  generic items prefer generic foods
  *         + 0.04 per default-form word in N (max 2) whole, raw, plain, regular
  *         − 0.12 if N has a processed/partial form word Q lacks (powder, flour, yolk, instant, dry, …)
  *         − 0.15 if N has a qualifier Q lacks (chocolate, cookie, butter, flavoured, juice, goat, …), − 0.05 more for a
  *                second one                    the plainest food wins: "milk" → milk, not chocolate milk
- *         + source bonus (user 0.10, cnf 0.05, usda 0.03, off 0) + the entry's own bonus (LLM-suggested candidates)
+ *         + source bonus (user 0.10, cnf 0.06, legacy usda 0.02, off 0) + the entry's own bonus (LLM candidates)
  * clamped to 0–1 and rounded to 0.001. It becomes meal_items.confidence.
  */
 export function rank<T extends Scorable>(query: string[], pool: { food: T; bonus?: number }[]): Ranked<T>[] {

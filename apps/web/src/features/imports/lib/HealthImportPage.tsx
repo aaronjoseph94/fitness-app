@@ -115,7 +115,7 @@ export function HealthImportPage() {
   return (
     <Stack spacing={4} data-testid="health-import-page">
       <Card sx={{ p: 4 }}>
-        <SectionHeader title="Export file" subtitle="Steps and sleep from a CSV or JSON export (Health Auto Export or similar). Days already logged are replaced." />
+        <SectionHeader title="Export file" subtitle="CSV or JSON (Health Auto Export or similar); days already logged are replaced." />
         <input
           ref={input}
           type="file"

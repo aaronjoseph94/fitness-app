@@ -1,11 +1,12 @@
 // Owns: Ask AI data on the web — the open thread's messages grouped into turns (question, tool results, reply), the
 // thread list, sending a message (answered in the request; the question shows at once, a failed send keeps its id so
-// a retry replays instead of running twice), and refreshing the rest of the app after a turn that called tools.
+// a retry replays instead of running twice), deleting a whole chat for good, and refreshing the rest of the app after a
+// turn that called tools.
 import { endpoints } from '@fitness/shared/api'
 import type { ChatMessage, ChatSend, ChatSent } from '@fitness/shared/schemas'
 import { hashKey, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
-import { apiQueryKey, call, problemText, useApiQuery } from '../../../api'
+import { apiQueryKey, call, problemText, useApiMutation, useApiQuery } from '../../../api'
 import { useThreadStore } from './thread-store'
 
 /** A turn takes up to ~55 s on the Worker (several model calls and tools); wait a little longer than that. */
@@ -80,6 +81,31 @@ export function useChat() {
     onSettled: () => setAsking(null),
   })
 
+  // Deleting does not go through the offline queue (the endpoint is online-only), so a phone without a connection
+  // reports it next to the composer rather than pretending the chat is gone.
+  const deletion = useApiMutation(endpoints.ai.chatDelete, {
+    onSuccess: (_outcome, { query }) => {
+      const gone = query.thread_id
+      // The thread is gone on the server: its cached pages must not be served back from disk offline either.
+      queryClient.removeQueries({ queryKey: threadKey(gone) })
+      void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.ai.chatHistory, { query: {} }), exact: true })
+      // Deleting the chat that is open leaves nothing to show, so a fresh one takes its place.
+      const store = useThreadStore.getState()
+      if (store.threadId === gone) store.startNew()
+    },
+    onError: (e) => {
+      // Nothing was sent, so the composer must not refill with an older failed question.
+      failed.current = null
+      setError(problemText(e))
+    },
+  })
+
+  /** Delete one chat and every message in it; the open chat is replaced by a new one when it is the one that went. */
+  const remove = (thread_id: string): void => {
+    setError(null)
+    deletion.mutate({ query: { thread_id } })
+  }
+
   /** Send `content` on the open thread; false when it is empty or a send is already running. */
   const send = (content: string): boolean => {
     const text = content.trim()
@@ -106,10 +132,13 @@ export function useChat() {
     loading: !fresh && thread.isPending,
     loadError: thread.isError ? problemText(thread.error) : null,
     sending: mutation.isPending,
+    /** A delete is in flight (the confirm's button reads "Deleting…" and both buttons are disabled). */
+    deleting: deletion.isPending,
     error,
     /** The text of the last failed send, to put back in the composer. */
     failedText: error ? (failed.current?.content ?? null) : null,
     clearError: () => setError(null),
     send,
+    remove,
   }
 }

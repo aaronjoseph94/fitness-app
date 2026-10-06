@@ -361,7 +361,7 @@ export function CaptureScreen() {
             </Button>
           )}
           <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, textAlign: 'center' }}>
-            Same spot, same light, line up with the outline. Private: never sent to any AI.
+            Same spot, same light, line up with the outline. Never sent to any AI.
           </Box>
         </Stack>
       )}

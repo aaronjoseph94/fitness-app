@@ -1,5 +1,6 @@
-// Owns: recorded-shape responses from Open Food Facts and USDA FoodData Central (trimmed live answers, 2026-10-05) and a
-// fake fetch that serves them by URL prefix and records every call.
+// Owns: recorded-shape responses from Open Food Facts (trimmed live answers, 2026-10-05) and a fake fetch that serves
+// them by URL prefix and records every call. No source needs an API key any more, which is why the recorder keeps
+// `apiKey`: it proves nothing is sent.
 import type { Fetch } from '../index'
 
 /** GET world.openfoodfacts.org/api/v2/product/3017624010701?fields=… (serving_size added; Nutella's label says 15 g). */
@@ -48,56 +49,19 @@ export const OFF_SEARCH_BANANA = {
   page_count: 1,
 }
 
-const usdaNutrient = (nutrientId: number, nutrientName: string, nutrientNumber: string, unitName: string, value: number) => ({
-  nutrientId,
-  nutrientName,
-  nutrientNumber,
-  unitName,
-  value,
-  rank: 300,
-  indentLevel: 1,
-})
-
-/** GET api.nal.usda.gov/fdc/v1/foods/search?query=overripe%20banana&dataType=Foundation,SR%20Legacy&pageSize=3 */
-export const USDA_SEARCH_OVERRIPE_BANANA = {
-  totalHits: 2,
-  currentPage: 1,
-  totalPages: 1,
-  foods: [
+/** GET search.openfoodfacts.org/search?q=Oikos%20Pro%20yogurt&page_size=3&fields=… (a branded product). */
+export const OFF_SEARCH_OIKOS = {
+  hits: [
     {
-      fdcId: 173944,
-      description: 'Bananas, raw',
-      dataType: 'SR Legacy',
-      ndbNumber: 9040,
-      foodCategory: 'Fruits and Fruit Juices',
-      foodNutrients: [
-        usdaNutrient(1003, 'Protein', '203', 'G', 1.09),
-        usdaNutrient(1004, 'Total lipid (fat)', '204', 'G', 0.33),
-        usdaNutrient(1005, 'Carbohydrate, by difference', '205', 'G', 22.8),
-        usdaNutrient(1008, 'Energy', '208', 'KCAL', 89),
-        usdaNutrient(1062, 'Energy', '268', 'kJ', 371),
-        usdaNutrient(1079, 'Fiber, total dietary', '291', 'G', 2.6),
-        usdaNutrient(2000, 'Total Sugars', '269', 'G', 12.2),
-        usdaNutrient(1093, 'Sodium, Na', '307', 'MG', 1),
-      ],
-    },
-    {
-      fdcId: 1105073,
-      description: 'Bananas, overripe, raw',
-      dataType: 'Foundation',
-      ndbNumber: 100254,
-      foodCategory: 'Fruits and Fruit Juices',
-      foodNutrients: [
-        usdaNutrient(1004, 'Total lipid (fat)', '204', 'G', 0.22),
-        usdaNutrient(1079, 'Fiber, total dietary', '291', 'G', 1.7),
-        usdaNutrient(1003, 'Protein', '203', 'G', 0.73),
-        usdaNutrient(1005, 'Carbohydrate, by difference', '205', 'G', 20.1),
-        usdaNutrient(1008, 'Energy', '208', 'KCAL', 85),
-        usdaNutrient(1062, 'Energy', '268', 'kJ', 357),
-        usdaNutrient(1063, 'Sugars, Total', '269.3', 'G', 15.8),
-      ],
+      code: '0056800100237',
+      brands: ['Oikos'],
+      nutriments: { carbohydrates_100g: 5.3, 'energy-kcal_100g': 90, fat_100g: 2.3, fiber_100g: 0, proteins_100g: 15, salt_100g: 0.1, sugars_100g: 4 },
+      product_name: 'Oikos Pro Yogurt',
     },
   ],
+  page: 1,
+  page_size: 3,
+  page_count: 1,
 }
 
 /** A fetch that answers from `routes` (first URL prefix that matches) and 404s otherwise. */

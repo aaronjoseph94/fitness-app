@@ -1,17 +1,22 @@
 // Owns: the bottom tabs (SPEC §11 navigation, plus Dashboard — see docs/PROGRESS.md) — key, path, nav label, page
 // title and icons — in one table.
-import AutoAwesome from '@mui/icons-material/AutoAwesome'
+//
+// The icon set is one family, not a sample of one: every tab draws from the same rounded outline weight, so the bar
+// reads as a single row rather than six unrelated glyphs. Inactive destinations take the outlined cut and the active
+// one the filled, rounded cut, which is the one weight difference the pair is there to carry (the tab also darkens
+// its ink and keeps `aria-current`, so colour is never the only signal).
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
-import Dashboard from '@mui/icons-material/Dashboard'
-import DashboardOutlined from '@mui/icons-material/DashboardOutlined'
-import EditNote from '@mui/icons-material/EditNote'
-import EditNoteOutlined from '@mui/icons-material/EditNoteOutlined'
-import FitnessCenter from '@mui/icons-material/FitnessCenter'
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined'
-import Insights from '@mui/icons-material/Insights'
+import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
-import Today from '@mui/icons-material/Today'
+import InsightsRounded from '@mui/icons-material/InsightsRounded'
+import RestaurantOutlined from '@mui/icons-material/RestaurantOutlined'
+import RestaurantRounded from '@mui/icons-material/RestaurantRounded'
+import SpaceDashboardOutlined from '@mui/icons-material/SpaceDashboardOutlined'
+import SpaceDashboardRounded from '@mui/icons-material/SpaceDashboardRounded'
 import TodayOutlined from '@mui/icons-material/TodayOutlined'
+import TodayRounded from '@mui/icons-material/TodayRounded'
 import type SvgIcon from '@mui/material/SvgIcon'
 import type { TabKey } from '../ui-store'
 
@@ -27,12 +32,19 @@ export interface Tab {
 }
 
 export const TABS: readonly Tab[] = [
-  { key: 'today', path: '/', label: 'Today', title: 'Today', Icon: TodayOutlined, ActiveIcon: Today },
-  { key: 'dashboard', path: '/dashboard', label: 'Dashboard', title: 'Dashboard', Icon: DashboardOutlined, ActiveIcon: Dashboard },
-  { key: 'log', path: '/log', label: 'Log', title: 'Log', Icon: EditNoteOutlined, ActiveIcon: EditNote },
-  { key: 'train', path: '/train', label: 'Train', title: 'Train', Icon: FitnessCenterOutlined, ActiveIcon: FitnessCenter },
-  { key: 'progress', path: '/progress', label: 'Progress', title: 'Progress', Icon: InsightsOutlined, ActiveIcon: Insights },
-  { key: 'ai', path: '/ai', label: 'AI', title: 'Ask AI', Icon: AutoAwesomeOutlined, ActiveIcon: AutoAwesome },
+  { key: 'today', path: '/', label: 'Today', title: 'Today', Icon: TodayOutlined, ActiveIcon: TodayRounded },
+  {
+    key: 'dashboard',
+    path: '/dashboard',
+    label: 'Dashboard',
+    title: 'Dashboard',
+    Icon: SpaceDashboardOutlined,
+    ActiveIcon: SpaceDashboardRounded,
+  },
+  { key: 'log', path: '/log', label: 'Log', title: 'Log', Icon: RestaurantOutlined, ActiveIcon: RestaurantRounded },
+  { key: 'train', path: '/train', label: 'Train', title: 'Train', Icon: FitnessCenterOutlined, ActiveIcon: FitnessCenterRounded },
+  { key: 'progress', path: '/progress', label: 'Progress', title: 'Progress', Icon: InsightsOutlined, ActiveIcon: InsightsRounded },
+  { key: 'ai', path: '/ai', label: 'AI', title: 'Ask AI', Icon: AutoAwesomeOutlined, ActiveIcon: AutoAwesomeRounded },
 ]
 
 export function tabByKey(key: TabKey): Tab {

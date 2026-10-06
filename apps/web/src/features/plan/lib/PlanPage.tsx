@@ -35,11 +35,6 @@ export function PlanPage() {
 
   return (
     <Stack spacing={5} data-testid="plan-page">
-      <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>
-        Every change to your targets is a version with a reason. Proposals from the AI or the Coach wait here for a tap, and the
-        rails decide what can't be proposed at all.
-      </Box>
-
       <section>
         <SectionHeader title="Now" />
         {versions.isLoading ? (

@@ -2,9 +2,9 @@
 // bottom tabs instead (so the two navigations are never on screen at once, and neither is duplicated for a screen
 // reader: the rail is `display: none` on a phone and the bottom bar is `display: none` on a desktop).
 //
-// The active destination is not signalled by colour alone (WCAG 1.4.1): it is a filled coral tile with a white glyph
+// The active destination is not signalled by colour alone (WCAG 1.4.1): it is a filled blue tile with a white glyph
 // while the inactive ones are bare grey glyphs, and it carries `aria-current="page"`. White on the brighter end of the
-// coral gradient measures 3.56:1, which clears the 3:1 floor for a graphical object (WCAG 1.4.11); the label lives in
+// blue gradient measures 3.68:1, which clears the 3:1 floor for a graphical object (WCAG 1.4.11); the label lives in
 // a tooltip and in the link's accessible name, so the glyph is never the only source of the name either.
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import Box from '@mui/material/Box'
@@ -75,30 +75,6 @@ export function NavRail({ active }: { active: TabKey | undefined }) {
         borderRight: `1px solid ${tokens.ink.border}`,
       }}
     >
-      {/*
-       * The mark. Ink, not the accent: the accent is how this rail says "you are here", so the logo must not wear the
-       * same coral tile as the active destination or the top of the rail reads as two current tabs.
-       */}
-      <Box
-        aria-hidden
-        sx={{
-          width: TILE,
-          height: TILE,
-          flex: 'none',
-          display: 'grid',
-          placeItems: 'center',
-          mb: 2,
-          borderRadius: `${tokens.radius.control}px`,
-          bgcolor: tokens.ink.text,
-          color: tokens.ink.card,
-          fontWeight: tokens.font.weight.number,
-          fontSize: tokens.font.size.sectionTitle,
-          letterSpacing: -0.5,
-        }}
-      >
-        F
-      </Box>
-
       {TABS.map((tab) => (
         <RailLink key={tab.key} tab={tab} active={tab.key === active} />
       ))}

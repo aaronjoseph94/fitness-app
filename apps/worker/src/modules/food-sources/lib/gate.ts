@@ -1,10 +1,12 @@
 // Owns: every outbound call to a nutrition source — the injected fetch, the per-instance subrequest budget, per-source
 // caps, a timeout, the descriptive User-Agent, de-duplication of identical GETs, and switching a source off for the rest
 // of the instance after a 429/5xx. Free plan: 50 external subrequests per invocation, shared with the LLM router.
+// Open Food Facts is the only remote source (food data is Canadian and local: see the module header); neither source
+// takes an API key, so `getJson` keeps its headers parameter for the User-Agent-style metadata a future source needs.
 import type { FetchBudget } from '../../../lib/deps'
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
-export type RemoteSource = 'off' | 'usda'
+export type RemoteSource = 'off'
 
 /** Open Food Facts asks every client to identify itself; no contact address is sent (Aaron's choice to add one). */
 export const USER_AGENT = 'FitnessTracker/1.0 (personal, non-commercial)'
@@ -38,15 +40,15 @@ export interface GateOptions {
 
 export interface Gate {
   /**
-   * GET a JSON document, with extra request headers (e.g. an API key: keys go in headers, never in the URL). Null on
-   * 404. Throws SourceUnavailable when the source cannot answer.
+   * GET a JSON document, with extra request headers. Null on 404. Throws SourceUnavailable when the source cannot
+   * answer. No source needs an API key, so no key ever reaches a URL or a log line.
    */
   getJson(source: RemoteSource, url: string, headers?: Record<string, string>): Promise<unknown>
 }
 
 export function createGate(opts: GateOptions): Gate {
   let calls = 0
-  const used: Record<RemoteSource, number> = { off: 0, usda: 0 }
+  const used: Record<RemoteSource, number> = { off: 0 }
   const down = new Set<RemoteSource>()
   const memo = new Map<string, Promise<unknown>>()
 

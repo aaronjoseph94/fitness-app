@@ -260,7 +260,7 @@ export function fastEntries(fasts: readonly Fast[], nowMs: number, fastHours: nu
 
 // ── Training ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The volume chart's four groups, bottom → top (the styleguide's grouping). */
+/** The volume chart's four groups, bottom → top (the chart's own stacking order). */
 export const VOLUME_GROUPS: readonly VolumeGroup[] = [
   { key: 'legs', label: 'Legs' },
   { key: 'pull', label: 'Back & biceps' },

@@ -9,7 +9,7 @@ A single-user, AI-first fitness tracker (installable PWA + Cloudflare Worker) th
 **Goals**
 
 - Log meals (text, photo, voice, barcode), weigh-ins, tape measurements, water, fasts, workouts (sets, reps, load), sleep and steps from Apple Watch, Evolt 360 scans, and progress photos.
-- An LLM job runs after every log and nightly/weekly, using free tiers only (Gemini primary, Chinese models as fallbacks), and proposes adjustments to targets, meals and training.
+- An LLM job runs after every log and nightly/weekly, using free tiers only (OpenRouter `:free` primary, Z.ai, Gemini and Groq as fallbacks), and proposes adjustments to targets, meals and training.
 - Deterministic engine owns the numbers (targets, trend weight, forecast, progression); the LLM explains, suggests and proposes. Every AI change is a plan version with a reason and one-tap revert.
 - Workouts suggested from the real equipment profile (have / don't have / dislike / can't use) and from a library where every exercise has images and a video link; a muscle map shows what any workout (AI or custom) trains.
 - Evolt scans uploaded as images, extracted to structured data, compared over time, and fed into the plan.
@@ -179,7 +179,7 @@ Bindings in `wrangler.toml`: `DB` (D1), `FILES` (R2), `ASSETS` (static assets), 
 
 - Every file starts with a short comment on what it owns. Functions in `packages/shared/engine` are pure, typed and commented with the formula they implement.
 - Zod schema first for every API body, job output and MCP tool input; types are inferred from the schema, never duplicated by hand.
-- Theme tokens (colours, type scale, spacing, chart palette) live in `apps/web/src/theme.ts` only, and the `/styleguide` route renders every token, card and chart with sample data; Aaron iterates on visuals there.
+- Theme tokens (colours, type scale, spacing, chart palette) live in `apps/web/src/theme.ts` only, and nothing else in the app hard-codes a colour: charts read the tokens so their SVG carries literal hex for print. The action colour is Facebook blue (`accent.main` `#166FE5`).
 - No secrets in the web bundle. The web app talks only to `/api`.
 - Local dev with `wrangler dev` (local D1 and R2); deploy with `wrangler deploy`; migrations run in CI before deploy.
 
@@ -247,7 +247,7 @@ Logging must take under 10 seconds for the common case; everything else follows 
 
 - Slots: Lunch, Dinner, Snack (Breakfast hidden; toggle in settings). Each slot shows planned vs logged.
 - Five input methods: free text ("2 eggs, toast with butter, black coffee"), photo (camera or gallery, multiple), voice (Web Speech API to text, then the text path), barcode (ZXing, Open Food Facts lookup), favourites and recents (one tap, adjust grams).
-- Pipeline for text/photo: `meal_analysis` job → list of items with grams and a confidence → each item matched against `foods` (Open Food Facts for packaged goods, Canadian Nutrient File and USDA FoodData Central for generic foods, cached locally) → unmatched items get an LLM estimate flagged `estimated` → the meal lands in `review` status with an editable item list → Aaron confirms (or auto-confirm after 10 min for high-confidence meals).
+- Pipeline for text/photo: `meal_analysis` job → list of items with grams and a confidence → each item matched against `foods` (Open Food Facts for packaged goods, the Canadian Nutrient File for generic foods, cached locally) → unmatched items get an LLM estimate flagged `estimated` → the meal lands in `review` status with an editable item list → Aaron confirms (or auto-confirm after 10 min for high-confidence meals).
 - After confirm, `day_adjustment` returns: remaining kcal and macros, protein status, two or three next-meal suggestions drawn from favourites that fit the remainder, and a one-line note if the day is over budget or protein is short. Shown as a card, never as a nag.
 - Favourites support simple recipes (a list of foods with grams) so a repeated dinner is one tap.
 - Targets per day come from `daily_targets`: 1,400 kcal; protein default 130 g (adjustable; about 2.2 g per kg of lean mass); fat minimum 45 g; fibre 30 g; carbs are the remainder. The weekly review may propose moving protein or redistributing calories across the week within the rails.
@@ -316,7 +316,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 **Evolt scans**
 
 - Upload the result sheet as PDF, PNG or JPG (shared from the Evolt Active app or saved from app.evoltactive.com; there is no consumer API). The name field is masked client-side before upload.
-- `scan_extract` (Gemini vision) returns the full metric set from section 2 as JSON, in the sheet's units, with a confidence per field; the Worker converts to kg and opens a review form with every value editable. Aaron confirms; a manual-entry form covers a failed extraction.
+- `scan_extract` (the vision chain) returns the full metric set from section 2 as JSON, in the sheet's units, with a confidence per field; the Worker converts to kg and opens a review form with every value editable. Aaron confirms; a manual-entry form covers a failed extraction.
 - Conditions captured with each scan: time of day, fasted, hours since last training, hydration note, and whether they match the baseline conditions.
 - `scan_analysis` compares the new scan with the previous one and the baseline: fat lost vs lean lost (and the 25% lean-loss guard from section 3), visceral fat level and area, segmental fat change per limb and torso, water shift (a lean-mass drop with a matching water drop is flagged as hydration, not muscle). Output: a short narrative, milestone updates, and proposals (protein, volume, cardio) for the plan.
 - Scan-due reminder at the chosen interval; the Progress tab charts every metric across scans.
@@ -341,7 +341,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **Ask AI (in-app)**
 
-- A chat panel on every tab. Gemini function calling against the tools layer (section 10): it can read any data and answer ("what did I average for protein in September?") or change things ("swap Thursday to a pull day", "raise water to 3.5 L").
+- A chat panel on every tab. Function calling on the model chain against the tools layer (section 10): it can read any data and answer ("what did I average for protein in September?") or change things ("swap Thursday to a pull day", "raise water to 3.5 L"). Aaron can delete a chat from the past-chats list.
 - Writes are proposals that need a tap unless `auto_apply_safe` is on, in which case meal suggestions, workout swaps and reminder changes apply at once and target changes still wait.
 - History kept in `chat_messages`; the panel shows which tools were called.
 
@@ -352,14 +352,14 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **Coach reviews through MCP (Claude as the senior coach)**
 
-Claude connected through the custom connector can read the whole app and change it, inside the same rails. The design makes Claude the senior coach and Gemini Flash the real-time clerk.
+Claude connected through the custom connector can read the whole app and change it, inside the same rails. The design makes Claude the senior coach and the routed free models the real-time clerk.
 
-- Division of labour: Gemini Flash (free, fast, vision) runs the per-log jobs: meal parsing, day adjustment, scan extraction, nightly reforecast. Claude (Fable or Opus, via MCP) does the judgement work on demand: the weekly review, scan debriefs, program design and rebuilds, plateau diagnosis, rewriting the plan, next week's recommendations. Gemini's size is not a problem for structured parsing; it is the wrong model for coaching, and Claude is the right one.
+- Division of labour: the primary routed model (free, fast, vision) runs the per-log jobs: meal parsing, day adjustment, scan extraction, nightly reforecast. Claude (Fable or Opus, via MCP) does the judgement work on demand: the weekly review, scan debriefs, program design and rebuilds, plateau diagnosis, rewriting the plan, next week's recommendations. A free model's size is not a problem for structured parsing; it is the wrong one for coaching, and Claude is the right one.
 - One-call read: `get_review_bundle(from, to)` returns one compact JSON (about 10–20 KB, aggregates only): profile and rails, active plan and forecast, weekly trend points, intake and macro averages, protein adherence, water, steps, sleep, fasts, sessions and volume per muscle, PRs, the latest scan deltas and the lean-loss guard, open proposals, upcoming fast and scan dates. Raw detail on demand through `query_metric`, `get_training_history`, `get_scan`.
 - One-unit write: `apply_review({ summary, narrative, changes[] })` applies a batch of changes as one plan version and one review event, so a whole Claude review can be reverted with one tap (`revert_review`). Changes may touch daily targets (within rails), the weekly split and templates, exercise swaps, equipment statuses, the water target, reminder times, milestones, planned fasts, the next scan date, and the dashboard note. Never the rails in `settings`.
 - Trust: Aaron is in the chat and approves with Claude before it applies, so `mcp` writes apply at once (no second tap in the app) but are versioned, logged with actor `mcp`, and bound by the same guardrails as every other write.
 - MCP prompts shipped by the server, so Claude knows the procedure without Aaron re-explaining it: `coach_review` (weekly: read the bundle, check rails, lean-loss guard, protein, volume per muscle vs the last block, sleep and steps against the trend, fasts and scan due; then propose and apply, and end with next week's plan), `scan_debrief` (after a confirmed scan), `program_design` (build or rebuild the Mon–Thu plan from the equipment profile and history), `plateau_check`.
-- Dashboard: `set_dashboard_note(text, until?)` pins Claude's note to the top of Today; when a Claude review ran that week, its narrative replaces Gemini's in `weekly_reviews`, so the printed summary carries Claude's words.
+- Dashboard: `set_dashboard_note(text, until?)` pins Claude's note to the top of Today; when a Claude review ran that week, its narrative replaces the AI draft's in `weekly_reviews`, so the printed summary carries Claude's words.
 - How it runs: in any Claude chat (web, desktop, mobile) with the connector on, "run my coach review" invokes the prompt; Claude reads, discusses, and applies on approval. Aaron may also schedule it from Claude if scheduled tasks on his plan can call the connector.
 - Later option: route the in-app Ask AI to Claude through the Claude API instead of the free router. Out of scope while the free-tier constraint stands; the tools layer already makes it a one-adapter change.
 
@@ -368,7 +368,7 @@ Claude connected through the custom connector can read the whole app and change 
 Every week the app holds one `week_plans` row for the coming Monday to Sunday, and Claude through MCP is its intended author.
 
 - Contents: per-day calories and macros (within the rails), water target, the four training sessions as templates (exercise IDs, sets, rep ranges, suggested loads), a steps target, planned fasts, the scan date if one is due, and a short focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light").
-- Author: the `coach_review` prompt ends by calling `propose_week_plan(week_start, plan)`; Aaron approves in chat and Claude calls `apply_week_plan(id)`. If no Claude review has run by Sunday 20:00, the Gemini `weekly_review` job fills a draft marked `author: gemini` so the week never starts without a plan; a later Claude run supersedes it.
+- Author: the `coach_review` prompt ends by calling `propose_week_plan(week_start, plan)`; Aaron approves in chat and Claude calls `apply_week_plan(id)`. If no Claude review has run by Sunday 20:00, the `weekly_review` job fills a draft whose author id is `gemini` — the stored id for "an AI wrote this, whichever model" — so the week never starts without a plan; a later Claude run supersedes it.
 - Effect: accepting a week plan is what sets the week. Each day's `daily_targets` and the Train tab's planned session come from the active week plan; mid-week edits (a swapped session, a moved fast) change the active row and are versioned like any plan change.
 - Where it shows: a "This week" card on Today (today's targets, today's session with its muscle map thumbnail, what changed from last week) and a full week view on the Progress tab, with last week's actuals beside it.
 - Status: proposed → active → superseded. Weekly recommendations can also be run on demand ("plan my week again, I'm travelling Wednesday") and apply the same way.
@@ -389,7 +389,8 @@ The engine computes; the LLM reads the computed state and proposes. Every LLM ca
 
 | Provider | Models | Role | Known limits |
 | --- | --- | --- | --- |
-| Google AI Studio (Gemini) | Gemini Flash (vision, function calling); Flash-Lite for cheap classification | Primary for everything, the only vision path for meal photos and scan sheets | Flash and Flash-Lite only on the free tier since April 2026; roughly 5–15 requests/min and up to 1,000/day; free-tier data may be used by Google |
+| OpenRouter (`:free`) | Free models with tool calling and vision | Primary for every chain: meal parsing, classification, vision for meal photos and scan sheets | 20 RPM; 50 requests/day account-wide (1,000 after a one-time $10 top-up), so the daily cap is reached before any Gemini fallback |
+| Google AI Studio (Gemini) | Gemini Flash (vision, function calling); Flash-Lite for cheap classification | First fallback once OpenRouter's daily cap is spent | Flash and Flash-Lite only on the free tier since April 2026; roughly 5–15 requests/min and up to 1,000/day; free-tier data may be used by Google |
 | Z.ai (Zhipu) | GLM-4.7-Flash, GLM-4.5-Flash; GLM-4.6V-Flash for vision | First text fallback; vision fallback | Free API models |
 | OpenRouter `:free` | DeepSeek V4 Flash, Kimi K2.6, Qwen, GLM-4.5-Air, MiniMax M2.5 | Second fallback, model experiments | 50 requests/day; 1,000/day after a one-time $10 top-up |
 | Groq | Qwen, Kimi, Llama | Fast text fallback | Free tier with daily caps |
@@ -398,7 +399,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 
 **Router**
 
-- One interface: `complete({ system, messages, images?, tools?, schema, maxTokens })` with adapters per provider (OpenAI-compatible where offered). Chain per job type: Gemini Flash → GLM → OpenRouter → Groq; vision jobs: Gemini → GLM-4.6V.
+- One interface: `complete({ system, messages, images?, tools?, schema, maxTokens })` with adapters per provider (OpenAI-compatible where offered). Chain per job type: OpenRouter `:free` → GLM → Gemini Flash → Groq; vision jobs: OpenRouter → GLM-4.6V → Gemini Flash.
 - Per-provider token buckets (RPM and RPD from `providers.json`), queue with priority (user-facing jobs first), retry with backoff on 429/5xx, failover on schema-validation failure after one repair attempt.
 - Every job row stores provider, model, latency, token counts and the validated output; a daily budget guard stops non-urgent jobs (nightly summaries) when 80% of a provider's daily quota is used.
 - Expected load: 10–30 calls a day. Event-driven only; no polling the model.
@@ -412,7 +413,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 | `workout_generate` / `workout_fill` | user asks; nightly for next training day when no week plan covers it | `{ exercises: [{ exercise_id, sets, rep_min, rep_max, load_kg, rest_sec }], rationale, muscle_scores }` | `ai_events` (proposal) → template/session on accept |
 | `scan_extract` | scan uploaded | the seed-record shape with `confidence` per field and `units` | `scans.extracted` (pending confirm) |
 | `scan_analysis` | scan confirmed | `{ narrative, fat_vs_lean: {fat_kg, lean_kg, water_kg}, flags: [], milestone_updates: [], proposals: [] }` | `ai_events`, `milestones` |
-| `weekly_review` | Sunday 20:00, only if no Claude review ran that week | `{ narrative, highlights: [], concerns: [], proposals: [{ field, from, to, reason }], week_plan }` | `weekly_reviews`, `ai_events`, `week_plans` (proposed, author gemini) |
+| `weekly_review` | Sunday 20:00, only if no Claude review ran that week | `{ narrative, highlights: [], concerns: [], proposals: [{ field, from, to, reason }], week_plan }` | `weekly_reviews`, `ai_events`, `week_plans` (proposed, author `gemini` = an AI draft) |
 | `ask_ai` | chat message | function-calling loop over the tools layer | `chat_messages`, proposals as above |
 | `plan_reforecast` | nightly (engine only, no LLM) | forecast object | `plan_versions.forecast`, `daily_targets` |
 
@@ -436,7 +437,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 
 ## 10. API and the shared tools layer
 
-The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src/tools/*.ts`) that both Ask AI (Gemini function calling) and the MCP server expose, so Claude and the in-app assistant can do exactly the same things.
+The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src/tools/*.ts`) that both Ask AI (function calling on the model chain) and the MCP server expose, so Claude and the in-app assistant can do exactly the same things.
 
 **REST (`/api`, JSON, Cloudflare Access JWT)**
 
@@ -503,10 +504,11 @@ Mobile-first, five bottom tabs, one theme file, and a chart inventory large enou
 
 - Font: Outfit, self-hosted as woff2 in the static assets so the PWA works offline. Weights: 400 body, 500 labels and buttons, 600 headings, 700 big numbers. Sizes: body 16 px, labels 13 px, section titles 20 px, big numbers 32–40 px with tabular figures.
 - Ink: text #1A1A2E, secondary #6B7280, borders #E5E7EB, cards #FFFFFF, page #FAFAFC.
-- One colour per metric, used identically in rings, charts, the report and legends: weight and trend indigo #4F46E5 (forecast band the same at 12%); calories orange #F97316; protein coral #E8505B; carbs amber #F5B700; fat teal #14B8A6; water sky #0EA5E9; steps green #22C55E; sleep violet #8B5CF6; fat mass pink #EC4899; lean and muscle emerald #059669; fasting slate #64748B. Semantic good/warning/flag #16A34A / #D97706 / #DC2626 are used only for status, never for a metric.
-- Muscle map: four steps of indigo from 12% to 100% opacity over a light grey body; the legend uses the same four chips.
+- The action colour is Facebook blue `#166FE5` (`accent.main`), with `#0B5FCE` for hover/pressed and `#3B82F6` for icons and gradients that never carry text.
+- One colour per metric, used identically in rings, charts, the report and legends: weight `#166FE5` (the brand blue, forecast band the same at 12 %); calories `#C2410C`; protein `#7C3AED`; carbs `#A16207`; fat `#0E7490`; water `#0369A1`; steps `#15803D`; sleep `#4338CA`; fat mass `#9D174D`; lean `#047857`; fasting `#475569`. The metric cards carry the matching two-stop gradient, measured at ≥4.5:1 for white text at both stops. Semantic good/warning/flag `#15803D` / `#B45309` / `#DC2626` are used only for status, never for a metric.
+- Muscle map: four steps of the brand blue from 12 % to 100 % opacity over a light grey body; the legend uses the same four chips.
 - Chart style: gridlines #F1F5F9 only, 2 px lines, 12% area fills, 4 px rounded bar tops, targets as dashed grey lines, values on tap, legends as colour chips under the title, no 3D, no gradients.
-- The `/styleguide` route renders every token, card and chart with sample data in one scrollable page, which is where the look gets iterated.
+- Theme tokens are the single source of colour: every chart, ring, card and illustration derives from them, so a palette change is one file.
 
 **Chart inventory (Recharts unless noted)**
 
@@ -546,14 +548,14 @@ Five phases, each shippable on its own; phase 1 is usable for daily logging with
 
 **Phase 1 — log and see (weeks 1–2)**
 
-- Monorepo, D1 database, Drizzle migrations for every table in section 5, seed scripts (scan, equipment, exercises), the Worker deployed with wrangler, Cloudflare Access login, `/styleguide` route with the theme.
+- Monorepo, D1 database, Drizzle migrations for every table in section 5, seed scripts (scan, equipment, exercises), the Worker deployed with wrangler, Cloudflare Access login, and the theme tokens in place.
 - Weigh-ins, measurements, water, fasting, meals by text and favourites, targets from the rails, trend and forecast engine, Today tab with the hero chart and rings, manual sleep/steps entry and the health webhook.
 - Acceptance: a day can be logged in under a minute on a phone; trend and forecast match the engine fixtures; the app works offline and syncs.
 
 **Phase 2 — AI on every log (weeks 3–4)**
 
-- Provider router with all four providers and quotas; `meal_analysis` (photo and text), food matching against Open Food Facts/CNF/USDA, barcode scan, voice input, `day_adjustment` cards, proposals and plan versions with revert.
-- Acceptance: a meal photo becomes an editable item list in under 20 s; a Gemini outage fails over without a user-visible error; no proposal ever breaks a rail (guard tests).
+- Provider router with all four providers and quotas; `meal_analysis` (photo and text), food matching against Open Food Facts and the Canadian Nutrient File, barcode scan, voice input, `day_adjustment` cards, proposals and plan versions with revert.
+- Acceptance: a meal photo becomes an editable item list in under 20 s; a provider outage fails over without a user-visible error; no proposal ever breaks a rail (guard tests).
 
 **Phase 3 — training (weeks 5–6)**
 

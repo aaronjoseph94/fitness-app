@@ -16,7 +16,7 @@ import { formatNumber } from '../../../../components'
 import { tokens } from '../../../../theme'
 import { clockOf, instantAt, todayLocal } from '../dates'
 import { defaultSlot, SLOT_LABEL, SLOT_TIME } from '../nutrition'
-import { useDay, useLogSettings } from '../reads'
+import { useDay } from '../reads'
 import { noticeFor, type LogNotice } from '../ui'
 import { useLogMutation } from '../writes'
 import { suggestionScale, type AdjustmentEvent } from './adjustment'
@@ -122,7 +122,6 @@ type SuggestionData = AdjustmentEvent['body']['suggestions'][number]
 
 function Suggestion({ date, suggestion, onLogged }: { date: string; suggestion: SuggestionData; onLogged?: (notice: LogNotice) => void }) {
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {}, { staleTime: 5 * 60_000, enabled: suggestion.favorite_id !== null })
-  const { breakfastEnabled } = useLogSettings()
   const create = useLogMutation(endpoints.nutrition.createMeal)
   const [logged, setLogged] = useState(false)
   const favourite = suggestion.favorite_id ? favourites.data?.find((f) => f.id === suggestion.favorite_id) : undefined
@@ -132,7 +131,7 @@ function Suggestion({ date, suggestion, onLogged }: { date: string; suggestion: 
   const log = () => {
     if (!favourite || scale === null) return
     const isToday = date === todayLocal()
-    const slot = defaultSlot(isToday ? clockOf(Date.now()) : SLOT_TIME.dinner, breakfastEnabled)
+    const slot = defaultSlot(isToday ? clockOf(Date.now()) : SLOT_TIME.dinner)
     create.mutate(
       {
         body: {

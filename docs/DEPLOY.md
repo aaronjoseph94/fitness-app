@@ -51,11 +51,11 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | `HEALTH_WEBHOOK_TOKEN` | Bearer token for the iOS Shortcut | random |
 | `MCP_BEARER_TOKEN` | Static bearer for MCP clients that support headers (Claude Code; Claude if "Request headers" is offered) | random |
 | `FILE_URL_SECRET` | HMAC key for short-lived file URLs | random |
-| `GEMINI_API_KEY` | Primary LLM (free tier) | aistudio.google.com → Get API key |
+| `OPENROUTER_API_KEY` | Primary LLM (free `:free` models) | openrouter.ai → Keys |
+| `GEMINI_API_KEY` | Fallback LLM (free tier) | aistudio.google.com → Get API key |
 | `ZAI_API_KEY` | GLM fallback (free Flash models) | z.ai → API keys |
 | `OPENROUTER_API_KEY` | `:free` model fallback (50 req/day; 1,000/day after a one-time $10 top-up) | openrouter.ai → Keys |
 | `GROQ_API_KEY` | Fast text fallback | console.groq.com → API keys |
-| `USDA_FDC_API_KEY` | USDA FoodData Central (generic foods) | api.data.gov/signup (free) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push keys | `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts` |
 | `VAPID_SUBJECT` | `mailto:` contact for push services | your email |
 

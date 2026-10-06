@@ -1,4 +1,4 @@
-// Owns: recording Claude's weekly review (the Coach, through MCP apply_review) — it supersedes the Gemini draft for
+// Owns: recording Claude's weekly review (the Coach, through MCP apply_review) — it supersedes the AI draft for
 // that week: same weekly_reviews row (author claude_mcp, fresh metrics, Claude's words), the draft's still-pending
 // proposals withdrawn, the archived PDF cleared (it showed the draft), and one ai_events 'review' as actor deps.actor.
 import { addDays, isoWeek } from '@fitness/shared/engine'

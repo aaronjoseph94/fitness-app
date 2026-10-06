@@ -1,9 +1,10 @@
 // Owns: the /api ai route group — job status, AI workouts (generate / fill), and Ask AI chat (answered in the request,
-// with its own LLM router and a fetch budget that leaves room for the tools' own fetches under the 50-subrequest cap).
+// with its own LLM router and a fetch budget that leaves room for the tools' own fetches under the 50-subrequest cap),
+// plus forgetting one chat.
 import { endpoints } from '@fitness/shared/api'
 import type { App } from '../env'
 import { route } from '../lib/route'
-import { chatHistory, chatTurn } from '../modules/ask-ai'
+import { chatDelete, chatHistory, chatTurn } from '../modules/ask-ai'
 import { getJob } from '../modules/jobs'
 import { createLlmRouter } from '../modules/llm'
 import { requestWorkout } from '../modules/workouts-ai'
@@ -18,4 +19,5 @@ export function mountAiRoutes(app: App): void {
     chatTurn(deps, createLlmRouter(deps, { budget: { limit: ASK_AI_FETCH_BUDGET, used: 0 } }), body),
   )
   route(app, endpoints.ai.chatHistory, ({ query }, deps) => chatHistory(deps, query))
+  route(app, endpoints.ai.chatDelete, ({ query }, deps) => chatDelete(deps, query))
 }

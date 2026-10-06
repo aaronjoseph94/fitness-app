@@ -34,7 +34,7 @@ interface HabitsColumnProps {
 
 export function HabitsColumn({ days, fasts, from, to, fastHours }: HabitsColumnProps) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
-  const header = <SectionHeader title="Food, water and recovery" subtitle="Each day against its target. Fast days are marked, not missed." />
+  const header = <SectionHeader title="Food, water and recovery" subtitle="Each day against its target." />
   if (!days.data)
     return (
       <Stack spacing={4}>

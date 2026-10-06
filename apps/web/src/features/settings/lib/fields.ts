@@ -1,7 +1,7 @@
 // Owns: what each editable setting is (pure) — label, unit, whether it is a rail (edits need confirmation), help copy
 // in GLOSSARY terms — and how a typed value is checked: the SettingsPatch schema, plus floor ≤ ceiling against the
-// value already stored.
-import { SettingsPatch, type Settings, type Weekday } from '@fitness/shared/schemas'
+// value already stored. Also what each editable profile field is, every one of them Aaron's to change.
+import { ProfilePatch, SettingsPatch, type Profile, type Settings, type Weekday } from '@fitness/shared/schemas'
 import { formatNumber } from '../../../components'
 
 export type NumberKey =
@@ -86,4 +86,114 @@ export const WEEKDAYS: readonly { key: Weekday; short: string; long: string }[] 
 export function formatDays(days: readonly Weekday[]): string {
   const list = WEEKDAYS.filter((d) => days.includes(d.key)).map((d) => d.short)
   return list.length ? list.join(', ') : 'None'
+}
+
+/** Every editable profile field: nothing on the Profile card is read-only. */
+export type ProfileKey = keyof ProfilePatch
+
+/** Which control edits a profile field: a numeric field, a date picker, a short choice, or free text. */
+export type ProfileKind = 'number' | 'date' | 'choice' | 'text'
+
+export interface ProfileField {
+  key: ProfileKey
+  label: string
+  kind: ProfileKind
+  /** Unit shown inside the number field, e.g. 'kg'. */
+  unit?: string
+  /** Decimal places (1 for a weight or a height, 0 for a whole number). */
+  precision?: number
+  /** Bounds for a friendly message before the schema has its say; mirrors SPEC §2 and `common.ts`. */
+  min?: number
+  max?: number
+  /** The allowed values of a choice field. */
+  options?: readonly { value: string; label: string }[]
+  /** True when the field may be cleared (the schema's value is nullable); everything else must hold a value. */
+  nullable?: boolean
+  /** One line under the field in the dialog. */
+  help?: string
+}
+
+/**
+ * The profile, in reading order: what he is aiming for, where he started, then the body facts the engine reads.
+ * `birth_date` is nullable in the schema (a profile may not have one), so it is the one field that may be cleared;
+ * everything else must hold a value.
+ */
+export const PROFILE_FIELDS: readonly ProfileField[] = [
+  { key: 'goal_weight_kg', label: 'Goal weight', kind: 'number', unit: 'kg', precision: 1, min: 30, max: 400 },
+  { key: 'goal_date', label: 'Goal date', kind: 'date', help: 'The day the goal weight is due.' },
+  { key: 'start_weight_kg', label: 'Start weight', kind: 'number', unit: 'kg', precision: 1, min: 30, max: 400 },
+  { key: 'start_date', label: 'Start date', kind: 'date', help: 'The day the plan began, where progress is measured from.' },
+  { key: 'height_cm', label: 'Height', kind: 'number', unit: 'cm', precision: 1, min: 50, max: 260 },
+  {
+    key: 'sex',
+    label: 'Sex',
+    kind: 'choice',
+    options: [
+      { value: 'male', label: 'Male' },
+      { value: 'female', label: 'Female' },
+    ],
+  },
+  { key: 'birth_date', label: 'Birth date', kind: 'date', nullable: true, help: 'Used for age, which sets the calorie estimates. Clear it to leave it out.' },
+  { key: 'timezone', label: 'Time zone', kind: 'text', help: 'IANA zone, e.g. America/Edmonton. A day is this zone\u2019s day.' },
+]
+
+/** A profile value as the row shows it. */
+export function formatProfileValue(field: ProfileField, profile: Profile): string {
+  const value = profile[field.key]
+  if (value === null || value === undefined || value === '') return 'Not set'
+  if (field.kind === 'choice') return field.options?.find((o) => o.value === value)?.label ?? String(value)
+  if (field.kind === 'number') return `${formatNumber(Number(value), field.precision ?? 0)}${field.unit ? ` ${field.unit}` : ''}`
+  return String(value)
+}
+
+/** A decimal as typed (digits with an optional fraction); null when it is not one. */
+export function parseDecimal(text: string): number | null {
+  const cleaned = text.replace(/[\s,]/g, '')
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null
+  return Number(cleaned)
+}
+
+/** What the dialog hands back for the field's kind: a number for a number field, trimmed text otherwise. */
+export function parseProfileInput(field: ProfileField, text: string): string | number | null {
+  if (field.kind === 'number') return parseDecimal(text)
+  const trimmed = text.trim()
+  return trimmed === '' ? null : trimmed
+}
+
+/** Why `value` can't be saved for `field`, or null when it can. The schema is the final authority. */
+export function checkProfileValue(field: ProfileField, value: string | number | null): string | null {
+  if (value === null) {
+    if (field.nullable) return null
+    return field.kind === 'number' ? 'Enter a number.' : 'This can\u2019t be empty.'
+  }
+  if (typeof value === 'number' && (value < (field.min ?? -Infinity) || value > (field.max ?? Infinity)))
+    return `Enter a value between ${formatNumber(field.min ?? 0, field.precision ?? 0)} and ${formatNumber(field.max ?? 0, field.precision ?? 0)}${field.unit ? ` ${field.unit}` : ''}.`
+  const parsed = ProfilePatch.safeParse({ [field.key]: value })
+  if (parsed.success) return null
+  const issue = parsed.error.issues[0]
+  if (issue?.code === 'too_small') return `At least ${issue.minimum}${field.unit ? ` ${field.unit}` : ''}.`
+  if (issue?.code === 'too_big') return `At most ${issue.maximum}${field.unit ? ` ${field.unit}` : ''}.`
+  return issue?.message ?? 'That value is not allowed.'
+}
+
+/** The PATCH body for one profile field. An exhaustive switch, so a new field cannot be forgotten silently. */
+export function profilePatch(field: ProfileField, value: string | number | null): ProfilePatch {
+  switch (field.key) {
+    case 'goal_weight_kg':
+      return { goal_weight_kg: value as number }
+    case 'start_weight_kg':
+      return { start_weight_kg: value as number }
+    case 'height_cm':
+      return { height_cm: value as number }
+    case 'goal_date':
+      return { goal_date: value as string }
+    case 'start_date':
+      return { start_date: value as string }
+    case 'birth_date':
+      return { birth_date: value as string | null }
+    case 'sex':
+      return { sex: value as Profile['sex'] }
+    case 'timezone':
+      return { timezone: value as string }
+  }
 }

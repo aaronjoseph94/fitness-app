@@ -100,13 +100,13 @@ describe('progress photos', () => {
   })
 
   it('never reaches an LLM: upload, list, view and remove make no outbound call and queue no job, with every key set', async () => {
-    // Every LLM provider (and food source) is reached through fetch: a recording fake stands in for the network.
+    // Every LLM provider is reached through fetch: a recording fake stands in for the network.
     const outbound: string[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       outbound.push(input instanceof Request ? input.url : String(input))
       return Response.json({ error: 'no network in this test' }, { status: 503 })
     })
-    const keyed = { ...env, GEMINI_API_KEY: 'k', ZAI_API_KEY: 'k', OPENROUTER_API_KEY: 'k', GROQ_API_KEY: 'k', USDA_FDC_API_KEY: 'k' }
+    const keyed = { ...env, GEMINI_API_KEY: 'k', ZAI_API_KEY: 'k', OPENROUTER_API_KEY: 'k', GROQ_API_KEY: 'k' }
     const app = createApp()
     const jobsBefore = await db.$count(ai_jobs)
     try {

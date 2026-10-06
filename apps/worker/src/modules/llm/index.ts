@@ -1,6 +1,6 @@
 // Owns: the LLM router's interface (the Router in GLOSSARY.md). One call goes down a chain of free-tier providers
-// (text: Gemini Flash → GLM → OpenRouter :free → Groq; vision: Gemini Flash → GLM-4.6V-Flash) and returns data
-// validated against the caller's Zod schema, or the tool calls the model asked for.
+// (text: OpenRouter :free → GLM → Gemini Flash → Groq; vision: OpenRouter :free → GLM-4.6V-Flash → Gemini Flash) and
+// returns data validated against the caller's Zod schema, or the tool calls the model asked for.
 //
 // Interface facts callers rely on:
 // - complete() resolves only with schema-valid data. chat() also returns tool calls; the caller runs the tools,

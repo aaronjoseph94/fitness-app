@@ -117,9 +117,12 @@ export function StatCard({
   const numberTracking = emphasis === 'hero' ? -1 : -0.5
   const tint = metric ? tokens.metric[metric] : tokens.ink.secondary
 
+  // The card is often taller than its content: on the Dashboard's bento a rail beside it spans two rows, so a tile is
+  // stretched to whatever the rail needs. The body is therefore a column that pushes the number and its footnote to
+  // the bottom of the card, which turns that extra height into breathing room instead of a block of dead white.
   const body = (
-    <Box sx={{ p: 4, width: '100%', textAlign: 'left' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: Icon ? 36 : 24 }}>
+    <Box sx={{ p: 4, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: Icon ? 36 : 24, flex: 'none' }}>
         {/* The tile replaces the dot rather than sitting beside it: two marks for one metric would read as two facts. */}
         {Icon ? (
           <Box
@@ -168,7 +171,7 @@ export function StatCard({
         </Box>
         {badge}
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, mt: 1.5, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, mt: 'auto', pt: 1.5, minWidth: 0 }}>
         <Box
           component="span"
           sx={{

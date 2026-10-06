@@ -1,7 +1,7 @@
 // Owns: the public surface of the chart kit — every chart in SPEC §11's inventory. Props are plain data series
 // (dates as "YYYY-MM-DD", values in kg / kcal / g / ml / h), never API types, so callers map their data once.
 // Every chart takes `width` (fixed px for print, ~700 on the report page) or fills its container, and carries a
-// data-testid. Colours come from `tokens` only. Sample data for the styleguide: ./sample-data.
+// data-testid. Colours come from `tokens` only.
 // Recharts is not in any page's bundle: each Recharts surface loads it on demand (./preload, a second entry point)
 // inside a slot of its exact size, near the viewport and after the page has painted; <EagerCharts> draws them on the
 // first render (the printable report).

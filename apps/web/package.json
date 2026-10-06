@@ -1,7 +1,7 @@
 {
   "name": "@fitness/web",
   "private": true,
-  "description": "The React PWA: Today, Log, Train, Progress, AI tabs, styleguide, print report pages.",
+  "description": "The React PWA: Today, Dashboard, Log, Train, Progress and AI tabs, plus the print report pages.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",

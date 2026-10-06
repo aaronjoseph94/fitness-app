@@ -141,7 +141,7 @@ export function ScansPage() {
         </>
       ) : (
         <Card>
-          <EmptyState title="No scans yet" body="Upload the Evolt 360 result sheet and the values are read for you to check." illustration="progress" />
+          <EmptyState title="No scans yet" body="Upload the Evolt 360 sheet; the values are read for you to check." illustration="progress" />
         </Card>
       )}
 

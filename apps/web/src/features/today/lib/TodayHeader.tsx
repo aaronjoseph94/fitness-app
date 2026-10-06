@@ -93,8 +93,8 @@ export function TodayHeader(props: TodayHeaderProps) {
           </Box>
           <Box sx={{ mt: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
             {unavailable
-              ? 'It shows once the app reaches the server. A weigh-in logged now is kept and syncs.'
-              : `One morning weigh-in a day is all the trend needs. Goal: ${formatNumber(goalKg, 0)} kg.`}
+              ? 'A weigh-in logged now is kept and syncs once the app reaches the server.'
+              : `One morning weigh-in a day is all it needs. Goal: ${formatNumber(goalKg, 0)} kg.`}
           </Box>
           <Button variant="contained" onClick={onWeighIn} sx={{ mt: 3 }}>
             Log weigh-in

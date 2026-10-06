@@ -1,5 +1,5 @@
 // Owns: Ask AI chat — messages, the tool calls they show, what a turn created that waits for a tap, the send body and
-// its in-request reply, and the history query (one thread, or the list of threads).
+// its in-request reply, the history query (one thread, or the list of threads) and the delete query.
 import * as z from 'zod'
 import { Id, Instant, LocalDate } from './common'
 import { ProposalBody, ProposalStatus } from './plan'
@@ -66,3 +66,7 @@ export type ChatSent = z.infer<typeof ChatSent>
 /** Query of GET /api/ai/chat: a thread's messages oldest first; without thread_id, each thread's opening message, most recently active thread first. */
 export const ChatHistoryQuery = z.object({ thread_id: Id.optional() })
 export type ChatHistoryQuery = z.infer<typeof ChatHistoryQuery>
+
+/** Query of DELETE /api/ai/chat: the thread to forget, its messages and tool rows deleted for good. */
+export const ChatThreadQuery = z.object({ thread_id: Id })
+export type ChatThreadQuery = z.infer<typeof ChatThreadQuery>

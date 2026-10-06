@@ -1,17 +1,24 @@
 // Owns: the Ask AI chat surface shared by the AI tab and the slide-up panel — the thread header (past chats, new
-// chat), the turns, starter suggestions on an empty thread, send errors, and the composer. On the page the composer
-// sticks above the bottom tabs; in the panel the turns scroll inside the sheet.
+// chat, deleting a chat for good), the turns, starter suggestions on an empty thread, send and delete errors, and the
+// composer. On the page the composer sticks above the bottom tabs; in the panel the turns scroll inside the sheet.
 import AddCommentOutlined from '@mui/icons-material/AddCommentOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
+import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import HistoryRounded from '@mui/icons-material/HistoryRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import ListItemText from '@mui/material/ListItemText'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
+import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -31,10 +38,28 @@ export const SUGGESTIONS = [
 
 const shorten = (text: string, n: number) => (text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text)
 
-function ThreadHeader({ title, onClose }: { title: string; onClose?: () => void }) {
+/**
+ * The thread header: the open chat's title, the past-chats menu (each row opens a chat or deletes it for good) and
+ * new-chat. Deleting asks first, in a small dialog that names the chat it is about to remove.
+ */
+function ThreadHeader({
+  title,
+  onClose,
+  onDelete,
+  deleting,
+}: {
+  title: string
+  onClose?: () => void
+  /** Delete one chat, messages and all (the page's `useChat().remove`). */
+  onDelete: (threadId: string) => void
+  /** A delete is in flight, so the row buttons are disabled. */
+  deleting: boolean
+}) {
   const threads = useThreads()
   const { threadId, open, startNew } = useThreadStore()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  /** The chat the confirm is about: null while no confirm is on screen. */
+  const [confirming, setConfirming] = useState<{ thread_id: string; label: string } | null>(null)
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: tokens.tapTarget }}>
       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -71,15 +96,63 @@ function ThreadHeader({ title, onClose }: { title: string; onClose?: () => void 
               open(m.thread_id)
               setAnchor(null)
             }}
+            sx={{ gap: 1, pr: 1 }}
           >
             <ListItemText
               primary={shorten(m.content, 60)}
               secondary={formatShortDate(m.created_at.slice(0, 10))}
               slotProps={{ primary: { noWrap: true, sx: { fontSize: tokens.font.size.emphasis } }, secondary: { sx: { fontSize: tokens.font.size.caption } } }}
             />
+            {/*
+             * The row itself is "open this chat"; delete is its own 44 px button inside the row, with the chat's
+             * opening words in its accessible name so a screen reader hears which one it would remove. Opening the
+             * confirm closes the menu, so only one popover layer is ever on screen.
+             */}
+            <Tooltip title="Delete chat">
+              <IconButton
+                aria-label={`Delete chat: ${shorten(m.content, 40)}`}
+                data-testid="chat-delete"
+                disabled={deleting}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setAnchor(null)
+                  setConfirming({ thread_id: m.thread_id, label: shorten(m.content, 80) })
+                }}
+                sx={{ flex: 'none', width: tokens.tapTarget, height: tokens.tapTarget, color: tokens.ink.secondary }}
+              >
+                <DeleteOutlineRounded />
+              </IconButton>
+            </Tooltip>
           </MenuItem>
         ))}
       </Menu>
+      <Dialog
+        open={confirming !== null}
+        onClose={() => setConfirming(null)}
+        fullWidth
+        maxWidth="xs"
+        aria-labelledby="delete-chat-title"
+      >
+        <DialogTitle id="delete-chat-title">Delete this chat?</DialogTitle>
+        <DialogContent sx={{ color: 'text.secondary' }}>
+          {confirming ? `“${confirming.label}” and every message in it go for good. Logs you asked for are already saved.` : ''}
+        </DialogContent>
+        <DialogActions sx={{ px: 4, pb: 3 }}>
+          <Button onClick={() => setConfirming(null)}>Keep it</Button>
+          <Button
+            color="error"
+            variant="contained"
+            data-testid="chat-delete-confirm"
+            onClick={() => {
+              if (!confirming) return
+              onDelete(confirming.thread_id)
+              setConfirming(null)
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
@@ -174,7 +247,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
     return (
       <Box data-testid="ask-ai-chat" sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         <Box sx={{ px: 4, pt: 2, pb: 2, borderBottom: `1px solid ${tokens.ink.border}` }}>
-          <ThreadHeader title={title ? shorten(title, 80) : 'Ask AI'} onClose={onClose} />
+          <ThreadHeader title={title ? shorten(title, 80) : 'Ask AI'} onClose={onClose} onDelete={chat.remove} deleting={chat.deleting} />
         </Box>
         <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', px: 4, py: 4, display: 'grid', alignContent: 'start', gap: 5 }}>
           {turnList}
@@ -191,7 +264,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       // with no rail to share it with, and the rail's column width whenever there is one.
       sx={{ display: 'flex', flexDirection: 'column', gap: 5, minHeight: 'calc(100dvh - 200px)', width: '100%', maxWidth: 760, mx: 'auto' }}
     >
-      <ThreadHeader title={title ? shorten(title, 80) : 'New chat'} />
+      <ThreadHeader title={title ? shorten(title, 80) : 'New chat'} onDelete={chat.remove} deleting={chat.deleting} />
       <Box sx={{ flex: 1, display: 'grid', alignContent: 'start', gap: 5 }}>
         {lead}
         {turnList}

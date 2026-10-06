@@ -8,7 +8,7 @@ import { WeekView } from '../../week'
 export function WeekViewSection({ date }: { date: LocalDate }) {
   return (
     <Box data-testid="progress-week-plan">
-      <SectionHeader title="Week plan" subtitle="Each week's targets and sessions, beside last week's actuals" />
+      <SectionHeader title="Week plan" subtitle="Targets and sessions beside last week's actuals" />
       <WeekView date={date} />
     </Box>
   )

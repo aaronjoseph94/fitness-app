@@ -9,12 +9,16 @@ import { notFound } from '../../../lib/http-error'
 
 export type WeekPlanRow = Row<typeof week_plans>
 
-/** Who wrote a plan, from who is acting: Claude via MCP, the Clerk (Gemini-class jobs and Ask AI), or Aaron in the app. */
+/**
+ * Who wrote a plan, from who is acting: Claude via MCP, the AI (the weekly-review job and Ask AI), or Aaron in the app.
+ * `'gemini'` is the shared author *id* for anything an AI wrote — which provider answered is the router's business and
+ * changes with the chain (OpenRouter leads it), so it must never surface as a label.
+ */
 export const AUTHOR_OF: Record<Actor, WeekPlanAuthor> = { mcp: 'claude_mcp', ai: 'gemini', user: 'user' }
 /** The actor whose guards a plan passes (the ±150 kcal step binds ai and mcp, not Aaron). */
 export const ACTOR_OF: Record<WeekPlanAuthor, Actor> = { claude_mcp: 'mcp', gemini: 'ai', user: 'user' }
-/** In event summaries and tool output, which an LLM may read: never Aaron's name. */
-export const AUTHOR_LABEL: Record<WeekPlanAuthor, string> = { claude_mcp: 'Claude', gemini: 'Gemini', user: 'you' }
+/** In event summaries and tool output, which an LLM may read: never Aaron's name, and never a provider's either. */
+export const AUTHOR_LABEL: Record<WeekPlanAuthor, string> = { claude_mcp: 'Claude', gemini: 'the AI', user: 'you' }
 
 /** Row → contract, or null when the stored plan no longer matches its schema (skipped, logged). */
 export function toWeekPlan(row: WeekPlanRow): WeekPlan | null {

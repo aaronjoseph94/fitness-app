@@ -187,7 +187,7 @@ export function TodayCard({ day, active, activeCounts, templates, onStart }: Tod
       <Shell
         eyebrow="Suggested by the AI"
         title="Today's workout"
-        body={`${suggested.draft.exercises.length} exercises · ${training.totalSets} sets. Preview it, swap anything, then start or save it.`}
+        body={`${suggested.draft.exercises.length} exercises · ${training.totalSets} sets`}
         aside={<MuscleMap levels={training.levels} size={96} title="Muscles in the suggested workout" />}
         testId="today-suggested"
       >
@@ -210,11 +210,7 @@ export function TodayCard({ day, active, activeCounts, templates, onStart }: Tod
     <Shell
       eyebrow={day?.fast.is_fast_day ? 'Fast day' : 'Today'}
       title={trainingDay === false ? 'Rest day' : 'Training day'}
-      body={
-        trainingDay === false
-          ? 'Nothing planned. Recovery counts too, but you can still train.'
-          : 'No week plan yet. Let the AI build a session from your allowed exercises, or start a template below.'
-      }
+      body={trainingDay === false ? 'Nothing planned.' : 'No week plan yet.'}
       testId="today-unplanned"
     >
       {generate(trainingDay !== false)}

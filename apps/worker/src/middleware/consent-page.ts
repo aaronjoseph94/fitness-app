@@ -20,9 +20,9 @@ ul { margin: 0 0 16px; padding-left: 20px; color: #6B7280; }
 li { margin-bottom: 4px; }
 .warn { color: #DC2626; }
 button { width: 100%; min-height: 48px; border-radius: 12px; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer; }
-.allow { background: #4F46E5; color: #FFFFFF; border: 0; margin-top: 8px; }
+.allow { background: #166FE5; color: #FFFFFF; border: 0; margin-top: 8px; }
 .deny { background: transparent; color: #6B7280; border: 0; margin-top: 4px; }
-.mark { width: 40px; height: 40px; border-radius: 12px; background: rgba(79, 70, 229, 0.12); color: #4F46E5;
+.mark { width: 40px; height: 40px; border-radius: 12px; background: rgba(22, 111, 229, 0.12); color: #166FE5;
   display: grid; place-items: center; font-weight: 700; margin-bottom: 16px; }`
 
 function page(title: string, body: string): string {

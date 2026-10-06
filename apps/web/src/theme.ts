@@ -10,6 +10,13 @@
 // metric gradient passes WCAG AA 4.5:1 at BOTH stops (the reference image's pastels measured 1.87:1–3.33:1 and were
 // therefore rejected), and the secondary grey is darker than it was because the new canvas pushed the old one to
 // 4.39:1, just under the threshold.
+//
+// Colour scheme (2026-10-06): the action colour is Facebook blue (#166FE5 — Meta's own blue, one step down from the
+// #1877F2 brand fill so white text on a button measures 4.73:1 and clears AA; the brand fill itself is only 4.23:1).
+// The trend weight, the hero card, the rings, the active navigation tile and every action now wear it, so the
+// scheme reads as one colour. Data keeps the hues that carry meaning — energy is warm, movement is green — because
+// a chart where eleven series are eleven blues is unreadable; every one of them is a colder, more saturated
+// neighbour of the old palette, and none of them is the old coral accent.
 import { createTheme } from '@mui/material/styles'
 
 export const tokens = {
@@ -44,40 +51,41 @@ export const tokens = {
     /** A slightly raised surface inside a card — list rows, wells, the month cells. */
     sunken: '#F7F8FB',
   },
-  /** The action colour: coral. `main` is deep enough for white text (5.18:1); `bright` is for icons and accents
-   * where nothing sits on top of it, and must never carry text. */
+  /** The action colour: Facebook blue. `main` is deep enough for white text (4.73:1); `bright` is for icons,
+   * gradients and accents where nothing sits on top of it, and must never carry text. */
   accent: {
-    main: '#C2410C',
-    bright: '#EA580C',
-    /** Tinted chip/background that carries `main` text at 4.67:1. */
-    soft: '#FDF1EA',
+    main: '#166FE5',
+    bright: '#3B82F6',
+    /** Tinted chip/background; it carries `deep` text at 6.34:1 (`main` on it is only 4.12:1). */
+    soft: '#E8F0FE',
     /** Hover/active of `main`. */
-    deep: '#9A3412',
+    deep: '#0B5FCE',
   },
-  /** One colour per metric, used identically in rings, charts, the report and legends. */
+  /** One colour per metric, used identically in rings, charts, the report and legends. The weight family is the
+   * brand blue; the rest are the same meanings in a colder, more saturated set so no chart reads as a rainbow. */
   metric: {
-    weight: '#4338CA',
+    weight: '#166FE5',
     calories: '#C2410C',
-    protein: '#BE123C',
+    protein: '#7C3AED',
     carbs: '#A16207',
-    fat: '#0F766E',
+    fat: '#0E7490',
     water: '#0369A1',
     steps: '#15803D',
-    sleep: '#6D28D9',
+    sleep: '#4338CA',
     fatMass: '#9D174D',
     lean: '#047857',
     fasting: '#475569',
   },
   /** The gradient a metric card is filled with, [from, to] left to right. White text passes 4.5:1 at both stops. */
   gradient: {
-    weight: ['#312E81', '#4338CA'],
+    weight: ['#0B4FC4', '#166FE5'],
     calories: ['#9A3412', '#C2410C'],
-    protein: ['#881337', '#BE123C'],
+    protein: ['#5B21B6', '#7C3AED'],
     carbs: ['#713F12', '#A16207'],
-    fat: ['#134E4A', '#0F766E'],
+    fat: ['#155E75', '#0E7490'],
     water: ['#0C4A6E', '#0369A1'],
     steps: ['#14532D', '#15803D'],
-    sleep: ['#4C1D95', '#6D28D9'],
+    sleep: ['#312E81', '#4338CA'],
     fatMass: ['#831843', '#9D174D'],
     lean: ['#064E3B', '#047857'],
     fasting: ['#1E293B', '#475569'],
@@ -97,11 +105,11 @@ export const tokens = {
     axis: '#5F6B7C',
     axisFontSize: 12,
   },
-  /** Muscle map: light grey body and four solid indigo steps (12/40/70/100 % of #4338CA over the grey). */
+  /** Muscle map: light grey body and four solid blue steps (12/40/70/100 % of the brand blue over the grey). */
   muscleMap: {
     body: '#E5E7EB',
     stroke: '#FFFFFF',
-    steps: ['#D3D4EA', '#A9A7E9', '#7C76E7', '#4338CA'] as const,
+    steps: ['#D6E4FB', '#A8C6F5', '#5E9CEF', '#166FE5'] as const,
   },
   /** A defined radius hierarchy, not one value everywhere: a card is the largest, a control inside it steps down,
    * and a chip or a pill is fully round. */
@@ -112,8 +120,8 @@ export const tokens = {
     card: '0 1px 2px rgba(16,24,40,0.04), 0 10px 28px -14px rgba(16,24,40,0.12)',
     raised: '0 2px 4px rgba(16,24,40,0.05), 0 18px 44px -18px rgba(16,24,40,0.18)',
     overlay: '0 24px 64px -24px rgba(16,24,40,0.30)',
-    /** Under the coral action button, so it lifts off the page. */
-    accent: '0 8px 20px -8px rgba(194,65,12,0.45)',
+    /** Under the blue action button, so it lifts off the page. */
+    accent: '0 8px 20px -8px rgba(22,111,229,0.45)',
   },
   /** The motion system: one place that decides how the app moves, so it feels of a piece. Nothing animates a
    * layout property (only opacity and transform), so an entrance can never shift content and cost CLS, and every
@@ -309,7 +317,7 @@ export const theme = createTheme({
       defaultProps: { disableElevation: true },
       styleOverrides: {
         root: { minHeight: tokens.tapTarget, borderRadius: radius.control, fontWeight: font.weight.label },
-        // MUI derives the hover shade for a contained button from `palette.primary.dark`, so the coral deepens on
+        // MUI derives the hover shade for a contained button from `palette.primary.dark`, so the blue deepens on
         // hover without a colour-specific override here.
         contained: { boxShadow: elevation.accent, '&:hover': { boxShadow: elevation.accent } },
       },

@@ -2,7 +2,10 @@
 
 <!-- Owns: provenance and licence of the empty-state illustrations served from /illustrations/. -->
 
-Downloaded once from [unDraw](https://undraw.co) on 2026-10-05 and recoloured: unDraw's accent `#6c63ff` replaced with the weight indigo `#4F46E5` (`tokens.metric.weight`). Nothing else changed.
+Downloaded once from [unDraw](https://undraw.co) on 2026-10-05 and recoloured: unDraw's accent `#6c63ff` replaced with
+the brand blue `#166FE5` (`tokens.accent.main`, which is also `tokens.metric.weight`, so an illustration never introduces
+a colour the scheme does not already own). Re-tinted from the old indigo on 2026-10-06 when the palette moved to Facebook
+blue. Nothing else changed.
 
 **Licence:** [unDraw licence](https://undraw.co/license): free to use for commercial and personal projects, no attribution required. Not to be redistributed as an illustration pack or used to build a competing service. This app is non-commercial and single-user.
 

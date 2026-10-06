@@ -144,7 +144,7 @@ function PendingScan({ scan }: { scan: Scan }) {
           <CircularProgress size={28} />
           <Box>
             <Box sx={{ fontWeight: tokens.font.weight.heading }}>Extracting…</Box>
-            <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>Reading every value off the sheet. This takes up to half a minute.</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>This takes up to half a minute.</Box>
           </Box>
         </Card>
       )}

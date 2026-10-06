@@ -1,18 +1,18 @@
 // Owns: weekly reviews (SPEC §8 "Weekly review and printable summary", §9 weekly_review) — the engine's week metrics,
-// the Gemini draft (skipped when Claude reviewed the week), the reviews list, and the archived PDF.
+// the AI draft (skipped when Claude reviewed the week), the reviews list, and the archived PDF.
 // Interface:
 //   buildWeeklyMetrics(deps, week_start)   → WeeklyMetrics   engine aggregate of Monday week_start … Sunday (v_day +
 //        trend, sessions, PRs, fasts, scan deltas, forecast, safety flags)
 //   weekMetrics(deps, week)                → WeeklyMetrics   the same by ISO week key ("2026-W40"; 400 if no such week)
 //   draftWeeklyReview(deps, llm, week_start) → DraftOutcome  the weekly_review job's work with the router passed in:
-//        skipped when a Claude review (author claude_mcp) exists; else writes the Gemini review (a redraft replaces the
-//        earlier Gemini draft and withdraws its pending proposals), proposals through plan.propose as actor 'ai', and one
+//        skipped when a Claude review (author claude_mcp) exists; else writes the AI review (a redraft replaces the
+//        earlier AI draft and withdraws its pending proposals), proposals through plan.propose as actor 'ai', and one
 //        ai_events 'review'. A router failure still writes the review (engine narrative, no proposals).
 //   requestWeeklyReview(deps, week)        → { job_id } | { skipped: 'claude_review' }   queue the job and run it soon
 //        (400 for a week that has not started)
 //   weeklyReviewHook(deps, week)           → the cron's Sunday 20:00 call (the ISO week ending that Sunday)
 //   recordCoachReview(deps, { week_start, narrative, highlights?, concerns?, proposals? }) → WeeklyReview   Claude's
-//        review (MCP apply_review) supersedes the Gemini draft: same row, author claude_mcp, the draft's pending
+//        review (MCP apply_review) supersedes the AI draft: same row, author claude_mcp, the draft's pending
 //        proposals withdrawn, one ai_events 'review' as deps.actor
 //   listReviews(deps) / getReview(deps, week)  → WeeklyReview[] newest first / one (404 when none)
 //   archiveReviewPdf(deps, week)           → PdfOutcome      Browser Rendering → R2 reports/<week>.pdf → signed link;

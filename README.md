@@ -22,7 +22,7 @@ pnpm --filter @fitness/exercises run fetch:media               # animated exerci
 pnpm dev                                                       # Worker on :8787 + Vite on :5173 (proxying /api and /mcp)
 ```
 
-Open http://127.0.0.1:5173. `/styleguide` renders every token, card and chart. AI features need at least `GEMINI_API_KEY` in `apps/worker/.dev.vars`; without keys every AI path falls back gracefully (meals go to review for manual items, reviews are engine-only).
+Open http://127.0.0.1:5173. Every visual token lives in `apps/web/src/theme.ts` and nothing else hard-codes a colour. AI features need at least `OPENROUTER_API_KEY` in `apps/worker/.dev.vars`; without keys every AI path falls back gracefully (meals go to review for manual items, reviews are engine-only).
 
 To run the built app the way it deploys: `pnpm preview` (Vite build served by `wrangler dev` on :8787).
 
@@ -52,4 +52,4 @@ docs/                SPEC, PROGRESS, DEPLOY
 - **One contract.** Every REST endpoint is defined once in `packages/shared/src/api/endpoints.ts` with Zod schemas; the Worker binds it with `route()` and the PWA calls it with `call()`.
 - **Deep modules.** Worker logic lives in `apps/worker/src/modules/*`, each a small interface over `(deps, input)`. REST routes, the Ask AI loop and the MCP server all call the same modules through the tools layer (`modules/tools`, 46 tools).
 - **Rails in code.** Every LLM or MCP change passes `packages/shared/src/engine/guards.ts` and becomes a revertible plan version; nothing proposes below 1,400 kcal or outside the allowed exercise set.
-- **Free plan.** One 5-minute cron dispatches nightly/weekly/monthly work by Edmonton local time; no image work or zipping in the Worker; LLM calls go Gemini → GLM → OpenRouter `:free` → Groq with quotas and failover.
+- **Free plan.** One 5-minute cron dispatches nightly/weekly/monthly work by Edmonton local time; no image work or zipping in the Worker; LLM calls go OpenRouter `:free` → GLM → Gemini → Groq with quotas and failover.

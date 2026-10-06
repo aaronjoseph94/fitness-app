@@ -258,7 +258,7 @@ export const ApplyReviewInput = z.object({
     .min(1)
     .max(8000)
     .describe(
-      'The review as Aaron reads it in the weekly report (replaces the Gemini draft for that week). No medical advice.',
+      'The review as Aaron reads it in the weekly report (replaces the AI draft for that week). No medical advice.',
     ),
   changes: z.array(ReviewChange).max(40),
   week_start: LocalDate.optional().describe(

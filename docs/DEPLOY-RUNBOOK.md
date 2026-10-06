@@ -84,7 +84,7 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
    pnpm e2e
    ```
 
-   **Expect:** `9 passed`. The flows are ask-ai, log-a-day, mcp, offline-sync, scan-manual, styleguide, text-meal, training and weekly-report.
+   **Expect:** `11 passed` across nine flow files: ask-ai (2), log-a-day, mcp, offline-sync, scan-manual, settings (2), text-meal, training and weekly-report. (The styleguide flow was removed on 2026-10-06 with the `/styleguide` route; the settings file was added the same day for the fully-editable profile, and ask-ai gained a delete-a-chat story.)
 
    The run builds the web app, seeds a throwaway local D1 in `apps/worker/.wrangler/e2e` and serves it on port 8799. A warning `llm_failed … ProvidersExhaustedError` is expected, because the local runs have no LLM keys.
 

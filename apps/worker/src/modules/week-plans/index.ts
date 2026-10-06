@@ -8,8 +8,9 @@
 //   proposeWeekPlan(deps, { id?, week_start, plan, author?, review_id? }) → WeekPlanProposal
 //        week_start must be a Monday of a week not over (400 / 422). The guards (lib/check) run as the author
 //        (default from deps.actor); any rejected issue stores nothing. Stored as proposed, superseding the week's
-//        earlier proposed plans (their pending proposals rejected) — except that a weekly-review Gemini draft
-//        (author 'gemini') is not stored when the week already has an active plan or a proposed one by Claude, Aaron
+//        earlier proposed plans (their pending proposals rejected) — except that a weekly-review AI draft
+//        (author 'gemini', the shared id for an AI-written plan) is not stored when the week already has an active
+//        plan or a proposed one by Claude, Aaron
 //        or Ask AI. Ask AI (actor 'ai', no author or review_id given) is always stored, with a pending 'week_plan'
 //        proposal event whose id is the plan's id; it never replaces the active plan until Aaron accepts. Replaying
 //        an id returns the stored plan.
@@ -77,7 +78,7 @@ export interface ProposeInput {
   /** The Monday the week starts on. */
   week_start: string
   plan: WeekPlanContentInput
-  /** Default from deps.actor (mcp → claude_mcp, ai → gemini, user → user). */
+  /** Default from deps.actor (mcp → claude_mcp, ai → 'gemini', user → user). */
   author?: WeekPlanAuthor
   /** The weekly review that drafted it. */
   review_id?: string | null
@@ -96,10 +97,11 @@ export async function proposeWeekPlan(deps: Deps, input: ProposeInput): Promise<
   const author = input.author ?? AUTHOR_OF[deps.actor]
   const { active, proposed } = await weekState(deps, input.week_start)
   // Ask AI (actor 'ai' through the tools layer: no author or review given): Aaron asked for this plan in the chat, so
-  // it is stored for his tap whatever the week already has. The weekly-review job names itself (author 'gemini').
+  // it is stored for his tap whatever the week already has. The weekly-review job names itself (author 'gemini', the
+  // id for an AI-written plan — never a provider name).
   const askAi = deps.actor === 'ai' && input.author === undefined && !input.review_id
   if (author === 'gemini' && !askAi) {
-    // An Ask AI plan (author gemini, no review) is Aaron's request: a review draft never replaces it either.
+    // An Ask AI plan (author 'gemini', no review) is Aaron's request: a review draft never replaces it either.
     const keep = active ?? proposed.find((p) => p.author !== 'gemini' || p.review_id === null)
     if (keep)
       return {

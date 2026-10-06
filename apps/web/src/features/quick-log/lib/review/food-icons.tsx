@@ -23,7 +23,7 @@ export interface FoodIconMatcher {
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** Pure: build the matcher from an index (exported for the styleguide and tests). */
+/** Pure: build the matcher from an index (exported for tests). */
 export function foodIconMatcher(index: IconIndex): FoodIconMatcher {
   const rules = index.icons.flatMap((entry, order) =>
     entry.keywords.map((keyword) => ({

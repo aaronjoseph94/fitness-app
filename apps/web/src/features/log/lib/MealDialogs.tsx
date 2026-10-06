@@ -22,7 +22,7 @@ import { clockOf, dateOf, draftTotals, instantAt, ItemsEditor, SLOT_LABEL, toIte
 import { draftFromView, type MealView } from './meals'
 import { problemText } from '../../../api'
 
-export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView; breakfastEnabled: boolean; onClose: () => void }) {
+export function MealEditor({ meal, onClose }: { meal: MealView; onClose: () => void }) {
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const [slot, setSlot] = useState<MealSlot>(meal.slot)
   const [time, setTime] = useState(clockOf(meal.eatenAt))
@@ -32,7 +32,7 @@ export function MealEditor({ meal, breakfastEnabled, onClose }: { meal: MealView
   const inputs = toItemInputs(items)
   const valid = inputs !== null && /^\d{2}:\d{2}$/.test(time)
   const { totals, complete } = draftTotals(items)
-  const slots = visibleSlots(breakfastEnabled || meal.slot === 'breakfast')
+  const slots = visibleSlots()
 
   const save = (confirm: boolean) => {
     if (!valid || !inputs) return

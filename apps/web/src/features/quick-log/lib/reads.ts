@@ -13,14 +13,13 @@ export function useDay(date: string) {
 }
 
 export interface LogSettings {
-  breakfastEnabled: boolean
   waterTargetMl: number
   fastsPerMonth: number
   fastHours: number
 }
 
-/** SPEC §2/§6 defaults: breakfast hidden, 3,000 ml water, two 24 h fasts a month. Used until settings load. */
-const DEFAULTS: LogSettings = { breakfastEnabled: false, waterTargetMl: 3000, fastsPerMonth: 2, fastHours: 24 }
+/** SPEC §2/§6 defaults: 3,000 ml water, two 24 h fasts a month. Used until settings load. */
+const DEFAULTS: LogSettings = { waterTargetMl: 3000, fastsPerMonth: 2, fastHours: 24 }
 
 export function useLogSettings(): LogSettings {
   const { data } = useApiQuery(endpoints.settings.get, {}, { staleTime: 5 * 60_000 })
@@ -28,7 +27,6 @@ export function useLogSettings(): LogSettings {
     if (!data) return DEFAULTS
     const s = data.settings
     return {
-      breakfastEnabled: s.breakfast_enabled,
       waterTargetMl: s.water_target_ml,
       fastsPerMonth: s.fasts_per_month,
       fastHours: s.fast_hours,

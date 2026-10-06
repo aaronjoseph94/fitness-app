@@ -4,7 +4,7 @@
 //   2. the other changes in order, each through its module's own guarded entry point (templates and swaps: allowed
 //      exercise set and 12–28 sets; fasts: the monthly pattern; settings: never a rail) — one that fails is dropped
 //      with the rule it broke and the rest still applies
-//   3. the review through reviews.recordCoachReview (Claude's narrative replaces the Gemini draft; one 'review' event),
+//   3. the review through reviews.recordCoachReview (Claude's narrative replaces the AI draft; one 'review' event),
 //      or with record_review false (scan debrief, program design, plateau check) the narrative as an ai_events note,
 //      whose id is then the review_id revert_review takes — the week's review and its Sunday draft are left alone
 //   4. the change log (log.ts) linking the review to the versions before/after and the undo steps revert_review replays
@@ -368,7 +368,7 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
   applied.sort((a, b) => a.index - b.index)
   dropped.sort((a, b) => a.index - b.index)
 
-  // 3. The review (supersedes the Gemini draft) or, off the weekly review, a note; then 4. its change log.
+  // 3. The review (supersedes the AI draft) or, off the weekly review, a note; then 4. its change log.
   let review_id: string
   if (input.record_review) {
     const review = await recordCoachReview(deps, {

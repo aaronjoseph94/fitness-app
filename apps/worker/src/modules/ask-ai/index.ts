@@ -10,7 +10,10 @@
 //        error 'ai_unavailable' (or 'too_many_steps'), not an HTTP error. The model never sees the user's name.
 //   chatHistory(deps, { thread_id? })      → ChatMessage[]  GET /api/ai/chat: a thread oldest first, proposals at their
 //        status now; without thread_id, each thread's opening question, most recently active first
+//   chatDelete(deps, { thread_id })        → Ok             DELETE /api/ai/chat: forget one chat — every chat_messages
+//        row of that thread; an id that was never stored is a no-op
 //   selectTools(texts, autoApplySafe)      → OfferedTool[]  the tools a turn would offer (for tests and tuning)
+export { chatDelete, deleteThread } from './lib/forget'
 export { chatHistory } from './lib/history'
 export { MAX_TOOLS, selectTools, type OfferedTool } from './lib/select'
 export { chatTurn, MAX_ROUNDS } from './lib/turn'

@@ -1,23 +1,28 @@
 // Owns: the food-sources module's interface — barcode lookup, food search and meal-item matching over the local `foods`
-// cache (Canadian Nutrient File seed + everything fetched before), Open Food Facts and USDA FoodData Central, plus the
-// portion maths for meal_items. SPEC §6 "Nutrition logging" pipeline; §9 meal_analysis writes meal_items after matching.
+// cache (Canadian Nutrient File seed + everything fetched before) and Open Food Facts, plus the portion maths for
+// meal_items. SPEC §6 "Nutrition logging" pipeline; §9 meal_analysis writes meal_items after matching.
 //
-// Order of a match: barcode → the cache by name (FTS5 index foods_fts) together with the LLM's suggested foods → USDA
-// (generic items) or OFF (branded items) → the other one. The cache is always read before any external call; whatever a
-// source returns is upserted into `foods` by (source, source_id) so the next lookup is local. Score and thresholds:
+// Canadian food data comes from the Canadian Nutrient File, seeded locally, and is what the cache answers with. Open
+// Food Facts is the only remote source, for packaged goods and barcodes. USDA FoodData Central is deliberately never
+// queried (Aaron's direction: Canadian food data, not American); USDA rows cached while it was a live source stay in
+// `foods` and keep ranking below CNF.
+//
+// Order of a match: barcode → the cache by name (FTS5 index foods_fts) together with the LLM's suggested foods → Open
+// Food Facts when the cache had nothing strong. The cache is always read before any external call; whatever the source
+// returns is upserted into `foods` by (source, source_id) so the next lookup is local. Score and thresholds:
 // lib/match.ts (the plainest food wins: "milk" is milk, not chocolate milk).
 //
 // Budget: one instance (create one per request or job run) makes at most `maxExternalCalls` external calls (default 12;
-// OFF ≤ 6, USDA ≤ 8), so a 30-item meal stays inside the free plan's 50 subrequests with room for the LLM router.
+// OFF ≤ 8), so a 30-item meal stays inside the free plan's 50 subrequests with room for the LLM router.
 // When the budget is spent, matching continues from the cache only and unmatched items fall back to the LLM estimate.
 // A job passes the router's FetchBudget as `budget` so both draw on one subrequest limit, and `until` to stop asking
-// remote sources before its deadline; every call also counts in the invocation's tally (deps.budget).
+// the remote source before its deadline; every call also counts in the invocation's tally (deps.budget).
 import type { FoodSource, Nutrients } from '@fitness/shared/schemas'
 import type { Deps, FetchBudget } from '../../lib/deps'
 import { HttpError } from '../../lib/http-error'
 import { findByBarcode, findBySourceIds, recordUsage, remember, searchLocal, type FoodRow } from './lib/cache'
 import { createGate, SourceUnavailable, type Fetch } from './lib/gate'
-import { ACCEPT, ftsQuery, looksBranded, rank, STRONG, tokens } from './lib/match'
+import { ACCEPT, ftsQuery, rank, STRONG, tokens } from './lib/match'
 import { nutritionFor, type FoodDraft, type Per100g } from './lib/normalise'
 import { createRemote } from './lib/remote'
 
@@ -42,7 +47,10 @@ export interface MatchItem {
   name: string
   grams: number
   barcode?: string | null
-  /** Foods the LLM suggested; used only when found in the cache or fetchable by id (USDA fdcId, OFF barcode). */
+  /**
+   * Foods the LLM suggested; used only when already in the cache or fetchable by id (an OFF source id is its barcode).
+   * A legacy `usda` suggestion is looked up in the cache and never fetched.
+   */
   candidates?: { source: FoodSource; source_id: string }[]
 }
 
@@ -57,7 +65,7 @@ export interface FoodMatch {
 export interface FoodSearchOptions {
   /** Most results returned (default 10, max 25). */
   limit?: number
-  /** Ask OFF and USDA when the cache has fewer than `limit` good results (default true). */
+  /** Ask Open Food Facts when the cache has fewer than `limit` good results (default true). */
   remote?: boolean
 }
 
@@ -78,7 +86,7 @@ export interface FoodSources {
 /** A food in the pool rank() scores; `bonus` lifts foods the LLM suggested. */
 type Entry = { food: FoodRow | FoodDraft; bonus?: number }
 
-/** Results asked of a source per search (USDA search answers are ~25 KB per food; keep parsing inside 10 ms CPU). */
+/** Results asked of Open Food Facts per search (keep the parsing inside the Worker's 10 ms CPU budget). */
 const REMOTE_PAGE = 3
 const SUGGESTED_BONUS = 0.05
 const MIN_SEARCH_SCORE = 0.3
@@ -96,13 +104,13 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
   const gate = createGate({
     fetch: opts.fetch ?? ((input, init) => fetch(input, init)),
     maxCalls,
-    perSource: { off: Math.min(6, maxCalls), usda: Math.min(8, maxCalls) },
+    perSource: { off: Math.min(8, maxCalls) },
     timeoutMs: 6000,
     shared: [opts.budget, deps.budget].flatMap((b) => (b ? [b] : [])),
     ...(opts.until !== undefined ? { until: opts.until, now: () => deps.now().getTime() } : {}),
     onCall: (source) => deps.waitUntil(recordUsage(deps.db, source, deps.now()).catch(() => undefined)),
   })
-  const remote = createRemote(gate, deps.env.USDA_FDC_API_KEY)
+  const remote = createRemote(gate)
 
   /** Remote results, or [] when the source cannot answer (budget, rate limit, outage). */
   async function tryRemote<T>(call: () => Promise<T>, fallback: T): Promise<T> {
@@ -145,10 +153,10 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
   async function suggestedEntries(refs: MatchItem['candidates'] = []): Promise<Entry[]> {
     const wanted = refs.filter((r) => r.source !== 'llm').slice(0, 5)
     const cached = await findBySourceIds(deps.db, wanted)
-    const missing = wanted.find((r) => (r.source === 'usda' || r.source === 'off') && !cached.some((c) => keyOf(c) === keyOf(r)))
-    const fetched = missing
-      ? await tryRemote(() => (missing.source === 'usda' ? remote.usdaFood(missing.source_id) : remote.offProduct(missing.source_id)), null)
-      : null
+    // Only an Open Food Facts suggestion can still be fetched (its source id is the barcode). A `usda` suggestion from
+    // an older turn is left to the cache below: that database is no longer queried.
+    const missing = wanted.find((r) => r.source === 'off' && !cached.some((c) => keyOf(c) === keyOf(r)))
+    const fetched = missing ? await tryRemote(() => remote.offProduct(missing.source_id), null) : null
     return [...cached, ...(fetched ? [fetched] : [])].map((food) => ({ food, bonus: SUGGESTED_BONUS }))
   }
 
@@ -167,18 +175,12 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     let pool = merge(await suggestedEntries(item.candidates), await localEntries(item.name))
     let top = rank(query, pool)[0]
 
-    // Generic foods ask USDA (Foundation / SR Legacy) first and products ask Open Food Facts first, only when the cache
-    // had nothing strong; the other source is asked only when nothing acceptable was found yet.
+    // The cache had nothing strong, so ask Open Food Facts — the only remote source. A generic item the Canadian
+    // Nutrient File does not carry is left unmatched (the LLM estimate stands) rather than fetched from a database
+    // outside Canada.
     if (!top || top.score < STRONG) {
-      const branded = looksBranded(item.name) || (item.candidates ?? []).some((c) => c.source === 'off')
-      const q = query.join(' ')
-      const asks = [() => remote.usdaSearch(q, REMOTE_PAGE), () => remote.offSearch(q, REMOTE_PAGE)]
-      if (branded) asks.reverse()
-      for (const [i, ask] of asks.entries()) {
-        if (i > 0 && top && top.score >= ACCEPT) break
-        pool = merge(pool, (await tryRemote(ask, [])).map((food) => ({ food })))
-        top = rank(query, pool)[0]
-      }
+      pool = merge(pool, (await tryRemote(() => remote.offSearch(query.join(' '), REMOTE_PAGE), [])).map((food) => ({ food })))
+      top = rank(query, pool)[0]
     }
     if (!top || top.score < ACCEPT) return null
     const [food] = await store([top.food])
@@ -191,12 +193,8 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     if (query.length === 0) return []
     let pool = await localEntries(text)
     if (o.remote !== false && rank(query, pool).filter((r) => r.score >= ACCEPT).length < limit) {
-      const q = query.join(' ')
-      const [usda, off] = await Promise.all([
-        tryRemote(() => remote.usdaSearch(q, REMOTE_PAGE), []),
-        tryRemote(() => remote.offSearch(q, Math.min(limit, 10)), []),
-      ])
-      pool = merge(pool, [...usda, ...off].map((food) => ({ food })))
+      const off = await tryRemote(() => remote.offSearch(query.join(' '), Math.min(limit, 10)), [])
+      pool = merge(pool, off.map((food) => ({ food })))
     }
     // Only the foods actually returned are cached, so every result has an id.
     return store(
