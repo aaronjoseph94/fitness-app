@@ -1,20 +1,33 @@
-// Owns: the desktop board — `Columns` lays its `Column` children out in a single column on a phone and in a fixed number
-// of columns from `md` (900 px) up, and `Column` claims a span clamped to the board's own column count, so a panel that
-// asks for more columns than the board has can never add a stray implicit track. On a phone the board is a plain single
-// column in DOM order, which is what keeps each page's phone layout exactly as it was: a page may be laid out as a
-// board without touching how it reads on a phone.
+// Owns: the desktop board — `Columns` lays its `Column` children out in a fixed number of tracks per breakpoint (one
+// column on a phone unless the board asks for more), and `Column` claims a span clamped to the board's own track count,
+// so a panel that asks for more columns than the board has can never add a stray implicit track. On a phone the default
+// board is a plain single column in DOM order, which is what keeps each page's phone layout exactly as it was: a page may
+// be laid out as a board without touching how it reads on a phone.
+//
+// A board of many tracks (the Dashboard's bento boards use 12 at `lg` and 6 at `md`) is what lets panels of different
+// weights share a row and still fill it: spans that add up to the track count across a row leave no ragged hole, which
+// is the difference between a board and a grid of equal cards.
 import Box from '@mui/material/Box'
 import { createContext, useContext, type ReactNode } from 'react'
 
-/** The board's own shape, so a `Column` can clamp its span to what actually exists. */
+/** The board's own shape per breakpoint, so a `Column` can clamp its span to what actually exists. */
 interface BoardShape {
+  xs: number
+  sm: number
   md: number
   lg: number
 }
 
-const BoardContext = createContext<BoardShape>({ md: 2, lg: 2 })
+const BoardContext = createContext<BoardShape>({ xs: 1, sm: 1, md: 2, lg: 2 })
+
+/** The number of tracks at each breakpoint, in the order MUI's gridColumns object is evaluated. */
+const tracks = (n: number) => `repeat(${n}, minmax(0, 1fr))`
 
 export interface ColumnsProps {
+  /** Columns on a phone (`xs`, under 600 px). Default 1: a plain single column, as every page was before boards existed. */
+  xs?: number
+  /** Columns from 600 px (`sm`). Defaults to `xs`. */
+  sm?: number
   /** Columns from 900 px (`md`). Default 2. */
   md?: number
   /** Columns from 1200 px (`lg`). Defaults to `md`. */
@@ -26,8 +39,8 @@ export interface ColumnsProps {
   children: ReactNode
 }
 
-export function Columns({ md = 2, lg, gap = 4, align = 'start', children }: ColumnsProps) {
-  const shape: BoardShape = { md, lg: lg ?? md }
+export function Columns({ xs = 1, sm, md = 2, lg, gap = 4, align = 'start', children }: ColumnsProps) {
+  const shape: BoardShape = { xs, sm: sm ?? xs, md, lg: lg ?? md }
   return (
     <BoardContext.Provider value={shape}>
       <Box
@@ -35,9 +48,10 @@ export function Columns({ md = 2, lg, gap = 4, align = 'start', children }: Colu
           display: 'grid',
           gap,
           gridTemplateColumns: {
-            xs: 'minmax(0, 1fr)',
-            md: `repeat(${shape.md}, minmax(0, 1fr))`,
-            lg: shape.lg === shape.md ? undefined : `repeat(${shape.lg}, minmax(0, 1fr))`,
+            xs: tracks(shape.xs),
+            sm: shape.sm === shape.xs ? undefined : tracks(shape.sm),
+            md: tracks(shape.md),
+            lg: shape.lg === shape.md ? undefined : tracks(shape.lg),
           },
           alignItems: align,
           minWidth: 0,
@@ -58,16 +72,33 @@ export interface ColumnProps {
    * 900 px window where both columns are still the same size.
    */
   mdSpan?: number
+  /** Columns to span on a phone (and at `sm`, unless `smSpan` says otherwise). Default 1. */
+  xsSpan?: number
+  /** Columns to span from 600 px (`sm`) up only. Defaults to `xsSpan`. */
+  smSpan?: number
+  /**
+   * Rows to span from `lg` up. Default 1. A tall panel (a rail) that spans two rows sits beside two shorter rows of
+   * panels instead of leaving a column of empty space next to it. Ignored below `lg`, where the board is a single row.
+   */
+  rowSpan?: number
   children: ReactNode
 }
 
-export function Column({ span = 1, mdSpan, children }: ColumnProps) {
-  const { md, lg } = useContext(BoardContext)
+export function Column({ span = 1, mdSpan, xsSpan, smSpan, rowSpan, children }: ColumnProps) {
+  const { xs, sm, md, lg } = useContext(BoardContext)
   const atMd = Math.min(mdSpan ?? span, md)
+  const atXs = Math.min(xsSpan ?? 1, xs)
+  const atSm = Math.min(smSpan ?? xsSpan ?? 1, sm)
   return (
     <Box
       sx={{
-        gridColumn: { xs: 'span 1', md: `span ${atMd}`, lg: `span ${Math.min(span, lg)}` },
+        gridColumn: {
+          xs: `span ${atXs}`,
+          sm: atSm === atXs ? undefined : `span ${atSm}`,
+          md: `span ${atMd}`,
+          lg: `span ${Math.min(span, lg)}`,
+        },
+        ...(rowSpan && rowSpan > 1 ? { gridRow: { lg: `span ${Math.min(rowSpan, lg)}` } } : {}),
         minWidth: 0,
       }}
     >
@@ -75,3 +106,4 @@ export function Column({ span = 1, mdSpan, children }: ColumnProps) {
     </Box>
   )
 }
+

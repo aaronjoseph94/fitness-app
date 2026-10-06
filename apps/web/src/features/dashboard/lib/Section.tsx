@@ -13,11 +13,36 @@ import type { ReactNode } from 'react'
 import { Column, Columns, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
 
-export type PanelSpan = 1 | 2 | 3
+/**
+ * A panel's weight on the section board. The board has 12 tracks at `lg` and 6 at `md`, so a row of panels adds up to
+ * 12 (and to 6 at `md`) when the spans are chosen together — a row that does not add up leaves a hole, which is what
+ * makes a board look unfinished.
+ */
+export type PanelSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 
-/** One panel in a section: how many of the board's columns it takes (clamped to the board's own count). */
-export function Panel({ span = 1, children }: { span?: PanelSpan; children: ReactNode }) {
-  return <Column span={span}>{children}</Column>
+/** One panel in a section: how many of the board's tracks it takes (clamped to the board's own count). */
+export function Panel({
+  span = 1,
+  mdSpan,
+  xsSpan,
+  smSpan,
+  rowSpan,
+  children,
+}: {
+  span?: PanelSpan
+  /** Tracks from `md` up only. Defaults to a share of the row that keeps the same weight as `span`. */
+  mdSpan?: number
+  /** Tracks on a phone (and at `sm` unless `smSpan`). Default 1 (two panels across a phone board). */
+  xsSpan?: number
+  smSpan?: number
+  rowSpan?: number
+  children: ReactNode
+}) {
+  return (
+    <Column span={span} mdSpan={mdSpan ?? span} xsSpan={xsSpan} smSpan={smSpan} rowSpan={rowSpan}>
+      {children}
+    </Column>
+  )
 }
 
 export interface DashboardSectionProps {
@@ -33,8 +58,10 @@ export interface DashboardSectionProps {
 export function DashboardSection({ id, title, subtitle, defaultOpen = false, children }: DashboardSectionProps) {
   const theme = useTheme()
   const desktop = useMediaQuery(theme.breakpoints.up('md'))
+  // 12 tracks at `lg` and 6 at `md`: a section is a bento of panels of different weights, not a row of equal cards.
+  // A phone keeps the single column it always had, so the panels stack in reading order there.
   const board = (
-    <Columns md={2} lg={3}>
+    <Columns md={6} lg={12} gap={4}>
       {children}
     </Columns>
   )

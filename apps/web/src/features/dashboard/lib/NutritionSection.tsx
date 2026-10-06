@@ -32,7 +32,10 @@ export function NutritionSection({ data }: { data: DashboardData }) {
       title="Nutrition"
       subtitle={rails ? `Intake against the targets, inside the rails. ${rails}.` : 'Intake against the targets.'}
     >
-      <Panel span={2}>
+      {/* The intake chart runs the full width — it is the one chart here whose density (a bar per day) rewards the room —
+          and the two under it halve the row. The adherence calendar is deliberately the narrower of the two: its cells
+          stop growing at 22 px, so a wide card would be a small calendar in a mostly empty box. */}
+      <Panel span={12} mdSpan={6}>
         <ChartCard
           title="Calories vs target"
           subtitle={targets ? `kcal per day by meal slot; target ${formatNumber(targets.kcal)} kcal` : 'kcal per day by meal slot'}
@@ -43,7 +46,7 @@ export function NutritionSection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel span={2}>
+      <Panel span={7} mdSpan={3}>
         <ChartCard
           title="Macros"
           subtitle={proteinTarget ? `Grams per day; protein target ${formatNumber(proteinTarget)} g` : 'Grams per day'}
@@ -54,7 +57,7 @@ export function NutritionSection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel>
+      <Panel span={5} mdSpan={3}>
         <ChartCard
           title="Protein adherence"
           subtitle={

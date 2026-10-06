@@ -29,7 +29,7 @@ export function BodySection({ data }: { data: DashboardData }) {
   if (!data.trend)
     return (
       <DashboardSection id="body" title="Body" subtitle={subtitle} defaultOpen>
-        <Panel span={3}>
+        <Panel span={12} mdSpan={6}>
           <ChartCard
             title="Weight trend"
             subtitle="No trend series in this window"
@@ -58,8 +58,11 @@ export function BodySection({ data }: { data: DashboardData }) {
     : `Trend and weigh-ins; goal ${formatNumber(goalKg, 0)} kg`
 
   return (
+    // Rows of 12 tracks at `lg` (12, 5+7, 7+5, 12) and of 6 at `md` (6, 3+3, 3+3, 6): the trend line is the section's
+    // hero and takes a whole row — it is the one chart whose readability grows with width — and the four panels under it
+    // are paired so that each pair is of a similar height, which is what keeps a row from being half empty.
     <DashboardSection id="body" title="Body" subtitle={subtitle} defaultOpen>
-      <Panel span={2}>
+      <Panel span={12} mdSpan={6}>
         <ChartCard
           title="Weight trend"
           subtitle={forecastLine}
@@ -80,7 +83,7 @@ export function BodySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel span={1}>
+      <Panel span={5} mdSpan={3}>
         <ChartCard
           title="Weekly loss vs expected"
           subtitle={rate === null ? 'Trend change per Monday–Sunday week' : `Trend change per week; expected ${formatNumber(rate, 2)} kg/week`}
@@ -91,28 +94,9 @@ export function BodySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel span={2}>
-        {scans.length === 0 ? (
-          <ChartCard
-            title="Body composition across scans"
-            subtitle="Fat and lean mass, body fat % and visceral level per Evolt scan"
-            empty={{
-              title: 'No scans yet',
-              body: 'Upload an Evolt sheet and every metric is charted here.',
-              illustration: null,
-              action: { label: 'Go to scans', onClick: () => void navigate('/scans') },
-            }}
-            testId="dashboard-scans"
-          />
-        ) : (
-          <Stack spacing={4} data-testid="dashboard-scans">
-            <ScanCharts scans={scans} compact />
-            <ScanMetricGrid scans={scans} />
-          </Stack>
-        )}
-      </Panel>
-
-      <Panel span={1}>
+      {/* The waist chart sits beside the weekly bars rather than far below the trend: both are simple week-by-week
+          charts of about the same height, so pairing them fills that row. */}
+      <Panel span={7} mdSpan={3}>
         <ChartCard
           title="Waist and WHR"
           subtitle="Weekly tape: waist at the navel and the waist-to-hip ratio"
@@ -127,7 +111,35 @@ export function BodySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel span={3}>
+      {/* The scan panels sit side by side rather than stacked inside one panel: the composition charts and the metric
+          grid are about as tall as each other, so one beside the other fills the row instead of leaving a column of
+          empty space beside a long stack. With no scans yet, one full-width card carries the empty state alone. */}
+      {scans.length === 0 ? (
+        <Panel span={12} mdSpan={6}>
+          <ChartCard
+            title="Body composition across scans"
+            subtitle="Fat and lean mass, body fat % and visceral level per Evolt scan"
+            empty={{
+              title: 'No scans yet',
+              body: 'Upload an Evolt sheet and every metric is charted here.',
+              illustration: null,
+              action: { label: 'Go to scans', onClick: () => void navigate('/scans') },
+            }}
+            testId="dashboard-scans"
+          />
+        </Panel>
+      ) : (
+        <>
+          <Panel span={7} mdSpan={3}>
+            <ScanCharts scans={scans} compact />
+          </Panel>
+          <Panel span={5} mdSpan={3}>
+            <ScanMetricGrid scans={scans} />
+          </Panel>
+        </>
+      )}
+
+      <Panel span={12} mdSpan={6}>
         <ChartCard
           title="Milestones"
           subtitle="Reached, and forecast dates for the next ones"

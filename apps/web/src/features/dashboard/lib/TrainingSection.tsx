@@ -38,13 +38,15 @@ export function TrainingSection({ data }: { data: DashboardData }) {
       title="Training"
       subtitle={`Weekly volume by muscle group, the muscles a week reached, and strength per exercise — ${count} ${count === 1 ? 'session' : 'sessions'} in this window.`}
     >
-      <Panel span={2}>
+      {/* Volume is the wide panel (7 of 12) because its stacked weeks need the room; the body map and its legend take
+          the 5 beside it, and the strength line closes on a full row where its picker has space too. */}
+      <Panel span={7} mdSpan={6}>
         <VolumeCard sessions={data.sessions} index={index} from={data.from} to={data.to} />
       </Panel>
-      <Panel span={3}>
+      <Panel span={5} mdSpan={6}>
         <VolumeMapCard sessions={data.sessions} index={index} from={data.from} to={data.to} />
       </Panel>
-      <Panel span={3}>
+      <Panel span={12} mdSpan={6}>
         <StrengthCard sessions={data.sessions} index={index} />
       </Panel>
     </DashboardSection>

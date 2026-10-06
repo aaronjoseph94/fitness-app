@@ -1,6 +1,7 @@
 // Owns: the Dashboard's "Recovery and habits" section — water, steps, sleep, the fasting strip and the logging
 // adherence calendar, each a panel on the dashboard board, drawn from the window's v_day rows and fasts. On a phone the
-// section folds away and opens on a tap; from `md` up its panels sit in columns.
+// section folds away and opens on a tap; from `md` up its panels sit in columns. The three daily panels take a third of
+// a wide row each, and the strip below them takes two thirds beside the adherence calendar.
 // Series mappings come from the progress module's shared entry point (../../progress/series), so these charts draw
 // exactly what the Progress tab draws.
 import { useUiStore } from '../../../app/ui-store'
@@ -41,7 +42,7 @@ export function RecoverySection({ data }: { data: DashboardData }) {
       title="Recovery and habits"
       subtitle="Water, steps, sleep and your fasts against their targets. Fast days are marked, not missed."
     >
-      <Panel>
+      <Panel span={4} mdSpan={3}>
         <ChartCard
           title="Water"
           subtitle={targets ? `ml per day; target ${formatNumber(targets.water_ml)} ml` : 'ml per day'}
@@ -61,7 +62,7 @@ export function RecoverySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel>
+      <Panel span={4} mdSpan={3}>
         <ChartCard
           title="Steps"
           subtitle={targets ? `Per day with the 14-day median; target ${formatNumber(targets.steps)}` : 'Per day with the 14-day median'}
@@ -76,7 +77,7 @@ export function RecoverySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel>
+      <Panel span={4} mdSpan={3}>
         <ChartCard
           title="Sleep"
           subtitle={`Hours asleep against ${SLEEP_TARGET_H} h, and bedtime`}
@@ -91,7 +92,7 @@ export function RecoverySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel span={2}>
+      <Panel span={8} mdSpan={3}>
         <ChartCard
           title="Fasting"
           subtitle={`Planned and completed ${fastHours} h fasts`}
@@ -111,7 +112,7 @@ export function RecoverySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Panel>
 
-      <Panel>
+      <Panel span={4} mdSpan={6}>
         <ChartCard
           title="Logging adherence"
           subtitle="Weigh-in, two meals or a fast, and water: share of the three"

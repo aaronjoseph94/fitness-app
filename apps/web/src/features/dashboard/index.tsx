@@ -14,7 +14,7 @@ import { useSearchParams } from 'react-router'
 import { problemText, signInAgain } from '../../api'
 import { useLocalToday } from '../../app/local-today'
 import { LinkRow, SettingsGroup } from '../settings/rows'
-import { Column, Columns, formatLongDate, greetingFor, PageHero } from '../../components'
+import { formatLongDate, greetingFor, PageHero, SectionHeader } from '../../components'
 import { tokens, transitionOf } from '../../theme'
 import { BodySection } from './lib/BodySection'
 import { GoalRail } from './lib/GoalRail'
@@ -54,11 +54,19 @@ export function DashboardPage() {
 
   if (loading && !data)
     return (
-      <Stack spacing={6} data-testid="dashboard-page" aria-busy="true">
+      <Stack spacing={{ xs: 6, md: 8 }} data-testid="dashboard-page" aria-busy="true">
         <PageHero testId="dashboard-hero" eyebrow={greetingFor(new Date().getHours())} title="Welcome back" pageName="Dashboard" subtitle={formatLongDate(date)} action={picker} />
-        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' } }}>
-          {Array.from({ length: 12 }, (_, i) => (
-            <Skeleton key={i} variant="rounded" height={172} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+        {/* The skeleton is the shape of the band it replaces: one hero, the goals rail beside it, then the tiles. */}
+        <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(6, minmax(0, 1fr))', lg: 'repeat(12, minmax(0, 1fr))' } }}>
+          <Skeleton variant="rounded" height={244} sx={{ gridColumn: { xs: 'span 2', md: 'span 6', lg: 'span 8' }, borderRadius: `${tokens.radius.card}px` }} />
+          <Skeleton variant="rounded" height={520} sx={{ gridColumn: { xs: 'span 2', md: 'span 6', lg: 'span 4' }, borderRadius: `${tokens.radius.card}px` }} />
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton
+              key={i}
+              variant="rounded"
+              height={244}
+              sx={{ gridColumn: { xs: 'span 1', md: 'span 3', lg: 'span 4' }, borderRadius: `${tokens.radius.card}px` }}
+            />
           ))}
         </Box>
       </Stack>
@@ -86,7 +94,9 @@ export function DashboardPage() {
     )
 
   return (
-    <Stack spacing={6} data-testid="dashboard-page" sx={{ pb: 4, opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }}>
+    // 64 px between groups on a desktop and 48 on a phone: the page is a stack of bento groups, so the space between
+    // two groups has to be visibly larger than the gutter inside one, or the whole page reads as one long table.
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="dashboard-page" sx={{ pb: 4, opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }}>
       {/* The route handle says `hero: true`, so this owns the page's h1 and the picker rides beside it. */}
       <PageHero
         testId="dashboard-hero"
@@ -97,16 +107,16 @@ export function DashboardPage() {
         action={picker}
       />
 
-      {/* Two thirds of main numbers, one third of where they sit against the plan; the rail drops under the band on a
-          narrower desktop rather than squeezing both. */}
-      <Columns md={2} lg={3} align="stretch">
-        <Column span={2}>
-          <KpiBand kpis={dashboardKpis(data)} />
-        </Column>
-        <Column span={1} mdSpan={2}>
-          <GoalRail data={data} />
-        </Column>
-      </Columns>
+      {/* The opening group: the window's headline numbers, the goals rail spanning two of its rows. The heading is what
+          makes the band a category rather than a pile: it says what the numbers below have in common. */}
+      <Box component="section" aria-labelledby="now-title" data-testid="dashboard-now">
+        <SectionHeader
+          id="now"
+          title="Now"
+          subtitle={`The headline numbers for ${data.from} to ${data.to}, and where they sit against the plan.`}
+        />
+        <KpiBand kpis={dashboardKpis(data)} rail={<GoalRail data={data} />} />
+      </Box>
 
       <BodySection data={data} />
       <NutritionSection data={data} />
