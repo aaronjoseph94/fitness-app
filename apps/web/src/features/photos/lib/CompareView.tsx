@@ -63,7 +63,7 @@ function changeText(before: ProgressPhoto, after: ProgressPhoto): string {
 
 export function CompareView({ photos, before, after, mode, onChange }: CompareViewProps) {
   return (
-    <Stack spacing={4} data-testid="photo-compare">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="photo-compare">
       <Stack direction="row" spacing={2}>
         <PhotoSelect label="Before" value={before.id} photos={photos} onPick={(id) => onChange({ before: id })} />
         <PhotoSelect label="After" value={after.id} photos={photos} onPick={(id) => onChange({ after: id })} />

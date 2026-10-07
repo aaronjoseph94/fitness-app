@@ -52,7 +52,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg }: WeightColumn
     : `Trend, weigh-ins and the goal of ${formatNumber(goalKg, 0)} kg`
 
   return (
-    <Stack spacing={4} data-testid="progress-weight">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="progress-weight">
       {header}
       <ChartCard
         title="Weight trend"

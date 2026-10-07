@@ -55,7 +55,7 @@ export function HabitsColumn({ days, fasts, from, to, fastHours }: HabitsColumnP
   const proteinTarget = targets?.protein_g
 
   return (
-    <Stack spacing={4} data-testid="progress-habits">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="progress-habits">
       {header}
       <ChartCard
         title="Calories vs target"

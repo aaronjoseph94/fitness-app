@@ -11,7 +11,7 @@ import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { tokens } from '../../../theme'
+import { sheetSurface, tokens } from '../../../theme'
 import { useUiStore, type QuickLogKind } from '../../ui-store'
 import { TABS } from '../tabs'
 
@@ -117,7 +117,9 @@ export function CommandPalette() {
           // The paper carries role="dialog", so its name goes here (on the Dialog root it names nothing).
           'aria-label': 'Commands',
           'data-testid': 'command-palette',
-          sx: { borderRadius: `${tokens.radius.card}px`, border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.card },
+          // The thicker material, so the palette reads as a surface floating over a dimmed page rather than a card
+          // that happens to sit on top of it (the dialog's MUI backdrop is the scrim).
+          sx: { ...sheetSurface, borderRadius: `${tokens.radius.card}px` },
         } as object,
       }}
     >

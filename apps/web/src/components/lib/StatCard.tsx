@@ -113,8 +113,8 @@ export function StatCard({
 }: StatCardProps) {
   const display = typeof value === 'number' || value === null ? formatNumber(value, precision) : value
   const numberSize = emphasis === 'hero' ? tokens.font.size.bigNumberLarge : tokens.font.size.bigNumber
-  // A hero number is the largest thing on the screen, so it tightens its tracking the way the gradient card's does.
-  const numberTracking = emphasis === 'hero' ? -1 : -0.5
+  // A hero number is the largest thing on the screen, so it tightens its tracking the way a metric card's does.
+  const numberTracking = emphasis === 'hero' ? tokens.font.tracking.number : -0.5
   const tint = metric ? tokens.metric[metric] : tokens.ink.secondary
 
   // The card is often taller than its content: on the Dashboard's bento a rail beside it spans two rows, so a tile is
@@ -162,6 +162,8 @@ export function StatCard({
             fontSize: tokens.font.size.label,
             fontWeight: tokens.font.weight.label,
             color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.label,
+            letterSpacing: tokens.font.tracking.label,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -177,7 +179,7 @@ export function StatCard({
           sx={{
             fontSize: numberSize,
             fontWeight: tokens.font.weight.number,
-            lineHeight: 1.1,
+            lineHeight: tokens.font.leading.number,
             color: tokens.ink.text,
             letterSpacing: numberTracking,
             fontVariantNumeric: 'tabular-nums',
@@ -211,7 +213,10 @@ export function StatCard({
         // Only a card that does something may look like it does, and only where there is a pointer to hover with.
         ...(onClick && {
           '@media (hover: hover)': { '&:hover': { transform: 'translateY(-2px)', boxShadow: tokens.elevation.raised } },
-          transition: transitionOf(['box-shadow', 'transform'], tokens.motion.duration.fast, tokens.motion.easing.enter),
+          // The press is answered on pointer-down, and a scale is nothing under reduced motion.
+          '&:active': { transform: 'scale(0.99)' },
+          '@media (prefers-reduced-motion: reduce)': { '&:active': { transform: 'none' } },
+          transition: transitionOf(['box-shadow', 'transform'], tokens.motion.duration.fast, tokens.motion.easing.standard),
         }),
       }}
     >

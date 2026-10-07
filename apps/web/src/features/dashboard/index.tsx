@@ -72,10 +72,13 @@ export function DashboardPage() {
       </Stack>
     )
 
+  // Reached when both essentials have stopped without data: a failure, or a read the network paused with nothing
+  // saved on this phone (no `error` at all — the offline case, which gets the calm card rather than an "error"). A
+  // skeleton must not come first here, because this is the only branch that carries the way on (sign in, or retry).
   if (!data)
     return (
       <Alert
-        severity="error"
+        severity={error ? 'error' : 'info'}
         data-testid="dashboard-error"
         action={
           error?.kind === 'auth-expired' ? (
@@ -89,7 +92,9 @@ export function DashboardPage() {
           )
         }
       >
-        {`Couldn't load the dashboard. ${problemText(error)}`}
+        {error
+          ? `Couldn't load the dashboard. ${problemText(error)}`
+          : "You're offline and the dashboard hasn't loaded on this phone yet. It fills in once you're back online."}
       </Alert>
     )
 

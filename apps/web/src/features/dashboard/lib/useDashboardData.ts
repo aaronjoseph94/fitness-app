@@ -6,6 +6,7 @@ import { addDays, daysBetween } from '@fitness/shared/engine'
 import type { DaySummary, Fast, LocalDate, Profile, Scan, Settings, TrendSeries, WorkoutSession } from '@fitness/shared/schemas'
 import { keepPreviousData } from '@tanstack/react-query'
 import { useApiQuery, type ApiError } from '../../../api'
+import { essentialsLoading } from './essential-reads'
 
 /** Windows the dashboard offers, in days. */
 export const WINDOWS = [
@@ -61,9 +62,12 @@ export function useDashboardData(window: WindowKey, date: LocalDate): DashboardR
   const sessions = useApiQuery(endpoints.training.listSessions, { query: range }, keep)
   const scans = useApiQuery(endpoints.scans.list, {}, { staleTime: 5 * 60_000 })
 
-  // The essentials: without these there is no dashboard, only a loading or error state.
+  const loading = essentialsLoading(days, trend)
+
+  // The essentials: without these there is no dashboard, only a loading or error state. `loading` is what is still in
+  // flight, so a read that has stopped with nothing to show falls through to the page's error card.
   if (!days.data || !trend.data)
-    return { data: null, loading: true, refreshing: false, error: (days.error ?? trend.error) as ApiError | null }
+    return { data: null, loading, refreshing: false, error: (days.error ?? trend.error) as ApiError | null }
 
   return {
     data: {
@@ -78,7 +82,7 @@ export function useDashboardData(window: WindowKey, date: LocalDate): DashboardR
       sessions: sessions.data ?? [],
       scans: scans.data ?? [],
     },
-    loading: false,
+    loading,
     refreshing: Boolean(days.isPlaceholderData || trend.isPlaceholderData),
     error: null,
   }

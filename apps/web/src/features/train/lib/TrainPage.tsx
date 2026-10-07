@@ -51,7 +51,7 @@ export function TrainPage() {
   )
 
   return (
-    <Stack spacing={5} data-testid="train-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="train-page">
       {/* `gap={5}` matches the `spacing={5}` this page used when it was one stack, so a phone sees the same rhythm. */}
       <Columns md={2} lg={3} gap={5}>
         <Column span={3} mdSpan={2}>

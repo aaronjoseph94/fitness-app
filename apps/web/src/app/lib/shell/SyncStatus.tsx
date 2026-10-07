@@ -38,7 +38,7 @@ export function SyncStatus() {
         aria-haspopup={failing ? 'dialog' : undefined}
         aria-expanded={failing ? open : undefined}
         aria-controls={open ? detailsId : undefined}
-        sx={{ color: 'text.secondary', borderColor: 'divider', '& .MuiChip-icon': { color: 'text.secondary' } }}
+        sx={{ color: 'text.secondary', '& .MuiChip-icon': { color: 'text.secondary' } }}
       />
       {failing && (
         <Popover
@@ -53,7 +53,7 @@ export function SyncStatus() {
               role: 'dialog',
               'aria-label': 'Waiting to send',
               'data-testid': 'sync-status-details',
-              sx: { p: 4, maxWidth: 320, borderRadius: `${tokens.radius.card}px`, border: `1px solid ${tokens.ink.border}` },
+              sx: { p: 4, maxWidth: 320 },
             } as object,
           }}
         >

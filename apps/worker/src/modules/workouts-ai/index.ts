@@ -1,6 +1,7 @@
 // Owns: AI workouts (SPEC §7, §9) — the workout_generate and workout_fill jobs: read the planning context, ask the
-// LLM router for a session drawn only from the allowed exercise set, repair and guard it deterministically, set
-// default loads from the engine's progression and muscle scores from the engine, and write one pending `workout`
+// LLM router for a session drawn only from the allowed exercise set *and* from the equipment profile (the prompt
+// carries his gym's machines, grouped by area, with what it does not have), repair and guard it deterministically,
+// set default loads from the engine's progression and muscle scores from the engine, and write one pending `workout`
 // proposal (the web previews it; saving a template or starting a session with its proposal_id accepts it).
 // Interface:
 //   requestWorkout(deps, body)            → JobRef     POST /api/ai/workout: enqueue (user priority) + run soon
@@ -27,7 +28,7 @@ import { eventInsert } from '../events'
 import { enqueue, JobFailed, registerJobHandler, runSoon, type JobContext } from '../jobs'
 import { createLlmRouter, ProvidersExhaustedError, type LlmRouter, type Priority } from '../llm'
 import { guardContext, planningContext, progressionFor } from '../training'
-import { buildPrompt, dayFocus, focusFromNote, LlmWorkout, selectCandidates, SYSTEM_PROMPT, type Focus } from './lib/plan'
+import { buildPrompt, dayFocus, focusFromNote, gymFloor, LlmWorkout, selectCandidates, SYSTEM_PROMPT, type Focus } from './lib/plan'
 import { repairDraft } from './lib/repair'
 
 export { RepairError } from './lib/repair'
@@ -119,7 +120,7 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
     digest: ctx.digest,
     slugOf: (id) => library.byId.get(id)?.slug,
     templates: ctx.templates,
-    equipment_notes: library.equipment.filter((e) => e.note && e.status !== 'have').map((e) => `${e.equipment}: ${e.status} (${e.note})`),
+    gym: gymFloor(library.equipment),
     partial: keep,
     candidates,
   })

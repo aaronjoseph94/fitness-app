@@ -43,6 +43,20 @@
       "when": 1791252688270,
       "tag": "0005_material_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791333956890,
+      "tag": "0006_large_lightspeed",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791333969842,
+      "tag": "0007_equipment_inventory",
+      "breakpoints": true
     }
   ]
 }

@@ -35,7 +35,7 @@ export function RemindersPage() {
   }
 
   return (
-    <Stack spacing={6} data-testid="reminders-page" sx={{ pb: 4 }}>
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="reminders-page" sx={{ pb: 4 }}>
       {!online && (
         <Alert severity="info" data-testid="reminders-offline">
           You’re offline. These are the last saved reminders; changes need a connection.

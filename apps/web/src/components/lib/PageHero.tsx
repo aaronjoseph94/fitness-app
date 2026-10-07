@@ -2,12 +2,12 @@
 // subtitle and a right-hand slot for the page's own control). It carries the page's single `h1`, which is why a route
 // that shows one marks its handle `hero: true` so the top bar drops its own title rather than repeating it.
 //
-// It rises into place once on mount (opacity + transform only, so it costs no CLS), and under `prefers-reduced-motion`
-// `useEntrance` reports the resting state immediately, so nothing is hidden or delayed.
+// It rises into place once on mount (opacity + transform only, so it costs no CLS). Under `prefers-reduced-motion` the
+// rise is dropped for a plain cross-fade: the band still resolves in, it just never travels to get there.
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { ReactNode } from 'react'
-import { tokens } from '../../theme'
+import { enterDuration, enterEasing, reducedEntrance, tokens } from '../../theme'
 import { useEntrance } from './useEntrance'
 
 /**
@@ -77,7 +77,8 @@ export function PageHero({ eyebrow, title, pageName, subtitle, action, delay = 0
         transform: entered ? 'none' : `translateY(${tokens.motion.rise}px)`,
         transition: reduced
           ? 'none'
-          : `opacity ${tokens.motion.duration.slow}ms ${tokens.motion.easing.enter} ${delay}ms, transform ${tokens.motion.duration.slow}ms ${tokens.motion.easing.enter} ${delay}ms`,
+          : `opacity ${enterDuration()}ms ${enterEasing()} ${delay}ms, transform ${enterDuration()}ms ${enterEasing()} ${delay}ms`,
+        animation: reducedEntrance(delay, reduced),
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>

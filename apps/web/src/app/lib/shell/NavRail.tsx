@@ -2,20 +2,22 @@
 // bottom tabs instead (so the two navigations are never on screen at once, and neither is duplicated for a screen
 // reader: the rail is `display: none` on a phone and the bottom bar is `display: none` on a desktop).
 //
-// The active destination is not signalled by colour alone (WCAG 1.4.1): it is a filled blue tile with a white glyph
-// while the inactive ones are bare grey glyphs, and it carries `aria-current="page"`. White on the brighter end of the
-// blue gradient measures 3.68:1, which clears the 3:1 floor for a graphical object (WCAG 1.4.11); the label lives in
-// a tooltip and in the link's accessible name, so the glyph is never the only source of the name either.
+// Rebuilt on the HIG's sidebar: a translucent material the page scrolls under (not an opaque strip with a full-height
+// hairline), and the selected destination marked the way the platform marks it — an accent-tinted rounded tile with an
+// accent glyph. That is not colour alone (WCAG 1.4.1): the glyph itself changes from outline to filled and the tile
+// carries a surface, and `aria-current="page"` names it for assistive tech. `accent.deep` on `accent.soft` measures
+// 6.34:1, better than the white-on-gradient it replaced (which was 3.68:1, the minimum for a graphic).
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import { Link } from 'react-router'
-import { tokens, transitionOf } from '../../../theme'
+import { chromeSurface, tokens, transitionOf, withAlpha } from '../../../theme'
 import type { TabKey } from '../../ui-store'
 import { TABS, type Tab } from '../tabs'
 import { safeArea } from './layout'
+import { useScrolled } from './useScrolled'
 
 /** The tile's edge, in px: a 48 px target with the icon comfortably inside it. */
 const TILE = 48
@@ -36,13 +38,14 @@ function RailLink({ tab, active }: { tab: Tab; active: boolean }) {
           display: 'grid',
           placeItems: 'center',
           borderRadius: `${tokens.radius.control}px`,
-          color: active ? tokens.ink.card : tokens.ink.secondary,
-          backgroundImage: active ? `linear-gradient(135deg, ${tokens.accent.bright} 0%, ${tokens.accent.main} 100%)` : 'none',
-          boxShadow: active ? tokens.elevation.accent : 'none',
-          transition: transitionOf(['background-color', 'color'], tokens.motion.duration.fast),
+          color: active ? tokens.accent.deep : tokens.ink.secondary,
+          backgroundColor: active ? tokens.accent.soft : 'transparent',
+          transition: transitionOf(['background-color', 'color', 'transform'], tokens.motion.duration.fast),
           '@media (hover: hover)': {
-            '&:hover': { backgroundColor: active ? 'transparent' : tokens.ink.sunken, color: active ? tokens.ink.card : tokens.ink.text },
+            '&:hover': { backgroundColor: active ? tokens.accent.soft : withAlpha(tokens.ink.text, 0.06), color: active ? tokens.accent.deep : tokens.ink.text },
           },
+          '&:active': { transform: 'scale(0.94)' },
+          '@media (prefers-reduced-motion: reduce)': { '&:active': { transform: 'none' } },
         }}
       >
         <Icon sx={{ fontSize: 22 }} />
@@ -52,6 +55,7 @@ function RailLink({ tab, active }: { tab: Tab; active: boolean }) {
 }
 
 export function NavRail({ active }: { active: TabKey | undefined }) {
+  const scrolled = useScrolled()
   return (
     <Box
       component="nav"
@@ -71,8 +75,10 @@ export function NavRail({ active }: { active: TabKey | undefined }) {
         gap: 1,
         pt: `calc(${tokens.space(4)}px + ${safeArea.top})`,
         pb: `calc(${tokens.space(4)}px + ${safeArea.bottom})`,
-        bgcolor: 'background.paper',
-        borderRight: `1px solid ${tokens.ink.border}`,
+        ...chromeSurface,
+        // The same scroll edge effect as the top bar: the hairline exists only while content is beside the rail.
+        boxShadow: scrolled ? `1px 0 0 0 ${tokens.ink.border}` : 'none',
+        transition: transitionOf('box-shadow', tokens.motion.duration.fast),
       }}
     >
       {TABS.map((tab) => (
@@ -91,7 +97,7 @@ export function NavRail({ active }: { active: TabKey | undefined }) {
             width: TILE,
             height: TILE,
             color: tokens.ink.secondary,
-            '@media (hover: hover)': { '&:hover': { bgcolor: tokens.ink.sunken, color: tokens.ink.text } },
+            '@media (hover: hover)': { '&:hover': { bgcolor: withAlpha(tokens.ink.text, 0.06), color: tokens.ink.text } },
           }}
         >
           <SettingsOutlined sx={{ fontSize: 22 }} />

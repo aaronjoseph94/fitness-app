@@ -58,7 +58,7 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
   }
 
   return (
-    <Stack spacing={4} data-testid="ai-workout-preview">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="ai-workout-preview">
       <Card sx={{ p: 4, display: 'flex', gap: 3, alignItems: 'flex-start' }}>
         <AutoAwesomeRounded sx={{ color: tokens.metric.weight, mt: 0.25 }} aria-hidden />
         <Box sx={{ minWidth: 0 }}>

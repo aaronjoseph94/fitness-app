@@ -31,14 +31,17 @@ export function AskAiPanel({ open, onClose }: AskAiPanelProps) {
           // The paper carries role="dialog", so its name goes here (on the Drawer root it names nothing).
           'aria-label': 'Ask AI',
           'data-testid': 'ask-ai-panel',
+          // A sheet, not a bordered panel: the rounded top corners, the dimmed page behind it and the sheet's own
+          // shadow are what separate it from the tab underneath, where a hairline would be a Material separator.
+          // No grabber, because this panel has no drag: its header and its thread scroll as one subtree inside
+          // `Chat`, so there is no region of the paper a gesture could own. The quick-log sheet, whose draggable
+          // header is a direct child of its paper, is the one that drags away. See `useSheetDrag`.
           sx: {
             height: 'calc(100dvh - 48px - env(safe-area-inset-top, 0px))',
             maxWidth: 640,
             mx: 'auto',
             borderTopLeftRadius: tokens.radius.card,
             borderTopRightRadius: tokens.radius.card,
-            boxShadow: 'none',
-            borderTop: `1px solid ${tokens.ink.border}`,
             bgcolor: tokens.ink.page,
           },
         } as object,

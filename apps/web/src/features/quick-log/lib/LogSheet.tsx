@@ -24,8 +24,8 @@ import Typography from '@mui/material/Typography'
 import type { MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import type { QuickLogKind } from '../../../app/ui-store'
-import { PendingBadge } from '../../../components'
-import { tokens } from '../../../theme'
+import { PendingBadge, useSheetDrag } from '../../../components'
+import { sheetSurface, tokens, withAlpha } from '../../../theme'
 import { relativeDay, todayLocal } from './dates'
 import { FastForm } from './FastForm'
 import { MealForm, type CapturedMeal } from './MealForm'
@@ -74,6 +74,9 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
   const day = date ?? todayLocal()
   const selected = KINDS.find((option) => option.kind === kind)
   const isToday = day === todayLocal()
+  // Drag the header down to throw the sheet away: 1:1 with the finger, and the release hands its own velocity to the
+  // spring that settles it. Reduced motion opts out, leaving the Close button as the way out.
+  const drag = useSheetDrag({ onDismiss: onClose })
 
   /** Once the sheet has slid away: drop the review (and its thumbnails) so the next open starts at the form. */
   const onExited = () => {
@@ -98,18 +101,34 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
           paper: {
             'aria-label': review ? 'Review meal' : selected ? `Log ${selected.label.toLowerCase()}` : 'Quick log',
             sx: {
+              ...sheetSurface,
               maxWidth: (theme) => theme.breakpoints.values.sm,
               mx: 'auto',
               maxHeight: '92dvh',
               borderTopLeftRadius: tokens.radius.card,
               borderTopRightRadius: tokens.radius.card,
               pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`,
+              // While the finger owns the sheet, nothing may smooth its moves: `!important` because MUI's own slide
+              // writes a transition inline on this element, and a 225 ms curve under a 1:1 drag is lag.
+              transition: drag.dragging ? 'none !important' : undefined,
+              willChange: drag.dragging ? 'transform' : undefined,
             },
           },
         }}
       >
-        <Box sx={{ width: 36, height: 4, borderRadius: tokens.radius.chip, bgcolor: 'divider', mx: 'auto', mt: 2, flex: 'none' }} />
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pl: selected && onPickKind && !review ? 2 : 5, pr: 2, pt: 1, flex: 'none' }}>
+        {/* The grabber is the drag region, and it is deliberately the *only* part of the sheet that is: the gesture
+            captures the pointer on pointer-down, which retargets the click away from anything inside the region — so
+            the Back and Close buttons below it must stay outside. The strip is a full-width 28 px target with the
+            36 × 5 pill centred in it, the proportion iOS uses, in ink rather than the divider grey so it reads as a
+            handle on the material instead of as a faint hairline. */}
+        <Box
+          data-testid="log-sheet-handle"
+          {...drag.handleProps}
+          sx={{ height: 28, pt: 0.5, display: 'grid', placeItems: 'center', flex: 'none', ...drag.handleSx }}
+        >
+          <Box aria-hidden sx={{ width: 36, height: 5, borderRadius: tokens.radius.chip, bgcolor: withAlpha(tokens.ink.text, 0.2) }} />
+        </Box>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pl: selected && onPickKind && !review ? 2 : 5, pr: 2, flex: 'none' }}>
           {selected && onPickKind && !review && (
             <IconButton aria-label="All kinds" onClick={() => onPickKind(null)}>
               <ArrowBackIosNew fontSize="small" />

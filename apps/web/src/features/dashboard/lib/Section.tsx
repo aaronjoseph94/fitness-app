@@ -80,10 +80,12 @@ export function DashboardSection({ id, title, subtitle, defaultOpen = false, chi
       disableGutters
       elevation={0}
       data-testid={`dashboard-${id}`}
+      // A white card on the grouped grey needs no outline: the surface contrast is the separation (and `&::before`
+      // is MUI's own top hairline, which the HIG would not draw here).
       sx={{
         bgcolor: tokens.ink.card,
-        border: `1px solid ${tokens.ink.border}`,
         borderRadius: `${tokens.radius.card}px`,
+        boxShadow: tokens.elevation.card,
         overflow: 'hidden',
         '&::before': { display: 'none' },
       }}
@@ -96,12 +98,28 @@ export function DashboardSection({ id, title, subtitle, defaultOpen = false, chi
           <Box
             component="h2"
             id={`${id}-title`}
-            sx={{ m: 0, fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}
+            sx={{
+              m: 0,
+              fontSize: tokens.font.size.cardTitle,
+              fontWeight: tokens.font.weight.heading,
+              lineHeight: tokens.font.leading.cardTitle,
+              letterSpacing: tokens.font.tracking.cardTitle,
+            }}
           >
             {title}
           </Box>
           {subtitle && (
-            <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.45 }}>{subtitle}</Box>
+            <Box
+              sx={{
+                mt: 0.5,
+                fontSize: tokens.font.size.label,
+                color: tokens.ink.secondary,
+                lineHeight: tokens.font.leading.label,
+                letterSpacing: tokens.font.tracking.label,
+              }}
+            >
+              {subtitle}
+            </Box>
           )}
         </Box>
       </AccordionSummary>

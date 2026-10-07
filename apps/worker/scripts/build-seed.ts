@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import * as z from 'zod'
-import { exercises as library, type LibraryExercise } from '@fitness/exercises'
+import { exercises as library } from '@fitness/exercises'
 import { forecast, localDate, materialiseTargets, TIMEZONE } from '@fitness/shared/engine'
 import { ReminderKind, ScanRecord, type ReminderPrefs, type Weekday } from '@fitness/shared/schemas'
 import {
@@ -23,6 +23,8 @@ import {
   weight_logs,
   type NewRow,
 } from '../src/db'
+import { exclusionReason } from './lib/seed-exclusions'
+import { readEquipmentSeed } from './lib/seed-equipment'
 import { insertSql, seedId } from './lib/seed-sql'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
@@ -31,29 +33,11 @@ const OUT = path.join(ROOT, 'seed.generated.sql')
 
 // ── Inputs ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-const EquipmentSeed = z.object({
-  equipment: z.array(
-    z.object({
-      equipment: z.string().min(1),
-      kind: z.enum(equipment_profile.kind.enumValues),
-      status: z.enum(equipment_profile.status.enumValues),
-      note: z.string().nullable(),
-    }),
-  ),
-  exclusions: z.object({
-    name_patterns: z.array(
-      z.object({ pattern: z.string(), reason: z.string(), except_equipment: z.array(z.string()) }),
-    ),
-    categories: z.array(z.object({ category: z.string(), reason: z.string() })),
-    equipment: z.array(z.object({ equipment: z.string(), reason: z.string() })),
-  }),
-})
-type ExclusionRules = z.infer<typeof EquipmentSeed>['exclusions']
-
 const readJson = (rel: string) => JSON.parse(readFileSync(path.join(SEED_DIR, rel), 'utf8')) as unknown
 /** SPEC §2 seed record; ScanRecord normalises scanned_at to UTC and fills conditions.hydration with null. */
 const scan = ScanRecord.parse(readJson('scans/2026-09-26.json'))
-const equipment = EquipmentSeed.parse(readJson('equipment/anytime-fitness.json'))
+/** The equipment file's schema lives in scripts/lib/seed-equipment.ts, shared with the inventory migration builder. */
+const equipment = readEquipmentSeed(SEED_DIR)
 
 // ── Aaron's baseline (SPEC §2, §3, §6) ────────────────────────────────────────────────────────────────────────
 
@@ -112,18 +96,9 @@ const reminders = Object.fromEntries(
 ) as ReminderPrefs
 
 // ── Exercise exclusions: first matching rule wins (name pattern, then category, then equipment) ─────────────
+// The rules themselves live in scripts/lib/seed-exclusions.ts, so the seed test reads them exactly as the seed does.
 
-function exclusionReason(ex: LibraryExercise, rules: ExclusionRules): string | null {
-  for (const r of rules.name_patterns) {
-    if (new RegExp(r.pattern, 'i').test(ex.name) && !r.except_equipment.includes(ex.equipment))
-      return r.reason
-  }
-  return (
-    rules.categories.find((c) => c.category === ex.category)?.reason ??
-    rules.equipment.find((e) => e.equipment === ex.equipment)?.reason ??
-    null
-  )
-}
+const exclusionRules = equipment.exclusions
 
 // ── Rows ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -216,7 +191,7 @@ const exerciseRows: NewRow<typeof exercises>[] = library.map((ex) => ({
 }))
 
 const exclusionRows: NewRow<typeof exercise_exclusions>[] = library.flatMap((ex) => {
-  const reason = exclusionReason(ex, equipment.exclusions)
+  const reason = exclusionReason(ex, exclusionRules)
   return reason ? [{ id: seedId(`exclusion:${ex.slug}`), exercise_id: exerciseId(ex.slug), reason }] : []
 })
 

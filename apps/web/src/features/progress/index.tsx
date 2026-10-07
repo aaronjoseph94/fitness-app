@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack'
 import { useSearchParams } from 'react-router'
 import { Column, Columns } from '../../components'
 import { useLocalToday } from '../../app/local-today'
-import { tokens } from '../../theme'
+import { tokens, transitionOf } from '../../theme'
 import { HabitsColumn } from './lib/HabitsColumn'
 import type { RangeKey } from './lib/range'
 import { RangeToggle } from './lib/RangeToggle'
@@ -39,17 +39,25 @@ export function ProgressPage() {
   const refreshing = days.isPlaceholderData || trend.isPlaceholderData
 
   return (
-    <Stack spacing={4} data-testid="progress-page" aria-busy={refreshing}>
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="progress-page" aria-busy={refreshing}>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3 }}>
         <RangeToggle value={range} onChange={(next) => setParams(next === '4w' ? {} : { range: next }, { replace: true })} />
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.small,
+            letterSpacing: tokens.font.tracking.small,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
           {from} – {to}
         </Box>
       </Box>
 
       <SummaryStats summary={summary} proteinTarget={proteinTarget} days={length} />
 
-      <Grid container spacing={4} sx={{ opacity: refreshing ? 0.6 : 1, transition: 'opacity 150ms' }}>
+      <Grid container spacing={4} sx={{ opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }}>
         <Grid size={{ xs: 12, md: 6 }}>
           <WeightColumn trend={trend} range={range} rangeLength={length} goalKg={goalKg} />
         </Grid>

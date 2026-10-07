@@ -109,6 +109,8 @@ export function MetricRing({
           sx={{
             fontSize: centreFont,
             fontWeight: tokens.font.weight.number,
+            letterSpacing: tokens.font.tracking.number,
+            fontVariantNumeric: 'tabular-nums',
             color: tokens.ink.text,
             lineHeight: 1,
           }}

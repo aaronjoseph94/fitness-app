@@ -10,6 +10,8 @@
 //   5. a named machine with such a status whose name is in the exercise's name ("smith machine" → "Smith Machine
 //      Bench Press"), since free-exercise-db files those under the generic 'machine'
 // Equipment absent from the profile counts as available ("unknown" ≈ have).
+// The profile is Aaron's *floor*: seed/equipment/anytime-fitness.json lists every machine at his club (with `area`),
+// and a machine he does not have is a dont_have row whose absence the rules below turn into a reason.
 import {
   LibraryEquipment,
   type EquipmentItem,
@@ -38,18 +40,29 @@ const LIBRARY_VALUES: ReadonlySet<string> = new Set(LibraryEquipment.options)
 type ExclusionRow = Row<typeof exercise_exclusions>
 type EquipmentRow = Row<typeof equipment_profile>
 
+/**
+ * The fields the rules need of an equipment row — a database row, or a row of the equipment seed (so a test can run
+ * these rules over seed/equipment/anytime-fitness.json without a database).
+ */
+export interface EquipmentRuleRow {
+  equipment: string
+  status: EquipmentStatus
+  note: string | null
+  kind?: string | null
+}
+
 /** The exclusion rules and equipment statuses, keyed for lookups. */
 export interface Rules {
   byExercise: Map<string, string>
   byCategory: Map<string, string>
-  equipment: Map<string, EquipmentRow>
+  equipment: Map<string, EquipmentRuleRow>
   /** Named machines with a blocking status, by lower-case name (rule 5). */
-  blockedMachines: { name: string; row: EquipmentRow }[]
+  blockedMachines: { name: string; row: EquipmentRuleRow }[]
   /** Excluded categories for the guards: category exclusions plus the rail. */
   excluded_categories: string[]
 }
 
-function toRules(exclusions: readonly ExclusionRow[], equipment: readonly EquipmentRow[]): Rules {
+export function toRules(exclusions: readonly ExclusionRow[], equipment: readonly EquipmentRuleRow[]): Rules {
   const byExercise = new Map<string, string>()
   const byCategory = new Map<string, string>()
   for (const x of exclusions) {
@@ -265,6 +278,7 @@ function toEquipmentItem(row: EquipmentRow): EquipmentItem {
     status: row.status,
     note: row.note,
     kind: row.kind,
+    area: row.area,
   }
 }
 
@@ -274,7 +288,7 @@ export async function getEquipment(deps: Deps): Promise<EquipmentItem[]> {
   return rows.map(toEquipmentItem)
 }
 
-/** PUT /api/equipment: upsert each status by name (case-insensitive); an omitted note keeps the stored one. */
+/** PUT /api/equipment: upsert each status by name (case-insensitive); an omitted note or area keeps the stored one. */
 export async function updateEquipment(deps: Deps, input: EquipmentUpdate): Promise<EquipmentItem[]> {
   const { db } = deps
   const profile = await db.select().from(equipment_profile)
@@ -282,10 +296,20 @@ export async function updateEquipment(deps: Deps, input: EquipmentUpdate): Promi
   const statements = input.items.map((item) => {
     const equipment = canonicalEquipment(item.equipment, profile)
     const note = item.note === undefined ? {} : { note: item.note }
+    const area = item.area === undefined ? {} : { area: item.area }
     return db
       .insert(equipment_profile)
-      .values({ equipment, kind: kindOf(equipment), status: item.status, note: item.note ?? null, actor: deps.actor, created_at: now, updated_at: now })
-      .onConflictDoUpdate({ target: equipment_profile.equipment, set: { status: item.status, ...note, actor: deps.actor, updated_at: now } })
+      .values({
+        equipment,
+        kind: kindOf(equipment),
+        status: item.status,
+        note: item.note ?? null,
+        area: item.area ?? null,
+        actor: deps.actor,
+        created_at: now,
+        updated_at: now,
+      })
+      .onConflictDoUpdate({ target: equipment_profile.equipment, set: { status: item.status, ...note, ...area, actor: deps.actor, updated_at: now } })
   })
   const [first, ...rest] = statements
   if (first) await db.batch([first, ...rest])

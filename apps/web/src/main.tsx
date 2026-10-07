@@ -1,6 +1,6 @@
-// Owns: booting the page — the self-hosted Outfit font, startup wiring, and mounting React. (Zod's settings are applied
-// before any module loads, by public/zod-config.js from index.html.)
-import '@fontsource-variable/outfit'
+// Owns: booting the page — startup wiring and mounting React. (Zod's settings are applied before any module loads, by
+// public/zod-config.js from index.html.) The type is the platform's own face (see theme.ts), so there is nothing to
+// load here.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App, startApp } from './app/App'

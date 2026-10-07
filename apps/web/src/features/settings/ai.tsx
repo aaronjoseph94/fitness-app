@@ -123,7 +123,7 @@ export function AiSettingsPage() {
   }
 
   return (
-    <Stack spacing={6} data-testid="ai-settings-page" sx={{ pb: 4 }}>
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="ai-settings-page" sx={{ pb: 4 }}>
       {!online && (
         <Alert severity="info" data-testid="ai-settings-offline">
           You’re offline. These are the last known key states; setting a key needs a connection.

@@ -1,6 +1,8 @@
-// Owns: the equipment profile screen (/train/equipment, SPEC §7) — every library equipment value and each named machine
-// with have / don't have / dislike / can't use and an optional note, saved per tap with PUT /api/equipment (queued
-// offline, shown at once), and "Add machine". A status change reshapes the allowed exercise set, so the library refreshes.
+// Owns: the equipment profile screen (/train/equipment, SPEC §7) — every library equipment value and each named
+// machine with have / don't have / dislike / can't use and an optional note, saved per tap with PUT /api/equipment
+// (queued offline, shown at once), and "Add machine". The machines are his gym's floor, grouped by area (EQUIPMENT_AREAS):
+// the machines he has under their part of the gym, then "Not at your gym" — the machines his club lacks, whose absence
+// is what takes their exercises out of the allowed set. A status change reshapes that set, so the library refreshes.
 import AddRounded from '@mui/icons-material/AddRounded'
 import EditNoteRounded from '@mui/icons-material/EditNoteRounded'
 import Alert from '@mui/material/Alert'
@@ -20,7 +22,7 @@ import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
-import { EquipmentStatus } from '@fitness/shared/schemas'
+import { EQUIPMENT_AREAS, EquipmentStatus } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { problemText, useApiMutation, useApiQuery } from '../../../api'
 import { LoadProblem, PendingBadge, SectionHeader } from '../../../components'
@@ -32,6 +34,8 @@ interface Row {
   equipment: string
   status: EquipmentStatus | null
   note: string | null
+  /** Which part of the gym it is ("Hammer Strength"); null for a library value, an absence or his own machine. */
+  area: string | null
   pending: boolean
 }
 
@@ -156,25 +160,35 @@ export function EquipmentPage() {
     return c
   }, [index.all])
 
+  /** Library values in the fixed order, then the machines: his areas in EQUIPMENT_AREAS order, then what the gym lacks. */
   const rows = useMemo(() => {
     const byName = new Map<string, Row>()
-    for (const name of LIBRARY_EQUIPMENT) byName.set(name, { equipment: name, status: null, note: null, pending: false })
-    for (const item of profile.data ?? []) byName.set(item.equipment, { equipment: item.equipment, status: item.status, note: item.note, pending: false })
+    for (const name of LIBRARY_EQUIPMENT) byName.set(name, { equipment: name, status: null, note: null, area: null, pending: false })
+    for (const item of profile.data ?? [])
+      byName.set(item.equipment, { equipment: item.equipment, status: item.status, note: item.note, area: item.area ?? null, pending: false })
     for (const [name, row] of Object.entries(local)) byName.set(name, row)
     const all = [...byName.values()]
-    return {
-      library: LIBRARY_EQUIPMENT.map((n) => byName.get(n)!),
-      machines: all.filter((r) => !isLibraryEquipment(r.equipment)).sort((a, b) => a.equipment.localeCompare(b.equipment)),
+    const machines = all.filter((r) => !isLibraryEquipment(r.equipment))
+    const groups: { title: string; rows: Row[] }[] = []
+    const add = (title: string, group: Row[]) => {
+      const sorted = [...group].sort((a, b) => a.equipment.localeCompare(b.equipment))
+      if (sorted.length) groups.push({ title, rows: sorted })
     }
+    for (const area of EQUIPMENT_AREAS) add(area, machines.filter((r) => r.status === 'have' && r.area === area))
+    add('Other', machines.filter((r) => r.status === 'have' && !(EQUIPMENT_AREAS as readonly string[]).includes(r.area ?? '')))
+    add('Not at your gym', machines.filter((r) => r.status !== 'have'))
+    return { library: LIBRARY_EQUIPMENT.map((n) => byName.get(n)!), groups, all }
   }, [profile.data, local])
 
   const set = (equipment: string, status: EquipmentStatus, note: string | null) => {
-    setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, pending: true } }))
+    // The area is the seed's; the screen only changes the status, so PUT keeps whatever the profile already has.
+    const area = rows.all.find((r) => r.equipment === equipment)?.area ?? null
+    setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, area, pending: true } }))
     update.mutate(
       { body: { items: [{ equipment, status, note }] } },
       {
         onSuccess: (outcome) => {
-          setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, pending: outcome.status === 'queued' } }))
+          setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, area, pending: outcome.status === 'queued' } }))
           refresh(outcome)
           if (outcome.status === 'queued') setNotice('Saved on this phone · syncs when you’re back online')
         },
@@ -189,7 +203,7 @@ export function EquipmentPage() {
     )
   }
 
-  const existing = useMemo(() => new Set([...rows.library, ...rows.machines].map((r) => r.equipment)), [rows])
+  const existing = useMemo(() => new Set(rows.all.map((r) => r.equipment)), [rows])
 
   if (profile.isLoading)
     return (
@@ -199,10 +213,11 @@ export function EquipmentPage() {
     )
 
   return (
-    <Stack spacing={6} data-testid="equipment-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="equipment-page">
       {profile.error && !profile.data && <LoadProblem what="Your equipment profile" error={profile.error} onRetry={() => void profile.refetch()} />}
       <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
-        Don&apos;t have, dislike and can&apos;t use take exercises out of the allowed set: the library, the picker and every AI workout skip them.
+        This is your gym. Don&apos;t have, dislike and can&apos;t use take exercises out of the allowed set: the library, the picker and every AI
+        workout program only from it.
         {index.all.length > 0 && ` ${index.allowed.length} of ${index.all.length} exercises are allowed now.`}
       </Box>
       <Box>
@@ -216,20 +231,31 @@ export function EquipmentPage() {
       <Box>
         <SectionHeader
           title="Machines"
-          subtitle="Named machines at your gym"
+          subtitle="Every machine at your gym, by area"
           action={
             <Button startIcon={<AddRounded />} onClick={() => setAdding(true)} data-testid="add-machine">
               Add machine
             </Button>
           }
         />
-        <Card sx={{ px: 4 }}>
-          {rows.machines.length === 0 ? (
+        {rows.groups.length === 0 ? (
+          <Card sx={{ px: 4 }}>
             <Box sx={{ py: 4, color: tokens.ink.secondary, fontSize: tokens.font.size.small }}>No named machines yet.</Box>
-          ) : (
-            rows.machines.map((row) => <EquipmentRow key={row.equipment} row={row} onChange={(s, n) => set(row.equipment, s, n)} />)
-          )}
-        </Card>
+          </Card>
+        ) : (
+          <Stack spacing={5}>
+            {rows.groups.map((group) => (
+              <Box key={group.title} data-testid="equipment-area">
+                <SectionHeader title={group.title} />
+                <Card sx={{ px: 4 }}>
+                  {group.rows.map((row) => (
+                    <EquipmentRow key={row.equipment} row={row} onChange={(s, n) => set(row.equipment, s, n)} />
+                  ))}
+                </Card>
+              </Box>
+            ))}
+          </Stack>
+        )}
       </Box>
       {adding && (
         <AddMachineDialog

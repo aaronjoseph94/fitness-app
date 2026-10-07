@@ -98,7 +98,7 @@ export function ScansPage() {
   const prev = latest?.analysis?.vs_previous ?? null
 
   return (
-    <Stack spacing={4} data-testid="scans-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="scans-page">
       <DueCard schedule={schedule.data} onUpload={() => setUploading(true)} onManual={() => void navigate('/scans/new')} />
 
       {waiting.length > 0 && (

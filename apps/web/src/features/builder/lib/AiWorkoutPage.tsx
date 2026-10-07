@@ -79,7 +79,7 @@ export function AiWorkoutPage() {
 
   const state = ai.state
   return (
-    <Stack spacing={4} data-testid="ai-workout-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="ai-workout-page">
       {state.status === 'idle' || state.status === 'failed' ? (
         <Card sx={{ p: 4 }}>
           <Stack spacing={3}>

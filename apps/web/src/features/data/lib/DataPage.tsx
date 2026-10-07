@@ -10,7 +10,7 @@ import { RestoreCard } from './RestoreCard'
 export function DataPage() {
   const online = useOnline()
   return (
-    <Stack spacing={4} data-testid="data-page" sx={{ pb: 4 }}>
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="data-page" sx={{ pb: 4 }}>
       {!online && (
         <Alert severity="info" data-testid="data-offline">
           You’re offline. Export and restore need a connection.

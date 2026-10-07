@@ -42,13 +42,24 @@ export function ChartCard({ title, subtitle, legend, action, empty, children, te
               fontSize: tokens.font.size.body,
               fontWeight: tokens.font.weight.heading,
               color: tokens.ink.text,
-              lineHeight: 1.35,
+              lineHeight: tokens.font.leading.body,
+              letterSpacing: tokens.font.tracking.body,
             }}
           >
             {title}
           </Box>
           {subtitle && (
-            <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.4 }}>{subtitle}</Box>
+            <Box
+              sx={{
+                mt: 0.5,
+                fontSize: tokens.font.size.label,
+                color: tokens.ink.secondary,
+                lineHeight: tokens.font.leading.label,
+                letterSpacing: tokens.font.tracking.label,
+              }}
+            >
+              {subtitle}
+            </Box>
           )}
         </Box>
         {action && <Box sx={{ flex: 'none', mt: -1.5, mr: -1.5 }}>{action}</Box>}

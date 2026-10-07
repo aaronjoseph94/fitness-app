@@ -33,26 +33,20 @@ export const STATUS_LABEL: Readonly<Record<EquipmentStatus, string>> = {
   cant_use: "Can't use",
 }
 
-/** Named machines the equipment screen offers as one-tap suggestions. */
+/**
+ * Named machines the equipment screen offers as one-tap suggestions. The profile holds every machine at Anytime
+ * Fitness Lacombe, so these are the ones it does not (and the dialog drops any name already in the profile): a machine
+ * met at another gym, or one Aaron gains later.
+ */
 export const MACHINE_SUGGESTIONS = [
-  'leg press',
   'hack squat',
   'pec deck',
-  'lat pulldown',
   'seated cable row',
-  'chest press machine',
-  'shoulder press machine',
-  'leg extension',
-  'seated leg curl',
-  'lying leg curl',
-  'hip abductor',
-  'hip adductor',
-  'smith machine',
-  'standing calf raise',
-  'seated calf raise',
-  'cable crossover',
-  'assisted pull-up machine',
+  'functional trainer',
   'glute kickback machine',
   'preacher curl bench',
-  't-bar row',
+  'landmine',
+  'hip thrust machine',
+  'box squat rack',
+  'calf press',
 ] as const

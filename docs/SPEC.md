@@ -158,7 +158,7 @@ fitness/
   apps/worker/         Hono app: /api, /mcp, jobs, cron handlers; wrangler.toml; drizzle migrations
   packages/shared/     Zod schemas, TypeScript types, engine (pure functions)
   packages/exercises/  free-exercise-db seed + muscle-group mapping + images (served as static assets)
-  seed/                scans/2026-09-26.json, equipment/anytime-fitness.json
+  seed/                scans/2026-09-26.json, equipment/anytime-fitness.json (his floor: 47 machines, by area)
   docs/                this spec as SPEC.md, PROGRESS.md, CLAUDE.md pointers
 ```
 
@@ -207,7 +207,7 @@ Cloudflare D1 (SQLite), one database, `id` text primary keys holding UUIDs, `cre
 | `week_plans` | week_start (date, unique per status active), author (claude_mcp, gemini, user), status (proposed, active, superseded), plan jsonb (targets by weekday, sessions by weekday as template snapshots, water_ml, steps, fast_dates, scan_date, focus_note), plan_version_id, review_id | The active row for a week is the source of that week's `daily_targets` and planned sessions. |
 | `milestones` | kind (weight, body_fat_pct, visceral_level, whr, segment), target_value, reached_on, scan_id | Seeded from section 3. |
 | `exercises` | slug, name, category, equipment, mechanic, force, level, primary_muscles text[], secondary_muscles text[], instructions text[], image_paths text[], video_search_url, gif_url, source | Seeded from free-exercise-db. |
-| `equipment_profile` | equipment (enum from library), status (have, dont_have, dislike, cant_use), note | Seeded with an Anytime Fitness default list. |
+| `equipment_profile` | equipment (enum from library), status (have, dont_have, dislike, cant_use), note, area | Seeded with Anytime Fitness Lacombe: every machine at the club, grouped by area, plus what it does not have. |
 | `exercise_exclusions` | exercise_id or category, reason | Hard excludes (e.g. all bodyweight). |
 | `workout_templates` | name, origin (custom, ai), notes, muscle_scores jsonb | Reusable workouts. |
 | `template_exercises` | template_id, exercise_id, order, sets, rep_min, rep_max, target_load_kg, rest_sec, note | — |
@@ -276,7 +276,8 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **Equipment profile**
 
-- Every equipment value in the library (barbell, dumbbell, cable, machine, kettlebell, bands, e-z curl bar, medicine ball, exercise ball, body only, other) plus named machines Aaron adds (leg press, pec deck, lat pulldown, hack squat, etc.) has a status: have, don't have, dislike, can't use, with an optional note ("left shoulder").
+- Every equipment value in the library (barbell, dumbbell, cable, machine, kettlebell, bands, e-z curl bar, medicine ball, exercise ball, body only, other) plus named machines Aaron adds (leg press, pec deck, lat pulldown, hack squat, etc.) has a status: have, don't have, dislike, can't use, with an optional note ("left shoulder"). A named machine also carries an `area` — the part of the gym it is in (Life Fitness, Hammer Strength, racks & rigs, free weights, cardio) — so the profile reads as the room, and the same grouping is what the AI prompt shows.
+- The profile is Aaron's **floor**: the 47 machines at Anytime Fitness Lacombe, in `seed/equipment/anytime-fitness.json`. A workout may only pull from it — a machine or implement the club does not have is either a `dont_have` row ("t-bar row") or an exclusion rule ("no sled"), and either way its exercises leave the allowed set with a reason.
 - Category and exercise exclusions: `body only` and floor-based exercises excluded by default; any single exercise can be hidden forever from its detail sheet.
 - The library view filters to allowed exercises by default; the AI only ever receives the allowed list.
 
@@ -288,7 +289,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **AI workouts**
 
-- `workout_generate` inputs: allowed exercises, equipment profile, training days (Mon–Thu), templates and the last 14 days of sessions (volume per muscle, PRs), readiness (last night's sleep, yesterday's steps, days since the last session), fast-day flag, and the goal (fat loss with muscle retention, upper-body strength).
+- `workout_generate` inputs: allowed exercises, the equipment profile as a floor (his machines by area, with each one's note, and the machines the club does not have), training days (Mon–Thu), templates and the last 14 days of sessions (volume per muscle, PRs), readiness (last night's sleep, yesterday's steps, days since the last session), fast-day flag, and the goal (fat loss with muscle retention, upper-body strength). The system prompt says to program only from that equipment.
 - Output: a session in the template format (exercise IDs only, sets, rep ranges, suggested loads from history, rest) plus a two-line rationale. The user sees it as a preview with the muscle map, can swap any exercise (suggestions filtered to the same primary muscle), then starts or saves it as a template.
 - Weekly structure default: upper / lower / upper / lower across Mon–Thu, adjustable; the AI respects it unless Aaron changes it.
 
@@ -509,6 +510,7 @@ Mobile-first, five bottom tabs, one theme file, and a chart inventory large enou
 - Muscle map: four steps of the brand blue from 12 % to 100 % opacity over a light grey body; the legend uses the same four chips.
 - Chart style: gridlines #F1F5F9 only, 2 px lines, 12% area fills, 4 px rounded bar tops, targets as dashed grey lines, values on tap, legends as colour chips under the title, no 3D, no gradients.
 - Theme tokens are the single source of colour: every chart, ring, card and illustration derives from them, so a palette change is one file.
+- **Superseded 2026-10-06 (visual language only):** the font, the card treatment, the shape and the motion above were replaced by the Apple-conventions rebuild — the platform system face replaces self-hosted Outfit, the page moved to the grouped grey `#F2F2F7`, and radius, materials and motion now come from `tokens.radius` / `tokens.material` / `tokens.motion`. The palette, the per-metric colours and the chart style above are unchanged. See `docs/APPLE-DESIGN.md`.
 
 **Chart inventory (Recharts unless noted)**
 

@@ -61,7 +61,7 @@ export function LibraryPage() {
   const results = useMemo(() => filterExercises(index.all, { ...filter, q: query, includeHidden }), [index.all, filter, query, includeHidden])
 
   return (
-    <Stack spacing={4} data-testid="library-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="library-page">
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* One line each down to a 320 px phone. */}
         <Button component={RouterLink} to="/train/equipment" variant="outlined" startIcon={<TuneRounded />} sx={{ flex: 1, px: 2, whiteSpace: 'nowrap' }}>
@@ -128,7 +128,7 @@ export function ExercisePage() {
       <EmptyState title="Exercise not found" body="It may have been removed from the library." action={<Button component={RouterLink} to="/train/library">Open the library</Button>} />
     )
   return (
-    <Stack spacing={4} data-testid="exercise-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="exercise-page">
       {/* The top bar holds the page's h1; the exercise is the first section under it ("How to" is an h3). */}
       <Typography variant="h2" component="h2">
         {exercise.name}

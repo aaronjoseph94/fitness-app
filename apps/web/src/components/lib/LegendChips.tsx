@@ -61,10 +61,11 @@ export function LegendChips({ items, dense = false }: LegendChipsProps) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 1.5,
-            fontSize: dense ? 11 : 12,
+            fontSize: dense ? tokens.font.size.caption : tokens.font.size.label,
             fontWeight: tokens.font.weight.label,
             color: tokens.ink.secondary,
-            lineHeight: 1.4,
+            lineHeight: tokens.font.leading.label,
+            letterSpacing: tokens.font.tracking.label,
           }}
         >
           <Key color={item.color} mark={item.mark} dense={dense} />

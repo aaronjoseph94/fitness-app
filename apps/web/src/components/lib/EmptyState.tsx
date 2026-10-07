@@ -1,5 +1,9 @@
 // Owns: the empty state: an unDraw illustration (public/illustrations, see SOURCE.md there), a title, one line
 // of body text and an optional action. `compact` fits inside a chart card.
+//
+// Restyled onto the HIG's recipe — a quiet piece of art, a short headline and *one* action: the illustration no
+// longer competes with the text for attention (it is a third smaller), the text is set on the scale's own steps, and
+// the action is the single filled button this screen gets. Props, illustration names and test ids are unchanged.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import type { ReactNode } from 'react'
@@ -67,26 +71,36 @@ export function EmptyState({
           decoding="async"
           width={ILLUSTRATION_SIZE[illustration][0]}
           height={ILLUSTRATION_SIZE[illustration][1]}
-          sx={{ height: compact ? 88 : 140, width: 'auto', maxWidth: '80%', objectFit: 'contain', mb: compact ? 3 : 5 }}
+          sx={{ height: compact ? 72 : 112, width: 'auto', maxWidth: '80%', objectFit: 'contain', mb: compact ? 3 : 4 }}
         />
       )}
       <Box
         sx={{
-          fontSize: compact ? 16 : 18,
+          fontSize: compact ? tokens.font.size.emphasis : tokens.font.size.cardTitle,
           fontWeight: tokens.font.weight.heading,
           color: tokens.ink.text,
-          lineHeight: 1.3,
+          lineHeight: compact ? tokens.font.leading.emphasis : tokens.font.leading.cardTitle,
+          letterSpacing: compact ? tokens.font.tracking.emphasis : tokens.font.tracking.cardTitle,
         }}
       >
         {title}
       </Box>
       {body && (
-        <Box sx={{ mt: 1.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5, maxWidth: 320 }}>
+        <Box
+          sx={{
+            mt: 1.5,
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.small,
+            letterSpacing: tokens.font.tracking.small,
+            maxWidth: 320,
+          }}
+        >
           {body}
         </Box>
       )}
       {action && (
-        <Box sx={{ mt: compact ? 3 : 5 }}>
+        <Box sx={{ mt: compact ? 3 : 4 }}>
           {isButtonAction(action) ? (
             <Button variant="contained" onClick={action.onClick}>
               {action.label}

@@ -115,18 +115,34 @@ export type EquipmentStatus = z.infer<typeof EquipmentStatus>
 export const EquipmentKind = z.enum(['library', 'machine'])
 export type EquipmentKind = z.infer<typeof EquipmentKind>
 
+/**
+ * The order the areas of the gym read in (the Equipment screen and the AI prompt): his list of the machines at
+ * Anytime Fitness Lacombe, in the order he gave them. A row's `area` is free text, so an unknown one sorts last.
+ */
+export const EQUIPMENT_AREAS = ['Life Fitness', 'Hammer Strength', 'Racks & rigs', 'Free weights', 'Cardio'] as const
+export type EquipmentArea = (typeof EQUIPMENT_AREAS)[number]
+
 export const EquipmentItem = Row.extend({
   equipment: EquipmentName,
   status: EquipmentStatus,
   note: z.string().nullable(),
   kind: EquipmentKind.optional(),
+  /** Where it is in the gym ("Life Fitness", "Hammer Strength", "Cardio", …); null when it is not a machine. */
+  area: z.string().max(40).nullable().optional(),
 })
 export type EquipmentItem = z.infer<typeof EquipmentItem>
 
 /** Body of PUT /api/equipment: statuses to set, upserted by equipment name. */
 export const EquipmentUpdate = z.object({
   items: z
-    .array(z.object({ equipment: EquipmentName, status: EquipmentStatus, note: z.string().max(200).nullable().optional() }))
+    .array(
+      z.object({
+        equipment: EquipmentName,
+        status: EquipmentStatus,
+        note: z.string().max(200).nullable().optional(),
+        area: z.string().max(40).nullable().optional(),
+      }),
+    )
     .min(1),
 })
 export type EquipmentUpdate = z.infer<typeof EquipmentUpdate>

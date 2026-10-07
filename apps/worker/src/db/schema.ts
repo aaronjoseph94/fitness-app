@@ -582,6 +582,8 @@ export const equipment_profile = sqliteTable(
     kind: text({ enum: EQUIPMENT_KIND }).notNull().default('library'),
     status: text({ enum: values(EquipmentStatus) }).notNull(),
     note: text(),
+    /** Where it is in the gym ("Life Fitness", "Hammer Strength", "Cardio", …); null when it is not a machine. */
+    area: text(),
     actor: actor(),
     ...timestamps(),
   },

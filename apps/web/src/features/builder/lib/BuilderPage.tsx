@@ -192,7 +192,7 @@ export function BuilderPage() {
   }
 
   return (
-    <Stack spacing={4} data-testid="builder-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="builder-page">
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
         <TextField
           inputRef={nameRef}

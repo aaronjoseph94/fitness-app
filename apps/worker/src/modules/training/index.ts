@@ -50,6 +50,9 @@ export {
   type Library,
   type LibraryEntry,
 } from './lib/library'
+// The equipment rules themselves, on the module's surface: why an exercise is outside the allowed set. The seed test
+// runs them over seed/equipment/anytime-fitness.json and the pinned library.
+export { exclusionReason, toRules, type EquipmentRuleRow, type Rules } from './lib/library'
 export { deleteExclusion } from './lib/exclusions'
 export { onTemplateSwap, swapTemplateExercise, templateSwapped, type SwapInput, type SwapListener } from './lib/swap'
 export { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate } from './lib/templates'

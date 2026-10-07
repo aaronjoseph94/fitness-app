@@ -41,8 +41,13 @@ export function QuickLogFab({ width }: { width: PageWidth }) {
             pointerEvents: 'auto',
             bgcolor: 'text.primary',
             color: 'background.paper',
-            '&, &:hover, &:active': { boxShadow: 'none' },
+            // The one genuinely floating control in the app: it lifts on a neutral shadow (never a coloured glow,
+            // which reads as decoration) and answers a press with a small scale, instantly, on pointer-down.
+            boxShadow: tokens.elevation.floating,
+            transition: `transform ${tokens.motion.duration.instant}ms ${tokens.motion.easing.standard}, box-shadow ${tokens.motion.duration.fast}ms ${tokens.motion.easing.standard}`,
             '&:hover': { bgcolor: 'text.primary' },
+            '&:active': { transform: 'scale(0.96)' },
+            '@media (prefers-reduced-motion: reduce)': { '&:active': { transform: 'none' } },
             // The button is aligned to the content column's right edge, so on a wide page it sits over the last column
             // of cards. Once the gutter beside that column is wide enough to hold it, it steps out so nothing is ever
             // covered: 1120 px of content + this button and its clearance is ≈ 1232 px, plus the 76 px rail it sits

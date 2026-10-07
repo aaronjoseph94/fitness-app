@@ -128,7 +128,7 @@ export function SettingsPage() {
   )
 
   return (
-    <Stack spacing={6} data-testid="settings-page" sx={{ pb: 4 }}>
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="settings-page" sx={{ pb: 4 }}>
       {!online && (
         <Alert severity="info" data-testid="settings-offline">
           You’re offline. These are the last saved settings; changes need a connection.

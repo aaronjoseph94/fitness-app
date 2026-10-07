@@ -1,4 +1,6 @@
-// Owns: the section title row used between groups of cards: 20 px title, optional secondary line, optional action on the right.
+// Owns: the section title row used between groups of cards: the type scale's Title 2, an optional secondary line, and
+// an optional action on the right. The gap it leaves under itself is deliberately smaller than the gap a page leaves
+// *between* two sections, which is what makes a group read as a group (see `tokens.rhythm`).
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
@@ -14,7 +16,7 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProps) {
   return (
-    <Box id={id} sx={{ display: 'flex', alignItems: 'flex-end', gap: 3, mb: 3, scrollMarginTop: 72 }}>
+    <Box id={id} sx={{ display: 'flex', alignItems: 'flex-end', gap: 3, mb: 3, scrollMarginTop: tokens.layout.scrollPadding.top }}>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           component="h2"
@@ -23,14 +25,25 @@ export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProp
             m: 0,
             fontSize: tokens.font.size.sectionTitle,
             fontWeight: tokens.font.weight.heading,
-            lineHeight: 1.3,
+            lineHeight: tokens.font.leading.sectionTitle,
+            letterSpacing: tokens.font.tracking.sectionTitle,
             color: tokens.ink.text,
           }}
         >
           {title}
         </Box>
         {subtitle && (
-          <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.45 }}>{subtitle}</Box>
+          <Box
+            sx={{
+              mt: 0.5,
+              fontSize: tokens.font.size.small,
+              color: tokens.ink.secondary,
+              lineHeight: tokens.font.leading.small,
+              letterSpacing: tokens.font.tracking.small,
+            }}
+          >
+            {subtitle}
+          </Box>
         )}
       </Box>
       {action && <Box sx={{ flex: 'none' }}>{action}</Box>}

@@ -113,7 +113,7 @@ export function HealthImportPage() {
   const set = (key: keyof Mapping, value: string | null) => setMapping((m) => (m ? { ...m, [key]: value } : m))
 
   return (
-    <Stack spacing={4} data-testid="health-import-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="health-import-page">
       <Card sx={{ p: 4 }}>
         <SectionHeader title="Export file" subtitle="CSV or JSON (Health Auto Export or similar); days already logged are replaced." />
         <input

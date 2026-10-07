@@ -2,7 +2,7 @@
 // the weekly split: default upper / lower / upper / lower over the training days), the candidate exercises (allowed
 // set only, compact), the prompt, and the LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by
 // the repair step).
-import { Weekday, type Muscle, type Readiness, type TemplateExerciseInput } from '@fitness/shared/schemas'
+import { EQUIPMENT_AREAS, Weekday, type EquipmentItem, type Muscle, type Readiness, type TemplateExerciseInput } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import type { LibraryEntry, SessionDigest, TrainingDigest } from '../../training'
 
@@ -112,6 +112,7 @@ export const SYSTEM_PROMPT = [
   "The client's goal: fat loss with muscle retention, and upper-body strength. They eat in a calorie deficit.",
   'Rules:',
   '- Use only exercise ids from "Allowed exercises", copied exactly. Never invent an id.',
+  '- Program only from the equipment under "Your gym". Never name a machine, implement or substitution that is not there.',
   '- 4 to 8 exercises: big compound lifts first, then isolation work. Cover the focus muscles evenly.',
   '- Total working sets (sum of sets) inside the range given. Never under 12 or over 28.',
   '- Rep ranges between 5 and 15 with rep_min <= rep_max. Rest 60-180 s, longer for heavy compounds.',
@@ -120,6 +121,47 @@ export const SYSTEM_PROMPT = [
   '- rationale: two short lines of plain English.',
   'Reply with JSON only.',
 ].join('\n')
+
+/** The equipment his gym has, as the prompt shows it: the machines grouped by area, the bars and plates, and what is not there. */
+export interface GymFloor {
+  areas: readonly { area: string; machines: readonly string[] }[]
+  /** Library equipment values and anything else without an area (barbell, dumbbell, cable, …). */
+  also: readonly string[]
+  /** Rows with a blocking status: "t-bar row: don't have (No T-bar row at your gym)". */
+  missing: readonly string[]
+}
+
+const STATUS_WORD: Record<Exclude<EquipmentItem['status'], 'have'>, string> = {
+  dont_have: "don't have",
+  cant_use: "can't use",
+  dislike: 'dislike',
+}
+
+/**
+ * Aaron's equipment profile as the floor of the prompt: `have` machines under their area (in EQUIPMENT_AREAS order,
+ * then A–Z within an area), everything else he has as one line, and the blocking rows as what the gym does not have.
+ * The body-only rail is left out: the system prompt already says machines and free weights only.
+ */
+export function gymFloor(equipment: readonly EquipmentItem[]): GymFloor {
+  const grouped = new Map<string, string[]>()
+  const also: string[] = []
+  const missing: string[] = []
+  const detail = (e: EquipmentItem) => (e.note ? `${e.equipment} (${e.note})` : e.equipment)
+  for (const e of equipment) {
+    if (e.status !== 'have') missing.push(`${e.equipment}: ${STATUS_WORD[e.status]}${e.note ? ` (${e.note})` : ''}`)
+    else if (e.equipment === 'body only') continue
+    else if (e.area) grouped.set(e.area, [...(grouped.get(e.area) ?? []), detail(e)])
+    else also.push(detail(e))
+  }
+  const rank = (area: string) => {
+    const i = (EQUIPMENT_AREAS as readonly string[]).indexOf(area)
+    return i < 0 ? EQUIPMENT_AREAS.length : i
+  }
+  const areas = [...grouped.entries()]
+    .map(([area, machines]) => ({ area, machines: [...machines].sort((a, b) => a.localeCompare(b)) }))
+    .sort((a, b) => rank(a.area) - rank(b.area) || a.area.localeCompare(b.area))
+  return { areas, also, missing }
+}
 
 export interface PromptInput {
   mode: 'generate' | 'fill'
@@ -134,7 +176,7 @@ export interface PromptInput {
   digest: TrainingDigest
   slugOf: (id: string) => string | undefined
   templates: readonly { name: string; muscle_scores: Partial<Record<Muscle, number>> }[]
-  equipment_notes: readonly string[]
+  gym: GymFloor
   partial: readonly TemplateExerciseInput[]
   candidates: readonly LibraryEntry[]
 }
@@ -168,7 +210,11 @@ export function buildPrompt(p: PromptInput): string {
     '',
     'Saved templates (name: top muscles):',
     ...(p.templates.length ? p.templates.slice(0, 8).map((t) => `${t.name}: ${topMuscles(t.muscle_scores)}`) : ['none']),
-    ...(p.equipment_notes.length ? ['', 'Equipment notes:', ...p.equipment_notes] : []),
+    '',
+    'Your gym (program only from this):',
+    ...p.gym.areas.map((a) => `${a.area}: ${a.machines.join(', ')}`),
+    ...(p.gym.also.length ? [`Also available: ${p.gym.also.join(', ')}`] : []),
+    ...(p.gym.missing.length ? [`Not at your gym: ${p.gym.missing.join('; ')}`] : []),
     ...(p.mode === 'fill'
       ? [
           '',

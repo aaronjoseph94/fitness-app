@@ -192,7 +192,7 @@ export function ExerciseDetail({ exercise, onHidden }: ExerciseDetailProps) {
   ].filter((t): t is string => !!t)
 
   return (
-    <Stack spacing={5} data-testid="exercise-detail">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="exercise-detail">
       {!exercise.allowed && <HiddenNotice exercise={exercise} />}
       <Media exercise={exercise} />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>

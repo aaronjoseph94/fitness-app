@@ -77,7 +77,9 @@ beforeAll(async () => {
     db.insert(equipment_profile).values([
       { equipment: 'barbell', kind: 'library', status: 'have' },
       { equipment: 'machine', kind: 'library', status: 'have' },
-      { equipment: 'smith machine', kind: 'machine', status: 'dont_have', note: null },
+      { equipment: 'smith machine', kind: 'machine', status: 'dont_have', note: 'No T-bar at your gym.' },
+      // A machine of his, with the part of the gym it is in: the prompt groups the floor by area.
+      { equipment: 'iso-lateral row', kind: 'machine', status: 'have', note: 'Plate-loaded.', area: 'Hammer Strength' },
     ]),
     db.insert(exercise_exclusions).values({ exercise_id: hidden.id, reason: 'Hidden from its detail sheet: left shoulder' }),
   ])
@@ -161,6 +163,11 @@ describe('AI workouts', () => {
 
     expect(prompt).not.toContain('pushups') // the AI only sees the allowed set
     expect(prompt).not.toContain('dumbbell-flyes')
+    // …and the equipment profile is the floor it programs from: his machines by area, what he lacks named.
+    expect(prompt).toContain('Your gym (program only from this):')
+    expect(prompt).toContain('Hammer Strength: iso-lateral row (Plate-loaded.)')
+    expect(prompt).toContain('Also available: barbell, machine')
+    expect(prompt).toContain("Not at your gym: smith machine: don't have (No T-bar at your gym.)")
     const ids = draft.exercises.map((e) => e.exercise_id)
     expect(ids).not.toContain(pushup.id)
     expect(draft.guard_notes).toContainEqual(expect.stringContaining('Dropped Pushups'))

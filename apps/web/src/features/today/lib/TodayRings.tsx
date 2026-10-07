@@ -1,7 +1,11 @@
-// Owns: Today's metric row — calories, protein, water, steps and last night's sleep as one gradient metric card
-// each (value, a fill bar against the target, and a line saying what the target is), with the fast badge (fasting
-// now, or a fast day), queued logs added in and marked pending, and the manual steps/sleep entry; while the day
-// loads, a placeholder for each card in the same grid and the same box, so nothing below moves when they arrive.
+// Owns: Today's metric row — calories, protein, water, steps and last night's sleep as one metric card each (value, a
+// fill bar against the target, and a line saying what the target is), with the fast badge (fasting now, or a fast
+// day), queued logs added in and marked pending, and the manual steps/sleep entry; while the day loads, a placeholder
+// for each card in the same grid and the same box, so nothing below moves when they arrive.
+//
+// The five cards are `surface="plain"` since the HIG rebuild: they are five facts of equal weight on the app's most
+// frequently seen screen, so they are white cards with the metric colour as an accent (icon tile, target bar) and the
+// page's one saturated gradient stays on the Dashboard hero, where a single number is genuinely the headline.
 import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
 import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
 import EggAltRounded from '@mui/icons-material/EggAltRounded'
@@ -199,7 +203,16 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
   return (
     <Box data-testid="today-rings">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, minHeight: 24 }}>
-        <Box sx={{ flex: 1, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
+        <Box
+          sx={{
+            flex: 1,
+            fontSize: tokens.font.size.label,
+            fontWeight: tokens.font.weight.label,
+            color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.label,
+            letterSpacing: tokens.font.tracking.label,
+          }}
+        >
           Today · {day.date}
         </Box>
         <FastBadge day={day} pending={pending} now={now} />
@@ -217,6 +230,7 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
               testId={`today-metric-${ring.id}`}
               label={ring.label}
               metric={ring.metric}
+              surface="plain"
               icon={ICONS[ring.id]}
               value={notLogged ? null : ring.value}
               unit={ring.unit}

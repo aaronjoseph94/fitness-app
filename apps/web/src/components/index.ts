@@ -22,6 +22,7 @@ export { PendingBadge, type PendingBadgeProps } from './lib/PendingBadge'
 export { QueryStateCard, isQueryLoading, type QueryStateCardProps } from './lib/QueryStateCard'
 export { LoadProblem, NumberField, parseNumber, type NumberFieldProps } from './lib/forms'
 export { LoadBoundary, type LoadBoundaryProps } from './lib/LoadBoundary'
+export { useSheetDrag, type SheetDrag, type SheetDragHandleProps } from './lib/useSheetDrag'
 export {
   ProposalCard,
   type ProposalCardProps,

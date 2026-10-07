@@ -1,0 +1,1 @@
+ALTER TABLE `equipment_profile` ADD `area` text;

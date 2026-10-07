@@ -72,7 +72,7 @@ export function PhotosLibrary() {
   }, [shown, pose, params])
 
   return (
-    <Stack spacing={4} data-testid="photos-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="photos-page">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
         <Button component={RouterLink} to="/photos/new" variant="contained" startIcon={<AddAPhotoOutlined />} sx={{ px: 5 }}>
           Take photos

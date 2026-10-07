@@ -21,11 +21,11 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 
 ## Stack
 
-- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Outfit font self-hosted.
+- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, the system font stack (Apple-conventions rebuild — see `docs/APPLE-DESIGN.md`).
 - **Worker** (`apps/worker`, config `wrangler.jsonc`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp` (`@modelcontextprotocol/server` v2 + `@modelcontextprotocol/hono`, stateless, new server per request), job runner (`ai_jobs` + `ctx.waitUntil()` + one 5-minute cron). D1 via Drizzle ORM, R2 for files, Browser Rendering (`BROWSER.quickAction('pdf')`) for archived PDFs, Cloudflare Access JWT on every request.
 - **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/engine`), guardrails (`packages/shared/engine/guards.ts`).
 - **Exercises** (`packages/exercises`): free-exercise-db seed, muscle-group mapping, images served as static assets.
-- **Seed** (`seed/`): `scans/2026-09-26.json`, `equipment/anytime-fitness.json`.
+- **Seed** (`seed/`): `scans/2026-09-26.json`, `equipment/anytime-fitness.json` — his floor: the 47 machines at Anytime Fitness Lacombe, each with the part of the gym it is in, plus the club's absences. A generated workout may only pull from it.
 - **Tests**: Vitest (engine and schemas; Worker routes via `@cloudflare/vitest-plugin`), Playwright against the local Worker.
 - **LLMs**: free tiers only. OpenRouter's `:free` models primary; Z.ai GLM, Gemini Flash and Groq as fallbacks, all via plain `fetch`. Claude reaches the app only through the MCP connector from Aaron's own Claude chats.
 
@@ -43,6 +43,7 @@ pnpm --filter @fitness/worker db:generate        # drizzle-kit generate → apps
 pnpm --filter @fitness/worker db:migrate:local   # wrangler d1 migrations apply fitness --local
 pnpm --filter @fitness/worker db:migrate:remote  # wrangler d1 migrations apply fitness --remote (CI, before deploy)
 pnpm --filter @fitness/worker seed:local         # load seed/ into local D1
+pnpm --filter @fitness/worker db:equipment       # regenerate the equipment-inventory migration (drizzle/0007) from seed/equipment/
 pnpm --filter @fitness/exercises run fetch:images # download exercise step images (gitignored) before a web build
 pnpm --filter @fitness/exercises run fetch:media  # download matched ExerciseDB GIFs (gitignored)
 pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts  # new Web Push key pair
@@ -117,6 +118,7 @@ It documents TesterArmy's agentic `e2e` runner (`npx e2e`, `e2e.config.ts`, `tes
 - Never `db.transaction()` (D1 throws). Validate in JS, then write everything for one change in a single `db.batch([...])`. Conditional writes go in SQL (`ON CONFLICT`, `WHERE NOT EXISTS`).
 - No `ON DELETE CASCADE`. Delete child rows explicitly in the same batch.
 - Max 100 bound parameters per statement: chunk multi-row inserts (rows per statement = floor(100 / columns)). Seeds are generated SQL files applied with `wrangler d1 execute --file`.
+- Data migrations are for databases that already exist: write them against the seed files (`scripts/build-equipment-inventory.ts` → `db:equipment`), guard every statement on the data being there (`JOIN exercises` / `WHERE EXISTS`), and let a fresh database take the same rows from the seed instead. Secrets: the platform's SQLite rejects a compound `UNION` of more than a few SELECTs — pass rows as a `VALUES` list.
 - Enums are enforced in Zod/TypeScript, not with DB CHECKs. JSON columns use `text(..., { mode: 'json' }).$type<T>()`; spec `text[]` means a JSON array column. Parse LLM-fed JSON columns with their Zod schema on read.
 - Index every `date` column, `ai_jobs(status, run_after)`, `ai_events(created_at)`.
 

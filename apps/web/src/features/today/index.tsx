@@ -46,7 +46,7 @@ export function TodayPage() {
   const weighIn = () => openQuickLog('weigh-in')
 
   return (
-    <Stack spacing={4} data-testid="today-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="today-page">
       {/* The route handle says `hero: true`, so the top bar keeps only its controls and this owns the page's h1. */}
       <PageHero
         testId="today-hero"

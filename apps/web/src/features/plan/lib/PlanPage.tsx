@@ -34,7 +34,7 @@ export function PlanPage() {
   const rails: Rails | null = settings.data?.settings ?? null
 
   return (
-    <Stack spacing={5} data-testid="plan-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="plan-page">
       <section>
         <SectionHeader title="Now" />
         {versions.isLoading ? (

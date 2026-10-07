@@ -239,7 +239,7 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
     )
 
   return (
-    <Stack spacing={4} data-testid="scan-page">
+    <Stack spacing={{ xs: 6, md: 8 }} data-testid="scan-page">
       <Box>
         <SectionHeader
           title={`Scan ${scan.date}`}
