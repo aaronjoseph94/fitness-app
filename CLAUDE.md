@@ -97,6 +97,10 @@ The process skills: `brainstorming` → `writing-plans` → `subagent-driven-dev
 - **No questions mid-execution.** Aaron's standing direction is to execute without asking: `brainstorming` and `writing-plans` settle open points themselves and record them in `docs/PROGRESS.md`; ask only when a rail or the spec is at stake. Design specs and plans go in `docs/superpowers/`.
 - **Tests.** `.claude/skills/tdd` still sets where tests go (the agreed seams) and the build-time testing rule below still holds; `superpowers-test-driven-development` (and Addy Osmani's `test-driven-development`) add red-green discipline, not more seams.
 
+## Karpathy guidelines (`.claude/skills/karpathy-guidelines`, `.agents/skills/` for Cursor)
+
+Simplicity first, surgical changes (every changed line traces to the request) and goal-driven verification apply as written. Its "if uncertain, ask" yields to Aaron's no-questions rule: state the assumption, pick, and record it in `docs/PROGRESS.md`.
+
 ## e2e skill (tester-army/e2e — `.claude/skills/e2e`, `.agents/skills/e2e` for Cursor)
 
 It documents TesterArmy's agentic `e2e` runner (`npx e2e`, `e2e.config.ts`, `tests/**/*.e2e.ts`, `agent.act` / `agent.assert`, `e2e explore` bug bashes). How it fits here:

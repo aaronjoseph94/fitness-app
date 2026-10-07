@@ -1,0 +1,1 @@
+Installed with `npx skills add forrestchang/andrej-karpathy-skills --skill karpathy-guidelines --agent claude-code cursor --copy` from https://github.com/forrestchang/andrej-karpathy-skills (MIT; the licence is in the skill's own frontmatter) at 2c60614 (2026-04-20); pinned in skills-lock.json. Derived from Andrej Karpathy's notes on LLM coding pitfalls.

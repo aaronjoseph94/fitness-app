@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "skills/e2e/SKILL.md",
       "computedHash": "b2e0a433c76fecb034e9effd8bbd25e61a91acc394ad14d7ef8398d515d00374"
+    },
+    "karpathy-guidelines": {
+      "source": "forrestchang/andrej-karpathy-skills",
+      "sourceType": "github",
+      "skillPath": "skills/karpathy-guidelines/SKILL.md",
+      "computedHash": "41e8ca055bbde13d240776a14a076a59614057200340c243130a76ba4e64cac8"
     }
   }
 }
