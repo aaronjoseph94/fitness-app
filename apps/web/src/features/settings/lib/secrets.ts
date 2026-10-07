@@ -1,6 +1,6 @@
 // Owns: what each runtime secret is (pure) — its label, what it unlocks, where Aaron gets one, the prefix its provider
 // uses so a pasted value can be sanity-checked, and how a stored secret reads back. The list is in the router's chain
-// order (OpenRouter first, Gemini a fallback). Never a value: the API returns status only, so nothing here can put a
+// order (Groq → OpenRouter → Gemini last). Never a value: the API returns status only, so nothing here can put a
 // key on screen that the Worker would not have sent.
 import type { SecretName, SecretStatus } from '@fitness/shared/schemas'
 
@@ -19,10 +19,18 @@ export interface SecretField {
 }
 
 export const SECRET_FIELDS: Record<SecretName, SecretField> = {
+  GROQ_API_KEY: {
+    name: 'GROQ_API_KEY',
+    label: 'Groq',
+    help: 'The primary text model: fast, with a generous daily limit. Used first for meal parsing and Ask AI.',
+    where: 'console.groq.com → API keys',
+    url: 'https://console.groq.com/keys',
+    prefix: 'gsk_',
+  },
   OPENROUTER_API_KEY: {
     name: 'OPENROUTER_API_KEY',
     label: 'OpenRouter',
-    help: 'The primary model: it parses logs, reads photos and reforecasts. Free “:free” models: 50 requests a day.',
+    help: 'Second choice for text, and the primary for photos and scan sheets. Free “:free” models: 50 requests a day.',
     where: 'openrouter.ai → Keys',
     url: 'https://openrouter.ai/settings/keys',
     prefix: 'sk-or-',
@@ -30,25 +38,17 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
   ZAI_API_KEY: {
     name: 'ZAI_API_KEY',
     label: 'Z.ai (GLM)',
-    help: 'First fallback when OpenRouter is busy or out of free quota.',
+    help: 'Extra fallback between OpenRouter and Gemini when those are busy or out of free quota.',
     where: 'z.ai → API keys (the Flash models are free)',
     url: 'https://z.ai/manage-apikey/apikey-list',
   },
   GEMINI_API_KEY: {
     name: 'GEMINI_API_KEY',
     label: 'Google Gemini',
-    help: 'Fallback for text and for the vision jobs where Gemini still reads best.',
+    help: 'Last resort for text and a vision fallback after OpenRouter.',
     where: 'Google AI Studio → Get API key (free tier)',
     url: 'https://aistudio.google.com/apikey',
     prefix: 'AIza',
-  },
-  GROQ_API_KEY: {
-    name: 'GROQ_API_KEY',
-    label: 'Groq',
-    help: 'The last text fallback; fast, with a generous daily limit.',
-    where: 'console.groq.com → API keys',
-    url: 'https://console.groq.com/keys',
-    prefix: 'gsk_',
   },
   USDA_FDC_API_KEY: {
     name: 'USDA_FDC_API_KEY',
@@ -77,10 +77,10 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
 }
 
 /**
- * The provider keys the Models section offers, in the router's chain order (OpenRouter leads; providers.json is the
- * source of truth). The food key used to be listed here and is retired: food matching is Canadian now.
+ * The provider keys the Models section offers, in the router's chain order (Groq → OpenRouter → Gemini last;
+ * providers.json is the source of truth). The food key used to be listed here and is retired: food matching is Canadian now.
  */
-export const MODEL_SECRET_NAMES: readonly SecretName[] = ['OPENROUTER_API_KEY', 'ZAI_API_KEY', 'GEMINI_API_KEY', 'GROQ_API_KEY']
+export const MODEL_SECRET_NAMES: readonly SecretName[] = ['GROQ_API_KEY', 'OPENROUTER_API_KEY', 'ZAI_API_KEY', 'GEMINI_API_KEY']
 
 /** "Set here · ends 4f2a" / "Set as a Worker secret" / "Not set" — never the value itself. */
 export function sourceLabel(status: SecretStatus): string {

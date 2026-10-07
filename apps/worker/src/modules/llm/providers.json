@@ -1,5 +1,5 @@
 {
-  "$comment": "Owns: the LLM router's data — free-tier providers, exact model ids, per-quota RPM/RPD/TPM/TPD limits and the chains per job kind. Limits change: update the numbers and `checked`, not the code. Moved from SPEC §9's src/ai/providers.json into the llm module (apps/worker/src/modules/llm/providers.json). OpenRouter's free models lead every chain (Aaron's call, 2026-10-06); Gemini is a fallback.",
+  "$comment": "Owns: the LLM router's data — free-tier providers, exact model ids, per-quota RPM/RPD/TPM/TPD limits and the chains per job kind. Limits change: update the numbers and `checked`, not the code. Moved from SPEC §9's src/ai/providers.json into the llm module (apps/worker/src/modules/llm/providers.json). Text chain priority (Aaron, 2026-10-06): Groq → OpenRouter → Gemini last. Vision has no Groq model, so OpenRouter leads vision with Gemini last.",
   "checked": "2026-10-06",
   "background_share": 0.8,
   "retry": { "max_retries": 1, "base_ms": 400, "max_wait_ms": 3000 },
@@ -77,7 +77,7 @@
       "tpm": null,
       "tpd": null,
       "day_tz": "UTC",
-      "note": "Shared by every :free model on the account. It leads the chains, so this daily cap is reached before any fallback is tried."
+      "note": "Shared by every :free model on the account. Second in the text chain after Groq; this daily cap is reached before Gemini is tried."
     },
     "groq-gpt-oss-120b": { "rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "day_tz": "UTC" },
     "groq-qwen3.8-27b": { "rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "day_tz": "UTC" }
@@ -172,14 +172,14 @@
   },
   "chains": {
     "text": [
+      "groq-gpt-oss-120b",
+      "groq-qwen3.8-27b",
       "openrouter-qwen3.8-27b",
       "openrouter-nemotron-3-super",
       "glm-4.7-flash",
       "glm-4.5-flash",
       "gemini-flash",
-      "gemini-flash-lite",
-      "groq-gpt-oss-120b",
-      "groq-qwen3.8-27b"
+      "gemini-flash-lite"
     ],
     "vision": ["openrouter-qwen3.8-27b", "glm-4.6v-flash", "gemini-flash", "gemini-flash-lite"]
   }

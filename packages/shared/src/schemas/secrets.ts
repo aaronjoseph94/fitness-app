@@ -17,9 +17,8 @@ export const SecretName = z.enum([
 export type SecretName = z.infer<typeof SecretName>
 
 /**
- * The LLM provider keys (SPEC §9). The router's chain order is data in the Worker's providers.json — OpenRouter's free
- * models first, then Z.ai's GLM, then Gemini, then Groq — and the app lists these keys in that order itself; this array
- * keeps its historical order and is not what the router runs.
+ * The LLM provider keys (SPEC §9). The router's chain order is data in the Worker's providers.json (Groq → OpenRouter →
+ * Gemini last). This array is the name set only — Settings UI order lives in apps/web secrets.ts.
  */
 export const LLM_SECRET_NAMES = [
   'GEMINI_API_KEY',

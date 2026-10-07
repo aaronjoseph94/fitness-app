@@ -56,6 +56,6 @@
 
 - **Job**: a row in `ai_jobs` (`queued → running → done | failed`) with a lease; run in `waitUntil` after the response and swept by the 5-minute cron.
 - **Event**: a row in `ai_events` the dashboard and MCP read: `adjustment`, `proposal`, `review`, `note`, `change`.
-- **Router**: the LLM provider chain (OpenRouter `:free` → GLM → Gemini → Groq) with quotas, retries, schema repair and failover.
+- **Router**: the LLM provider chain (Groq → OpenRouter `:free` → GLM → Gemini last; vision starts at OpenRouter) with quotas, retries, schema repair and failover.
 - **Tools layer**: the typed operations shared by Ask AI and MCP (`get_today`, `apply_review`, …); each tool calls the same worker modules as the REST routes.
 - **Review bundle**: the one compact JSON a coach reads for a period (`get_review_bundle`).
