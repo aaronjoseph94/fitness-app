@@ -132,9 +132,12 @@ function inlineFontCss(): Plugin {
   }
 }
 
+// The local Worker the dev and preview servers proxy to; FITNESS_WORKER_ORIGIN points a second dev server at another
+// Worker (e.g. one per parallel agent, each with its own local D1).
+const workerOrigin = process.env.FITNESS_WORKER_ORIGIN ?? 'http://127.0.0.1:8787'
 const workerProxy = {
-  '/api': 'http://127.0.0.1:8787',
-  '/mcp': 'http://127.0.0.1:8787',
+  '/api': workerOrigin,
+  '/mcp': workerOrigin,
 }
 
 export default defineConfig({
