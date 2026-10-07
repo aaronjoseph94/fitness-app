@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300..800&family=Manrope:wght@400..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#7B3FE4;text-decoration:none}a:hover{color:#FF5D5D}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="1d Summit" style="opacity:0;width:1440px;min-height:100vh;background:#FFF8EE;color:#1F1033;font-family:Manrope,system-ui,sans-serif">
+
+  <section style="position:relative;height:660px;overflow:hidden;background:linear-gradient(180deg,#1A0A42 0%,#3E1A73 26%,#9A3A8E 50%,#FF7569 70%,#FFBE86 86%,#FFE3B5 100%);color:#FFFFFF">
+    <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none">
+      <span data-loop="twinkle" data-ldur="3000" style="position:absolute;left:8%;top:14%;width:3px;height:3px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="3800" data-ld="-1000" style="position:absolute;left:22%;top:8%;width:2px;height:2px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="2600" data-ld="-600" style="position:absolute;left:36%;top:18%;width:3px;height:3px;border-radius:50%;background:#FFE7B8"></span>
+      <span data-loop="twinkle" data-ldur="4200" data-ld="-2000" style="position:absolute;left:47%;top:6%;width:2px;height:2px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="3300" data-ld="-1500" style="position:absolute;left:58%;top:15%;width:3px;height:3px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="2900" data-ld="-400" style="position:absolute;left:71%;top:9%;width:2px;height:2px;border-radius:50%;background:#FFE7B8"></span>
+      <span data-loop="twinkle" data-ldur="3600" data-ld="-2600" style="position:absolute;left:84%;top:13%;width:3px;height:3px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="4000" data-ld="-3000" style="position:absolute;left:93%;top:22%;width:2px;height:2px;border-radius:50%;background:#FFFFFF"></span>
+      <div data-loop="breathe" data-ldur="6000" style="position:absolute;left:1030px;top:250px;width:440px;height:440px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,236,190,.9),rgba(255,170,110,.45) 45%,rgba(255,120,100,0))"></div>
+      <div data-loop="float" data-ldur="9000" style="position:absolute;left:1180px;top:400px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#FFF6DA,#FFD08A 70%,#FFB36B)"></div>
+      <div data-loop="drift" data-ldur="48000" style="position:absolute;left:120px;top:250px;width:420px;height:90px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,230,240,.35),rgba(255,230,240,0))"></div>
+      <div data-loop="drift" data-ldur="60000" data-ld="-20000" style="position:absolute;left:780px;top:170px;width:520px;height:110px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,220,235,.28),rgba(255,220,235,0))"></div>
+    </div>
+
+    <header data-a="fall" data-t="900" style="position:relative;z-index:2;display:flex;align-items:center;gap:16px;padding:22px 56px">
+      <div style="width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(12px)"><svg viewBox="0 0 512 512" width="26" height="26"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFFFFF" style="stroke-width:52;stroke-linecap:round;stroke-linejoin:round"></polyline><circle cx="398" cy="178" r="44" fill="#FFD27A"></circle></svg></div>
+      <nav aria-label="Main" style="display:flex;gap:4px;margin-left:12px;padding:5px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(14px);font-size:15px;font-weight:700">
+        <a href="#" aria-current="page" style="padding:9px 18px;border-radius:999px;background:#FFFFFF;color:#2B0F4F">Today</a>
+        <a href="#" style="padding:9px 16px;border-radius:999px;color:rgba(255,255,255,.85)" style-hover="background:rgba(255,255,255,.14);color:#FFFFFF">Dashboard</a>
+        <a href="#" style="padding:9px 16px;border-radius:999px;color:rgba(255,255,255,.85)" style-hover="background:rgba(255,255,255,.14);color:#FFFFFF">Log</a>
+        <a href="#" style="padding:9px 16px;border-radius:999px;color:rgba(255,255,255,.85)" style-hover="background:rgba(255,255,255,.14);color:#FFFFFF">Train</a>
+        <a href="#" style="padding:9px 16px;border-radius:999px;color:rgba(255,255,255,.85)" style-hover="background:rgba(255,255,255,.14);color:#FFFFFF">Progress</a>
+        <a href="#" style="padding:9px 16px;border-radius:999px;color:rgba(255,255,255,.85)" style-hover="background:rgba(255,255,255,.14);color:#FFFFFF">Ask AI</a>
+      </nav>
+      <div style="flex:1"></div>
+      <button aria-label="Search" style="width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#FFFFFF;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:22px">search</span></button>
+      <button data-magnet="6" style="height:46px;padding:0 18px;border:0;border-radius:999px;background:linear-gradient(135deg,#FFD27A,#FF8A5B);color:#2B0F4F;font:800 15px Manrope,system-ui;display:flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 8px 24px rgba(255,138,91,.4)"><span class="material-symbols-rounded" style="font-size:20px;font-variation-settings:'FILL' 1">auto_awesome</span>Ask AI</button>
+      <div style="width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#FFFFFF;color:#2B0F4F;font:800 17px Unbounded,system-ui">A</div>
+    </header>
+
+    <div style="position:absolute;left:56px;top:122px;width:540px;z-index:2">
+      <div data-a="fade" data-d="200" style="font-size:14px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75)">Day 12 of the climb · Wed, Oct 7</div>
+      <div data-a="blur" data-d="320" data-t="1200" style="display:flex;align-items:baseline;gap:12px;margin-top:10px">
+        <span data-count="" data-from="95.1" data-d="400" data-t="2200" style="font-family:Unbounded,system-ui;font-size:150px;line-height:.9;font-weight:700;letter-spacing:-.06em;font-variant-numeric:tabular-nums">93.6</span>
+        <span style="font-family:Unbounded,system-ui;font-size:28px;font-weight:500">kg</span>
+      </div>
+      <div data-a="fade" data-d="600" style="margin-top:12px;font-size:18px;font-weight:600;color:rgba(255,255,255,.85)">Trend weight · weighed in at 93.2 kg, 7:04 AM</div>
+      <div data-a="rise" data-d="760" style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:8px 14px 8px 10px;border-radius:999px;background:rgba(23,184,166,.9);font-size:15px;font-weight:800"><span class="material-symbols-rounded" style="font-size:18px">arrow_downward</span>1.5 kg since base camp</span>
+        <span style="padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);font-size:15px;font-weight:800">28.6 kg to the summit</span>
+      </div>
+      <div data-a="rise" data-d="900" style="margin-top:26px;padding:18px 20px;border-radius:22px;background:rgba(26,10,66,.38);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(16px);width:420px">
+        <div style="display:flex;align-items:center;gap:10px"><span class="material-symbols-rounded" style="font-size:22px;color:#FFD27A;font-variation-settings:'FILL' 1">flag</span><span style="flex:1;font-size:16px;font-weight:800">Next camp · 90 kg</span><span style="font-size:14px;font-weight:700;color:rgba(255,255,255,.75)">Nov 12</span></div>
+        <div style="margin-top:12px;height:10px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden"><div data-bar="" data-d="1200" data-t="1800" style="width:29%;height:100%;border-radius:999px;background:linear-gradient(90deg,#FFD27A,#FF8A5B)"></div></div>
+        <div style="margin-top:8px;font-size:14px;font-weight:600;color:rgba(255,255,255,.78)">1.5 of 5.1 kg there · 3.6 kg to go at 0.70 kg a week</div>
+      </div>
+    </div>
+
+    <div data-a="rise" data-d="150" data-t="1300" style="position:absolute;right:30px;bottom:0;width:820px;height:560px">
+      <svg viewBox="0 0 820 560" width="820" height="560" style="position:absolute;inset:0;overflow:visible">
+        <defs>
+          <linearGradient id="d-mt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:#7A3A9E"></stop><stop offset=".55" style="stop-color:#4A1C78"></stop><stop offset="1" style="stop-color:#250C46"></stop></linearGradient>
+          <linearGradient id="d-face" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:#FFB38A;stop-opacity:0"></stop><stop offset="1" style="stop-color:#FFB38A;stop-opacity:.35"></stop></linearGradient>
+        </defs>
+        <path d="M0,560 L0,430 C100,382 160,332 232,304 C300,276 342,322 402,292 C462,262 522,204 604,194 C684,184 742,240 820,232 L820,560 Z" style="fill:rgba(255,255,255,.09)"></path>
+        <path d="M0,560 L0,522 C82,502 150,472 210,432 C272,390 304,330 362,270 C420,210 482,120 540,62 C556,46 590,40 606,58 C660,120 720,202 780,272 C800,296 812,312 820,320 L820,560 Z" style="fill:url(#d-mt)"></path>
+        <path d="M606,58 C660,120 720,202 780,272 C800,296 812,312 820,320 L820,560 L700,560 C690,420 650,260 606,58 Z" style="fill:url(#d-face)"></path>
+        <path d="M540,62 C520,130 470,190 440,250 M606,58 C600,140 640,200 660,250" fill="none" style="stroke:rgba(255,255,255,.14);stroke-width:2;stroke-linecap:round"></path>
+        <path data-draw="" data-d="700" data-t="2400" d="M70,520 C170,512 250,500 300,468 C352,434 262,410 300,382 C338,354 430,362 452,318 C474,274 372,262 410,228 C448,194 515,204 520,162 C525,122 462,124 492,100 C520,78 548,76 572,58" fill="none" style="stroke:rgba(255,255,255,.22);stroke-width:3;stroke-linecap:round"></path>
+        <path data-a="fade" data-d="2400" data-loop="march" data-ldur="2000" d="M70,520 C170,512 250,500 300,468 C352,434 262,410 300,382 C338,354 430,362 452,318 C474,274 372,262 410,228 C448,194 515,204 520,162 C525,122 462,124 492,100 C520,78 548,76 572,58" fill="none" style="stroke:#FFFFFF;stroke-width:3;stroke-linecap:round;stroke-dasharray:2 14;opacity:.85"></path>
+        <path data-draw="" data-d="1200" data-t="1500" d="M70,520 C170,512 250,500 300,468 C352,434 262,410 300,382 C338,354 430,362 452,318 C474,274 372,262 410,228 C448,194 515,204 520,162 C525,122 462,124 492,100 C520,78 548,76 572,58" fill="none" style="stroke:rgba(255,210,122,.35);stroke-width:14;stroke-linecap:round;stroke-dasharray:46.4 2000"></path>
+        <path data-draw="" data-d="1200" data-t="1500" d="M70,520 C170,512 250,500 300,468 C352,434 262,410 300,382 C338,354 430,362 452,318 C474,274 372,262 410,228 C448,194 515,204 520,162 C525,122 462,124 492,100 C520,78 548,76 572,58" fill="none" style="stroke:#FFD27A;stroke-width:5;stroke-linecap:round;stroke-dasharray:46.4 2000"></path>
+        <path d="M0,560 L0,546 C120,536 220,553 330,549 C460,544 600,557 820,540 L820,560 Z" style="fill:#1A0A33"></path>
+      </svg>
+      <div data-stagger="150" data-sd="1800" data-sa="pop">
+        <div style="position:absolute;left:226px;top:498px"><div style="position:absolute;left:-1px;bottom:0;width:2px;height:26px;background:#FFFFFF"></div><span class="material-symbols-rounded" style="position:absolute;left:0;bottom:12px;font-size:20px;color:#FFD27A;font-variation-settings:'FILL' 1">flag</span><span style="position:absolute;left:22px;bottom:16px;white-space:nowrap;padding:3px 9px;border-radius:999px;background:rgba(26,10,66,.55);font-size:12px;font-weight:800">90 · Nov 12</span></div>
+        <div style="position:absolute;left:293px;top:407px"><div style="position:absolute;left:-1px;bottom:0;width:2px;height:26px;background:#FFFFFF"></div><span class="material-symbols-rounded" style="position:absolute;left:0;bottom:12px;font-size:20px;color:#FFD27A;font-variation-settings:'FILL' 1">flag</span><span style="position:absolute;left:22px;bottom:16px;white-space:nowrap;padding:3px 9px;border-radius:999px;background:rgba(26,10,66,.55);font-size:12px;font-weight:800">85 · Jan 1</span></div>
+        <div style="position:absolute;left:419px;top:345px"><div style="position:absolute;left:-1px;bottom:0;width:2px;height:26px;background:#FFFFFF"></div><span class="material-symbols-rounded" style="position:absolute;left:0;bottom:12px;font-size:20px;color:#FFD27A;font-variation-settings:'FILL' 1">flag</span><span style="position:absolute;left:22px;bottom:16px;white-space:nowrap;padding:3px 9px;border-radius:999px;background:rgba(26,10,66,.55);font-size:12px;font-weight:800">80 · Feb 20</span></div>
+        <div style="position:absolute;left:407px;top:231px"><div style="position:absolute;left:-1px;bottom:0;width:2px;height:26px;background:#FFFFFF"></div><span class="material-symbols-rounded" style="position:absolute;left:0;bottom:12px;font-size:20px;color:#FFD27A;font-variation-settings:'FILL' 1">flag</span><span style="position:absolute;right:8px;bottom:16px;white-space:nowrap;padding:3px 9px;border-radius:999px;background:rgba(26,10,66,.55);font-size:12px;font-weight:800">75 · Apr 11</span></div>
+        <div style="position:absolute;left:518px;top:146px"><div style="position:absolute;left:-1px;bottom:0;width:2px;height:26px;background:#FFFFFF"></div><span class="material-symbols-rounded" style="position:absolute;left:0;bottom:12px;font-size:20px;color:#FFD27A;font-variation-settings:'FILL' 1">flag</span><span style="position:absolute;left:22px;bottom:16px;white-space:nowrap;padding:3px 9px;border-radius:999px;background:rgba(26,10,66,.55);font-size:12px;font-weight:800">70 · May 31</span></div>
+        <div style="position:absolute;left:572px;top:58px">
+          <div data-loop="pulse" style="position:absolute;left:-46px;top:-46px;width:92px;height:92px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,226,150,.85),rgba(255,226,150,0))"></div>
+          <span class="material-symbols-rounded" style="position:absolute;left:-14px;top:-30px;font-size:30px;color:#FFFFFF;font-variation-settings:'FILL' 1">flag</span>
+          <div style="position:absolute;left:26px;top:-34px;white-space:nowrap;padding:7px 12px;border-radius:14px;background:#FFFFFF;color:#2B0F4F;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(26,10,66,.35)">Summit · 65 kg<br><span style="font-weight:600;color:#6A5A80">Jul 20, 2027</span></div>
+        </div>
+      </div>
+      <div style="position:absolute;left:116px;top:516px">
+        <span data-a="pop" data-d="2600" style="position:absolute;left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 4px rgba(255,210,122,.6),0 0 22px #FFD27A"></span>
+        <span data-loop="ping" data-ld="2800" style="position:absolute;left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;border:2px solid #FFFFFF;box-sizing:border-box"></span>
+        <span data-a="rise" data-d="2700" style="position:absolute;left:-30px;top:-52px;white-space:nowrap;padding:6px 11px;border-radius:12px;background:#FFFFFF;color:#2B0F4F;font-size:13px;font-weight:800">You · 93.6</span>
+      </div>
+    </div>
+  </section>
+
+  <div style="position:relative;z-index:3;margin-top:-44px;padding:40px 56px 60px;border-radius:44px 44px 0 0;background:#FFF8EE;box-shadow:0 -20px 50px rgba(43,15,79,.18)">
+    <div style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:26px">
+      <section data-a="rise" data-d="500" style="border-radius:30px;padding:26px 28px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.02em">Today’s fuel</h2><span style="font-size:14px;font-weight:600;color:#7A6B8E">As of 2:15 PM</span></div>
+        <div data-stagger="90" data-sd="700" data-sa="rise" style="margin-top:22px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;text-align:center">
+          <div>
+            <div style="position:relative;margin:0 auto;width:72px;height:170px;border-radius:999px;background:#FFEDE8;overflow:hidden"><div data-a="growy" data-d="900" data-t="1600" style="position:absolute;left:0;right:0;bottom:0;height:61%;transform-origin:bottom;background:linear-gradient(0deg,#FF4D6D,#FF9A6B)"></div><div style="position:absolute;left:12px;top:12px;width:12px;height:56px;border-radius:999px;background:rgba(255,255,255,.55)"></div></div>
+            <div style="margin-top:12px;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.03em"><span data-count="" data-d="900">540</span></div>
+            <div style="font-size:14px;font-weight:700">kcal left</div><div style="font-size:13px;color:#7A6B8E">860 / 1,400</div>
+          </div>
+          <div>
+            <div style="position:relative;margin:0 auto;width:72px;height:170px;border-radius:999px;background:#FFF2DC;overflow:hidden"><div data-a="growy" data-d="1000" data-t="1600" style="position:absolute;left:0;right:0;bottom:0;height:63%;transform-origin:bottom;background:linear-gradient(0deg,#FF9F2E,#FFD36B)"></div><div style="position:absolute;left:12px;top:12px;width:12px;height:56px;border-radius:999px;background:rgba(255,255,255,.55)"></div></div>
+            <div style="margin-top:12px;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.03em"><span data-count="" data-d="1000">82</span> g</div>
+            <div style="font-size:14px;font-weight:700">protein</div><div style="font-size:13px;color:#7A6B8E">of 130 g</div>
+          </div>
+          <div>
+            <div style="position:relative;margin:0 auto;width:72px;height:170px;border-radius:999px;background:#DDF7F4;overflow:hidden"><div data-a="growy" data-d="1100" data-t="1600" style="position:absolute;left:0;right:0;bottom:0;height:58%;transform-origin:bottom;background:linear-gradient(0deg,#129AAE,#5EE7DF)"></div><div style="position:absolute;left:12px;top:12px;width:12px;height:56px;border-radius:999px;background:rgba(255,255,255,.55)"></div></div>
+            <div style="margin-top:12px;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.03em"><span data-count="" data-d="1100">1.75</span> L</div>
+            <div style="font-size:14px;font-weight:700">water</div><div style="font-size:13px;color:#7A6B8E">of 3 L</div>
+          </div>
+          <div>
+            <div style="position:relative;margin:0 auto;width:72px;height:170px;border-radius:999px;background:#EEE6FF;overflow:hidden"><div data-a="growy" data-d="1200" data-t="1600" style="position:absolute;left:0;right:0;bottom:0;height:69%;transform-origin:bottom;background:linear-gradient(0deg,#6A33D6,#B18CFF)"></div><div style="position:absolute;left:12px;top:12px;width:12px;height:56px;border-radius:999px;background:rgba(255,255,255,.55)"></div></div>
+            <div style="margin-top:12px;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.03em"><span data-count="" data-d="1200">6,240</span></div>
+            <div style="font-size:14px;font-weight:700">steps</div><div style="font-size:13px;color:#7A6B8E">of 9,000</div>
+          </div>
+          <div>
+            <div style="position:relative;margin:0 auto;width:72px;height:170px;border-radius:999px;background:#E6E8FF;overflow:hidden"><div data-a="growy" data-d="1300" data-t="1600" style="position:absolute;left:0;right:0;bottom:0;height:92%;transform-origin:bottom;background:linear-gradient(0deg,#3F3FC8,#8FA2FF)"></div><div style="position:absolute;left:12px;top:12px;width:12px;height:56px;border-radius:999px;background:rgba(255,255,255,.55)"></div></div>
+            <div style="margin-top:12px;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.03em"><span data-count="" data-d="1300">6.9</span> h</div>
+            <div style="font-size:14px;font-weight:700">sleep</div><div style="font-size:13px;color:#7A6B8E">of 7.5 h</div>
+          </div>
+        </div>
+      </section>
+
+      <div style="display:grid;gap:20px;align-content:start">
+        <aside data-a="rise" data-d="600" style="border-radius:30px;padding:24px 26px;background:linear-gradient(135deg,#4A1C78,#9A3A8E 60%,#FF7569);color:#FFFFFF;box-shadow:0 18px 50px rgba(154,58,142,.3)">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8)"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">push_pin</span><span style="flex:1">Coach note</span><span style="text-transform:none;letter-spacing:0">Claude · until Oct 11</span></div>
+          <p style="margin:12px 0 0;font-size:18px;line-height:1.48;font-weight:600">Protein first this week: get to 130 g before carbs. Saturday is your first 24-hour fast, so water goes up to 3.5 L that day and Friday’s dinner stays protein-heavy.</p>
+        </aside>
+        <nav data-stagger="60" data-sd="800" data-sa="pop" aria-label="Quick log" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px">
+          <button data-magnet="4" data-burst="#7B3FE4,#FFD27A,#FF7569" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border:0;border-radius:20px;background:#FFFFFF;box-shadow:0 10px 26px rgba(74,28,120,.10);font:800 13px Manrope,system-ui;color:#1F1033;cursor:pointer" style-hover="box-shadow:0 14px 34px rgba(74,28,120,.2)"><span style="width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#EEE6FF;color:#6A33D6"><span class="material-symbols-rounded" style="font-size:24px">monitor_weight</span></span>Weigh-in</button>
+          <button data-magnet="4" data-burst="#FF4D6D,#FFD27A,#FF7569" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border:0;border-radius:20px;background:#FFFFFF;box-shadow:0 10px 26px rgba(74,28,120,.10);font:800 13px Manrope,system-ui;color:#1F1033;cursor:pointer" style-hover="box-shadow:0 14px 34px rgba(74,28,120,.2)"><span style="width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#FFEDE8;color:#E8384F"><span class="material-symbols-rounded" style="font-size:24px">restaurant</span></span>Meal</button>
+          <button data-magnet="4" data-burst="#129AAE,#5EE7DF,#FFFFFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border:0;border-radius:20px;background:#FFFFFF;box-shadow:0 10px 26px rgba(74,28,120,.10);font:800 13px Manrope,system-ui;color:#1F1033;cursor:pointer" style-hover="box-shadow:0 14px 34px rgba(74,28,120,.2)"><span style="width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#DDF7F4;color:#0E8797"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:'FILL' 1">water_drop</span></span>Water</button>
+          <button data-magnet="4" data-burst="#FF9F2E,#FFD36B,#FFFFFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border:0;border-radius:20px;background:#FFFFFF;box-shadow:0 10px 26px rgba(74,28,120,.10);font:800 13px Manrope,system-ui;color:#1F1033;cursor:pointer" style-hover="box-shadow:0 14px 34px rgba(74,28,120,.2)"><span style="width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#FFF2DC;color:#C26A00"><span class="material-symbols-rounded" style="font-size:24px">timer</span></span>Start fast</button>
+          <button data-magnet="4" data-burst="#3F3FC8,#8FA2FF,#FFFFFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border:0;border-radius:20px;background:#FFFFFF;box-shadow:0 10px 26px rgba(74,28,120,.10);font:800 13px Manrope,system-ui;color:#1F1033;cursor:pointer" style-hover="box-shadow:0 14px 34px rgba(74,28,120,.2)"><span style="width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#E6E8FF;color:#3F3FC8"><span class="material-symbols-rounded" style="font-size:24px">photo_camera</span></span>Photo</button>
+        </nav>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;margin-top:26px">
+      <section data-a="rise" data-d="800" style="border-radius:30px;padding:24px 26px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="position:relative;width:62px;height:62px;flex:none">
+            <svg viewBox="0 0 64 64" width="62" height="62"><circle cx="32" cy="32" r="27" fill="none" style="stroke:#EEE6FF;stroke-width:6"></circle><circle data-draw="" data-d="1100" cx="32" cy="32" r="27" fill="none" transform="rotate(-90 32 32)" style="stroke:#17B8A6;stroke-width:6;stroke-linecap:round;stroke-dasharray:125.5 300"></circle></svg>
+            <div style="position:absolute;inset:0;display:grid;place-items:center;font-family:Unbounded,system-ui;font-size:16px;font-weight:700">74</div>
+          </div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7A6B8E">Session · 4:30 PM</div><h3 style="margin:2px 0 0;font-family:Unbounded,system-ui;font-size:24px;font-weight:600;letter-spacing:-.03em">Upper B — Pull</h3></div>
+        </div>
+        <div style="margin-top:6px;font-size:14px;font-weight:600;color:#7A6B8E">Readiness 74 · 6 exercises · 18 sets · about 50 min</div>
+        <ol data-stagger="55" data-sd="1100" data-sa="right" style="list-style:none;margin:14px 0 0;padding:0;display:grid;gap:2px;font-size:15px">
+          <li style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F1E9F7"><span style="font-weight:700">Lat pulldown</span><span style="color:#7A6B8E">3 × 10–12 · 45 kg</span></li>
+          <li style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F1E9F7"><span style="font-weight:700">Seated cable row</span><span style="color:#7A6B8E">3 × 10–12 · 40 kg</span></li>
+          <li style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F1E9F7"><span style="font-weight:700">Chest-supported row</span><span style="color:#7A6B8E">3 × 8–10 · 30 kg</span></li>
+          <li style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F1E9F7"><span style="font-weight:700">Rear delt fly</span><span style="color:#7A6B8E">3 × 12–15 · 25 kg</span></li>
+          <li style="display:flex;justify-content:space-between;padding:7px 0"><span style="font-weight:700">2 curl variations</span><span style="color:#7A6B8E">6 × 10–12 · 10 kg</span></li>
+        </ol>
+        <button data-burst="#FFD27A,#FF7569,#7B3FE4" data-magnet="4" style="margin-top:14px;width:100%;height:50px;border:0;border-radius:16px;background:linear-gradient(135deg,#FF7569,#9A3A8E);color:#FFFFFF;font:800 16px Manrope,system-ui;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 10px 26px rgba(255,117,105,.35)"><span class="material-symbols-rounded" style="font-size:22px;font-variation-settings:'FILL' 1">play_arrow</span>Start session</button>
+      </section>
+
+      <section data-a="rise" data-d="900" style="border-radius:30px;padding:24px 26px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7A6B8E"><span class="material-symbols-rounded" data-loop="pulse" style="font-size:18px;color:#7B3FE4;font-variation-settings:'FILL' 1">auto_awesome</span><span style="flex:1">AI check-in</span><span style="text-transform:none;letter-spacing:0">12:41 PM</span></div>
+        <h3 style="margin:10px 0 0;font-family:Unbounded,system-ui;font-size:22px;font-weight:600;letter-spacing:-.03em">On track today</h3>
+        <p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#4E4063">540 kcal left and 48 g protein to go. Either of these closes the gap:</p>
+        <div style="margin-top:10px;display:grid;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;background:#FFF5EC"><img src="assets/food/chicken.svg" alt="" width="26" height="26"><span style="flex:1;font-size:14px;font-weight:700">Chicken breast, 150 g</span><span style="font-size:13px;color:#7A6B8E">46 g · 248 kcal</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;background:#FFF5EC"><img src="assets/food/yogurt.svg" alt="" width="26" height="26"><span style="flex:1;font-size:14px;font-weight:700">Greek yogurt, 200 g</span><span style="font-size:13px;color:#7A6B8E">20 g · 118 kcal</span></div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid #F1E9F7">
+          <div style="font-size:13px;font-weight:800;color:#7B3FE4">Proposal · from Monday’s review</div>
+          <div style="margin-top:4px;font-size:16px;font-weight:800">Protein to 140 g on training days</div>
+          <div style="margin-top:2px;font-size:14px;color:#7A6B8E">Mon–Thu: protein 130 → 140 g · carbs 119 → 109 g</div>
+          <div style="display:flex;gap:8px;margin-top:12px"><button data-burst="#7B3FE4,#17B8A6,#FFD27A" style="height:40px;padding:0 18px;border:0;border-radius:12px;background:#2B0F4F;color:#FFFFFF;font:800 14px Manrope,system-ui;cursor:pointer">Accept</button><button style="height:40px;padding:0 16px;border:0;border-radius:12px;background:#F3ECFA;color:#2B0F4F;font:800 14px Manrope,system-ui;cursor:pointer">Reject</button><a href="#" style="align-self:center;margin-left:4px;font-size:14px;font-weight:800">Why?</a></div>
+        </div>
+      </section>
+
+      <section data-a="rise" data-d="1000" style="position:relative;overflow:hidden;border-radius:30px;padding:24px 26px;background:linear-gradient(170deg,#2B0F4F,#1A0A33);color:#FFFFFF;box-shadow:0 18px 50px rgba(43,15,79,.3)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><h3 style="margin:0;font-family:Unbounded,system-ui;font-size:22px;font-weight:600;letter-spacing:-.03em">This week</h3><span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.65)">Oct 5 – 11</span></div>
+        <div style="position:relative;margin-top:24px;height:108px">
+          <div data-a="growx" data-d="1200" data-t="1400" style="position:absolute;left:20px;right:20px;top:39px;height:2px;background:rgba(255,255,255,.18);transform-origin:left"></div>
+          <div data-a="growx" data-d="1300" data-t="1000" style="position:absolute;left:20px;width:calc((100% - 40px) * .333);top:39px;height:2px;background:#FFD27A;transform-origin:left"></div>
+          <div data-stagger="80" data-sd="1400" data-sa="pop" style="position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center">
+            <div><div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6)">Mon</div><div style="margin:8px auto 0;width:28px;height:28px;border-radius:50%;background:#FFD27A;color:#2B0F4F;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:18px;font-weight:700">check</span></div><div style="margin-top:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7)">Upper A</div></div>
+            <div><div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6)">Tue</div><div style="margin:8px auto 0;width:28px;height:28px;border-radius:50%;background:#FFD27A;color:#2B0F4F;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:18px;font-weight:700">check</span></div><div style="margin-top:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7)">Lower A</div></div>
+            <div><div style="font-size:12px;font-weight:800;color:#FFD27A">Wed</div><div style="position:relative;margin:8px auto 0;width:28px;height:28px"><span data-loop="ping" style="position:absolute;inset:0;border-radius:50%;border:2px solid #FFD27A;box-sizing:border-box"></span><span style="position:absolute;inset:0;border-radius:50%;background:#FFFFFF;box-shadow:0 0 18px #FFD27A"></span></div><div style="margin-top:8px;font-size:11px;font-weight:800">Upper B</div></div>
+            <div><div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6)">Thu</div><div style="margin:8px auto 0;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.5);box-sizing:border-box;background:#2B0F4F"></div><div style="margin-top:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7)">Lower B</div></div>
+            <div><div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6)">Fri</div><div style="margin:14px auto 6px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.3)"></div><div style="margin-top:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.5)">Rest</div></div>
+            <div><div style="font-size:12px;font-weight:800;color:#FF9A6B">Sat</div><div style="margin:8px auto 0;width:28px;height:28px;border-radius:50%;background:#FF7569;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:17px">timer</span></div><div style="margin-top:8px;font-size:11px;font-weight:800;color:#FFB79A">Fast</div></div>
+            <div><div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.6)">Sun</div><div style="margin:14px auto 6px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.3)"></div><div style="margin-top:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.5)">Rest</div></div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:grid;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:rgba(255,255,255,.08);font-size:14px;font-weight:700"><span class="material-symbols-rounded" style="font-size:20px;color:#FF9A6B">timer</span><span style="flex:1">Sat · 24 h fast</span><span style="color:rgba(255,255,255,.65);font-weight:600">water 3.5 L</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;background:rgba(255,255,255,.08);font-size:14px;font-weight:700"><span class="material-symbols-rounded" style="font-size:20px;color:#5EE7DF">body_fat</span><span style="flex:1">Next Evolt scan</span><span style="color:rgba(255,255,255,.65);font-weight:600">Nov 7</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root };
+  }
+}
+</script>
+</body>
+</html>

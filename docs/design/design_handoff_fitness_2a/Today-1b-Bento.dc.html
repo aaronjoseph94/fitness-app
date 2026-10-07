@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<script src="muscle-map.js"></script>
+<style>body{margin:0}a{color:#141414;text-decoration:none}a:hover{color:#2F5BFF}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="1b Bento Pop" style="opacity:0;width:1440px;min-height:100vh;box-sizing:border-box;padding:24px 40px 52px;background-color:#FFF4E4;background-image:radial-gradient(rgba(20,20,20,.10) 1.2px,transparent 1.3px);background-size:24px 24px;color:#141414;font-family:'Bricolage Grotesque',system-ui,sans-serif">
+
+  <header data-a="fall" data-t="800" style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
+    <div data-loop="sway" data-ldur="7000" style="width:52px;height:52px;border-radius:16px;background:#141414;display:grid;place-items:center;box-shadow:3px 3px 0 #FF5A36"><svg viewBox="0 0 512 512" width="30" height="30"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFD23F" style="stroke-width:56;stroke-linecap:round;stroke-linejoin:round"></polyline><circle cx="398" cy="178" r="46" fill="#FF5A36"></circle></svg></div>
+    <nav aria-label="Main" style="display:flex;gap:4px;padding:5px;border-radius:999px;background:#FFFDF8;border:2.5px solid #141414;box-shadow:4px 4px 0 #141414">
+      <a href="#" aria-current="page" style="display:flex;align-items:center;gap:6px;padding:9px 18px 9px 14px;border-radius:999px;background:#141414;color:#FFFDF8;font-weight:700;font-size:16px"><span class="material-symbols-rounded" style="font-size:20px;font-variation-settings:'FILL' 1">today</span>Today</a>
+      <a href="#" style="padding:9px 16px;border-radius:999px;color:#141414;font-weight:600;font-size:16px;transition:background .15s" style-hover="background:#FFD23F">Dashboard</a>
+      <a href="#" style="padding:9px 16px;border-radius:999px;color:#141414;font-weight:600;font-size:16px;transition:background .15s" style-hover="background:#FF9BD2">Log</a>
+      <a href="#" style="padding:9px 16px;border-radius:999px;color:#141414;font-weight:600;font-size:16px;transition:background .15s" style-hover="background:#3FE0A6">Train</a>
+      <a href="#" style="padding:9px 16px;border-radius:999px;color:#141414;font-weight:600;font-size:16px;transition:background .15s" style-hover="background:#7FD3FF">Progress</a>
+      <a href="#" style="padding:9px 16px;border-radius:999px;color:#141414;font-weight:600;font-size:16px;transition:background .15s" style-hover="background:#C5B3FF">Ask AI</a>
+    </nav>
+    <div style="flex:1"></div>
+    <button aria-label="Search" style="width:50px;height:50px;border-radius:50%;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;display:grid;place-items:center;cursor:pointer;color:#141414"><span class="material-symbols-rounded" style="font-size:24px">search</span></button>
+    <button aria-label="Settings" style="width:50px;height:50px;border-radius:50%;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;display:grid;place-items:center;cursor:pointer;color:#141414"><span class="material-symbols-rounded" style="font-size:24px">settings</span></button>
+    <div style="width:50px;height:50px;border-radius:50%;border:2.5px solid #141414;background:#C5B3FF;box-shadow:3px 3px 0 #141414;display:grid;place-items:center;font-weight:800;font-size:20px">A</div>
+  </header>
+
+  <div data-stagger="65" data-sd="120" data-sa="pop" data-st="800" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:112px;gap:18px">
+
+    <section data-tilt="3" style="grid-column:1 / span 5;grid-row:1 / span 3;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#FFD23F;padding:24px 26px;display:flex;flex-direction:column">
+      <span class="material-symbols-rounded" data-loop="spin" data-ldur="36000" style="position:absolute;right:-46px;top:-46px;font-size:230px;color:#FFB000;font-variation-settings:'FILL' 1">wb_sunny</span>
+      <div style="position:relative;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700">
+        <span style="padding:6px 12px;border-radius:999px;background:#141414;color:#FFD23F">Wed 7 Oct</span>
+        <span style="padding:5px 12px;border-radius:999px;background:#FFFDF8;border:2px solid #141414">Day 12</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px 5px 8px;border-radius:999px;background:#FF5A36;border:2px solid #141414"><span class="material-symbols-rounded" data-loop="pulse" data-ldur="1400" style="font-size:18px;font-variation-settings:'FILL' 1">local_fire_department</span>12-day streak</span>
+      </div>
+      <h1 style="position:relative;margin:20px 0 0;font-size:62px;line-height:.95;font-weight:800;letter-spacing:-.045em">Good afternoon, Aaron.</h1>
+      <div style="flex:1"></div>
+      <div style="position:relative;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Log something</div>
+      <div style="position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px">
+        <button data-burst="#FF5A36,#2F5BFF,#141414,#FFFDF8" data-magnet="4" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px 10px;border-radius:18px;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;font:700 14px 'Bricolage Grotesque',system-ui;color:#141414;cursor:pointer;transition:transform .12s,box-shadow .12s" style-hover="box-shadow:5px 5px 0 #141414" style-active="transform:translate(3px,3px);box-shadow:0 0 0 #141414"><span class="material-symbols-rounded" style="font-size:28px;color:#2F5BFF">monitor_weight</span>Weigh-in</button>
+        <button data-burst="#FF5A36,#FFD23F,#141414,#FFFDF8" data-magnet="4" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px 10px;border-radius:18px;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;font:700 14px 'Bricolage Grotesque',system-ui;color:#141414;cursor:pointer;transition:transform .12s,box-shadow .12s" style-hover="box-shadow:5px 5px 0 #141414" style-active="transform:translate(3px,3px);box-shadow:0 0 0 #141414"><span class="material-symbols-rounded" style="font-size:28px;color:#FF5A36">restaurant</span>Meal</button>
+        <button data-burst="#7FD3FF,#2F5BFF,#141414,#FFFDF8" data-magnet="4" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px 10px;border-radius:18px;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;font:700 14px 'Bricolage Grotesque',system-ui;color:#141414;cursor:pointer;transition:transform .12s,box-shadow .12s" style-hover="box-shadow:5px 5px 0 #141414" style-active="transform:translate(3px,3px);box-shadow:0 0 0 #141414"><span class="material-symbols-rounded" style="font-size:28px;color:#1798E6;font-variation-settings:'FILL' 1">water_drop</span>Water</button>
+        <button data-burst="#C5B3FF,#FF9BD2,#141414,#FFFDF8" data-magnet="4" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px 10px;border-radius:18px;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;font:700 14px 'Bricolage Grotesque',system-ui;color:#141414;cursor:pointer;transition:transform .12s,box-shadow .12s" style-hover="box-shadow:5px 5px 0 #141414" style-active="transform:translate(3px,3px);box-shadow:0 0 0 #141414"><span class="material-symbols-rounded" style="font-size:28px;color:#7B4DFF">timer</span>Fast</button>
+        <button data-burst="#B6F23B,#3FE0A6,#141414,#FFFDF8" data-magnet="4" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px 10px;border-radius:18px;border:2.5px solid #141414;background:#FFFDF8;box-shadow:3px 3px 0 #141414;font:700 14px 'Bricolage Grotesque',system-ui;color:#141414;cursor:pointer;transition:transform .12s,box-shadow .12s" style-hover="box-shadow:5px 5px 0 #141414" style-active="transform:translate(3px,3px);box-shadow:0 0 0 #141414"><span class="material-symbols-rounded" style="font-size:28px;color:#141414">photo_camera</span>Photo</button>
+      </div>
+    </section>
+
+    <section data-tilt="3" style="grid-column:6 / span 4;grid-row:1 / span 3;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#2F5BFF;color:#FFFDF8;padding:22px 26px 20px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">Trend weight</span><span style="font-size:13px;font-weight:700;padding:5px 10px;border-radius:999px;background:rgba(255,253,248,.18)">Weigh-in 93.2 kg · 7:04 AM</span></div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px"><span data-count="" data-from="95.1" data-d="500" data-t="2000" style="font-size:118px;font-weight:800;letter-spacing:-.06em;line-height:1;font-variant-numeric:tabular-nums">93.6</span><span style="font-size:26px;font-weight:700">kg</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <span style="display:inline-flex;align-items:center;gap:3px;padding:5px 12px 5px 7px;border-radius:999px;background:#B6F23B;color:#141414;border:2px solid #141414;font-size:15px;font-weight:800"><span class="material-symbols-rounded" style="font-size:18px">arrow_downward</span>1.5 kg since Sep 26</span>
+        <span style="padding:5px 12px;border-radius:999px;border:2px solid rgba(255,253,248,.55);font-size:15px;font-weight:700">28.6 kg to go</span>
+      </div>
+      <div style="flex:1;position:relative;margin:18px 6px 0;min-height:0">
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <path data-draw="" data-d="700" data-t="1800" d="M16,41.7C45.3,47.4 74.7,53.2 104,56.8C133.3,60.5 162.7,61.6 192,65.5C221.3,69.4 250.7,77.9 280,82.8C309.3,87.8 338.7,90.9 368,95.8C397.3,100.8 426.7,107.4 456,113.2C485.3,118.9 514.7,126.1 544,130.5C573.3,134.9 602.7,136.9 632,141.3C661.3,145.8 690.7,152.9 720,158.7C749.3,164.4 778.7,171.6 808,176C837.3,180.4 866.7,182.4 896,186.8C925.3,191.3 954.7,197.7 984,204.2" fill="none" style="stroke:#FFFDF8;stroke-width:5;stroke-linecap:round;vector-effect:non-scaling-stroke"></path>
+        </svg>
+        <div data-stagger="55" data-sd="900" data-sa="pop">
+          <span style="position:absolute;left:1.6%;top:13.9%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:10.4%;top:24.7%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:19.2%;top:17.5%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:28%;top:39.2%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:36.8%;top:31.9%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:45.6%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:54.4%;top:57.2%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:63.2%;top:46.4%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:72%;top:64.4%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:80.8%;top:71.7%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:89.6%;top:60.8%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFD23F;border:2px solid #141414;box-sizing:border-box"></span>
+          <span style="position:absolute;left:98.4%;top:82.5%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#FF5A36;border:2.5px solid #141414;box-sizing:border-box"></span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:14px;font-weight:700"><span>Sep 26 · 95.1</span><span>Finish Jul 20, 2027</span></div>
+    </section>
+
+    <section data-tilt="3" style="grid-column:10 / span 3;grid-row:1 / span 3;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#FF5A36;padding:22px 24px;display:flex;flex-direction:column">
+      <div style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">Calories left</div>
+      <div data-count="" data-d="500" style="margin-top:2px;font-size:104px;font-weight:800;letter-spacing:-.06em;line-height:1;font-variant-numeric:tabular-nums">540</div>
+      <div style="font-size:17px;font-weight:700">of 1,400 kcal today</div>
+      <div data-loop="bob" data-ldur="3400" style="position:absolute;right:18px;top:20px;width:66px;height:66px;border-radius:50%;background:#FFFDF8;border:2.5px solid #141414;box-shadow:3px 3px 0 #141414;display:grid;place-items:center;transform:rotate(10deg)"><img src="assets/food/chicken.svg" alt="" width="40" height="40"></div>
+      <div style="flex:1"></div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="position:relative;width:118px;height:118px;flex:none">
+          <svg viewBox="0 0 120 120" width="118" height="118"><circle cx="60" cy="60" r="48" fill="none" style="stroke:rgba(20,20,20,.18);stroke-width:18"></circle><circle data-draw="" data-d="700" data-t="1600" cx="60" cy="60" r="48" fill="none" transform="rotate(-90 60 60)" style="stroke:#141414;stroke-width:18;stroke-linecap:round;stroke-dasharray:184 400"></circle></svg>
+          <div style="position:absolute;inset:0;display:grid;place-items:center;font-size:22px;font-weight:800">61%</div>
+        </div>
+        <div style="font-size:16px;font-weight:700;line-height:1.3">860 eaten<br><span style="font-weight:500">2 meals · last 12:30 PM</span></div>
+      </div>
+      <div data-loop="bob" data-ldur="4200" data-ld="-1200" style="position:absolute;right:20px;bottom:128px;width:54px;height:54px;border-radius:50%;background:#FFFDF8;border:2.5px solid #141414;box-shadow:3px 3px 0 #141414;display:grid;place-items:center;transform:rotate(-12deg)"><img src="assets/food/rice.svg" alt="" width="32" height="32"></div>
+    </section>
+
+    <section data-tilt="3" style="grid-column:1 / span 4;grid-row:4 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#FF9BD2;padding:22px 24px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.1em"><span class="material-symbols-rounded" style="font-size:20px;font-variation-settings:'FILL' 1">push_pin</span><span style="flex:1">Coach note · Claude</span><span style="text-transform:none;letter-spacing:0;font-weight:700">until Oct 11</span></div>
+      <p style="margin:12px 0 0;font-size:18px;line-height:1.38;font-weight:600;letter-spacing:-.01em">Protein first this week: get to 130 g before carbs. Saturday is your first 24-hour fast, so water goes up to 3.5 L that day and Friday’s dinner stays protein-heavy.</p>
+    </section>
+
+    <section data-tilt="4" style="grid-column:5 / span 2;grid-row:4 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#C5B3FF;padding:20px 20px;display:flex;flex-direction:column">
+      <div style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">Protein</div>
+      <div data-loop="bob" data-ldur="3600" style="position:absolute;right:14px;top:12px;width:50px;height:50px;border-radius:50%;background:#FFFDF8;border:2.5px solid #141414;display:grid;place-items:center;transform:rotate(-8deg)"><img src="assets/food/egg.svg" alt="" width="30" height="30"></div>
+      <div style="margin-top:8px;display:flex;align-items:baseline;gap:4px"><span data-count="" data-d="700" style="font-size:66px;font-weight:800;letter-spacing:-.05em;line-height:1">82</span><span style="font-size:18px;font-weight:700">/ 130 g</span></div>
+      <div style="flex:1"></div>
+      <div data-stagger="40" data-sd="900" data-sa="pop" style="display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:3px">
+        <span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:#141414"></span><span style="height:22px;border-radius:5px;background:linear-gradient(90deg,#141414 20%,rgba(20,20,20,.15) 20%)"></span><span style="height:22px;border-radius:5px;background:rgba(20,20,20,.15)"></span><span style="height:22px;border-radius:5px;background:rgba(20,20,20,.15)"></span><span style="height:22px;border-radius:5px;background:rgba(20,20,20,.15)"></span><span style="height:22px;border-radius:5px;background:rgba(20,20,20,.15)"></span>
+      </div>
+      <div style="margin-top:10px;font-size:15px;font-weight:700">48 g to go</div>
+    </section>
+
+    <section data-tilt="4" style="grid-column:7 / span 2;grid-row:4 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#BFE9FF;padding:20px 20px;display:flex;flex-direction:column">
+      <div data-a="wipeup" data-d="900" data-t="1800" style="position:absolute;left:0;right:0;bottom:0;height:58%">
+        <div style="position:absolute;left:0;right:0;top:-14px;height:16px;overflow:hidden">
+          <svg data-loop="marquee" data-ldur="5000" viewBox="0 0 400 20" preserveAspectRatio="none" style="display:block;width:200%;height:16px"><path d="M0,10 C50,0 50,0 100,10 C150,20 150,20 200,10 C250,0 250,0 300,10 C350,20 350,20 400,10 V20 H0 Z" style="fill:#5CC2FF"></path></svg>
+        </div>
+        <div style="position:absolute;inset:0;background:#5CC2FF"></div>
+      </div>
+      <div style="position:relative;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">Water</div>
+      <div style="position:relative;margin-top:8px;display:flex;align-items:baseline;gap:4px"><span data-count="" data-d="800" style="font-size:66px;font-weight:800;letter-spacing:-.05em;line-height:1">1.75</span><span style="font-size:18px;font-weight:700">L</span></div>
+      <div style="position:relative;font-size:15px;font-weight:700">of 3 L</div>
+      <div style="flex:1"></div>
+      <button data-burst="#FFFDF8,#2F5BFF,#7FD3FF" style="position:relative;align-self:flex-start;height:40px;padding:0 14px;border-radius:999px;border:2.5px solid #141414;background:#141414;color:#FFFDF8;font:800 15px 'Bricolage Grotesque',system-ui;cursor:pointer;display:flex;align-items:center;gap:4px" style-active="transform:scale(.94)"><span class="material-symbols-rounded" style="font-size:20px">add</span>250 ml</button>
+    </section>
+
+    <section data-tilt="4" style="grid-column:9 / span 2;grid-row:4 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#B6F23B;padding:20px 20px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">Steps</span><span class="material-symbols-rounded" data-loop="bob" data-ldur="1600" style="font-size:30px;font-variation-settings:'FILL' 1">directions_walk</span></div>
+      <div data-count="" data-d="900" style="margin-top:8px;font-size:58px;font-weight:800;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums">6,240</div>
+      <div style="font-size:15px;font-weight:700">of 9,000</div>
+      <div style="flex:1"></div>
+      <div data-stagger="40" data-sd="1000" data-sa="pop" style="display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px">
+        <span style="height:30px;border-radius:7px;background:#141414"></span><span style="height:30px;border-radius:7px;background:#141414"></span><span style="height:30px;border-radius:7px;background:#141414"></span><span style="height:30px;border-radius:7px;background:#141414"></span><span style="height:30px;border-radius:7px;background:#141414"></span><span style="height:30px;border-radius:7px;background:#141414"></span><span style="height:30px;border-radius:7px;background:linear-gradient(0deg,#141414 24%,rgba(20,20,20,.14) 24%)"></span><span style="height:30px;border-radius:7px;background:rgba(20,20,20,.14)"></span><span style="height:30px;border-radius:7px;background:rgba(20,20,20,.14)"></span>
+      </div>
+      <div style="margin-top:10px;font-size:15px;font-weight:700">2,760 to go</div>
+    </section>
+
+    <section data-tilt="4" style="grid-column:11 / span 2;grid-row:4 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #FF5A36;background:#141414;color:#FFFDF8;padding:20px 20px;display:flex;flex-direction:column">
+      <span class="material-symbols-rounded" data-loop="twinkle" data-ldur="2600" style="position:absolute;right:26px;top:58px;font-size:16px;color:#FFD23F;font-variation-settings:'FILL' 1">star</span>
+      <span class="material-symbols-rounded" data-loop="twinkle" data-ldur="3400" data-ld="-1200" style="position:absolute;right:62px;top:92px;font-size:11px;color:#C5B3FF;font-variation-settings:'FILL' 1">star</span>
+      <span class="material-symbols-rounded" data-loop="twinkle" data-ldur="3000" data-ld="-2000" style="position:absolute;right:20px;top:128px;font-size:13px;color:#FF9BD2;font-variation-settings:'FILL' 1">star</span>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">Sleep</span><span class="material-symbols-rounded" data-loop="sway" style="font-size:28px;color:#FFD23F;font-variation-settings:'FILL' 1">bedtime</span></div>
+      <div style="margin-top:8px;display:flex;align-items:baseline;gap:4px"><span data-count="" data-d="1000" style="font-size:66px;font-weight:800;letter-spacing:-.05em;line-height:1">6.9</span><span style="font-size:18px;font-weight:700">h</span></div>
+      <div style="font-size:15px;font-weight:700;color:rgba(255,253,248,.75)">of 7.5 h</div>
+      <div style="flex:1"></div>
+      <div style="font-size:14px;font-weight:600;color:rgba(255,253,248,.75)">11:22 PM → 6:31 AM</div>
+    </section>
+
+    <section data-tilt="2" style="grid-column:1 / span 7;grid-row:6 / span 3;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#FFFDF8;padding:22px 26px 20px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+        <div><h2 style="margin:0;font-size:32px;line-height:1;font-weight:800;letter-spacing:-.035em">The road to 65 kg</h2><div style="margin-top:6px;font-size:16px;font-weight:600;color:#5A544B">0.70 kg a week from here · finish Jul 20, 2027</div></div>
+        <span style="padding:7px 14px;border-radius:999px;background:#FFD23F;border:2px solid #141414;font-size:15px;font-weight:800;white-space:nowrap">Next: 90 kg · Nov 12</span>
+      </div>
+      <div style="flex:1;position:relative;margin:26px 34px 26px 6px">
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <g style="stroke:rgba(20,20,20,.1);stroke-width:1.5">
+            <line x1="0" x2="1000" y1="63.2" y2="63.2" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="142.1" y2="142.1" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="221.1" y2="221.1" style="vector-effect:non-scaling-stroke"></line>
+          </g>
+        </svg>
+        <div data-a="wipe" data-d="1100" data-t="2000" style="position:absolute;inset:0">
+          <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+            <path d="M37,34.7L1000,215.4L1000,305.7Z" style="fill:#C5B3FF;opacity:.55"></path>
+            <path data-loop="march" d="M37,34.7L1000,260.5" fill="none" style="stroke:#141414;stroke-width:3;stroke-dasharray:8 8;vector-effect:non-scaling-stroke"></path>
+            <line x1="0" x2="1000" y1="260.5" y2="260.5" style="stroke:#FF5A36;stroke-width:3;vector-effect:non-scaling-stroke"></line>
+          </svg>
+        </div>
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <path data-draw="" data-d="800" data-t="900" d="M0,22.9C1.1,23.3 2.2,23.7 3.4,24C4.5,24.3 5.6,24.4 6.7,24.6C7.9,24.9 9,25.5 10.1,25.9C11.2,26.3 12.3,26.5 13.5,26.8C14.6,27.2 15.7,27.7 16.8,28.1C18,28.5 19.1,29 20.2,29.4C21.3,29.7 22.4,29.8 23.6,30.2C24.7,30.5 25.8,31 26.9,31.4C28.1,31.8 29.2,32.4 30.3,32.7C31.4,33 32.5,33.1 33.7,33.5C34.8,33.8 35.9,34.3 37,34.7" fill="none" style="stroke:#141414;stroke-width:7;stroke-linecap:round;vector-effect:non-scaling-stroke"></path>
+        </svg>
+        <div data-stagger="130" data-sd="1500" data-sa="pop">
+          <div style="position:absolute;left:15.8%;top:21.1%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#FFD23F;border:2.5px solid #141414;box-shadow:2px 2px 0 #141414;display:grid;place-items:center;font-size:15px;font-weight:800">90</div>
+          <div style="position:absolute;left:32.7%;top:34.2%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#FF9BD2;border:2.5px solid #141414;box-shadow:2px 2px 0 #141414;display:grid;place-items:center;font-size:15px;font-weight:800">85</div>
+          <div style="position:absolute;left:49.5%;top:47.4%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#7FD3FF;border:2.5px solid #141414;box-shadow:2px 2px 0 #141414;display:grid;place-items:center;font-size:15px;font-weight:800">80</div>
+          <div style="position:absolute;left:66.3%;top:60.5%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#B6F23B;border:2.5px solid #141414;box-shadow:2px 2px 0 #141414;display:grid;place-items:center;font-size:15px;font-weight:800">75</div>
+          <div style="position:absolute;left:83.2%;top:73.7%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#3FE0A6;border:2.5px solid #141414;box-shadow:2px 2px 0 #141414;display:grid;place-items:center;font-size:15px;font-weight:800">70</div>
+          <div style="position:absolute;left:100%;top:86.8%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:#FF5A36;border:2.5px solid #141414;box-shadow:3px 3px 0 #141414;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:26px;font-variation-settings:'FILL' 1">flag</span></div>
+        </div>
+        <div data-a="pop" data-d="1300" style="position:absolute;left:3.7%;top:11.6%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:#141414;border:3px solid #FFFDF8;box-shadow:0 0 0 2.5px #141414"></div>
+        <div data-a="pop" data-d="1400" style="position:absolute;left:3.7%;top:11.6%;margin:-50px 0 0 -10px;padding:4px 10px;border-radius:10px;background:#141414;color:#FFFDF8;font-size:13px;font-weight:800;white-space:nowrap">You · 93.6</div>
+        <div style="position:absolute;left:0;right:0;top:100%;margin-top:10px;font-size:13px;font-weight:700;color:#5A544B"><span style="position:absolute;left:12.1%">Nov</span><span style="position:absolute;left:32.7%">Jan</span><span style="position:absolute;left:52.5%">Mar</span><span style="position:absolute;left:73.1%">May</span><span style="position:absolute;left:93.6%">Jul</span></div>
+      </div>
+    </section>
+
+    <section data-tilt="2" style="grid-column:8 / span 5;grid-row:6 / span 3;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#3FE0A6;padding:22px 24px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800"><span style="padding:5px 12px;border-radius:999px;background:#141414;color:#3FE0A6">Today · 4:30 PM</span><span style="padding:4px 12px;border-radius:999px;background:#FFFDF8;border:2px solid #141414">Readiness 74</span></div>
+      <h2 style="margin:14px 0 0;font-size:42px;line-height:1;font-weight:800;letter-spacing:-.04em">Upper B — Pull</h2>
+      <div style="margin-top:6px;font-size:16px;font-weight:600">6 exercises · 18 sets · about 50 min</div>
+      <div style="flex:1;display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:16px;margin-top:14px;min-height:0">
+        <ol data-stagger="60" data-sd="1100" data-sa="right" style="list-style:none;margin:0;padding:0;display:grid;gap:6px;align-content:start;font-size:14px;font-weight:600">
+          <li style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,253,248,.55)"><span>Lat pulldown</span><span style="font-weight:800">3×10–12 · 45</span></li>
+          <li style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,253,248,.55)"><span>Seated cable row</span><span style="font-weight:800">3×10–12 · 40</span></li>
+          <li style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,253,248,.55)"><span>Chest-supported row</span><span style="font-weight:800">3×8–10 · 30</span></li>
+          <li style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,253,248,.55)"><span>Rear delt fly</span><span style="font-weight:800">3×12–15 · 25</span></li>
+          <li style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,253,248,.55)"><span>Dumbbell curl</span><span style="font-weight:800">3×10–12 · 10</span></li>
+          <li style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,253,248,.55)"><span>Hammer curl</span><span style="font-weight:800">3×10–12 · 10</span></li>
+        </ol>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div ref="{{ mm }}" data-a="zoom" data-d="1200" style="width:190px"></div>
+          <button data-burst="#FFD23F,#FFFDF8,#141414,#FF5A36" data-magnet="5" style="width:100%;height:48px;border-radius:16px;border:2.5px solid #141414;background:#141414;color:#FFFDF8;font:800 16px 'Bricolage Grotesque',system-ui;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;box-shadow:3px 3px 0 #FFFDF8"><span class="material-symbols-rounded" style="font-size:22px;font-variation-settings:'FILL' 1">play_arrow</span>Start</button>
+        </div>
+      </div>
+    </section>
+
+    <section data-tilt="3" style="grid-column:1 / span 5;grid-row:9 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#FFFDF8;padding:20px 24px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.1em"><span class="material-symbols-rounded" style="font-size:20px;color:#7B4DFF;font-variation-settings:'FILL' 1">auto_awesome</span><span style="flex:1">Proposal · AI</span><span style="text-transform:none;letter-spacing:0;font-weight:600;color:#5A544B">Mon 9:02 AM</span></div>
+      <h3 style="margin:10px 0 0;font-size:24px;line-height:1.1;font-weight:800;letter-spacing:-.025em">Raise protein to 140 g on training days</h3>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-size:14px;font-weight:700">
+        <span style="padding:5px 10px;border-radius:10px;background:#F1ECE2">Protein, Mon–Thu <s style="color:#8A8276">130 g</s> → <span style="padding:1px 6px;border-radius:6px;background:#B6F23B">140 g</span></span>
+        <span style="padding:5px 10px;border-radius:10px;background:#F1ECE2">Carbs <s style="color:#8A8276">119 g</s> → <span style="padding:1px 6px;border-radius:6px;background:#FFD23F">109 g</span></span>
+      </div>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button data-burst="#B6F23B,#FFD23F,#141414" style="height:44px;padding:0 20px;border-radius:14px;border:2.5px solid #141414;background:#141414;color:#FFD23F;font:800 16px 'Bricolage Grotesque',system-ui;cursor:pointer;box-shadow:3px 3px 0 #7B4DFF" style-active="transform:translate(2px,2px)">Accept</button>
+        <button style="height:44px;padding:0 18px;border-radius:14px;border:2.5px solid #141414;background:#FFFDF8;color:#141414;font:800 16px 'Bricolage Grotesque',system-ui;cursor:pointer">Reject</button>
+        <a href="#" style="margin-left:4px;font-size:15px;font-weight:700;text-decoration:underline;text-underline-offset:3px;color:#141414">Why?</a>
+      </div>
+    </section>
+
+    <section data-tilt="3" style="grid-column:6 / span 4;grid-row:9 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #141414;background:#FFB13B;padding:20px 22px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.1em"><span class="material-symbols-rounded" data-loop="pulse" style="font-size:20px;font-variation-settings:'FILL' 1">auto_awesome</span><span style="flex:1">Day adjustment</span><span style="text-transform:none;letter-spacing:0;font-weight:700">12:41 PM</span></div>
+      <h3 style="margin:8px 0 0;font-size:24px;line-height:1.1;font-weight:800;letter-spacing:-.025em">On track · 48 g protein to go</h3>
+      <div style="margin-top:10px;display:grid;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 8px 7px 8px;border-radius:14px;background:#FFFDF8;border:2px solid #141414"><img src="assets/food/chicken.svg" alt="" width="28" height="28"><span style="flex:1;font-size:14px;font-weight:700">Chicken breast, 150 g <span style="font-weight:500">· 46 g · 248 kcal</span></span><button data-burst="#FFB13B,#141414,#FFFDF8" aria-label="Log chicken" style="width:30px;height:30px;border-radius:9px;border:0;background:#141414;color:#FFFDF8;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:20px">add</span></button></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 8px 7px 8px;border-radius:14px;background:#FFFDF8;border:2px solid #141414"><img src="assets/food/yogurt.svg" alt="" width="28" height="28"><span style="flex:1;font-size:14px;font-weight:700">Greek yogurt, 200 g <span style="font-weight:500">· 20 g · 118 kcal</span></span><button data-burst="#FFB13B,#141414,#FFFDF8" aria-label="Log yogurt" style="width:30px;height:30px;border-radius:9px;border:0;background:#141414;color:#FFFDF8;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:20px">add</span></button></div>
+      </div>
+    </section>
+
+    <section data-tilt="3" style="grid-column:10 / span 3;grid-row:9 / span 2;position:relative;overflow:hidden;border-radius:30px;border:2.5px solid #141414;box-shadow:6px 6px 0 #2F5BFF;background:#141414;color:#FFFDF8;padding:20px 20px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.1em">This week</span><span style="font-size:13px;font-weight:600;color:rgba(255,253,248,.65)">Oct 5–11</span></div>
+      <div data-stagger="50" data-sd="1300" data-sa="pop" style="margin-top:12px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center">
+        <div style="padding:7px 0;border-radius:11px;background:#B6F23B;color:#141414"><div style="font-size:11px;font-weight:800">M</div><span class="material-symbols-rounded" style="font-size:17px;font-weight:700">check</span></div>
+        <div style="padding:7px 0;border-radius:11px;background:#B6F23B;color:#141414"><div style="font-size:11px;font-weight:800">T</div><span class="material-symbols-rounded" style="font-size:17px;font-weight:700">check</span></div>
+        <div style="padding:7px 0;border-radius:11px;background:#FFD23F;color:#141414;box-shadow:0 0 0 2px #FFFDF8"><div style="font-size:11px;font-weight:800">W</div><span class="material-symbols-rounded" style="font-size:17px">fitness_center</span></div>
+        <div style="padding:7px 0;border-radius:11px;background:#C5B3FF;color:#141414"><div style="font-size:11px;font-weight:800">T</div><span class="material-symbols-rounded" style="font-size:17px">fitness_center</span></div>
+        <div style="padding:7px 0;border-radius:11px;background:rgba(255,253,248,.12)"><div style="font-size:11px;font-weight:800">F</div><span style="display:block;font-size:13px;line-height:17px">·</span></div>
+        <div style="padding:7px 0;border-radius:11px;background:#FF5A36;color:#141414"><div style="font-size:11px;font-weight:800">S</div><span class="material-symbols-rounded" style="font-size:17px">timer</span></div>
+        <div style="padding:7px 0;border-radius:11px;background:rgba(255,253,248,.12)"><div style="font-size:11px;font-weight:800">S</div><span style="display:block;font-size:13px;line-height:17px">·</span></div>
+      </div>
+      <div style="flex:1"></div>
+      <div style="font-size:14px;line-height:1.35;font-weight:600;color:rgba(255,253,248,.82)">Saturday is a 24 h fast. Keep Friday light.</div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  mm = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+    let m = 0;
+    const map = () => {
+      if (window.mountMuscleMap) {
+        window.mountMuscleMap(this.mm.current, { 'middle back': 4, biceps: 4, lats: 3, shoulders: 2, forearms: 1, traps: 1 }, {
+          body: 'rgba(20,20,20,.16)', stroke: '#3FE0A6', steps: ['#FFFDF8', '#FFD23F', '#FF8A3D', '#141414'], size: 190, title: 'Muscles worked in Upper B'
+        });
+      } else if (m++ < 200) setTimeout(map, 30);
+    };
+    map();
+  }
+  renderVals() {
+    return { root: this.root, mm: this.mm };
+  }
+}
+</script>
+</body>
+</html>

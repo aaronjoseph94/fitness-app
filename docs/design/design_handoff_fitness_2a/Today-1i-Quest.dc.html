@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400..900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#6C3BFF;text-decoration:none}a:hover{color:#2A1B4D}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="1i Quest" style="opacity:0;width:1440px;min-height:100vh;box-sizing:border-box;padding:22px 40px 56px;background-color:#F4EEFF;background-image:radial-gradient(rgba(108,59,255,.10) 2px,transparent 2.5px);background-size:34px 34px;color:#2A1B4D;font-family:Nunito,system-ui,sans-serif">
+
+  <header data-a="fall" data-t="800" style="display:flex;align-items:center;gap:14px">
+    <div style="width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:#6C3BFF;box-shadow:0 5px 0 #4C1FD6"><svg viewBox="0 0 512 512" width="28" height="28"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFFFFF" style="stroke-width:56;stroke-linecap:round;stroke-linejoin:round"></polyline><circle cx="398" cy="178" r="46" fill="#FFC93C"></circle></svg></div>
+    <nav aria-label="Main" style="display:flex;gap:8px;margin-left:8px;font-size:16px;font-weight:800">
+      <a href="#" aria-current="page" style="padding:10px 18px;border-radius:14px;background:#6C3BFF;color:#FFFFFF;box-shadow:0 4px 0 #4C1FD6">Today</a>
+      <a href="#" style="padding:10px 16px;border-radius:14px;background:#FFFFFF;color:#2A1B4D;box-shadow:0 4px 0 #DCCFFF" style-active="transform:translateY(3px);box-shadow:0 1px 0 #DCCFFF">Dashboard</a>
+      <a href="#" style="padding:10px 16px;border-radius:14px;background:#FFFFFF;color:#2A1B4D;box-shadow:0 4px 0 #DCCFFF" style-active="transform:translateY(3px);box-shadow:0 1px 0 #DCCFFF">Log</a>
+      <a href="#" style="padding:10px 16px;border-radius:14px;background:#FFFFFF;color:#2A1B4D;box-shadow:0 4px 0 #DCCFFF" style-active="transform:translateY(3px);box-shadow:0 1px 0 #DCCFFF">Train</a>
+      <a href="#" style="padding:10px 16px;border-radius:14px;background:#FFFFFF;color:#2A1B4D;box-shadow:0 4px 0 #DCCFFF" style-active="transform:translateY(3px);box-shadow:0 1px 0 #DCCFFF">Progress</a>
+      <a href="#" style="padding:10px 16px;border-radius:14px;background:#FFFFFF;color:#2A1B4D;box-shadow:0 4px 0 #DCCFFF" style-active="transform:translateY(3px);box-shadow:0 1px 0 #DCCFFF">Ask AI</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:6px;height:46px;padding:0 16px 0 10px;border-radius:14px;background:#FFFFFF;box-shadow:0 4px 0 #DCCFFF;font-family:'Lilita One',sans-serif;font-size:22px;color:#FF6B3D"><span class="material-symbols-rounded" data-loop="pulse" data-ldur="1200" style="font-size:28px;font-variation-settings:'FILL' 1">local_fire_department</span>12</div>
+    <div style="width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#FFC93C;box-shadow:0 4px 0 #E0A100;font-family:'Lilita One',sans-serif;font-size:22px">A</div>
+  </header>
+
+  <section data-a="rise" data-d="100" data-t="900" style="position:relative;overflow:hidden;margin-top:22px;border-radius:34px;padding:30px 38px;background:linear-gradient(115deg,#6C3BFF,#9B4DFF 58%,#C64DFF);color:#FFFFFF;box-shadow:0 10px 0 #4C1FD6;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:30px;align-items:center">
+    <div aria-hidden="true" data-loop="spin" data-ldur="40000" style="position:absolute;right:-110px;top:50%;width:640px;height:640px;margin-top:-320px;border-radius:50%;background:repeating-conic-gradient(rgba(255,255,255,.10) 0deg 9deg,rgba(255,255,255,0) 9deg 18deg)"></div>
+    <div style="position:relative">
+      <div style="display:flex;gap:8px;font-size:15px;font-weight:900"><span style="padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.2)">Wed, Oct 7</span><span style="padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.2)">Day 12</span><span style="padding:6px 12px;border-radius:999px;background:#FFC93C;color:#2A1B4D">Milestone 1 of 6</span></div>
+      <h1 style="margin:14px 0 0;font-family:'Lilita One',sans-serif;font-size:58px;line-height:1;font-weight:400;letter-spacing:.005em">Good afternoon, Aaron!</h1>
+      <div style="margin-top:20px;display:flex;align-items:baseline;justify-content:space-between;font-weight:900;font-size:17px"><span>Road to 90 kg</span><span style="font-family:'Lilita One',sans-serif;font-size:20px;font-weight:400">1.5 / 5.1 kg</span></div>
+      <div style="position:relative;margin-top:8px;height:30px;border-radius:999px;background:rgba(42,27,77,.35);box-shadow:inset 0 3px 0 rgba(0,0,0,.15);overflow:hidden">
+        <div data-bar="" data-d="700" data-t="1800" style="position:relative;width:29%;height:100%;border-radius:999px;background:#FFC93C;box-shadow:inset 0 -4px 0 #E0A100;overflow:hidden">
+          <div data-loop="shimmer" data-ldur="2400" style="position:absolute;inset:0;background-image:repeating-linear-gradient(115deg,rgba(255,255,255,.35) 0 12px,rgba(255,255,255,0) 12px 24px);background-size:200% 100%"></div>
+          <div style="position:absolute;left:10px;right:10px;top:5px;height:6px;border-radius:999px;background:rgba(255,255,255,.55)"></div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:16px;font-weight:700;color:rgba(255,255,255,.9)">3.6 kg to go · on pace for Nov 12 · then 85, 80, 75, 70 and the goal at 65</div>
+    </div>
+    <div data-a="pop" data-d="400" style="position:relative;justify-self:center;width:250px;height:250px;border-radius:50%;background:#FFFFFF;box-shadow:0 10px 0 #E0A100,inset 0 0 0 12px #FFC93C;display:grid;place-items:center;text-align:center;color:#2A1B4D">
+      <div>
+        <div style="font-size:14px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#8B7BB3">Trend weight</div>
+        <div data-count="" data-from="95.1" data-d="600" data-t="2000" style="font-family:'Lilita One',sans-serif;font-size:76px;line-height:1;color:#6C3BFF">93.6</div>
+        <div style="font-size:16px;font-weight:900">kg</div>
+        <div style="margin-top:8px;display:inline-block;padding:5px 12px;border-radius:999px;background:#D8FBEF;color:#0B8F6C;font-size:14px;font-weight:900">↓ 1.5 since Sep 26</div>
+      </div>
+      <span class="material-symbols-rounded" data-loop="bob" style="position:absolute;right:-8px;top:6px;font-size:54px;color:#FFC93C;font-variation-settings:'FILL' 1;filter:drop-shadow(0 4px 0 #E0A100)">star</span>
+    </div>
+  </section>
+
+  <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:26px;margin-top:30px">
+    <div>
+      <div style="display:flex;align-items:center;gap:12px"><h2 style="margin:0;font-family:'Lilita One',sans-serif;font-size:32px;font-weight:400">Today’s quests</h2><span style="padding:5px 12px;border-radius:999px;background:#FFFFFF;box-shadow:0 3px 0 #DCCFFF;font-weight:900;font-size:15px">1 of 6 done</span></div>
+      <div data-stagger="80" data-sd="500" data-sa="pop" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:16px">
+        <div style="position:relative;padding:20px;border-radius:26px;background:#E2FBF3;box-shadow:0 6px 0 #9DE8CF">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#1FD1A5;color:#FFFFFF;box-shadow:0 4px 0 #0FA07D"><span class="material-symbols-rounded" style="font-size:28px">monitor_weight</span></div><div><div style="font-size:19px;font-weight:900">Morning weigh-in</div><div style="font-size:15px;font-weight:700;color:#3F7F6B">93.2 kg at 7:04 AM</div></div></div>
+          <div data-a="swing" data-d="1400" style="position:absolute;right:18px;top:18px;padding:6px 14px;border-radius:12px;border:3px solid #0FA07D;color:#0FA07D;font-family:'Lilita One',sans-serif;font-size:22px;transform:rotate(-8deg)">DONE</div>
+          <div style="margin-top:16px;height:16px;border-radius:999px;background:#1FD1A5;box-shadow:inset 0 -3px 0 #0FA07D"></div>
+        </div>
+        <div style="padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 6px 0 #DCCFFF">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#EEE7FF"><img src="assets/food/egg.svg" alt="" width="30" height="30"></div><div style="flex:1"><div style="font-size:19px;font-weight:900">Eat 130 g protein</div><div style="font-size:15px;font-weight:700;color:#7B6BA3">48 g to go · protein first</div></div><div style="font-family:'Lilita One',sans-serif;font-size:26px;color:#6C3BFF"><span data-count="" data-d="800">82</span><span style="font-size:16px;color:#8B7BB3"> /130</span></div></div>
+          <div style="margin-top:16px;height:16px;border-radius:999px;background:#EEE7FF;overflow:hidden"><div data-bar="" data-d="900" style="width:63%;height:100%;border-radius:999px;background:#6C3BFF;box-shadow:inset 0 -3px 0 #4C1FD6"></div></div>
+        </div>
+        <div style="padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 6px 0 #DCCFFF">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#FFE4E4;color:#E24848"><span class="material-symbols-rounded" style="font-size:28px;font-variation-settings:'FILL' 1">local_fire_department</span></div><div style="flex:1"><div style="font-size:19px;font-weight:900">Stay within 1,400 kcal</div><div style="font-size:15px;font-weight:700;color:#7B6BA3">540 left · 2 meals so far</div></div><div style="font-family:'Lilita One',sans-serif;font-size:26px;color:#E24848"><span data-count="" data-d="900">860</span></div></div>
+          <div style="margin-top:16px;height:16px;border-radius:999px;background:#FFE4E4;overflow:hidden"><div data-bar="" data-d="1000" style="width:61%;height:100%;border-radius:999px;background:#FF6B6B;box-shadow:inset 0 -3px 0 #D94848"></div></div>
+        </div>
+        <div style="padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 6px 0 #DCCFFF">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#DFF2FF;color:#1B8ED6"><span class="material-symbols-rounded" data-loop="bob" style="font-size:28px;font-variation-settings:'FILL' 1">water_drop</span></div><div style="flex:1"><div style="font-size:19px;font-weight:900">Drink 3 L water</div><div style="font-size:15px;font-weight:700;color:#7B6BA3">1.25 L to go</div></div><button data-burst="#3DB5FF,#FFFFFF,#6C3BFF" style="height:40px;padding:0 14px;border:0;border-radius:12px;background:#3DB5FF;color:#FFFFFF;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 4px 0 #1B8ED6" style-active="transform:translateY(3px);box-shadow:0 1px 0 #1B8ED6">+250 ml</button></div>
+          <div style="margin-top:16px;height:16px;border-radius:999px;background:#DFF2FF;overflow:hidden"><div data-bar="" data-d="1100" style="width:58%;height:100%;border-radius:999px;background:#3DB5FF;box-shadow:inset 0 -3px 0 #1B8ED6"></div></div>
+        </div>
+        <div style="padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 6px 0 #DCCFFF">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#FFF4D1;color:#C98A00"><span class="material-symbols-rounded" data-loop="bob" data-ldur="1400" style="font-size:28px;font-variation-settings:'FILL' 1">directions_walk</span></div><div style="flex:1"><div style="font-size:19px;font-weight:900">Walk 9,000 steps</div><div style="font-size:15px;font-weight:700;color:#7B6BA3">2,760 to go · synced 2:02 PM</div></div><div style="font-family:'Lilita One',sans-serif;font-size:26px;color:#C98A00"><span data-count="" data-d="1100">6,240</span></div></div>
+          <div style="margin-top:16px;height:16px;border-radius:999px;background:#FFF4D1;overflow:hidden"><div data-bar="" data-d="1200" style="width:69%;height:100%;border-radius:999px;background:#FFC93C;box-shadow:inset 0 -3px 0 #E0A100"></div></div>
+        </div>
+        <div style="padding:20px;border-radius:26px;background:#2A1B4D;color:#FFFFFF;box-shadow:0 6px 0 #170C30">
+          <div style="display:flex;align-items:center;gap:14px"><div style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#FFC93C;color:#2A1B4D;box-shadow:0 4px 0 #E0A100"><span class="material-symbols-rounded" style="font-size:28px">fitness_center</span></div><div style="flex:1"><div style="font-size:19px;font-weight:900">Crush Upper B — Pull</div><div style="font-size:15px;font-weight:700;color:#BFB2E6">4:30 PM · 18 sets · readiness 74</div></div><button data-burst="#FFC93C,#1FD1A5,#FFFFFF,#6C3BFF" data-magnet="5" style="height:44px;padding:0 16px;border:0;border-radius:14px;background:#FFC93C;color:#2A1B4D;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 4px 0 #E0A100;display:flex;align-items:center;gap:4px" style-active="transform:translateY(3px);box-shadow:0 1px 0 #E0A100"><span class="material-symbols-rounded" style="font-size:22px;font-variation-settings:'FILL' 1">play_arrow</span>Start</button></div>
+          <div style="margin-top:16px;display:grid;grid-template-columns:repeat(18,minmax(0,1fr));gap:3px"><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span><span style="height:16px;border-radius:5px;background:rgba(255,255,255,.14)"></span></div>
+        </div>
+      </div>
+
+      <div data-stagger="60" data-sd="1100" data-sa="pop" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:28px">
+        <button data-burst="#6C3BFF,#FFC93C,#FFFFFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px 12px;border:0;border-radius:20px;background:#6C3BFF;color:#FFFFFF;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 6px 0 #4C1FD6;transition:transform .08s,box-shadow .08s" style-active="transform:translateY(5px);box-shadow:0 1px 0 #4C1FD6"><span class="material-symbols-rounded" style="font-size:30px">monitor_weight</span>Weigh-in</button>
+        <button data-burst="#FF6B6B,#FFC93C,#FFFFFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px 12px;border:0;border-radius:20px;background:#FF6B6B;color:#FFFFFF;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 6px 0 #D94848;transition:transform .08s,box-shadow .08s" style-active="transform:translateY(5px);box-shadow:0 1px 0 #D94848"><span class="material-symbols-rounded" style="font-size:30px">restaurant</span>Meal</button>
+        <button data-burst="#3DB5FF,#FFFFFF,#6C3BFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px 12px;border:0;border-radius:20px;background:#3DB5FF;color:#FFFFFF;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 6px 0 #1B8ED6;transition:transform .08s,box-shadow .08s" style-active="transform:translateY(5px);box-shadow:0 1px 0 #1B8ED6"><span class="material-symbols-rounded" style="font-size:30px;font-variation-settings:'FILL' 1">water_drop</span>Water</button>
+        <button data-burst="#FFC93C,#FF6B6B,#FFFFFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px 12px;border:0;border-radius:20px;background:#FFC93C;color:#2A1B4D;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 6px 0 #E0A100;transition:transform .08s,box-shadow .08s" style-active="transform:translateY(5px);box-shadow:0 1px 0 #E0A100"><span class="material-symbols-rounded" style="font-size:30px">timer</span>Start fast</button>
+        <button data-burst="#1FD1A5,#FFFFFF,#6C3BFF" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px 12px;border:0;border-radius:20px;background:#1FD1A5;color:#FFFFFF;font:900 15px Nunito,system-ui;cursor:pointer;box-shadow:0 6px 0 #0FA07D;transition:transform .08s,box-shadow .08s" style-active="transform:translateY(5px);box-shadow:0 1px 0 #0FA07D"><span class="material-symbols-rounded" style="font-size:30px">photo_camera</span>Photo</button>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:22px;align-content:start">
+      <section data-a="rise" data-d="600" style="position:relative;border-radius:30px;padding:22px 24px;background:#FFFFFF;box-shadow:0 8px 0 #DCCFFF">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font-family:'Lilita One',sans-serif;font-size:28px;font-weight:400">The map</h2><span style="font-size:14px;font-weight:800;color:#8B7BB3">6 milestones</span></div>
+        <div style="position:relative;width:340px;height:500px;margin:8px auto 0">
+          <svg viewBox="0 0 340 500" width="340" height="500" style="position:absolute;inset:0;overflow:visible">
+            <path d="M170,470 C120,452 70,430 80,400 C90,370 230,360 240,330 C250,300 100,290 90,260 C80,230 240,220 250,190 C260,160 110,150 100,120 C90,90 150,70 175,46" fill="none" style="stroke:#E6DCFF;stroke-width:14;stroke-linecap:round"></path>
+            <path data-loop="march" data-ldur="1500" d="M170,470 C120,452 70,430 80,400 C90,370 230,360 240,330 C250,300 100,290 90,260 C80,230 240,220 250,190 C260,160 110,150 100,120 C90,90 150,70 175,46" fill="none" style="stroke:#FFFFFF;stroke-width:3;stroke-linecap:round;stroke-dasharray:4 12"></path>
+            <path data-draw="" data-d="900" data-t="1400" d="M170,470 C120,452 70,430 80,400" fill="none" style="stroke:#6C3BFF;stroke-width:14;stroke-linecap:round;stroke-dasharray:35 400"></path>
+          </svg>
+          <div data-stagger="120" data-sd="1000" data-sa="pop" style="position:absolute;inset:0">
+            <div style="position:absolute;left:50%;top:94%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;display:grid;place-items:center;background:#6C3BFF;color:#FFFFFF;box-shadow:0 4px 0 #4C1FD6;font-family:'Lilita One',sans-serif;font-size:13px">YOU</div>
+            <div style="position:absolute;left:23.5%;top:80%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;display:grid;place-items:center;background:#FFC93C;box-shadow:0 5px 0 #E0A100;font-family:'Lilita One',sans-serif;font-size:20px">90</div>
+            <div style="position:absolute;left:70.6%;top:66%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;display:grid;place-items:center;background:#EEE7FF;color:#8B7BB3;box-shadow:0 4px 0 #DCCFFF;font-family:'Lilita One',sans-serif;font-size:17px">85</div>
+            <div style="position:absolute;left:26.5%;top:52%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;display:grid;place-items:center;background:#EEE7FF;color:#8B7BB3;box-shadow:0 4px 0 #DCCFFF;font-family:'Lilita One',sans-serif;font-size:17px">80</div>
+            <div style="position:absolute;left:73.5%;top:38%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;display:grid;place-items:center;background:#EEE7FF;color:#8B7BB3;box-shadow:0 4px 0 #DCCFFF;font-family:'Lilita One',sans-serif;font-size:17px">75</div>
+            <div style="position:absolute;left:29.4%;top:24%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;display:grid;place-items:center;background:#EEE7FF;color:#8B7BB3;box-shadow:0 4px 0 #DCCFFF;font-family:'Lilita One',sans-serif;font-size:17px">70</div>
+            <div style="position:absolute;left:51.5%;top:9.2%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(160deg,#FFD66B,#FFB01F);box-shadow:0 6px 0 #D98E00"><span class="material-symbols-rounded" style="font-size:36px;color:#FFFFFF;font-variation-settings:'FILL' 1">emoji_events</span></div>
+          </div>
+          <span data-loop="ping" data-ld="1600" style="position:absolute;left:23.5%;top:80%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;border:3px solid #FFC93C;box-sizing:border-box"></span>
+          <div data-stagger="120" data-sd="1200" data-sa="fade" style="position:absolute;inset:0;font-size:13px;font-weight:800;color:#7B6BA3">
+            <span style="position:absolute;left:62%;top:94%;transform:translateY(-50%)">93.6 kg now</span>
+            <span style="position:absolute;left:33%;top:80%;transform:translateY(-50%);color:#2A1B4D">Next! Nov 12 <span style="padding:2px 8px;border-radius:999px;background:#FFC93C;font-size:11px">3.6 kg</span></span>
+            <span style="position:absolute;right:33%;top:66%;transform:translateY(-50%)">Jan 1</span>
+            <span style="position:absolute;left:36%;top:52%;transform:translateY(-50%)">Feb 20</span>
+            <span style="position:absolute;right:30%;top:38%;transform:translateY(-50%)">Apr 11</span>
+            <span style="position:absolute;left:39%;top:24%;transform:translateY(-50%)">May 31</span>
+            <span style="position:absolute;left:64%;top:9.2%;transform:translateY(-50%);color:#2A1B4D">65 kg · Jul 20, 2027</span>
+          </div>
+        </div>
+      </section>
+
+      <section data-a="rise" data-d="700" style="border-radius:30px;padding:20px 22px;background:#FFFFFF;box-shadow:0 8px 0 #DCCFFF">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font-family:'Lilita One',sans-serif;font-size:24px;font-weight:400">This week</h2><span style="font-size:14px;font-weight:800;color:#8B7BB3">12-day streak</span></div>
+        <div data-stagger="60" data-sd="1300" data-sa="pop" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px;text-align:center;font-size:12px;font-weight:900">
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;display:grid;place-items:center;background:#FFE7DC;color:#FF6B3D"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:'FILL' 1">local_fire_department</span></div><div style="margin-top:4px">M</div></div>
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;display:grid;place-items:center;background:#FFE7DC;color:#FF6B3D"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:'FILL' 1">local_fire_department</span></div><div style="margin-top:4px">T</div></div>
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;display:grid;place-items:center;background:#FF6B3D;color:#FFFFFF;box-shadow:0 4px 0 #D9481F"><span class="material-symbols-rounded" data-loop="sway" data-ldur="900" style="font-size:24px;font-variation-settings:'FILL' 1">local_fire_department</span></div><div style="margin-top:4px;color:#FF6B3D">W</div></div>
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;display:grid;place-items:center;background:#F1ECFF;color:#C9BCEB"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="margin-top:4px;color:#8B7BB3">T</div></div>
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;background:#F1ECFF"></div><div style="margin-top:4px;color:#8B7BB3">F</div></div>
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;display:grid;place-items:center;background:#FFF4D1;color:#C98A00"><span class="material-symbols-rounded" style="font-size:22px">timer</span></div><div style="margin-top:4px;color:#C98A00">S</div></div>
+          <div><div style="width:38px;height:38px;margin:0 auto;border-radius:12px;background:#F1ECFF"></div><div style="margin-top:4px;color:#8B7BB3">S</div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:26px;margin-top:30px">
+    <div data-a="rise" data-d="900" style="display:flex;gap:16px;align-items:flex-start">
+      <div style="width:64px;height:64px;flex:none;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,#1FD1A5,#3DB5FF);color:#FFFFFF;box-shadow:0 5px 0 #0F8FA0"><span class="material-symbols-rounded" data-loop="pulse" style="font-size:32px;font-variation-settings:'FILL' 1">auto_awesome</span></div>
+      <div style="position:relative;flex:1;padding:20px 22px;border-radius:24px;background:#FFFFFF;box-shadow:0 6px 0 #DCCFFF">
+        <span style="position:absolute;left:-10px;top:22px;width:20px;height:20px;background:#FFFFFF;transform:rotate(45deg);border-radius:4px"></span>
+        <div style="position:relative;display:flex;justify-content:space-between;font-size:14px;font-weight:900;color:#0B8F6C"><span>Coach says</span><span style="color:#8B7BB3">Claude · pinned until Oct 11</span></div>
+        <p style="position:relative;margin:8px 0 0;font-size:18px;line-height:1.45;font-weight:700">Protein first this week: get to 130 g before carbs. Saturday is your first 24-hour fast, so water goes up to 3.5 L that day and Friday’s dinner stays protein-heavy.</p>
+      </div>
+    </div>
+    <section data-a="rise" data-d="1000" style="position:relative;overflow:hidden;border-radius:28px;padding:22px 24px;background:#FFC93C;box-shadow:0 8px 0 #E0A100">
+      <span class="material-symbols-rounded" data-loop="spin" data-ldur="12000" style="position:absolute;right:-24px;top:-24px;font-size:140px;color:rgba(255,255,255,.35);font-variation-settings:'FILL' 1">bolt</span>
+      <div style="position:relative;font-size:14px;font-weight:900;letter-spacing:.08em;text-transform:uppercase">Power-up available · from Monday’s review</div>
+      <div style="position:relative;margin-top:6px;font-family:'Lilita One',sans-serif;font-size:28px;line-height:1.05">Raise protein to 140 g on training days</div>
+      <div style="position:relative;margin-top:6px;font-size:16px;font-weight:700">Mon–Thu: protein 130 → 140 g · carbs 119 → 109 g</div>
+      <div style="position:relative;display:flex;gap:10px;margin-top:14px;align-items:center">
+        <button data-burst="#6C3BFF,#FFFFFF,#1FD1A5,#FF6B6B" style="height:46px;padding:0 22px;border:0;border-radius:14px;background:#6C3BFF;color:#FFFFFF;font:900 16px Nunito,system-ui;cursor:pointer;box-shadow:0 5px 0 #4C1FD6" style-active="transform:translateY(4px);box-shadow:0 1px 0 #4C1FD6">Accept</button>
+        <button style="height:46px;padding:0 18px;border:0;border-radius:14px;background:#FFFFFF;color:#2A1B4D;font:900 16px Nunito,system-ui;cursor:pointer;box-shadow:0 5px 0 #E0A100" style-active="transform:translateY(4px);box-shadow:0 1px 0 #E0A100">Not now</button>
+        <a href="#" style="margin-left:4px;font-size:16px;font-weight:900;color:#2A1B4D;text-decoration:underline">Why?</a>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#166FE5;text-decoration:none}a:hover{color:#0F55B5}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="2a Log" style="opacity:0;width:1440px;min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr);background:#FFFFFF;color:#09090B;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <dc-import name="Shell2a-Sidebar" active="log" hint-size="240px,1300px"></dc-import>
+  <div style="min-width:0;display:flex;flex-direction:column">
+    <dc-import name="Shell2a-Header" crumb="Log" hint-size="100%,56px"></dc-import>
+    <main style="display:grid;gap:20px;padding:24px 28px 36px">
+      <div data-a="rise" data-d="150" style="display:flex;align-items:center;gap:16px">
+        <div style="flex:1;min-width:0"><h1 style="margin:0;font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.02em">Log</h1><p style="margin:4px 0 0;font-size:14px;color:#71717A">Everything you ate, drank and measured on one day</p></div>
+        <div style="display:flex;align-items:center;gap:2px;padding:3px;border-radius:9px;border:1px solid #E4E4E7;font-size:13px;font-weight:500">
+          <button aria-label="Previous day" style="width:30px;height:30px;border:0;border-radius:6px;background:transparent;color:#52525B;display:grid;place-items:center;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">chevron_left</span></button>
+          <span style="padding:6px 12px;border-radius:6px;color:#71717A">Tue 6</span>
+          <span style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;background:#09090B;color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:16px">today</span>Today · Wed, Oct 7</span>
+          <span style="padding:6px 12px;border-radius:6px;color:#D4D4D8">Thu 8</span>
+          <button aria-label="Next day" disabled style="width:30px;height:30px;border:0;border-radius:6px;background:transparent;color:#D4D4D8;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:18px">chevron_right</span></button>
+        </div>
+        <button style="display:flex;align-items:center;gap:6px;height:36px;padding:0 10px 0 12px;border-radius:8px;border:0;background:#166FE5;color:#FFFFFF;font:500 14px Geist,system-ui;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)" style-hover="background:#1263CC"><span class="material-symbols-rounded" style="font-size:18px">add</span>Log<span class="material-symbols-rounded" style="font-size:18px;margin-left:2px">expand_more</span></button>
+      </div>
+
+      <section data-a="rise" data-d="250" style="display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr) minmax(0,1fr);border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="padding:18px 20px;border-right:1px solid #E4E4E7">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#52525B"><span class="material-symbols-rounded" style="font-size:16px;color:#A1A1AA">local_fire_department</span>Eaten today</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:10px"><span data-count="" data-d="400" style="font-size:34px;line-height:1;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums">860</span><span style="font-size:13px;color:#71717A">/ 1,400 kcal</span></div>
+          <div style="margin-top:12px;height:6px;border-radius:999px;background:#F4F4F5;overflow:hidden"><div data-bar="" data-d="500" style="width:61%;height:100%;border-radius:999px;background:#F0612B"></div></div>
+          <div style="margin-top:8px;font-size:12px;color:#71717A"><span style="font-weight:600;color:#09090B">540 kcal left</span> · 2 of 4 slots logged · dinner planned 450</div>
+        </div>
+        <div style="padding:18px 20px;border-right:1px solid #E4E4E7">
+          <div style="font-size:13px;font-weight:500;color:#52525B">Macros against today’s targets</div>
+          <div data-stagger="60" data-sd="500" data-sa="fade" data-st="500" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:10px">
+            <div><div style="display:flex;justify-content:space-between;font-size:13px"><span>Protein</span><span style="font-variant-numeric:tabular-nums"><b>82</b> <span style="color:#71717A">/ 130 g</span></span></div><div style="margin-top:6px;height:6px;border-radius:999px;background:#F4F4F5;overflow:hidden"><div data-bar="" data-d="600" style="width:63%;height:100%;background:#D97706"></div></div><div style="margin-top:5px;font-size:11px;color:#B45309;font-weight:600">48 g to go</div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:13px"><span>Carbs</span><span style="font-variant-numeric:tabular-nums"><b>71</b> <span style="color:#71717A">/ 119 g</span></span></div><div style="margin-top:6px;height:6px;border-radius:999px;background:#F4F4F5;overflow:hidden"><div data-bar="" data-d="660" style="width:60%;height:100%;background:#166FE5"></div></div><div style="margin-top:5px;font-size:11px;color:#71717A">48 g left</div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:13px"><span>Fat</span><span style="font-variant-numeric:tabular-nums"><b>29</b> <span style="color:#71717A">/ 45 g min</span></span></div><div style="margin-top:6px;height:6px;border-radius:999px;background:#F4F4F5;overflow:hidden"><div data-bar="" data-d="720" style="width:64%;height:100%;background:#7C3AED"></div></div><div style="margin-top:5px;font-size:11px;color:#71717A">16 g to the minimum</div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:13px"><span>Fibre</span><span style="font-variant-numeric:tabular-nums"><b>17</b> <span style="color:#71717A">/ 30 g</span></span></div><div style="margin-top:6px;height:6px;border-radius:999px;background:#F4F4F5;overflow:hidden"><div data-bar="" data-d="780" style="width:57%;height:100%;background:#16A34A"></div></div><div style="margin-top:5px;font-size:11px;color:#71717A">13 g left</div></div>
+          </div>
+        </div>
+        <div style="padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#52525B"><span class="material-symbols-rounded" style="font-size:16px;color:#A1A1AA">monitor_weight</span>Weigh-in</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:10px"><span style="font-size:34px;line-height:1;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums">93.2</span><span style="font-size:13px;color:#71717A">kg · 7:04 AM</span></div>
+          <div style="margin-top:12px;font-size:12px;color:#71717A">Trend <b style="color:#09090B">93.6 kg</b> · <span style="color:#15803D;font-weight:600">−1.0 kg</span> over 7 days</div>
+          <button style="margin-top:10px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Edit weigh-in</button>
+        </div>
+      </section>
+
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;align-items:start">
+        <div data-stagger="90" data-sd="400" data-sa="rise" data-st="700" style="display:grid;gap:16px">
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 12px"><div style="flex:1;min-width:0"><h2 style="margin:0;font-size:16px;font-weight:600">Breakfast</h2><div style="margin-top:2px;font-size:13px;color:#71717A">7:40 AM · planned 350 kcal</div></div><span style="padding:3px 8px;border-radius:6px;background:#DCFCE7;color:#15803D;font-size:12px;font-weight:600">Confirmed</span><span style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">320 kcal</span><button aria-label="Meal menu" style="width:30px;height:30px;border-radius:6px;border:0;background:transparent;color:#71717A;display:grid;place-items:center;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">more_horiz</span></button></div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="color:#71717A;font-size:12px;text-align:left"><th style="font-weight:500;padding:6px 20px;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7">Item</th><th style="font-weight:500;padding:6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Grams</th><th style="font-weight:500;padding:6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">kcal</th><th style="font-weight:500;padding:6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Protein</th><th style="font-weight:500;padding:6px 20px 6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Source</th></tr></thead>
+              <tbody style="font-variant-numeric:tabular-nums">
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px"><img src="assets/food/yogurt.svg" alt="" width="22" height="22">Greek yogurt 0 %</td><td style="padding:9px 0;text-align:right;color:#52525B">200 g</td><td style="padding:9px 0;text-align:right">118</td><td style="padding:9px 0;text-align:right">20 g</td><td style="padding:9px 20px 9px 0;text-align:right"><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">Favourite</span></td></tr>
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px;border-top:1px solid #F4F4F5"><img src="assets/food/blueberries.svg" alt="" width="22" height="22">Blueberries</td><td style="padding:9px 0;text-align:right;color:#52525B;border-top:1px solid #F4F4F5">80 g</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">46</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">1 g</td><td style="padding:9px 20px 9px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">CNF</span></td></tr>
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px;border-top:1px solid #F4F4F5"><img src="assets/food/rice.svg" alt="" width="22" height="22">Rolled oats, dry</td><td style="padding:9px 0;text-align:right;color:#52525B;border-top:1px solid #F4F4F5">40 g</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">156</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">7 g</td><td style="padding:9px 20px 9px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">CNF</span></td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 12px"><div style="flex:1;min-width:0"><h2 style="margin:0;font-size:16px;font-weight:600">Lunch</h2><div style="margin-top:2px;font-size:13px;color:#71717A">12:30 PM · planned 540 kcal · from a photo</div></div><span style="padding:3px 8px;border-radius:6px;background:#DCFCE7;color:#15803D;font-size:12px;font-weight:600">Confirmed</span><span style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">540 kcal</span><button aria-label="Meal menu" style="width:30px;height:30px;border-radius:6px;border:0;background:transparent;color:#71717A;display:grid;place-items:center;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">more_horiz</span></button></div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="color:#71717A;font-size:12px;text-align:left"><th style="font-weight:500;padding:6px 20px;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7">Item</th><th style="font-weight:500;padding:6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Grams</th><th style="font-weight:500;padding:6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">kcal</th><th style="font-weight:500;padding:6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Protein</th><th style="font-weight:500;padding:6px 20px 6px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Source</th></tr></thead>
+              <tbody style="font-variant-numeric:tabular-nums">
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px"><img src="assets/food/chicken.svg" alt="" width="22" height="22">Chicken breast, grilled</td><td style="padding:9px 0;text-align:right;color:#52525B">150 g</td><td style="padding:9px 0;text-align:right">248</td><td style="padding:9px 0;text-align:right">46 g</td><td style="padding:9px 20px 9px 0;text-align:right"><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">CNF</span></td></tr>
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px;border-top:1px solid #F4F4F5"><img src="assets/food/rice.svg" alt="" width="22" height="22">White rice, cooked</td><td style="padding:9px 0;text-align:right;color:#52525B;border-top:1px solid #F4F4F5">150 g</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">195</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">4 g</td><td style="padding:9px 20px 9px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">CNF</span></td></tr>
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px;border-top:1px solid #F4F4F5"><img src="assets/food/broccoli.svg" alt="" width="22" height="22">Broccoli, steamed</td><td style="padding:9px 0;text-align:right;color:#52525B;border-top:1px solid #F4F4F5">150 g</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">51</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">4 g</td><td style="padding:9px 20px 9px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">CNF</span></td></tr>
+                <tr><td style="padding:9px 20px;display:flex;align-items:center;gap:10px;border-top:1px solid #F4F4F5"><img src="assets/food/meal.svg" alt="" width="22" height="22">Olive oil <span style="padding:1px 6px;border-radius:5px;background:#FEF3C7;color:#B45309;font-size:11px;font-weight:600">Estimated</span></td><td style="padding:9px 0;text-align:right;color:#52525B;border-top:1px solid #F4F4F5">5 g</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">45</td><td style="padding:9px 0;text-align:right;border-top:1px solid #F4F4F5">0 g</td><td style="padding:9px 20px 9px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="padding:1px 6px;border-radius:5px;background:#EFF6FF;color:#166FE5;font-size:11px;font-weight:500">AI</span></td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section style="border-radius:12px;border:1px dashed #D4D4D8;background:#FAFAFA">
+            <div style="display:flex;align-items:center;gap:10px;padding:16px 20px"><div style="flex:1;min-width:0"><h2 style="margin:0;font-size:16px;font-weight:600">Dinner</h2><div style="margin-top:2px;font-size:13px;color:#71717A">Planned 450 kcal · nothing logged yet</div></div><button data-burst="#166FE5,#F0612B,#FFFFFF" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">add</span>Add dinner</button></div>
+            <div style="display:flex;align-items:center;gap:12px;margin:0 20px 16px;padding:12px 14px;border-radius:8px;background:#FFFFFF;border:1px solid #E4E4E7">
+              <span class="material-symbols-rounded" style="font-size:18px;color:#166FE5;font-variation-settings:'FILL' 1">auto_awesome</span>
+              <div style="flex:1;min-width:0;font-size:13px"><b>AI suggestion · </b>Chicken breast 150 g with greens closes the 48 g protein gap for about 300 kcal, leaving 240 for a snack.</div>
+              <div style="display:flex;gap:6px"><img src="assets/food/chicken.svg" alt="" width="22" height="22"><img src="assets/food/salad.svg" alt="" width="22" height="22"></div>
+              <button style="height:30px;padding:0 10px;border-radius:6px;border:0;background:#09090B;color:#FFFFFF;font:500 12px Geist,system-ui;cursor:pointer">Use it</button>
+            </div>
+          </section>
+
+          <section style="border-radius:12px;border:1px dashed #D4D4D8;background:#FAFAFA">
+            <div style="display:flex;align-items:center;gap:10px;padding:14px 20px"><div style="flex:1;min-width:0"><h2 style="margin:0;font-size:16px;font-weight:600">Snack</h2><div style="margin-top:2px;font-size:13px;color:#71717A">Planned 60 kcal · optional</div></div><button style="display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">add</span>Add snack</button></div>
+          </section>
+        </div>
+
+        <div data-stagger="90" data-sd="500" data-sa="rise" data-st="700" style="display:grid;gap:16px">
+          <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#0EA5E9;font-variation-settings:'FILL' 1">water_drop</span><h2 style="margin:0;flex:1;font-size:14px;font-weight:600">Water</h2><span style="font-size:13px;font-variant-numeric:tabular-nums"><b>1.75</b> <span style="color:#71717A">/ 3.0 L</span></span></div>
+            <div style="margin-top:10px;height:6px;border-radius:999px;background:#F4F4F5;overflow:hidden"><div data-bar="" data-d="700" style="width:58%;height:100%;background:#0EA5E9"></div></div>
+            <div style="display:flex;gap:6px;margin-top:12px"><button data-burst="#0EA5E9,#FFFFFF" style="flex:1;height:32px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">+250 ml</button><button data-burst="#0EA5E9,#FFFFFF" style="flex:1;height:32px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">+500 ml</button><button data-burst="#0EA5E9,#FFFFFF" style="flex:1;height:32px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">+750 ml</button><button aria-label="Custom amount" style="width:32px;height:32px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">edit</span></button></div>
+            <div style="display:grid;margin-top:10px;font-size:12px;color:#52525B"><div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #F4F4F5"><span>1:50 PM</span><span>+500 ml</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #F4F4F5"><span>11:45 AM</span><span>+500 ml</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #F4F4F5"><span>9:30 AM</span><span>+500 ml</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid #F4F4F5"><span>7:15 AM</span><span>+250 ml</span></div></div>
+          </section>
+
+          <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#7C3AED">watch</span><h2 style="margin:0;flex:1;font-size:14px;font-weight:600">Sleep and steps</h2><span style="padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-size:11px;color:#52525B">Apple Watch · 2:02 PM</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px"><div style="padding:10px 12px;border-radius:8px;background:#FAFAFA"><div style="font-size:12px;color:#71717A">Last night</div><div style="margin-top:2px;font-size:20px;font-weight:600;letter-spacing:-.02em">6.9 <span style="font-size:12px;font-weight:400;color:#71717A">h</span></div><div style="font-size:11px;color:#71717A">11:22 PM – 6:31 AM</div></div><div style="padding:10px 12px;border-radius:8px;background:#FAFAFA"><div style="font-size:12px;color:#71717A">Steps</div><div style="margin-top:2px;font-size:20px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">6,240</div><div style="font-size:11px;color:#71717A">of 9,000</div></div></div>
+            <button style="margin-top:10px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Enter by hand</button>
+          </section>
+
+          <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#71717A">straighten</span><h2 style="margin:0;flex:1;font-size:14px;font-weight:600">Measurements</h2><span style="font-size:12px;color:#71717A">Weekly tape · last Mon, Oct 5</span></div>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;font-size:12px"><div><div style="color:#71717A">Neck</div><div style="font-weight:600">42.0</div></div><div><div style="color:#71717A">Chest</div><div style="font-weight:600">112.5</div></div><div><div style="color:#71717A">Waist</div><div style="font-weight:600">108.0 <span style="color:#15803D">−1.5</span></div></div><div><div style="color:#71717A">Hips</div><div style="font-weight:600">109.5</div></div><div><div style="color:#71717A">Arm L / R</div><div style="font-weight:600">36.0 / 35.5</div></div><div><div style="color:#71717A">Thigh L / R</div><div style="font-weight:600">64.0 / 63.5</div></div><div style="grid-column:span 2;align-self:end"><div style="color:#71717A">Waist-to-hip</div><div style="font-weight:600">0.99 <span style="color:#71717A;font-weight:400">· goal &lt; 0.90</span></div></div></div>
+            <button style="margin-top:12px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Measure now · due Mon</button>
+          </section>
+
+          <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#B45309">timer</span><h2 style="margin:0;flex:1;font-size:14px;font-weight:600">Fasting</h2><span style="font-size:12px;color:#71717A">0 of 2 this month</span></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 12px;border-radius:8px;background:#FEF3C7"><div style="flex:1;min-width:0;font-size:13px"><b style="color:#92400E">Next: Saturday, Oct 10</b><div style="font-size:12px;color:#B45309">24 h from 8:00 PM Fri · water target 3.5 L</div></div><button style="height:30px;padding:0 10px;border-radius:6px;border:0;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer">Edit</button></div>
+            <div data-stagger="20" data-sd="900" data-sa="pop" data-st="400" style="display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin-top:12px"><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;background:#09090B"></span><span style="height:18px;border-radius:3px;background:#F4F4F5"></span><span style="height:18px;border-radius:3px;border:1.5px dashed #B45309;box-sizing:border-box"></span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#A1A1AA"><span>Sep 26</span><span>Oct 10</span></div>
+            <button style="margin-top:12px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Plan a fast</button>
+          </section>
+
+          <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#71717A;font-variation-settings:'FILL' 1">star</span><h2 style="margin:0;flex:1;font-size:14px;font-weight:600">Favourites</h2><a href="#" style="font-size:12px;font-weight:500">Manage</a></div>
+            <div data-stagger="50" data-sd="1000" data-sa="fade" data-st="500" style="display:grid;margin-top:8px;font-size:13px">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #F4F4F5"><img src="assets/food/yogurt.svg" alt="" width="20" height="20"><span style="flex:1">Greek yogurt 0 % · 200 g</span><span style="color:#71717A">118 kcal</span><button aria-label="Log" style="width:26px;height:26px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:16px">add</span></button></div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #F4F4F5"><img src="assets/food/chicken.svg" alt="" width="20" height="20"><span style="flex:1">Chicken breast · 150 g</span><span style="color:#71717A">248 kcal</span><button aria-label="Log" style="width:26px;height:26px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:16px">add</span></button></div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #F4F4F5"><img src="assets/food/protein-shake.svg" alt="" width="20" height="20"><span style="flex:1">Protein shake · 1 scoop, milk</span><span style="color:#71717A">210 kcal</span><button aria-label="Log" style="width:26px;height:26px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:16px">add</span></button></div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #F4F4F5"><img src="assets/food/bento.svg" alt="" width="20" height="20"><span style="flex:1">Overnight oats <span style="padding:1px 5px;border-radius:4px;border:1px solid #E4E4E7;font-size:10px;color:#52525B">Recipe</span></span><span style="color:#71717A">320 kcal</span><button aria-label="Log" style="width:26px;height:26px;border-radius:6px;border:1px solid #E4E4E7;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:16px">add</span></button></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root };
+  }
+}
+</script>
+</body>
+</html>

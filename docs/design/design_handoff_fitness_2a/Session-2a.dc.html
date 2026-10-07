@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#166FE5;text-decoration:none}a:hover{color:#0F55B5}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="2a Session logger" style="opacity:0;position:relative;width:1440px;min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr);background:#FFFFFF;color:#09090B;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <dc-import name="Shell2a-Sidebar" active="train" hint-size="240px,1300px"></dc-import>
+  <div style="min-width:0;display:flex;flex-direction:column">
+    <dc-import name="Shell2a-Header" crumb="Train · Session" hint-size="100%,56px"></dc-import>
+    <main style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start;padding:24px 28px 110px">
+      <div style="display:grid;gap:16px">
+        <div data-a="rise" data-d="150" style="display:flex;align-items:flex-end;gap:16px">
+          <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><a href="Train-2a.dc.html" style="display:inline-flex;align-items:center;gap:2px;font-size:13px;color:#71717A"><span class="material-symbols-rounded" style="font-size:16px">arrow_back</span>Train</a><span style="padding:2px 8px;border-radius:6px;background:#EFF6FF;color:#166FE5;font-size:12px;font-weight:600">Planned session</span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;background:#DCFCE7;color:#15803D;font-size:12px;font-weight:600"><span data-loop="breathe" style="width:6px;height:6px;border-radius:50%;background:#16A34A"></span>In progress</span></div><h1 style="margin:6px 0 0;font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.02em">Upper B — Pull</h1></div>
+          <div style="display:flex;gap:28px;padding:12px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FAFAFA"><div><div style="font-size:12px;color:#71717A">Time</div><div style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ clock }}</div></div><div><div style="font-size:12px;color:#71717A">Sets</div><div style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em">7<span style="color:#A1A1AA">/18</span></div></div><div><div style="font-size:12px;color:#71717A">Volume</div><div style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em">1,560 <span style="font-size:13px;font-weight:400;color:#71717A">kg</span></div></div><div><div style="font-size:12px;color:#71717A">Readiness</div><div style="font-size:20px;font-weight:600;letter-spacing:-.02em">74</div></div></div>
+        </div>
+
+        <div data-a="rise" data-d="250" style="display:flex;gap:10px;padding:12px 14px;border-radius:10px;border:1px solid #BFDBFE;background:#EFF6FF;font-size:13px;color:#1E3A8A"><span class="material-symbols-rounded" style="font-size:18px;color:#166FE5">info</span><div>Lat pulldown is due a load increase: every set hit 12 reps at 45 kg in your last two sessions, so today is set to <b>47.5 kg</b>. Rear delts were a main target yesterday too; drop a set if they feel done.</div></div>
+
+        <div data-stagger="90" data-sd="350" data-sa="rise" data-st="700" style="display:grid;gap:16px">
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px"><div style="width:44px;height:44px;border-radius:8px;background:#F4F4F5;display:grid;place-items:center;color:#A1A1AA"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">1 · Lat pulldown</span><span style="padding:1px 6px;border-radius:5px;background:#DCFCE7;color:#15803D;font-size:11px;font-weight:600">Done</span></div><div style="font-size:13px;color:#71717A">Lats, biceps · cable · 3 × 10–12 · rest 90 s · last time 3 × 12 at 45 kg</div></div><button style="height:32px;padding:0 10px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">About</button><button aria-label="More" style="width:32px;height:32px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">more_horiz</span></button></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:6px 18px;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;background:#FAFAFA;font-size:11px;font-weight:500;color:#71717A;text-transform:uppercase;letter-spacing:.04em"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span>RPE</span><span style="text-align:center">Done</span></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:8px 18px;font-size:13px;background:#F0FDF4"><span style="font-weight:600">1</span><span style="color:#71717A;font-variant-numeric:tabular-nums">45 × 12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">47.5</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">8</span><span style="display:grid;place-items:center"><span style="width:22px;height:22px;border-radius:6px;background:#16A34A;color:#FFFFFF;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:16px;font-weight:700">check</span></span></span></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:8px 18px;border-top:1px solid #F4F4F5;font-size:13px;background:#F0FDF4"><span style="font-weight:600">2</span><span style="color:#71717A;font-variant-numeric:tabular-nums">45 × 12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">47.5</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">11</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">8</span><span style="display:grid;place-items:center"><span style="width:22px;height:22px;border-radius:6px;background:#16A34A;color:#FFFFFF;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:16px;font-weight:700">check</span></span></span></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:8px 18px;border-top:1px solid #F4F4F5;font-size:13px;background:#F0FDF4;border-radius:0 0 12px 12px"><span style="font-weight:600">3</span><span style="color:#71717A;font-variant-numeric:tabular-nums">45 × 12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">47.5</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">10</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">9</span><span style="display:grid;place-items:center"><span style="width:22px;height:22px;border-radius:6px;background:#16A34A;color:#FFFFFF;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:16px;font-weight:700">check</span></span></span></div>
+          </section>
+
+          <section style="border-radius:12px;border:1px solid #166FE5;background:#FFFFFF;box-shadow:0 0 0 3px #EFF6FF">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px"><div style="width:44px;height:44px;border-radius:8px;background:#F4F4F5;display:grid;place-items:center;color:#A1A1AA"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">2 · Seated cable row</span><span style="padding:1px 6px;border-radius:5px;background:#EFF6FF;color:#166FE5;font-size:11px;font-weight:600">Current</span></div><div style="font-size:13px;color:#71717A">Middle back, lats, biceps · cable · 3 × 10–12 · rest 90 s · last time 3 × 11 at 40 kg</div></div><button style="height:32px;padding:0 10px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">About</button><button aria-label="More" style="width:32px;height:32px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">more_horiz</span></button></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:6px 18px;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;background:#FAFAFA;font-size:11px;font-weight:500;color:#71717A;text-transform:uppercase;letter-spacing:.04em"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span>RPE</span><span style="text-align:center">Done</span></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:8px 18px;font-size:13px;background:#F0FDF4"><span style="font-weight:600">1</span><span style="color:#71717A;font-variant-numeric:tabular-nums">40 × 11</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">40</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;font-variant-numeric:tabular-nums">7</span><span style="display:grid;place-items:center"><span style="width:22px;height:22px;border-radius:6px;background:#16A34A;color:#FFFFFF;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:16px;font-weight:700">check</span></span></span></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:8px 18px;border-top:1px solid #F4F4F5;font-size:13px"><span style="font-weight:600">2</span><span style="color:#71717A;font-variant-numeric:tabular-nums">40 × 11</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #166FE5;background:#FFFFFF;box-shadow:0 0 0 3px #DBEAFE;font-variant-numeric:tabular-nums">40<span data-loop="blink" style="display:inline-block;width:1.5px;height:16px;margin-left:2px;background:#09090B;vertical-align:-3px"></span></span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#A1A1AA;font-variant-numeric:tabular-nums">12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#A1A1AA">—</span><span style="display:grid;place-items:center"><button data-burst="#16A34A,#166FE5,#FFFFFF" aria-label="Mark set done" style="width:22px;height:22px;border-radius:6px;border:1.5px solid #D4D4D8;background:#FFFFFF;cursor:pointer" style-hover="border-color:#16A34A"></button></span></div>
+            <div style="display:grid;grid-template-columns:48px 110px minmax(0,1fr) minmax(0,1fr) 90px 56px;gap:10px;align-items:center;padding:8px 18px;border-top:1px solid #F4F4F5;font-size:13px"><span style="font-weight:600">3</span><span style="color:#71717A;font-variant-numeric:tabular-nums">40 × 10</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#A1A1AA;font-variant-numeric:tabular-nums">40</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#A1A1AA;font-variant-numeric:tabular-nums">12</span><span style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px solid #E4E4E7;background:#FFFFFF;color:#A1A1AA">—</span><span style="display:grid;place-items:center"><button aria-label="Mark set done" style="width:22px;height:22px;border-radius:6px;border:1.5px solid #D4D4D8;background:#FFFFFF;cursor:pointer" style-hover="border-color:#16A34A"></button></span></div>
+            <div style="display:flex;gap:8px;padding:10px 18px 14px;border-top:1px solid #F4F4F5"><button style="height:30px;padding:0 10px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer;display:flex;align-items:center;gap:4px" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:16px">add</span>Add set</button><button style="height:30px;padding:0 10px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Copy previous</button><span style="margin-left:auto;align-self:center;font-size:12px;color:#71717A">Double progression: hit 12 on every set twice → +2.5 kg</span></div>
+          </section>
+
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px"><div style="width:44px;height:44px;border-radius:8px;background:#F4F4F5;display:grid;place-items:center;color:#A1A1AA"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">3 · Chest-supported row</div><div style="font-size:13px;color:#71717A">Middle back, lats · machine · 3 × 8–10 · rest 90 s · last time 3 × 9 at 30 kg</div></div><span style="font-size:12px;color:#71717A">0 of 3 sets</span><button aria-label="More" style="width:32px;height:32px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">expand_more</span></button></div>
+          </section>
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px"><div style="width:44px;height:44px;border-radius:8px;background:#F4F4F5;display:grid;place-items:center;color:#A1A1AA"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">4 · Rear delt fly</span><span style="padding:1px 6px;border-radius:5px;background:#FEF3C7;color:#B45309;font-size:11px;font-weight:600">Trained yesterday</span></div><div style="font-size:13px;color:#71717A">Rear delts · machine · 3 × 12–15 · rest 60 s · last time 3 × 14 at 25 kg</div></div><span style="font-size:12px;color:#71717A">0 of 3 sets</span><button aria-label="More" style="width:32px;height:32px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">expand_more</span></button></div>
+          </section>
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px"><div style="width:44px;height:44px;border-radius:8px;background:#F4F4F5;display:grid;place-items:center;color:#A1A1AA"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">5 · Dumbbell curl</div><div style="font-size:13px;color:#71717A">Biceps · dumbbell · 3 × 10–12 · rest 60 s · last time 3 × 12 at 10 kg</div></div><span style="font-size:12px;color:#71717A">0 of 3 sets</span><button aria-label="More" style="width:32px;height:32px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">expand_more</span></button></div>
+          </section>
+          <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px"><div style="width:44px;height:44px;border-radius:8px;background:#F4F4F5;display:grid;place-items:center;color:#A1A1AA"><span class="material-symbols-rounded" style="font-size:22px">fitness_center</span></div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600">6 · Hammer curl</div><div style="font-size:13px;color:#71717A">Biceps, forearms · dumbbell · 3 × 10–12 · rest 60 s · last time 3 × 12 at 10 kg</div></div><span style="font-size:12px;color:#71717A">0 of 3 sets</span><button aria-label="More" style="width:32px;height:32px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#52525B;display:grid;place-items:center;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px">expand_more</span></button></div>
+          </section>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <button style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border:1px solid #E4E4E7;border-radius:8px;background:#FFFFFF;color:#09090B;font:500 14px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">add</span>Add exercise</button>
+            <button data-burst="#16A34A,#166FE5,#FFFFFF" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 16px;border:0;border-radius:8px;background:#166FE5;color:#FFFFFF;font:500 14px Geist,system-ui;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)" style-hover="background:#1263CC"><span class="material-symbols-rounded" style="font-size:18px">flag</span>Finish session</button>
+            <button style="margin-left:auto;height:38px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:#B91C1C;font:500 14px Geist,system-ui;cursor:pointer" style-hover="background:#FEF2F2">Delete session</button>
+          </div>
+        </div>
+      </div>
+
+      <aside data-stagger="90" data-sd="500" data-sa="rise" data-st="700" style="display:grid;gap:16px">
+        <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+          <div style="font-size:14px;font-weight:600">Progress</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:12px"><div style="position:relative;width:56px;height:56px;flex:none"><svg viewBox="0 0 56 56" width="56" height="56"><circle cx="28" cy="28" r="23" fill="none" style="stroke:#F4F4F5;stroke-width:6"></circle><circle data-draw="" data-d="800" cx="28" cy="28" r="23" fill="none" transform="rotate(-90 28 28)" style="stroke:#166FE5;stroke-width:6;stroke-linecap:round;stroke-dasharray:56.2 200"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:600">39%</div></div><div style="font-size:13px;color:#52525B"><b style="color:#09090B">7 of 18 sets</b> ticked<br>About 32 minutes left at this pace</div></div>
+          <div data-stagger="40" data-sd="800" data-sa="fade" data-st="400" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:14px"><div style="height:6px;border-radius:3px;background:#16A34A"></div><div style="height:6px;border-radius:3px;background:linear-gradient(90deg,#16A34A 33%,#E4E4E7 33%)"></div><div style="height:6px;border-radius:3px;background:#E4E4E7"></div><div style="height:6px;border-radius:3px;background:#E4E4E7"></div><div style="height:6px;border-radius:3px;background:#E4E4E7"></div><div style="height:6px;border-radius:3px;background:#E4E4E7"></div></div>
+        </section>
+        <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:14px;font-weight:600">Last time</div><span style="font-size:12px;color:#71717A">Wed, Sep 30</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px"><div style="padding:10px;border-radius:8px;background:#FAFAFA"><div style="font-size:11px;color:#71717A">Sets</div><div style="font-size:16px;font-weight:600">17/18</div></div><div style="padding:10px;border-radius:8px;background:#FAFAFA"><div style="font-size:11px;color:#71717A">Volume</div><div style="font-size:16px;font-weight:600">3,540</div></div><div style="padding:10px;border-radius:8px;background:#FAFAFA"><div style="font-size:11px;color:#71717A">Time</div><div style="font-size:16px;font-weight:600">49 m</div></div></div>
+          <div style="margin-top:12px;font-size:13px;color:#52525B">Beat it today: <b style="color:#09090B">3,541 kg</b> or 18 sets. You’re 1,560 kg in after two exercises.</div>
+        </section>
+        <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600"><span class="material-symbols-rounded" style="font-size:18px;color:#166FE5;font-variation-settings:'FILL' 1">auto_awesome</span>Coach notes</div>
+          <div style="display:grid;gap:8px;margin-top:10px;font-size:13px;color:#3F3F46;line-height:1.5"><div style="padding:10px 12px;border-radius:8px;background:#FAFAFA">Readiness 74: full volume is fine. Sleep was 6.9 h; keep rests at 90 s on the rows.</div><div style="padding:10px 12px;border-radius:8px;background:#FAFAFA">Protein is 48 g short so far. Dinner after this session: chicken breast 150 g.</div></div>
+        </section>
+        <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FAFAFA">
+          <div style="font-size:14px;font-weight:600">Equipment at this gym</div>
+          <div style="margin-top:8px;font-size:13px;color:#52525B;line-height:1.5">Lat pulldown · Life Fitness, row 2. Seated row · Hammer Strength, row 3. Chest-supported row · Hammer Strength, row 3.</div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div data-a="rise" data-d="900" style="position:absolute;left:268px;right:28px;bottom:24px;display:flex;align-items:center;gap:16px;padding:12px 16px 12px 18px;border-radius:12px;background:#09090B;color:#FFFFFF;box-shadow:0 12px 32px rgba(9,9,11,.28)">
+    <span class="material-symbols-rounded" style="font-size:22px;color:#60A5FA">timer</span>
+    <div style="min-width:0"><div style="font-size:12px;color:#A1A1AA">Rest · then Seated cable row, set 2</div><div style="font-size:22px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{ rest }}</div></div>
+    <div style="flex:1;height:6px;border-radius:999px;background:#27272A;overflow:hidden"><div style="width:{{ restPct }};height:100%;border-radius:999px;background:#60A5FA;transition:width 1s linear"></div></div>
+    <button onClick="{{ addRest }}" style="height:34px;padding:0 12px;border:1px solid #3F3F46;border-radius:8px;background:transparent;color:#FFFFFF;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#27272A">+30 s</button>
+    <button onClick="{{ skipRest }}" style="height:34px;padding:0 14px;border:0;border-radius:8px;background:#FFFFFF;color:#09090B;font:600 13px Geist,system-ui;cursor:pointer">Skip rest</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  state = { elapsed: 23 * 60 + 41, rest: 72, restTotal: 90 };
+  componentDidMount() {
+    this.timer = setInterval(() => this.setState((s) => ({ elapsed: s.elapsed + 1, rest: Math.max(0, s.rest - 1) })), 1000);
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+  renderVals() {
+    const { elapsed, rest, restTotal } = this.state;
+    const mm = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    return {
+      root: this.root,
+      clock: mm(elapsed),
+      rest: mm(rest),
+      restPct: `${Math.round((rest / restTotal) * 100)}%`,
+      addRest: () => this.setState((s) => ({ rest: s.rest + 30, restTotal: Math.max(s.restTotal, s.rest + 30) })),
+      skipRest: () => this.setState({ rest: 0 })
+    };
+  }
+}
+</script>
+</body>
+</html>

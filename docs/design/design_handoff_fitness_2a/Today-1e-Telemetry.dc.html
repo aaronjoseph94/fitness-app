@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<script src="muscle-map.js"></script>
+<style>body{margin:0}a{color:#C6FF3D;text-decoration:none}a:hover{color:#FFFFFF}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="1e Telemetry" style="opacity:0;position:relative;overflow:hidden;width:1440px;min-height:100vh;background:#0A0C0F;color:#E8EEF4;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px">
+  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:40px 40px"></div>
+  <div aria-hidden="true" data-scan="" style="position:absolute;left:0;right:0;top:0;height:220px;pointer-events:none;z-index:5;background:linear-gradient(180deg,rgba(198,255,61,0),rgba(198,255,61,.045) 70%,rgba(198,255,61,.12) 98%,rgba(198,255,61,0))"></div>
+  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:6;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)"></div>
+
+  <header data-a="fall" data-t="700" style="position:relative;display:flex;align-items:center;gap:18px;height:54px;padding:0 20px;border-bottom:1px solid #1E252D;background:rgba(12,15,19,.92);letter-spacing:.06em">
+    <div style="display:flex;align-items:center;gap:10px;font-family:'Chakra Petch',sans-serif;font-size:17px;font-weight:700;letter-spacing:.08em"><span style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:15px solid #C6FF3D"></span>FITNESS/OS</div>
+    <span style="color:#5E6B78">AARON · DAY 012</span>
+    <nav aria-label="Main" style="display:flex;gap:2px;margin-left:10px">
+      <a href="#" aria-current="page" style="padding:6px 10px;background:#C6FF3D;color:#0A0C0F;font-weight:700">[1] TODAY</a>
+      <a href="#" style="padding:6px 10px;color:#9AA7B4" style-hover="background:#151A20;color:#E8EEF4">[2] DASH</a>
+      <a href="#" style="padding:6px 10px;color:#9AA7B4" style-hover="background:#151A20;color:#E8EEF4">[3] LOG</a>
+      <a href="#" style="padding:6px 10px;color:#9AA7B4" style-hover="background:#151A20;color:#E8EEF4">[4] TRAIN</a>
+      <a href="#" style="padding:6px 10px;color:#9AA7B4" style-hover="background:#151A20;color:#E8EEF4">[5] PROGRESS</a>
+      <a href="#" style="padding:6px 10px;color:#9AA7B4" style-hover="background:#151A20;color:#E8EEF4">[6] ASK_AI</a>
+    </nav>
+    <span style="flex:1"></span>
+    <span style="color:#9AA7B4">WED 2026-10-07</span>
+    <span style="font-family:'Chakra Petch',sans-serif;font-size:18px;font-weight:600;color:#C6FF3D;min-width:96px;font-variant-numeric:tabular-nums">{{ clock }}</span>
+    <span style="display:flex;align-items:center;gap:6px;color:#9AA7B4"><span data-loop="breathe" style="width:7px;height:7px;background:#C6FF3D;box-shadow:0 0 8px #C6FF3D"></span>SYNC OK</span>
+    <span style="display:flex;align-items:center;gap:6px;color:#9AA7B4"><span data-loop="breathe" data-ld="-1500" style="width:7px;height:7px;background:#22E4FF;box-shadow:0 0 8px #22E4FF"></span>AI READY</span>
+    <span style="padding:4px 8px;border:1px solid #2A333D;color:#9AA7B4">⌘K</span>
+  </header>
+
+  <div data-stagger="70" data-sd="150" data-sa="blur" data-st="700" style="position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;padding:16px 18px 0">
+
+    <section style="grid-column:1 / span 4;position:relative;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>01 // TREND_WEIGHT</span><span>EWMA α 0.25</span></div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-top:6px"><span data-count="" data-from="95.1" data-d="400" data-t="1800" style="font-family:'Chakra Petch',sans-serif;font-size:108px;line-height:1;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums">93.6</span><span style="font-family:'Chakra Petch',sans-serif;font-size:22px;font-weight:600;color:#C6FF3D">KG</span></div>
+      <div style="position:relative;height:74px;margin-top:8px;border-top:1px dashed #1E252D;border-bottom:1px dashed #1E252D">
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:6px 0;width:100%;height:calc(100% - 12px);overflow:visible">
+          <path data-draw="" data-d="600" data-t="1600" d="M16,41.7C45.3,47.4 74.7,53.2 104,56.8C133.3,60.5 162.7,61.6 192,65.5C221.3,69.4 250.7,77.9 280,82.8C309.3,87.8 338.7,90.9 368,95.8C397.3,100.8 426.7,107.4 456,113.2C485.3,118.9 514.7,126.1 544,130.5C573.3,134.9 602.7,136.9 632,141.3C661.3,145.8 690.7,152.9 720,158.7C749.3,164.4 778.7,171.6 808,176C837.3,180.4 866.7,182.4 896,186.8C925.3,191.3 954.7,197.7 984,204.2" fill="none" style="stroke:#C6FF3D;stroke-width:2;vector-effect:non-scaling-stroke"></path>
+          <polyline data-a="fade" data-d="1400" points="16,41.7 104,74.2 192,52.5 280,117.5 368,95.8 456,150 544,171.7 632,139.2 720,193.3 808,215 896,182.5 984,247.5" fill="none" style="stroke:#22E4FF;stroke-width:1;stroke-dasharray:2 3;opacity:.7;vector-effect:non-scaling-stroke"></polyline>
+        </svg>
+        <div data-sweep="5200" style="position:absolute;top:0;bottom:0;left:0;width:1px;background:#C6FF3D;box-shadow:0 0 8px #C6FF3D;opacity:.7"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin-top:12px;letter-spacing:.04em">
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">Δ START</span><span style="color:#C6FF3D">−1.5 KG</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">Δ 7D</span><span style="color:#C6FF3D">−1.0 KG</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">TO GO</span><span>28.6 KG</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">RATE</span><span>−0.70 KG/WK</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">ETA</span><span>2027-07-20</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">RAW</span><span style="color:#22E4FF">93.2 @ 07:04</span></div>
+      </div>
+    </section>
+
+    <section style="grid-column:5 / span 5;position:relative;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>02 // FUEL_STATE</span><span>TARGETS · PLAN v7 · 14:02 SYNC</span></div>
+      <div style="display:grid;gap:15px;margin-top:18px">
+        <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 116px 44px;gap:14px;align-items:center">
+          <span style="color:#9AA7B4;letter-spacing:.08em">KCAL</span>
+          <div style="position:relative;height:22px;background:repeating-linear-gradient(90deg,rgba(255,46,147,.14) 0 7px,transparent 7px 10px)"><div data-bar="" data-d="700" data-t="1400" style="width:61%;height:100%;background:repeating-linear-gradient(90deg,#FF2E93 0 7px,transparent 7px 10px);filter:drop-shadow(0 0 6px rgba(255,46,147,.6))"></div></div>
+          <span style="font-family:'Chakra Petch',sans-serif;font-size:20px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span data-count="" data-d="700">860</span><span style="color:#5E6B78">/1400</span></span>
+          <span style="text-align:right;color:#FF2E93">61%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 116px 44px;gap:14px;align-items:center">
+          <span style="color:#9AA7B4;letter-spacing:.08em">PROT</span>
+          <div style="position:relative;height:22px;background:repeating-linear-gradient(90deg,rgba(255,176,32,.14) 0 7px,transparent 7px 10px)"><div data-bar="" data-d="800" data-t="1400" style="width:63%;height:100%;background:repeating-linear-gradient(90deg,#FFB020 0 7px,transparent 7px 10px);filter:drop-shadow(0 0 6px rgba(255,176,32,.6))"></div></div>
+          <span style="font-family:'Chakra Petch',sans-serif;font-size:20px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span data-count="" data-d="800">82</span><span style="color:#5E6B78">/130 G</span></span>
+          <span style="text-align:right;color:#FFB020">63%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 116px 44px;gap:14px;align-items:center">
+          <span style="color:#9AA7B4;letter-spacing:.08em">H2O</span>
+          <div style="position:relative;height:22px;background:repeating-linear-gradient(90deg,rgba(34,228,255,.14) 0 7px,transparent 7px 10px)"><div data-bar="" data-d="900" data-t="1400" style="width:58%;height:100%;background:repeating-linear-gradient(90deg,#22E4FF 0 7px,transparent 7px 10px);filter:drop-shadow(0 0 6px rgba(34,228,255,.6))"></div></div>
+          <span style="font-family:'Chakra Petch',sans-serif;font-size:20px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span data-count="" data-d="900">1.75</span><span style="color:#5E6B78">/3.0 L</span></span>
+          <span style="text-align:right;color:#22E4FF">58%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 116px 44px;gap:14px;align-items:center">
+          <span style="color:#9AA7B4;letter-spacing:.08em">STEPS</span>
+          <div style="position:relative;height:22px;background:repeating-linear-gradient(90deg,rgba(198,255,61,.12) 0 7px,transparent 7px 10px)"><div data-bar="" data-d="1000" data-t="1400" style="width:69%;height:100%;background:repeating-linear-gradient(90deg,#C6FF3D 0 7px,transparent 7px 10px);filter:drop-shadow(0 0 6px rgba(198,255,61,.55))"></div></div>
+          <span style="font-family:'Chakra Petch',sans-serif;font-size:20px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span data-count="" data-d="1000">6,240</span><span style="color:#5E6B78">/9K</span></span>
+          <span style="text-align:right;color:#C6FF3D">69%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 116px 44px;gap:14px;align-items:center">
+          <span style="color:#9AA7B4;letter-spacing:.08em">SLEEP</span>
+          <div style="position:relative;height:22px;background:repeating-linear-gradient(90deg,rgba(157,124,255,.15) 0 7px,transparent 7px 10px)"><div data-bar="" data-d="1100" data-t="1400" style="width:92%;height:100%;background:repeating-linear-gradient(90deg,#9D7CFF 0 7px,transparent 7px 10px);filter:drop-shadow(0 0 6px rgba(157,124,255,.6))"></div></div>
+          <span style="font-family:'Chakra Petch',sans-serif;font-size:20px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums"><span data-count="" data-d="1100">6.9</span><span style="color:#5E6B78">/7.5 H</span></span>
+          <span style="text-align:right;color:#9D7CFF">92%</span>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px dashed #1E252D;display:flex;gap:22px;color:#9AA7B4;letter-spacing:.06em"><span>CARB <span style="color:#E8EEF4">71/119 G</span></span><span>FAT <span style="color:#E8EEF4">29/45 G</span></span><span>FIBRE <span style="color:#E8EEF4">17/30 G</span></span><span style="flex:1"></span><span style="color:#FF2E93">540 KCAL REMAINING</span></div>
+    </section>
+
+    <section style="grid-column:10 / span 3;position:relative;overflow:hidden;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>03 // READINESS</span><span>0–100</span></div>
+      <div style="position:relative;width:200px;height:186px;margin:8px auto 0">
+        <div data-loop="spin" data-ldur="5000" style="position:absolute;left:10px;top:10px;width:180px;height:180px;border-radius:50%;background:conic-gradient(from 0deg,rgba(198,255,61,0) 0deg,rgba(198,255,61,0) 300deg,rgba(198,255,61,.22) 360deg);-webkit-mask:radial-gradient(closest-side,transparent 62%,#000 63%);mask:radial-gradient(closest-side,transparent 62%,#000 63%)"></div>
+        <svg viewBox="0 0 200 200" width="200" height="200" style="position:absolute;left:0;top:0;overflow:visible">
+          <circle cx="100" cy="100" r="80" fill="none" transform="rotate(135 100 100)" style="stroke:#1A2128;stroke-width:12;stroke-dasharray:377 1000"></circle>
+          <circle cx="100" cy="100" r="92" fill="none" transform="rotate(135 100 100)" style="stroke:#2A333D;stroke-width:6;stroke-dasharray:1.5 8.37"></circle>
+          <circle data-draw="" data-d="700" data-t="1800" cx="100" cy="100" r="80" fill="none" transform="rotate(135 100 100)" style="stroke:#C6FF3D;stroke-width:12;stroke-dasharray:279 1000"></circle>
+        </svg>
+        <div style="position:absolute;left:0;right:0;top:56px;text-align:center"><div data-count="" data-d="700" style="font-family:'Chakra Petch',sans-serif;font-size:60px;line-height:1;font-weight:600">74</div><div style="margin-top:4px;color:#5E6B78;letter-spacing:.1em">INDEX</div></div>
+      </div>
+      <div style="margin-top:-6px;text-align:center"><span style="display:inline-block;padding:5px 10px;background:#C6FF3D;color:#0A0C0F;font-weight:700;letter-spacing:.08em">GO · FULL VOLUME</span></div>
+      <div style="display:grid;gap:5px;margin-top:14px;letter-spacing:.04em">
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">SLEEP</span><span>6.9 / 7.5 H</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">STEPS YDAY</span><span>8,120 · MED 7,400</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#5E6B78">LAST SESSION</span><span>1 DAY</span></div>
+      </div>
+    </section>
+
+    <section style="grid-column:1 / span 8;position:relative;padding:16px 18px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;gap:18px;color:#5E6B78;letter-spacing:.08em"><span style="flex:1">04 // FORECAST → 65.0 KG · 2027-07-20</span><span style="color:#C6FF3D">━ TREND</span><span style="color:#22E4FF">┅ FORECAST ±20%</span><span style="color:#FF2E93">━ GOAL</span></div>
+      <div style="position:relative;margin:20px 46px 26px 34px;aspect-ratio:1000/260">
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <g style="stroke:#1A2128;stroke-width:1">
+            <line x1="0" x2="1000" y1="23.7" y2="23.7" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="63.2" y2="63.2" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="102.6" y2="102.6" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="142.1" y2="142.1" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="181.6" y2="181.6" style="vector-effect:non-scaling-stroke"></line><line x1="0" x2="1000" y1="221.1" y2="221.1" style="vector-effect:non-scaling-stroke"></line>
+            <line x1="158.2" x2="158.2" y1="0" y2="300" style="stroke-dasharray:2 4;vector-effect:non-scaling-stroke"></line><line x1="326.6" x2="326.6" y1="0" y2="300" style="stroke-dasharray:2 4;vector-effect:non-scaling-stroke"></line><line x1="494.9" x2="494.9" y1="0" y2="300" style="stroke-dasharray:2 4;vector-effect:non-scaling-stroke"></line><line x1="663.3" x2="663.3" y1="0" y2="300" style="stroke-dasharray:2 4;vector-effect:non-scaling-stroke"></line><line x1="831.6" x2="831.6" y1="0" y2="300" style="stroke-dasharray:2 4;vector-effect:non-scaling-stroke"></line>
+          </g>
+          <line x1="0" x2="1000" y1="260.5" y2="260.5" style="stroke:#FF2E93;stroke-width:1.5;vector-effect:non-scaling-stroke"></line>
+        </svg>
+        <div data-a="wipe" data-d="1100" data-t="2400" style="position:absolute;inset:0">
+          <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+            <path d="M37,34.7L1000,215.4L1000,305.7Z" style="fill:rgba(34,228,255,.09)"></path>
+            <path d="M37,34.7L1000,215.4 M37,34.7L1000,305.7" fill="none" style="stroke:rgba(34,228,255,.35);stroke-width:1;vector-effect:non-scaling-stroke"></path>
+            <path data-loop="march" d="M37,34.7L1000,260.5" fill="none" style="stroke:#22E4FF;stroke-width:2;stroke-dasharray:6 10;vector-effect:non-scaling-stroke"></path>
+          </svg>
+        </div>
+        <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <path data-draw="" data-d="900" data-t="800" d="M0,22.9C1.1,23.3 2.2,23.7 3.4,24C4.5,24.3 5.6,24.4 6.7,24.6C7.9,24.9 9,25.5 10.1,25.9C11.2,26.3 12.3,26.5 13.5,26.8C14.6,27.2 15.7,27.7 16.8,28.1C18,28.5 19.1,29 20.2,29.4C21.3,29.7 22.4,29.8 23.6,30.2C24.7,30.5 25.8,31 26.9,31.4C28.1,31.8 29.2,32.4 30.3,32.7C31.4,33 32.5,33.1 33.7,33.5C34.8,33.8 35.9,34.3 37,34.7" fill="none" style="stroke:#C6FF3D;stroke-width:4;vector-effect:non-scaling-stroke"></path>
+        </svg>
+        <div style="position:absolute;left:-34px;top:0;bottom:0;width:28px;color:#5E6B78;text-align:right">
+          <span style="position:absolute;right:0;top:7.9%;transform:translateY(-50%)">95</span><span style="position:absolute;right:0;top:21.1%;transform:translateY(-50%)">90</span><span style="position:absolute;right:0;top:34.2%;transform:translateY(-50%)">85</span><span style="position:absolute;right:0;top:47.4%;transform:translateY(-50%)">80</span><span style="position:absolute;right:0;top:60.5%;transform:translateY(-50%)">75</span><span style="position:absolute;right:0;top:73.7%;transform:translateY(-50%)">70</span><span style="position:absolute;right:0;top:86.8%;transform:translateY(-50%);color:#FF2E93">65</span>
+        </div>
+        <div data-stagger="110" data-sd="1600" data-sa="fade" style="color:#9AA7B4;letter-spacing:.04em">
+          <span style="position:absolute;left:15.8%;top:-16px;transform:translateX(-50%);white-space:nowrap">M1 90 · 11-12</span>
+          <span style="position:absolute;left:32.7%;top:-16px;transform:translateX(-50%);white-space:nowrap">M2 85 · 01-01</span>
+          <span style="position:absolute;left:49.5%;top:-16px;transform:translateX(-50%);white-space:nowrap">M3 80 · 02-20</span>
+          <span style="position:absolute;left:66.3%;top:-16px;transform:translateX(-50%);white-space:nowrap">M4 75 · 04-11</span>
+          <span style="position:absolute;left:83.2%;top:-16px;transform:translateX(-50%);white-space:nowrap">M5 70 · 05-31</span>
+          <span style="position:absolute;left:100%;top:86.8%;margin:-22px 0 0 8px;white-space:nowrap;color:#FF2E93">GOAL</span>
+        </div>
+        <div data-a="growy" data-d="1300" style="position:absolute;left:3.7%;top:0;bottom:0;width:1px;background:#C6FF3D;transform-origin:bottom"></div>
+        <span data-a="pop" data-d="1500" style="position:absolute;left:3.7%;top:11.6%;width:10px;height:10px;margin:-5px 0 0 -5px;background:#C6FF3D;box-shadow:0 0 10px #C6FF3D"></span>
+        <span data-a="fade" data-d="1600" style="position:absolute;left:3.7%;top:11.6%;margin:-6px 0 0 12px;padding:2px 6px;background:#C6FF3D;color:#0A0C0F;font-weight:700;white-space:nowrap">NOW 93.6</span>
+        <div style="position:absolute;left:0;right:0;top:100%;margin-top:8px;color:#5E6B78"><span style="position:absolute;left:0">SEP 26</span><span style="position:absolute;left:12.1%">NOV</span><span style="position:absolute;left:22.2%">DEC</span><span style="position:absolute;left:32.7%">JAN</span><span style="position:absolute;left:43.1%">FEB</span><span style="position:absolute;left:52.5%">MAR</span><span style="position:absolute;left:63%">APR</span><span style="position:absolute;left:73.1%">MAY</span><span style="position:absolute;left:83.5%">JUN</span><span style="position:absolute;left:93.6%">JUL</span></div>
+      </div>
+    </section>
+
+    <section style="grid-column:9 / span 4;position:relative;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>05 // SESSION · 16:30</span><span style="color:#22E4FF">T−02:15</span></div>
+      <div style="margin-top:8px;font-family:'Chakra Petch',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em">UPPER B — PULL</div>
+      <div style="color:#9AA7B4;letter-spacing:.04em">6 EX · 18 SETS · ~50 MIN · 2 RIR</div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 128px;gap:12px;margin-top:12px">
+        <div data-stagger="60" data-sd="1100" data-sa="right" style="display:grid;gap:0;letter-spacing:.02em">
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:5px 0;border-bottom:1px solid #1A2128"><span style="color:#5E6B78">01</span><span>LAT PULLDOWN</span><span style="color:#C6FF3D">3×12 45</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:5px 0;border-bottom:1px solid #1A2128"><span style="color:#5E6B78">02</span><span>CABLE ROW</span><span style="color:#C6FF3D">3×12 40</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:5px 0;border-bottom:1px solid #1A2128"><span style="color:#5E6B78">03</span><span>CHEST-SUP ROW</span><span style="color:#C6FF3D">3×10 30</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:5px 0;border-bottom:1px solid #1A2128"><span style="color:#5E6B78">04</span><span>REAR DELT FLY</span><span style="color:#C6FF3D">3×15 25</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:5px 0;border-bottom:1px solid #1A2128"><span style="color:#5E6B78">05</span><span>DB CURL</span><span style="color:#C6FF3D">3×12 10</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:5px 0"><span style="color:#5E6B78">06</span><span>HAMMER CURL</span><span style="color:#C6FF3D">3×12 10</span></div>
+        </div>
+        <div ref="{{ mm }}" data-a="fade" data-d="1300" style="width:128px;align-self:center"></div>
+      </div>
+      <button data-burst="#C6FF3D,#22E4FF,#FFFFFF" style="margin-top:12px;width:100%;height:42px;border:0;background:#C6FF3D;color:#0A0C0F;font:700 13px 'JetBrains Mono',monospace;letter-spacing:.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#D8FF73">▶ START SESSION <span style="padding:1px 6px;border:1px solid #0A0C0F">S</span></button>
+    </section>
+
+    <section style="grid-column:1 / span 5;position:relative;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>06 // COACH_FEED</span><span>MCP · CLAUDE / CLERK</span></div>
+      <div style="display:grid;gap:9px;margin-top:12px;font-size:12.5px;line-height:1.5">
+        <div><span style="color:#5E6B78">[MON 09:02]</span> <span style="color:#22E4FF">COACH ›</span> <span style="color:#FFB020">PIN</span> Protein first this week: get to 130 g before carbs. Saturday is your first 24-hour fast, so water goes up to 3.5 L that day and Friday’s dinner stays protein-heavy.</div>
+        <div><span style="color:#5E6B78">[MON 09:02]</span> <span style="color:#9D7CFF">AI ›</span> PROPOSAL #41 protein mon–thu 130→140 g · carbs 119→109 g <a href="#" style="color:#0A0C0F;background:#C6FF3D;padding:0 6px">ACCEPT</a> <a href="#" style="color:#E8EEF4;border:1px solid #2A333D;padding:0 6px">REJECT</a></div>
+        <div><span style="color:#5E6B78">[12:41]</span> <span style="color:#FF2E93">CLERK ›</span> ADJUST on_track · 540 kcal left · 48 g protein to go</div>
+        <div><span style="color:#5E6B78">[12:41]</span> <span style="color:#FF2E93">CLERK ›</span> SUGGEST chicken breast 150 g (46 g P, 248 kcal) | greek yogurt 200 g (20 g P, 118 kcal)</div>
+        <div data-type="" data-d="1800" data-speed="22"><span style="color:#5E6B78">[14:02]</span> <span style="color:#C6FF3D">WATCH ›</span> SYNC steps 6,240 · sleep 6.9 h · readiness 74</div>
+        <div style="display:flex;align-items:center;gap:6px;color:#C6FF3D">&gt; ask or log<span data-loop="blink" style="display:inline-block;width:8px;height:15px;background:#C6FF3D"></span></div>
+      </div>
+    </section>
+
+    <section style="grid-column:6 / span 4;position:relative;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>07 // WEEK 41</span><span>2/4 SESSIONS · 1 FAST</span></div>
+      <div data-stagger="60" data-sd="1400" data-sa="growy" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:14px;height:170px;align-items:end">
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="flex:1;background:linear-gradient(180deg,rgba(198,255,61,.35),rgba(198,255,61,.08));border-top:2px solid #C6FF3D"></div><div style="text-align:center;color:#C6FF3D">MON</div><div style="text-align:center;color:#5E6B78;font-size:10px">UP A ✓</div></div>
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="flex:1;background:linear-gradient(180deg,rgba(198,255,61,.35),rgba(198,255,61,.08));border-top:2px solid #C6FF3D"></div><div style="text-align:center;color:#C6FF3D">TUE</div><div style="text-align:center;color:#5E6B78;font-size:10px">LO A ✓</div></div>
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="flex:1;background:repeating-linear-gradient(135deg,rgba(34,228,255,.22) 0 4px,transparent 4px 8px);border-top:2px solid #22E4FF;box-shadow:0 0 18px rgba(34,228,255,.25)"></div><div style="text-align:center;color:#22E4FF;font-weight:700">WED</div><div style="text-align:center;color:#22E4FF;font-size:10px">UP B ▶</div></div>
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="flex:1;border:1px dashed #2A333D"></div><div style="text-align:center;color:#9AA7B4">THU</div><div style="text-align:center;color:#5E6B78;font-size:10px">LO B</div></div>
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="height:24%;border:1px dashed #2A333D"></div><div style="text-align:center;color:#9AA7B4">FRI</div><div style="text-align:center;color:#5E6B78;font-size:10px">REST</div></div>
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="flex:1;background:repeating-linear-gradient(135deg,rgba(255,176,32,.2) 0 4px,transparent 4px 8px);border-top:2px solid #FFB020"></div><div style="text-align:center;color:#FFB020">SAT</div><div style="text-align:center;color:#FFB020;font-size:10px">FAST 24H</div></div>
+        <div style="height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;transform-origin:bottom"><div style="height:24%;border:1px dashed #2A333D"></div><div style="text-align:center;color:#9AA7B4">SUN</div><div style="text-align:center;color:#5E6B78;font-size:10px">REST</div></div>
+      </div>
+    </section>
+
+    <section style="grid-column:10 / span 3;position:relative;padding:16px 18px;border:1px solid #1E252D;background:linear-gradient(#C6FF3D,#C6FF3D) left top/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) left top/2px 14px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/14px 2px no-repeat,linear-gradient(#C6FF3D,#C6FF3D) right bottom/2px 14px no-repeat,#0F1318">
+      <div style="display:flex;justify-content:space-between;color:#5E6B78;letter-spacing:.08em"><span>08 // QUICK_LOG</span><span>HOTKEYS</span></div>
+      <div style="display:grid;gap:6px;margin-top:12px">
+        <button data-burst="#22E4FF,#C6FF3D" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:1px solid #2A333D;background:#12171D;color:#E8EEF4;font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;cursor:pointer;text-align:left" style-hover="border-color:#C6FF3D;background:#161D16"><span style="width:22px;height:22px;display:grid;place-items:center;border:1px solid #C6FF3D;color:#C6FF3D;font-weight:700">W</span><span style="flex:1">WEIGH-IN</span><span style="color:#5E6B78">DONE 07:04</span></button>
+        <button data-burst="#FF2E93,#C6FF3D" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:1px solid #2A333D;background:#12171D;color:#E8EEF4;font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;cursor:pointer;text-align:left" style-hover="border-color:#C6FF3D;background:#161D16"><span style="width:22px;height:22px;display:grid;place-items:center;border:1px solid #C6FF3D;color:#C6FF3D;font-weight:700">M</span><span style="flex:1">MEAL</span><span style="color:#5E6B78">TXT/IMG/VOX</span></button>
+        <button data-burst="#22E4FF,#FFFFFF" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:1px solid #2A333D;background:#12171D;color:#E8EEF4;font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;cursor:pointer;text-align:left" style-hover="border-color:#C6FF3D;background:#161D16"><span style="width:22px;height:22px;display:grid;place-items:center;border:1px solid #C6FF3D;color:#C6FF3D;font-weight:700">H</span><span style="flex:1">WATER</span><span style="color:#5E6B78">+250 ML</span></button>
+        <button data-burst="#FFB020,#C6FF3D" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:1px solid #2A333D;background:#12171D;color:#E8EEF4;font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;cursor:pointer;text-align:left" style-hover="border-color:#C6FF3D;background:#161D16"><span style="width:22px;height:22px;display:grid;place-items:center;border:1px solid #C6FF3D;color:#C6FF3D;font-weight:700">F</span><span style="flex:1">START FAST</span><span style="color:#5E6B78">24 H</span></button>
+        <button data-burst="#9D7CFF,#C6FF3D" style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border:1px solid #2A333D;background:#12171D;color:#E8EEF4;font:500 12px 'JetBrains Mono',monospace;letter-spacing:.08em;cursor:pointer;text-align:left" style-hover="border-color:#C6FF3D;background:#161D16"><span style="width:22px;height:22px;display:grid;place-items:center;border:1px solid #C6FF3D;color:#C6FF3D;font-weight:700">P</span><span style="flex:1">PHOTO</span><span style="color:#5E6B78">F/S/B</span></button>
+      </div>
+    </section>
+  </div>
+
+  <footer data-a="fade" data-d="1600" style="position:relative;display:flex;gap:26px;margin:16px 18px 18px;padding:10px 14px;border:1px solid #1E252D;background:#0C0F13;color:#5E6B78;letter-spacing:.08em">
+    <span>ENGINE <span style="color:#C6FF3D">OK</span></span><span>TDEE_EST <span style="color:#E8EEF4">2,551 KCAL</span></span><span>DEFICIT <span style="color:#E8EEF4">1,151</span></span><span>RAILS <span style="color:#E8EEF4">FLOOR 1,400 · CEIL 1,700 · 2 FASTS/MO</span></span><span style="flex:1"></span><span>NEXT SCAN <span style="color:#E8EEF4">2026-11-07</span></span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  mm = React.createRef();
+  state = { clock: '' };
+  tick = () => {
+    const clock = new Date().toLocaleTimeString('en-CA', { timeZone: 'America/Edmonton', hour12: false });
+    this.setState({ clock });
+  };
+  componentDidMount() {
+    this.tick();
+    this.timer = setInterval(this.tick, 1000);
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) {
+        window.DCAnim.mount(el);
+        if (!window.DCAnim.reduced) {
+          const scan = el.querySelector('[data-scan]');
+          if (scan) scan.animate([{ transform: 'translateY(-240px)' }, { transform: 'translateY(1400px)' }], { duration: 7000, iterations: Infinity, easing: 'linear' });
+          el.querySelectorAll('[data-sweep]').forEach((s) => s.animate([{ left: '0%' }, { left: '100%' }], { duration: +s.dataset.sweep || 4000, iterations: Infinity, easing: 'linear' }));
+        }
+      } else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+    let m = 0;
+    const map = () => {
+      if (window.mountMuscleMap) {
+        window.mountMuscleMap(this.mm.current, { 'middle back': 4, biceps: 4, lats: 3, shoulders: 2, forearms: 1, traps: 1 }, {
+          body: '#1A2128', stroke: '#0F1318', steps: ['#0E5560', '#11899A', '#18C2D8', '#22E4FF'], size: 128, title: 'Muscles worked in Upper B'
+        });
+      } else if (m++ < 200) setTimeout(map, 30);
+    };
+    map();
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+  renderVals() {
+    return { root: this.root, mm: this.mm, clock: this.state.clock };
+  }
+}
+</script>
+</body>
+</html>

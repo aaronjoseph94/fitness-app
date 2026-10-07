@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<script src="muscle-map.js"></script>
+<style>body{margin:0}a{color:#166FE5;text-decoration:none}a:hover{color:#0F55B5}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="2a Scans" style="opacity:0;width:1440px;min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr);background:#FFFFFF;color:#09090B;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <dc-import name="Shell2a-Sidebar" active="scans" hint-size="240px,1200px"></dc-import>
+  <div style="min-width:0;display:flex;flex-direction:column">
+    <dc-import name="Shell2a-Header" crumb="Scans" hint-size="100%,56px"></dc-import>
+    <main style="display:grid;gap:20px;padding:24px 28px 36px">
+      <div data-a="rise" data-d="150" style="display:flex;align-items:flex-end;gap:16px">
+        <div style="flex:1;min-width:0"><h1 style="margin:0;font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.02em">Evolt 360 scans</h1><p style="margin:4px 0 0;font-size:14px;color:#71717A">Body composition every 4–6 weeks, same conditions each time: morning, fasted, no training the day before</p></div>
+        <button style="display:flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:8px;border:1px solid #E4E4E7;background:#FFFFFF;color:#09090B;font:500 14px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">edit</span>Enter by hand</button>
+        <button data-burst="#166FE5,#60A5FA,#FFFFFF" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:0;background:#166FE5;color:#FFFFFF;font:500 14px Geist,system-ui;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)" style-hover="background:#1263CC"><span class="material-symbols-rounded" style="font-size:18px">upload_file</span>Upload sheet</button>
+      </div>
+
+      <div data-stagger="80" data-sd="250" data-sa="rise" data-st="700" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px">
+        <section style="padding:20px 22px;border-radius:12px;border:1px solid #E4E4E7;background:#FAFAFA">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#52525B"><span class="material-symbols-rounded" style="font-size:16px;color:#A1A1AA">event</span>Next scan</div>
+          <div style="display:flex;align-items:baseline;gap:10px;margin-top:10px"><span style="font-size:30px;line-height:1;font-weight:600;letter-spacing:-.02em">Sat, Nov 7</span><span style="padding:2px 8px;border-radius:999px;border:1px solid #E4E4E7;background:#FFFFFF;font-size:12px;font-weight:500">in 31 days</span></div>
+          <div style="margin-top:10px;font-size:13px;color:#71717A;line-height:1.5">Every 42 days from the baseline. The coach can move it; the reminder fires the evening before with the conditions checklist.</div>
+          <div data-stagger="50" data-sd="700" data-sa="fade" data-st="400" style="display:grid;gap:6px;margin-top:14px;font-size:13px">
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:16px;color:#16A34A">check_circle</span>Morning, before breakfast</div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:16px;color:#16A34A">check_circle</span>Fasted, normal hydration</div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:16px;color:#16A34A">check_circle</span>No training on Nov 6</div>
+          </div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid #E4E4E7;font-size:12px;color:#71717A">Upload the sheet as PDF, PNG or JPG. Your name is masked on this device before anything leaves it; the values are read for you to check and confirm.</div>
+        </section>
+
+        <section style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 12px"><div style="flex:1;min-width:0"><h2 style="margin:0;font-size:16px;font-weight:600">Latest scan · Sep 26, 2026</h2><div style="margin-top:2px;font-size:13px;color:#71717A">The baseline · 10:13 AM · morning · confirmed by you</div></div><span style="padding:3px 8px;border-radius:6px;background:#F4F4F5;font-size:12px;font-weight:500;color:#52525B">Baseline</span><a href="#" style="font-size:13px;font-weight:500">Open scan</a></div>
+          <div data-stagger="60" data-sd="500" data-sa="fade" data-st="500" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #E4E4E7">
+            <div style="padding:14px 20px;border-right:1px solid #F4F4F5"><div style="font-size:12px;color:#71717A">Weight</div><div style="margin-top:4px;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">95.1 <span style="font-size:13px;font-weight:400;color:#71717A">kg</span></div><div style="margin-top:2px;font-size:12px;color:#71717A">trend now 93.6</div></div>
+            <div style="padding:14px 20px;border-right:1px solid #F4F4F5"><div style="font-size:12px;color:#71717A">Body fat</div><div style="margin-top:4px;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">37.3 <span style="font-size:13px;font-weight:400;color:#71717A">%</span></div><div style="margin-top:2px;font-size:12px;color:#B45309">range 15–20 %</div></div>
+            <div style="padding:14px 20px;border-right:1px solid #F4F4F5"><div style="font-size:12px;color:#71717A">Lean mass</div><div style="margin-top:4px;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">59.6 <span style="font-size:13px;font-weight:400;color:#71717A">kg</span></div><div style="margin-top:2px;font-size:12px;color:#71717A">32.5 kg skeletal muscle</div></div>
+            <div style="padding:14px 20px"><div style="font-size:12px;color:#71717A">Visceral level</div><div style="margin-top:4px;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">16</div><div style="margin-top:2px;font-size:12px;color:#B45309">target 9 or lower</div></div>
+          </div>
+          <div data-stagger="60" data-sd="800" data-sa="fade" data-st="500" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid #E4E4E7;font-size:13px">
+            <div style="padding:12px 20px;border-right:1px solid #F4F4F5"><div style="color:#71717A;font-size:12px">Visceral fat</div><div style="font-weight:600">6.9 kg · 188 cm²</div></div>
+            <div style="padding:12px 20px;border-right:1px solid #F4F4F5"><div style="color:#71717A;font-size:12px">Subcutaneous fat</div><div style="font-weight:600">28.6 kg</div></div>
+            <div style="padding:12px 20px;border-right:1px solid #F4F4F5"><div style="color:#71717A;font-size:12px">BMR · TEE</div><div style="font-weight:600">1,657 · 2,551 kcal</div></div>
+            <div style="padding:12px 20px"><div style="color:#71717A;font-size:12px">Waist-to-hip · bio age</div><div style="font-weight:600">1.02 · 38</div></div>
+          </div>
+        </section>
+      </div>
+
+      <div data-stagger="90" data-sd="600" data-sa="rise" data-st="700" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start">
+        <section style="padding:18px 20px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div><div style="font-size:14px;font-weight:600">Fat and lean mass</div><div style="margin-top:2px;font-size:12px;color:#71717A">Per scan · the plan expects fat to carry the loss; lean should hold near 53 kg at goal</div></div><div style="display:flex;gap:12px;font-size:11px;color:#71717A;flex:none;white-space:nowrap"><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#F43F5E;margin-right:4px"></span>Fat</span><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#166FE5;margin-right:4px"></span>Lean</span><span><span style="display:inline-block;width:10px;height:0;border-top:2px dashed #F43F5E;vertical-align:middle;margin-right:4px"></span>Fat at goal 11.7</span></div></div>
+          <div style="position:relative;height:200px;margin:20px 0 0 36px;padding-bottom:22px">
+            <div style="position:absolute;left:0;right:0;top:0;bottom:22px"><div style="position:absolute;left:0;right:0;top:0;border-top:1px solid #F4F4F5"></div><div style="position:absolute;left:0;right:0;top:50%;border-top:1px solid #F4F4F5"></div><div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid #E4E4E7"></div><div data-a="growx" data-d="1200" style="position:absolute;left:0;right:0;bottom:16.7%;border-top:1.5px dashed #F43F5E;transform-origin:left"></div></div>
+            <div style="position:absolute;inset:0 0 22px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;align-items:end;padding:0 20px">
+              <div data-stagger="100" data-sd="900" data-sa="growy" data-st="800" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:end;height:100%"><div style="height:50.7%;border-radius:4px 4px 0 0;background:#F43F5E;transform-origin:bottom;position:relative"><span style="position:absolute;left:50%;top:-20px;transform:translateX(-50%);font-size:11px;font-weight:600">35.5</span></div><div style="height:85.1%;border-radius:4px 4px 0 0;background:#166FE5;transform-origin:bottom;position:relative"><span style="position:absolute;left:50%;top:-20px;transform:translateX(-50%);font-size:11px;font-weight:600">59.6</span></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:end;height:100%"><div style="height:46%;border-radius:4px 4px 0 0;border:1.5px dashed #FDA4AF;box-sizing:border-box"></div><div style="height:83%;border-radius:4px 4px 0 0;border:1.5px dashed #93C5FD;box-sizing:border-box"></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:end;height:100%"><div style="height:40%;border-radius:4px 4px 0 0;border:1.5px dashed #FDA4AF;box-sizing:border-box;opacity:.6"></div><div style="height:81%;border-radius:4px 4px 0 0;border:1.5px dashed #93C5FD;box-sizing:border-box;opacity:.6"></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:end;height:100%"><div style="height:16.7%;border-radius:4px 4px 0 0;border:1.5px dashed #FDA4AF;box-sizing:border-box;opacity:.4"></div><div style="height:76.1%;border-radius:4px 4px 0 0;border:1.5px dashed #93C5FD;box-sizing:border-box;opacity:.4"></div></div>
+            </div>
+            <div style="position:absolute;left:-36px;top:0;bottom:22px;width:30px;font-size:11px;color:#A1A1AA;text-align:right"><span style="position:absolute;right:0;top:0;transform:translateY(-50%)">70 kg</span><span style="position:absolute;right:0;top:50%;transform:translateY(-50%)">35</span><span style="position:absolute;right:0;bottom:0;transform:translateY(50%)">0</span></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;padding:0 20px;text-align:center;font-size:11px;color:#71717A"><span style="color:#09090B;font-weight:600">Sep 26 · baseline</span><span>Nov 7 · expected</span><span>Dec · expected</span><span>At goal · 65 kg</span></div>
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:#71717A">Dashed bars are what the forecast expects if the lean-loss guard holds (lean no more than 25 % of each loss).</div>
+        </section>
+
+        <div style="display:grid;gap:16px">
+          <section style="padding:18px 20px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between"><div><div style="font-size:14px;font-weight:600">Segments</div><div style="margin-top:2px;font-size:12px;color:#71717A">Lean and fat per limb · torso fat target under 10.4 kg</div></div><div ref="{{ mm }}" style="width:64px;margin:-6px 0 -10px"></div></div>
+            <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums">
+              <thead><tr style="color:#71717A;font-size:12px;text-align:left"><th style="font-weight:500;padding:6px 0;border-bottom:1px solid #E4E4E7">Segment</th><th style="font-weight:500;padding:6px 0;border-bottom:1px solid #E4E4E7;text-align:right">Lean</th><th style="font-weight:500;padding:6px 0;border-bottom:1px solid #E4E4E7;text-align:right">Fat</th><th style="font-weight:500;padding:6px 0;border-bottom:1px solid #E4E4E7;text-align:right">Fat share</th></tr></thead>
+              <tbody data-stagger="50" data-sd="1000" data-sa="fade" data-st="400">
+                <tr><td style="padding:8px 0">Torso</td><td style="padding:8px 0;text-align:right">27.7 kg</td><td style="padding:8px 0;text-align:right;font-weight:600">20.5 kg</td><td style="padding:8px 0;text-align:right"><span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:#F4F4F5;vertical-align:middle;margin-right:6px;overflow:hidden"><span style="display:block;width:43%;height:100%;background:#F43F5E"></span></span>43 %</td></tr>
+                <tr><td style="padding:8px 0;border-top:1px solid #F4F4F5">Left leg</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5">7.54 kg</td><td style="padding:8px 0;text-align:right;font-weight:600;border-top:1px solid #F4F4F5">5.23 kg</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:#F4F4F5;vertical-align:middle;margin-right:6px;overflow:hidden"><span style="display:block;width:41%;height:100%;background:#F43F5E"></span></span>41 %</td></tr>
+                <tr><td style="padding:8px 0;border-top:1px solid #F4F4F5">Right leg</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5">7.52 kg</td><td style="padding:8px 0;text-align:right;font-weight:600;border-top:1px solid #F4F4F5">5.35 kg</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:#F4F4F5;vertical-align:middle;margin-right:6px;overflow:hidden"><span style="display:block;width:42%;height:100%;background:#F43F5E"></span></span>42 %</td></tr>
+                <tr><td style="padding:8px 0;border-top:1px solid #F4F4F5">Left arm</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5">3.59 kg</td><td style="padding:8px 0;text-align:right;font-weight:600;border-top:1px solid #F4F4F5">2.18 kg</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:#F4F4F5;vertical-align:middle;margin-right:6px;overflow:hidden"><span style="display:block;width:38%;height:100%;background:#F43F5E"></span></span>38 %</td></tr>
+                <tr><td style="padding:8px 0;border-top:1px solid #F4F4F5">Right arm</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5">3.49 kg</td><td style="padding:8px 0;text-align:right;font-weight:600;border-top:1px solid #F4F4F5">2.29 kg</td><td style="padding:8px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="display:inline-block;width:70px;height:6px;border-radius:3px;background:#F4F4F5;vertical-align:middle;margin-right:6px;overflow:hidden"><span style="display:block;width:40%;height:100%;background:#F43F5E"></span></span>40 %</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section style="padding:16px 18px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="font-size:14px;font-weight:600">Water and minerals</div>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;font-size:13px"><div style="padding:10px;border-radius:8px;background:#FAFAFA"><div style="font-size:11px;color:#71717A">Total body water</div><div style="font-weight:600">42.9 kg</div></div><div style="padding:10px;border-radius:8px;background:#FAFAFA"><div style="font-size:11px;color:#71717A">ICF · ECF</div><div style="font-weight:600">29.0 · 13.9</div></div><div style="padding:10px;border-radius:8px;background:#FAFAFA"><div style="font-size:11px;color:#71717A">Protein · mineral</div><div style="font-weight:600">11.3 · 5.4 kg</div></div></div>
+            <div style="margin-top:10px;font-size:12px;color:#71717A;line-height:1.5">A lean-mass drop that comes with a matching water drop is flagged as hydration, not muscle.</div>
+          </section>
+        </div>
+      </div>
+
+      <section data-a="rise" data-d="1100" style="border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px 12px"><h2 style="margin:0;flex:1;font-size:16px;font-weight:600">Every scan</h2><span style="font-size:13px;color:#71717A">Fat and lean change against the previous scan, with the lean-loss guard</span></div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums">
+          <thead><tr style="color:#71717A;font-size:12px;text-align:left"><th style="font-weight:500;padding:8px 20px;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7">Date</th><th style="font-weight:500;padding:8px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7">Conditions</th><th style="font-weight:500;padding:8px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Weight</th><th style="font-weight:500;padding:8px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Body fat</th><th style="font-weight:500;padding:8px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Fat Δ</th><th style="font-weight:500;padding:8px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Lean Δ</th><th style="font-weight:500;padding:8px 20px 8px 0;border-top:1px solid #E4E4E7;border-bottom:1px solid #E4E4E7;text-align:right">Guard</th></tr></thead>
+          <tbody>
+            <tr style="background:#FAFAFA"><td style="padding:10px 20px;color:#71717A">Nov 7, 2026</td><td style="padding:10px 0;color:#71717A">Scheduled · reminder Nov 6</td><td style="padding:10px 0;text-align:right;color:#A1A1AA">—</td><td style="padding:10px 0;text-align:right;color:#A1A1AA">—</td><td style="padding:10px 0;text-align:right;color:#A1A1AA">—</td><td style="padding:10px 0;text-align:right;color:#A1A1AA">—</td><td style="padding:10px 20px 10px 0;text-align:right"><span style="padding:2px 8px;border-radius:6px;border:1px dashed #D4D4D8;font-size:11px;color:#71717A">Upcoming</span></td></tr>
+            <tr><td style="padding:10px 20px;font-weight:600;border-top:1px solid #F4F4F5">Sep 26, 2026</td><td style="padding:10px 0;color:#52525B;border-top:1px solid #F4F4F5">Morning · fasted · baseline</td><td style="padding:10px 0;text-align:right;border-top:1px solid #F4F4F5">95.1 kg</td><td style="padding:10px 0;text-align:right;border-top:1px solid #F4F4F5">37.3 %</td><td style="padding:10px 0;text-align:right;color:#71717A;border-top:1px solid #F4F4F5">—</td><td style="padding:10px 0;text-align:right;color:#71717A;border-top:1px solid #F4F4F5">—</td><td style="padding:10px 20px 10px 0;text-align:right;border-top:1px solid #F4F4F5"><span style="padding:2px 8px;border-radius:6px;background:#F4F4F5;font-size:11px;font-weight:500;color:#52525B">Baseline</span></td></tr>
+          </tbody>
+        </table>
+        <div style="display:flex;gap:16px;padding:12px 20px 14px;border-top:1px solid #F4F4F5;font-size:12px;color:#71717A"><span><span style="display:inline-block;padding:1px 6px;border-radius:5px;background:#FEE2E2;color:#B91C1C;font-weight:600;margin-right:4px">Lean loss</span>lean is over 25 % of the loss between scans</span><span><span style="display:inline-block;padding:1px 6px;border-radius:5px;border:1px solid #E4E4E7;font-weight:500;margin-right:4px">Water shift</span>a lean drop matched by a water drop</span></div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  mm = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+    let m = 0;
+    const map = () => {
+      if (window.mountMuscleMap && this.mm.current) {
+        window.mountMuscleMap(this.mm.current, { abdominals: 4, 'lower back': 4, quadriceps: 3, hamstrings: 3, chest: 3, biceps: 2, triceps: 2 }, {
+          view: 'front', body: '#F4F4F5', stroke: '#FFFFFF', steps: ['#FECDD3', '#FDA4AF', '#FB7185', '#F43F5E'], size: 64, title: 'Fat share by segment'
+        });
+      } else if (m++ < 200) setTimeout(map, 30);
+    };
+    map();
+  }
+  renderVals() {
+    return { root: this.root, mm: this.mm };
+  }
+}
+</script>
+</body>
+</html>

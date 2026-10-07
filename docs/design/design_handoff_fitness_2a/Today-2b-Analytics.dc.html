@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#166FE5;text-decoration:none}a:hover{color:#0F55B5}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="2b Analytics" style="opacity:0;width:1440px;min-height:100vh;background:#F3F4F6;color:#111827;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <header data-a="fall" data-t="700" style="display:flex;align-items:center;gap:28px;height:60px;padding:0 40px;background:#FFFFFF;border-bottom:1px solid #E5E7EB">
+    <div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:#166FE5"><svg viewBox="0 0 512 512" width="17" height="17"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFFFFF" style="stroke-width:56;stroke-linecap:round;stroke-linejoin:round"></polyline><circle cx="398" cy="178" r="46" fill="#FFFFFF"></circle></svg></div><span style="font-size:16px;font-weight:700;letter-spacing:-.01em">Fitness</span></div>
+    <nav aria-label="Main" style="display:flex;gap:4px;height:100%;font-size:14px;font-weight:500">
+      <a href="#" aria-current="page" style="display:flex;align-items:center;padding:0 12px;color:#166FE5;box-shadow:inset 0 -2px 0 #166FE5">Today</a>
+      <a href="#" style="display:flex;align-items:center;padding:0 12px;color:#4B5563" style-hover="color:#111827">Dashboard</a>
+      <a href="#" style="display:flex;align-items:center;padding:0 12px;color:#4B5563" style-hover="color:#111827">Log</a>
+      <a href="#" style="display:flex;align-items:center;padding:0 12px;color:#4B5563" style-hover="color:#111827">Train</a>
+      <a href="#" style="display:flex;align-items:center;padding:0 12px;color:#4B5563" style-hover="color:#111827">Progress</a>
+      <a href="#" style="display:flex;align-items:center;padding:0 12px;color:#4B5563" style-hover="color:#111827">Ask AI</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;width:280px;height:36px;padding:0 12px;border-radius:8px;border:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280;font-size:14px"><span class="material-symbols-rounded" style="font-size:18px">search</span><span style="flex:1">Search or jump to…</span><span style="font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid #E5E7EB;background:#FFFFFF">⌘K</span></div>
+    <button aria-label="Settings" style="width:36px;height:36px;border-radius:8px;border:1px solid #E5E7EB;background:#FFFFFF;color:#4B5563;display:grid;place-items:center;cursor:pointer" style-hover="background:#F9FAFB"><span class="material-symbols-rounded" style="font-size:18px">settings</span></button>
+    <div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#DBEAFE;color:#1D4ED8;font-size:13px;font-weight:700">A</div>
+  </header>
+
+  <main style="padding:26px 40px 40px;display:grid;gap:20px">
+    <div data-a="rise" data-d="150" style="display:flex;align-items:flex-end;gap:16px">
+      <div style="flex:1;min-width:0"><h1 style="margin:0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.02em">Good afternoon, Aaron</h1><p style="margin:4px 0 0;font-size:14px;color:#6B7280">Wednesday, October 7 · Day 12 · Last sync 2:02 PM</p></div>
+      <div style="display:flex;gap:2px;padding:3px;border-radius:9px;background:#FFFFFF;border:1px solid #E5E7EB;font-size:13px;font-weight:500"><span style="padding:6px 12px;border-radius:7px;background:#111827;color:#FFFFFF">Today</span><span style="padding:6px 12px;border-radius:7px;color:#4B5563">Week</span><span style="padding:6px 12px;border-radius:7px;color:#4B5563">Month</span></div>
+      <button style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:8px;border:1px solid #E5E7EB;background:#FFFFFF;color:#111827;font:500 14px 'DM Sans',system-ui;cursor:pointer" style-hover="background:#F9FAFB"><span class="material-symbols-rounded" style="font-size:18px;color:#166FE5;font-variation-settings:'FILL' 1">auto_awesome</span>Ask AI</button>
+      <button style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:8px;border:0;background:#166FE5;color:#FFFFFF;font:600 14px 'DM Sans',system-ui;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)" style-hover="background:#1263CC"><span class="material-symbols-rounded" style="font-size:18px">add</span>Log</button>
+    </div>
+    <div data-a="fade" data-d="250" style="display:flex;gap:24px;border-bottom:1px solid #E5E7EB;font-size:14px;font-weight:500;color:#6B7280">
+      <span style="padding:0 2px 10px;color:#166FE5;box-shadow:inset 0 -2px 0 #166FE5">Overview</span><span style="padding:0 2px 10px">Nutrition</span><span style="padding:0 2px 10px">Training</span><span style="padding:0 2px 10px">Body</span><span style="padding:0 2px 10px">Habits</span>
+    </div>
+
+    <div data-stagger="60" data-sd="350" data-sa="rise" data-st="700" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px">
+      <div style="display:flex;align-items:center;gap:14px;padding:18px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="position:relative;width:60px;height:60px;flex:none"><svg viewBox="0 0 60 60" width="60" height="60"><circle cx="30" cy="30" r="25" fill="none" style="stroke:#FFE4E6;stroke-width:7"></circle><circle data-draw="" data-d="600" data-t="1400" cx="30" cy="30" r="25" fill="none" transform="rotate(-90 30 30)" style="stroke:#F43F5E;stroke-width:7;stroke-linecap:round;stroke-dasharray:95.8 300"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700">61%</div></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#6B7280">Calories</div><div style="margin-top:2px;font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums"><span data-count="" data-d="600">860</span><span style="font-size:13px;font-weight:500;color:#6B7280"> / 1,400</span></div><div style="margin-top:2px;font-size:12px;color:#6B7280">540 kcal left</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:18px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="position:relative;width:60px;height:60px;flex:none"><svg viewBox="0 0 60 60" width="60" height="60"><circle cx="30" cy="30" r="25" fill="none" style="stroke:#FEF3C7;stroke-width:7"></circle><circle data-draw="" data-d="660" data-t="1400" cx="30" cy="30" r="25" fill="none" transform="rotate(-90 30 30)" style="stroke:#F59E0B;stroke-width:7;stroke-linecap:round;stroke-dasharray:99 300"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700">63%</div></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#6B7280">Protein</div><div style="margin-top:2px;font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums"><span data-count="" data-d="660">82</span><span style="font-size:13px;font-weight:500;color:#6B7280"> / 130 g</span></div><div style="margin-top:2px;font-size:12px;color:#6B7280">48 g to go</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:18px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="position:relative;width:60px;height:60px;flex:none"><svg viewBox="0 0 60 60" width="60" height="60"><circle cx="30" cy="30" r="25" fill="none" style="stroke:#CFFAFE;stroke-width:7"></circle><circle data-draw="" data-d="720" data-t="1400" cx="30" cy="30" r="25" fill="none" transform="rotate(-90 30 30)" style="stroke:#06B6D4;stroke-width:7;stroke-linecap:round;stroke-dasharray:91.1 300"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700">58%</div></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#6B7280">Water</div><div style="margin-top:2px;font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums"><span data-count="" data-d="720">1.75</span><span style="font-size:13px;font-weight:500;color:#6B7280"> / 3.0 L</span></div><div style="margin-top:2px;font-size:12px;color:#6B7280">1.25 L to go</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:18px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="position:relative;width:60px;height:60px;flex:none"><svg viewBox="0 0 60 60" width="60" height="60"><circle cx="30" cy="30" r="25" fill="none" style="stroke:#D1FAE5;stroke-width:7"></circle><circle data-draw="" data-d="780" data-t="1400" cx="30" cy="30" r="25" fill="none" transform="rotate(-90 30 30)" style="stroke:#10B981;stroke-width:7;stroke-linecap:round;stroke-dasharray:108.4 300"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700">69%</div></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#6B7280">Steps</div><div style="margin-top:2px;font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums"><span data-count="" data-d="780">6,240</span><span style="font-size:13px;font-weight:500;color:#6B7280"> / 9k</span></div><div style="margin-top:2px;font-size:12px;color:#6B7280">2,760 to go</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:18px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="position:relative;width:60px;height:60px;flex:none"><svg viewBox="0 0 60 60" width="60" height="60"><circle cx="30" cy="30" r="25" fill="none" style="stroke:#EDE9FE;stroke-width:7"></circle><circle data-draw="" data-d="840" data-t="1400" cx="30" cy="30" r="25" fill="none" transform="rotate(-90 30 30)" style="stroke:#8B5CF6;stroke-width:7;stroke-linecap:round;stroke-dasharray:144.5 300"></circle></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700">92%</div></div>
+        <div style="min-width:0"><div style="font-size:13px;font-weight:500;color:#6B7280">Sleep</div><div style="margin-top:2px;font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums"><span data-count="" data-d="840">6.9</span><span style="font-size:13px;font-weight:500;color:#6B7280"> / 7.5 h</span></div><div style="margin-top:2px;font-size:12px;color:#6B7280">11:22 PM – 6:31 AM</div></div>
+      </div>
+    </div>
+
+    <div data-stagger="90" data-sd="600" data-sa="rise" data-st="700" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:stretch">
+      <section style="grid-column:span 5;display:flex;flex-direction:column;padding:20px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div><h2 style="margin:0;font-size:16px;font-weight:700">Calories this week</h2><p style="margin:3px 0 0;font-size:13px;color:#6B7280">Target 1,400 kcal · Saturday is a fast</p></div><div style="display:flex;gap:12px;font-size:12px;color:#6B7280"><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#166FE5;margin-right:5px"></span>Eaten</span><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#DBEAFE;margin-right:5px"></span>Planned</span></div></div>
+        <div style="position:relative;flex:1;min-height:190px;margin-top:18px">
+          <div style="position:absolute;inset:0 0 24px 30px">
+            <div style="position:absolute;left:0;right:0;top:0;border-top:1px solid #F3F4F6"></div><div style="position:absolute;left:0;right:0;top:33.3%;border-top:1px solid #F3F4F6"></div><div style="position:absolute;left:0;right:0;top:66.6%;border-top:1px solid #F3F4F6"></div><div style="position:absolute;left:0;right:0;bottom:0;border-top:1px solid #E5E7EB"></div>
+            <div data-a="growx" data-d="1400" style="position:absolute;left:0;right:0;top:22.2%;border-top:2px dashed #F43F5E;transform-origin:left"></div><span data-a="fade" data-d="1600" style="position:absolute;right:0;top:22.2%;transform:translateY(-110%);padding:1px 6px;border-radius:4px;background:#FFE4E6;color:#BE123C;font-size:11px;font-weight:600">1,400</span>
+            <div data-stagger="70" data-sd="900" data-sa="growy" data-st="800" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:14px;align-items:end;padding:0 6px">
+              <div style="height:76.7%;border-radius:6px 6px 0 0;background:#166FE5;transform-origin:bottom"></div>
+              <div style="height:78.3%;border-radius:6px 6px 0 0;background:#166FE5;transform-origin:bottom"></div>
+              <div style="height:47.8%;border-radius:6px 6px 0 0;background:#166FE5;transform-origin:bottom;position:relative"><span style="position:absolute;left:50%;top:-26px;transform:translateX(-50%);padding:2px 7px;border-radius:5px;background:#111827;color:#FFFFFF;font-size:11px;font-weight:600;white-space:nowrap">860</span></div>
+              <div style="height:77.8%;border-radius:6px 6px 0 0;background:#DBEAFE;transform-origin:bottom"></div>
+              <div style="height:77.8%;border-radius:6px 6px 0 0;background:#DBEAFE;transform-origin:bottom"></div>
+              <div style="height:6%;border-radius:6px 6px 0 0;background:repeating-linear-gradient(135deg,#FDE68A 0 4px,#FFFBEB 4px 8px);transform-origin:bottom"></div>
+              <div style="height:77.8%;border-radius:6px 6px 0 0;background:#DBEAFE;transform-origin:bottom"></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;top:0;bottom:24px;width:24px;font-size:11px;color:#9CA3AF;font-variant-numeric:tabular-nums"><span style="position:absolute;right:0;top:0;transform:translateY(-50%)">1.8k</span><span style="position:absolute;right:0;top:33.3%;transform:translateY(-50%)">1.2k</span><span style="position:absolute;right:0;top:66.6%;transform:translateY(-50%)">600</span><span style="position:absolute;right:0;bottom:0;transform:translateY(50%)">0</span></div>
+          <div style="position:absolute;left:30px;right:0;bottom:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:14px;padding:0 6px;text-align:center;font-size:11px;color:#6B7280"><span>Mon</span><span>Tue</span><span style="color:#111827;font-weight:600">Wed</span><span>Thu</span><span>Fri</span><span style="color:#B45309">Sat</span><span>Sun</span></div>
+        </div>
+      </section>
+
+      <section style="grid-column:span 3;display:flex;flex-direction:column;padding:20px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <h2 style="margin:0;font-size:16px;font-weight:700">Macros today</h2><p style="margin:3px 0 0;font-size:13px;color:#6B7280">Grams eaten vs. target</p>
+        <div style="position:relative;width:150px;height:150px;margin:18px auto 0">
+          <svg viewBox="0 0 150 150" width="150" height="150"><circle cx="75" cy="75" r="60" fill="none" style="stroke:#F3F4F6;stroke-width:16"></circle><circle data-draw="" data-d="900" data-t="1200" cx="75" cy="75" r="60" fill="none" transform="rotate(-90 75 75)" style="stroke:#F59E0B;stroke-width:16;stroke-dasharray:168 500"></circle><circle data-draw="" data-d="1100" data-t="1200" cx="75" cy="75" r="60" fill="none" transform="rotate(70.4 75 75)" style="stroke:#166FE5;stroke-width:16;stroke-dasharray:145 500"></circle><circle data-draw="" data-d="1300" data-t="1000" cx="75" cy="75" r="60" fill="none" transform="rotate(208.9 75 75)" style="stroke:#8B5CF6;stroke-width:16;stroke-dasharray:63.5 500"></circle></svg>
+          <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center"><div><div data-count="" data-d="900" style="font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1">860</div><div style="margin-top:2px;font-size:11px;color:#6B7280">kcal</div></div></div>
+        </div>
+        <div data-stagger="70" data-sd="1200" data-sa="fade" data-st="500" style="display:grid;gap:8px;margin-top:18px;font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:#F59E0B"></span><span style="flex:1;color:#4B5563">Protein</span><span style="font-weight:600;font-variant-numeric:tabular-nums">82 <span style="font-weight:400;color:#9CA3AF">/ 130 g</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:#166FE5"></span><span style="flex:1;color:#4B5563">Carbs</span><span style="font-weight:600;font-variant-numeric:tabular-nums">71 <span style="font-weight:400;color:#9CA3AF">/ 119 g</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:#8B5CF6"></span><span style="flex:1;color:#4B5563">Fat</span><span style="font-weight:600;font-variant-numeric:tabular-nums">29 <span style="font-weight:400;color:#9CA3AF">/ 45 g</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:3px;background:#D1FAE5"></span><span style="flex:1;color:#4B5563">Fibre</span><span style="font-weight:600;font-variant-numeric:tabular-nums">17 <span style="font-weight:400;color:#9CA3AF">/ 30 g</span></span></div>
+        </div>
+      </section>
+
+      <section style="grid-column:span 4;display:flex;flex-direction:column;padding:20px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between"><div><h2 style="margin:0;font-size:16px;font-weight:700">Trend weight</h2><p style="margin:3px 0 0;font-size:13px;color:#6B7280">Since Sep 26 · finish Jul 20, 2027</p></div><span style="display:inline-flex;align-items:center;gap:2px;padding:3px 8px 3px 4px;border-radius:999px;background:#D1FAE5;color:#047857;font-size:12px;font-weight:600"><span class="material-symbols-rounded" style="font-size:14px">arrow_downward</span>1.5 kg</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:12px"><span data-count="" data-from="95.1" data-d="700" data-t="1800" style="font-size:36px;line-height:1;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums">93.6</span><span style="font-size:14px;color:#6B7280">kg</span><span style="margin-left:auto;font-size:12px;color:#6B7280">Weigh-in 93.2 · 7:04 AM</span></div>
+        <div style="position:relative;flex:1;min-height:110px;margin-top:14px">
+          <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+            <defs><linearGradient id="an-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:#166FE5;stop-opacity:.22"></stop><stop offset="1" style="stop-color:#166FE5;stop-opacity:0"></stop></linearGradient></defs>
+            <path data-a="fade" data-d="1500" d="M16,41.7C45.3,47.4 74.7,53.2 104,56.8C133.3,60.5 162.7,61.6 192,65.5C221.3,69.4 250.7,77.9 280,82.8C309.3,87.8 338.7,90.9 368,95.8C397.3,100.8 426.7,107.4 456,113.2C485.3,118.9 514.7,126.1 544,130.5C573.3,134.9 602.7,136.9 632,141.3C661.3,145.8 690.7,152.9 720,158.7C749.3,164.4 778.7,171.6 808,176C837.3,180.4 866.7,182.4 896,186.8C925.3,191.3 954.7,197.7 984,204.2L984,300L16,300Z" style="fill:url(#an-g)"></path>
+            <path data-draw="" data-d="900" data-t="1500" d="M16,41.7C45.3,47.4 74.7,53.2 104,56.8C133.3,60.5 162.7,61.6 192,65.5C221.3,69.4 250.7,77.9 280,82.8C309.3,87.8 338.7,90.9 368,95.8C397.3,100.8 426.7,107.4 456,113.2C485.3,118.9 514.7,126.1 544,130.5C573.3,134.9 602.7,136.9 632,141.3C661.3,145.8 690.7,152.9 720,158.7C749.3,164.4 778.7,171.6 808,176C837.3,180.4 866.7,182.4 896,186.8C925.3,191.3 954.7,197.7 984,204.2" fill="none" style="stroke:#166FE5;stroke-width:2.5;stroke-linecap:round;vector-effect:non-scaling-stroke"></path>
+          </svg>
+          <span data-a="pop" data-d="2000" style="position:absolute;left:98.4%;top:68.1%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#166FE5;border:2px solid #FFFFFF;box-shadow:0 0 0 1.5px #166FE5;box-sizing:border-box"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#9CA3AF"><span>Sep 26</span><span>Oct 7</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6;font-size:12px;color:#6B7280"><div>7-day<div style="margin-top:2px;font-size:14px;font-weight:600;color:#111827">−1.0 kg</div></div><div>To go<div style="margin-top:2px;font-size:14px;font-weight:600;color:#111827">28.6 kg</div></div><div>Rate<div style="margin-top:2px;font-size:14px;font-weight:600;color:#111827">0.70 kg/wk</div></div></div>
+      </section>
+    </div>
+
+    <div data-stagger="90" data-sd="900" data-sa="rise" data-st="700" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:stretch">
+      <section style="grid-column:span 4;display:flex;flex-direction:column;padding:20px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between"><h2 style="margin:0;font-size:16px;font-weight:700">Today’s session</h2><span style="padding:3px 8px;border-radius:999px;background:#D1FAE5;color:#047857;font-size:12px;font-weight:600">Readiness 74</span></div>
+        <div style="margin-top:4px;font-size:13px;color:#6B7280">Upper B — Pull · 4:30 PM · 18 sets · about 50 min</div>
+        <div data-stagger="45" data-sd="1200" data-sa="fade" data-st="500" style="margin-top:12px;font-size:13px">
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6"><span>Lat pulldown</span><span style="color:#6B7280;font-variant-numeric:tabular-nums">3 × 10–12 · 45 kg</span></div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6"><span>Seated cable row</span><span style="color:#6B7280;font-variant-numeric:tabular-nums">3 × 10–12 · 40 kg</span></div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6"><span>Chest-supported row</span><span style="color:#6B7280;font-variant-numeric:tabular-nums">3 × 8–10 · 30 kg</span></div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6"><span>Rear delt fly</span><span style="color:#6B7280;font-variant-numeric:tabular-nums">3 × 12–15 · 25 kg</span></div>
+          <div style="display:flex;justify-content:space-between;padding:7px 0"><span>Dumbbell + hammer curl</span><span style="color:#6B7280;font-variant-numeric:tabular-nums">6 × 10–12 · 10 kg</span></div>
+        </div>
+        <div style="flex:1"></div>
+        <button data-burst="#166FE5,#10B981,#FFFFFF" style="margin-top:14px;height:38px;border:0;border-radius:8px;background:#166FE5;color:#FFFFFF;font:600 14px 'DM Sans',system-ui;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px" style-hover="background:#1263CC"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">play_arrow</span>Start session</button>
+      </section>
+
+      <section style="grid-column:span 4;display:flex;flex-direction:column;padding:20px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><h2 style="margin:0;font-size:16px;font-weight:700">This week</h2><span style="font-size:12px;color:#6B7280">Oct 5 – 11 · Coach plan</span></div>
+        <div data-stagger="40" data-sd="1300" data-sa="pop" data-st="500" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:14px;text-align:center">
+          <div style="padding:10px 0 8px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Mon</div><div style="font-size:15px;font-weight:700">5</div><span class="material-symbols-rounded" style="font-size:16px;color:#10B981;font-variation-settings:'FILL' 1">check_circle</span></div>
+          <div style="padding:10px 0 8px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Tue</div><div style="font-size:15px;font-weight:700">6</div><span class="material-symbols-rounded" style="font-size:16px;color:#10B981;font-variation-settings:'FILL' 1">check_circle</span></div>
+          <div style="padding:10px 0 8px;border-radius:10px;background:#166FE5;color:#FFFFFF"><div style="font-size:11px;color:#DBEAFE">Wed</div><div style="font-size:15px;font-weight:700">7</div><span class="material-symbols-rounded" style="font-size:16px">fitness_center</span></div>
+          <div style="padding:10px 0 8px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Thu</div><div style="font-size:15px;font-weight:700">8</div><span class="material-symbols-rounded" style="font-size:16px;color:#6B7280">fitness_center</span></div>
+          <div style="padding:10px 0 8px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Fri</div><div style="font-size:15px;font-weight:700">9</div><span style="display:block;height:20px;font-size:12px;color:#9CA3AF">·</span></div>
+          <div style="padding:10px 0 8px;border-radius:10px;background:#FEF3C7"><div style="font-size:11px;color:#B45309">Sat</div><div style="font-size:15px;font-weight:700">10</div><span class="material-symbols-rounded" style="font-size:16px;color:#B45309">timer</span></div>
+          <div style="padding:10px 0 8px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Sun</div><div style="font-size:15px;font-weight:700">11</div><span style="display:block;height:20px;font-size:12px;color:#9CA3AF">·</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px">
+          <div style="padding:10px 12px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Sessions</div><div style="font-size:16px;font-weight:700">2 <span style="font-size:12px;font-weight:500;color:#6B7280">/ 4</span></div></div>
+          <div style="padding:10px 12px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Adherence</div><div style="font-size:16px;font-weight:700">100%</div></div>
+          <div style="padding:10px 12px;border-radius:10px;background:#F9FAFB"><div style="font-size:11px;color:#6B7280">Fast</div><div style="font-size:16px;font-weight:700">Sat <span style="font-size:12px;font-weight:500;color:#6B7280">24 h</span></div></div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="margin-top:14px;font-size:13px;color:#4B5563">Focus: protein first; third set on leg press; keep Friday light before the fast.</div>
+      </section>
+
+      <section style="grid-column:span 4;display:flex;flex-direction:column;gap:12px">
+        <aside aria-label="Coach note" style="display:flex;gap:12px;padding:16px 18px;border-radius:12px;background:#EFF6FF;border:1px solid #DBEAFE">
+          <span class="material-symbols-rounded" style="font-size:18px;color:#1D4ED8;margin-top:1px;font-variation-settings:'FILL' 1">push_pin</span>
+          <div style="min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:#1E3A8A">Coach note<span style="font-weight:500;color:#3B82F6">until Oct 11</span></div><p style="margin:5px 0 0;font-size:13px;line-height:1.5;color:#1E3A8A">Protein first this week: get to 130 g before carbs. Saturday is your first 24-hour fast, so water goes up to 3.5 L that day and Friday’s dinner stays protein-heavy.</p></div>
+        </aside>
+        <section style="flex:1;display:flex;flex-direction:column;padding:18px;border-radius:12px;border:1px solid #E5E7EB;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700"><span class="material-symbols-rounded" style="font-size:18px;color:#166FE5;font-variation-settings:'FILL' 1">auto_awesome</span>AI proposal<span style="margin-left:auto;font-size:12px;font-weight:500;color:#6B7280">Mon 9:02 AM</span></div>
+          <div style="margin-top:8px;font-size:15px;font-weight:700">Raise protein to 140 g on training days</div>
+          <div style="margin-top:4px;font-size:13px;color:#6B7280">Mon–Thu: protein 130 → 140 g · carbs 119 → 109 g. Calories stay at 1,400.</div>
+          <div style="flex:1"></div>
+          <div style="display:flex;gap:8px;margin-top:12px;align-items:center"><button data-burst="#166FE5,#10B981,#F59E0B" style="height:34px;padding:0 14px;border:0;border-radius:8px;background:#111827;color:#FFFFFF;font:600 13px 'DM Sans',system-ui;cursor:pointer" style-hover="background:#1F2937">Accept</button><button style="height:34px;padding:0 12px;border:1px solid #E5E7EB;border-radius:8px;background:#FFFFFF;color:#111827;font:600 13px 'DM Sans',system-ui;cursor:pointer" style-hover="background:#F9FAFB">Reject</button><a href="#" style="margin-left:auto;font-size:13px;font-weight:600">Why?</a></div>
+        </section>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root };
+  }
+}
+</script>
+</body>
+</html>

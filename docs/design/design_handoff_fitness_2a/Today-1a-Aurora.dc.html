@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@200..900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#A9B8FF;text-decoration:none}a:hover{color:#FFFFFF}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="1a Aurora" style="opacity:0;position:relative;isolation:isolate;width:1440px;min-height:100vh;overflow:hidden;background:#07080F;color:#F2F3FF;font-family:Urbanist,system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <div aria-hidden="true" style="position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden">
+    <div data-loop="drift" data-ldur="26000" style="position:absolute;left:-14%;top:-30%;width:64%;height:84%;border-radius:50%;background:radial-gradient(closest-side,rgba(112,92,255,.55),rgba(112,92,255,0))"></div>
+    <div data-loop="drift" data-ldur="32000" data-ld="-9000" style="position:absolute;right:-16%;top:-14%;width:60%;height:74%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,226,198,.34),rgba(0,226,198,0))"></div>
+    <div data-loop="drift" data-ldur="36000" data-ld="-17000" style="position:absolute;left:18%;bottom:-38%;width:76%;height:80%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,74,140,.30),rgba(255,74,140,0))"></div>
+    <div data-loop="drift" data-ldur="22000" data-ld="-5000" style="position:absolute;left:58%;top:34%;width:38%;height:46%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,183,77,.16),rgba(255,183,77,0))"></div>
+    <div style="position:absolute;inset:0;opacity:.08;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22180%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%22.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E')"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:72px minmax(0,1fr);gap:28px;max-width:1480px;margin:0 auto;padding:28px 40px 48px 24px;box-sizing:border-box">
+    <nav data-a="left" data-d="60" aria-label="Main" style="position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0 14px;border-radius:26px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(20px)">
+      <div style="width:46px;height:46px;margin-bottom:12px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#7C67FF,#00D2B8);box-shadow:0 10px 26px rgba(112,92,255,.45)">
+        <svg viewBox="0 0 512 512" width="24" height="24"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFFFFF" style="stroke-width:52;stroke-linecap:round;stroke-linejoin:round"></polyline><circle cx="398" cy="178" r="44" fill="#FFFFFF"></circle></svg>
+      </div>
+      <a href="#" aria-current="page" title="Today" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:#FFFFFF;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 0 24px rgba(124,103,255,.35)"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:'FILL' 1">today</span></a>
+      <a href="#" title="Dashboard" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:rgba(242,243,255,.55);transition:background .2s,color .2s" style-hover="background:rgba(255,255,255,.08);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">space_dashboard</span></a>
+      <a href="#" title="Log" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:rgba(242,243,255,.55);transition:background .2s,color .2s" style-hover="background:rgba(255,255,255,.08);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">restaurant</span></a>
+      <a href="#" title="Train" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:rgba(242,243,255,.55);transition:background .2s,color .2s" style-hover="background:rgba(255,255,255,.08);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">fitness_center</span></a>
+      <a href="#" title="Progress" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:rgba(242,243,255,.55);transition:background .2s,color .2s" style-hover="background:rgba(255,255,255,.08);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">insights</span></a>
+      <a href="#" title="Ask AI" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:rgba(242,243,255,.55);transition:background .2s,color .2s" style-hover="background:rgba(255,255,255,.08);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">auto_awesome</span></a>
+      <div style="height:44px"></div>
+      <a href="#" title="Settings" style="width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:rgba(242,243,255,.55)" style-hover="background:rgba(255,255,255,.08);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">settings</span></a>
+    </nav>
+
+    <main style="min-width:0;display:grid;gap:22px">
+      <header style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px">
+          <div data-a="fade" style="font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,243,255,.5)">Wednesday, October 7 · Day 12</div>
+          <h1 data-a="blur" data-d="80" data-t="1200" style="margin:8px 0 0;font-size:58px;line-height:1.02;font-weight:300;letter-spacing:-.035em">Good afternoon, <span data-loop="shimmer" data-ldur="6000" style="font-weight:800;background-image:linear-gradient(90deg,#B4A4FF,#6FF3DF,#FF9BC4,#B4A4FF);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent">Aaron</span></h1>
+        </div>
+        <div data-a="fade" data-d="240" style="display:flex;align-items:center;gap:10px">
+          <button style="display:flex;align-items:center;gap:10px;height:44px;padding:0 14px 0 12px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(242,243,255,.65);font:500 15px Urbanist,system-ui;cursor:pointer;min-width:200px" style-hover="border-color:rgba(255,255,255,.22)"><span class="material-symbols-rounded" style="font-size:20px">search</span><span style="flex:1;text-align:left">Search or jump</span><span style="font-size:12px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.08)">⌘K</span></button>
+          <div style="display:flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:14px;background:rgba(46,232,154,.10);color:#7DF5C2;font-size:14px;font-weight:700"><span data-loop="breathe" style="width:7px;height:7px;border-radius:50%;background:#2EE89A;box-shadow:0 0 10px #2EE89A"></span>Synced</div>
+          <button data-magnet="6" style="display:flex;align-items:center;gap:8px;height:44px;padding:0 18px;border:0;border-radius:14px;background:linear-gradient(135deg,#7C67FF,#FF4A8C);color:#FFFFFF;font:700 15px Urbanist,system-ui;cursor:pointer;box-shadow:0 10px 30px rgba(255,74,140,.35)"><span class="material-symbols-rounded" style="font-size:20px;font-variation-settings:'FILL' 1">auto_awesome</span>Ask AI</button>
+          <div style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#2B2F55,#171A30);border:1px solid rgba(255,255,255,.14);font-weight:800;font-size:16px">A</div>
+        </div>
+      </header>
+
+      <aside data-a="rise" data-d="160" data-loop="shimmer" data-ldur="9000" aria-label="Coach note" style="border-radius:20px;padding:1px;background-image:linear-gradient(90deg,rgba(124,103,255,.85),rgba(0,226,198,.6),rgba(255,74,140,.75),rgba(124,103,255,.85));background-size:200% 100%">
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px 14px 14px;border-radius:19px;background:#0C0D19">
+          <div style="width:38px;height:38px;flex:none;border-radius:12px;display:grid;place-items:center;background:rgba(124,103,255,.2);color:#C2B6FF"><span class="material-symbols-rounded" style="font-size:20px;font-variation-settings:'FILL' 1">push_pin</span></div>
+          <div style="flex:1;min-width:0;font-size:16px;line-height:1.45;color:rgba(242,243,255,.88)"><span style="font-weight:800;color:#FFFFFF">Coach note · </span>Protein first this week: get to 130 g before carbs. Saturday is your first 24-hour fast, so water goes up to 3.5 L that day and Friday’s dinner stays protein-heavy.</div>
+          <div style="font-size:13px;font-weight:600;color:rgba(242,243,255,.5);white-space:nowrap">Claude · until Oct 11</div>
+        </div>
+      </aside>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);gap:22px">
+        <section data-a="rise" data-d="240" data-spot="" style="position:relative;border-radius:28px;padding:26px 30px;display:grid;grid-template-columns:320px minmax(0,1fr);gap:34px;align-items:center;background:radial-gradient(520px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,calc(var(--mo,0)*.07)),rgba(255,255,255,0) 60%),rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(22px)">
+          <div style="position:relative;width:320px;height:320px">
+            <svg viewBox="0 0 340 340" width="320" height="320" style="display:block;overflow:visible;filter:drop-shadow(0 0 22px rgba(124,103,255,.3))">
+              <defs>
+                <linearGradient id="a-g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#FFA06B"></stop><stop offset="1" style="stop-color:#FF3D7F"></stop></linearGradient>
+                <linearGradient id="a-g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#FFE08A"></stop><stop offset="1" style="stop-color:#FF9F1C"></stop></linearGradient>
+                <linearGradient id="a-g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#8FF3FF"></stop><stop offset="1" style="stop-color:#2E8BFF"></stop></linearGradient>
+                <linearGradient id="a-g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#E2FF7A"></stop><stop offset="1" style="stop-color:#2EE89A"></stop></linearGradient>
+                <linearGradient id="a-g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:#E0D2FF"></stop><stop offset="1" style="stop-color:#8A63FF"></stop></linearGradient>
+              </defs>
+              <g fill="none" style="stroke-linecap:round;stroke-width:16">
+                <circle cx="170" cy="170" r="150" style="stroke:rgba(255,77,127,.13)"></circle>
+                <circle cx="170" cy="170" r="128" style="stroke:rgba(255,170,40,.13)"></circle>
+                <circle cx="170" cy="170" r="106" style="stroke:rgba(60,170,255,.13)"></circle>
+                <circle cx="170" cy="170" r="84" style="stroke:rgba(80,255,160,.12)"></circle>
+                <circle cx="170" cy="170" r="62" style="stroke:rgba(150,110,255,.14)"></circle>
+                <circle data-draw="" data-d="380" data-t="1900" cx="170" cy="170" r="150" transform="rotate(-90 170 170)" style="stroke:url(#a-g1);stroke-dasharray:578.7 1000"></circle>
+                <circle data-draw="" data-d="480" data-t="1900" cx="170" cy="170" r="128" transform="rotate(-90 170 170)" style="stroke:url(#a-g2);stroke-dasharray:507.5 1000"></circle>
+                <circle data-draw="" data-d="580" data-t="1900" cx="170" cy="170" r="106" transform="rotate(-90 170 170)" style="stroke:url(#a-g3);stroke-dasharray:388.3 1000"></circle>
+                <circle data-draw="" data-d="680" data-t="1900" cx="170" cy="170" r="84" transform="rotate(-90 170 170)" style="stroke:url(#a-g4);stroke-dasharray:365.8 1000"></circle>
+                <circle data-draw="" data-d="780" data-t="1900" cx="170" cy="170" r="62" transform="rotate(-90 170 170)" style="stroke:url(#a-g5);stroke-dasharray:358.4 1000"></circle>
+              </g>
+            </svg>
+            <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none">
+              <div><div data-count="" data-d="420" style="font-size:40px;font-weight:300;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums">540</div><div style="margin-top:3px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(242,243,255,.55)">kcal left</div></div>
+            </div>
+          </div>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <h2 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em">Today’s rings</h2>
+              <span style="font-size:13px;color:rgba(242,243,255,.5)">Watch synced 2:02 PM</span>
+            </div>
+            <div data-stagger="90" data-sd="520" data-sa="right" style="margin-top:14px;display:grid">
+              <div style="display:grid;grid-template-columns:12px minmax(0,1fr) auto 46px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="width:10px;height:10px;border-radius:50%;background:#FF5C84;box-shadow:0 0 12px #FF5C84"></span>
+                <span style="font-size:16px;font-weight:600">Calories</span>
+                <span style="font-size:15px;color:rgba(242,243,255,.55);font-variant-numeric:tabular-nums"><span data-count="" data-d="620" style="color:#FFFFFF;font-weight:700">860</span> / 1,400 kcal</span>
+                <span style="text-align:right;font-size:13px;font-weight:800;color:#FF8FA8">61%</span>
+              </div>
+              <div style="display:grid;grid-template-columns:12px minmax(0,1fr) auto 46px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="width:10px;height:10px;border-radius:50%;background:#FFC24D;box-shadow:0 0 12px #FFC24D"></span>
+                <span style="font-size:16px;font-weight:600">Protein</span>
+                <span style="font-size:15px;color:rgba(242,243,255,.55);font-variant-numeric:tabular-nums"><span data-count="" data-d="700" style="color:#FFFFFF;font-weight:700">82</span> / 130 g</span>
+                <span style="text-align:right;font-size:13px;font-weight:800;color:#FFD27A">63%</span>
+              </div>
+              <div style="display:grid;grid-template-columns:12px minmax(0,1fr) auto 46px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="width:10px;height:10px;border-radius:50%;background:#4FD8FF;box-shadow:0 0 12px #4FD8FF"></span>
+                <span style="font-size:16px;font-weight:600">Water</span>
+                <span style="font-size:15px;color:rgba(242,243,255,.55);font-variant-numeric:tabular-nums"><span data-count="" data-d="780" style="color:#FFFFFF;font-weight:700">1.75</span> / 3.0 L</span>
+                <span style="text-align:right;font-size:13px;font-weight:800;color:#8FE6FF">58%</span>
+              </div>
+              <div style="display:grid;grid-template-columns:12px minmax(0,1fr) auto 46px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="width:10px;height:10px;border-radius:50%;background:#7CFFA0;box-shadow:0 0 12px #7CFFA0"></span>
+                <span style="font-size:16px;font-weight:600">Steps</span>
+                <span style="font-size:15px;color:rgba(242,243,255,.55);font-variant-numeric:tabular-nums"><span data-count="" data-d="860" style="color:#FFFFFF;font-weight:700">6,240</span> / 9,000</span>
+                <span style="text-align:right;font-size:13px;font-weight:800;color:#A6FFC0">69%</span>
+              </div>
+              <div style="display:grid;grid-template-columns:12px minmax(0,1fr) auto 46px;gap:14px;align-items:center;padding:12px 0">
+                <span style="width:10px;height:10px;border-radius:50%;background:#B39BFF;box-shadow:0 0 12px #B39BFF"></span>
+                <span style="font-size:16px;font-weight:600">Sleep</span>
+                <span style="font-size:15px;color:rgba(242,243,255,.55);font-variant-numeric:tabular-nums"><span data-count="" data-d="940" style="color:#FFFFFF;font-weight:700">6.9</span> / 7.5 h</span>
+                <span style="text-align:right;font-size:13px;font-weight:800;color:#CDBDFF">92%</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section data-a="rise" data-d="340" style="position:relative;overflow:hidden;border-radius:28px;padding:26px 28px 24px;background:linear-gradient(155deg,rgba(124,103,255,.28),rgba(0,226,198,.08) 55%,rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#7CF5E4;box-shadow:0 0 10px #7CF5E4"></span>
+            <span style="flex:1;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(242,243,255,.6)">Trend weight</span>
+            <span style="font-size:13px;font-weight:600;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.08);color:rgba(242,243,255,.78)">Weigh-in 93.2 kg · 7:04 AM</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">
+            <span data-count="" data-from="95.1" data-d="420" data-t="2200" style="font-size:112px;font-weight:200;letter-spacing:-.05em;line-height:.92;font-variant-numeric:tabular-nums">93.6</span>
+            <span style="font-size:22px;font-weight:600;color:rgba(242,243,255,.55)">kg</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:16px">
+            <span style="display:inline-flex;align-items:center;gap:3px;padding:5px 11px 5px 7px;border-radius:999px;background:rgba(46,232,154,.15);color:#6FF5BC;font-weight:800"><span class="material-symbols-rounded" style="font-size:18px">arrow_downward</span>1.5 kg</span>
+            <span style="color:rgba(242,243,255,.62)">since Sep 26 (95.1 kg)</span>
+          </div>
+          <div style="position:relative;margin-top:18px;height:92px">
+            <svg viewBox="0 0 1000 300" preserveAspectRatio="none" width="100%" height="100%" style="display:block;overflow:visible">
+              <defs>
+                <linearGradient id="a-sa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:#7CF5E4;stop-opacity:.34"></stop><stop offset="1" style="stop-color:#7CF5E4;stop-opacity:0"></stop></linearGradient>
+                <linearGradient id="a-sl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:#B4A4FF"></stop><stop offset="1" style="stop-color:#6FF3DF"></stop></linearGradient>
+              </defs>
+              <path data-a="fade" data-d="1300" data-t="1400" d="M16,41.7C45.3,47.4 74.7,53.2 104,56.8C133.3,60.5 162.7,61.6 192,65.5C221.3,69.4 250.7,77.9 280,82.8C309.3,87.8 338.7,90.9 368,95.8C397.3,100.8 426.7,107.4 456,113.2C485.3,118.9 514.7,126.1 544,130.5C573.3,134.9 602.7,136.9 632,141.3C661.3,145.8 690.7,152.9 720,158.7C749.3,164.4 778.7,171.6 808,176C837.3,180.4 866.7,182.4 896,186.8C925.3,191.3 954.7,197.7 984,204.2L984,300L16,300Z" style="fill:url(#a-sa)"></path>
+              <path data-draw="" data-d="560" data-t="1900" d="M16,41.7C45.3,47.4 74.7,53.2 104,56.8C133.3,60.5 162.7,61.6 192,65.5C221.3,69.4 250.7,77.9 280,82.8C309.3,87.8 338.7,90.9 368,95.8C397.3,100.8 426.7,107.4 456,113.2C485.3,118.9 514.7,126.1 544,130.5C573.3,134.9 602.7,136.9 632,141.3C661.3,145.8 690.7,152.9 720,158.7C749.3,164.4 778.7,171.6 808,176C837.3,180.4 866.7,182.4 896,186.8C925.3,191.3 954.7,197.7 984,204.2" fill="none" style="stroke:url(#a-sl);stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke"></path>
+            </svg>
+            <span data-a="pop" data-d="2100" style="position:absolute;left:98.4%;top:68.1%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 4px rgba(111,243,223,.35),0 0 18px #6FF3DF"></span>
+            <span data-loop="ping" data-ld="2300" style="position:absolute;left:98.4%;top:68.1%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid #6FF3DF;box-sizing:border-box"></span>
+            <div style="position:absolute;left:0;bottom:-20px;font-size:12px;color:rgba(242,243,255,.45)">Sep 26</div>
+            <div style="position:absolute;right:0;bottom:-20px;font-size:12px;color:rgba(242,243,255,.45)">Today</div>
+          </div>
+          <div style="margin-top:36px;padding-top:18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border-top:1px solid rgba(255,255,255,.09)">
+            <div><div style="font-size:13px;font-weight:600;color:rgba(242,243,255,.55)">To go</div><div style="margin-top:4px;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">28.6 <span style="font-size:14px;color:rgba(242,243,255,.55)">kg</span></div></div>
+            <div><div style="font-size:13px;font-weight:600;color:rgba(242,243,255,.55)">Projected finish</div><div style="margin-top:4px;font-size:22px;font-weight:700;white-space:nowrap">Jul 20, 2027</div></div>
+            <div><div style="font-size:13px;font-weight:600;color:rgba(242,243,255,.55)">7-day trend</div><div style="margin-top:4px;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">−1.0 <span style="font-size:14px;color:rgba(242,243,255,.55)">kg</span></div></div>
+          </div>
+        </section>
+      </div>
+
+      <nav data-stagger="60" data-sd="420" data-sa="rise" aria-label="Quick log" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.5fr);gap:12px">
+        <button data-magnet="5" data-burst="#B4A4FF,#7C67FF,#FFFFFF" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#F2F3FF;font:700 16px Urbanist,system-ui;cursor:pointer;backdrop-filter:blur(16px);transition:background .2s,border-color .2s" style-hover="background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)"><span style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(124,103,255,.18);color:#C2B6FF;box-shadow:0 0 18px rgba(124,103,255,.3)"><span class="material-symbols-rounded" style="font-size:22px">monitor_weight</span></span>Weigh-in</button>
+        <button data-magnet="5" data-burst="#FF8A6B,#FF3D7F,#FFFFFF" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#F2F3FF;font:700 16px Urbanist,system-ui;cursor:pointer;backdrop-filter:blur(16px);transition:background .2s,border-color .2s" style-hover="background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)"><span style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(255,77,127,.16);color:#FF8FA8;box-shadow:0 0 18px rgba(255,77,127,.28)"><span class="material-symbols-rounded" style="font-size:22px">restaurant</span></span>Meal</button>
+        <button data-magnet="5" data-burst="#8FF3FF,#2E8BFF,#FFFFFF" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#F2F3FF;font:700 16px Urbanist,system-ui;cursor:pointer;backdrop-filter:blur(16px);transition:background .2s,border-color .2s" style-hover="background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)"><span style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(60,170,255,.16);color:#8FE6FF;box-shadow:0 0 18px rgba(60,170,255,.28)"><span class="material-symbols-rounded" style="font-size:22px;font-variation-settings:'FILL' 1">water_drop</span></span>Water</button>
+        <button data-magnet="5" data-burst="#FFE08A,#FF9F1C,#FFFFFF" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#F2F3FF;font:700 16px Urbanist,system-ui;cursor:pointer;backdrop-filter:blur(16px);transition:background .2s,border-color .2s" style-hover="background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)"><span style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(255,170,40,.16);color:#FFD27A;box-shadow:0 0 18px rgba(255,170,40,.26)"><span class="material-symbols-rounded" style="font-size:22px">timer</span></span>Start fast</button>
+        <button data-magnet="5" data-burst="#E0D2FF,#8A63FF,#FFFFFF" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#F2F3FF;font:700 16px Urbanist,system-ui;cursor:pointer;backdrop-filter:blur(16px);transition:background .2s,border-color .2s" style-hover="background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18)"><span style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(150,110,255,.16);color:#CDBDFF;box-shadow:0 0 18px rgba(150,110,255,.26)"><span class="material-symbols-rounded" style="font-size:22px">photo_camera</span></span>Photo</button>
+        <button style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 18px;border-radius:18px;border:1px solid rgba(255,255,255,.12);background:rgba(10,11,22,.6);color:rgba(242,243,255,.55);font:500 16px Urbanist,system-ui;cursor:text;text-align:left" style-hover="border-color:rgba(124,103,255,.6)"><span style="flex:1">“Two eggs and toast”…</span><span class="material-symbols-rounded" style="font-size:22px;color:rgba(242,243,255,.7)">mic</span><span style="width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#7C67FF,#00D2B8);color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:22px">arrow_upward</span></span></button>
+      </nav>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:22px;align-items:start">
+        <section data-a="rise" data-d="520" style="border-radius:28px;padding:26px 28px 24px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(22px)">
+          <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <h2 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em">Road to 65 kg</h2>
+              <div style="margin-top:4px;font-size:15px;color:rgba(242,243,255,.55)">12 days of trend, then 0.70 kg a week to 65 kg by Jul 20, 2027</div>
+            </div>
+            <div style="display:flex;gap:4px;padding:4px;border-radius:12px;background:rgba(255,255,255,.05);font-size:14px;font-weight:700">
+              <span style="padding:7px 12px;border-radius:9px;color:rgba(242,243,255,.55)">8 weeks</span>
+              <span style="padding:7px 12px;border-radius:9px;background:rgba(255,255,255,.1)">Whole journey</span>
+            </div>
+          </div>
+          <div style="position:relative;margin:30px 8px 34px 40px;aspect-ratio:1000/300">
+            <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+              <g style="stroke:rgba(255,255,255,.07);stroke-width:1;vector-effect:non-scaling-stroke">
+                <line x1="0" x2="1000" y1="23.7" y2="23.7" style="vector-effect:non-scaling-stroke"></line>
+                <line x1="0" x2="1000" y1="63.2" y2="63.2" style="vector-effect:non-scaling-stroke"></line>
+                <line x1="0" x2="1000" y1="102.6" y2="102.6" style="vector-effect:non-scaling-stroke"></line>
+                <line x1="0" x2="1000" y1="142.1" y2="142.1" style="vector-effect:non-scaling-stroke"></line>
+                <line x1="0" x2="1000" y1="181.6" y2="181.6" style="vector-effect:non-scaling-stroke"></line>
+                <line x1="0" x2="1000" y1="221.1" y2="221.1" style="vector-effect:non-scaling-stroke"></line>
+              </g>
+              <line x1="0" x2="1000" y1="260.5" y2="260.5" style="stroke:#FF7AB0;stroke-width:1.5;stroke-dasharray:3 6;vector-effect:non-scaling-stroke"></line>
+            </svg>
+            <div data-a="wipe" data-d="1200" data-t="2200" style="position:absolute;inset:0">
+              <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                <defs><linearGradient id="a-bd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" style="stop-color:#7C67FF;stop-opacity:.34"></stop><stop offset="1" style="stop-color:#00E2C6;stop-opacity:.12"></stop></linearGradient></defs>
+                <path d="M37,34.7L1000,215.4L1000,305.7Z" style="fill:url(#a-bd)"></path>
+                <path data-loop="march" d="M37,34.7L1000,260.5" fill="none" style="stroke:#6FF3DF;stroke-width:2;stroke-dasharray:8 8;vector-effect:non-scaling-stroke"></path>
+              </svg>
+            </div>
+            <svg viewBox="0 0 1000 300" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+              <path data-draw="" data-d="900" data-t="900" d="M0,22.9C1.1,23.3 2.2,23.7 3.4,24C4.5,24.3 5.6,24.4 6.7,24.6C7.9,24.9 9,25.5 10.1,25.9C11.2,26.3 12.3,26.5 13.5,26.8C14.6,27.2 15.7,27.7 16.8,28.1C18,28.5 19.1,29 20.2,29.4C21.3,29.7 22.4,29.8 23.6,30.2C24.7,30.5 25.8,31 26.9,31.4C28.1,31.8 29.2,32.4 30.3,32.7C31.4,33 32.5,33.1 33.7,33.5C34.8,33.8 35.9,34.3 37,34.7" fill="none" style="stroke:#FFFFFF;stroke-width:4;stroke-linecap:round;vector-effect:non-scaling-stroke"></path>
+            </svg>
+            <div style="position:absolute;left:-40px;top:0;bottom:0;width:32px;font-size:12px;color:rgba(242,243,255,.42);font-variant-numeric:tabular-nums">
+              <span style="position:absolute;right:0;top:7.9%;transform:translateY(-50%)">95</span>
+              <span style="position:absolute;right:0;top:21.1%;transform:translateY(-50%)">90</span>
+              <span style="position:absolute;right:0;top:34.2%;transform:translateY(-50%)">85</span>
+              <span style="position:absolute;right:0;top:47.4%;transform:translateY(-50%)">80</span>
+              <span style="position:absolute;right:0;top:60.5%;transform:translateY(-50%)">75</span>
+              <span style="position:absolute;right:0;top:73.7%;transform:translateY(-50%)">70</span>
+              <span style="position:absolute;right:0;top:86.8%;transform:translateY(-50%);color:#FF9BC4;font-weight:800">65</span>
+            </div>
+            <div data-stagger="160" data-sd="1700" data-sa="pop">
+              <div style="position:absolute;left:15.8%;top:21.1%;transform:translate(-50%,-50%)"><div style="width:14px;height:14px;border-radius:50%;background:#07080F;border:2px solid #B4A4FF;box-sizing:border-box"></div><div style="position:absolute;left:12px;bottom:12px;white-space:nowrap;font-size:12px;font-weight:700;color:#D7CEFF">90 kg · Nov 12</div></div>
+              <div style="position:absolute;left:32.7%;top:34.2%;transform:translate(-50%,-50%)"><div style="width:14px;height:14px;border-radius:50%;background:#07080F;border:2px solid #A1B3FF;box-sizing:border-box"></div><div style="position:absolute;left:12px;bottom:12px;white-space:nowrap;font-size:12px;font-weight:700;color:#C9D3FF">85 · Jan 1</div></div>
+              <div style="position:absolute;left:49.5%;top:47.4%;transform:translate(-50%,-50%)"><div style="width:14px;height:14px;border-radius:50%;background:#07080F;border:2px solid #7FC9FF;box-sizing:border-box"></div><div style="position:absolute;left:12px;bottom:12px;white-space:nowrap;font-size:12px;font-weight:700;color:#BFE6FF">80 · Feb 20</div></div>
+              <div style="position:absolute;left:66.3%;top:60.5%;transform:translate(-50%,-50%)"><div style="width:14px;height:14px;border-radius:50%;background:#07080F;border:2px solid #6FE3EE;box-sizing:border-box"></div><div style="position:absolute;left:12px;bottom:12px;white-space:nowrap;font-size:12px;font-weight:700;color:#B5F3F7">75 · Apr 11</div></div>
+              <div style="position:absolute;left:83.2%;top:73.7%;transform:translate(-50%,-50%)"><div style="width:14px;height:14px;border-radius:50%;background:#07080F;border:2px solid #6FF3DF;box-sizing:border-box"></div><div style="position:absolute;left:12px;bottom:12px;white-space:nowrap;font-size:12px;font-weight:700;color:#B5F9EE">70 · May 31</div></div>
+              <div style="position:absolute;left:100%;top:86.8%;transform:translate(-50%,-50%)"><div style="width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#FF4A8C,#FF9BC4);box-shadow:0 0 22px rgba(255,74,140,.6)"><span class="material-symbols-rounded" style="font-size:13px;color:#FFFFFF;font-variation-settings:'FILL' 1">flag</span></div><div style="position:absolute;right:0;top:26px;white-space:nowrap;font-size:12px;font-weight:800;color:#FF9BC4">Goal 65 kg · Jul 20</div></div>
+            </div>
+            <span data-a="pop" data-d="1500" style="position:absolute;left:3.7%;top:11.6%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 5px rgba(255,255,255,.18),0 0 20px #FFFFFF"></span>
+            <span data-loop="ping" data-ld="1700" style="position:absolute;left:3.7%;top:11.6%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid #FFFFFF;box-sizing:border-box"></span>
+            <div style="position:absolute;left:0;right:0;top:100%;margin-top:12px;height:16px;font-size:12px;color:rgba(242,243,255,.42)">
+              <span style="position:absolute;left:3.7%;transform:translateX(-50%);color:#FFFFFF;font-weight:800">Today</span>
+              <span style="position:absolute;left:12.1%">Nov</span><span style="position:absolute;left:22.2%">Dec</span><span style="position:absolute;left:32.7%">Jan</span><span style="position:absolute;left:43.1%">Feb</span><span style="position:absolute;left:52.5%">Mar</span><span style="position:absolute;left:63%">Apr</span><span style="position:absolute;left:73.1%">May</span><span style="position:absolute;left:83.5%">Jun</span><span style="position:absolute;left:93.6%">Jul</span>
+            </div>
+          </div>
+        </section>
+
+        <div style="display:grid;gap:22px">
+          <section data-a="rise" data-d="600" style="border-radius:28px;padding:24px;background:linear-gradient(160deg,rgba(255,74,140,.17),rgba(255,255,255,.03) 55%);border:1px solid rgba(255,255,255,.09)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(242,243,255,.55)"><span class="material-symbols-rounded" data-loop="pulse" style="font-size:18px;color:#FF9BC4;font-variation-settings:'FILL' 1">auto_awesome</span><span style="flex:1">Day adjustment · AI</span><span style="text-transform:none;letter-spacing:0;font-weight:600">12:41 PM</span></div>
+            <h3 style="margin:12px 0 0;font-size:24px;font-weight:800;letter-spacing:-.02em">On track today</h3>
+            <p style="margin:6px 0 0;font-size:16px;line-height:1.45;color:rgba(242,243,255,.7)">540 kcal left and 48 g protein to go. Either of these closes the protein gap:</p>
+            <div data-stagger="90" data-sd="900" data-sa="right" style="margin-top:14px;display:grid;gap:8px">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-radius:16px;background:rgba(255,255,255,.05)">
+                <img src="assets/food/chicken.svg" alt="" width="30" height="30">
+                <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700">Chicken breast, 150 g</div><div style="font-size:13px;color:rgba(242,243,255,.55)">46 g protein · 248 kcal</div></div>
+                <button data-burst="#FF9BC4,#FFFFFF,#7C67FF" style="height:34px;padding:0 12px;border:0;border-radius:10px;background:rgba(255,255,255,.1);color:#FFFFFF;font:700 13px Urbanist,system-ui;cursor:pointer" style-hover="background:rgba(255,255,255,.18)">Log</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-radius:16px;background:rgba(255,255,255,.05)">
+                <img src="assets/food/yogurt.svg" alt="" width="30" height="30">
+                <div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700">Greek yogurt 0%, 200 g</div><div style="font-size:13px;color:rgba(242,243,255,.55)">20 g protein · 118 kcal</div></div>
+                <button data-burst="#FF9BC4,#FFFFFF,#7C67FF" style="height:34px;padding:0 12px;border:0;border-radius:10px;background:rgba(255,255,255,.1);color:#FFFFFF;font:700 13px Urbanist,system-ui;cursor:pointer" style-hover="background:rgba(255,255,255,.18)">Log</button>
+              </div>
+            </div>
+            <a href="#" style="display:flex;align-items:center;gap:8px;margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(124,103,255,.14);color:#D7CEFF;font-size:14px;font-weight:700" style-hover="background:rgba(124,103,255,.24)"><span style="flex:1">1 proposal waits · Protein to 140 g on training days</span><span class="material-symbols-rounded" style="font-size:20px">arrow_forward</span></a>
+          </section>
+
+          <section data-a="rise" data-d="680" style="border-radius:28px;padding:24px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><h2 style="margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em">This week</h2><span style="font-size:13px;color:rgba(242,243,255,.5)">Oct 5 – 11 · Coach plan</span></div>
+            <ol data-stagger="55" data-sd="820" data-sa="pop" style="list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;text-align:center">
+              <li style="padding:10px 0;border-radius:14px;background:rgba(255,255,255,.04)"><div style="font-size:11px;font-weight:700;color:rgba(242,243,255,.5)">Mon</div><div style="font-size:18px;font-weight:700">5</div><span class="material-symbols-rounded" style="font-size:16px;color:#6FF5BC;font-variation-settings:'FILL' 1">check_circle</span></li>
+              <li style="padding:10px 0;border-radius:14px;background:rgba(255,255,255,.04)"><div style="font-size:11px;font-weight:700;color:rgba(242,243,255,.5)">Tue</div><div style="font-size:18px;font-weight:700">6</div><span class="material-symbols-rounded" style="font-size:16px;color:#6FF5BC;font-variation-settings:'FILL' 1">check_circle</span></li>
+              <li style="padding:10px 0;border-radius:14px;background:linear-gradient(160deg,#7C67FF,#00B8A2);box-shadow:0 8px 22px rgba(124,103,255,.4)"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.85)">Wed</div><div style="font-size:18px;font-weight:800">7</div><span class="material-symbols-rounded" style="font-size:16px;color:#FFFFFF">fitness_center</span></li>
+              <li style="padding:10px 0;border-radius:14px;background:rgba(255,255,255,.04)"><div style="font-size:11px;font-weight:700;color:rgba(242,243,255,.5)">Thu</div><div style="font-size:18px;font-weight:700">8</div><span class="material-symbols-rounded" style="font-size:16px;color:rgba(242,243,255,.6)">fitness_center</span></li>
+              <li style="padding:10px 0;border-radius:14px;background:rgba(255,255,255,.04)"><div style="font-size:11px;font-weight:700;color:rgba(242,243,255,.5)">Fri</div><div style="font-size:18px;font-weight:700">9</div><span style="display:inline-block;width:5px;height:5px;margin:5px 0 6px;border-radius:50%;background:rgba(255,255,255,.3)"></span></li>
+              <li style="padding:10px 0;border-radius:14px;background:rgba(255,170,40,.12);box-shadow:inset 0 0 0 1px rgba(255,190,80,.3)"><div style="font-size:11px;font-weight:700;color:#FFD27A">Sat</div><div style="font-size:18px;font-weight:700">10</div><span class="material-symbols-rounded" style="font-size:16px;color:#FFD27A">timer</span></li>
+              <li style="padding:10px 0;border-radius:14px;background:rgba(255,255,255,.04)"><div style="font-size:11px;font-weight:700;color:rgba(242,243,255,.5)">Sun</div><div style="font-size:18px;font-weight:700">11</div><span style="display:inline-block;width:5px;height:5px;margin:5px 0 6px;border-radius:50%;background:rgba(255,255,255,.3)"></span></li>
+            </ol>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:16px;padding:14px;border-radius:18px;background:rgba(255,255,255,.05)">
+              <div style="width:46px;height:46px;flex:none;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(124,103,255,.35),rgba(0,226,198,.25));color:#FFFFFF"><span class="material-symbols-rounded" style="font-size:24px">fitness_center</span></div>
+              <div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:800">Upper B — Pull</div><div style="font-size:13px;color:rgba(242,243,255,.55)">6 exercises · 18 sets · 4:30 PM</div></div>
+              <button data-magnet="4" style="height:40px;padding:0 16px;border:0;border-radius:12px;background:#FFFFFF;color:#0B0C18;font:800 14px Urbanist,system-ui;cursor:pointer;display:flex;align-items:center;gap:4px"><span class="material-symbols-rounded" style="font-size:20px;font-variation-settings:'FILL' 1">play_arrow</span>Start</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}a{color:#166FE5;text-decoration:none}a:hover{color:#0F55B5}</style>
+</helmet>
+<div ref="{{ root }}" data-fit="1440" data-screen-label="2a Ask AI" style="opacity:0;width:1440px;height:960px;display:grid;grid-template-columns:240px minmax(0,1fr);background:#FFFFFF;color:#09090B;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased">
+  <dc-import name="Shell2a-Sidebar" active="ai" hint-size="240px,960px"></dc-import>
+  <div style="min-width:0;display:flex;flex-direction:column;min-height:0">
+    <dc-import name="Shell2a-Header" crumb="Ask AI" hint-size="100%,56px"></dc-import>
+    <main style="flex:1;min-height:0;display:grid;grid-template-columns:260px minmax(0,1fr) 340px">
+      <aside data-a="left" data-d="150" style="display:flex;flex-direction:column;border-right:1px solid #E4E4E7;background:#FAFAFA;min-height:0">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 14px 10px"><span style="flex:1;font-size:13px;font-weight:600">Chats</span><button style="display:flex;align-items:center;gap:4px;height:30px;padding:0 10px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:16px">add</span>New</button></div>
+        <div data-stagger="50" data-sd="300" data-sa="fade" data-st="500" style="display:grid;gap:2px;padding:0 8px">
+          <a href="#" aria-current="page" style="display:block;padding:9px 10px;border-radius:8px;background:#F4F4F5;color:#09090B;box-shadow:inset 0 0 0 1px #E4E4E7"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Protein today and dinner</div><div style="font-size:12px;color:#71717A">Today · 2:15 PM</div></a>
+          <a href="#" style="display:block;padding:9px 10px;border-radius:8px;color:#09090B" style-hover="background:#F4F4F5"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Saturday fast timing</div><div style="font-size:12px;color:#71717A">Yesterday</div></a>
+          <a href="#" style="display:block;padding:9px 10px;border-radius:8px;color:#09090B" style-hover="background:#F4F4F5"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Why did the trend tick up Sep 29?</div><div style="font-size:12px;color:#71717A">Sep 30</div></a>
+          <a href="#" style="display:block;padding:9px 10px;border-radius:8px;color:#09090B" style-hover="background:#F4F4F5"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Swap for the leg press</div><div style="font-size:12px;color:#71717A">Sep 28</div></a>
+        </div>
+        <div style="flex:1"></div>
+        <div style="margin:12px;padding:12px;border-radius:10px;border:1px solid #E4E4E7;background:#FFFFFF;font-size:12px;color:#52525B;line-height:1.5"><div style="display:flex;align-items:center;gap:6px;font-weight:600;color:#09090B"><span style="width:6px;height:6px;border-radius:50%;background:#16A34A"></span>Groq · llama-3.3-70b</div>Free tier · 46 tools · every change passes the rails (floor 1,400 kcal) and waits for your tap.</div>
+      </aside>
+
+      <section style="display:flex;flex-direction:column;min-height:0;min-width:0">
+        <div data-a="fade" data-d="200" style="display:flex;align-items:center;gap:10px;padding:12px 24px;border-bottom:1px solid #E4E4E7"><h1 style="margin:0;flex:1;font-size:15px;font-weight:600">Protein today and dinner</h1><span style="font-size:12px;color:#71717A">4 messages · reads Today, favourites, plan</span><button aria-label="Thread menu" style="width:30px;height:30px;border-radius:6px;border:0;background:transparent;color:#71717A;display:grid;place-items:center;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:18px">more_horiz</span></button></div>
+        <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:18px;padding:20px 24px">
+          <div data-a="rise" data-d="350" style="display:flex;justify-content:flex-end"><div style="max-width:520px;padding:10px 14px;border-radius:14px 14px 4px 14px;background:#09090B;color:#FFFFFF;font-size:14px;line-height:1.5">How much protein have I had today, and what should dinner be to stay inside the plan?</div></div>
+          <div data-a="rise" data-d="550" style="display:flex;gap:12px;max-width:720px">
+            <div style="width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;background:#EFF6FF;color:#166FE5"><span class="material-symbols-rounded" style="font-size:16px;font-variation-settings:'FILL' 1">auto_awesome</span></div>
+            <div style="min-width:0">
+              <div data-stagger="60" data-sd="650" data-sa="pop" data-st="400" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid #E4E4E7;font-size:11px;color:#52525B"><span class="material-symbols-rounded" style="font-size:14px;color:#16A34A">check</span>get_today</span><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid #E4E4E7;font-size:11px;color:#52525B"><span class="material-symbols-rounded" style="font-size:14px;color:#16A34A">check</span>list_favourites</span><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid #E4E4E7;font-size:11px;color:#52525B"><span class="material-symbols-rounded" style="font-size:14px;color:#16A34A">check</span>get_plan</span></div>
+              <div style="font-size:14px;line-height:1.6;color:#09090B">You’re at <b>82 g of 130 g</b> protein with <b>540 kcal</b> left of 1,400. Dinner is planned at about 450 kcal, so the cleanest fit is a protein-first plate:</div>
+              <div data-stagger="70" data-sd="900" data-sa="fade" data-st="500" style="display:grid;gap:6px;margin-top:10px">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid #E4E4E7;font-size:13px"><img src="assets/food/chicken.svg" alt="" width="22" height="22"><span style="flex:1">Chicken breast, grilled · 150 g</span><span style="color:#71717A">46 g · 248 kcal</span></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid #E4E4E7;font-size:13px"><img src="assets/food/salad.svg" alt="" width="22" height="22"><span style="flex:1">Mixed greens, cucumber, tomato · 200 g</span><span style="color:#71717A">3 g · 60 kcal</span></div>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid #E4E4E7;font-size:13px"><img src="assets/food/sweet-potato.svg" alt="" width="22" height="22"><span style="flex:1">Sweet potato, baked · 120 g</span><span style="color:#71717A">2 g · 108 kcal</span></div>
+              </div>
+              <div style="margin-top:10px;font-size:14px;line-height:1.6;color:#09090B">That is <b>51 g protein for 416 kcal</b>, landing at 133 g and 1,276 kcal for the day with 124 kcal spare for a snack. Fat would still be 16 g under the 45 g minimum, so add a teaspoon of olive oil on the greens.</div>
+              <div style="display:flex;gap:8px;margin-top:12px"><button data-burst="#166FE5,#16A34A,#FFFFFF" style="height:32px;padding:0 12px;border:0;border-radius:7px;background:#09090B;color:#FFFFFF;font:500 13px Geist,system-ui;cursor:pointer">Log this as dinner</button><button style="height:32px;padding:0 12px;border:1px solid #E4E4E7;border-radius:7px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Save as a favourite</button><span style="align-self:center;margin-left:auto;font-size:12px;color:#A1A1AA">2:15 PM · 1.8 s</span></div>
+            </div>
+          </div>
+          <div data-a="rise" data-d="800" style="display:flex;justify-content:flex-end"><div style="max-width:520px;padding:10px 14px;border-radius:14px 14px 4px 14px;background:#09090B;color:#FFFFFF;font-size:14px;line-height:1.5">Good. Also move Saturday’s fast so it starts at 8 PM on Friday instead of midnight.</div></div>
+          <div data-a="rise" data-d="1000" style="display:flex;gap:12px;max-width:720px">
+            <div style="width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;background:#EFF6FF;color:#166FE5"><span class="material-symbols-rounded" style="font-size:16px;font-variation-settings:'FILL' 1">auto_awesome</span></div>
+            <div style="min-width:0">
+              <div data-stagger="60" data-sd="1100" data-sa="pop" data-st="400" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid #E4E4E7;font-size:11px;color:#52525B"><span class="material-symbols-rounded" style="font-size:14px;color:#16A34A">check</span>list_fasts</span><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid #E4E4E7;font-size:11px;color:#52525B"><span class="material-symbols-rounded" style="font-size:14px;color:#16A34A">check</span>propose_change</span></div>
+              <div style="font-size:14px;line-height:1.6;color:#09090B">Done as a proposal: the fast would run <b>Fri 8:00 PM → Sat 8:00 PM</b>, still 24 hours and still one of the two this month, so it passes the rails. Friday’s dinner moves earlier and Saturday’s water target stays at 3.5 L.</div>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:10px;padding:12px 14px;border-radius:10px;border:1px solid #E4E4E7;background:#FAFAFA">
+                <span class="material-symbols-rounded" style="font-size:18px;color:#B45309">timer</span>
+                <div style="flex:1;min-width:0;font-size:13px"><div style="font-weight:600">Move the planned fast</div><div style="color:#71717A">Starts <span style="text-decoration:line-through">Sat 12:00 AM</span> → <b style="color:#09090B">Fri 8:00 PM</b> · ends Sat 8:00 PM</div></div>
+                <button data-burst="#16A34A,#166FE5,#FFFFFF" style="height:30px;padding:0 12px;border:0;border-radius:6px;background:#09090B;color:#FFFFFF;font:500 12px Geist,system-ui;cursor:pointer">Accept</button><button style="height:30px;padding:0 10px;border:1px solid #E4E4E7;border-radius:6px;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer">Reject</button>
+              </div>
+              <div style="margin-top:8px;font-size:12px;color:#A1A1AA">2:16 PM · 1.2 s · nothing changes until you tap</div>
+            </div>
+          </div>
+          <div data-a="fade" data-d="1300" style="display:flex;align-items:center;gap:10px;font-size:13px;color:#71717A"><div style="width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:#EFF6FF;color:#166FE5"><span class="material-symbols-rounded" style="font-size:16px;font-variation-settings:'FILL' 1">auto_awesome</span></div><span style="display:inline-flex;gap:3px"><span data-loop="breathe" data-ldur="1200" style="width:6px;height:6px;border-radius:50%;background:#A1A1AA"></span><span data-loop="breathe" data-ldur="1200" data-ld="200" style="width:6px;height:6px;border-radius:50%;background:#A1A1AA"></span><span data-loop="breathe" data-ldur="1200" data-ld="400" style="width:6px;height:6px;border-radius:50%;background:#A1A1AA"></span></span>Checking Friday’s dinner target…</div>
+        </div>
+        <div data-a="rise" data-d="300" style="padding:0 24px 20px">
+          <div data-stagger="50" data-sd="500" data-sa="pop" data-st="400" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"><button style="height:30px;padding:0 12px;border:1px solid #E4E4E7;border-radius:999px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Plan next week</button><button style="height:30px;padding:0 12px;border:1px solid #E4E4E7;border-radius:999px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Am I on pace for 90 kg?</button><button style="height:30px;padding:0 12px;border:1px solid #E4E4E7;border-radius:999px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Swap rear delt fly</button><button style="height:30px;padding:0 12px;border:1px solid #E4E4E7;border-radius:999px;background:#FFFFFF;color:#09090B;font:500 13px Geist,system-ui;cursor:pointer" style-hover="background:#F4F4F5">Explain the lean-loss guard</button></div>
+          <div style="display:flex;align-items:flex-end;gap:8px;padding:8px 8px 8px 14px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)" style-focus="border-color:#166FE5"><div style="flex:1;min-height:36px;display:flex;align-items:center;font-size:14px;color:#A1A1AA">Ask about your day, your plan, or tell me what you ate…<span data-loop="blink" style="display:inline-block;width:1.5px;height:16px;margin-left:2px;background:#09090B;vertical-align:-3px"></span></div><button aria-label="Attach photo" style="width:36px;height:36px;border-radius:8px;border:0;background:transparent;color:#52525B;display:grid;place-items:center;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:20px">photo_camera</span></button><button aria-label="Dictate" style="width:36px;height:36px;border-radius:8px;border:0;background:transparent;color:#52525B;display:grid;place-items:center;cursor:pointer" style-hover="background:#F4F4F5"><span class="material-symbols-rounded" style="font-size:20px">mic</span></button><button aria-label="Send" style="width:36px;height:36px;border-radius:8px;border:0;background:#166FE5;color:#FFFFFF;display:grid;place-items:center;cursor:pointer" style-hover="background:#1263CC"><span class="material-symbols-rounded" style="font-size:20px">arrow_upward</span></button></div>
+          <div style="margin-top:8px;font-size:12px;color:#A1A1AA">Enter to send · Shift + Enter for a new line · the AI never sees your progress photos</div>
+        </div>
+      </section>
+
+      <aside data-a="right" data-d="200" style="display:flex;flex-direction:column;gap:16px;padding:20px 20px;border-left:1px solid #E4E4E7;min-height:0;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px"><h2 style="margin:0;flex:1;font-size:14px;font-weight:600">Waiting for your tap</h2><span style="padding:1px 7px;border-radius:999px;background:#166FE5;color:#FFFFFF;font-size:11px;font-weight:600">2</span></div>
+        <div data-stagger="90" data-sd="400" data-sa="rise" data-st="600" style="display:grid;gap:12px">
+          <div style="padding:14px 16px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#71717A"><span class="material-symbols-rounded" style="font-size:16px;color:#166FE5;font-variation-settings:'FILL' 1">auto_awesome</span><span style="flex:1">Weekly review · Claude</span><span>Mon 9:02 AM</span></div>
+            <div style="margin-top:8px;font-size:14px;font-weight:600">Raise protein to 140 g on training days</div>
+            <div style="margin-top:8px;display:grid;gap:4px;font-size:12px"><div style="display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;background:#FAFAFA"><span style="color:#52525B">Protein · Mon–Thu</span><span><span style="color:#A1A1AA;text-decoration:line-through">130 g</span> → <b>140 g</b></span></div><div style="display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;background:#FAFAFA"><span style="color:#52525B">Carbs · Mon–Thu</span><span><span style="color:#A1A1AA;text-decoration:line-through">119 g</span> → <b>109 g</b></span></div></div>
+            <div style="margin-top:8px;font-size:12px;color:#71717A;line-height:1.5">Why: protein averaged 122 g last week and the lean-loss guard wants 2.2 g per kg of lean mass on lifting days.</div>
+            <div style="display:flex;gap:6px;margin-top:10px"><button data-burst="#166FE5,#16A34A" style="height:30px;padding:0 12px;border:0;border-radius:6px;background:#09090B;color:#FFFFFF;font:500 12px Geist,system-ui;cursor:pointer">Accept</button><button style="height:30px;padding:0 10px;border:1px solid #E4E4E7;border-radius:6px;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer">Reject</button><a href="#" style="margin-left:auto;align-self:center;font-size:12px;font-weight:500">Plan history</a></div>
+          </div>
+          <div style="padding:14px 16px;border-radius:12px;border:1px solid #E4E4E7;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#71717A"><span class="material-symbols-rounded" style="font-size:16px;color:#B45309">timer</span><span style="flex:1">Ask AI · just now</span><span>2:16 PM</span></div>
+            <div style="margin-top:8px;font-size:14px;font-weight:600">Move the planned fast to Fri 8 PM</div>
+            <div style="margin-top:8px;display:grid;gap:4px;font-size:12px"><div style="display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;background:#FAFAFA"><span style="color:#52525B">Starts</span><span><span style="color:#A1A1AA;text-decoration:line-through">Sat 12:00 AM</span> → <b>Fri 8:00 PM</b></span></div></div>
+            <div style="display:flex;gap:6px;margin-top:10px"><button data-burst="#B45309,#166FE5" style="height:30px;padding:0 12px;border:0;border-radius:6px;background:#09090B;color:#FFFFFF;font:500 12px Geist,system-ui;cursor:pointer">Accept</button><button style="height:30px;padding:0 10px;border:1px solid #E4E4E7;border-radius:6px;background:#FFFFFF;color:#09090B;font:500 12px Geist,system-ui;cursor:pointer">Reject</button></div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div data-a="fade" data-d="900" style="padding:12px 14px;border-radius:10px;background:#FAFAFA;border:1px solid #E4E4E7;font-size:12px;color:#52525B;line-height:1.5"><div style="font-weight:600;color:#09090B;margin-bottom:4px">Rails the AI works inside</div>Calorie floor 1,400 · ceiling 1,700 · protein ≥ 130 g · fat ≥ 45 g · two 24 h fasts a month · machines and free weights only. Only you change these, in Settings.</div>
+      </aside>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root };
+  }
+}
+</script>
+</body>
+</html>
