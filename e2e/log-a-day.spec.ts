@@ -78,7 +78,7 @@ test('Aaron logs a whole day from Today in under a minute', async ({ page }) => 
     )
     await expect.poll(() => ringValue(page, 'Calories')).toBeGreaterThan(kcal)
     await expect(ring(page, 'Steps')).toHaveAccessibleName(/^Steps: 9,120 of /)
-    await expect(ring(page, 'Sleep')).toContainText('7.5h')
+    await expect(ring(page, 'Sleep')).toHaveAccessibleName(/^Sleep: 7\.5 of /)
   })
 
   const seconds = (Date.now() - started) / 1000
