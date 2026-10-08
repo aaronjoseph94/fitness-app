@@ -43,6 +43,9 @@ export function useEventFeed() {
       if (previous && page.events.length > 0) refreshDependents(queryClient)
       return { events: mergeEvents(previous?.events ?? [], page.events), server_time: page.server_time }
     },
+    // Like every useApiQuery read: send the request even when the browser claims to be offline (an iOS home-screen app
+    // can say so on a working connection); the default 'online' mode paused this one feed for good, "Try again" included.
+    networkMode: 'offlineFirst',
     refetchInterval: EVENT_POLL_MS,
     // Only while the app is in view; TanStack's focus manager also refetches when it comes back.
     refetchIntervalInBackground: false,
