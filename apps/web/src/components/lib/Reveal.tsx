@@ -1,7 +1,8 @@
-// Owns: the entrance group — a short fade-and-rise that brings a cluster of cards on screen as a unit, with an
-// optional per-item stagger. It animates only `opacity` and `transform`, never a layout property, so it cannot shift
-// content and costs no CLS; under `prefers-reduced-motion` the travel is dropped for a plain cross-fade, so the group
-// still resolves into place rather than snapping on.
+// Owns: the entrance group — 2a's fade-and-rise (26 px over 700 ms, expo-out) that brings a card or a cluster of cards
+// on screen, with a per-item stagger (`staggerDelay`: 60 ms between cards, 90 ms between sections, in reading order).
+// It animates only `opacity` and `transform`, never a layout property, so it cannot shift content and costs no CLS;
+// under `prefers-reduced-motion` the travel is dropped for a 200 ms cross-fade, so the group still resolves into place
+// rather than snapping on.
 //
 // Caveat worth knowing: a `transform` makes an element the containing block for `position: fixed` descendants. Use
 // this around card groups, not around a subtree that owns a fixed-position layer (dialogs are unaffected — they
@@ -11,8 +12,16 @@ import type { ReactNode } from 'react'
 import { enterDuration, enterEasing, reducedEntrance, tokens } from '../../theme'
 import { useEntrance } from './useEntrance'
 
+/**
+ * The entrance delay of the `index`-th item in reading order: `start + index × step`. 2a staggers cards 60 ms apart
+ * (`tokens.motion.stagger.card`), sections 90 ms (`.section`) and list rows 45 ms (`.row`).
+ */
+export function staggerDelay(index: number, step: number = tokens.motion.stagger.card, start = 0): number {
+  return start + Math.max(0, index) * step
+}
+
 export interface RevealProps {
-  /** Stagger in ms for a list of siblings. Keep the last item under ~200 ms or the page reads as slow. */
+  /** Entrance delay in ms (see `staggerDelay`). Keep a page's last group under ~600 ms or it reads as slow. */
   delay?: number
   children: ReactNode
   /** Extra sx merged onto the wrapper. */

@@ -6,7 +6,8 @@
 //
 // A board of many tracks (the Dashboard's bento boards use 12 at `lg` and 6 at `md`) is what lets panels of different
 // weights share a row and still fill it: spans that add up to the track count across a row leave no ragged hole, which
-// is the difference between a board and a grid of equal cards.
+// is the difference between a board and a grid of equal cards. 2a's grids map straight onto it: Today's 2 : 1 is
+// `<Columns md={3}>` with spans 2 and 1, the Dashboard's "Now" band is 12 tracks with spans 8 / 4 (rowSpan 2) / 4.
 import Box from '@mui/material/Box'
 import { createContext, useContext, type ReactNode } from 'react'
 
@@ -32,7 +33,7 @@ export interface ColumnsProps {
   md?: number
   /** Columns from 1200 px (`lg`). Defaults to `md`. */
   lg?: number
-  /** Gap between columns, in theme spacing units. Default 4 (32 px). */
+  /** Gap between panels, in theme spacing units (4 px each). Default 4 — 2a's 16 px between cards. */
   gap?: number
   /** `start` keeps each column its natural height; `stretch` is for boards of equal-height panels. */
   align?: 'start' | 'stretch'

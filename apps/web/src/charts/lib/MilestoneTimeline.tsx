@@ -1,5 +1,6 @@
 // Owns: the milestone timeline (custom SVG): milestones evenly spaced on a line, reached ones filled in the metric
-// colour with their date, the next one ringed with its forecast date, later ones grey; tap one for the full date.
+// colour with a white check and their date, the next one ringed (2a: a 2 px ring with a dot in it) with its forecast
+// date, later ones as light grey rings; tap one for the full date.
 // A label wider than the room at either end is anchored to that edge instead of centred, so it is never clipped; when
 // labels are wider than the gap between milestones (six composition goals on a phone) they alternate between two rows.
 // Screen readers get one image whose name lists every milestone with its date (tapping only shows the full date).
@@ -7,7 +8,7 @@ import Box from '@mui/material/Box'
 import { useState } from 'react'
 import { formatShortDate } from '../../components'
 import { tokens, type MetricKey } from '../../theme'
-import { ChartFrame, TapCaption, useWidth } from './frame'
+import { ChartFrame, TapCaption, readableDates, useWidth } from './frame'
 
 export interface Milestone {
   /** e.g. "90 kg" or "BF < 30 %". */
@@ -28,11 +29,16 @@ export interface MilestoneTimelineProps {
 const H = 86
 const LINE_Y = 42
 const PAD = 26
-/** Outfit's average glyph width as a share of the font size (labels are short: digits, units, a few letters). */
+/** Geist's average glyph width as a share of the font size (labels are short: digits, units, a few letters). */
 const GLYPH = 0.58
 
 /** Centre `text` on `x` unless it would cross 0 or `width`; then pin it to that edge. */
-function placeText(x: number, text: string, fontSize: number, width: number): { x: number; textAnchor: 'start' | 'middle' | 'end' } {
+function placeText(
+  x: number,
+  text: string,
+  fontSize: number,
+  width: number,
+): { x: number; textAnchor: 'start' | 'middle' | 'end' } {
   const half = (text.length * fontSize * GLYPH) / 2
   if (x - half < 0) return { x: 0, textAnchor: 'start' }
   if (x + half > width) return { x: width, textAnchor: 'end' }
@@ -55,9 +61,14 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
   const summary =
     next === -1
       ? 'Every milestone reached'
-      : `${reachedCount} of ${n} reached · next ${milestones[next]!.label}${milestones[next]!.expectedOn ? ` around ${milestones[next]!.expectedOn}` : ''}`
+      : readableDates(
+          `${reachedCount} of ${n} reached · next ${milestones[next]!.label}${milestones[next]!.expectedOn ? ` around ${milestones[next]!.expectedOn}` : ''}`,
+        )
   const spoken = milestones
-    .map((m) => `${m.label} ${m.reachedOn ? `reached ${formatShortDate(m.reachedOn)}` : m.expectedOn ? `forecast around ${formatShortDate(m.expectedOn)}` : 'not yet forecast'}`)
+    .map(
+      (m) =>
+        `${m.label} ${m.reachedOn ? `reached ${formatShortDate(m.reachedOn)}` : m.expectedOn ? `forecast around ${formatShortDate(m.expectedOn)}` : 'not yet forecast'}`,
+    )
     .join('; ')
 
   return (
@@ -106,15 +117,15 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
                 <text
                   {...placeText(x, m.label, 12, w)}
                   y={labelY(i)}
-                  fontSize={12}
-                  fontWeight={reached || isNext ? 600 : 500}
-                  fill={reached || isNext ? tokens.ink.text : tokens.ink.secondary}
+                  fontSize={tokens.font.size.caption}
+                  fontWeight={reached || isNext ? tokens.font.weight.heading : tokens.font.weight.label}
+                  fill={reached || isNext ? tokens.ink.text : tokens.ink.label}
                 >
                   {m.label}
                 </text>
                 {reached ? (
                   <>
-                    <circle cx={x} cy={LINE_Y} r={8} fill={C} stroke={tokens.ink.card} strokeWidth={2} />
+                    <circle cx={x} cy={LINE_Y} r={9} fill={C} stroke={tokens.ink.card} strokeWidth={2} />
                     <path
                       d={`M${x - 3.5} ${LINE_Y}l2.5 2.5 4.5-5`}
                       fill="none"
@@ -124,20 +135,37 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
                       strokeLinejoin="round"
                     />
                   </>
+                ) : isNext ? (
+                  <>
+                    <circle cx={x} cy={LINE_Y} r={8} fill={tokens.ink.card} stroke={C} strokeWidth={2} />
+                    <circle cx={x} cy={LINE_Y} r={3} fill={C} />
+                  </>
                 ) : (
                   <circle
                     cx={x}
                     cy={LINE_Y}
-                    r={isNext ? 7 : 6}
+                    r={7.25}
                     fill={tokens.ink.card}
-                    stroke={isNext ? C : tokens.ink.border}
-                    strokeWidth={isNext ? 2.5 : 2}
+                    stroke={tokens.ink.disabled}
+                    strokeWidth={1.5}
                   />
                 )}
                 {selected === i && (
-                  <circle cx={x} cy={LINE_Y} r={12} fill="none" stroke={tokens.ink.text} strokeWidth={1} />
+                  <circle
+                    cx={x}
+                    cy={LINE_Y}
+                    r={13}
+                    fill="none"
+                    stroke={tokens.accent.main}
+                    strokeWidth={1.5}
+                  />
                 )}
-                <text {...placeText(x, dateText, 11, w)} y={70} fontSize={11} fill={reached ? tokens.ink.text : tokens.ink.secondary}>
+                <text
+                  {...placeText(x, dateText, tokens.chart.axisFontSize, w)}
+                  y={70}
+                  fontSize={tokens.chart.axisFontSize}
+                  fill={reached ? tokens.ink.text : tokens.ink.muted}
+                >
                   {dateText}
                 </text>
               </g>
@@ -147,7 +175,9 @@ export function MilestoneTimeline({ milestones, metric = 'weight', width }: Mile
       </Box>
       <TapCaption>
         {pick
-          ? `${pick.label} · ${pick.reachedOn ? `reached ${pick.reachedOn}` : pick.expectedOn ? `forecast ${pick.expectedOn}` : 'not yet forecast'}`
+          ? readableDates(
+              `${pick.label} · ${pick.reachedOn ? `reached ${pick.reachedOn}` : pick.expectedOn ? `forecast ${pick.expectedOn}` : 'not yet forecast'}`,
+            )
           : summary}
       </TapCaption>
     </ChartFrame>

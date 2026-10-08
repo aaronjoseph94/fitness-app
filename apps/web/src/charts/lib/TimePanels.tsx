@@ -1,7 +1,8 @@
 // Owns: the one implementation behind every "values over dates" line chart that is not the weight hero: one or
 // more stacked panels (small multiples, never a second y-axis) sharing a time axis and a synced crosshair, each
-// with its own unit, lines and/or dots, and an optional dashed target. Used by body composition, body fat and
-// visceral level, waist and WHR, and strength.
+// with its own unit, lines and/or dots, and an optional dashed target. 2a marks: a 2 px line through white points
+// ringed in its colour, the latest point ringed as the current one. Used by body fat and visceral level, waist and
+// WHR, and strength.
 import { useId } from 'react'
 import Box from '@mui/material/Box'
 import { formatShortDate, type LegendItem } from '../../components'
@@ -21,10 +22,13 @@ import {
   seriesSummary,
   surfaceText,
   targetStyle,
+  tickCount,
   tickInterval,
   tooltip,
   xAxisStyle,
   yAxisStyle,
+  currentPoint,
+  ringDot,
   type DayRow,
 } from './frame'
 import { Plot } from './plot'
@@ -94,12 +98,21 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
             .flatMap((r) => p.series.map((s) => num(field(r, s.key))))
             .filter((v): v is number => v !== null)
           if (p.target) values.push(p.target.value)
-          const y = niceScale(values, { count: 3, minStep: 10 ** -(p.tickPrecision ?? 0) })
+          const y = niceScale(values, {
+            count: tickCount(p.height ?? 180, 3),
+            minStep: 10 ** -(p.tickPrecision ?? 0),
+          })
           const h = p.height ?? 180
           // Each panel is its own keyboard stop: named by the chart and its unit, described series by series.
           const panelLabel = panels.length > 1 ? `${label}: ${p.unit}` : label
           const summary = [
-            ...p.series.map((s) => `${s.label} ${seriesSummary(data.map((r) => ({ date: r.date, value: num(field(r, s.key)) })), s.format)}`),
+            ...p.series.map(
+              (s) =>
+                `${s.label} ${seriesSummary(
+                  data.map((r) => ({ date: r.date, value: num(field(r, s.key)) })),
+                  s.format,
+                )}`,
+            ),
             p.target ? `${p.target.label} ${p.series[0]!.format(p.target.value)}.` : '',
           ]
             .filter(Boolean)
@@ -165,8 +178,8 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
                           key={s.key}
                           dataKey={s.key}
                           stroke="none"
-                          dot={dotStyle(s.color)}
-                          activeDot={dotStyle(s.color, 5)}
+                          dot={dotStyle(s.color, 3.5)}
+                          activeDot={dotStyle(s.color, 4.5)}
                           isAnimationActive={false}
                         />
                       ) : (
@@ -176,13 +189,27 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
                           stroke={s.color}
                           {...lineStyle}
                           type="linear"
-                          dot={dotStyle(s.color)}
-                          activeDot={dotStyle(s.color, 5)}
+                          dot={ringDot(s.color)}
+                          activeDot={dotStyle(s.color, 4.5)}
                           connectNulls
                           isAnimationActive={false}
                         />
                       ),
                     )}
+                    {p.series
+                      .filter((s) => s.kind !== 'dots')
+                      .map((s) => {
+                        const last = [...data].reverse().find((r) => num(field(r, s.key)) !== null)
+                        return last ? (
+                          <R.ReferenceDot
+                            key={`${s.key}-now`}
+                            x={last.t}
+                            y={num(field(last, s.key))!}
+                            ifOverflow="visible"
+                            shape={currentPoint(s.color)}
+                          />
+                        ) : null
+                      })}
                   </R.ComposedChart>
                 )}
               </Plot>

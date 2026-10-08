@@ -1,55 +1,80 @@
-// Owns: the shell's geometry — content column widths, side gutters, the desktop navigation rail's footprint and iOS
-// safe-area insets — so the top bar, banners, page content and the quick-log button line up at every width.
-import type { Theme } from '@mui/material/styles'
-import { tokens } from '../../../theme'
+// Owns: the shell's geometry — the desktop navigation's footprint (2a's 240 px sidebar, or the 76 px icon rail it
+// collapses to), the content column and its reading-width variant, the main padding, the side gutters and iOS
+// safe-area insets — so the header, banners, page content and the quick-log button line up at every width.
+import { theme, tokens } from '../../../theme'
 import type { PageWidth } from '../route-handle'
 
-const GUTTER = `${tokens.space(4)}px`
+const { layout } = tokens
 
 export const safeArea = {
   top: 'env(safe-area-inset-top, 0px)',
   bottom: 'env(safe-area-inset-bottom, 0px)',
 } as const
 
-export const TOP_BAR_HEIGHT = tokens.tapTarget + tokens.space(3)
+/** The desktop header and the phone's top bar: 56 px either way, so a sticky bar below them (Log's date switcher) sits flush. */
+export const HEADER_HEIGHT = layout.headerHeight
 export const FAB_SIZE = 56
 
-/**
- * The width the desktop navigation rail takes out of the window. Zero on a phone, where the bottom tabs are the
- * navigation instead. Spread into a full-bleed layer's `sx` (the app column, the quick-log button's fixed layer) so
- * everything inside it is laid out to the right of the rail; the rail is not printed, so the offset is not either.
- */
-export const railInset = {
-  pl: { xs: 0, md: `${tokens.layout.railWidth}px` },
-  '@media print': { pl: 0 },
+/** The desktop navigation's width: the labelled sidebar, or the icon rail it collapses to. */
+export function navWidth(collapsed: boolean): number {
+  return collapsed ? layout.railWidth : layout.sidebarWidth
 }
 
 /**
- * Minimum content width for the board layouts. A page only gets its desktop columns once the *content* is this wide,
- * not the window: the rail takes its share first, so a window that just crosses `md` still reads as one column.
+ * The CSS custom property that carries the navigation's current footprint (0 on a phone, where the bottom tabs are the
+ * navigation). The shell sets it once on its root; the fixed layers (the sidebar itself, the quick-log button) and the
+ * app column read it, so a collapse moves all of them together.
  */
-export const DESKTOP_BOARD_AT = tokens.layout.railWidth + 764
+export const NAV_VAR = '--shell-nav-width'
+export const navInset = `var(${NAV_VAR}, 0px)`
 
-/** One centred column: phone-width pages cap at the `sm` breakpoint; wide pages at the token max content width. Spread into `sx`. */
-export function columnSx(width: PageWidth) {
+/**
+ * 2a's content column: 1,144 px is what its 1,440 px design leaves between the 240 px sidebar and the 28 px main
+ * padding on each side. Wider windows centre the column rather than stretching the cards past their drawn proportions.
+ */
+export const CONTENT_MAX = 1440 - layout.sidebarWidth - 2 * layout.mainPadding.x
+
+/** A narrow page's reading column on a desktop (2a Settings' content column); a phone keeps the `sm` width. */
+export const READING_MAX = 820
+
+const GUTTER = `${tokens.space(4)}px`
+
+/**
+ * The shell's column — the header's row, the banners and `main` share it, so the breadcrumb, a banner and the page's
+ * title start on one edge: a 16 px gutter (or the safe area) on a phone, 2a's 28 px from `md` up, centred and capped
+ * at the content width.
+ */
+export const shellColumnSx = {
+  width: '100%',
+  mx: 'auto',
+  maxWidth: { md: CONTENT_MAX + 2 * layout.mainPadding.x },
+  pl: { xs: `max(${GUTTER}, env(safe-area-inset-left, 0px))`, md: `${layout.mainPadding.x}px` },
+  pr: { xs: `max(${GUTTER}, env(safe-area-inset-right, 0px))`, md: `${layout.mainPadding.x}px` },
+} as const
+
+/**
+ * The page's own width inside the column: a wide page takes all of it; a narrow one keeps a reading column — the
+ * phone width, centred, under `md`, and 2a's 820 px from the column's left edge on a desktop. Spread into `sx`.
+ */
+export function pageWidthSx(width: PageWidth) {
+  if (width === 'wide') return {}
   return {
-    width: '100%',
-    maxWidth: (theme: Theme) => (width === 'wide' ? tokens.layout.maxContent : theme.breakpoints.values.sm),
-    mx: 'auto',
-    pl: `max(${GUTTER}, env(safe-area-inset-left, 0px))`,
-    pr: `max(${GUTTER}, env(safe-area-inset-right, 0px))`,
+    maxWidth: { xs: theme.breakpoints.values.sm, md: READING_MAX },
+    mx: { xs: 'auto', md: 0 },
   }
 }
 
 /**
- * Space under the content so the bottom nav (and the quick-log button, when shown) never cover the last card. A phone
- * carries the bottom nav, so it needs that much more; from `md` up the rail is the navigation and only the button has
- * to clear. Returned as a responsive value, so it can be handed straight to `pb`.
+ * Padding inside `main`. A phone clears the bottom tabs (and the quick-log button, when shown) so neither covers the last
+ * card; from `md` up it is 2a's `24px 28px 36px` (the sides come from the column).
  */
-export function contentBottomPadding(withQuickLog: boolean): Record<'xs' | 'md', string> {
+export function mainPaddingSx(withQuickLog: boolean) {
   const fab = withQuickLog ? FAB_SIZE + tokens.space(4) : 0
   return {
-    xs: `calc(${tokens.layout.bottomNavHeight + tokens.space(6) + fab}px + ${safeArea.bottom})`,
-    md: `calc(${tokens.space(8) + fab}px + ${safeArea.bottom})`,
+    pt: { xs: `${tokens.space(4)}px`, md: `${layout.mainPadding.top}px` },
+    pb: {
+      xs: `calc(${layout.bottomNavHeight + tokens.space(6) + fab}px + ${safeArea.bottom})`,
+      md: `calc(${layout.mainPadding.bottom}px + ${safeArea.bottom})`,
+    },
   }
 }

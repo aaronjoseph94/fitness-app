@@ -1,20 +1,22 @@
-// Owns: the stat card: label, ONE big number with its unit, an optional signed delta (arrow + text, coloured by
-// whether the direction is good), an optional metric accent dot (or, when a caller passes `icon`, an icon tile in the
-// metric's own tint), and a slot for a sparkline.
+// Owns: the 2a stat card (Today's five across, the Dashboard tiles, Progress' summary cards): `padding 18 × 20 × 16`;
+// a 13/500 #52525B label with a 16 px #A1A1AA glyph right-aligned; a 28/600 tabular value with its unit
+// ("/ 1,400 kcal") in 13 px muted; an optional signed delta at the right of the value (a tinted pill, or plain
+// coloured text); an optional 6 px progress bar in the metric colour; a slot for a sparkline (`MiniBars`); and a 12 px
+// muted caption whose <strong> is the 500 ink key figure. The value can count up once on mount.
 //
-// Restyled 2026-10-06 onto the new token language: the card now takes its radius and its shadow from the MuiCard theme
-// override rather than painting its own, the icon sits in a 36 px tile, and a clickable card lifts on a pointer device
-// through `transitionOf`, so the reduced-motion preference is honoured in one place. Props, semantics and test ids are
-// unchanged, so every existing caller keeps rendering exactly as before.
-import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
-import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
+// Restyled for 2a (2026-10-07) without changing a prop: `icon` is now the right-aligned glyph rather than a tinted
+// tile, `metric` colours the progress fill (the old accent dot is gone — the label names the metric), and a delta that
+// is bad for the plan reads in the warning amber 2a uses for a shortfall. New: `progress`, `deltaStyle`, `countUp`.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import type { ReactNode } from 'react'
-import { tokens, transitionOf, withAlpha, type MetricKey } from '../../theme'
-import { formatNumber, formatSigned } from './format'
+import { tokens, transitionOf, type MetricKey } from '../../theme'
+import { formatSigned } from './format'
+import { ProgressBar } from './ProgressBar'
+import { StatCaption, StatFigure, StatHead } from './statParts'
+import { StatusChip } from './StatusChip'
 
 export interface StatDelta {
   value: number
@@ -33,65 +35,50 @@ export interface StatCardProps {
   /** Decimal places for a numeric value. Default 0. */
   precision?: number
   delta?: StatDelta
-  /** Adds a dot in this metric's colour before the label. Ignored when `icon` is given — the tile carries the tint. */
+  /** `pill` (default): a tinted pill right of the value (Progress). `text`: 12/600 coloured text (Dashboard tiles). */
+  deltaStyle?: 'pill' | 'text'
+  /** The metric this card reports: colours the progress bar. */
   metric?: MetricKey
-  /**
-   * Leading icon in a 36 px tile tinted with `metric`'s colour. Optional: the label always names the metric, so the
-   * glyph is decoration and never the only signal. Pass this for a band of headline cards; leave it out and the label
-   * keeps its accent dot, exactly as before.
-   */
+  /** A 16 px glyph right of the label, in faint ink. Decoration: the label always names the metric. */
   icon?: SvgIconComponent
-  /** Anything chart-like under the number, e.g. a <Sparkline/>. */
+  /** Value ÷ target, drawn as the 6 px bar under the value. Omit for no bar. */
+  progress?: number | null
+  /** Anything chart-like under the number, e.g. a <MiniBars/>. */
   sparkline?: ReactNode
-  /** Small secondary line at the bottom, e.g. "Projected 2027-08-04". */
+  /** The 12 px caption at the bottom, e.g. <><strong>540 left</strong> · 2 meals logged</>. */
   footnote?: ReactNode
-  /** Top-right slot, e.g. a <PendingBadge/>. */
+  /** Right of the label, e.g. a <PendingBadge/>. */
   badge?: ReactNode
-  /** Makes the whole card a 44 px+ tap target. */
+  /** Makes the whole card a tap target. */
   onClick?: () => void
-  /** Big-number size. `hero` is the one per view. Default `standard`. */
+  /** Big-number size. `hero` (40 px) is the one per view. Default `standard` (28 px). */
   emphasis?: 'standard' | 'hero'
+  /** Count a numeric value up once on mount (~1.6 s; never under reduced motion). */
+  countUp?: boolean
+  /** Where the count starts. Default 0. */
+  countFrom?: number
+  /** ms before the count and the bar start, to follow the card's entrance stagger. */
+  delay?: number
   testId?: string
 }
 
-function DeltaLine({
-  delta,
-  fallbackUnit,
-  precision,
-}: {
-  delta: StatDelta
-  fallbackUnit?: string
-  precision: number
-}) {
-  const unit = delta.unit ?? fallbackUnit
+/** The delta's tone: good for the plan → success, bad → warning (2a's shortfall amber), flat or neutral → neutral. */
+function deltaTone(delta: StatDelta, precision: number): 'success' | 'warning' | 'neutral' {
   const flat = Math.abs(delta.value) < 10 ** -precision / 2
-  const isGood = delta.good === 'neutral' || flat ? null : delta.value < 0 === (delta.good === 'down')
-  const color = isGood === null ? tokens.ink.secondary : isGood ? tokens.status.good : tokens.status.flag
-  const Icon = delta.value < 0 ? ArrowDownwardRounded : ArrowUpwardRounded
+  if (delta.good === 'neutral' || flat) return 'neutral'
+  return delta.value < 0 === (delta.good === 'down') ? 'success' : 'warning'
+}
+
+const TEXT_TONES = { success: tokens.tone.success.text, warning: tokens.tone.warning.text, neutral: tokens.ink.label } as const
+
+function Delta({ delta, fallbackUnit, precision, style }: { delta: StatDelta; fallbackUnit?: string; precision: number; style: 'pill' | 'text' }) {
+  const unit = delta.unit ?? fallbackUnit
+  const text = [formatSigned(delta.value, precision), unit, delta.period].filter(Boolean).join(' ')
+  const tone = deltaTone(delta, precision)
+  if (style === 'pill') return <StatusChip tone={tone} shape="pill" label={text} />
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1.5, minWidth: 0 }}>
-      {!flat && <Icon sx={{ fontSize: tokens.font.size.body, color }} aria-hidden />}
-      <Box
-        component="span"
-        sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color, whiteSpace: 'nowrap' }}
-      >
-        {formatSigned(delta.value, precision)}
-        {unit ? ` ${unit}` : ''}
-      </Box>
-      {delta.period && (
-        <Box
-          component="span"
-          sx={{
-            fontSize: tokens.font.size.small,
-            color: tokens.ink.secondary,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {delta.period}
-        </Box>
-      )}
+    <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.heading, color: TEXT_TONES[tone], whiteSpace: 'nowrap' }}>
+      {text}
     </Box>
   )
 }
@@ -102,105 +89,40 @@ export function StatCard({
   unit,
   precision = 0,
   delta,
+  deltaStyle = 'pill',
   metric,
-  icon: Icon,
+  icon,
+  progress,
   sparkline,
   footnote,
   badge,
   onClick,
   emphasis = 'standard',
+  countUp = false,
+  countFrom,
+  delay = 0,
   testId,
 }: StatCardProps) {
-  const display = typeof value === 'number' || value === null ? formatNumber(value, precision) : value
-  const numberSize = emphasis === 'hero' ? tokens.font.size.bigNumberLarge : tokens.font.size.bigNumber
-  // A hero number is the largest thing on the screen, so it tightens its tracking the way a metric card's does.
-  const numberTracking = emphasis === 'hero' ? tokens.font.tracking.number : -0.5
-  const tint = metric ? tokens.metric[metric] : tokens.ink.secondary
-
-  // The card is often taller than its content: on the Dashboard's bento a rail beside it spans two rows, so a tile is
-  // stretched to whatever the rail needs. The body is therefore a column that pushes the number and its footnote to
-  // the bottom of the card, which turns that extra height into breathing room instead of a block of dead white.
   const body = (
-    <Box sx={{ p: 4, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: Icon ? 36 : 24, flex: 'none' }}>
-        {/* The tile replaces the dot rather than sitting beside it: two marks for one metric would read as two facts. */}
-        {Icon ? (
-          <Box
-            aria-hidden
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: `${tokens.radius.control}px`,
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: withAlpha(tint, 0.12),
-              color: tint,
-              flex: 'none',
-            }}
-          >
-            <Icon sx={{ fontSize: 20 }} />
-          </Box>
-        ) : (
-          metric && (
-            <Box
-              aria-hidden
-              sx={{
-                width: 8,
-                height: 8,
-                borderRadius: tokens.radius.chip,
-                bgcolor: tokens.metric[metric],
-                flex: 'none',
-              }}
-            />
-          )
-        )}
-        <Box
-          component="span"
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            fontSize: tokens.font.size.label,
-            fontWeight: tokens.font.weight.label,
-            color: tokens.ink.secondary,
-            lineHeight: tokens.font.leading.label,
-            letterSpacing: tokens.font.tracking.label,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {label}
+    <Box sx={{ px: `${tokens.pad.card.x}px`, pt: `${tokens.pad.card.y}px`, pb: '16px', width: '100%', textAlign: 'left', minWidth: 0 }}>
+      <StatHead label={label} icon={icon} badge={badge} />
+      <StatFigure
+        value={value}
+        unit={unit}
+        precision={precision}
+        hero={emphasis === 'hero'}
+        countUp={countUp}
+        countFrom={countFrom}
+        delay={delay}
+        trailing={delta && <Delta delta={delta} fallbackUnit={unit} precision={precision} style={deltaStyle} />}
+      />
+      {progress !== undefined && progress !== null && (
+        <Box sx={{ mt: '12px' }}>
+          <ProgressBar value={progress} metric={metric} label={`${label} against target`} delay={delay} />
         </Box>
-        {badge}
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, mt: 'auto', pt: 1.5, minWidth: 0 }}>
-        <Box
-          component="span"
-          sx={{
-            fontSize: numberSize,
-            fontWeight: tokens.font.weight.number,
-            lineHeight: tokens.font.leading.number,
-            color: tokens.ink.text,
-            letterSpacing: numberTracking,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {display}
-        </Box>
-        {unit && value !== null && (
-          <Box
-            component="span"
-            sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}
-          >
-            {unit}
-          </Box>
-        )}
-      </Box>
-      {delta && <DeltaLine delta={delta} fallbackUnit={unit} precision={precision} />}
-      {sparkline && <Box sx={{ mt: 3 }}>{sparkline}</Box>}
-      {footnote && (
-        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.4 }}>{footnote}</Box>
       )}
+      {sparkline && <Box sx={{ mt: '12px' }}>{sparkline}</Box>}
+      {footnote && <StatCaption>{footnote}</StatCaption>}
     </Box>
   )
 
@@ -210,10 +132,9 @@ export function StatCard({
       sx={{
         height: '100%',
         display: 'flex',
-        // Only a card that does something may look like it does, and only where there is a pointer to hover with.
         ...(onClick && {
-          '@media (hover: hover)': { '&:hover': { transform: 'translateY(-2px)', boxShadow: tokens.elevation.raised } },
-          // The press is answered on pointer-down, and a scale is nothing under reduced motion.
+          // 2a: a card's border never changes on hover; a clickable one deepens its whisper of shadow.
+          '@media (hover: hover)': { '&:hover': { boxShadow: tokens.elevation.raised } },
           '&:active': { transform: 'scale(0.99)' },
           '@media (prefers-reduced-motion: reduce)': { '&:active': { transform: 'none' } },
           transition: transitionOf(['box-shadow', 'transform'], tokens.motion.duration.fast, tokens.motion.easing.standard),
@@ -223,15 +144,7 @@ export function StatCard({
       {onClick ? (
         <ButtonBase
           onClick={onClick}
-          sx={{
-            display: 'flex',
-            alignItems: 'stretch',
-            width: '100%',
-            minHeight: tokens.tapTarget,
-            borderRadius: 'inherit',
-            font: 'inherit',
-            color: 'inherit',
-          }}
+          sx={{ display: 'flex', alignItems: 'stretch', width: '100%', minHeight: tokens.tapTarget, borderRadius: 'inherit', font: 'inherit', color: 'inherit' }}
         >
           {body}
         </ButtonBase>

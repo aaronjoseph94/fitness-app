@@ -1,10 +1,13 @@
-// Owns: the fasting calendar strip (custom SVG): one row per month, one slot per day, fasts marked as completed,
-// partial, planned or missed; tap a fast for its date, status and real duration.
+// Owns: the fasting calendar strip (custom SVG): one row per month, one 20 px slot per day (2a: `chart.grid` cells,
+// radius 3, 3 px apart), fasts marked as completed (the fasting colour), partial (its light step), planned (a dashed
+// amber outline) or missed (a dashed grey outline), and today filled in the accent; tap a fast for its date, status and real
+// duration.
 import Box from '@mui/material/Box'
+import { today as localToday } from '@fitness/shared/engine'
 import { useState } from 'react'
 import { dateToTime, formatMonth, formatNumber, type LegendItem } from '../../components'
-import { tokens, withAlpha } from '../../theme'
-import { ChartFrame, TapCaption, useWidth } from './frame'
+import { tokens } from '../../theme'
+import { ChartFrame, TapCaption, readableDates, tintOnCard, useWidth } from './frame'
 
 export type FastStatus = 'completed' | 'partial' | 'planned' | 'missed'
 
@@ -23,12 +26,17 @@ export interface FastingStripProps {
   to: string
   width?: number
   legend?: boolean
+  /** The local date drawn as today (filled in the accent). Default: today in America/Edmonton. */
+  today?: string
 }
 
 const LABEL_W = 30
-const GAP = 2
-const ROW_H = 22
+const GAP = 3
+const ROW_H = 20
 const ROW_GAP = 8
+const DASH = '3 2'
+/** Today's slot (2a Dashboard: the accent), distinct from a completed fast's slate. */
+const TODAY = tokens.accent.main
 const STATUS_TEXT: Record<FastStatus, string> = {
   completed: 'Completed',
   partial: 'Partial',
@@ -36,10 +44,13 @@ const STATUS_TEXT: Record<FastStatus, string> = {
   missed: 'Missed',
 }
 
-export function FastingStrip({ fasts, from, to, width, legend = true }: FastingStripProps) {
+export function FastingStrip({ fasts, from, to, width, legend = true, today }: FastingStripProps) {
   const [ref, w] = useWidth(width)
   const [selected, setSelected] = useState<string | null>(null)
   const C = tokens.metric.fasting
+  const PARTIAL = tintOnCard(C, 0.45)
+  const PLANNED = tokens.tone.warning.text
+  const now = today ?? localToday(new Date())
   const byDate = new Map(fasts.map((f) => [f.date.slice(0, 10), f]))
   const cellW = Math.max(4, (w - LABEL_W - GAP * 30) / 31)
 
@@ -69,11 +80,12 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
 
   const items: LegendItem[] = [
     { label: 'Completed', color: C },
-    { label: 'Partial', color: withAlpha(C, 0.45) },
-    { label: 'Planned', color: C, mark: 'ring' },
+    { label: 'Partial', color: PARTIAL },
+    { label: 'Planned', color: PLANNED, mark: 'ring' },
   ]
   if (fasts.some((f) => f.status === 'missed'))
     items.push({ label: 'Missed', color: tokens.chart.target, mark: 'ring' })
+  if (now >= from.slice(0, 10) && now <= to.slice(0, 10)) items.push({ label: 'Today', color: TODAY })
 
   return (
     <ChartFrame
@@ -97,7 +109,12 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
             const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
             return (
               <g key={`${y}-${m}`}>
-                <text x={0} y={top + ROW_H / 2 + 4} fontSize={12} fill={tokens.chart.axis}>
+                <text
+                  x={0}
+                  y={top + ROW_H / 2 + 4}
+                  fontSize={tokens.chart.axisFontSize}
+                  fill={tokens.chart.axis}
+                >
                   {formatMonth(Date.UTC(y, m, 1))}
                 </text>
                 {Array.from({ length: daysInMonth }, (_, d) => {
@@ -105,19 +122,27 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
                   const f = byDate.get(date)
                   const x = LABEL_W + d * (cellW + GAP)
                   const isSel = date === selected
-                  let fill: string = tokens.chart.grid
+                  let fill: string = date === now ? TODAY : tokens.chart.grid
                   let stroke = 'none'
                   let dash: string | undefined
                   if (f?.status === 'completed') fill = C
-                  else if (f?.status === 'partial') fill = withAlpha(C, 0.45)
+                  else if (f?.status === 'partial') fill = PARTIAL
                   else if (f?.status === 'planned') {
                     fill = tokens.ink.card
-                    stroke = C
+                    stroke = PLANNED
+                    dash = DASH
                   } else if (f?.status === 'missed') {
                     stroke = tokens.chart.target
-                    dash = '2 2'
+                    dash = DASH
                   }
-                  if (isSel) stroke = tokens.ink.text
+                  if (f && date === now) {
+                    stroke = TODAY
+                    dash = undefined
+                  }
+                  if (isSel) {
+                    stroke = tokens.ink.text
+                    dash = undefined
+                  }
                   return (
                     <rect
                       key={date}
@@ -125,7 +150,7 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
                       y={top + 0.75}
                       width={cellW - 1.5}
                       height={ROW_H - 1.5}
-                      rx={Math.min(3, cellW / 3)}
+                      rx={Math.min(tokens.chart.barRadius, cellW / 3)}
                       fill={fill}
                       stroke={stroke}
                       strokeWidth={1.5}
@@ -147,7 +172,7 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
               key={d}
               x={LABEL_W + (d - 1) * (cellW + GAP) + cellW / 2}
               y={svgH - 2}
-              fontSize={10}
+              fontSize={tokens.chart.axisFontSize}
               textAnchor="middle"
               fill={tokens.chart.axis}
             >
@@ -158,7 +183,7 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
       </Box>
       <TapCaption>
         {pick
-          ? `${selected} · ${STATUS_TEXT[pick.status]}${pick.hours ? ` · ${formatNumber(pick.hours, 1)} h` : ''}`
+          ? `${readableDates(selected!)} · ${STATUS_TEXT[pick.status]}${pick.hours ? ` · ${formatNumber(pick.hours, 1)} h` : ''}`
           : summary}
       </TapCaption>
     </ChartFrame>

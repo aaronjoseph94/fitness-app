@@ -1,4 +1,5 @@
-// Owns: the legend row under a chart title: a small key that mirrors the mark (bar swatch, line, dashed target, dot) + a label in text ink.
+// Owns: the legend row under a chart title (2a): a small key that mirrors the mark — an 8 × 8 radius-2 square for a bar
+// or band, a short stroke for a line or a dashed target, a dot, a ring — beside a 12 px muted label, 14 px apart.
 import Box from '@mui/material/Box'
 import { tokens } from '../../theme'
 
@@ -19,20 +20,14 @@ export interface LegendChipsProps {
 }
 
 function Key({ color, mark = 'bar', dense }: { color: string; mark?: LegendMark; dense: boolean }) {
-  const w = dense ? 12 : 14
-  const h = dense ? 10 : 12
+  const w = mark === 'line' || mark === 'dashed' ? (dense ? 10 : 12) : 8
   return (
-    <svg width={w} height={h} viewBox="0 0 14 12" aria-hidden focusable="false" style={{ flex: 'none' }}>
-      {mark === 'bar' && <rect x="1" y="1" width="12" height="10" rx="3" fill={color} />}
-      {mark === 'band' && <rect x="1" y="1" width="12" height="10" rx="3" fill={color} />}
-      {mark === 'line' && (
-        <line x1="1" y1="6" x2="13" y2="6" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-      )}
-      {mark === 'dashed' && (
-        <line x1="0.5" y1="6" x2="13.5" y2="6" stroke={color} strokeWidth="2" strokeDasharray="3 2.5" />
-      )}
-      {mark === 'dot' && <circle cx="7" cy="6" r="4" fill={color} />}
-      {mark === 'ring' && <circle cx="7" cy="6" r="3.75" fill="none" stroke={color} strokeWidth="1.5" />}
+    <svg width={w} height={8} viewBox={`0 0 ${w} 8`} aria-hidden focusable="false" style={{ flex: 'none' }}>
+      {(mark === 'bar' || mark === 'band') && <rect x="0" y="0" width="8" height="8" rx={tokens.radius.bar} fill={color} />}
+      {mark === 'line' && <line x1="0.75" y1="4" x2={w - 0.75} y2="4" stroke={color} strokeWidth="2" strokeLinecap="round" />}
+      {mark === 'dashed' && <line x1="0" y1="4" x2={w} y2="4" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />}
+      {mark === 'dot' && <circle cx="4" cy="4" r="4" fill={color} />}
+      {mark === 'ring' && <circle cx="4" cy="4" r="3.25" fill="none" stroke={color} strokeWidth="1.5" />}
     </svg>
   )
 }
@@ -49,7 +44,7 @@ export function LegendChips({ items, dense = false }: LegendChipsProps) {
         p: 0,
         display: 'flex',
         flexWrap: 'wrap',
-        columnGap: dense ? 2.5 : 3.5,
+        columnGap: dense ? '10px' : '14px',
         rowGap: 1,
       }}
     >
@@ -60,12 +55,11 @@ export function LegendChips({ items, dense = false }: LegendChipsProps) {
           sx={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 1.5,
-            fontSize: dense ? tokens.font.size.caption : tokens.font.size.label,
-            fontWeight: tokens.font.weight.label,
+            gap: '5px',
+            fontSize: dense ? tokens.font.size.micro : tokens.font.size.caption,
+            fontWeight: tokens.font.weight.body,
             color: tokens.ink.secondary,
-            lineHeight: tokens.font.leading.label,
-            letterSpacing: tokens.font.tracking.label,
+            lineHeight: tokens.font.leading.caption,
           }}
         >
           <Key color={item.color} mark={item.mark} dense={dense} />

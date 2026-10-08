@@ -97,13 +97,15 @@ function themeColorMeta(): Plugin {
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')
 
-/** Entry stylesheets at most this big are inlined into index.html (today: only Outfit's two @font-face rules, ~0.7 KB). */
+/** Entry stylesheets at most this big are inlined into index.html (today: only Geist's five @font-face rules, ~1.8 KB). */
 const INLINE_CSS_MAX_BYTES = 4 * 1024
 
 /**
- * The self-hosted Outfit font without a render-blocking request: the entry stylesheet (its @font-face rules, still
- * font-display: swap) is inlined into index.html, and the latin woff2 that every screen uses is preloaded, so the font
- * downloads alongside the scripts instead of being discovered at the first paint. (The CSP allows inline styles.)
+ * The self-hosted Geist variable font without a render-blocking request: the entry stylesheet (its @font-face rules,
+ * still font-display: swap, one per unicode range) is inlined into index.html, and the latin woff2 that every screen
+ * uses is preloaded, so the font downloads alongside the scripts instead of being discovered at the first paint. The
+ * other ranges (latin-ext, cyrillic, vietnamese) are fetched only if a page ever shows such a glyph. (The CSP allows
+ * inline styles.)
  */
 function inlineFontCss(): Plugin {
   return {
@@ -122,7 +124,7 @@ function inlineFontCss(): Plugin {
           if (css.length > INLINE_CSS_MAX_BYTES || !link.test(out)) continue
           out = out.replace(link, () => `<style>${css}</style>`)
         }
-        const latin = Object.keys(bundle).find((f) => /\/outfit-latin-wght-normal-[^/]+\.woff2$/.test(f))
+        const latin = Object.keys(bundle).find((f) => /\/geist-latin-wght-normal-[^/]+\.woff2$/.test(f))
         if (latin) {
           out = out.replace('<title>', () => `<link rel="preload" href="/${latin}" as="font" type="font/woff2" crossorigin />\n    <title>`)
         }

@@ -1,17 +1,22 @@
-// Owns: the one implementation behind every "bars per day + target" chart (calories, macros, water, steps):
-// date axis, stacked or single bars with 4 px rounded tops and 2 px surface gaps, a dashed target line, an optional
-// overlay line (e.g. a rolling median) and optional baseline markers (e.g. fast days). Charts configure it; they
-// do not re-implement it.
-import { formatNumber, formatShortDate, type LegendItem } from '../../components'
+// Owns: the one implementation behind every "bars per day + target" chart (calories, macros, water, steps), in the
+// 2a style: a day axis over the baseline rule (day-of-month labels for up to 16 days, "Oct 12" beyond), single
+// or flush-stacked bars with radius-3 tops that grow on screen, a dashed target line (optionally in its series'
+// colour), days below the target in the series' tint when asked, an optional overlay line (e.g. a rolling median)
+// and optional baseline markers (e.g. fast days). Charts configure it; they do not re-implement it.
+import { formatNumber, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
   BAR_MAX,
+  BAR_RADIUS,
   ChartFrame,
+  DAY_LABEL_PX,
+  DAY_NUMBER_MAX,
   MARGIN,
-  animated,
   barCursor,
-  barGap,
-  tickInterval,
+  barMotion,
+  barXAxisStyle,
+  dataEndBarPath,
+  dayTick,
   dotStyle,
   gridStyle,
   lineStyle,
@@ -19,9 +24,10 @@ import {
   rechartsSize,
   seriesSummary,
   surfaceText,
-  targetStyle,
+  targetLine,
+  tickCount,
+  tickInterval,
   tooltip,
-  xAxisStyle,
   yAxisStyle,
   type TipLine,
   type DayRow,
@@ -35,6 +41,8 @@ export interface DaySeries {
   key: string
   label: string
   color: string
+  /** A single series with a target: days below it are drawn in this tint (2a: on-target days in full colour). */
+  missColor?: string
 }
 
 export interface DailyBarsProps {
@@ -44,13 +52,14 @@ export interface DailyBarsProps {
   rows: readonly DayRow[]
   /** Stacked bottom → top when more than one. */
   bars: readonly DaySeries[]
-  target?: { value: number; label: string }
+  /** Dashed line; `color` when it belongs to one series (default the grey target colour). */
+  target?: { value: number; label: string; color?: string }
   line?: DaySeries
   /** Rows where `marker.key` is true get a dot on the baseline (e.g. fast days). */
   marker?: DaySeries
   /** Tooltip value text, e.g. v => `${formatNumber(v)} kcal`. */
   format: (v: number) => string
-  /** Y tick text. Default: grouped number, compact above 9,999. */
+  /** Y tick text. Default: grouped numbers, every tick compact ("15K") once the axis passes 9,999. */
   tickFormat?: (v: number) => string
   width?: number
   height: number
@@ -75,15 +84,31 @@ export function DailyBars({
   legend,
 }: DailyBarsProps) {
   const stacked = bars.length > 1
-  const data = rows.map((r) => ({ ...r, __marker: marker && field(r, marker.key) === true ? 0 : null }))
+  const single = bars[0]
+  const tint = !stacked && target && single?.missColor ? single.missColor : null
+  const data = rows.map((r) => {
+    const v = single ? val(r, single.key) : null
+    return {
+      ...r,
+      __marker: marker && field(r, marker.key) === true ? 0 : null,
+      __miss: tint !== null && v !== null && v < target!.value,
+    }
+  })
   const totals = data.map((r) => bars.reduce((s, b) => s + (val(r, b.key) ?? 0), 0))
   const lineVals = line ? data.map((r) => val(r, line.key)).filter((v): v is number => v !== null) : []
-  const y = niceScale([...totals, ...lineVals, ...(target ? [target.value] : [])], { zero: true })
-  const ticks = tickFormat ?? ((v: number) => formatNumber(v, 0, Math.abs(v) > 9999))
+  const y = niceScale([...totals, ...lineVals, ...(target ? [target.value] : [])], {
+    zero: true,
+    count: tickCount(height),
+  })
+  const compact = Math.max(Math.abs(y.domain[0]), Math.abs(y.domain[1])) > 9999
+  const decimals = compact && y.ticks.some((t) => t % 1000 !== 0) ? 1 : 0
+  const ticks = tickFormat ?? ((v: number) => formatNumber(v, decimals, compact))
 
+  const targetColor = target?.color ?? tokens.chart.target
   const items: LegendItem[] = bars.map((b) => ({ label: b.label, color: b.color, mark: 'bar' as const }))
+  if (tint && data.some((r) => r.__miss)) items.push({ label: 'Below target', color: tint, mark: 'bar' })
   if (line) items.push({ label: line.label, color: line.color, mark: 'line' })
-  if (target) items.push({ label: target.label, color: tokens.chart.target, mark: 'dashed' })
+  if (target) items.push({ label: target.label, color: targetColor, mark: 'dashed' })
   if (marker && data.some((r) => r.__marker === 0))
     items.push({ label: marker.label, color: marker.color, mark: 'dot' })
 
@@ -116,7 +141,7 @@ export function DailyBars({
         ]
       : []),
     ...(target
-      ? [{ label: target.label, color: tokens.chart.target, dashed: true, value: () => format(target.value) }]
+      ? [{ label: target.label, color: targetColor, dashed: true, value: () => format(target.value) }]
       : []),
     ...(marker
       ? [
@@ -129,11 +154,18 @@ export function DailyBars({
       : []),
   ]
   const Tip = tooltip<DayRow>((r) => r.date, tipLines)
-  const anim = animated(width)
+  const motion = barMotion(width)
+  const tickText = dayTick(data.length)
+  const labelPx = data.length <= DAY_NUMBER_MAX ? DAY_LABEL_PX : undefined
   // Per-day total (a day with no value in any bar is a gap, not a zero), then the target.
   const summary = [
     seriesSummary(
-      data.map((r) => ({ date: r.date, value: bars.every((b) => val(r, b.key) === null) ? null : bars.reduce((s, b) => s + (val(r, b.key) ?? 0), 0) })),
+      data.map((r) => ({
+        date: r.date,
+        value: bars.every((b) => val(r, b.key) === null)
+          ? null
+          : bars.reduce((s, b) => s + (val(r, b.key) ?? 0), 0),
+      })),
       format,
     ),
     target ? `${target.label} ${format(target.value)}.` : '',
@@ -144,15 +176,7 @@ export function DailyBars({
   const barEls = (R: RechartsModule) =>
     bars.map((b) =>
       stacked ? (
-        <R.Bar
-          key={b.key}
-          dataKey={b.key}
-          name={b.label}
-          fill={b.color}
-          maxBarSize={BAR_MAX}
-          {...barGap}
-          isAnimationActive={anim}
-        />
+        <R.Bar key={b.key} dataKey={b.key} name={b.label} fill={b.color} maxBarSize={BAR_MAX} {...motion} />
       ) : (
         <R.Bar
           key={b.key}
@@ -160,8 +184,9 @@ export function DailyBars({
           name={b.label}
           fill={b.color}
           maxBarSize={BAR_MAX}
-          radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}
-          isAnimationActive={anim}
+          radius={BAR_RADIUS}
+          shape={tint ? tintedBar(tint) : undefined}
+          {...motion}
         />
       ),
     )
@@ -181,27 +206,27 @@ export function DailyBars({
           <R.ComposedChart
             data={data}
             margin={MARGIN}
-            barCategoryGap="22%"
+            barCategoryGap="16%"
             {...rechartsSize(width, height)}
             {...surfaceText(label, summary)}
           >
             <R.CartesianGrid {...gridStyle} />
             <R.XAxis
-              {...xAxisStyle}
+              {...barXAxisStyle}
               dataKey="date"
-              tickFormatter={(d: string) => formatShortDate(d)}
-              interval={tickInterval(data.length, plotWidth)}
+              tickFormatter={tickText}
+              interval={tickInterval(data.length, plotWidth, undefined, labelPx)}
             />
             <R.YAxis {...yAxisStyle} domain={y.domain} ticks={y.ticks} tickFormatter={ticks} />
             <R.Tooltip content={Tip} cursor={barCursor} />
             {stacked ? (
-              <R.BarStack stackId="day" radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}>
+              <R.BarStack stackId="day" radius={BAR_RADIUS}>
                 {barEls(R)}
               </R.BarStack>
             ) : (
               barEls(R)
             )}
-            {target && <R.ReferenceLine y={target.value} {...targetStyle} />}
+            {target && <R.ReferenceLine y={target.value} {...targetLine(targetColor)} />}
             {line && (
               <R.Line
                 dataKey={line.key}
@@ -229,4 +254,22 @@ export function DailyBars({
       </Plot>
     </ChartFrame>
   )
+}
+
+interface BarShapeLike {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  fill?: string
+  payload?: unknown
+}
+
+/** A day bar in full colour on target and in `missColor` below it (rounded data end, square baseline). */
+function tintedBar(missColor: string) {
+  return function TintedBar(p: BarShapeLike) {
+    const miss = (p.payload as { __miss?: boolean } | undefined)?.__miss === true
+    const d = dataEndBarPath(p.x ?? 0, p.y ?? 0, p.width ?? 0, p.height ?? 0, true)
+    return d ? <path d={d} fill={miss ? missColor : p.fill} /> : <g />
+  }
 }

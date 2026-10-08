@@ -1,12 +1,13 @@
-// Owns: rendering the muscle map — grey body, each of the 17 muscles filled by its level (0 = body grey, 1–4 =
-// the indigo steps), white separations, an accessible <title> per muscle and one delegated click/keyboard handler.
-// Levels come in already bucketed (quantile levelling is the engine's job).
+// Owns: rendering the muscle map (2a) — a light zinc body, each of the 17 muscles filled by its level (0 = the body
+// colour, 1–4 = the four blue steps, or the four rose steps for a scan's fat share), white separations, an accessible
+// <title> per muscle and one delegated click/keyboard handler. Front, back or both; 64 px (a scan segment) to 200 px
+// (a volume map) or the container's width. Levels come in already bucketed (quantile levelling is the engine's job).
 import Box from '@mui/material/Box'
 import type { Muscle } from '@fitness/shared/schemas'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { tokens } from '../../theme'
 import { GEOMETRY, type MuscleView } from './geometry'
-import { MUSCLE_LABELS, levelColor, levelLabel, type MuscleLevel } from './levels'
+import { MUSCLE_LABELS, levelColor, levelLabel, type MuscleLevel, type MuscleScale } from './levels'
 
 export interface MuscleMapProps {
   levels: Partial<Record<Muscle, MuscleLevel>>
@@ -20,6 +21,13 @@ export interface MuscleMapProps {
   title?: string
   /** Outlines this muscle (e.g. the one being edited). */
   selected?: Muscle | null
+  /** The step colours: `volume` (blue, default) or `fat` (rose, a scan's fat share by segment). */
+  scale?: MuscleScale
+  /**
+   * The untrained body: `standard` (`muscleMap.body`, default — reads on white and on an `ink.panel` panel) or
+   * `light` (`muscleMap.bodyAlt`, 2a's lighter figure for a map on a white card).
+   */
+  body?: 'standard' | 'light'
 }
 
 /** Space between the front and back figures, in source units. */
@@ -51,8 +59,12 @@ export function MuscleMap({
   onSelect,
   title = 'Muscle map',
   selected = null,
+  scale = 'volume',
+  body = 'standard',
 }: MuscleMapProps) {
   const { placed, width, height } = layout(view)
+  const bodyFill = body === 'light' ? tokens.muscleMap.bodyAlt : tokens.muscleMap.body
+  const fill = (level: MuscleLevel) => (level === 0 ? bodyFill : levelColor(level, scale))
   // Separation strokes in screen px, thinner on thumbnails.
   const stroke = Math.max(0.6, Math.min(1.6, (size ?? 360) / 220))
   const interactive = !!onSelect
@@ -84,7 +96,7 @@ export function MuscleMap({
         maxWidth: size ?? 420,
         lineHeight: 0,
         '& [data-muscle]': interactive ? { cursor: 'pointer', outline: 'none' } : undefined,
-        '& [data-muscle]:focus-visible path': { stroke: tokens.ink.text, strokeWidth: stroke * 2 },
+        '& [data-muscle]:focus-visible path': { stroke: tokens.accent.main, strokeWidth: stroke * 2 },
         '@media (hover: hover)': interactive
           ? { '& [data-muscle]:hover path': { filter: 'brightness(0.94)' } }
           : undefined,
@@ -107,7 +119,7 @@ export function MuscleMap({
           for (const m of g.muscles) muscles.set(m.muscle, [...(muscles.get(m.muscle) ?? []), m.d])
           return (
             <g key={p.view} transform={`translate(${p.dx} ${p.dy})`}>
-              <g fill={tokens.muscleMap.body}>
+              <g fill={bodyFill}>
                 {g.base.map((d, i) => (
                   <path key={i} d={d} />
                 ))}
@@ -129,7 +141,7 @@ export function MuscleMap({
                       <path
                         key={i}
                         d={d}
-                        fill={levelColor(level)}
+                        fill={fill(level)}
                         stroke={isSel ? tokens.ink.text : tokens.muscleMap.stroke}
                         strokeWidth={isSel ? stroke * 2 : stroke}
                         strokeLinejoin="round"

@@ -1,10 +1,11 @@
 // Owns: the calendar heatmap (custom SVG; Recharts has none) used for protein adherence and logging adherence:
-// one column per Monday-start week, one row per weekday, cells tinted by value in one metric colour, tap for the day.
+// one column per Monday-start week, one row per weekday, cells (2a: radius 3, 3 px apart, empty days in the grid
+// fill) in four opaque steps of one metric colour, tap for the day.
 import Box from '@mui/material/Box'
 import { useState } from 'react'
 import { dateToTime, formatMonth, formatNumber, timeToDate, type LegendItem } from '../../components'
-import { tokens, withAlpha, type MetricKey } from '../../theme'
-import { ChartFrame, TapCaption, useWidth } from './frame'
+import { tokens, type MetricKey } from '../../theme'
+import { ChartFrame, TapCaption, readableDates, tintOnCard, useWidth } from './frame'
 import { DAY } from './time'
 
 export interface HeatmapDay {
@@ -66,11 +67,11 @@ export function CalendarHeatmap({
 
   const fill = (v: number | null | undefined) => {
     if (v === null || v === undefined) return tokens.chart.grid
-    if (mode === 'binary') return v >= 1 ? color : withAlpha(color, 0.2)
+    if (mode === 'binary') return v >= 1 ? color : tintOnCard(color, 0.2)
     if (v >= 0.75) return color
-    if (v >= 0.5) return withAlpha(color, 0.7)
-    if (v >= 0.25) return withAlpha(color, 0.42)
-    return withAlpha(color, 0.2)
+    if (v >= 0.5) return tintOnCard(color, 0.7)
+    if (v >= 0.25) return tintOnCard(color, 0.42)
+    return tintOnCard(color, 0.2)
   }
   const say =
     describe ??
@@ -86,14 +87,14 @@ export function CalendarHeatmap({
   const items: LegendItem[] =
     mode === 'binary'
       ? [
-          { label: 'Below target', color: withAlpha(color, 0.2) },
+          { label: 'Below target', color: tintOnCard(color, 0.2) },
           { label: 'At target', color },
           { label: 'No data', color: tokens.chart.grid },
         ]
       : [
-          { label: '< 25 %', color: withAlpha(color, 0.2) },
-          { label: '25–50 %', color: withAlpha(color, 0.42) },
-          { label: '50–75 %', color: withAlpha(color, 0.7) },
+          { label: '< 25 %', color: tintOnCard(color, 0.2) },
+          { label: '25–50 %', color: tintOnCard(color, 0.42) },
+          { label: '50–75 %', color: tintOnCard(color, 0.7) },
           { label: '≥ 75 %', color },
         ]
 
@@ -141,7 +142,7 @@ export function CalendarHeatmap({
           style={{ display: 'block' }}
         >
           {months.map((m) => (
-            <text key={m.x} x={m.x} y={11} fontSize={11} fill={tokens.chart.axis}>
+            <text key={m.x} x={m.x} y={11} fontSize={tokens.chart.axisFontSize} fill={tokens.chart.axis}>
               {m.text}
             </text>
           ))}
@@ -151,7 +152,7 @@ export function CalendarHeatmap({
                 key={i}
                 x={0}
                 y={TOP + i * (cell + gap) + cell / 2 + 4}
-                fontSize={10}
+                fontSize={tokens.chart.axisFontSize}
                 fill={tokens.chart.axis}
               >
                 {d}
@@ -165,9 +166,9 @@ export function CalendarHeatmap({
               y={c.y}
               width={cell}
               height={cell}
-              rx={Math.min(4, cell / 4)}
+              rx={Math.min(tokens.chart.barRadius, cell / 4)}
               fill={fill(c.v)}
-              stroke={c.date === selected ? tokens.ink.text : 'none'}
+              stroke={c.date === selected ? tokens.accent.main : 'none'}
               strokeWidth={1.5}
               style={{ cursor: 'pointer' }}
               onClick={() => setSelected(c.date === selected ? null : c.date)}
@@ -177,7 +178,7 @@ export function CalendarHeatmap({
           ))}
         </svg>
       </Box>
-      <TapCaption>{pick ? `${pick.date} · ${say(pick.v ?? null)}` : summary}</TapCaption>
+      <TapCaption>{pick ? `${readableDates(pick.date)} · ${say(pick.v ?? null)}` : summary}</TapCaption>
     </ChartFrame>
   )
 }

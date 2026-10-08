@@ -1,13 +1,14 @@
-// Owns: the proposal card shell (SPEC §6/§8): who proposed it, title, one-line summary, optional before → after
-// rows, and Accept / Reject / Why. Decisions go out through callbacks; once decided, the buttons give way to the status.
-import CheckRounded from '@mui/icons-material/CheckRounded'
-import CloseRounded from '@mui/icons-material/CloseRounded'
-import HelpOutlineRounded from '@mui/icons-material/HelpOutlineRounded'
+// Owns: the proposal card shell (SPEC §6/§8) in its 2a form (README, Today "Proposal card"): a header row — the blue
+// sparkle, who proposed it (default "Proposal") and the neutral "Pending" chip — the title at 15/600, the one-line
+// summary, the before → after rows on #FAFAFA (old value struck through, new value bold), and the actions: "Accept"
+// in the dark button, "Reject" in the outline one and a "Why?" link on the right. Decisions go out through the same
+// callbacks as before; once decided, the buttons give way to the status line.
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
+import { BeforeAfterList } from './BeforeAfter'
 import { PendingBadge } from './PendingBadge'
 
 export type ProposalStatus = 'pending' | 'accepted' | 'rejected' | 'auto_applied'
@@ -21,7 +22,7 @@ export interface ProposalChange {
 export interface ProposalCardProps {
   title: string
   summary: ReactNode
-  /** Small line above the title, e.g. "Weekly review · AI". */
+  /** The header label, e.g. "Weekly review · AI". Default "Proposal". */
   source?: string
   changes?: readonly ProposalChange[]
   status?: ProposalStatus
@@ -38,8 +39,8 @@ export interface ProposalCardProps {
 }
 
 const STATUS_TEXT: Record<Exclude<ProposalStatus, 'pending'>, { text: string; color: string }> = {
-  accepted: { text: 'Accepted', color: tokens.status.good },
-  auto_applied: { text: 'Applied automatically', color: tokens.status.good },
+  accepted: { text: 'Accepted', color: tokens.tone.success.text },
+  auto_applied: { text: 'Applied automatically', color: tokens.tone.success.text },
   rejected: { text: 'Rejected', color: tokens.ink.secondary },
 }
 
@@ -59,16 +60,32 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const decided = status !== 'pending' ? STATUS_TEXT[status] : null
   return (
-    <Card data-testid={testId ?? 'proposal-card'} data-status={status} sx={{ p: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 24 }}>
+    <Box
+      data-testid={testId ?? 'proposal-card'}
+      data-status={status}
+      sx={{
+        px: `${tokens.pad.dense.x}px`,
+        py: `${tokens.pad.dense.y}px`,
+        borderRadius: `${tokens.radius.card}px`,
+        border: `1px solid ${tokens.ink.border}`,
+        bgcolor: tokens.ink.card,
+        boxShadow: tokens.elevation.card,
+        minWidth: 0,
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: 22 }}>
+        <AutoAwesomeRounded aria-hidden sx={{ fontSize: 18, color: tokens.accent.main, flex: 'none' }} />
         <Box
           component="span"
           sx={{
             flex: 1,
             minWidth: 0,
-            fontSize: tokens.font.size.label,
-            fontWeight: tokens.font.weight.label,
-            color: tokens.ink.secondary,
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.heading,
+            color: tokens.ink.text,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {source ?? 'Proposal'}
@@ -79,89 +96,42 @@ export function ProposalCard({
         component={headingComponent}
         sx={{
           m: 0,
-          mt: 1.5,
-          fontSize: tokens.font.size.cardTitle,
+          mt: '8px',
+          fontSize: tokens.font.size.itemTitle,
           fontWeight: tokens.font.weight.heading,
+          lineHeight: tokens.font.leading.itemTitle,
           color: tokens.ink.text,
-          lineHeight: 1.3,
         }}
       >
         {title}
       </Box>
-      <Box sx={{ mt: 1.5, fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>{summary}</Box>
+      <Box sx={{ mt: '4px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{summary}</Box>
 
       {changes && changes.length > 0 && (
-        <Box component="dl" sx={{ m: 0, mt: 3, borderTop: `1px solid ${tokens.ink.border}` }}>
-          {changes.map((c) => (
-            <Box
-              key={c.label}
-              sx={{
-                display: 'flex',
-                alignItems: 'baseline',
-                gap: 2,
-                py: 2,
-                borderBottom: `1px solid ${tokens.ink.border}`,
-              }}
-            >
-              <Box component="dt" sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
-                {c.label}
-              </Box>
-              <Box
-                component="dd"
-                sx={{
-                  m: 0,
-                  fontSize: tokens.font.size.small,
-                  color: tokens.ink.text,
-                  fontVariantNumeric: 'tabular-nums',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <Box component="span" sx={{ color: tokens.ink.secondary }}>
-                  {c.from}
-                </Box>
-                {' → '}
-                <Box component="span" sx={{ fontWeight: tokens.font.weight.heading }}>
-                  {c.to}
-                </Box>
-              </Box>
-            </Box>
-          ))}
+        <Box sx={{ mt: '10px' }}>
+          <BeforeAfterList changes={changes} />
         </Box>
       )}
 
-      {children && <Box sx={{ mt: 3 }}>{children}</Box>}
+      {children && <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>{children}</Box>}
 
       {decided ? (
-        <Box sx={{ mt: 3, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: decided.color }}>
-          {decided.text}
-        </Box>
+        <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: decided.color }}>{decided.text}</Box>
       ) : (
-        <Box sx={{ display: 'flex', gap: 2, mt: 4, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            startIcon={<CheckRounded />}
-            onClick={onAccept}
-            disabled={busy || !onAccept}
-            sx={{ flex: '1 1 0', minWidth: 96 }}
-          >
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: '12px' }}>
+          <Button variant="contained" color="dark" size="dense" onClick={onAccept} disabled={busy || !onAccept}>
             Accept
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<CloseRounded />}
-            onClick={onReject}
-            disabled={busy || !onReject}
-            sx={{ flex: '1 1 0', minWidth: 96 }}
-          >
+          <Button variant="outlined" size="dense" onClick={onReject} disabled={busy || !onReject}>
             Reject
           </Button>
           {onWhy && (
-            <Button variant="text" startIcon={<HelpOutlineRounded />} onClick={onWhy} disabled={busy}>
-              Why
+            <Button variant="text" size="dense" onClick={onWhy} disabled={busy} sx={{ ml: 'auto', px: '8px', mr: '-8px' }}>
+              Why?
             </Button>
           )}
         </Box>
       )}
-    </Card>
+    </Box>
   )
 }

@@ -3,13 +3,12 @@
 // The surface is drawn once Recharts has loaded (preload.ts), the slot is near the viewport, and the rest of the page
 // has rendered (a deferred render, so the page paints first). <EagerCharts> (the printable report) and a fixed width
 // (print) draw it on the first render instead. If Recharts can't be fetched (offline before the service worker cached
-// it), the slot says so and the rest of the page stays.
+// it), the slot says so (2a's dashed empty slot) and the rest of the page stays.
 import Box from '@mui/material/Box'
 import { createContext, Suspense, use, useContext, useDeferredValue, useEffect, useState, type ReactNode, type RefObject } from 'react'
 import { LoadBoundary } from '../../components'
-import { tokens } from '../../theme'
 import { preloadCharts, type RechartsModule } from '../preload'
-import { useWidth } from './frame'
+import { plotSlot, useWidth } from './frame'
 
 const Eager = createContext(false)
 
@@ -61,10 +60,7 @@ export function Plot({ width, height, children }: PlotProps) {
   const deferred = useDeferredValue(near, false)
   const slot = <Box aria-hidden data-plot="loading" sx={{ height }} />
   const failed = (
-    <Box
-      data-plot="failed"
-      sx={{ height, display: 'grid', placeItems: 'center', px: 4, textAlign: 'center', fontSize: tokens.font.size.small, color: tokens.ink.secondary }}
-    >
+    <Box data-plot="failed" sx={{ ...plotSlot, height }}>
       This chart couldn’t load. Reload the app once you’re online.
     </Box>
   )

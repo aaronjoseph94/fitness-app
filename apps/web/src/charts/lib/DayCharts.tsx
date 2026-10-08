@@ -1,9 +1,11 @@
-// Owns: the four "per day vs target" charts — calories by meal slot, macros (g) with the protein target, water
-// (ml) and steps with a 14-day median — as configurations of DailyBars in their metric colours.
+// Owns: the four "per day vs target" charts — calories by meal slot (2a: the calories colour lightening breakfast →
+// lunch → dinner → snack, flush), macros (g) with the protein target dashed in the protein colour, water (ml; days
+// that hit the target in full colour, the rest in its lighter step) and steps with a 14-day median — as configurations of
+// DailyBars in their metric colours.
 import { formatNumber } from '../../components'
-import { tokens, withAlpha } from '../../theme'
+import { tokens } from '../../theme'
 import { DailyBars, type DaySeries } from './DailyBars'
-import type { ChartSizeProps } from './frame'
+import { UNDER_TARGET_ALPHA, tintOnCard, type ChartSizeProps } from './frame'
 import { rollingMedian } from './stats'
 
 interface Common extends ChartSizeProps {
@@ -31,12 +33,12 @@ export interface CaloriesChartProps extends Common {
   target?: number
 }
 
-/** Slots are tints of the calories colour, stacked in eating order. */
+/** Slots are steps of the calories colour, darkest first, stacked in eating order (2a: breakfast at the base). */
 const SLOTS: readonly { key: MealSlotKey; label: string; alpha: number }[] = [
-  { key: 'breakfast', label: 'Breakfast', alpha: 0.45 },
-  { key: 'lunch', label: 'Lunch', alpha: 1 },
-  { key: 'dinner', label: 'Dinner', alpha: 0.62 },
-  { key: 'snack', label: 'Snack', alpha: 0.32 },
+  { key: 'breakfast', label: 'Breakfast', alpha: 1 },
+  { key: 'lunch', label: 'Lunch', alpha: 0.6 },
+  { key: 'dinner', label: 'Dinner', alpha: 0.32 },
+  { key: 'snack', label: 'Snack', alpha: 0.18 },
 ]
 
 const kcal = (v: number) => `${formatNumber(v)} kcal`
@@ -46,7 +48,7 @@ export function CaloriesChart({ days, target, width, height = 220, legend = true
   const bars: DaySeries[] = present.map((s) => ({
     key: s.key,
     label: s.label,
-    color: s.alpha === 1 ? tokens.metric.calories : withAlpha(tokens.metric.calories, s.alpha),
+    color: s.alpha === 1 ? tokens.metric.calories : tintOnCard(tokens.metric.calories, s.alpha),
   }))
   return (
     <DailyBars
@@ -55,7 +57,7 @@ export function CaloriesChart({ days, target, width, height = 220, legend = true
       unit="kcal"
       rows={days}
       bars={bars}
-      target={target === undefined ? undefined : { value: target, label: 'Target' }}
+      target={target === undefined ? undefined : { value: target, label: 'Target', color: tokens.ink.text }}
       marker={{ key: 'fast', label: 'Fast day', color: tokens.metric.fasting }}
       format={kcal}
       width={width}
@@ -94,7 +96,11 @@ export function MacrosChart({ days, proteinTarget, width, height = 220, legend =
         { key: 'carbs', label: 'Carbs', color: tokens.metric.carbs },
         { key: 'fat', label: 'Fat', color: tokens.metric.fat },
       ]}
-      target={proteinTarget === undefined ? undefined : { value: proteinTarget, label: 'Protein target' }}
+      target={
+        proteinTarget === undefined
+          ? undefined
+          : { value: proteinTarget, label: 'Protein target', color: tokens.metric.protein }
+      }
       format={grams}
       width={width}
       height={height}
@@ -123,7 +129,14 @@ export function WaterChart({ days, target, width, height = 200, legend = true }:
       label="Water per day in millilitres"
       unit="ml"
       rows={days}
-      bars={[{ key: 'ml', label: 'Water', color: tokens.metric.water }]}
+      bars={[
+        {
+          key: 'ml',
+          label: 'Water',
+          color: tokens.metric.water,
+          missColor: tintOnCard(tokens.metric.water, UNDER_TARGET_ALPHA),
+        },
+      ]}
       target={target === undefined ? undefined : { value: target, label: 'Target' }}
       format={(v) => `${formatNumber(v)} ml`}
       width={width}
@@ -146,7 +159,7 @@ export interface StepsChartProps extends Common {
   target?: number
 }
 
-/** Bars are the steps colour at 45 %; the 14-day trailing median is the full-colour line over them. */
+/** Bars are the steps colour at 45 % (opaque); the 14-day trailing median is the full-colour line over them. */
 export function StepsChart({ days, target, width, height = 200, legend = true }: StepsChartProps) {
   const medians = rollingMedian(
     days.map((d) => d.steps),
@@ -159,7 +172,7 @@ export function StepsChart({ days, target, width, height = 200, legend = true }:
       label="Steps per day with 14-day median"
       unit="steps"
       rows={rows}
-      bars={[{ key: 'steps', label: 'Steps', color: withAlpha(tokens.metric.steps, 0.45) }]}
+      bars={[{ key: 'steps', label: 'Steps', color: tintOnCard(tokens.metric.steps, 0.45) }]}
       line={{ key: 'median', label: '14-day median', color: tokens.metric.steps }}
       target={target === undefined ? undefined : { value: target, label: 'Target' }}
       format={(v) => formatNumber(v)}

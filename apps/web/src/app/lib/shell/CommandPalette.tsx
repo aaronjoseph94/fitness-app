@@ -11,7 +11,7 @@ import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { sheetSurface, tokens } from '../../../theme'
+import { tokens } from '../../../theme'
 import { useUiStore, type QuickLogKind } from '../../ui-store'
 import { TABS } from '../tabs'
 
@@ -72,6 +72,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const results = useRef<HTMLUListElement>(null)
+  const input = useRef<HTMLInputElement>(null)
 
   // Closing clears the query, so the palette always opens on the full list rather than the last search.
   const close = useCallback(() => {
@@ -113,19 +114,21 @@ export function CommandPalette() {
       maxWidth="sm"
       sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' }, '& .MuiPaper-root': { mt: { md: 10 } } }}
       slotProps={{
+        // The dialog's focus trap takes focus onto the paper as it opens, which `autoFocus` alone loses to: hand it
+        // to the field once the dialog is in, so typing starts the search straight away.
+        transition: { onEntered: () => input.current?.focus() },
         paper: {
           // The paper carries role="dialog", so its name goes here (on the Dialog root it names nothing).
           'aria-label': 'Commands',
           'data-testid': 'command-palette',
-          // The thicker material, so the palette reads as a surface floating over a dimmed page rather than a card
-          // that happens to sit on top of it (the dialog's MUI backdrop is the scrim).
-          sx: { ...sheetSurface, borderRadius: `${tokens.radius.card}px` },
+          // 2a's dialog as the theme draws it (white, hairline, radius 12, the overlay shadow over the scrim).
         } as object,
       }}
     >
       <Box sx={{ px: 3, pt: 3 }}>
         <TextField
           autoFocus
+          inputRef={input}
           fullWidth
           value={query}
           onChange={(event) => setQuery(event.target.value)}

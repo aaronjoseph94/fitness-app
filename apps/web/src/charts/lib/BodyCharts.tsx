@@ -1,8 +1,29 @@
-// Owns: the body-composition charts across scans and tape measurements — fat vs lean mass, body fat % and
-// visceral level, waist and waist-to-hip ratio — as TimePanels configurations (separate panels, one axis each).
-import { formatNumber } from '../../components'
+// Owns: the body-composition charts across scans and tape measurements — fat vs lean mass per scan (2a: grouped
+// bars, fat then lean, the kg written on each, the fat-at-goal line dashed in the goal colour), and body fat % and
+// visceral level, waist and waist-to-hip ratio as TimePanels configurations (separate panels, one axis each).
+import { formatNumber, formatShortDate, type LegendItem } from '../../components'
 import { tokens, withAlpha } from '../../theme'
-import type { ChartSizeProps } from './frame'
+import {
+  ChartFrame,
+  MARGIN,
+  WEEK_BAR_MAX,
+  BAR_RADIUS,
+  barCursor,
+  barMotion,
+  barXAxisStyle,
+  gridStyle,
+  niceScale,
+  rechartsSize,
+  seriesSummary,
+  surfaceText,
+  targetLine,
+  tickCount,
+  tickInterval,
+  tooltip,
+  yAxisStyle,
+  type ChartSizeProps,
+} from './frame'
+import { Plot } from './plot'
 import { TimePanels } from './TimePanels'
 
 interface Common extends ChartSizeProps {
@@ -26,6 +47,38 @@ export interface BodyCompositionChartProps extends Common {
   fatTarget?: number
 }
 
+const FAT = tokens.metric.fatMass
+const LEAN = tokens.metric.lean
+/** Narrowest bar whose kg is written over it (12/600, "59.6" is ~26 px); narrower bars label the latest scan only. */
+const LABEL_MIN_BAR_PX = 30
+
+/** The kg over a bar: on every scan while the bars are wide enough, else on the latest scan's pair only. */
+function kgLabel(last: number) {
+  return function KgLabel(props: {
+    x?: number | string
+    y?: number | string
+    width?: number | string
+    value?: unknown
+    index?: number
+  }) {
+    const v = typeof props.value === 'number' ? props.value : null
+    const w = Number(props.width ?? 0)
+    if (v === null || (w < LABEL_MIN_BAR_PX && props.index !== last)) return null
+    return (
+      <text
+        x={Number(props.x ?? 0) + w / 2}
+        y={Number(props.y ?? 0) - 6}
+        textAnchor="middle"
+        fontSize={w < LABEL_MIN_BAR_PX ? tokens.chart.axisFontSize : tokens.font.size.caption}
+        fontWeight={tokens.font.weight.heading}
+        fill={tokens.ink.text}
+      >
+        {formatNumber(v, 1)}
+      </text>
+    )
+  }
+}
+
 export function BodyCompositionChart({
   scans,
   fatTarget,
@@ -33,25 +86,102 @@ export function BodyCompositionChart({
   height = 220,
   legend = true,
 }: BodyCompositionChartProps) {
+  const rows = [...scans].sort((a, b) => a.date.localeCompare(b.date))
+  const values = rows.flatMap((r) => [r.fatMass ?? 0, r.leanMass ?? 0])
+  if (fatTarget !== undefined) values.push(fatTarget)
+  // Headroom for the kg written over the tallest bar.
+  const top = Math.max(0, ...values)
+  const y = niceScale([...values, top * 1.12], { zero: true, count: tickCount(height, 3) })
+  const items: LegendItem[] = [
+    { label: 'Fat mass', color: FAT, mark: 'bar' },
+    { label: 'Lean mass', color: LEAN, mark: 'bar' },
+  ]
+  if (fatTarget !== undefined) items.push({ label: 'Fat at goal', color: FAT, mark: 'dashed' })
+  const kgOrNull = (v: number | null | undefined) => (v === null || v === undefined ? null : kg(v))
+  const Tip = tooltip<CompositionScan>(
+    (r) => `Scan ${r.date}`,
+    [
+      { label: 'Fat mass', color: FAT, value: (r) => kgOrNull(r.fatMass) },
+      { label: 'Lean mass', color: LEAN, value: (r) => kgOrNull(r.leanMass) },
+      ...(fatTarget !== undefined
+        ? [{ label: 'Fat at goal', color: FAT, dashed: true, value: () => kg(fatTarget) }]
+        : []),
+    ],
+  )
+  const label = 'Fat mass and lean mass per scan'
+  const summary = [
+    `Fat mass ${seriesSummary(
+      rows.map((r) => ({ date: r.date, value: r.fatMass })),
+      kg,
+    )}`,
+    `Lean mass ${seriesSummary(
+      rows.map((r) => ({ date: r.date, value: r.leanMass })),
+      kg,
+    )}`,
+    fatTarget !== undefined ? `Fat at goal ${kg(fatTarget)}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const last = rows.length - 1
   return (
-    <TimePanels
+    <ChartFrame
       testId="chart-body-composition"
-      label="Fat mass and lean mass per scan"
-      rows={scans}
+      label={label}
+      legend={legend ? items : undefined}
+      unit="kg"
       width={width}
-      legend={legend}
-      panels={[
-        {
-          unit: 'kg',
-          height,
-          series: [
-            { key: 'leanMass', label: 'Lean mass', color: tokens.metric.lean, format: kg },
-            { key: 'fatMass', label: 'Fat mass', color: tokens.metric.fatMass, format: kg },
-          ],
-          target: fatTarget === undefined ? undefined : { value: fatTarget, label: 'Fat target' },
-        },
-      ]}
-    />
+      height={height}
+      empty={rows.length === 0}
+    >
+      <Plot width={width} height={height}>
+        {(R, plotWidth) => (
+          <R.BarChart
+            data={rows}
+            margin={MARGIN}
+            barCategoryGap="28%"
+            barGap={6}
+            {...rechartsSize(width, height)}
+            {...surfaceText(label, summary)}
+          >
+            <R.CartesianGrid {...gridStyle} />
+            <R.XAxis
+              {...barXAxisStyle}
+              dataKey="date"
+              tickFormatter={(d: string) => formatShortDate(d)}
+              interval={tickInterval(rows.length, plotWidth)}
+            />
+            <R.YAxis
+              {...yAxisStyle}
+              domain={y.domain}
+              ticks={y.ticks}
+              tickFormatter={(v: number) => formatNumber(v)}
+            />
+            <R.Tooltip content={Tip} cursor={barCursor} />
+            <R.Bar
+              dataKey="fatMass"
+              name="Fat mass"
+              fill={FAT}
+              maxBarSize={WEEK_BAR_MAX}
+              radius={BAR_RADIUS}
+              {...barMotion(width)}
+            >
+              <R.LabelList dataKey="fatMass" content={kgLabel(last)} />
+            </R.Bar>
+            <R.Bar
+              dataKey="leanMass"
+              name="Lean mass"
+              fill={LEAN}
+              maxBarSize={WEEK_BAR_MAX}
+              radius={BAR_RADIUS}
+              {...barMotion(width)}
+            >
+              <R.LabelList dataKey="leanMass" content={kgLabel(last)} />
+            </R.Bar>
+            {fatTarget !== undefined && <R.ReferenceLine y={fatTarget} {...targetLine(FAT)} />}
+          </R.BarChart>
+        )}
+      </Plot>
+    </ChartFrame>
   )
 }
 

@@ -1,5 +1,5 @@
-// Owns: the row of metric rings on Today (calories, protein, water, steps, sleep): equal columns, label and
-// "value / target" under each ring, wraps cleanly at phone width.
+// Owns: a row of metric rings (calories, protein, water, steps, sleep): equal columns, a 13/500 label and a 12 px muted
+// "value / target" under each ring (2a type), wrapping cleanly at phone width.
 import Box from '@mui/material/Box'
 import { tokens } from '../../theme'
 import { MetricRing, type MetricRingProps } from './MetricRing'
@@ -43,7 +43,7 @@ export function RingsRow({ rings, size = 58 }: RingsRowProps) {
               fontWeight: tokens.font.weight.label,
               color: tokens.ink.text,
               textAlign: 'center',
-              lineHeight: 1.2,
+              lineHeight: tokens.font.leading.label,
             }}
           >
             {ring.label}
@@ -53,10 +53,10 @@ export function RingsRow({ rings, size = 58 }: RingsRowProps) {
               component="span"
               sx={{
                 mt: 0.5,
-                fontSize: 11,
+                fontSize: tokens.font.size.caption,
                 color: tokens.ink.secondary,
                 textAlign: 'center',
-                lineHeight: 1.3,
+                lineHeight: tokens.font.leading.caption,
                 fontVariantNumeric: 'tabular-nums',
               }}
             >

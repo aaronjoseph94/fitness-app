@@ -1,6 +1,7 @@
-// Owns: the card a read shows before it has data — a chart-shaped skeleton while it loads (the title and subtitle lines
-// of a ChartCard, line for line, over a block of the chart's height), then a calm error card that says why (offline
-// with nothing saved on this phone yet, sign-in expired, or the server's answer) with a retry.
+// Owns: what a read shows before it has data — a chart-shaped skeleton card while it loads (the title and description
+// lines of a ChartCard, line for line, over a block of the chart's height), then a 2a banner that says why: the info
+// banner when offline with nothing saved on this phone yet, the warning banner for a sign-in that expired or the
+// server's answer, with "Try again" on its right.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -8,6 +9,7 @@ import Skeleton from '@mui/material/Skeleton'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ApiError } from '../../api'
 import { tokens } from '../../theme'
+import { Banner } from './Banner'
 
 /**
  * Still loading (show the skeleton). A read without data that is paused (offline: TanStack holds the retry until the
@@ -43,30 +45,38 @@ export interface QueryStateCardProps {
   height?: number
 }
 
-/** The skeleton while `query` loads, otherwise its error card. Render it only while the read has no data. */
+/** The skeleton while `query` loads, otherwise its error banner. Render it only while the read has no data. */
 export function QueryStateCard({ query, what, height = 200 }: QueryStateCardProps) {
   if (isQueryLoading(query))
     return (
-      <Card data-testid="chart-skeleton" aria-busy="true" sx={{ p: 4 }}>
-        {/* The same line boxes as ChartCard's title and subtitle, so the loaded card has the skeleton's height. */}
-        <Box sx={{ fontSize: tokens.font.size.body, lineHeight: 1.35 }}>
-          <Skeleton variant="text" width="45%" />
+      <Card data-testid="chart-skeleton" aria-busy="true" sx={{ px: `${tokens.pad.card.x}px`, pt: `${tokens.pad.header.top}px`, pb: `${tokens.pad.card.y}px` }}>
+        {/* The same line boxes as ChartCard's title and description, so the loaded card has the skeleton's height. */}
+        <Box sx={{ fontSize: tokens.font.size.cardTitle, lineHeight: tokens.font.leading.cardTitle }}>
+          <Skeleton variant="text" width="40%" />
         </Box>
-        <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, lineHeight: 1.4 }}>
+        <Box sx={{ mt: '3px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
           <Skeleton variant="text" width="65%" />
         </Box>
-        <Skeleton variant="rounded" height={height} sx={{ mt: 3, borderRadius: `${tokens.radius.control}px` }} />
+        <Skeleton variant="rounded" height={height} sx={{ mt: '14px', borderRadius: `${tokens.radius.control}px` }} />
       </Card>
     )
   const offline = query.fetchStatus === 'paused'
+  const retry = !offline && query.error?.kind !== 'auth-expired'
+  // 2a: an offline read is the calm info banner; a failure is the warning banner, with the retry on its right.
   return (
-    <Card data-testid="load-error" role="alert" sx={{ p: 4 }}>
-      <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.text, lineHeight: 1.5 }}>{errorText(query.error, what, offline)}</Box>
-      {!offline && query.error?.kind !== 'auth-expired' && (
-        <Button variant="outlined" onClick={() => void query.refetch()} sx={{ mt: 3 }}>
-          Try again
-        </Button>
-      )}
-    </Card>
+    <Banner
+      tone={offline || query.error?.kind === 'network' ? 'info' : 'warning'}
+      role="alert"
+      testId="load-error"
+      action={
+        retry ? (
+          <Button variant="outlined" size="small" onClick={() => void query.refetch()}>
+            Try again
+          </Button>
+        ) : undefined
+      }
+    >
+      {errorText(query.error, what, offline)}
+    </Banner>
   )
 }

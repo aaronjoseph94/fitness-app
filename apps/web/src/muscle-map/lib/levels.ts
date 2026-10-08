@@ -1,9 +1,16 @@
-// Owns: the muscle-map colour scale (level → token colour), level names, and display names for the 17 muscle keys.
+// Owns: the muscle-map colour scales (level → token colour: the four blue volume steps, or the four rose steps a
+// scan's fat share uses), level names, and display names for the 17 muscle keys.
 import type { Muscle } from '@fitness/shared/schemas'
 import { tokens } from '../../theme'
 
-/** 0 = not trained (body grey); 1–4 = the four indigo steps. */
+/** 0 = not trained (the body colour); 1–4 = the four steps of the scale. */
 export type MuscleLevel = 0 | 1 | 2 | 3 | 4
+
+/**
+ * `volume`: training load in the blue steps (`muscleMap.steps`, lightest → accent). `fat`: a scan segment's fat share
+ * in the rose steps (`muscleMap.fatSteps`).
+ */
+export type MuscleScale = 'volume' | 'fat'
 
 export const LEVEL_LABELS: Readonly<Record<MuscleLevel, string>> = {
   0: 'Not trained',
@@ -17,8 +24,9 @@ export function levelLabel(level: MuscleLevel): string {
   return LEVEL_LABELS[level]
 }
 
-export function levelColor(level: MuscleLevel): string {
-  return level === 0 ? tokens.muscleMap.body : tokens.muscleMap.steps[level - 1]!
+export function levelColor(level: MuscleLevel, scale: MuscleScale = 'volume'): string {
+  if (level === 0) return tokens.muscleMap.body
+  return (scale === 'fat' ? tokens.muscleMap.fatSteps : tokens.muscleMap.steps)[level - 1]!
 }
 
 export const MUSCLE_LABELS: Readonly<Record<Muscle, string>> = {

@@ -1,24 +1,34 @@
-// Owns: the sleep chart — hours asleep as bars against the 7.5 h target, and bedtime as dots in a second panel
-// on the same date axis (two panels, never a second y-axis). Bedtimes span midnight on one continuous scale.
+// Owns: the sleep chart — hours asleep as bars against the 7.5 h target (2a: nights that reach it in the sleep
+// colour, the rest in its light step), and bedtime as ringed dots in a second panel on the same date axis (two
+// panels, never a second y-axis). Bedtimes span midnight on one continuous scale.
 import { useId } from 'react'
-import { formatNumber, formatShortDate, type LegendItem } from '../../components'
+import { formatNumber, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
   AxisCaption,
   BAR_MAX,
+  BAR_RADIUS,
   ChartFrame,
+  DAY_LABEL_PX,
+  DAY_NUMBER_MAX,
   MARGIN,
+  UNDER_TARGET_ALPHA,
+  dataEndBarPath,
   dateSpan,
-  animated,
   barCursor,
+  barMotion,
+  dayTick,
+  tickCount,
   tickInterval,
   dotStyle,
   gridStyle,
   niceScale,
   rechartsSize,
+  ringDot,
   seriesSummary,
   surfaceText,
   targetStyle,
+  tintOnCard,
   tooltip,
   xAxisStyle,
   yAxisStyle,
@@ -48,19 +58,43 @@ interface Row extends SleepNight {
 }
 
 const C = tokens.metric.sleep
+/** A night short of the target: the sleep colour's lighter step. */
+const SHORT = tintOnCard(C, UNDER_TARGET_ALPHA)
+
+/** One night's bar: full colour at or over the target, the light step under it. */
+function nightBar(target: number | undefined) {
+  return function NightBar(p: {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    payload?: unknown
+  }) {
+    const hours = (p.payload as Row | undefined)?.hours
+    const d = dataEndBarPath(p.x ?? 0, p.y ?? 0, p.width ?? 0, p.height ?? 0, true)
+    const short = target !== undefined && typeof hours === 'number' && hours < target
+    return d ? <path d={d} fill={short ? SHORT : C} /> : <g />
+  }
+}
 
 export function SleepChart({ nights, target, width, height = 300, legend = true }: SleepChartProps) {
   const syncId = useId()
   const rows: Row[] = nights.map((n) => ({ ...n, bed: n.bedtime ? bedtimeMinutes(n.bedtime) : null }))
-  const hours = niceScale([...rows.map((r) => r.hours ?? 0), target ?? 0], { zero: true, count: 3 })
+  const topH = Math.round(height * 0.52)
+  const bottomH = height - topH
+  const hours = niceScale([...rows.map((r) => r.hours ?? 0), target ?? 0], {
+    zero: true,
+    count: tickCount(topH, 3),
+  })
   const beds = rows.map((r) => r.bed).filter((v): v is number => v !== null)
   const bedMin = beds.length ? Math.floor(Math.min(...beds) / 60) * 60 : 240
   const bedMax = beds.length ? Math.ceil(Math.max(...beds) / 60) * 60 : 360
+  // Hourly bedtime ticks, every second hour when the panel is too short for one label per hour.
+  const bedSpan = Math.max(bedMax, bedMin + 60) - bedMin
+  const bedStep = bedSpan / 60 + 1 > tickCount(bottomH) ? 120 : 60
   const bedTicks: number[] = []
-  for (let m = bedMin; m <= Math.max(bedMax, bedMin + 60); m += 60) bedTicks.push(m)
-  const topH = Math.round(height * 0.52)
-  const bottomH = height - topH
-  const anim = animated(width)
+  for (let m = bedMin; m <= bedMin + Math.ceil(bedSpan / bedStep) * bedStep; m += bedStep) bedTicks.push(m)
+  const motion = barMotion(width)
 
   const Tip = tooltip<Row>(
     (r) => r.date,
@@ -81,12 +115,17 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
   )
   const items: LegendItem[] = [
     { label: 'Hours asleep', color: C, mark: 'bar' },
-    { label: 'Bedtime', color: C, mark: 'dot' },
+    ...(target !== undefined && rows.some((r) => r.hours != null && r.hours < target)
+      ? [{ label: 'Under target', color: SHORT, mark: 'bar' as const }]
+      : []),
+    { label: 'Bedtime', color: C, mark: 'ring' },
   ]
   if (target !== undefined) items.push({ label: 'Target', color: tokens.chart.target, mark: 'dashed' })
   const hoursSummary =
-    `Hours asleep ${seriesSummary(rows.map((r) => ({ date: r.date, value: r.hours })), (v) => `${formatNumber(v, 1)} h`)}` +
-    (target !== undefined ? ` Target ${formatNumber(target, 1)} h.` : '')
+    `Hours asleep ${seriesSummary(
+      rows.map((r) => ({ date: r.date, value: r.hours })),
+      (v) => `${formatNumber(v, 1)} h`,
+    )}` + (target !== undefined ? ` Target ${formatNumber(target, 1)} h.` : '')
   const lastBed = rows.filter((r) => r.bed !== null).at(-1)
   const bedSummary = lastBed
     ? `Bedtimes ${dateSpan(rows.map((r) => r.date))}: last ${bedtimeLabel(lastBed.bed!)}, earliest ${bedtimeLabel(Math.min(...beds))}, latest ${bedtimeLabel(Math.max(...beds))}.`
@@ -108,7 +147,7 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
             data={rows}
             margin={MARGIN}
             syncId={syncId}
-            barCategoryGap="22%"
+            barCategoryGap="16%"
             {...rechartsSize(width, topH)}
             {...surfaceText('Hours asleep per night', hoursSummary)}
           >
@@ -120,9 +159,11 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
               dataKey="hours"
               fill={C}
               maxBarSize={BAR_MAX}
-              radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}
-              isAnimationActive={anim}
+              radius={BAR_RADIUS}
+              shape={nightBar(target)}
+              {...motion}
             />
+            <R.ReferenceLine y={0} stroke={tokens.chart.baseline} strokeWidth={1} />
             {target !== undefined && <R.ReferenceLine y={target} {...targetStyle} />}
           </R.ComposedChart>
         )}
@@ -141,8 +182,13 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
             <R.XAxis
               {...xAxisStyle}
               dataKey="date"
-              tickFormatter={(d: string) => formatShortDate(d)}
-              interval={tickInterval(rows.length, plotWidth, 48)}
+              tickFormatter={dayTick(rows.length)}
+              interval={tickInterval(
+                rows.length,
+                plotWidth,
+                48,
+                rows.length <= DAY_NUMBER_MAX ? DAY_LABEL_PX : undefined,
+              )}
             />
             <R.YAxis
               {...yAxisStyle}
@@ -157,8 +203,8 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
             <R.Line
               dataKey="bed"
               stroke="none"
-              dot={dotStyle(C)}
-              activeDot={dotStyle(C, 5)}
+              dot={ringDot(C)}
+              activeDot={dotStyle(C, 4.5)}
               isAnimationActive={false}
             />
           </R.ComposedChart>

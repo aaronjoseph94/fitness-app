@@ -1,11 +1,13 @@
 // Owns: segmental fat change — one row per segment (arms, torso, legs), baseline vs latest fat kg as grouped
-// horizontal bars, the change written at the end of each row.
+// horizontal bars (2a: the earlier scan in the fat colour's light step, the latest in full), the change written at
+// the end of each row.
 import { formatNumber, formatSigned, type LegendItem } from '../../components'
-import { tokens, withAlpha } from '../../theme'
+import { tokens } from '../../theme'
 import {
   ChartFrame,
-  animated,
+  barMotion,
   barCursor,
+  tintOnCard,
   niceScale,
   rechartsSize,
   surfaceText,
@@ -35,6 +37,7 @@ export interface SegmentalFatChartProps extends ChartSizeProps {
 }
 
 const C = tokens.metric.fatMass
+const EARLIER = tintOnCard(C, 0.35)
 
 export function SegmentalFatChart({
   segments,
@@ -55,17 +58,19 @@ export function SegmentalFatChart({
     (r) => r.segment,
     [
       { label: latestLabel, color: C, value: (r) => kg(r.latest) },
-      { label: baselineLabel, color: withAlpha(C, 0.35), value: (r) => kg(r.baseline) },
+      { label: baselineLabel, color: EARLIER, value: (r) => kg(r.baseline) },
       { label: 'Change', color: tokens.ink.text, value: (r) => r.delta },
     ],
   )
   const items: LegendItem[] = [
-    { label: baselineLabel, color: withAlpha(C, 0.35), mark: 'bar' },
+    { label: baselineLabel, color: EARLIER, mark: 'bar' },
     { label: latestLabel, color: C, mark: 'bar' },
   ]
   const radius: [number, number, number, number] = [0, tokens.chart.barRadius, tokens.chart.barRadius, 0]
   const label = 'Segmental fat at baseline and latest scan'
-  const summary = rows.map((r) => `${r.segment}: ${kg(r.baseline)} to ${kg(r.latest)} (${r.delta})`).join('; ')
+  const summary = rows
+    .map((r) => `${r.segment}: ${kg(r.baseline)} to ${kg(r.latest)} (${r.delta})`)
+    .join('; ')
   return (
     <ChartFrame
       testId="chart-segmental-fat"
@@ -87,6 +92,7 @@ export function SegmentalFatChart({
             {...surfaceText(label, summary)}
           >
             <R.CartesianGrid stroke={tokens.chart.grid} horizontal={false} />
+            <R.ReferenceLine x={0} stroke={tokens.chart.baseline} strokeWidth={1} />
             <R.XAxis
               {...xAxisStyle}
               type="number"
@@ -98,21 +104,15 @@ export function SegmentalFatChart({
             />
             <R.YAxis {...yAxisStyle} type="category" dataKey="segment" width={84} />
             <R.Tooltip content={Tip} cursor={barCursor} />
-            <R.Bar
-              dataKey="baseline"
-              fill={withAlpha(C, 0.35)}
-              maxBarSize={12}
-              radius={radius}
-              isAnimationActive={animated(width)}
-            />
-            <R.Bar dataKey="latest" fill={C} maxBarSize={12} radius={radius} isAnimationActive={animated(width)}>
+            <R.Bar dataKey="baseline" fill={EARLIER} maxBarSize={14} radius={radius} {...barMotion(width)} />
+            <R.Bar dataKey="latest" fill={C} maxBarSize={14} radius={radius} {...barMotion(width)}>
               <R.LabelList
                 dataKey="delta"
                 position="right"
                 offset={8}
                 fill={tokens.ink.text}
-                fontSize={12}
-                fontWeight={600}
+                fontSize={tokens.font.size.caption}
+                fontWeight={tokens.font.weight.heading}
               />
             </R.Bar>
           </R.BarChart>

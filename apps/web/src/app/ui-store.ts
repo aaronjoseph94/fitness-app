@@ -1,6 +1,6 @@
 // Owns: UI state shared across the shell and features (Zustand): the quick-log sheet (kind, and the day and meal slot
-// it logs to), the Ask AI panel, the ⌘K command palette, the last tab. Server data never lives here (TanStack Query
-// owns it).
+// it logs to), the Ask AI panel, the ⌘K command palette, the last tab, the desktop sidebar's collapsed state. Server
+// data never lives here (TanStack Query owns it).
 import type { MealSlot } from '@fitness/shared/schemas'
 import { create } from 'zustand'
 
@@ -23,12 +23,18 @@ interface UiState {
   paletteOpen: boolean
   /** The tab Aaron was last on; the back arrow returns there when there is no history. */
   lastTab: TabKey
+  /**
+   * The desktop sidebar shown as an icon rail (true) or with its labels (false). `null` until Aaron toggles it: the
+   * shell then follows the window (labels from `lg`, the rail between `md` and `lg`).
+   */
+  sidebarCollapsed: boolean | null
   /** Open the sheet on `kind` (or the list of kinds), logging to `target.date` / `target.slot` when given. */
   openQuickLog: (kind?: QuickLogKind | null, target?: QuickLogTarget) => void
   closeQuickLog: () => void
   setAskAiOpen: (open: boolean) => void
   setPaletteOpen: (open: boolean) => void
   setLastTab: (tab: TabKey) => void
+  setSidebarCollapsed: (collapsed: boolean) => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -36,9 +42,11 @@ export const useUiStore = create<UiState>()((set) => ({
   askAiOpen: false,
   paletteOpen: false,
   lastTab: 'today',
+  sidebarCollapsed: null,
   openQuickLog: (kind, target) => set({ quickLog: { open: true, kind: kind ?? null, date: target?.date, slot: target?.slot } }),
   closeQuickLog: () => set((state) => ({ quickLog: { ...state.quickLog, open: false } })),
   setAskAiOpen: (askAiOpen) => set({ askAiOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setLastTab: (lastTab) => set({ lastTab }),
+  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
 }))

@@ -1,9 +1,10 @@
-// Owns: the page hero — the greeting band a tab opens with (a small time-of-day line, one big welcome, a dated
-// subtitle and a right-hand slot for the page's own control). It carries the page's single `h1`, which is why a route
-// that shows one marks its handle `hero: true` so the top bar drops its own title rather than repeating it.
+// Owns: the 2a page title row every page opens with — the page's single `h1` (26/600, −.02em), a 14 px muted subtitle
+// under it, and the page's own controls on the right (a segmented window, "+ Log", "Export"), wrapping under the title
+// on a phone. A route that shows one marks its handle `hero: true` so the top bar drops its own title. `PageHeader` is
+// the same component under its 2a name.
 //
-// It rises into place once on mount (opacity + transform only, so it costs no CLS). Under `prefers-reduced-motion` the
-// rise is dropped for a plain cross-fade: the band still resolves in, it just never travels to get there.
+// It rises into place once on mount (2a: 26 px over 700 ms, expo-out; opacity + transform only, so no CLS). Under
+// `prefers-reduced-motion` it cross-fades in place instead.
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { ReactNode } from 'react'
@@ -34,7 +35,7 @@ export const visuallyHidden = {
 } as const
 
 export interface PageHeroProps {
-  /** The small line above the title, e.g. "Good morning". */
+  /** Legacy: a small 13 px line above the title. 2a pages put the greeting in the title itself. */
   eyebrow?: ReactNode
   title: ReactNode
   /**
@@ -44,7 +45,7 @@ export interface PageHeroProps {
   pageName?: string
   /** One dated or explanatory line under the title. */
   subtitle?: ReactNode
-  /** Right-hand slot, e.g. the Dashboard's window picker. Wraps under the title on a phone. */
+  /** Right-hand controls, e.g. a `<Segmented>` window and a primary button. Wraps under the title on a phone. */
   action?: ReactNode
   /** Entrance delay in ms, for a page that brings several groups on screen in order. */
   delay?: number
@@ -72,7 +73,9 @@ export function PageHero({ eyebrow, title, pageName, subtitle, action, delay = 0
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'flex-end',
-        gap: { xs: 2, sm: 3 },
+        columnGap: 4,
+        rowGap: 3,
+        minWidth: 0,
         opacity: entered ? 1 : 0,
         transform: entered ? 'none' : `translateY(${tokens.motion.rise}px)`,
         transition: reduced
@@ -81,23 +84,22 @@ export function PageHero({ eyebrow, title, pageName, subtitle, action, delay = 0
         animation: reducedEntrance(delay, reduced),
       }}
     >
-      <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Box sx={{ flex: '1 1 280px', minWidth: 0 }}>
         {eyebrow && (
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-            {eyebrow}
-          </Typography>
+          <Box sx={{ mb: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{eyebrow}</Box>
         )}
-        <Typography component="h1" variant="h1" sx={{ m: 0, color: 'text.primary' }}>
+        <Typography component="h1" variant="h1" sx={{ m: 0, color: 'text.primary', overflowWrap: 'anywhere' }}>
           {title}
           {pageName && <Box component="span" sx={visuallyHidden}>{` · ${pageName}`}</Box>}
         </Typography>
         {subtitle && (
-          <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-            {subtitle}
-          </Typography>
+          <Box sx={{ mt: '4px', fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body, color: tokens.ink.secondary }}>{subtitle}</Box>
         )}
       </Box>
-      {action && <Box sx={{ flex: 'none', pb: 0.5 }}>{action}</Box>}
+      {action && <Box sx={{ flex: 'none', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, maxWidth: '100%' }}>{action}</Box>}
     </Box>
   )
 }
+
+/** The 2a name for the page title row (the same component). */
+export const PageHeader = PageHero

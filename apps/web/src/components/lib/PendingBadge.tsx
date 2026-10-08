@@ -1,4 +1,5 @@
-// Owns: the small "pending" pill (offline-queued logs, proposals awaiting a tap): status dot + label + optional count.
+// Owns: the small "pending" pill (offline-queued logs, proposals awaiting a tap) — 2a's neutral pill: #F4F4F5, 11/500
+// #52525B, radius 999 — with an optional count ("Pending · 2"). It is a live `status`, so a count change is announced.
 import Box from '@mui/material/Box'
 import { tokens } from '../../theme'
 
@@ -19,23 +20,19 @@ export function PendingBadge({ label = 'Pending', count }: PendingBadgeProps) {
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 1.5,
-        height: 24,
-        px: 2.5,
-        borderRadius: tokens.radius.chip,
-        border: `1px solid ${tokens.ink.border}`,
-        bgcolor: tokens.ink.card,
-        fontSize: tokens.font.size.caption,
+        px: '8px',
+        py: '2px',
+        borderRadius: `${tokens.radius.pill}px`,
+        bgcolor: tokens.tone.neutral.bg,
+        fontSize: tokens.font.size.micro,
         fontWeight: tokens.font.weight.label,
-        color: tokens.ink.text,
+        lineHeight: '16px',
+        color: tokens.tone.neutral.text,
         whiteSpace: 'nowrap',
+        fontVariantNumeric: 'tabular-nums',
         flex: 'none',
       }}
     >
-      <Box
-        aria-hidden
-        sx={{ width: 6, height: 6, borderRadius: tokens.radius.chip, bgcolor: tokens.status.warning }}
-      />
       {text}
     </Box>
   )

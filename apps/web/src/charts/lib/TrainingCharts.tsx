@@ -1,21 +1,24 @@
-// Owns: the training charts — weekly volume stacked by muscle group, strength per exercise (top-set load and
-// Epley e1RM), and the week plan vs actuals (planned vs eaten kcal per weekday with the session status under it).
+// Owns: the training charts — weekly volume stacked flush by muscle group in the muscle-map blue steps (2a), strength
+// per exercise (top-set load and Epley e1RM in the accent), and the week plan vs actuals (planned vs eaten kcal per
+// weekday with the session status under it).
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
-import { tokens, withAlpha } from '../../theme'
+import { tokens } from '../../theme'
 import {
-  BAR_MAX,
+  BAR_RADIUS,
   ChartFrame,
   MARGIN,
-  animated,
+  WEEK_BAR_MAX,
   barCursor,
-  barGap,
+  barMotion,
+  barXAxisStyle,
   gridStyle,
   niceScale,
   rechartsSize,
   surfaceText,
+  tickCount,
   tickInterval,
+  tintOnCard,
   tooltip,
-  xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
 } from './frame'
@@ -43,7 +46,7 @@ export interface VolumeWeek {
 
 export interface TrainingVolumeChartProps extends Common {
   weeks: readonly VolumeWeek[]
-  /** Up to four groups, bottom → top; coloured with the muscle-map indigo steps (darkest first). */
+  /** Up to four groups, bottom → top; coloured with the muscle-map blue steps (darkest first). */
   groups: readonly VolumeGroup[]
 }
 
@@ -64,7 +67,9 @@ export function TrainingVolumeChart({
     ...Object.fromEntries(series.map((s) => [s.key, w.volume[s.key] ?? 0])),
   }))
   const totals = weeks.map((w) => series.reduce((s, g) => s + (w.volume[g.key] ?? 0), 0))
-  const y = niceScale(totals, { zero: true })
+  const y = niceScale(totals, { zero: true, count: tickCount(height) })
+  // 2a labels a tonnage axis in tonnes ("16", "8", "0" under a "t" caption); the tooltip keeps exact kg.
+  const tonnes = y.domain[1] >= 2000
   const fmt = (v: number) => `${formatNumber(v)} kg`
   const Tip = tooltip<(typeof rows)[number]>(
     (r) => `Week of ${r.week}`,
@@ -93,7 +98,7 @@ export function TrainingVolumeChart({
       testId="chart-training-volume"
       label={label}
       legend={legend ? items : undefined}
-      unit="kg (sets × reps × load)"
+      unit={tonnes ? 't (sets × reps × kg)' : 'kg (sets × reps × load)'}
       width={width}
       height={height}
       empty={weeks.length === 0}
@@ -103,13 +108,13 @@ export function TrainingVolumeChart({
           <R.BarChart
             data={rows}
             margin={MARGIN}
-            barCategoryGap="28%"
+            barCategoryGap="24%"
             {...rechartsSize(width, height)}
             {...surfaceText(label, summary)}
           >
             <R.CartesianGrid {...gridStyle} />
             <R.XAxis
-              {...xAxisStyle}
+              {...barXAxisStyle}
               dataKey="week"
               tickFormatter={weekLabel}
               interval={tickInterval(rows.length, plotWidth)}
@@ -118,19 +123,20 @@ export function TrainingVolumeChart({
               {...yAxisStyle}
               domain={y.domain}
               ticks={y.ticks}
-              tickFormatter={(v: number) => formatNumber(v, 0, v > 9999)}
+              tickFormatter={(v: number) =>
+                tonnes ? formatNumber(v / 1000, v % 1000 === 0 ? 0 : 1) : formatNumber(v)
+              }
             />
             <R.Tooltip content={Tip} cursor={barCursor} />
-            <R.BarStack stackId="volume" radius={[tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]}>
+            <R.BarStack stackId="volume" radius={BAR_RADIUS}>
               {series.map((s) => (
                 <R.Bar
                   key={s.key}
                   dataKey={s.key}
                   name={s.label}
                   fill={s.color}
-                  maxBarSize={BAR_MAX}
-                  {...barGap}
-                  isAnimationActive={animated(width)}
+                  maxBarSize={WEEK_BAR_MAX}
+                  {...barMotion(width)}
                 />
               ))}
             </R.BarStack>
@@ -175,13 +181,13 @@ export function StrengthChart({ sessions, width, height = 220, legend = true }: 
             {
               key: 'e1rm',
               label: 'Est. 1RM',
-              color: tokens.metric.lean,
+              color: tokens.accent.main,
               format: (v) => `${formatNumber(v, 1)} kg`,
             },
             {
               key: 'topSet',
               label: 'Top set',
-              color: withAlpha(tokens.metric.lean, 0.5),
+              color: tintOnCard(tokens.accent.main, 0.6),
               kind: 'dots',
               format: (v) => `${formatNumber(v, 1)} kg`,
             },
@@ -249,11 +255,11 @@ export function WeekPlanVsActualChart({
 }: WeekPlanVsActualChartProps) {
   const y = niceScale(
     days.flatMap((d) => [d.plannedKcal ?? 0, d.eatenKcal ?? 0]),
-    { zero: true },
+    { zero: true, count: tickCount(height) },
   )
   const kcal = (v: number | null | undefined) =>
     v === null || v === undefined ? null : `${formatNumber(v)} kcal`
-  const planned = withAlpha(tokens.metric.calories, 0.32)
+  const planned = tintOnCard(tokens.metric.calories, 0.32)
   const Tip = tooltip<PlanDay>(
     (d) => d.day,
     [
@@ -275,7 +281,7 @@ export function WeekPlanVsActualChart({
     { label: 'Missed', color: tokens.chart.target, mark: 'ring' },
   ]
   if (days.some((d) => d.fast)) items.push({ label: 'Fast', color: tokens.metric.fasting, mark: 'bar' })
-  const radius: [number, number, number, number] = [tokens.chart.barRadius, tokens.chart.barRadius, 0, 0]
+  const radius = BAR_RADIUS
   const label = 'Week plan versus actuals per weekday'
   const summary = days
     .map((d) =>
@@ -311,7 +317,13 @@ export function WeekPlanVsActualChart({
             {...surfaceText(label, summary)}
           >
             <R.CartesianGrid {...gridStyle} />
-            <R.XAxis {...xAxisStyle} dataKey="day" interval={0} height={44} tick={<DayTick days={days} />} />
+            <R.XAxis
+              {...barXAxisStyle}
+              dataKey="day"
+              interval={0}
+              height={44}
+              tick={<DayTick days={days} />}
+            />
             <R.YAxis
               {...yAxisStyle}
               domain={y.domain}
@@ -323,17 +335,17 @@ export function WeekPlanVsActualChart({
               dataKey="plannedKcal"
               name="Planned"
               fill={planned}
-              maxBarSize={14}
+              maxBarSize={16}
               radius={radius}
-              isAnimationActive={animated(width)}
+              {...barMotion(width)}
             />
             <R.Bar
               dataKey="eatenKcal"
               name="Eaten"
               fill={tokens.metric.calories}
-              maxBarSize={14}
+              maxBarSize={16}
               radius={radius}
-              isAnimationActive={animated(width)}
+              {...barMotion(width)}
             />
           </R.ComposedChart>
         )}

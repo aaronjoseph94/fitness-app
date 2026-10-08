@@ -1,9 +1,8 @@
-// Owns: the one scroll observation the chrome needs — whether the page has scrolled at all, so the top bar and the
-// bottom tabs can grow their hairline only once content is actually passing beneath them (the HIG's scroll edge
-// effect). One passive listener and no animation frame: the handler is a single numeric comparison and the state
-// setter is the identity function, so React bails out unless the answer actually changed. That matters because a
-// coalescing frame is exactly the thing a throttled or non-compositing window never delivers — and a scroll edge
-// effect that can silently stop updating is worse than no effect at all.
+// Owns: the one scroll observation the chrome needs — whether the page has scrolled past a point, so the phone's top
+// bar can show the page's name once the page's own title has gone beneath it. One passive listener and no animation
+// frame: the handler is a single numeric comparison and the state setter is the identity function, so React bails
+// out unless the answer actually changed. That matters because a coalescing frame is exactly the thing a throttled or
+// non-compositing window never delivers — and a bar that can silently stop updating is worse than none at all.
 import { useEffect, useState } from 'react'
 
 /**

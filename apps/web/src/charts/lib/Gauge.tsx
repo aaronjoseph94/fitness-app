@@ -1,8 +1,10 @@
 // Owns: the semicircle gauge for one latest value against range bands (body fat %, visceral level): bands in
-// status tints with surface gaps, a marker at the value, the number in the middle and the band it falls in.
+// status tints with surface gaps (the band the value sits in a step darker), an ink marker at the value, the number
+// in the middle (2a stat type: 600, −.02em, tabular) and the band it falls in.
 import Box from '@mui/material/Box'
 import { formatNumber } from '../../components'
-import { tokens, withAlpha } from '../../theme'
+import { tokens } from '../../theme'
+import { tintOnCard } from './frame'
 
 export type GaugeTone = 'good' | 'warning' | 'flag'
 
@@ -30,7 +32,7 @@ export interface GaugeProps {
   testId?: string
 }
 
-const STROKE = 14
+const STROKE = 12
 const GAP_DEG = 1.6
 
 function polar(cx: number, cy: number, r: number, deg: number) {
@@ -85,7 +87,7 @@ export function Gauge({
                 key={i}
                 d={arc(cx, cy, r, from, to)}
                 fill="none"
-                stroke={withAlpha(tokens.status[b.tone], active ? 0.55 : 0.22)}
+                stroke={tintOnCard(tokens.status[b.tone], active ? 0.55 : 0.2)}
                 strokeWidth={STROKE}
               />
             )
@@ -105,6 +107,8 @@ export function Gauge({
             sx={{
               fontSize: Math.round(size * 0.15),
               fontWeight: tokens.font.weight.number,
+              letterSpacing: tokens.font.em.number,
+              fontVariantNumeric: 'tabular-nums',
               color: tokens.ink.text,
             }}
           >
@@ -113,7 +117,12 @@ export function Gauge({
           {unit && (
             <Box
               component="span"
-              sx={{ ml: 1, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}
+              sx={{
+                ml: 1,
+                fontSize: tokens.font.size.small,
+                fontWeight: tokens.font.weight.label,
+                color: tokens.ink.secondary,
+              }}
             >
               {unit}
             </Box>
@@ -126,14 +135,23 @@ export function Gauge({
           justifyContent: 'space-between',
           px: 0.5,
           mt: 1,
-          fontSize: 11,
+          fontSize: tokens.chart.axisFontSize,
           color: tokens.chart.axis,
         }}
       >
         <span>{formatNumber(min)}</span>
         <span>{formatNumber(max)}</span>
       </Box>
-      <Box sx={{ mt: 1, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{label}</Box>
+      <Box
+        sx={{
+          mt: 1,
+          fontSize: tokens.font.size.label,
+          fontWeight: tokens.font.weight.label,
+          color: tokens.ink.label,
+        }}
+      >
+        {label}
+      </Box>
       {band && (
         <Box
           sx={{
@@ -141,14 +159,14 @@ export function Gauge({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 1.5,
-            fontSize: tokens.font.size.label,
+            fontSize: tokens.font.size.caption,
             fontWeight: tokens.font.weight.label,
             color: tokens.ink.text,
           }}
         >
           <Box
             aria-hidden
-            sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, bgcolor: toneColor }}
+            sx={{ width: 8, height: 8, borderRadius: `${tokens.radius.bar}px`, bgcolor: toneColor }}
           />
           {band.label}
         </Box>

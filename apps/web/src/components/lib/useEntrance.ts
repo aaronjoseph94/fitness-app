@@ -1,6 +1,7 @@
-// Owns: the one hook behind every entrance animation — it reports whether the resting state has been painted, so a
-// component can render its resting state and then transition to the final one. Without that first paint the browser
-// coalesces both styles and the element simply appears with no motion, which is why the frame is asked for at all.
+// Owns: the one hook behind every entrance animation (2a: cards rise and fade, bars grow, rings draw) — it reports
+// whether the resting state has been painted, so a component can render its resting state and then transition to the
+// final one. Without that first paint the browser coalesces both styles and the element simply appears with no motion,
+// which is why the frame is asked for at all.
 //
 // The frame is the *preferred* moment to start, never the only one. A window whose animation clock never ticks — an
 // occluded or non-compositing webview, a backgrounded tab, a throttled frame budget — would otherwise leave every

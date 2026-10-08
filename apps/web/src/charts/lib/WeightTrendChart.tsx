@@ -1,22 +1,30 @@
-// Owns: the hero weight chart — raw weigh-ins as faint dots, the trend line, the forecast band (±20 %) and its
-// mid line to the goal, the dashed goal line, and a marker on each milestone reached.
+// Owns: the hero weight chart (2a) — the 2.5 px trend line over an area fading from 18 % to 0, raw weigh-ins as 8 px
+// white dots with a grey ring, the latest trend point ringed in the accent, the forecast (dashed "5 5" mid line over
+// the light ±20 % band) to the goal, the goal line in the goal colour with a dot where the forecast meets it, and a
+// marker on each milestone reached.
 import { formatNumber, type LegendItem } from '../../components'
-import { tokens, withAlpha } from '../../theme'
+import { tokens } from '../../theme'
 import {
   ChartFrame,
+  FORECAST_WIDTH,
   MARGIN,
+  TREND_WIDTH,
+  currentPoint,
   dateSpan,
   dotStyle,
+  fadeDefs,
   gridStyle,
   lineCursor,
   lineStyle,
   niceScale,
   rechartsSize,
+  ringDot,
   seriesSummary,
   surfaceText,
-  targetStyle,
+  tickCount,
   tickInterval,
   tooltip,
+  useFadeId,
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
@@ -66,8 +74,13 @@ interface Row {
 }
 
 const C = tokens.metric.weight
+const GOAL = tokens.chart.goal
 const kg = (v: number | null | undefined) =>
   v === null || v === undefined ? null : `${formatNumber(v, 1)} kg`
+/** The trend must span this share of the x-axis for the area fade to be drawn under it. */
+const MIN_FADE_SHARE = 0.3
+/** Below this many px between weigh-ins the dots shrink, so a long window reads as a band, not a smear. */
+const DOT_SPACING_PX = 10
 
 export function WeightTrendChart({
   points,
@@ -78,6 +91,7 @@ export function WeightTrendChart({
   height = 240,
   legend = true,
 }: WeightTrendChartProps) {
+  const fadeId = useFadeId('weight-fade')
   const byDate = new Map<string, Row>()
   for (const p of points)
     byDate.set(p.date, { t: dateToTime(p.date), date: p.date, raw: p.raw, trend: p.trend })
@@ -92,25 +106,39 @@ export function WeightTrendChart({
     .flatMap((r) => [r.raw, r.trend, r.band?.[0], r.band?.[1]])
     .filter((v): v is number => v != null)
   if (goal !== undefined) values.push(goal)
-  const y = niceScale(values)
+  const y = niceScale(values, { count: tickCount(height) })
   const axis = rows.length ? timeAxis(rows.map((r) => r.t)) : null
   const reached = milestones.filter((m): m is WeightMilestone & { reachedOn: string } => !!m.reachedOn)
+  // The current point: the last day with a trend value.
+  const latest = [...rows].reverse().find((r) => r.trend != null)
+  // The forecast ends on the goal date: mark where it meets the goal line.
+  const end = forecast.at(-1)
+  const meetsGoal = goal !== undefined && end !== undefined && Math.abs(end.mid - goal) < 0.05
+  const rawCount = rows.filter((r) => r.raw != null).length
+  // The fade under the trend belongs to a window of weigh-ins (2a Today/Progress). When a long forecast dominates the
+  // axis (the journey view) it would be a tall sliver at the left edge, so it is left out.
+  const trendRows = rows.filter((r) => r.trend != null)
+  const trendShare =
+    axis && trendRows.length > 1
+      ? (trendRows.at(-1)!.t - trendRows[0]!.t) / Math.max(1, axis.domain[1] - axis.domain[0])
+      : 0
+  const fade = trendShare >= MIN_FADE_SHARE
 
   const items: LegendItem[] = [
     { label: 'Trend', color: C, mark: 'line' },
-    { label: 'Weigh-in', color: withAlpha(C, 0.4), mark: 'dot' },
+    { label: 'Weigh-in', color: tokens.chart.dotRing, mark: 'ring' },
   ]
-  if (forecast.length) items.push({ label: 'Forecast', color: withAlpha(C, 0.3), mark: 'band' })
-  if (goal !== undefined) items.push({ label: 'Goal', color: tokens.chart.target, mark: 'dashed' })
+  if (forecast.length) items.push({ label: 'Forecast', color: C, mark: 'dashed' })
+  if (goal !== undefined) items.push({ label: 'Goal', color: GOAL, mark: 'line' })
 
   const Tip = tooltip<Row>(
     (r) => r.date,
     [
       { label: 'Trend', color: C, value: (r) => kg(r.trend) },
-      { label: 'Weigh-in', color: withAlpha(C, 0.4), value: (r) => kg(r.raw) },
+      { label: 'Weigh-in', color: tokens.chart.dotRing, value: (r) => kg(r.raw) },
       {
         label: 'Forecast',
-        color: withAlpha(C, 0.5),
+        color: C,
         dashed: true,
         value: (r) =>
           r.mid === undefined || r.trend != null
@@ -122,7 +150,10 @@ export function WeightTrendChart({
 
   const label = 'Weight trend with forecast'
   const summary = [
-    `Trend ${seriesSummary(points.map((p) => ({ date: p.date, value: p.trend })), (v) => kg(v)!)}`,
+    `Trend ${seriesSummary(
+      points.map((p) => ({ date: p.date, value: p.trend })),
+      (v) => kg(v)!,
+    )}`,
     forecast.length ? `Forecast ${kg(forecast.at(-1)!.mid)} by ${dateSpan([forecast.at(-1)!.date])}.` : '',
     goal !== undefined ? `Goal ${kg(goal)}.` : '',
   ]
@@ -142,7 +173,13 @@ export function WeightTrendChart({
       {axis && (
         <Plot width={width} height={height}>
           {(R, plotWidth) => (
-            <R.ComposedChart data={rows} margin={MARGIN} {...rechartsSize(width, height)} {...surfaceText(label, summary)}>
+            <R.ComposedChart
+              data={rows}
+              margin={MARGIN}
+              {...rechartsSize(width, height)}
+              {...surfaceText(label, summary)}
+            >
+              {fade && fadeDefs(fadeId, C)}
               <R.CartesianGrid {...gridStyle} />
               <R.XAxis
                 {...xAxisStyle}
@@ -165,14 +202,26 @@ export function WeightTrendChart({
                   connectNulls
                   isAnimationActive={false}
                   activeDot={false}
+                  legendType="none"
+                />
+              )}
+              {fade && (
+                <R.Area
+                  dataKey="trend"
+                  stroke="none"
+                  fill={`url(#${fadeId})`}
+                  isAnimationActive={false}
+                  activeDot={false}
+                  legendType="none"
+                  tooltipType="none"
                 />
               )}
               {forecast.length > 0 && (
                 <R.Line
                   dataKey="mid"
-                  stroke={withAlpha(C, 0.55)}
-                  strokeWidth={tokens.chart.lineWidth}
-                  strokeDasharray="6 5"
+                  stroke={C}
+                  strokeWidth={FORECAST_WIDTH}
+                  strokeDasharray={tokens.chart.forecastDash}
                   dot={false}
                   activeDot={false}
                   connectNulls
@@ -183,20 +232,26 @@ export function WeightTrendChart({
               {goal !== undefined && (
                 <R.ReferenceLine
                   y={goal}
-                  {...targetStyle}
+                  stroke={GOAL}
+                  strokeWidth={1.5}
+                  ifOverflow="extendDomain"
                   label={{
                     value: `Goal ${formatNumber(goal, 0)} kg`,
                     position: 'insideBottomLeft',
-                    fill: tokens.chart.axis,
-                    fontSize: 11,
+                    fill: GOAL,
+                    fontSize: tokens.chart.axisFontSize,
+                    fontWeight: tokens.font.weight.label,
                   }}
                 />
               )}
               <R.Line
                 dataKey="raw"
                 stroke="none"
-                dot={{ r: 2.5, fill: withAlpha(C, 0.4), stroke: 'none' }}
-                activeDot={{ r: 4, fill: withAlpha(C, 0.6), stroke: tokens.ink.card, strokeWidth: 2 }}
+                dot={ringDot(
+                  tokens.chart.dotRing,
+                  rawCount > 1 && (plotWidth - yAxisStyle.width) / rawCount < DOT_SPACING_PX,
+                )}
+                activeDot={{ r: 4, fill: tokens.ink.card, stroke: tokens.ink.text, strokeWidth: 1.5 }}
                 isAnimationActive={false}
                 legendType="none"
               />
@@ -204,6 +259,7 @@ export function WeightTrendChart({
                 dataKey="trend"
                 stroke={C}
                 {...lineStyle}
+                strokeWidth={TREND_WIDTH}
                 dot={false}
                 activeDot={dotStyle(C)}
                 connectNulls
@@ -214,17 +270,31 @@ export function WeightTrendChart({
                   key={m.value}
                   x={dateToTime(m.reachedOn)}
                   y={m.value}
-                  {...dotStyle(C, 5)}
+                  {...dotStyle(C, 4)}
                   ifOverflow="visible"
                   label={{
                     value: formatNumber(m.value, 0),
                     position: 'top',
                     fill: tokens.ink.text,
-                    fontSize: 11,
-                    fontWeight: 600,
+                    fontSize: tokens.chart.axisFontSize,
+                    fontWeight: tokens.font.weight.heading,
                   }}
                 />
               ))}
+              {meetsGoal && (
+                <R.ReferenceDot
+                  x={dateToTime(end.date)}
+                  y={goal}
+                  r={5}
+                  fill={GOAL}
+                  stroke={tokens.ink.card}
+                  strokeWidth={2}
+                  ifOverflow="visible"
+                />
+              )}
+              {latest && (
+                <R.ReferenceDot x={latest.t} y={latest.trend!} ifOverflow="visible" shape={currentPoint(C)} />
+              )}
             </R.ComposedChart>
           )}
         </Plot>
