@@ -11,7 +11,7 @@ import type SvgIcon from '@mui/material/SvgIcon'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import type { ReactNode } from 'react'
-import { cardSurface, CountUp, formatNumber, formatSigned, LoadProblem, MeterRow, PendingBadge, ProgressBar, statValue, StatusChip } from '../../../components'
+import { cardSurface, CountUp, formatNumber, formatShortDate, formatSigned, LoadProblem, MeterRow, PendingBadge, ProgressBar, statValue, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, usePendingLogs, visibleSlots } from '../../quick-log'
 
@@ -254,7 +254,7 @@ function WeighIn({ date, day, onWeighIn }: { date: string; day: DayView; onWeigh
       <BigValue value={raw !== null ? formatNumber(raw, 1) : '—'} unit={raw !== null ? 'kg' : ''} />
       <Box sx={{ ...captionSx, mt: '12px' }}>
         {raw === null ? (
-          `None for ${date}`
+          `None for ${formatShortDate(date)}`
         ) : trend !== null ? (
           <>
             Trend{' '}

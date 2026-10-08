@@ -1,10 +1,11 @@
 // Owns: the 2a segmented control, built on MUI's ToggleButtonGroup (so keyboard, `aria-pressed` and the exclusive
 // choice come from MUI) in two looks:
-//   • `default` — an `ink.fill` track 3 px in, radius 9; the selected segment white with the segment shadow (page title
-//     rows: "Today / 7 days / 30 days", "30 / 90 / 180 days");
+//   • `default` — an `ink.fill` track 3 px in, radius 9; the selected segment white with a 1 px `ink.control` ring and
+//     the segment shadow, as the theme's ToggleButton draws it (page title rows: Dashboard's "30 / 90 / 180 days",
+//     Progress' "4 weeks / 12 weeks / All");
 //   • `outline` — a 1 px `ink.border` frame with no fill, 12 px segments, the selected one on `ink.fill` inside a
-//     1 px `ink.control` ring, so the choice reads at 3:1 and not by its fill alone (a card header's "12 days /
-//     8 weeks / Journey").
+//     1 px `ink.control` ring, so the choice reads at 3:1 and not by its fill alone (Photos' compare "Side by side /
+//     Slider").
 // Segments are 13/500 (12 small) and 44 px tall on a touch screen. A choice can never be cleared: clicking the
 // selected segment again does nothing, as a segmented control should.
 import ToggleButton from '@mui/material/ToggleButton'

@@ -86,8 +86,9 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
         started={range.from <= today(new Date())}
         onDrafted={onDrafted}
       />
+      {/* 2a draws a failed read as the warning banner, not the red danger one. */}
       {data.reviewError ? (
-        <Alert severity="error">Could not load the review: {data.reviewError.message}</Alert>
+        <Alert severity="warning">Could not load the review: {data.reviewError.message}</Alert>
       ) : m && data.days ? (
         <EagerCharts>
           <WeeklyReport
@@ -106,7 +107,7 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
           />
         </EagerCharts>
       ) : data.ready ? (
-        <Alert severity="error">Could not load this week. Check the connection and reload.</Alert>
+        <Alert severity="warning">Could not load this week. Check the connection and reload.</Alert>
       ) : (
         <Box sx={{ display: 'grid', placeItems: 'center', py: 10 }}>
           <CircularProgress aria-label="Loading the report" />

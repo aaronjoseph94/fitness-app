@@ -17,7 +17,7 @@ import { Pose } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { clockOf, dateOf, instantAt } from '../../quick-log'
-import { outlinedIconButton, PageHeader, Segmented } from '../../../components'
+import { outlinedIconButton, PageHeader, Reveal, Segmented, staggerDelay } from '../../../components'
 import { COARSE_POINTER_QUERY, theme, tokens, withAlpha } from '../../../theme'
 import { POSE_LABEL, POSES, useRefreshPhotos, useUploadPhoto } from './data'
 import { photoFromFile, photoFromVideo, releasePhoto, type PreparedPhoto } from './prepare'
@@ -33,6 +33,8 @@ const VIEWFINDER_RESERVED_PX = 400
 /** From `md`: the 56 px header, the title row and the main padding (the controls sit beside the viewfinder). */
 const VIEWFINDER_RESERVED_DESKTOP_PX = 240
 const PREFS_KEY = 'photos.capture'
+/** 2a's entrance: after the title row, the capture card group rises in, a section's stagger later. */
+const ENTER_DELAY = staggerDelay(1, tokens.motion.stagger.section)
 
 interface CapturePrefs {
   facing: Facing
@@ -209,196 +211,198 @@ export function CaptureScreen() {
     <Stack spacing={`${tokens.rhythm.section}px`}>
       {/* The phone keeps every pixel for the viewfinder: its top bar names the page, so the 2a title row is desktop only. */}
       {desktop && <PageHeader title="New photos" subtitle={`${POSE_LABEL[pose]} now. Front, side and back, lined up with the outline; downscaled on this device.`} />}
-      <Box
-        data-testid="photo-capture"
-        sx={{
-          display: 'grid',
-          gap: 3,
-          width: '100%',
-          maxWidth: { xs: 480, md: 'none' },
-          mx: { xs: 'auto', md: 0 },
-          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'auto minmax(260px, 1fr)' },
-          gridTemplateAreas: { xs: '"pose" "frame" "notes" "controls"', md: '"frame pose" "frame notes" "frame controls"' },
-          gridTemplateRows: { md: 'auto auto 1fr' },
-          columnGap: { md: 6 },
-          alignItems: 'start',
-        }}
-      >
-      <Box sx={{ gridArea: 'pose', minWidth: 0 }}>
-        <Segmented
-          ariaLabel="Pose"
-          fullWidth
-          value={pose}
-          onChange={setPose}
-          testId="capture-pose"
-          options={POSES.map((p) => ({
-            value: p,
-            disabled: uploading,
-            label: (
-              <>
-                {saved.includes(p) && <CheckCircle sx={{ fontSize: 16, mr: '6px', color: tokens.tone.success.solid }} aria-label="saved" />}
-                {POSE_LABEL[p]}
-              </>
-            ),
-          }))}
-        />
-      </Box>
-
-      <Box
-        sx={{
-          gridArea: 'frame',
-          position: 'relative',
-          // 3:4 at the largest size that leaves the controls on screen (the crop on capture matches this frame). From
-          // `md` the controls sit beside it, so only the header and the title row take height.
-          height: {
-            xs: `min(calc(100dvh - ${VIEWFINDER_RESERVED_PX}px), calc((100vw - 32px) * 4 / 3), 640px)`,
-            md: `min(calc(100dvh - ${VIEWFINDER_RESERVED_DESKTOP_PX}px), 640px)`,
-          },
-          minHeight: 240,
-          aspectRatio: '3 / 4',
-          width: 'auto',
-          maxWidth: '100%',
-          justifySelf: 'center',
-          borderRadius: `${tokens.radius.card}px`,
-          overflow: 'hidden',
-          bgcolor: tokens.ink.text,
-        }}
-      >
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          autoPlay
-          aria-label="Camera"
-          style={{
-            position: 'absolute',
-            inset: 0,
+      <Reveal delay={ENTER_DELAY}>
+        <Box
+          data-testid="photo-capture"
+          sx={{
+            display: 'grid',
+            gap: 3,
             width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform: mirrored ? 'scaleX(-1)' : undefined,
-            visibility: camera === 'live' && !shot ? 'visible' : 'hidden',
+            maxWidth: { xs: 480, md: 'none' },
+            mx: { xs: 'auto', md: 0 },
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'auto minmax(260px, 1fr)' },
+            gridTemplateAreas: { xs: '"pose" "frame" "notes" "controls"', md: '"frame pose" "frame notes" "frame controls"' },
+            gridTemplateRows: { md: 'auto auto 1fr' },
+            columnGap: { md: 6 },
+            alignItems: 'start',
           }}
-        />
-        {shot ? (
-          <img src={shot.previewUrl} alt={`${POSE_LABEL[pose]} photo preview`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <img
-            src={`${import.meta.env.BASE_URL}pose/${pose}.svg`}
-            alt=""
-            data-testid="pose-overlay"
-            style={{ position: 'absolute', inset: '4% 0', width: '100%', height: '92%', objectFit: 'contain', opacity: OVERLAY_OPACITY, pointerEvents: 'none' }}
-          />
-        )}
-        {!shot && noCamera && (
-          <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 4, color: tokens.ink.card, fontSize: tokens.font.size.small, textAlign: 'center', bgcolor: withAlpha(tokens.ink.text, 0.7) }}>
-            {camera === 'denied' ? 'Camera access is off for this app. Allow it in Settings, or choose a photo.' : 'No camera here. Choose a photo instead.'}
-          </Box>
-        )}
-        {countdown !== null && (
-          <Box aria-live="assertive" sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 96, fontWeight: tokens.font.weight.number, color: tokens.ink.card, textShadow: `0 0 12px ${withAlpha(tokens.ink.text, 0.6)}` }}>
-            {countdown}
-          </Box>
-        )}
-      </Box>
-
-      {(problem || queued > 0) && (
-        <Stack spacing={3} sx={{ gridArea: 'notes', minWidth: 0 }}>
-          {problem && (
-            <Alert severity="warning" onClose={() => setProblem(null)}>
-              {problem}
-            </Alert>
-          )}
-          {queued > 0 && (
-            <Alert severity="info" data-testid="capture-queued">
-              {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this phone and will upload when you're back online.
-            </Alert>
-          )}
-        </Stack>
-      )}
-
-      <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => void pickFile(e)} data-testid="capture-file" />
-
-      {shot ? (
-        <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
-          <TextField
-            type="datetime-local"
-            label="Taken"
-            value={takenAt}
-            onChange={(e) => setTakenAt(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
-          <TextField label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />
-          <Stack direction="row" spacing={3}>
-            <Button variant="outlined" onClick={() => setShot(null)} disabled={uploading} sx={{ flex: 1 }}>
-              Retake
-            </Button>
-            <Button variant="contained" onClick={() => void save()} disabled={uploading} sx={{ flex: 2 }} data-testid="capture-save">
-              {uploading ? 'Saving…' : `Save ${POSE_LABEL[pose].toLowerCase()}`}
-            </Button>
-          </Stack>
-        </Stack>
-      ) : (
-        <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
-            <Box>
-              <IconButton aria-label="Choose a photo" size="large" onClick={() => fileInput.current?.click()} sx={outlinedIconButton}>
-                <PhotoLibraryOutlined />
-              </IconButton>
-            </Box>
-            <ButtonBase
-              aria-label={countdown !== null ? 'Cancel timer' : `Take ${POSE_LABEL[pose].toLowerCase()} photo`}
-              onClick={shutter}
-              disabled={camera !== 'live'}
-              data-testid="capture-shutter"
-              sx={{
-                width: 72,
-                height: 72,
-                borderRadius: '50%',
-                border: `4px solid ${camera === 'live' ? tokens.metric.weight : tokens.ink.border}`,
-                p: '4px',
-              }}
-            >
-              <Box sx={{ width: '100%', height: '100%', borderRadius: '50%', bgcolor: camera === 'live' ? tokens.metric.weight : tokens.ink.border }} />
-            </ButtonBase>
-            <Box sx={{ justifySelf: 'end' }}>
-              <IconButton
-                aria-label={prefs.facing === 'user' ? 'Use the rear camera' : 'Use the front camera'}
-                onClick={() => updatePrefs({ facing: prefs.facing === 'user' ? 'environment' : 'user' })}
-                disabled={noCamera}
-                size="large"
-                sx={outlinedIconButton}
-              >
-                <Cameraswitch />
-              </IconButton>
-            </Box>
-          </Box>
-          {/* Segmented gives touch segments 44 px of height, not of width: "Off" and "3 s" need the width too. */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, [COARSE_POINTER_QUERY]: { '& .MuiToggleButton-root': { minWidth: tokens.tapTarget } } }}>
-            <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>Timer</Box>
+        >
+          <Box sx={{ gridArea: 'pose', minWidth: 0 }}>
             <Segmented
-              ariaLabel="Self-timer"
-              size="small"
-              value={prefs.timer}
-              onChange={(next) => updatePrefs({ timer: next })}
-              options={[
-                { value: 0, label: 'Off' },
-                { value: 3, label: '3 s' },
-                { value: 10, label: '10 s' },
-              ]}
+              ariaLabel="Pose"
+              fullWidth
+              value={pose}
+              onChange={setPose}
+              testId="capture-pose"
+              options={POSES.map((p) => ({
+                value: p,
+                disabled: uploading,
+                label: (
+                  <>
+                    {saved.includes(p) && <CheckCircle sx={{ fontSize: 16, mr: '6px', color: tokens.tone.success.solid }} aria-label="saved" />}
+                    {POSE_LABEL[p]}
+                  </>
+                ),
+              }))}
             />
           </Box>
-          {noCamera && (
-            <Button variant="contained" startIcon={<PhotoLibraryOutlined />} onClick={() => fileInput.current?.click()}>
-              Choose a {POSE_LABEL[pose].toLowerCase()} photo
-            </Button>
-          )}
-          <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, textAlign: 'center' }}>
-            Same spot, same light, line up with the outline. Never sent to any AI.
+
+          <Box
+            sx={{
+              gridArea: 'frame',
+              position: 'relative',
+              // 3:4 at the largest size that leaves the controls on screen (the crop on capture matches this frame). From
+              // `md` the controls sit beside it, so only the header and the title row take height.
+              height: {
+                xs: `min(calc(100dvh - ${VIEWFINDER_RESERVED_PX}px), calc((100vw - 32px) * 4 / 3), 640px)`,
+                md: `min(calc(100dvh - ${VIEWFINDER_RESERVED_DESKTOP_PX}px), 640px)`,
+              },
+              minHeight: 240,
+              aspectRatio: '3 / 4',
+              width: 'auto',
+              maxWidth: '100%',
+              justifySelf: 'center',
+              borderRadius: `${tokens.radius.card}px`,
+              overflow: 'hidden',
+              bgcolor: tokens.ink.text,
+            }}
+          >
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              aria-label="Camera"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: mirrored ? 'scaleX(-1)' : undefined,
+                visibility: camera === 'live' && !shot ? 'visible' : 'hidden',
+              }}
+            />
+            {shot ? (
+              <img src={shot.previewUrl} alt={`${POSE_LABEL[pose]} photo preview`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <img
+                src={`${import.meta.env.BASE_URL}pose/${pose}.svg`}
+                alt=""
+                data-testid="pose-overlay"
+                style={{ position: 'absolute', inset: '4% 0', width: '100%', height: '92%', objectFit: 'contain', opacity: OVERLAY_OPACITY, pointerEvents: 'none' }}
+              />
+            )}
+            {!shot && noCamera && (
+              <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 4, color: tokens.ink.card, fontSize: tokens.font.size.small, textAlign: 'center', bgcolor: withAlpha(tokens.ink.text, 0.7) }}>
+                {camera === 'denied' ? 'Camera access is off for this app. Allow it in Settings, or choose a photo.' : 'No camera here. Choose a photo instead.'}
+              </Box>
+            )}
+            {countdown !== null && (
+              <Box aria-live="assertive" sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 96, fontWeight: tokens.font.weight.number, color: tokens.ink.card, textShadow: `0 0 12px ${withAlpha(tokens.ink.text, 0.6)}` }}>
+                {countdown}
+              </Box>
+            )}
           </Box>
-        </Stack>
-      )}
-      </Box>
+
+          {(problem || queued > 0) && (
+            <Stack spacing={3} sx={{ gridArea: 'notes', minWidth: 0 }}>
+              {problem && (
+                <Alert severity="warning" onClose={() => setProblem(null)}>
+                  {problem}
+                </Alert>
+              )}
+              {queued > 0 && (
+                <Alert severity="info" data-testid="capture-queued">
+                  {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this phone and will upload when you're back online.
+                </Alert>
+              )}
+            </Stack>
+          )}
+
+          <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => void pickFile(e)} data-testid="capture-file" />
+
+          {shot ? (
+            <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
+              <TextField
+                type="datetime-local"
+                label="Taken"
+                value={takenAt}
+                onChange={(e) => setTakenAt(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />
+              <Stack direction="row" spacing={3}>
+                <Button variant="outlined" onClick={() => setShot(null)} disabled={uploading} sx={{ flex: 1 }}>
+                  Retake
+                </Button>
+                <Button variant="contained" onClick={() => void save()} disabled={uploading} sx={{ flex: 2 }} data-testid="capture-save">
+                  {uploading ? 'Saving…' : `Save ${POSE_LABEL[pose].toLowerCase()}`}
+                </Button>
+              </Stack>
+            </Stack>
+          ) : (
+            <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
+                <Box>
+                  <IconButton aria-label="Choose a photo" size="large" onClick={() => fileInput.current?.click()} sx={outlinedIconButton}>
+                    <PhotoLibraryOutlined />
+                  </IconButton>
+                </Box>
+                <ButtonBase
+                  aria-label={countdown !== null ? 'Cancel timer' : `Take ${POSE_LABEL[pose].toLowerCase()} photo`}
+                  onClick={shutter}
+                  disabled={camera !== 'live'}
+                  data-testid="capture-shutter"
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: '50%',
+                    border: `4px solid ${camera === 'live' ? tokens.metric.weight : tokens.ink.border}`,
+                    p: '4px',
+                  }}
+                >
+                  <Box sx={{ width: '100%', height: '100%', borderRadius: '50%', bgcolor: camera === 'live' ? tokens.metric.weight : tokens.ink.border }} />
+                </ButtonBase>
+                <Box sx={{ justifySelf: 'end' }}>
+                  <IconButton
+                    aria-label={prefs.facing === 'user' ? 'Use the rear camera' : 'Use the front camera'}
+                    onClick={() => updatePrefs({ facing: prefs.facing === 'user' ? 'environment' : 'user' })}
+                    disabled={noCamera}
+                    size="large"
+                    sx={outlinedIconButton}
+                  >
+                    <Cameraswitch />
+                  </IconButton>
+                </Box>
+              </Box>
+              {/* Segmented gives touch segments 44 px of height, not of width: "Off" and "3 s" need the width too. */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, [COARSE_POINTER_QUERY]: { '& .MuiToggleButton-root': { minWidth: tokens.tapTarget } } }}>
+                <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>Timer</Box>
+                <Segmented
+                  ariaLabel="Self-timer"
+                  size="small"
+                  value={prefs.timer}
+                  onChange={(next) => updatePrefs({ timer: next })}
+                  options={[
+                    { value: 0, label: 'Off' },
+                    { value: 3, label: '3 s' },
+                    { value: 10, label: '10 s' },
+                  ]}
+                />
+              </Box>
+              {noCamera && (
+                <Button variant="contained" startIcon={<PhotoLibraryOutlined />} onClick={() => fileInput.current?.click()}>
+                  Choose a {POSE_LABEL[pose].toLowerCase()} photo
+                </Button>
+              )}
+              <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, textAlign: 'center' }}>
+                Same spot, same light, line up with the outline. Never sent to any AI.
+              </Box>
+            </Stack>
+          )}
+        </Box>
+      </Reveal>
     </Stack>
   )
 }

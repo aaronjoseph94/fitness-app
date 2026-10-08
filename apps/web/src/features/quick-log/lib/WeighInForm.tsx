@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { useEffect, useId, useState } from 'react'
-import { formatNumber, NumberField, outlinedIconButton, parseNumber, PendingBadge, tabularNums } from '../../../components'
+import { formatNumber, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
 import { useLastWeight } from './reads'
@@ -90,7 +90,7 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
             htmlInput: {
               'aria-label': 'Weight in kg',
               'aria-describedby': showWeightProblem ? weightHelpId : undefined,
-              style: { fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
+              style: { ...statValue('standard'), textAlign: 'center' },
             },
           }}
         />

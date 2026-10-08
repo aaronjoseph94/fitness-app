@@ -21,6 +21,8 @@ import {
   PageHeader,
   Panel,
   QueryStateCard,
+  Reveal,
+  staggerDelay,
   StatCard,
   StatusChip,
   type BannerTone,
@@ -56,6 +58,8 @@ const FLAG_TITLE: Record<ScanFlag['code'], string> = {
 
 /** The page's single column (2a: 20 px between sections), which never grows past the viewport. */
 const page = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 5 } as const
+/** 2a's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
+const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.section)
 
 /** Height, age and sex for a blank form: the latest confirmed scan, else the profile. */
 function useFallback() {
@@ -192,33 +196,35 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
     ? anchored.map((m) => ({ key: m.milestone_id, text: `${m.label}: reached ${m.reached_on}` }))
     : (a.vs_previous?.milestones_reached ?? []).map((m) => ({ key: m.label, text: `Milestone reached: ${m.label}` }))
   return (
-    <Panel title="Debrief" actions={a.narrative_by && <StatusChip tone="outline" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />} testId="scan-debrief">
-      {a.status === 'pending' && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: tokens.ink.muted, fontSize: tokens.font.size.small }} aria-live="polite">
-          <CircularProgress size={18} /> Writing the debrief…
-        </Box>
-      )}
-      {a.status === 'failed' && !a.narrative && <Box sx={{ color: tokens.ink.muted, fontSize: tokens.font.size.small }}>The debrief could not be written; the numbers below are the engine's.</Box>}
-      {a.narrative && (
-        <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body, whiteSpace: 'pre-line' }}>{a.narrative}</Box>
-      )}
-      {milestones.length > 0 && (
-        <Box component="ul" sx={{ m: 0, mt: 3, pl: 2.5, fontSize: tokens.font.size.small, lineHeight: 1.7 }} data-testid="scan-milestones">
-          {milestones.map((m) => (
-            <li key={m.key}>{m.text}</li>
-          ))}
-        </Box>
-      )}
-      {a.proposal_ids.length > 0 && (
-        <Box sx={{ mt: 3, fontSize: tokens.font.size.small }}>
-          {a.proposal_ids.length === 1 ? 'One plan proposal is' : `${a.proposal_ids.length} plan proposals are`} waiting for a tap on{' '}
-          <Box component={RouterLink} to="/" sx={{ color: 'primary.main', fontWeight: tokens.font.weight.label }}>
-            Today
+    <Reveal delay={enter(3)}>
+      <Panel title="Debrief" actions={a.narrative_by && <StatusChip tone="outline" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />} testId="scan-debrief">
+        {a.status === 'pending' && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: tokens.ink.muted, fontSize: tokens.font.size.small }} aria-live="polite">
+            <CircularProgress size={18} /> Writing the debrief…
           </Box>
-          .
-        </Box>
-      )}
-    </Panel>
+        )}
+        {a.status === 'failed' && !a.narrative && <Box sx={{ color: tokens.ink.muted, fontSize: tokens.font.size.small }}>The debrief could not be written; the numbers below are the engine's.</Box>}
+        {a.narrative && (
+          <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body, whiteSpace: 'pre-line' }}>{a.narrative}</Box>
+        )}
+        {milestones.length > 0 && (
+          <Box component="ul" sx={{ m: 0, mt: 3, pl: 2.5, fontSize: tokens.font.size.small, lineHeight: 1.7 }} data-testid="scan-milestones">
+            {milestones.map((m) => (
+              <li key={m.key}>{m.text}</li>
+            ))}
+          </Box>
+        )}
+        {a.proposal_ids.length > 0 && (
+          <Box sx={{ mt: 3, fontSize: tokens.font.size.small }}>
+            {a.proposal_ids.length === 1 ? 'One plan proposal is' : `${a.proposal_ids.length} plan proposals are`} waiting for a tap on{' '}
+            <Box component={RouterLink} to="/" sx={{ color: 'primary.main', fontWeight: tokens.font.weight.label }}>
+              Today
+            </Box>
+            .
+          </Box>
+        )}
+      </Panel>
+    </Reveal>
   )
 }
 
@@ -262,19 +268,23 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
             </>
           }
         />
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 3 }}>
-          {conditionChips.map((label) => (
-            <StatusChip key={label} tone="outline" label={label} />
-          ))}
-        </Box>
+        <Reveal delay={enter(1)}>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 3 }}>
+            {conditionChips.map((label) => (
+              <StatusChip key={label} tone="outline" label={label} />
+            ))}
+          </Box>
+        </Reveal>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 3, md: 4 } }}>
-        <StatCard label="Weight" value={r.weight_kg} unit="kg" precision={1} metric="weight" delta={delta(prev?.fat_vs_lean.weight_kg, 'down')} />
-        <StatCard label="Body fat" value={r.body_fat_pct} unit="%" precision={1} metric="fatMass" delta={delta(prev?.deltas.body_fat_pct, 'down')} />
-        <StatCard label="Fat mass" value={r.body_fat_mass_kg} unit="kg" precision={1} metric="fatMass" delta={delta(prev?.fat_vs_lean.fat_kg, 'down')} />
-        <StatCard label="Lean mass" value={r.lean_body_mass_kg} unit="kg" precision={1} metric="lean" delta={delta(prev?.fat_vs_lean.lean_kg, 'up')} />
-      </Box>
+      <Reveal delay={enter(2)}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 3, md: 4 } }}>
+          <StatCard label="Weight" value={r.weight_kg} unit="kg" precision={1} metric="weight" delta={delta(prev?.fat_vs_lean.weight_kg, 'down')} />
+          <StatCard label="Body fat" value={r.body_fat_pct} unit="%" precision={1} metric="fatMass" delta={delta(prev?.deltas.body_fat_pct, 'down')} />
+          <StatCard label="Fat mass" value={r.body_fat_mass_kg} unit="kg" precision={1} metric="fatMass" delta={delta(prev?.fat_vs_lean.fat_kg, 'down')} />
+          <StatCard label="Lean mass" value={r.lean_body_mass_kg} unit="kg" precision={1} metric="lean" delta={delta(prev?.fat_vs_lean.lean_kg, 'up')} />
+        </Box>
+      </Reveal>
 
       {/* role="status": a polite live region (the call-outs arrive with the page; an alert would interrupt). */}
       {a?.flags.map((f) => (
@@ -284,16 +294,22 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
       ))}
 
       <Debrief scan={scan} />
-      <ScanCharts scans={all} focus={scan} stacked headingComponent="h2" />
+      <Reveal delay={enter(4)}>
+        <ScanCharts scans={all} focus={scan} stacked headingComponent="h2" />
+      </Reveal>
 
-      <Panel title="Every value" description={prev ? 'This scan against the previous one and the baseline' : 'The baseline every later scan is compared with'} padding="none">
-        <DeltaTable record={r} previous={prev} baseline={a?.vs_baseline ?? null} />
-      </Panel>
-      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-        <Button color="error" onClick={() => setDeleting(true)} data-testid="scan-delete">
-          Delete this scan
-        </Button>
-      </Box>
+      <Reveal delay={enter(5)}>
+        <Panel title="Every value" description={prev ? 'This scan against the previous one and the baseline' : 'The baseline every later scan is compared with'} padding="none">
+          <DeltaTable record={r} previous={prev} baseline={a?.vs_baseline ?? null} />
+        </Panel>
+      </Reveal>
+      <Reveal delay={enter(6)}>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Button color="error" onClick={() => setDeleting(true)} data-testid="scan-delete">
+            Delete this scan
+          </Button>
+        </Box>
+      </Reveal>
       {deleting && <DeleteScanDialog scanId={scan.id} date={scanDay(scan.date)} onClose={() => setDeleting(false)} />}
     </Box>
   )

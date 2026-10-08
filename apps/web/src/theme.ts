@@ -11,9 +11,11 @@
 // expo-out curve, 60–90 ms apart), number count-ups (~1.6 s) and chart/bar/ring draws (1.4–1.6 s); under reduced
 // motion everything appears in place with a 200 ms cross-fade.
 //
-// Names: the pre-2a token names still in use are kept, re-valued; unused ones were removed. 2a's own names are added
-// beside them. Where an old name now means a 2a role it says so — `ink.secondary` IS 2a's "muted" (#71717A, every
-// caption and description), and `ink.label` is 2a's "secondary" (#52525B, stat labels and row values).
+// Names: the pre-2a token names still in use are kept, re-valued; those the redesign orphaned were removed (a few
+// that were already dead before 2a remain: elevation.accent, material.edge, motion.duration.slow, motion.easing.exit,
+// motion.spring, motion.enterDuration, rhythm.tight/block/page). 2a's own names are added beside them. Where an old
+// name now means a 2a role it says so — `ink.secondary` IS 2a's "muted" (#71717A, every caption and description), and
+// `ink.label` is 2a's "secondary" (#52525B, stat labels and row values).
 //
 // Accessibility decisions (measured on white unless stated, WCAG 2.2 AA):
 //   • Text ink: #09090B 19.9:1, #3F3F46 10.4:1, #52525B 7.7:1, #71717A 4.83:1 (4.63 on #FAFAFA). #A1A1AA is 2.56:1,
@@ -275,8 +277,6 @@ export const tokens = {
   /** Shadows (2a). A card is a 1 px whisper; only floating layers get a real one. */
   elevation: {
     card: '0 1px 2px rgba(0,0,0,0.04)',
-    /** A clickable card under the pointer (its border does not change). */
-    raised: '0 1px 3px rgba(0,0,0,0.08)',
     /** Menus, popovers, dialogs. */
     overlay: '0 10px 30px -6px rgba(9,9,11,0.16), 0 2px 6px rgba(9,9,11,0.06)',
     /** The floating rest timer and the quick-log button. */
@@ -302,8 +302,6 @@ export const tokens = {
       fast: 200,
       base: 320,
       slow: 420,
-      /** The entrance rise + fade. */
-      enter: ENTER_DURATION,
       /** Bars growing and rings drawing. */
       grow: 1400,
       /** Chart lines drawing. */
@@ -312,15 +310,13 @@ export const tokens = {
       count: 1600,
     },
     easing: {
-      /** 2a's entrance: expo-out. */
-      enter: EXPO_OUT,
-      /** Its mirror, so a reversible transition retraces its path. */
+      /** The mirror of the expo-out entrance (`enterEasing()`), so a reversible transition retraces its path. */
       exit: 'cubic-bezier(0.7, 0, 0.84, 0)',
       /** A value changing in place. */
       standard: 'cubic-bezier(0.4, 0, 0.2, 1)',
     },
-    /** Entrance stagger, ms: rows in a list, cards in a row, sections down a page. */
-    stagger: { row: 45, card: 60, section: 90 },
+    /** Entrance stagger, ms: cards in a row, sections down a page. */
+    stagger: { card: 60, section: 90 },
     /** The sheet spring's `linear()` curve, or `null` (see `SPRING`). */
     spring: SPRING,
     enterDuration: ENTER_DURATION,

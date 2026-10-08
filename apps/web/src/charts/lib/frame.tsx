@@ -67,7 +67,7 @@ export const yAxisStyle = {
 } as const
 
 /** Plot width one short date label needs on an x-axis: "Oct 12" at 11 px (~32 px) plus the 18 px tick gap. */
-const X_LABEL_PX = 52
+export const X_LABEL_PX = 52
 /** Plot width a day-of-month label ("26") needs: ~12 px plus the gap. */
 export const DAY_LABEL_PX = 26
 

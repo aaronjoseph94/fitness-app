@@ -80,7 +80,13 @@ const trackLabel = {
   fontVariantNumeric: 'tabular-nums',
 } as const
 /** 2a's 4 px track: grey for the range, blue for the 7 days on the map (under the slider, whose own rail is hidden). */
-const trackBar = { position: 'absolute', top: '50%', height: 4, mt: '-2px', borderRadius: '2px' } as const
+const trackBar = {
+  position: 'absolute',
+  top: '50%',
+  height: 4,
+  mt: '-2px',
+  borderRadius: `${tokens.radius.bar}px`,
+} as const
 
 const KNOB = 14
 

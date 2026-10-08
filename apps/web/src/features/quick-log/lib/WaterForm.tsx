@@ -7,7 +7,7 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, MetricRing, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
+import { formatNumber, formatShortDate, MetricRing, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { instantOnDate, todayLocal } from './dates'
 import { useWater } from './reads'
@@ -80,7 +80,7 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
             </Box>
           </Box>
           <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1 }}>
-            {date === todayLocal() ? 'Today' : date}
+            {date === todayLocal() ? 'Today' : formatShortDate(date)}
             {' · '}
             {!water.known
               ? water.isLoading

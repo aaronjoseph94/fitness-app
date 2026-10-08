@@ -30,6 +30,7 @@ import {
   currentPoint,
   ringDot,
   type DayRow,
+  X_LABEL_PX,
 } from './frame'
 import { Plot } from './plot'
 import { dateToTime, timeAxis } from './time'
@@ -64,6 +65,24 @@ export interface TimePanelsProps {
   tickEveryPoint?: boolean
 }
 
+
+/**
+ * Every point's date as a tick, thinned by pixel distance (points can sit a day apart), the newest always kept:
+ * x(t) = (t − d0) / (d1 − d0) × (plotWidth − y-axis width − side margins); going back from the newest, a tick stays
+ * when x(last kept) − x(t) ≥ X_LABEL_PX.
+ */
+function pointTicks(
+  times: readonly number[],
+  [d0, d1]: readonly [number, number],
+  plotWidth: number,
+): number[] {
+  const pxPerMs = (plotWidth - yAxisStyle.width - MARGIN.left - MARGIN.right) / (d1 - d0)
+  const kept: number[] = []
+  for (const t of [...times].reverse())
+    if (!kept.length || (kept[0]! - t) * pxPerMs >= X_LABEL_PX) kept.unshift(t)
+  return kept
+}
+
 export function TimePanels({ testId, label, rows, panels, width, legend, tickEveryPoint }: TimePanelsProps) {
   const syncId = useId()
   const data = rows.map((r) => ({ ...r, t: dateToTime(r.date) })).sort((a, b) => a.t - b.t)
@@ -71,6 +90,7 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
   const axis = data.length ? timeAxis(times) : null
   const everyPoint = tickEveryPoint ?? data.length <= 6
   const pad = axis ? Math.max((axis.domain[1] - axis.domain[0]) * 0.04, 86_400_000) : 0
+  const domain: [number, number] = axis ? [axis.domain[0] - pad, axis.domain[1] + pad] : [0, 0]
   const total = panels.reduce((s, p) => s + (p.height ?? 180), 0)
 
   const items: LegendItem[] = []
@@ -158,10 +178,10 @@ export function TimePanels({ testId, label, rows, panels, width, legend, tickEve
                       dataKey="t"
                       type="number"
                       scale="time"
-                      domain={[axis.domain[0] - pad, axis.domain[1] + pad]}
-                      ticks={everyPoint ? times : axis.ticks}
+                      domain={domain}
+                      ticks={everyPoint ? pointTicks(times, domain, plotWidth) : axis.ticks}
                       tickFormatter={everyPoint ? (t: number) => formatShortDate(t) : axis.format}
-                      interval={tickInterval((everyPoint ? times : axis.ticks).length, plotWidth)}
+                      interval={everyPoint ? 0 : tickInterval(axis.ticks.length, plotWidth)}
                       hide={!last}
                     />
                     <R.YAxis

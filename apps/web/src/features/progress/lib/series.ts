@@ -1,7 +1,7 @@
 // Owns: the pure mapping from API data (TrendSeries, DaySummary rows, fasts, the forecast, sessions) to the chart kit's
 // plain series, plus the small aggregates the Progress summary shows. The weekly report reuses the day, weight and
 // volume mappings through ./series. No React, no fetching: data in, series out.
-import { addDays, dayAdherence, daysBetween, localDate, localTime, sessionSummary, weekStart, type MuscleValues } from '@fitness/shared/engine'
+import { addDays, dayAdherence, daysBetween, fastDay, localDate, localTime, sessionSummary, weekStart, type MuscleValues } from '@fitness/shared/engine'
 import type {
   DaySummary,
   ExerciseSummary,
@@ -307,8 +307,10 @@ const RUNNING_WINDOW_FASTS = 2
 const HOUR_MS = 3_600_000
 
 /**
- * One strip entry per fast, on the local date it started (the strip has no "running" mark, so a fast under way shows
- * as planned until it ends):
+ * One strip entry per fast, on its fast day (the engine's `fastDay`: the local date holding most of its window, as
+ * Log, the Dashboard, the week plan and `is_fast_day` date it — Saturday for a 24 h fast from Friday 8 PM), or on its
+ * start date when it has none (broken off early). The strip has no "running" mark, so a fast under way shows as
+ * planned until it ends:
  *   ended                         → completed when hours ≥ 0.95 × fast_hours, else partial (hours = ended − started)
  *   not ended, start ahead        → planned
  *   not ended, < 2 × fast_hours in → planned (running), planned or ad-hoc; later → missed (never ended)
@@ -317,7 +319,7 @@ export function fastEntries(fasts: readonly Fast[], nowMs: number, fastHours: nu
   return fasts
     .map((f): FastEntry => {
       const start = Date.parse(f.started_at)
-      const date = localDate(f.started_at)
+      const date = fastDay(f, fastHours) ?? localDate(f.started_at)
       if (f.ended_at) {
         const hours = round((Date.parse(f.ended_at) - start) / HOUR_MS, 1)
         return { date, status: hours >= FAST_COMPLETE_SHARE * fastHours ? 'completed' : 'partial', hours }

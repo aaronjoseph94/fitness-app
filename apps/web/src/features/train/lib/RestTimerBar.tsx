@@ -9,6 +9,7 @@ import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { statValue } from '../../../components'
 import { tokens, transitionOf } from '../../../theme'
 import { useLoggerStore } from './logger-store'
 import { notifyRestOver } from './rest'
@@ -152,15 +153,7 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
                 ? `Rest · then ${next}`
                 : `Rest · ${nameOf(rest.exercise_id)}`}
           </Box>
-          <Box
-            sx={{
-              fontSize: tokens.font.size.bigNumberSmall,
-              fontWeight: tokens.font.weight.number,
-              letterSpacing: tokens.font.em.number,
-              lineHeight: 1.2,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+          <Box sx={{ ...statValue('small'), lineHeight: 1.2 }}>
             {over ? 'Rest over' : clock(remaining)}
           </Box>
           {!over && (

@@ -14,14 +14,12 @@ export interface ProgressBarProps {
   color?: string
   /** Accessible name, e.g. "Calories against target". */
   label: string
-  /** Track colour. Default `tokens.ink.fill`. On an `ink.panel` panel use `tokens.ink.border`. */
-  trackColor?: string
   /** Grow delay in ms, to follow the card's entrance. Default 0. */
   delay?: number
   testId?: string
 }
 
-export function ProgressBar({ value, metric, color, label, trackColor = tokens.ink.fill, delay = 0, testId }: ProgressBarProps) {
+export function ProgressBar({ value, metric, color, label, delay = 0, testId }: ProgressBarProps) {
   const { entered, reduced } = useEntrance()
   const ratio = value === null || value === undefined || !Number.isFinite(value) ? 0 : Math.max(0, value)
   const fill = color ?? (metric ? tokens.metric[metric] : tokens.accent.main)
@@ -33,7 +31,7 @@ export function ProgressBar({ value, metric, color, label, trackColor = tokens.i
       aria-valuemax={100}
       aria-valuenow={Math.round(ratio * 100)}
       data-testid={testId}
-      sx={{ height: 6, borderRadius: `${tokens.radius.pill}px`, bgcolor: trackColor, overflow: 'hidden' }}
+      sx={{ height: 6, borderRadius: `${tokens.radius.pill}px`, bgcolor: tokens.ink.fill, overflow: 'hidden' }}
     >
       <Box
         sx={{

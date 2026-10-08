@@ -7,7 +7,7 @@ import TrendingFlatRounded from '@mui/icons-material/TrendingFlatRounded'
 import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded'
 import Box from '@mui/material/Box'
 import type { Forecast } from '@fitness/shared/schemas'
-import { CountUp, formatNumber, formatShortDate, formatSigned, KeyStat, KeyStatGrid, PendingBadge, StatusChip } from '../../../components'
+import { CountUp, formatNumber, formatShortDate, formatSigned, KeyStat, KeyStatGrid, PendingBadge, statValue, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 
 export interface TrendNumbers {
@@ -39,14 +39,7 @@ export function TrendHeadline(props: TrendNumbers) {
       <Box
         component="span"
         data-testid="today-trend"
-        sx={{
-          fontSize: tokens.font.size.bigNumberMedium,
-          fontWeight: tokens.font.weight.number,
-          lineHeight: tokens.font.leading.number,
-          letterSpacing: tokens.font.em.hero,
-          fontVariantNumeric: 'tabular-nums',
-          color: tokens.ink.text,
-        }}
+        sx={{ ...statValue('medium'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}
       >
         {trendKg === null ? '—' : <CountUp value={trendKg} from={startKg ?? trendKg} precision={1} delay={300} />}
       </Box>

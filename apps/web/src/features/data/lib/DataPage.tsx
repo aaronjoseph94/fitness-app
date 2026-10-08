@@ -2,12 +2,15 @@
 // "Restore from export". Both actions need a connection; nothing here goes through the offline queue.
 import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
-import { PageHeader } from '../../../components'
+import { PageHeader, Reveal, staggerDelay } from '../../../components'
 import { useOnline } from '../../../offline'
 import { tokens } from '../../../theme'
 import { ExportCard } from './ExportCard'
 import { DataCard } from './parts'
 import { RestoreCard } from './RestoreCard'
+
+/** 2a's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
+const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.section)
 
 export function DataPage() {
   const online = useOnline()
@@ -19,19 +22,25 @@ export function DataPage() {
           You’re offline. Export and restore need a connection.
         </Alert>
       )}
-      <ExportCard online={online} />
-      <DataCard
-        id="backup"
-        title="Monthly backup"
-        tone="panel"
-        description={
-          <>
-            On the 1st of every month the server also saves each table as JSON in your private storage (reports/backup/YYYY-MM/), one table every five
-            minutes. Photos are not copied there: keep an export for those.
-          </>
-        }
-      />
-      <RestoreCard online={online} />
+      <Reveal delay={enter(1)}>
+        <ExportCard online={online} />
+      </Reveal>
+      <Reveal delay={enter(2)}>
+        <DataCard
+          id="backup"
+          title="Monthly backup"
+          tone="panel"
+          description={
+            <>
+              On the 1st of every month the server also saves each table as JSON in your private storage (reports/backup/YYYY-MM/), one table every five
+              minutes. Photos are not copied there: keep an export for those.
+            </>
+          }
+        />
+      </Reveal>
+      <Reveal delay={enter(3)}>
+        <RestoreCard online={online} />
+      </Reveal>
     </Stack>
   )
 }

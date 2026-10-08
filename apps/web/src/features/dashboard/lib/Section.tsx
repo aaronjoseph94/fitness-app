@@ -47,8 +47,9 @@ export function DashboardSection({ id, title, subtitle, defaultOpen = false, chi
       disableGutters
       elevation={0}
       data-testid={`dashboard-${id}`}
-      // The open panel is a region named by the section's title, so two open sections are two distinct landmarks.
-      slotProps={{ region: { 'aria-labelledby': `${id}-title` } }}
+      // APG accordion: the section's h2 wraps the toggle button (MUI's default heading slot is an h3), so the title
+      // inside is a plain span. The open panel is a region named by that title, so two open sections are two landmarks.
+      slotProps={{ heading: { component: 'h2' }, region: { 'aria-labelledby': `${id}-title` } }}
       // The 2a card (hairline, radius 12, the card whisper); `&::before` is MUI's own top rule, which 2a does not draw.
       sx={{ ...cardSurface, overflow: 'hidden', '&::before': { display: 'none' } }}
     >
@@ -63,16 +64,18 @@ export function DashboardSection({ id, title, subtitle, defaultOpen = false, chi
           '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width },
         }}
       >
-        <Box sx={{ minWidth: 0 }}>
+        <Box component="span" sx={{ display: 'block', minWidth: 0 }}>
           <Box
-            component="h2"
+            component="span"
             id={`${id}-title`}
-            sx={{ m: 0, fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.sectionTitle, color: tokens.ink.text }}
+            sx={{ display: 'block', fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.sectionTitle, color: tokens.ink.text }}
           >
             {title}
           </Box>
           {subtitle && (
-            <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{subtitle}</Box>
+            <Box component="span" sx={{ display: 'block', mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+              {subtitle}
+            </Box>
           )}
         </Box>
       </AccordionSummary>

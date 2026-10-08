@@ -24,7 +24,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Reveal } from '../../../components'
 import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, scrollBehavior, tokens } from '../../../theme'
@@ -317,6 +317,26 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   const reads = count > 0 ? readsLine(chat.turns) : null
   // The phone's composer sticks above the bottom tabs, so the end of the thread scrolls clear of both.
   const phonePage = variant === 'page' && !desktop
+  const dock = useRef<HTMLDivElement>(null)
+  // While the phone's dock is up it is part of the bottom chrome, like the rest timer: the page's bottom scroll padding
+  // grows to clear it, so a proposal's Accept / Reject / Plan history never takes focus behind it (WCAG 2.4.11).
+  // `bottom` is the dock's sticky offset above the tabs.
+  useLayoutEffect(() => {
+    const el = dock.current
+    if (!phonePage || !el) return
+    const root = document.documentElement
+    const fit = () => {
+      const clear = parseFloat(getComputedStyle(el).bottom) + el.offsetHeight + tokens.space(3)
+      root.style.scrollPaddingBottom = `max(calc(${tokens.layout.scrollPadding.bottom}px + env(safe-area-inset-bottom, 0px)), ${clear}px)`
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('scroll-padding-bottom')
+    }
+  }, [phonePage])
 
   const turnList = (
     <>
@@ -423,6 +443,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
         {turns}
       </Box>
       <Box
+        ref={dock}
         sx={{
           position: 'sticky',
           bottom: `calc(${tokens.layout.bottomNavHeight + tokens.space(3)}px + env(safe-area-inset-bottom, 0px))`,

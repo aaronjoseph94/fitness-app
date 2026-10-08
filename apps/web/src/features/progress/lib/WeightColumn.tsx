@@ -125,6 +125,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
 
         <ChartCard
           title="Milestones"
+          testId="progress-milestones"
           titleSize="card"
           subtitle="Weight and composition targets with the date each was reached"
           action={

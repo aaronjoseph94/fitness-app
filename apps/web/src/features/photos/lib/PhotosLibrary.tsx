@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack'
 import { Pose, type ProgressPhoto } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router'
-import { EmptyState, LoadProblem, PageHeader, Segmented } from '../../../components'
+import { EmptyState, LoadProblem, PageHeader, Reveal, Segmented, staggerDelay } from '../../../components'
 import { tokens } from '../../../theme'
 import { CompareView, type CompareMode } from './CompareView'
 import { POSE_LABEL, POSES, usePhotos } from './data'
@@ -27,6 +27,9 @@ const VIEWS: { key: View; label: string }[] = [
 ]
 
 const isView = (v: string | null): v is View => VIEWS.some((x) => x.key === v)
+
+/** 2a's entrance: after the title row, the toolbar and then the photos rise in, a section's stagger apart. */
+const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.section)
 
 export function PhotosLibrary() {
   const [params, setParams] = useSearchParams()
@@ -86,61 +89,65 @@ export function PhotosLibrary() {
         }
       />
 
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 3 }}>
-        <Segmented
-          ariaLabel="View"
-          value={view}
-          onChange={(next) => update({ view: next === 'grid' ? null : next })}
-          options={VIEWS.map((v) => ({ value: v.key, label: v.label }))}
-          testId="photo-view"
-        />
-        <PoseFilter value={pose} onChange={(next) => update({ pose: next, before: null, after: null })} />
-      </Box>
-
-      {isLoading ? (
-        <Box sx={{ display: 'grid', columnGap: 3, rowGap: 4, gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} variant="rounded" sx={{ aspectRatio: '3 / 4', height: 'auto', borderRadius: `${tokens.radius.control}px` }} />
-          ))}
+      <Reveal delay={enter(1)}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 3 }}>
+          <Segmented
+            ariaLabel="View"
+            value={view}
+            onChange={(next) => update({ view: next === 'grid' ? null : next })}
+            options={VIEWS.map((v) => ({ value: v.key, label: v.label }))}
+            testId="photo-view"
+          />
+          <PoseFilter value={pose} onChange={(next) => update({ pose: next, before: null, after: null })} />
         </Box>
-      ) : error && !data ? (
-        <LoadProblem what="Your photos" error={error} onRetry={() => void refetch()} />
-      ) : shown.length === 0 ? (
-        <EmptyState
-          title={pose ? `No ${POSE_LABEL[pose].toLowerCase()} photos yet` : 'No progress photos yet'}
-          body="Front, side and back, lined up with the outline. Private: never sent to any AI."
-          action={
-            <Button component={RouterLink} to={pose ? `/photos/new?pose=${pose}` : '/photos/new'} variant="outlined" startIcon={<AddAPhotoOutlined />}>
-              Take {pose ? `a ${POSE_LABEL[pose].toLowerCase()} photo` : 'your first photos'}
-            </Button>
-          }
-          testId="photos-empty"
-        />
-      ) : view === 'grid' ? (
-        <PhotoGrid photos={shown} onOpen={setOpen} showPose={pose === null} />
-      ) : view === 'strip' ? (
-        <MonthlyStrip photos={shown} poses={pose ? [pose] : POSES} onOpen={setOpen} />
-      ) : pair ? (
-        <CompareView
-          photos={shown}
-          before={pair[0]}
-          after={pair[1]}
-          mode={mode}
-          onChange={(next) =>
-            update({
-              ...(next.before ? { before: next.before, after: pair[1].id } : {}),
-              ...(next.after ? { after: next.after, before: pair[0].id } : {}),
-              ...(next.mode ? { mode: next.mode === 'side' ? null : next.mode } : {}),
-            })
-          }
-        />
-      ) : (
-        <EmptyState
-          title="Two photos to compare"
-          body="Compare needs two photos. Take one next week, same spot and light."
-          testId="photos-compare-empty"
-        />
-      )}
+      </Reveal>
+
+      <Reveal delay={enter(2)}>
+        {isLoading ? (
+          <Box sx={{ display: 'grid', columnGap: 3, rowGap: 4, gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} variant="rounded" sx={{ aspectRatio: '3 / 4', height: 'auto', borderRadius: `${tokens.radius.control}px` }} />
+            ))}
+          </Box>
+        ) : error && !data ? (
+          <LoadProblem what="Your photos" error={error} onRetry={() => void refetch()} />
+        ) : shown.length === 0 ? (
+          <EmptyState
+            title={pose ? `No ${POSE_LABEL[pose].toLowerCase()} photos yet` : 'No progress photos yet'}
+            body="Front, side and back, lined up with the outline. Private: never sent to any AI."
+            action={
+              <Button component={RouterLink} to={pose ? `/photos/new?pose=${pose}` : '/photos/new'} variant="outlined" startIcon={<AddAPhotoOutlined />}>
+                Take {pose ? `a ${POSE_LABEL[pose].toLowerCase()} photo` : 'your first photos'}
+              </Button>
+            }
+            testId="photos-empty"
+          />
+        ) : view === 'grid' ? (
+          <PhotoGrid photos={shown} onOpen={setOpen} showPose={pose === null} />
+        ) : view === 'strip' ? (
+          <MonthlyStrip photos={shown} poses={pose ? [pose] : POSES} onOpen={setOpen} />
+        ) : pair ? (
+          <CompareView
+            photos={shown}
+            before={pair[0]}
+            after={pair[1]}
+            mode={mode}
+            onChange={(next) =>
+              update({
+                ...(next.before ? { before: next.before, after: pair[1].id } : {}),
+                ...(next.after ? { after: next.after, before: pair[0].id } : {}),
+                ...(next.mode ? { mode: next.mode === 'side' ? null : next.mode } : {}),
+              })
+            }
+          />
+        ) : (
+          <EmptyState
+            title="Two photos to compare"
+            body="Compare needs two photos. Take one next week, same spot and light."
+            testId="photos-compare-empty"
+          />
+        )}
+      </Reveal>
 
       <PhotoViewer photo={open} onClose={() => setOpen(null)} onCompare={compareFrom} />
     </Stack>

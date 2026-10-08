@@ -38,7 +38,7 @@ export function Panel({
         minWidth: 0,
         breakInside: 'avoid',
         pageBreakInside: 'avoid',
-        '@media print': { p: 2, borderRadius: '8px', boxShadow: 'none' },
+        '@media print': { p: 2, borderRadius: `${tokens.radius.control}px`, boxShadow: 'none' },
       }}
     >
       <Box component="h2" sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle, '@media print': { lineHeight: 1.3 } }}>
@@ -92,7 +92,7 @@ export function StatStrip({ stats }: { stats: readonly Stat[] }) {
             px: '14px',
             py: '12px',
             minWidth: 0,
-            '@media print': { borderRadius: '8px', boxShadow: 'none', px: 1.5, py: 1 },
+            '@media print': { borderRadius: `${tokens.radius.control}px`, boxShadow: 'none', px: 1.5, py: 1 },
           }}
         >
           <Box

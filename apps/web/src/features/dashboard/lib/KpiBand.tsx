@@ -10,7 +10,7 @@ import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import type { ReactNode } from 'react'
 import { Sparkline } from '../../../charts'
-import { Column, Columns, CountUp, deltaTone, formatNumber, formatShortDate, MiniBars, ProgressBar, Reveal, StatCard, StatusChip } from '../../../components'
+import { Column, Columns, CountUp, deltaTone, formatNumber, formatShortDate, MiniBars, ProgressBar, Reveal, StatCard, statValue, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 import type { GoalFacts } from './GoalRail'
 import { barSeries, type Kpi, type KpiGroup } from './kpis'
@@ -109,14 +109,7 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
             <Box
               component="span"
               data-testid="goal-now"
-              sx={{
-                fontSize: tokens.font.size.bigNumberLarge,
-                lineHeight: 1,
-                fontWeight: tokens.font.weight.number,
-                letterSpacing: tokens.font.em.hero,
-                fontVariantNumeric: 'tabular-nums',
-                color: tokens.ink.text,
-              }}
+              sx={{ ...statValue('large'), lineHeight: 1, color: tokens.ink.text }}
             >
               {kpi.value === null ? '—' : <CountUp value={kpi.value} from={goal.startKg ?? undefined} precision={precision} delay={500} />}
             </Box>
