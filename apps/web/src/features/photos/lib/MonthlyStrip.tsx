@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import type { Pose, ProgressPhoto } from '@fitness/shared/schemas'
 import { useEffect, useRef } from 'react'
+import { cardSurface, dashedSurface } from '../../../components'
 import { tokens } from '../../../theme'
 import { POSE_LABEL } from './data'
 import { monthLabel, monthlyStrip } from './grouping'
@@ -23,32 +24,32 @@ export function MonthlyStrip({ photos, poses, onOpen }: { photos: readonly Progr
     <Box
       ref={scroller}
       data-testid="photo-monthly-strip"
-      sx={{ overflowX: 'auto', border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.card}px`, bgcolor: tokens.ink.card, p: 3 }}
+      sx={{ ...cardSurface, overflowX: 'auto', px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px` }}
     >
-      <Box sx={{ display: 'grid', gap: 3, width: 'max-content' }}>
+      <Box sx={{ display: 'grid', gap: 5, width: 'max-content' }}>
         {rows.map((row) => (
           <Box key={row.pose}>
-            <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary, mb: 1.5, position: 'sticky', left: 0, width: 'max-content' }}>
+            <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, color: tokens.ink.text, mb: 2, position: 'sticky', left: 0, width: 'max-content' }}>
               {POSE_LABEL[row.pose]}
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 3 }}>
               {row.cells.map(({ month, photo }) => (
                 <Box key={month} sx={{ width: CELL_WIDTH, flex: 'none' }}>
                   {photo ? (
                     <ButtonBase onClick={() => onOpen(photo)} aria-label={`Open ${row.pose} photo from ${photo.date}`} sx={{ display: 'block', width: '100%', borderRadius: `${tokens.radius.control}px` }}>
-                      <Box sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden' }}>
+                      <Box sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill }}>
                         <PhotoImage photo={photo} />
                       </Box>
                     </ButtonBase>
                   ) : (
                     <Box
                       aria-label={`No ${row.pose} photo in ${monthLabel(month)}`}
-                      sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, border: `1px dashed ${tokens.ink.border}`, display: 'grid', placeItems: 'center', color: tokens.ink.secondary, fontSize: tokens.font.size.label }}
+                      sx={{ ...dashedSurface, aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, display: 'grid', placeItems: 'center', color: tokens.ink.secondary, fontSize: tokens.font.size.small }}
                     >
                       —
                     </Box>
                   )}
-                  <Box sx={{ pt: 1, fontSize: tokens.font.size.caption, lineHeight: 1.35, display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                  <Box sx={{ pt: '6px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, display: 'flex', justifyContent: 'space-between', gap: 1 }}>
                     <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
                       {monthLabel(month, 'short')}
                     </Box>

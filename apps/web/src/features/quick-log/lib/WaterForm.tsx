@@ -1,12 +1,13 @@
 // Owns: the water quick-add — the day's total against its target, one-tap 250 / 500 / 750 ml chips and a custom
 // amount (POST /api/water with a client id and the time it was drunk), and Undo for the last tap (DELETE /api/water/:id,
 // queued like the add when offline). The sheet stays open so taps can repeat.
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, MetricRing, NumberField, parseNumber, PendingBadge } from '../../../components'
+import { formatNumber, MetricRing, NumberField, outlinedIconButton, parseNumber, PendingBadge, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { instantOnDate, todayLocal } from './dates'
 import { useWater } from './reads'
@@ -59,16 +60,26 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="water-form">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <MetricRing value={water.totalMl} target={water.targetMl} metric="water" size={72} label="Water" unit="ml" centre={water.known ? `${Math.round((water.totalMl / Math.max(1, water.targetMl)) * 100)}%` : '—'} />
+        <MetricRing
+          value={water.totalMl}
+          target={water.targetMl}
+          metric="water"
+          trackColor={tokens.ink.fill}
+          size={72}
+          thickness={7}
+          label="Water"
+          unit="ml"
+          centre={water.known ? `${Math.round((water.totalMl / Math.max(1, water.targetMl)) * 100)}%` : '—'}
+        />
         <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ fontSize: 28, fontWeight: tokens.font.weight.number, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+          <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1.1, ...tabularNums }}>
             {water.known ? formatNumber(water.totalMl) : '—'}
-            <Box component="span" sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: 'text.secondary' }}>
+            <Box component="span" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, letterSpacing: 0, color: 'text.secondary' }}>
               {' '}
               / {formatNumber(water.targetMl)} ml
             </Box>
           </Box>
-          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 0.5 }}>
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1 }}>
             {date === todayLocal() ? 'Today' : date}
             {' · '}
             {!water.known
@@ -82,28 +93,15 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
         </Box>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) auto', gap: 2 }}>
         {QUICK_ML.map((ml) => (
-          <Chip
-            key={ml}
-            label={`${ml} ml`}
-            variant="outlined"
-            onClick={() => log(ml)}
-            data-testid={`water-${ml}`}
-            sx={{
-              height: tokens.tapTarget,
-              borderRadius: tokens.radius.chip,
-              fontVariantNumeric: 'tabular-nums',
-              '& .MuiChip-label': { px: 1 },
-            }}
-          />
+          <Button key={ml} variant="outlined" onClick={() => log(ml)} data-testid={`water-${ml}`} sx={{ px: 1, minWidth: 0, whiteSpace: 'nowrap', ...tabularNums }}>
+            +{ml} ml
+          </Button>
         ))}
-        <Chip
-          label="Custom"
-          variant={customOpen ? 'filled' : 'outlined'}
-          onClick={() => setCustomOpen((o) => !o)}
-          sx={{ height: tokens.tapTarget, borderRadius: tokens.radius.chip, '& .MuiChip-label': { px: 1 } }}
-        />
+        <IconButton aria-label="Custom amount" aria-pressed={customOpen} onClick={() => setCustomOpen((o) => !o)} sx={{ ...outlinedIconButton, ...(customOpen && { bgcolor: tokens.ink.fill }) }}>
+          <EditOutlined fontSize="small" />
+        </IconButton>
       </Box>
 
       {customOpen && (
@@ -135,7 +133,7 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
           <>
             Added {formatNumber(last.ml)} ml
             {last.queued && <PendingBadge />}
-            <Button size="small" onClick={undo} disabled={remove.isPending} sx={{ minHeight: tokens.tapTarget, ml: 'auto' }} data-testid="water-undo">
+            <Button size="small" onClick={undo} disabled={remove.isPending} sx={{ ml: 'auto' }} data-testid="water-undo">
               Undo
             </Button>
           </>

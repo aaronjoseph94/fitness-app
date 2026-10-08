@@ -1,8 +1,13 @@
 // Owns: the scan's numbers beside their changes — each whole-body metric and each segment's fat and lean, with the
 // change since the previous scan and since the baseline, coloured by whether the direction is good.
 import Box from '@mui/material/Box'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
 import type { ScanChange, ScanMetricField, ScanRecord } from '@fitness/shared/schemas'
-import { formatNumber, formatSigned } from '../../../components'
+import { formatNumber, formatShortDate, formatSigned } from '../../../components'
 import { tokens } from '../../../theme'
 import { SEGMENT_LABEL, SEGMENTS } from './series'
 
@@ -24,54 +29,55 @@ const ROWS: { key: ScanMetricField; label: string; unit: string; dp: number; goo
 ]
 
 function Delta({ value, dp, good }: { value: number | undefined; dp: number; good: Good }) {
-  if (value === undefined) return <Box sx={{ color: 'text.secondary' }}>—</Box>
+  if (value === undefined) return <Box component="span" sx={{ color: tokens.ink.muted }}>—</Box>
   const flat = Math.abs(value) < 10 ** -dp / 2
   const ok = good === 'neutral' || flat ? null : (value < 0) === (good === 'down')
   return (
-    <Box sx={{ color: ok === null ? tokens.ink.secondary : ok ? tokens.status.good : tokens.status.flag, fontWeight: tokens.font.weight.label }}>
+    <Box
+      component="span"
+      sx={{ color: ok === null ? tokens.ink.label : ok ? tokens.tone.success.text : tokens.tone.danger.text, fontWeight: tokens.font.weight.label }}
+    >
       {flat ? formatNumber(0, dp) : formatSigned(value, dp)}
     </Box>
   )
 }
 
-const cell = { py: 1.25, borderBottom: `1px solid ${tokens.ink.border}`, fontVariantNumeric: 'tabular-nums', fontSize: tokens.font.size.small, minWidth: 0 } as const
-
 export function DeltaTable({ record, previous, baseline }: { record: ScanRecord; previous: ScanChange | null; baseline: ScanChange | null }) {
   const showBaseline = baseline !== null && baseline.scan_id !== previous?.scan_id
-  const cols = showBaseline ? 'minmax(0, 1.4fr) repeat(3, minmax(0, 1fr))' : 'minmax(0, 1.4fr) repeat(2, minmax(0, 1fr))'
-  const header = (
-    <>
-      <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption }}>Metric</Box>
-      <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption, textAlign: 'right' }}>This scan</Box>
-      <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption, textAlign: 'right' }}>{previous ? `vs ${previous.date}` : 'vs previous'}</Box>
-      {showBaseline && <Box sx={{ ...cell, color: 'text.secondary', fontSize: tokens.font.size.caption, textAlign: 'right' }}>vs baseline</Box>}
-    </>
-  )
   const row = (label: string, value: number, unit: string, dp: number, good: Good, prev: number | undefined, base: number | undefined) => (
-    <Box key={label} sx={{ display: 'contents' }}>
-      <Box sx={cell}>{label}</Box>
-      <Box sx={{ ...cell, textAlign: 'right' }}>
+    <TableRow key={label}>
+      <TableCell>{label}</TableCell>
+      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
         {formatNumber(value, dp)}
-        {unit && <Box component="span" sx={{ color: 'text.secondary', fontSize: tokens.font.size.caption }}> {unit}</Box>}
-      </Box>
-      <Box sx={{ ...cell, textAlign: 'right' }}>
+        {unit && <Box component="span" sx={{ color: tokens.ink.muted }}> {unit}</Box>}
+      </TableCell>
+      <TableCell align="right">
         <Delta value={prev} dp={dp} good={good} />
-      </Box>
+      </TableCell>
       {showBaseline && (
-        <Box sx={{ ...cell, textAlign: 'right' }}>
+        <TableCell align="right">
           <Delta value={base} dp={dp} good={good} />
-        </Box>
+        </TableCell>
       )}
-    </Box>
+    </TableRow>
   )
   return (
-    <Box data-testid="scan-delta-table" sx={{ display: 'grid', gridTemplateColumns: cols, columnGap: 2 }}>
-      {header}
-      {ROWS.map((r) => row(r.label, record[r.key], r.unit, r.dp, r.good, previous?.deltas[r.key], baseline?.deltas[r.key]))}
-      {SEGMENTS.flatMap((s) => [
-        row(`${SEGMENT_LABEL[s]} fat`, record.segments[s].fat_kg, 'kg', 2, 'down', previous?.segments[s]?.fat_kg, baseline?.segments[s]?.fat_kg),
-        row(`${SEGMENT_LABEL[s]} lean`, record.segments[s].lean_kg, 'kg', 2, 'up', previous?.segments[s]?.lean_kg, baseline?.segments[s]?.lean_kg),
-      ])}
-    </Box>
+    <Table data-testid="scan-delta-table" sx={{ '& tbody tr:last-of-type td': { borderBottom: 0 } }}>
+      <TableHead>
+        <TableRow>
+          <TableCell>Metric</TableCell>
+          <TableCell align="right">This scan</TableCell>
+          <TableCell align="right">{previous ? `vs ${formatShortDate(previous.date)}` : 'vs previous'}</TableCell>
+          {showBaseline && <TableCell align="right">vs baseline</TableCell>}
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {ROWS.map((r) => row(r.label, record[r.key], r.unit, r.dp, r.good, previous?.deltas[r.key], baseline?.deltas[r.key]))}
+        {SEGMENTS.flatMap((s) => [
+          row(`${SEGMENT_LABEL[s]} fat`, record.segments[s].fat_kg, 'kg', 2, 'down', previous?.segments[s]?.fat_kg, baseline?.segments[s]?.fat_kg),
+          row(`${SEGMENT_LABEL[s]} lean`, record.segments[s].lean_kg, 'kg', 2, 'up', previous?.segments[s]?.lean_kg, baseline?.segments[s]?.lean_kg),
+        ])}
+      </TableBody>
+    </Table>
   )
 }

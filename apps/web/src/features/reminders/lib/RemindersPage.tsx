@@ -9,11 +9,11 @@ import Stack from '@mui/material/Stack'
 import { REMINDER_HOURS, type Reminder, type ReminderKind } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { problemText, signInAgain } from '../../../api'
-import { SectionHeader } from '../../../components'
+import { PageHeader, Panel } from '../../../components'
 import { useOnline } from '../../../offline'
 import { tokens } from '../../../theme'
 import { DeviceCard } from './DeviceCard'
-import { KINDS } from './kinds'
+import { EARLIEST_TIME, KINDS, LATEST_TIME } from './kinds'
 import { ReminderList } from './ReminderList'
 import { usePushDevice } from './usePushDevice'
 import { useReminderPrefs } from './useReminderPrefs'
@@ -35,7 +35,9 @@ export function RemindersPage() {
   }
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="reminders-page" sx={{ pb: 4 }}>
+    <Stack spacing={`${tokens.rhythm.section}px`} data-testid="reminders-page">
+      <PageHeader title="Reminders" subtitle={`Edmonton time. Quiet from ${REMINDER_HOURS.to} to ${REMINDER_HOURS.from}: nothing is sent overnight.`} />
+
       {!online && (
         <Alert severity="info" data-testid="reminders-offline">
           You’re offline. These are the last saved reminders; changes need a connection.
@@ -44,27 +46,27 @@ export function RemindersPage() {
 
       <DeviceCard device={device} online={online} onDone={setNotice} />
 
-      <Box component="section" aria-labelledby="reminder-kinds-title">
-        <SectionHeader
-          id="reminder-kinds"
-          title="Reminders"
-          subtitle={`Edmonton time. Quiet from ${REMINDER_HOURS.to} to ${REMINDER_HOURS.from}: nothing is sent overnight.`}
-        />
+      <Panel
+        id="reminder-kinds"
+        title="Reminders and times"
+        description={`Every change saves at once. A reminder with a time goes out between ${EARLIEST_TIME} and ${LATEST_TIME}.`}
+        padding={prefs && fastHours !== undefined && scanIntervalDays !== undefined ? 'none' : 'standard'}
+      >
         {prefs && fastHours !== undefined && scanIntervalDays !== undefined ? (
           <ReminderList prefs={prefs} fastHours={fastHours} scanIntervalDays={scanIntervalDays} disabled={!online || saving} onSave={onSave} />
         ) : query.isPending && query.fetchStatus !== 'paused' ? (
-          <Skeleton variant="rounded" height={420} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+          <Skeleton variant="rounded" height={420} />
         ) : (
           <Alert
             severity="error"
             data-testid="reminders-error"
             action={
               query.error?.kind === 'auth-expired' ? (
-                <Button color="inherit" onClick={signInAgain}>
+                <Button color="inherit" size="small" onClick={signInAgain}>
                   Sign in again
                 </Button>
               ) : (
-                <Button color="inherit" onClick={() => void query.refetch()}>
+                <Button color="inherit" size="small" onClick={() => void query.refetch()}>
                   Try again
                 </Button>
               )
@@ -75,7 +77,7 @@ export function RemindersPage() {
               : `Couldn’t load reminders. ${query.error?.message ?? ''}`}
           </Alert>
         )}
-      </Box>
+      </Panel>
 
       <Snackbar open={notice !== null} autoHideDuration={3500} onClose={() => setNotice(null)} message={notice} />
     </Stack>

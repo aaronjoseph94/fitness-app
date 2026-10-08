@@ -2,6 +2,8 @@
 // sets, what the guards dropped or repaired (guard_notes), each exercise with its prescription, swap (picker limited to
 // the same primary muscle) and about, then "Start
 // session" or "Save as template". Controlled: the caller holds the draft and applies swaps through `onSwap`.
+// 2a: a summary card in Train's today-card idiom (the AI's reasoning, guard notes and the set count | the muscle map on
+// a #FAFAFA panel), the exercises as a card of rows, and the sticky Save / Start bar. The two cards rise in on mount.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
@@ -9,15 +11,16 @@ import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import Card from '@mui/material/Card'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import type { ExerciseSummary, WorkoutDraft } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
-import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
+import { outlinedIconButton, Panel, Reveal, staggerDelay } from '../../../components'
+import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, ExerciseThumb, useExerciseIndex } from '../../library'
 import { prescription } from './ExerciseCard'
+import { MapCard } from './MapCard'
 import { draftMuscleLevels } from './scores'
 
 export interface WorkoutSwap {
@@ -38,11 +41,13 @@ export interface AiWorkoutPreviewProps {
   busy?: boolean
   /** Default "Save as template". */
   saveLabel?: string
-  /** CSS `bottom` of the sticky action bar (e.g. above the bottom nav). Default 0. */
+  /** CSS `bottom` of the sticky action bar on a phone (e.g. above the bottom nav); from `md` up it is 0. Default 0. */
   actionsBottom?: string
+  /** Heading level of the cards' titles: h2 under a page's h1 (default), h3 under a dialog's h2. */
+  headingComponent?: 'h2' | 'h3'
 }
 
-export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false, saveLabel = 'Save as template', actionsBottom = '0px' }: AiWorkoutPreviewProps) {
+export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false, saveLabel = 'Save as template', actionsBottom = '0px', headingComponent = 'h2' }: AiWorkoutPreviewProps) {
   const index = useExerciseIndex()
   const [swapAt, setSwapAt] = useState<number | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -58,86 +63,102 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
   }
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="ai-workout-preview">
-      <Card sx={{ p: 4, display: 'flex', gap: 3, alignItems: 'flex-start' }}>
-        <AutoAwesomeRounded sx={{ color: tokens.metric.weight, mt: 0.25 }} aria-hidden />
-        <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }} data-testid="ai-rationale">
+    <Stack spacing={4} data-testid="ai-workout-preview">
+      {/* 2a's entrance: the summary card, then the exercises, a card's stagger apart. */}
+      <Reveal>
+        <MapCard levels={training.levels} mapTitle="Muscles this workout trains" caption={training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AutoAwesomeRounded sx={{ fontSize: 18, color: tokens.accent.main }} aria-hidden />
+            <Box component={headingComponent} sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.label, color: tokens.ink.text }}>
+              Why this session
+            </Box>
+          </Box>
+          <Box sx={{ mt: 2, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body }} data-testid="ai-rationale">
             {draft.rationale || 'A balanced session from your allowed exercises.'}
           </Box>
           {/* What the guards dropped or repaired: a change that fails a rail is reported, not hidden (SPEC §9). */}
           {draft.guard_notes && draft.guard_notes.length > 0 && (
-            <Box component="ul" sx={{ m: 0, mt: 2, pl: 4, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.5 }} data-testid="ai-guard-notes">
+            <Box component="ul" sx={{ m: 0, mt: 2, pl: 4, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }} data-testid="ai-guard-notes">
               {draft.guard_notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}
             </Box>
           )}
-        </Box>
-      </Card>
-
-      <Card sx={{ p: 4 }}>
-        <Box sx={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <Box sx={{ flex: 'none' }}>
-            <MuscleMap levels={training.levels} size={168} title="Muscles this workout trains" />
-          </Box>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ fontSize: 32, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{training.totalSets}</Box>
-            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>sets · {draft.exercises.length} exercises</Box>
-            <Box sx={{ fontSize: tokens.font.size.small, mt: 2, lineHeight: 1.45 }}>{training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}</Box>
-          </Box>
-        </Box>
-        <Box sx={{ mt: 3 }}>
-          <MuscleMapLegend dense />
-        </Box>
-      </Card>
-
-      <Card sx={{ px: 2 }}>
-        {draft.exercises.map((e, i) => {
-          const exercise = index.byId.get(e.exercise_id)
-          return (
-            <Box
-              key={`${i}-${e.exercise_id}`}
-              data-testid="ai-exercise"
-              sx={{ display: 'flex', alignItems: 'center', gap: 1, borderBottom: `1px solid ${tokens.ink.border}`, '&:last-of-type': { borderBottom: 'none' } }}
-            >
-              <ButtonBase
-                onClick={() => setInfo(e.exercise_id)}
-                sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 3, py: 3, pl: 2, justifyContent: 'flex-start', textAlign: 'left', borderRadius: 2, font: 'inherit', color: 'inherit' }}
-              >
-                <ExerciseThumb exercise={exercise} size={48} />
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, lineHeight: 1.3 }}>{exercise?.name ?? 'Unknown exercise'}</Box>
-                  <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.25, fontVariantNumeric: 'tabular-nums' }}>{prescription(e)}</Box>
-                </Box>
-              </ButtonBase>
-              <IconButton aria-label={`About ${exercise?.name ?? 'exercise'}`} onClick={() => setInfo(e.exercise_id)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
-                <InfoOutlined />
-              </IconButton>
-              <IconButton aria-label={`Swap ${exercise?.name ?? 'exercise'}`} onClick={() => setSwapAt(i)} data-testid="ai-swap" sx={{ color: 'primary.main' }}>
-                <SwapHorizRounded />
-              </IconButton>
+          <Box sx={{ mt: 5, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '6px' }}>
+            <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: tokens.font.leading.number, fontVariantNumeric: 'tabular-nums', color: tokens.ink.text }}>
+              {training.totalSets}
             </Box>
-          )
-        })}
-      </Card>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>sets · {draft.exercises.length} exercises</Box>
+          </Box>
+        </MapCard>
+      </Reveal>
+
+      <Reveal delay={staggerDelay(1, tokens.motion.stagger.card)}>
+        <Panel title="Exercises" description="Open one to see how it’s done; a swap keeps the same primary muscle" padding="none" headingComponent={headingComponent}>
+          {draft.exercises.map((e, i) => {
+            const exercise = index.byId.get(e.exercise_id)
+            return (
+              <Box
+                key={`${i}-${e.exercise_id}`}
+                data-testid="ai-exercise"
+                sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: '12px', borderTop: `1px solid ${tokens.ink.hairline}` }}
+              >
+                <ButtonBase
+                  onClick={() => setInfo(e.exercise_id)}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    py: '12px',
+                    pl: `${tokens.pad.card.x}px`,
+                    pr: 1,
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    font: 'inherit',
+                    color: 'inherit',
+                    // Flush in the card: draw the keyboard ring inside the row.
+                    '&.Mui-focusVisible': { outlineOffset: -2 },
+                  }}
+                >
+                  <ExerciseThumb exercise={exercise} size={44} />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.label, color: tokens.ink.text }}>
+                      {i + 1} · {exercise?.name ?? 'Unknown exercise'}
+                    </Box>
+                    <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, mt: '2px', fontVariantNumeric: 'tabular-nums' }}>{prescription(e)}</Box>
+                  </Box>
+                </ButtonBase>
+                <IconButton size="small" aria-label={`About ${exercise?.name ?? 'exercise'}`} onClick={() => setInfo(e.exercise_id)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                  <InfoOutlined sx={{ fontSize: 18 }} />
+                </IconButton>
+                <IconButton size="small" aria-label={`Swap ${exercise?.name ?? 'exercise'}`} onClick={() => setSwapAt(i)} data-testid="ai-swap" sx={{ ...outlinedIconButton, color: tokens.accent.main }}>
+                  <SwapHorizRounded sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Box>
+            )
+          })}
+        </Panel>
+      </Reveal>
 
       <Box
         sx={{
           position: 'sticky',
-          bottom: actionsBottom,
+          bottom: { xs: actionsBottom, md: 0 },
           zIndex: 1,
           display: 'flex',
-          gap: 3,
+          justifyContent: 'flex-end',
+          gap: 2,
           py: 3,
           bgcolor: tokens.ink.page,
           borderTop: `1px solid ${tokens.ink.border}`,
         }}
       >
-        <Button variant="outlined" size="large" disabled={busy} onClick={() => onSave(draft)} sx={{ flex: 1 }} data-testid="ai-save">
+        <Button variant="outlined" disabled={busy} onClick={() => onSave(draft)} sx={{ flex: { xs: 1, sm: 'none' } }} data-testid="ai-save">
           {saveLabel}
         </Button>
-        <Button variant="contained" size="large" disabled={busy} startIcon={<PlayArrowRounded />} onClick={() => onStart(draft)} sx={{ flex: 1 }} data-testid="ai-start">
+        <Button variant="contained" disabled={busy} startIcon={<PlayArrowRounded />} onClick={() => onStart(draft)} sx={{ flex: { xs: 1, sm: 'none' } }} data-testid="ai-start">
           Start session
         </Button>
       </Box>

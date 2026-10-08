@@ -10,7 +10,7 @@ import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
 import type { Meal } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
-import { formatNumber, PendingBadge } from '../../../../components'
+import { formatNumber, PendingBadge, tabularNums, wellSurface } from '../../../../components'
 import { tokens } from '../../../../theme'
 import { useNow } from '../fasts'
 import { SLOT_LABEL } from '../nutrition'
@@ -51,11 +51,13 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
     if (isLoading) return <Skeleton variant="rounded" height={160} aria-label="Loading the meal" />
     return (
       <Box sx={{ display: 'grid', gap: 3 }}>
-        <Alert severity="info" variant="outlined">
+        <Alert severity="info">
           {error ? `The meal didn't load. ${problemText(error)}` : "This meal isn't on the server yet. If you're offline it syncs, and its analysis starts, when you're back."}
         </Alert>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button onClick={() => void refetch()}>Try again</Button>
+          <Button variant="outlined" onClick={() => void refetch()}>
+            Try again
+          </Button>
           <Button variant="contained" onClick={onClose}>
             Close
           </Button>
@@ -91,13 +93,13 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-review" data-state={failed ? 'failed' : 'ready'}>
       {failed ? (
-        <Alert severity="info" variant="outlined" data-testid="analysis-failed">
+        <Alert severity="info" data-testid="analysis-failed">
           {manual && meal.status === 'parsing'
             ? 'Add what you ate below. If the analysis finishes first, your items still win.'
             : "The AI couldn't read this one just now. Add what you ate below; what you wrote is kept."}
         </Alert>
       ) : (
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
           Check the items and grams, then confirm. Tap a name's Swap to pick the right food.
         </Box>
       )}
@@ -113,22 +115,22 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
           pb: 1,
           borderTop: `1px solid ${tokens.ink.border}`,
           display: 'grid',
-          gap: 2,
+          gap: 3,
           zIndex: 1,
         }}
       >
-        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }} data-testid="review-totals">
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }} data-testid="review-totals">
           {items.length === 0
             ? 'No items yet.'
             : `${formatNumber(totals.kcal)} kcal${complete ? '' : '+'} · ${formatNumber(totals.protein_g)} g protein · ${formatNumber(totals.carbs_g)} g carbs · ${formatNumber(totals.fat_g)} g fat`}
         </Box>
         {update.isError && (
-          <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
+          <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
             {problemText(update.error)}
           </Box>
         )}
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 2 }}>
-          <Button onClick={onClose} disabled={update.isPending}>
+          <Button variant="outlined" size="large" onClick={onClose} disabled={update.isPending}>
             Later
           </Button>
           <Button variant="contained" size="large" onClick={confirm} disabled={!inputs || inputs.length === 0 || update.isPending} data-testid="review-confirm">
@@ -147,20 +149,20 @@ function MealSource({ meal, localPreviews }: { meal: Meal; localPreviews: readon
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
       {photos.length > 0 && (
-        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 0.5 }} aria-label="Meal photos">
+        <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1 }} aria-label="Meal photos">
           {photos.map((src) => (
             <Box
               key={src}
               component="img"
               src={src}
               alt=""
-              sx={{ width: 88, height: 88, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}`, flex: 'none' }}
+              sx={{ width: 88, height: 88, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill, flex: 'none' }}
             />
           ))}
         </Box>
       )}
       {meal.raw_text && (
-        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: 1.5, color: tokens.ink.text }} data-testid="meal-raw-text">
+        <Box sx={{ ...wellSurface, px: 3, py: '10px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }} data-testid="meal-raw-text">
           “{meal.raw_text}”
         </Box>
       )}
@@ -187,12 +189,12 @@ function AnalysingView({
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-analysing" role="status" aria-live="polite">
       <Box>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2 }}>
-          <Box sx={{ flex: 1, fontSize: 17, fontWeight: tokens.font.weight.heading }}>Analysing {what}…</Box>
-          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{seconds} s</Box>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 3 }}>
+          <Box sx={{ flex: 1, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle }}>Analysing {what}…</Box>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }}>{seconds} s</Box>
         </Box>
-        <LinearProgress sx={{ borderRadius: tokens.radius.chip, height: 6, bgcolor: tokens.ink.border, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }} />
-        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <LinearProgress aria-label={`Analysing ${what}`} />
+        <Box sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
           {slow
             ? 'Taking longer than usual; the AI services may be busy. Keep waiting, or add the items yourself.'
             : 'Usually under 20 seconds. You can close this; the meal waits for you in the Log tab.'}
@@ -200,7 +202,9 @@ function AnalysingView({
       </Box>
       <MealSource meal={meal} localPreviews={localPreviews} />
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-        <Button onClick={onClose}>Close</Button>
+        <Button variant="outlined" onClick={onClose}>
+          Close
+        </Button>
         <Button variant={slow ? 'contained' : 'outlined'} onClick={onManual} data-testid="add-items-myself">
           Add items myself
         </Button>
@@ -226,7 +230,7 @@ function ConfirmedView({
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-confirmed">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ flex: 1, fontSize: 17, fontWeight: tokens.font.weight.heading }}>
+        <Box sx={{ flex: 1, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle }}>
           {meal ? `${SLOT_LABEL[meal.slot]} logged` : 'Meal logged'}
           {meal && meal.totals.kcal > 0 && (
             <Box component="span" sx={{ fontWeight: tokens.font.weight.body, color: tokens.ink.secondary }}>

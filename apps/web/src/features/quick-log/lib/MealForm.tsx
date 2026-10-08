@@ -23,8 +23,8 @@ import type { MealCreate, MealSlot } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { problemText, useApiQuery } from '../../../api'
-import { formatNumber, NumberField, parseNumber } from '../../../components'
-import { tokens } from '../../../theme'
+import { formatNumber, NumberField, parseNumber, tabularNums } from '../../../components'
+import { tokens, transitionOf } from '../../../theme'
 import { BarcodePane } from './capture/BarcodePane'
 import { PhotoPane } from './capture/PhotoPane'
 import { usePhotoMeal } from './capture/photo-meal'
@@ -134,7 +134,7 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
   }
 
   return (
-    <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-form">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }} data-testid="meal-form">
       <Box role="radiogroup" aria-label="Slot" sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         {slots.map((s) => (
           <Chip
@@ -144,12 +144,8 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
             label={SLOT_LABEL[s]}
             onClick={() => setSlot(s)}
             variant={slot === s ? 'filled' : 'outlined'}
-            sx={{
-              height: tokens.tapTarget,
-              px: 1,
-              borderRadius: tokens.radius.chip,
-              ...(slot === s ? { bgcolor: tokens.ink.text, color: tokens.ink.card, '&:hover': { bgcolor: tokens.ink.text } } : {}),
-            }}
+            // The chosen slot is 2a's dark segment (the Log date switcher's selected day).
+            sx={slot === s ? { bgcolor: tokens.dark.bg, color: tokens.dark.text, '&.MuiChip-clickable:hover, &.MuiChip-clickable.Mui-focusVisible': { bgcolor: tokens.dark.hover } } : undefined}
           />
         ))}
       </Box>
@@ -183,7 +179,6 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
         fullWidth
         onChange={(_, v: Mode | null) => v && setMode(v)}
         aria-label="How to log"
-        sx={{ '& .MuiToggleButton-root': { minHeight: tokens.tapTarget, textTransform: 'none', fontWeight: tokens.font.weight.label } }}
       >
         <ToggleButton value="favourites">Favourites</ToggleButton>
         <ToggleButton value="foods">Foods</ToggleButton>
@@ -258,18 +253,21 @@ function CaptureTile({
       sx={{
         minHeight: 64,
         borderRadius: `${tokens.radius.control}px`,
-        border: `1px solid ${active ? tokens.ink.text : tokens.ink.border}`,
+        border: `1px solid ${active ? tokens.accent.main : tokens.ink.border}`,
+        boxShadow: active ? tokens.elevation.highlight : 'none',
         bgcolor: tokens.ink.card,
         display: 'grid',
         placeItems: 'center',
-        gap: 0.5,
-        py: 1.5,
+        gap: 1,
+        py: 2,
         fontSize: tokens.font.size.label,
         fontWeight: tokens.font.weight.label,
         color: tokens.ink.text,
+        transition: transitionOf(['background-color', 'border-color', 'box-shadow'], tokens.motion.duration.fast),
+        '&:hover': { bgcolor: tokens.ink.fill },
       }}
     >
-      <Icon sx={{ color: tokens.metric.calories }} />
+      <Icon sx={{ fontSize: 20, color: tokens.accent.main }} />
       {label}
     </ButtonBase>
   )
@@ -298,15 +296,15 @@ function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave
   const total = sum(parsed.map(({ item, grams }) => portion(item.food.per100, grams ?? 0)))
 
   return (
-    <Box sx={{ display: 'grid', gap: 4 }} data-testid="foods-pane">
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }} data-testid="foods-pane">
       <FoodPicker onPick={add} autoFocus={items.length === 0} />
       {items.length > 0 && (
-        <Box component="ul" aria-label="Items" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 2 }}>
+        <Box component="ul" aria-label="Items" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
           {parsed.map(({ item, grams }) => (
-            <Box component="li" key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box component="li" key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: tokens.font.size.emphasis, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.food.name}</Box>
-                <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>
+                <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.food.name}</Box>
+                <Box sx={{ fontSize: tokens.font.size.caption, color: 'text.secondary', ...tabularNums }}>
                   {grams !== null && grams > 0 ? `${formatNumber(portion(item.food.per100, grams).kcal)} kcal` : 'Enter grams'}
                 </Box>
               </Box>
@@ -318,8 +316,8 @@ function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave
                 sx={{ width: 104 }}
                 slotProps={{ htmlInput: { 'aria-label': `Grams of ${item.food.name}` } }}
               />
-              <IconButton aria-label={`Remove ${item.food.name}`} onClick={() => setItems((list) => list.filter((i) => i.id !== item.id))}>
-                <CloseRounded />
+              <IconButton aria-label={`Remove ${item.food.name}`} size="small" onClick={() => setItems((list) => list.filter((i) => i.id !== item.id))}>
+                <CloseRounded fontSize="small" />
               </IconButton>
             </Box>
           ))}
@@ -385,7 +383,7 @@ function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic
                     <IconButton
                       aria-label={dictation.listening ? 'Stop dictation' : 'Dictate'}
                       onClick={dictation.listening ? dictation.stop : onMic}
-                      sx={{ color: dictation.listening ? tokens.metric.calories : tokens.ink.secondary }}
+                      sx={{ color: dictation.listening ? tokens.accent.main : tokens.ink.label }}
                     >
                       {dictation.listening ? <MicRounded /> : <MicNoneRounded />}
                     </IconButton>
@@ -397,7 +395,7 @@ function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic
       />
       {keyboardMicHint && !dictation.supported && (
         <Box role="status" data-testid="keyboard-mic-hint" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text, display: 'flex', gap: 1.5, alignItems: 'center' }}>
-          <MicNoneRounded fontSize="small" sx={{ color: tokens.metric.calories }} />
+          <MicNoneRounded fontSize="small" sx={{ color: tokens.accent.main }} />
           Tap the mic on your keyboard to dictate.
         </Box>
       )}
@@ -411,7 +409,7 @@ function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic
           {dictation.error}
         </Box>
       )}
-      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.5 }}>
+      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: tokens.font.leading.small }}>
         The AI turns it into items with grams and kcal for you to check before it counts.
       </Box>
       <Button type="submit" variant="contained" size="large" disabled={!trimmed || busy || dictation.listening} data-testid="meal-save-text">

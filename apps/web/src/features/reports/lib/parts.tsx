@@ -1,8 +1,10 @@
-// Owns: the report's building blocks — the print-safe panel (hairline card that never splits across pages), the
-// stat strip, simple tables, and the print stylesheet (Letter, 15 mm, black on white, running header and page footer
-// in the @page margin boxes). Shared by the report's sections; nothing here fetches.
+// Owns: the report's building blocks — the print-safe panel (a 2a card on screen, a hairline box that never splits
+// across pages on paper), the stat strip, simple tables, and the print stylesheet (Letter, 15 mm, black on white,
+// running header and page footer in the @page margin boxes). Shared by the report's sections; nothing here fetches.
+// Screen sizes follow 2a; every size on paper stays as it was measured to fit a week on two Letter pages.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
+import { cardSurface, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 
 /** Chart widths when the page is laid out for paper: Letter (215.9 mm) − 2 × 15 mm ≈ 703 px of content. */
@@ -29,25 +31,28 @@ export function Panel({
       data-testid={testId}
       className="report-panel"
       sx={{
-        border: `1px solid ${tokens.ink.border}`,
-        borderRadius: `${tokens.radius.control}px`,
-        bgcolor: tokens.ink.card,
-        p: 3,
+        // 2a's card on screen (16 × 18, radius 12, the card whisper); paper keeps the tight hairline box with no shadow.
+        ...cardSurface,
+        px: `${tokens.pad.dense.x}px`,
+        py: `${tokens.pad.dense.y}px`,
         minWidth: 0,
         breakInside: 'avoid',
         pageBreakInside: 'avoid',
-        '@media print': { p: 2, borderRadius: '8px' },
+        '@media print': { p: 2, borderRadius: '8px', boxShadow: 'none' },
       }}
     >
-      <Box component="h2" sx={{ m: 0, fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}>
+      <Box component="h2" sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle, '@media print': { lineHeight: 1.3 } }}>
         {title}
       </Box>
       {subtitle && (
-        <Box className="report-secondary" sx={{ mt: 0.25, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, '@media print': printSubtitle ? { fontSize: 10 } : { display: 'none' } }}>
+        <Box
+          className="report-secondary"
+          sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary, '@media print': printSubtitle ? { mt: 0.25, fontSize: 10 } : { display: 'none' } }}
+        >
           {subtitle}
         </Box>
       )}
-      <Box sx={{ mt: 1.5, minWidth: 0, '@media print': { mt: 1 } }}>{children}</Box>
+      <Box sx={{ mt: 3, minWidth: 0, '@media print': { mt: 1 } }}>{children}</Box>
     </Box>
   )
 }
@@ -55,7 +60,7 @@ export function Panel({
 /** Two columns from 600 px and always on paper; one column on a phone. */
 export function Pair({ children }: { children: ReactNode }) {
   return (
-    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, '@media print': { gridTemplateColumns: '1fr 1fr', gap: 1.5 } }}>
+    <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, '@media print': { gridTemplateColumns: '1fr 1fr', gap: 1.5 } }}>
       {children}
     </Box>
   )
@@ -74,21 +79,47 @@ export function StatStrip({ stats }: { stats: readonly Stat[] }) {
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
-        gap: 1.5,
+        gap: 3,
         '@media print': { gridTemplateColumns: 'repeat(8, 1fr)', gap: 1 },
         breakInside: 'avoid',
       }}
     >
       {stats.map((s) => (
-        <Box key={s.label} sx={{ border: `1px solid ${tokens.ink.border}`, borderRadius: '8px', px: 1.5, py: 1, minWidth: 0 }}>
-          <Box className="report-secondary" sx={{ fontSize: 11, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
+        <Box
+          key={s.label}
+          sx={{
+            ...cardSurface,
+            px: '14px',
+            py: '12px',
+            minWidth: 0,
+            '@media print': { borderRadius: '8px', boxShadow: 'none', px: 1.5, py: 1 },
+          }}
+        >
+          <Box
+            className="report-secondary"
+            sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, color: tokens.ink.label, whiteSpace: 'nowrap', '@media print': { fontSize: 11, fontWeight: tokens.font.weight.body } }}
+          >
             {s.label}
           </Box>
-          <Box sx={{ fontSize: 17, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.25, whiteSpace: 'nowrap' }}>
+          <Box
+            sx={{
+              mt: '2px',
+              fontSize: tokens.font.size.bigNumberSmall,
+              fontWeight: tokens.font.weight.number,
+              letterSpacing: tokens.font.em.number,
+              ...tabularNums,
+              lineHeight: 1.25,
+              whiteSpace: 'nowrap',
+              '@media print': { mt: 0, fontSize: 17, letterSpacing: 'normal' },
+            }}
+          >
             {s.value}
           </Box>
           {s.detail && (
-            <Box className="report-secondary" sx={{ fontSize: 11, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Box
+              className="report-secondary"
+              sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', '@media print': { fontSize: 11 } }}
+            >
               {s.detail}
             </Box>
           )}
@@ -106,11 +137,18 @@ export function Table({ head, rows, testId }: { head: readonly string[]; rows: r
       sx={{
         width: '100%',
         borderCollapse: 'collapse',
-        fontSize: tokens.font.size.label,
-        fontVariantNumeric: 'tabular-nums',
-        '& th': { textAlign: 'left', fontWeight: tokens.font.weight.label, color: tokens.ink.secondary, fontSize: 11, pb: 0.5 },
-        '& td': { borderTop: `1px solid ${tokens.ink.border}`, py: 0.5, pr: 1, verticalAlign: 'top' },
-        '@media print': { fontSize: 11 },
+        fontSize: tokens.font.size.small,
+        ...tabularNums,
+        // 2a's table on screen: a 12/500 muted head between rules, 13 px rows on hairlines; paper keeps it tight.
+        '& th': { textAlign: 'left', fontWeight: tokens.font.weight.label, color: tokens.ink.secondary, fontSize: tokens.font.size.caption, py: '6px', pr: 1, borderBottom: `1px solid ${tokens.ink.border}` },
+        '& td': { borderTop: `1px solid ${tokens.ink.hairline}`, py: '7px', pr: 1, verticalAlign: 'top' },
+        '& tbody tr:first-of-type td': { borderTop: 0 },
+        '@media print': {
+          fontSize: 11,
+          '& th': { fontSize: 11, pt: '1px', pr: '1px', pb: 0.5, borderBottom: 0 },
+          '& td': { borderTop: `1px solid ${tokens.ink.border}`, py: 0.5, pr: 1 },
+          '& tbody tr:first-of-type td': { borderTop: `1px solid ${tokens.ink.border}` },
+        },
       }}
     >
       <thead>
@@ -135,7 +173,7 @@ export function Table({ head, rows, testId }: { head: readonly string[]; rows: r
 
 export function Muted({ children }: { children: ReactNode }) {
   return (
-    <Box className="report-secondary" sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
+    <Box className="report-secondary" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
       {children}
     </Box>
   )

@@ -5,15 +5,12 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import type { Scan, ScanDraft, ScanSegment } from '@fitness/shared/schemas'
 import { useMemo, useState, type ReactNode } from 'react'
-import { formatNumber, NumberField } from '../../../components'
-import { tokens } from '../../../theme'
+import { formatNumber, NumberField, Panel, Segmented } from '../../../components'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { confidenceOf, GROUPS, LOW_CONFIDENCE, PROFILE_FIELDS, recordFrom, type FieldSpec, type FormErrors, type ScanForm, type TriState } from './form'
 import { todayLocal } from '../../quick-log'
 import { useConfirmScan } from './hooks'
@@ -30,19 +27,16 @@ interface ReviewFormProps {
   onCancel?: () => void
 }
 
-const toggleSx = { '& .MuiToggleButton-root': { minHeight: tokens.tapTarget, textTransform: 'none', fontWeight: tokens.font.weight.label } }
-
 function Section({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   return (
-    <Card component="section" sx={{ p: 4, minWidth: 0 }}>
-      <Box component="h3" sx={{ m: 0, fontSize: 17, fontWeight: tokens.font.weight.heading }}>
-        {title}
-      </Box>
-      {subtitle && <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mt: 0.5 }}>{subtitle}</Box>}
-      <Box sx={{ mt: 3 }}>{children}</Box>
-    </Card>
+    <Panel title={title} description={subtitle}>
+      {children}
+    </Panel>
   )
 }
+
+/** Two fields a row, as the sheet pairs them. */
+const pairs = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 3 } as const
 
 /** Highlight for a value: an error, "not read", or a low extraction confidence. */
 function check(draft: ScanDraft | null, key: string, value: string, error: string | undefined): { helper?: string; tone?: 'warning' | 'error' } {
@@ -54,17 +48,30 @@ function check(draft: ScanDraft | null, key: string, value: string, error: strin
   return {}
 }
 
-const warnSx = { '& .MuiOutlinedInput-notchedOutline': { borderColor: tokens.status.warning, borderWidth: 2 }, '& .MuiFormHelperText-root': { color: tokens.status.warning } }
+/** A value to check (2a warning): amber border and a 3 px amber-tint ring, amber helper text. */
+const warnSx = {
+  '& .MuiOutlinedInput-root': { boxShadow: `0 0 0 ${tokens.focusRing.inputRing}px ${tokens.tone.warning.bg}` },
+  '& .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: tokens.tone.warning.text },
+  '& .MuiFormHelperText-root': { color: tokens.tone.warning.text },
+}
+
+const TRI_OPTIONS = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+  { value: 'unknown', label: 'Not sure' },
+] as const satisfies readonly { value: TriState; label: string }[]
+
+const TIMES_OF_DAY = [
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
+] as const satisfies readonly { value: ScanForm['conditions']['time_of_day']; label: string }[]
 
 function TriToggle({ label, value, onChange }: { label: string; value: TriState; onChange: (v: TriState) => void }) {
   return (
     <Box>
-      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mb: 1 }}>{label}</Box>
-      <ToggleButtonGroup value={value} exclusive fullWidth size="small" onChange={(_, v: TriState | null) => v && onChange(v)} aria-label={label} sx={toggleSx}>
-        <ToggleButton value="yes">Yes</ToggleButton>
-        <ToggleButton value="no">No</ToggleButton>
-        <ToggleButton value="unknown">Not sure</ToggleButton>
-      </ToggleButtonGroup>
+      <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label, mb: 2 }}>{label}</Box>
+      <Segmented<TriState> ariaLabel={label} value={value} onChange={onChange} options={TRI_OPTIONS} fullWidth />
     </Box>
   )
 }
@@ -124,8 +131,8 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
         e.preventDefault()
         submit()
       }}
-      // Compact (size="small") fields, but every input is a 44 px tap target.
-      sx={{ display: 'grid', gap: 4, '& .MuiInputBase-root': { minHeight: tokens.tapTarget } }}
+      // Compact (size="small") fields, but every input is a 44 px tap target on a touch screen.
+      sx={{ display: 'grid', gap: 4, [COARSE_POINTER_QUERY]: { '& .MuiInputBase-root': { minHeight: tokens.tapTarget } } }}
     >
       {mode === 'extracted' && (
         <Alert severity={lowCount ? 'warning' : 'info'}>
@@ -136,7 +143,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
       {mode === 'manual' && <Alert severity="info">Enter the values from the sheet in kg (lb × 0.4536).</Alert>}
 
       <Section title="Scan" subtitle={`Evolt 360${form.source_units === 'lb' ? ', sheet printed in lb, shown here in kg' : ''}`}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+        <Box sx={pairs}>
           <TextField label="Date" type="date" size="small" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} error={!!errors.date} helperText={errors.date} slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: todayLocal(new Date()) } }} />
           <TextField label="Time" type="time" size="small" value={form.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} error={!!errors.time} helperText={errors.time} slotProps={{ inputLabel: { shrink: true } }} />
           {PROFILE_FIELDS.map(field)}
@@ -149,15 +156,15 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
 
       {GROUPS.slice(0, 3).map((g) => (
         <Section key={g.title} title={g.title}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>{g.fields.map(field)}</Box>
+          <Box sx={pairs}>{g.fields.map(field)}</Box>
         </Section>
       ))}
 
       <Section title="Segments" subtitle="Lean and fat mass per segment, kg">
-        <Box sx={{ display: 'grid', gridTemplateColumns: '84px 1fr 1fr', gap: 2, alignItems: 'start' }} data-testid="scan-segments">
+        <Box sx={{ display: 'grid', gridTemplateColumns: '84px repeat(2, minmax(0, 1fr))', gap: 3, alignItems: 'start' }} data-testid="scan-segments">
           {SEGMENTS.map((s) => (
             <Box key={s} sx={{ display: 'contents' }}>
-              <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, pt: 1.25 }}>{SEGMENT_LABEL[s]}</Box>
+              <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, pt: '10px' }}>{SEGMENT_LABEL[s]}</Box>
               {(['lean_kg', 'fat_kg'] as const).map((part) => {
                 const key = `segments.${s}.${part}`
                 const { helper, tone } = check(draft, key, form.segments[s][part], errors[key])
@@ -189,17 +196,19 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
 
       {GROUPS.slice(3).map((g) => (
         <Section key={g.title} title={g.title}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>{g.fields.map(field)}</Box>
+          <Box sx={pairs}>{g.fields.map(field)}</Box>
         </Section>
       ))}
 
       <Section title="Conditions" subtitle="Baseline: morning, fasted, no training the day before, normal hydration">
         <Box sx={{ display: 'grid', gap: 3 }}>
-          <ToggleButtonGroup value={form.conditions.time_of_day} exclusive fullWidth size="small" aria-label="Time of day" onChange={(_, v: ScanForm['conditions']['time_of_day'] | null) => v && setCondition('time_of_day', v)} sx={toggleSx}>
-            <ToggleButton value="morning">Morning</ToggleButton>
-            <ToggleButton value="afternoon">Afternoon</ToggleButton>
-            <ToggleButton value="evening">Evening</ToggleButton>
-          </ToggleButtonGroup>
+          <Segmented<ScanForm['conditions']['time_of_day']>
+            ariaLabel="Time of day"
+            value={form.conditions.time_of_day}
+            onChange={(v) => setCondition('time_of_day', v)}
+            options={TIMES_OF_DAY}
+            fullWidth
+          />
           <TriToggle label="Fasted" value={form.conditions.fasted} onChange={(v) => setCondition('fasted', v)} />
           <NumberField
             label="Hours since last training"
@@ -222,7 +231,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
       )}
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         {onCancel && (
-          <Button onClick={onCancel} disabled={confirm.isPending}>
+          <Button variant="outlined" onClick={onCancel} disabled={confirm.isPending}>
             Cancel
           </Button>
         )}

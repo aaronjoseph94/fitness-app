@@ -6,12 +6,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { Pose, type ProgressPhoto } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useSearchParams } from 'react-router'
-import { EmptyState, LoadProblem } from '../../../components'
+import { EmptyState, LoadProblem, PageHeader, Segmented } from '../../../components'
 import { tokens } from '../../../theme'
 import { CompareView, type CompareMode } from './CompareView'
 import { POSE_LABEL, POSES, usePhotos } from './data'
@@ -72,36 +70,35 @@ export function PhotosLibrary() {
   }, [shown, pose, params])
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="photos-page">
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-        <Button component={RouterLink} to="/photos/new" variant="contained" startIcon={<AddAPhotoOutlined />} sx={{ px: 5 }}>
-          Take photos
-        </Button>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
-          <LockOutlined sx={{ fontSize: tokens.font.size.body }} />
-          Private. Never sent to any AI.
-        </Box>
+    <Stack spacing={`${tokens.rhythm.section}px`} data-testid="photos-page">
+      <PageHeader
+        title="Progress photos"
+        subtitle={
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <LockOutlined aria-hidden sx={{ fontSize: 16, color: tokens.ink.muted }} />
+            Front, side and back, by month. Private: never sent to any AI.
+          </Box>
+        }
+        action={
+          <Button component={RouterLink} to="/photos/new" variant="contained" startIcon={<AddAPhotoOutlined />}>
+            Take photos
+          </Button>
+        }
+      />
+
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 3 }}>
+        <Segmented
+          ariaLabel="View"
+          value={view}
+          onChange={(next) => update({ view: next === 'grid' ? null : next })}
+          options={VIEWS.map((v) => ({ value: v.key, label: v.label }))}
+          testId="photo-view"
+        />
+        <PoseFilter value={pose} onChange={(next) => update({ pose: next, before: null, after: null })} />
       </Box>
 
-      <ToggleButtonGroup
-        value={view}
-        exclusive
-        onChange={(_, next: View | null) => next && update({ view: next === 'grid' ? null : next })}
-        aria-label="View"
-        data-testid="photo-view"
-        sx={{ width: { xs: '100%', sm: 'auto' }, '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'none' }, minHeight: tokens.tapTarget, px: 5, textTransform: 'none', fontWeight: tokens.font.weight.label, fontSize: tokens.font.size.emphasis } }}
-      >
-        {VIEWS.map((v) => (
-          <ToggleButton key={v.key} value={v.key}>
-            {v.label}
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
-
-      <PoseFilter value={pose} onChange={(next) => update({ pose: next, before: null, after: null })} />
-
       {isLoading ? (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <Box sx={{ display: 'grid', columnGap: 3, rowGap: 4, gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} variant="rounded" sx={{ aspectRatio: '3 / 4', height: 'auto', borderRadius: `${tokens.radius.control}px` }} />
           ))}
@@ -114,7 +111,7 @@ export function PhotosLibrary() {
           title={pose ? `No ${POSE_LABEL[pose].toLowerCase()} photos yet` : 'No progress photos yet'}
           body="Front, side and back, lined up with the outline. Private: never sent to any AI."
           action={
-            <Button component={RouterLink} to={pose ? `/photos/new?pose=${pose}` : '/photos/new'} variant="contained" startIcon={<AddAPhotoOutlined />}>
+            <Button component={RouterLink} to={pose ? `/photos/new?pose=${pose}` : '/photos/new'} variant="outlined" startIcon={<AddAPhotoOutlined />}>
               Take {pose ? `a ${POSE_LABEL[pose].toLowerCase()} photo` : 'your first photos'}
             </Button>
           }

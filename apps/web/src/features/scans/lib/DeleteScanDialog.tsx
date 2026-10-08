@@ -20,19 +20,21 @@ export function DeleteScanDialog({ scanId, date, onClose }: { scanId: string; da
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth aria-labelledby="delete-scan-title">
       <DialogTitle id="delete-scan-title">Delete the scan of {date}?</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 2 }}>
-        <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+        <Box sx={{ fontSize: tokens.font.size.body, color: tokens.ink.muted, lineHeight: tokens.font.leading.body }}>
           Its values, segments and sheet are removed for good. Milestones it reached are re-checked against your other scans, and
           proposals from its debrief that still wait for a tap are withdrawn.
         </Box>
-        {!online && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Deleting needs a connection.</Box>}
+        {!online && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>Deleting needs a connection.</Box>}
         {remove.isError && (
           <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(remove.error)}
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 6, pb: 4, gap: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
+      <DialogActions>
+        <Button variant="outlined" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           variant="contained"
           color="error"

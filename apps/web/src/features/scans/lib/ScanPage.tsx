@@ -3,33 +3,31 @@
 // guard and other call-outs, the debrief with its milestone updates and proposals, the scan charts, and every value
 // against the previous scan and the baseline; "Edit values" re-confirms, "Delete this scan" (at the foot) removes a
 // wrong scan after a confirm.
+import EditOutlined from '@mui/icons-material/EditOutlined'
 import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Skeleton from '@mui/material/Skeleton'
-import Stack from '@mui/material/Stack'
 import type { Scan, ScanFlag } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
-import { SectionHeader, StatCard } from '../../../components'
+import { Banner, cardSurface, formatShortDate, PageHeader, Panel, StatCard, StatusChip, type BannerTone } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, todayLocal } from '../../quick-log'
 import { DeleteScanDialog } from './DeleteScanDialog'
 import { DeltaTable } from './DeltaTable'
 import { formFrom } from './form'
+import { scanClock, scanDay } from './format'
 import { useDiscardScan, useReextractScan, useScan, useScans, useScanSettings } from './hooks'
 import { ReviewForm } from './ReviewForm'
 import { ScanCharts } from './ScanCharts'
 import { confirmedScans, type ConfirmedScan } from './series'
 import { problemText } from '../../../api'
 
-const SEVERITY: Record<ScanFlag['code'], 'error' | 'warning' | 'info'> = {
-  lean_loss: 'error',
+const SEVERITY: Record<ScanFlag['code'], BannerTone> = {
+  lean_loss: 'danger',
   fat_gain: 'warning',
   visceral_up: 'warning',
   water_shift: 'info',
@@ -44,6 +42,9 @@ const FLAG_TITLE: Record<ScanFlag['code'], string> = {
   conditions_mismatch: 'Conditions differ',
   other: 'Note',
 }
+
+/** The page's single column (2a: 20 px between sections), which never grows past the viewport. */
+const page = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 5 } as const
 
 /** Height, age and sex for a blank form: the latest confirmed scan, else the profile. */
 function useFallback() {
@@ -65,7 +66,7 @@ function useFallback() {
 function SheetLink({ scan }: { scan: Scan }) {
   if (!scan.sheet_url) return null
   return (
-    <Button component="a" href={scan.sheet_url} target="_blank" rel="noopener" size="small" endIcon={<OpenInNewRounded />}>
+    <Button component="a" href={scan.sheet_url} target="_blank" rel="noopener" variant="outlined" endIcon={<OpenInNewRounded />}>
       View sheet
     </Button>
   )
@@ -86,8 +87,8 @@ function ManualEntry() {
   const id = useMemo(() => crypto.randomUUID(), [])
   if (!fallback.ready) return <Skeleton variant="rounded" height={320} />
   return (
-    <Stack spacing={4}>
-      <SectionHeader title="Enter a scan by hand" subtitle="Every value from the Evolt sheet, in kg." />
+    <Box sx={page}>
+      <PageHeader title="Enter a scan by hand" subtitle="Every value from the Evolt sheet, in kg." />
       <ReviewForm
         scanId={id}
         initial={formFrom({ fallback })}
@@ -96,7 +97,7 @@ function ManualEntry() {
         onConfirmed={(scan) => void navigate(`/scans/${scan.id}`, { replace: true })}
         onCancel={() => void navigate('/scans')}
       />
-    </Stack>
+    </Box>
   )
 }
 
@@ -111,19 +112,19 @@ function PendingScan({ scan }: { scan: Scan }) {
   const failed = !scan.extracted && (x === null || x.status === 'failed' || x.error !== null)
 
   const actions = (
-    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+    <>
       <SheetLink scan={scan} />
-      <Button size="small" color="inherit" disabled={discard.isPending} onClick={() => discard.mutate({ params: { id: scan.id } }, { onSuccess: () => void navigate('/scans', { replace: true }) })}>
+      <Button color="inherit" disabled={discard.isPending} onClick={() => discard.mutate({ params: { id: scan.id } }, { onSuccess: () => void navigate('/scans', { replace: true }) })}>
         Discard
       </Button>
-    </Box>
+    </>
   )
 
   if (scan.extracted || manual || (failed && x === null)) {
     if (!fallback.ready) return <Skeleton variant="rounded" height={320} />
     return (
-      <Stack spacing={4}>
-        <SectionHeader title={scan.extracted && !manual ? 'Check the values' : 'Enter the values'} subtitle={`Uploaded ${scan.date}`} action={actions} />
+      <Box sx={page}>
+        <PageHeader title={scan.extracted && !manual ? 'Check the values' : 'Enter the values'} subtitle={`Uploaded ${scanDay(scan.date)}`} action={actions} />
         <ReviewForm
           scanId={scan.id}
           initial={formFrom({ draft: manual ? null : scan.extracted, fallback })}
@@ -132,41 +133,42 @@ function PendingScan({ scan }: { scan: Scan }) {
           onConfirmed={() => window.scrollTo({ top: 0 })}
           onCancel={manual ? () => setManual(false) : undefined}
         />
-      </Stack>
+      </Box>
     )
   }
 
   return (
-    <Stack spacing={4}>
-      <SectionHeader title="New scan" subtitle={`Uploaded ${scan.date}`} action={actions} />
+    <Box sx={page}>
+      <PageHeader title="New scan" subtitle={`Uploaded ${scanDay(scan.date)}`} action={actions} />
       {reading && !x?.error && (
-        <Card sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 3 }} data-testid="scan-extracting" aria-live="polite">
+        <Box sx={{ ...cardSurface, px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px`, display: 'flex', alignItems: 'center', gap: 3 }} data-testid="scan-extracting" aria-live="polite">
           <CircularProgress size={28} />
           <Box>
-            <Box sx={{ fontWeight: tokens.font.weight.heading }}>Extracting…</Box>
-            <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>This takes up to half a minute.</Box>
+            <Box sx={{ fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading }}>Extracting…</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>This takes up to half a minute.</Box>
           </Box>
-        </Card>
+        </Box>
       )}
       {failed && (
-        <Alert
-          severity="warning"
-          data-testid="scan-extract-failed"
+        <Banner
+          tone="warning"
+          role="alert"
+          testId="scan-extract-failed"
+          title={readError(x?.error ?? null)}
           action={
-            <Button color="inherit" size="small" disabled={reextract.isPending} onClick={() => reextract.mutate({ params: { id: scan.id } })}>
+            <Button variant="outlined" size="small" disabled={reextract.isPending} onClick={() => reextract.mutate({ params: { id: scan.id } })}>
               Try again
             </Button>
           }
         >
-          <AlertTitle>{readError(x?.error ?? null)}</AlertTitle>
           {reading ? 'It tries again on its own in a minute. ' : ''}You can enter the values yourself instead.
           {reextract.error && <Box sx={{ mt: 1 }}>{problemText(reextract.error)}</Box>}
-        </Alert>
+        </Banner>
       )}
-      <Button variant={failed ? 'contained' : 'outlined'} onClick={() => setManual(true)} data-testid="scan-enter-manually">
+      <Button variant={failed ? 'contained' : 'outlined'} onClick={() => setManual(true)} data-testid="scan-enter-manually" sx={{ justifySelf: { sm: 'start' } }}>
         Enter the values by hand
       </Button>
-    </Stack>
+    </Box>
   )
 }
 
@@ -179,20 +181,16 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
     ? anchored.map((m) => ({ key: m.milestone_id, text: `${m.label}: reached ${m.reached_on}` }))
     : (a.vs_previous?.milestones_reached ?? []).map((m) => ({ key: m.label, text: `Milestone reached: ${m.label}` }))
   return (
-    <Card sx={{ p: 4 }} data-testid="scan-debrief">
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box component="h3" sx={{ m: 0, fontSize: 17, fontWeight: tokens.font.weight.heading, flex: 1 }}>
-          Debrief
-        </Box>
-        {a.narrative_by && <Chip size="small" variant="outlined" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />}
-      </Box>
+    <Panel title="Debrief" actions={a.narrative_by && <StatusChip tone="outline" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />} testId="scan-debrief">
       {a.status === 'pending' && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2, color: 'text.secondary', fontSize: tokens.font.size.small }} aria-live="polite">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: tokens.ink.muted, fontSize: tokens.font.size.small }} aria-live="polite">
           <CircularProgress size={18} /> Writing the debrief…
         </Box>
       )}
-      {a.status === 'failed' && !a.narrative && <Box sx={{ mt: 2, color: 'text.secondary', fontSize: tokens.font.size.small }}>The debrief could not be written; the numbers below are the engine's.</Box>}
-      {a.narrative && <Box sx={{ mt: 2, fontSize: tokens.font.size.emphasis, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{a.narrative}</Box>}
+      {a.status === 'failed' && !a.narrative && <Box sx={{ color: tokens.ink.muted, fontSize: tokens.font.size.small }}>The debrief could not be written; the numbers below are the engine's.</Box>}
+      {a.narrative && (
+        <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body, whiteSpace: 'pre-line' }}>{a.narrative}</Box>
+      )}
       {milestones.length > 0 && (
         <Box component="ul" sx={{ m: 0, mt: 3, pl: 2.5, fontSize: tokens.font.size.small, lineHeight: 1.7 }} data-testid="scan-milestones">
           {milestones.map((m) => (
@@ -203,13 +201,13 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
       {a.proposal_ids.length > 0 && (
         <Box sx={{ mt: 3, fontSize: tokens.font.size.small }}>
           {a.proposal_ids.length === 1 ? 'One plan proposal is' : `${a.proposal_ids.length} plan proposals are`} waiting for a tap on{' '}
-          <Box component={RouterLink} to="/" sx={{ color: 'primary.main' }}>
+          <Box component={RouterLink} to="/" sx={{ color: 'primary.main', fontWeight: tokens.font.weight.label }}>
             Today
           </Box>
           .
         </Box>
       )}
-    </Card>
+    </Panel>
   )
 }
 
@@ -232,64 +230,61 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
 
   if (editing)
     return (
-      <Stack spacing={4}>
-        <SectionHeader title="Edit scan values" subtitle="Saving re-runs the analysis." />
+      <Box sx={page}>
+        <PageHeader title="Edit scan values" subtitle="Saving re-runs the analysis." />
         <ReviewForm scanId={scan.id} initial={formFrom({ record: r, fallback })} draft={null} mode="edit" onConfirmed={() => setEditing(false)} onCancel={() => setEditing(false)} />
-      </Stack>
+      </Box>
     )
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="scan-page">
+    <Box sx={page} data-testid="scan-page">
       <Box>
-        <SectionHeader
-          title={`Scan ${scan.date}`}
-          subtitle={`Evolt 360 at ${clockOf(r.scanned_at)}${prev ? `; changes since ${prev.date}` : ''}`}
+        <PageHeader
+          title={`Scan · ${scanDay(scan.date)}`}
+          subtitle={`Evolt 360 at ${scanClock(r.scanned_at)} · ${prev ? `changes since ${formatShortDate(prev.date)}` : 'the baseline'}`}
           action={
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <>
               <SheetLink scan={scan} />
-              <Button size="small" onClick={() => setEditing(true)}>
+              <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setEditing(true)}>
                 Edit values
               </Button>
-            </Box>
+            </>
           }
         />
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 3 }}>
           {conditionChips.map((label) => (
-            <Chip key={label} size="small" variant="outlined" label={label} />
+            <StatusChip key={label} tone="outline" label={label} />
           ))}
         </Box>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 3, md: 4 } }}>
         <StatCard label="Weight" value={r.weight_kg} unit="kg" precision={1} metric="weight" delta={delta(prev?.fat_vs_lean.weight_kg, 'down')} />
         <StatCard label="Body fat" value={r.body_fat_pct} unit="%" precision={1} metric="fatMass" delta={delta(prev?.deltas.body_fat_pct, 'down')} />
         <StatCard label="Fat mass" value={r.body_fat_mass_kg} unit="kg" precision={1} metric="fatMass" delta={delta(prev?.fat_vs_lean.fat_kg, 'down')} />
         <StatCard label="Lean mass" value={r.lean_body_mass_kg} unit="kg" precision={1} metric="lean" delta={delta(prev?.fat_vs_lean.lean_kg, 'up')} />
       </Box>
 
+      {/* role="status": a polite live region (the call-outs arrive with the page; an alert would interrupt). */}
       {a?.flags.map((f) => (
-        <Alert key={f.code} severity={SEVERITY[f.code]} data-testid={`scan-flag-${f.code}`}>
-          <AlertTitle>{FLAG_TITLE[f.code]}</AlertTitle>
+        <Banner key={f.code} tone={SEVERITY[f.code]} title={FLAG_TITLE[f.code]} role="status" testId={`scan-flag-${f.code}`}>
           {f.message}
-        </Alert>
+        </Banner>
       ))}
 
       <Debrief scan={scan} />
-      <ScanCharts scans={all} focus={scan} />
+      <ScanCharts scans={all} focus={scan} stacked headingComponent="h2" />
 
-      <Card sx={{ p: 4 }}>
-        <Box component="h3" sx={{ m: 0, mb: 2, fontSize: 17, fontWeight: tokens.font.weight.heading }}>
-          Every value
-        </Box>
+      <Panel title="Every value" description={prev ? 'This scan against the previous one and the baseline' : 'The baseline every later scan is compared with'} padding="none">
         <DeltaTable record={r} previous={prev} baseline={a?.vs_baseline ?? null} />
-      </Card>
+      </Panel>
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button color="error" onClick={() => setDeleting(true)} data-testid="scan-delete">
           Delete this scan
         </Button>
       </Box>
       {deleting && <DeleteScanDialog scanId={scan.id} date={scan.date} onClose={() => setDeleting(false)} />}
-    </Stack>
+    </Box>
   )
 }
 
@@ -301,10 +296,10 @@ export function ScanPage() {
   if (isNew) return <ManualEntry />
   if (scan.isPending)
     return (
-      <Stack spacing={4}>
+      <Box sx={page}>
         <Skeleton variant="rounded" height={64} />
         <Skeleton variant="rounded" height={220} />
-      </Stack>
+      </Box>
     )
   if (!scan.data) return <Alert severity="error">{problemText(scan.error)}</Alert>
   const s = scan.data

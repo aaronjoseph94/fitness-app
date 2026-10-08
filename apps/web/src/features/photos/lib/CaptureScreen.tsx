@@ -12,13 +12,13 @@ import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { Pose } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { clockOf, dateOf, instantAt } from '../../quick-log'
-import { tokens, withAlpha } from '../../../theme'
+import { outlinedIconButton, PageHeader, Segmented } from '../../../components'
+import { COARSE_POINTER_QUERY, theme, tokens, withAlpha } from '../../../theme'
 import { POSE_LABEL, POSES, useRefreshPhotos, useUploadPhoto } from './data'
 import { photoFromFile, photoFromVideo, releasePhoto, type PreparedPhoto } from './prepare'
 import { problemText } from '../../../api'
@@ -30,6 +30,8 @@ type Timer = 0 | 3 | 10
 const OVERLAY_OPACITY = 0.25
 /** Top bar, pose selector, shutter row, timer and bottom tabs: the height the viewfinder leaves for them. */
 const VIEWFINDER_RESERVED_PX = 400
+/** From `md`: the 56 px header, the title row and the main padding (the controls sit beside the viewfinder). */
+const VIEWFINDER_RESERVED_DESKTOP_PX = 240
 const PREFS_KEY = 'photos.capture'
 
 interface CapturePrefs {
@@ -116,6 +118,7 @@ export function CaptureScreen() {
   const refresh = useRefreshPhotos()
   const uploadPhoto = useUploadPhoto()
   const { videoRef, state: camera } = useCamera(prefs.facing, true)
+  const desktop = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
 
   const updatePrefs = (next: Partial<CapturePrefs>) => {
     const merged = { ...prefs, ...next }
@@ -203,34 +206,59 @@ export function CaptureScreen() {
   const noCamera = camera === 'denied' || camera === 'unavailable'
 
   return (
-    <Stack spacing={3} data-testid="photo-capture" sx={{ maxWidth: 480, mx: 'auto', width: '100%' }}>
-      <ToggleButtonGroup
-        value={pose}
-        exclusive
-        disabled={uploading}
-        onChange={(_, next: Pose | null) => next && setPose(next)}
-        aria-label="Pose"
-        data-testid="capture-pose"
-        sx={{ width: '100%', '& .MuiToggleButton-root': { flex: 1, minHeight: tokens.tapTarget, textTransform: 'none', fontWeight: tokens.font.weight.label, fontSize: tokens.font.size.emphasis, gap: 1.5 } }}
+    <Stack spacing={`${tokens.rhythm.section}px`}>
+      {/* The phone keeps every pixel for the viewfinder: its top bar names the page, so the 2a title row is desktop only. */}
+      {desktop && <PageHeader title="New photos" subtitle={`${POSE_LABEL[pose]} now. Front, side and back, lined up with the outline; downscaled on this device.`} />}
+      <Box
+        data-testid="photo-capture"
+        sx={{
+          display: 'grid',
+          gap: 3,
+          width: '100%',
+          maxWidth: { xs: 480, md: 'none' },
+          mx: { xs: 'auto', md: 0 },
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'auto minmax(260px, 1fr)' },
+          gridTemplateAreas: { xs: '"pose" "frame" "notes" "controls"', md: '"frame pose" "frame notes" "frame controls"' },
+          gridTemplateRows: { md: 'auto auto 1fr' },
+          columnGap: { md: 6 },
+          alignItems: 'start',
+        }}
       >
-        {POSES.map((p) => (
-          <ToggleButton key={p} value={p}>
-            {saved.includes(p) && <CheckCircle sx={{ fontSize: tokens.font.size.cardTitle, color: tokens.status.good }} aria-label="saved" />}
-            {POSE_LABEL[p]}
-          </ToggleButton>
-        ))}
-      </ToggleButtonGroup>
+      <Box sx={{ gridArea: 'pose', minWidth: 0 }}>
+        <Segmented
+          ariaLabel="Pose"
+          fullWidth
+          value={pose}
+          onChange={setPose}
+          testId="capture-pose"
+          options={POSES.map((p) => ({
+            value: p,
+            disabled: uploading,
+            label: (
+              <>
+                {saved.includes(p) && <CheckCircle sx={{ fontSize: 16, mr: '6px', color: tokens.tone.success.solid }} aria-label="saved" />}
+                {POSE_LABEL[p]}
+              </>
+            ),
+          }))}
+        />
+      </Box>
 
       <Box
         sx={{
+          gridArea: 'frame',
           position: 'relative',
-          // 3:4 at the largest size that leaves the controls on screen (the crop on capture matches this frame).
-          height: `min(calc(100dvh - ${VIEWFINDER_RESERVED_PX}px), calc((100vw - 32px) * 4 / 3), 640px)`,
+          // 3:4 at the largest size that leaves the controls on screen (the crop on capture matches this frame). From
+          // `md` the controls sit beside it, so only the header and the title row take height.
+          height: {
+            xs: `min(calc(100dvh - ${VIEWFINDER_RESERVED_PX}px), calc((100vw - 32px) * 4 / 3), 640px)`,
+            md: `min(calc(100dvh - ${VIEWFINDER_RESERVED_DESKTOP_PX}px), 640px)`,
+          },
           minHeight: 240,
           aspectRatio: '3 / 4',
           width: 'auto',
           maxWidth: '100%',
-          alignSelf: 'center',
+          justifySelf: 'center',
           borderRadius: `${tokens.radius.card}px`,
           overflow: 'hidden',
           bgcolor: tokens.ink.text,
@@ -274,21 +302,25 @@ export function CaptureScreen() {
         )}
       </Box>
 
-      {problem && (
-        <Alert severity="warning" variant="outlined" onClose={() => setProblem(null)}>
-          {problem}
-        </Alert>
-      )}
-      {queued > 0 && (
-        <Alert severity="info" variant="outlined" data-testid="capture-queued">
-          {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this phone and will upload when you're back online.
-        </Alert>
+      {(problem || queued > 0) && (
+        <Stack spacing={3} sx={{ gridArea: 'notes', minWidth: 0 }}>
+          {problem && (
+            <Alert severity="warning" onClose={() => setProblem(null)}>
+              {problem}
+            </Alert>
+          )}
+          {queued > 0 && (
+            <Alert severity="info" data-testid="capture-queued">
+              {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this phone and will upload when you're back online.
+            </Alert>
+          )}
+        </Stack>
       )}
 
       <input ref={fileInput} type="file" accept="image/*" hidden onChange={(e) => void pickFile(e)} data-testid="capture-file" />
 
       {shot ? (
-        <Stack spacing={3}>
+        <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
           <TextField
             type="datetime-local"
             label="Taken"
@@ -307,10 +339,10 @@ export function CaptureScreen() {
           </Stack>
         </Stack>
       ) : (
-        <Stack spacing={3}>
+        <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
             <Box>
-              <IconButton aria-label="Choose a photo" onClick={() => fileInput.current?.click()} sx={{ border: `1px solid ${tokens.ink.border}` }}>
+              <IconButton aria-label="Choose a photo" size="large" onClick={() => fileInput.current?.click()} sx={outlinedIconButton}>
                 <PhotoLibraryOutlined />
               </IconButton>
             </Box>
@@ -334,37 +366,39 @@ export function CaptureScreen() {
                 aria-label={prefs.facing === 'user' ? 'Use the rear camera' : 'Use the front camera'}
                 onClick={() => updatePrefs({ facing: prefs.facing === 'user' ? 'environment' : 'user' })}
                 disabled={noCamera}
-                sx={{ border: `1px solid ${tokens.ink.border}` }}
+                size="large"
+                sx={outlinedIconButton}
               >
                 <Cameraswitch />
               </IconButton>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Timer</Box>
-            <ToggleButtonGroup
-              value={prefs.timer}
-              exclusive
+          {/* Segmented gives touch segments 44 px of height, not of width: "Off" and "3 s" need the width too. */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, [COARSE_POINTER_QUERY]: { '& .MuiToggleButton-root': { minWidth: tokens.tapTarget } } }}>
+            <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>Timer</Box>
+            <Segmented
+              ariaLabel="Self-timer"
               size="small"
-              onChange={(_, next: Timer | null) => next !== null && updatePrefs({ timer: next })}
-              aria-label="Self-timer"
-              sx={{ '& .MuiToggleButton-root': { minHeight: tokens.tapTarget, px: 4, textTransform: 'none' } }}
-            >
-              <ToggleButton value={0}>Off</ToggleButton>
-              <ToggleButton value={3}>3 s</ToggleButton>
-              <ToggleButton value={10}>10 s</ToggleButton>
-            </ToggleButtonGroup>
+              value={prefs.timer}
+              onChange={(next) => updatePrefs({ timer: next })}
+              options={[
+                { value: 0, label: 'Off' },
+                { value: 3, label: '3 s' },
+                { value: 10, label: '10 s' },
+              ]}
+            />
           </Box>
           {noCamera && (
             <Button variant="contained" startIcon={<PhotoLibraryOutlined />} onClick={() => fileInput.current?.click()}>
               Choose a {POSE_LABEL[pose].toLowerCase()} photo
             </Button>
           )}
-          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, textAlign: 'center' }}>
+          <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, textAlign: 'center' }}>
             Same spot, same light, line up with the outline. Never sent to any AI.
           </Box>
         </Stack>
       )}
+      </Box>
     </Stack>
   )
 }

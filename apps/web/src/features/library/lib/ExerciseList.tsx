@@ -1,12 +1,16 @@
-// Owns: the exercise list — one 72 px row per exercise (thumbnail, name, primary muscles · equipment, "Hidden" when
-// outside the allowed set), rendered 40 at a time as the end of the list scrolls into view, with an optional trailing
-// action per row (e.g. an info button) and an "Added" mark for exercises already picked.
+// Owns: the exercise list — one 2a row per exercise (44 px thumb tile, name 14/500, primary muscles · equipment in 12 px
+// muted, a "Hidden" chip when outside the allowed set, a chevron when the row opens something), #F4F4F5 hairlines
+// between rows, rendered 40 at a time as the end of the list scrolls into view, with an optional trailing action per
+// row (e.g. an info button) and an "Added" mark for exercises already picked. Rows bring their own 20 px gutter, so the
+// list sits flush in a card (or full-bleed in a sheet).
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
+import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ListItemButton from '@mui/material/ListItemButton'
 import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { StatusChip } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseThumb } from './ExerciseThumb'
@@ -51,20 +55,34 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
       {exercises.slice(0, shown).map((e) => {
         const picked = pickedIds?.has(e.id) ?? false
         return (
-          <Box component="li" key={e.id} sx={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${tokens.ink.border}` }}>
+          <Box
+            component="li"
+            key={e.id}
+            sx={{ display: 'flex', alignItems: 'center', '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+          >
             <ListItemButton
               onClick={() => onSelect(e)}
               data-testid="exercise-row"
-              sx={{ flex: 1, minWidth: 0, minHeight: 72, gap: 3, px: 0, py: 2, borderRadius: `${tokens.radius.control}px` }}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                gap: '12px',
+                px: `${tokens.pad.card.x}px`,
+                py: '12px',
+                borderRadius: 0,
+                '&:hover': { bgcolor: tokens.ink.panel },
+                // Flush in a card that clips its corners: draw the keyboard ring inside the row.
+                '&.Mui-focusVisible': { outlineOffset: -2 },
+              }}
             >
-              <ExerciseThumb exercise={e} size={52} />
+              <ExerciseThumb exercise={e} size={44} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box
                   sx={{
-                    fontSize: tokens.font.size.emphasis,
+                    fontSize: tokens.font.size.body,
                     fontWeight: tokens.font.weight.label,
                     color: tokens.ink.text,
-                    lineHeight: 1.3,
+                    lineHeight: tokens.font.leading.label,
                     display: '-webkit-box',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
@@ -73,19 +91,20 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
                 >
                   {e.name}
                 </Box>
-                <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {!e.allowed && <Box component="span" sx={{ color: tokens.status.warning, fontWeight: tokens.font.weight.label }}>Hidden · </Box>}
+                <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted, mt: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {musclesLine(e)}
                 </Box>
               </Box>
-              {picked && <CheckCircleRounded aria-label="Added" sx={{ color: tokens.status.good, flex: 'none' }} />}
+              {!e.allowed && <StatusChip tone="warning" size="small" label="Hidden" />}
+              {picked && <CheckCircleRounded aria-label="Added" sx={{ fontSize: 20, color: tokens.status.good, flex: 'none' }} />}
+              {!trailing && <ChevronRightRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none' }} />}
             </ListItemButton>
-            {trailing && <Box sx={{ flex: 'none' }}>{trailing(e)}</Box>}
+            {trailing && <Box sx={{ flex: 'none', pr: '12px' }}>{trailing(e)}</Box>}
           </Box>
         )
       })}
       {shown < exercises.length && (
-        <Box component="li" ref={sentinel} sx={{ py: 3, textAlign: 'center' }}>
+        <Box component="li" ref={sentinel} sx={{ py: 3, textAlign: 'center', borderTop: `1px solid ${tokens.ink.hairline}` }}>
           <Button onClick={() => setShown((n) => n + PAGE)}>Show more ({exercises.length - shown})</Button>
         </Box>
       )}

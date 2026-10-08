@@ -2,8 +2,8 @@
 // they live inside, pending proposals with Accept / Reject and each change re-checked against the rails, the guards'
 // verdicts (what was held back and why), and every plan version newest first with its diff, forecast and Restore.
 // Reads GET /api/plan/versions, /api/events (latest page) and /api/settings. Deciding and restoring need a connection.
+import LockRounded from '@mui/icons-material/LockRounded'
 import Box from '@mui/material/Box'
-import Card from '@mui/material/Card'
 import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
@@ -13,11 +13,11 @@ import type { AiEvent, PlanVersion, Proposal, Rails } from '@fitness/shared/sche
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call, useApiQuery } from '../../../api'
-import { LoadProblem, ProposalCard, SectionHeader } from '../../../components'
+import { cardSurface, formatNumber, KeyStat, KeyStatGrid, LoadProblem, PageHeader, Panel, ProposalCard, SectionHeader, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { useProposalDecision } from '../../proposals'
 import { formatDateTime } from '../../quick-log'
-import { actorLabel, amount, changeRows, DEFAULT_ROWS, FIELD, guardLines, isGuardNote, overrideRows, railsText } from './plan-view'
+import { actorLabel, changeRows, DEFAULT_ROWS, FIELD, guardLines, isGuardNote, overrideRows, railsText } from './plan-view'
 import { VersionCard } from './VersionCard'
 
 export function PlanPage() {
@@ -34,22 +34,28 @@ export function PlanPage() {
   const rails: Rails | null = settings.data?.settings ?? null
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="plan-page">
-      <section>
-        <SectionHeader title="Now" />
-        {versions.isLoading ? (
-          <Skeleton variant="rounded" height={180} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-        ) : active ? (
-          <ActiveTargets active={active} rails={rails} />
-        ) : versions.error ? (
-          <LoadProblem what="The plan" error={versions.error} onRetry={() => void versions.refetch()} />
-        ) : null}
-      </section>
+    <Stack spacing={`${tokens.rhythm.section}px`} data-testid="plan-page">
+      <PageHeader
+        title="Plan history"
+        subtitle={
+          active
+            ? `Version ${active.version} is active · ${list.length} ${list.length === 1 ? 'version' : 'versions'}, each with its reason, diff and forecast`
+            : 'Every change to your targets, with its reason, diff and forecast'
+        }
+      />
+
+      {versions.isLoading ? (
+        <Skeleton variant="rounded" height={236} />
+      ) : active ? (
+        <ActiveTargets active={active} rails={rails} />
+      ) : versions.error ? (
+        <LoadProblem what="The plan" error={versions.error} onRetry={() => void versions.refetch()} />
+      ) : null}
 
       {pending.length > 0 && (
-        <section>
-          <SectionHeader title="Waiting for you" subtitle="Nothing changes until you accept. The rails are checked again when you do." />
-          <Stack spacing={3}>
+        <section aria-labelledby="plan-waiting-title">
+          <SectionHeader id="plan-waiting" title="Waiting for you" subtitle="Nothing changes until you accept. The rails are checked again when you do." />
+          <Stack spacing={4}>
             {pending.map((p) => (
               <PendingProposal key={p.id} proposal={p} active={active} rails={rails} autoApplySafe={settings.data?.settings.auto_apply_safe ?? false} onDecided={setNotice} />
             ))}
@@ -58,27 +64,27 @@ export function PlanPage() {
       )}
 
       {verdicts.length > 0 && (
-        <section>
-          <SectionHeader title="Held back by the rails" subtitle="Changes the guards dropped before they reached you." />
-          <Card sx={{ px: 4, py: 1 }} data-testid="guard-verdicts">
+        <section aria-labelledby="plan-held-title">
+          <SectionHeader id="plan-held" title="Held back by the rails" subtitle="Changes the guards dropped before they reached you." />
+          <Box sx={{ ...cardSurface, overflow: 'hidden' }} data-testid="guard-verdicts">
             {verdicts.map((note) => (
               <GuardVerdict key={note.id} note={note} />
             ))}
-          </Card>
+          </Box>
         </section>
       )}
 
-      <section>
-        <SectionHeader title="Versions" subtitle="Newest first. Restoring makes a new version; nothing is ever deleted." />
+      <section aria-labelledby="plan-versions-title">
+        <SectionHeader id="plan-versions" title="Versions" subtitle="Newest first. Restoring makes a new version; nothing is ever deleted." />
         {versions.isLoading ? (
-          <Stack spacing={3}>
-            <Skeleton variant="rounded" height={140} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-            <Skeleton variant="rounded" height={140} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+          <Stack spacing={4}>
+            <Skeleton variant="rounded" height={160} />
+            <Skeleton variant="rounded" height={160} />
           </Stack>
         ) : versions.error && list.length === 0 ? (
           <LoadProblem what="Plan versions" error={versions.error} onRetry={() => void versions.refetch()} />
         ) : (
-          <Stack spacing={3}>
+          <Stack spacing={4}>
             {list.map((v) => (
               <VersionCard key={v.id} version={v} active={active} onRestored={(created) => setNotice(`Restored as version ${created.version}.`)} />
             ))}
@@ -99,50 +105,53 @@ export function PlanPage() {
 
 function ActiveTargets({ active, rails }: { active: PlanVersion; rails: Rails | null }) {
   const overrides = overrideRows(active.targets)
+  const fields = DEFAULT_ROWS.filter((f) => f !== 'kcal')
   return (
-    <Card sx={{ p: 4 }} data-testid="active-targets">
-      <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>
-        Daily targets · version {active.version}
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mt: 1 }}>
-        {/* Calorie colour on the dot only: the number stays ink (orange text is 2.8:1 on white). */}
-        <Box aria-hidden sx={{ width: 10, height: 10, borderRadius: tokens.radius.chip, bgcolor: tokens.metric.calories, flex: 'none', alignSelf: 'center' }} />
-        <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', color: tokens.ink.text }}>
-          {amount('kcal', active.targets.defaults.kcal).replace(' kcal', '')}
-        </Box>
-        <Box sx={{ fontSize: tokens.font.size.emphasis, color: tokens.ink.secondary }}>kcal a day</Box>
-      </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 2, mt: 2 }}>
-        {DEFAULT_ROWS.filter((f) => f !== 'kcal').map((field) => (
-          <Box key={field} sx={{ fontSize: tokens.font.size.small }}>
-            <Box component="span" sx={{ color: tokens.ink.secondary }}>
-              {FIELD[field].label}{' '}
-            </Box>
-            <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: tokens.font.weight.label }}>
-              {amount(field, active.targets.defaults[field])}
+    <Panel
+      id="active-targets"
+      title="Daily targets"
+      description={`Version ${active.version} · by ${actorLabel(active.created_by)} · ${formatDateTime(active.created_at)}`}
+      padding="none"
+      testId="active-targets"
+      footer={
+        rails && (
+          <Box
+            data-testid="rails-line"
+            sx={{ display: 'flex', alignItems: 'flex-start', gap: '10px', px: `${tokens.pad.card.x}px`, py: '12px', bgcolor: tokens.ink.panel, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}
+          >
+            <LockRounded aria-hidden sx={{ fontSize: 16, mt: '1px', color: tokens.ink.faint, flex: 'none' }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
+                Rails:{' '}
+              </Box>
+              {railsText(rails)}.{' '}
+              {/* Vertical padding on an inline link grows its touch target to 44 px without changing the line's height. */}
+              <Link component={RouterLink} to="/settings" underline="hover" sx={{ py: '14px', fontWeight: tokens.font.weight.label }}>
+                Only you change them, in Settings
+              </Link>
+              .
             </Box>
           </Box>
+        )
+      }
+    >
+      <Box sx={{ px: `${tokens.pad.card.x}px`, pb: '16px', display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '8px', rowGap: '4px' }}>
+        <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1.1, ...tabularNums, color: tokens.ink.text }}>
+          {formatNumber(active.targets.defaults.kcal)}
+        </Box>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>kcal a day</Box>
+        {overrides.length > 0 && (
+          <Box sx={{ flexBasis: '100%', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+            {overrides.map((o) => `${o.label}: ${o.value}`).join(' · ')}
+          </Box>
+        )}
+      </Box>
+      <KeyStatGrid columns={fields.length} ruleAbove>
+        {fields.map((field) => (
+          <KeyStat key={field} label={FIELD[field].label} value={active.targets.defaults[field]} unit={active.targets.defaults[field] === null ? undefined : FIELD[field].unit} />
         ))}
-      </Box>
-      {overrides.length > 0 && (
-        <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
-          {overrides.map((o) => `${o.label}: ${o.value}`).join(' · ')}
-        </Box>
-      )}
-      {rails && (
-        <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${tokens.ink.border}`, fontSize: tokens.font.size.label, color: tokens.ink.secondary, lineHeight: 1.5 }} data-testid="rails-line">
-          <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
-            Rails:{' '}
-          </Box>
-          {railsText(rails)}.{' '}
-          {/* Vertical padding on an inline link grows its touch target to 44 px without changing the line's height. */}
-          <Link component={RouterLink} to="/settings" color="inherit" underline="always" sx={{ py: '14px' }}>
-            Only you change them, in Settings
-          </Link>
-          .
-        </Box>
-      )}
-    </Card>
+      </KeyStatGrid>
+    </Panel>
   )
 }
 
@@ -188,8 +197,8 @@ function PendingProposal({
         {lines.length > 0 && (
           <Box component="ul" aria-label="Rails check" data-testid="guard-lines" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1 }}>
             {lines.map((l) => (
-              <Box component="li" key={l.key} sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.label, lineHeight: 1.45 }}>
-                <Box aria-hidden sx={{ width: 8, height: 8, mt: 0.75, flex: 'none', borderRadius: tokens.radius.chip, bgcolor: l.ok ? tokens.status.good : tokens.status.flag }} />
+              <Box component="li" key={l.key} sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
+                <Box aria-hidden sx={{ width: 6, height: 6, mt: '7px', flex: 'none', borderRadius: `${tokens.radius.pill}px`, bgcolor: l.ok ? tokens.tone.success.solid : tokens.tone.danger.text }} />
                 <Box>
                   <Box component="span" sx={{ fontWeight: tokens.font.weight.label }}>
                     {l.label}:
@@ -212,14 +221,18 @@ function GuardVerdict({ note }: { note: Extract<AiEvent, { kind: 'note' }> }) {
   const [head, ...rest] = note.summary.split(': ')
   const reasons = rest.join(': ').split('; ').filter(Boolean)
   return (
-    <Box sx={{ py: 3, borderBottom: `1px solid ${tokens.ink.border}`, '&:last-of-type': { borderBottom: 0 } }}>
-      <Box sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
-        <Box sx={{ flex: 1 }}>
-          {head} · {actorLabel(note.actor)}
+    <Box sx={{ px: `${tokens.pad.card.x}px`, py: '12px', '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 3, rowGap: '2px' }}>
+        <Box sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>
+          {head}
+          <Box component="span" sx={{ fontWeight: tokens.font.weight.body, color: tokens.ink.secondary }}>
+            {' '}
+            · {actorLabel(note.actor)}
+          </Box>
         </Box>
-        <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatDateTime(note.created_at)}</Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap', ...tabularNums }}>{formatDateTime(note.created_at)}</Box>
       </Box>
-      <Box component="ul" sx={{ m: 0, mt: 1, pl: 5, fontSize: tokens.font.size.small, lineHeight: 1.5 }}>
+      <Box component="ul" sx={{ m: 0, mt: '4px', pl: '18px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>
         {(reasons.length > 0 ? reasons : [note.body.text]).map((r) => (
           <li key={r}>{r}</li>
         ))}

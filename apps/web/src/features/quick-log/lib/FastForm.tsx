@@ -8,7 +8,7 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { fastDay } from '@fitness/shared/engine'
 import { useState } from 'react'
-import { formatNumber, LoadProblem, MetricRing, PendingBadge } from '../../../components'
+import { formatNumber, LoadProblem, MetricRing, PendingBadge, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, dateOf, formatDateTime, formatDuration, instantAt, relativeDay, shiftDate, todayLocal } from './dates'
 import { fastsInMonth, useFasts, useNow, type FastView } from './fasts'
@@ -74,6 +74,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
               value={(now - Date.parse(active.startedAt)) / HOUR_MS}
               target={fastHours}
               metric="fasting"
+              trackColor={tokens.ink.fill}
               size={88}
               label="Fast"
               unit="h"
@@ -81,10 +82,10 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
               centreCaption={`of ${fastHours} h`}
             />
             <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ fontSize: 22, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}>
+              <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1.2, ...tabularNums }}>
                 {formatDuration(now - Date.parse(active.startedAt))}
               </Box>
-              <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1, lineHeight: 1.5 }}>
+              <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1, lineHeight: tokens.font.leading.small }}>
                 Started {formatDateTime(active.startedAt)}
                 <br />
                 {fastHours} h at {formatDateTime(Date.parse(active.startedAt) + fastHours * HOUR_MS)}
@@ -107,7 +108,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
         </>
       ) : (
         <>
-          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+          <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>
             No fast running. A fast day is a known pattern: intake expected 0, water target up, training light.
           </Box>
           {soon ? (
@@ -139,12 +140,12 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
       )}
 
       {error != null && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
+        <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
           {problemText(error)}
         </Box>
       )}
 
-      <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 4 }}>
+      <Box sx={{ borderTop: `1px solid ${tokens.ink.border}`, pt: 4 }}>
         {planOpen ? (
           <PlanFastForm
             initialDate={date > today ? date : shiftDate(today, 1)}
@@ -162,11 +163,15 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
           </Button>
         )}
         {upcoming.length > 0 && (
-          <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid', gap: 1 }} aria-label="Planned fasts">
+          <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid' }} aria-label="Planned fasts">
             {upcoming.slice(0, 4).map((f) => (
-              <Box component="li" key={f.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.small, minHeight: 32 }}>
-                <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: tokens.radius.chip, border: `2px solid ${tokens.metric.fasting}` }} />
-                <Box sx={{ flex: 1 }}>Planned {formatDateTime(f.startedAt)}</Box>
+              <Box
+                component="li"
+                key={f.id}
+                sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.small, minHeight: 36, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+              >
+                <Box aria-hidden sx={{ width: 8, height: 8, flex: 'none', borderRadius: `${tokens.radius.pill}px`, border: `2px solid ${tokens.metric.fasting}` }} />
+                <Box sx={{ flex: 1, ...tabularNums }}>Planned {formatDateTime(f.startedAt)}</Box>
                 {f.pending && <PendingBadge />}
               </Box>
             ))}
@@ -204,8 +209,8 @@ function MissedFast({
   const valid = endedAt !== null && Date.parse(endedAt) > start && Date.parse(endedAt) <= now
 
   return (
-    <Box sx={{ display: 'grid', gap: 2, borderTop: 1, borderColor: 'divider', pt: 4 }} data-testid="fast-missed">
-      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+    <Box sx={{ display: 'grid', gap: 3, borderTop: `1px solid ${tokens.ink.border}`, pt: 4 }} data-testid="fast-missed">
+      <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>
         The fast {fast.planned ? 'planned for' : 'started'} {formatDateTime(fast.startedAt)} was never ended. When did it end?
       </Box>
       <TextField
@@ -291,7 +296,7 @@ function PlanFastForm({
         {count >= fastsPerMonth ? ". That's the month's fasts already on the calendar." : '.'}
       </Box>
       {plan.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
+        <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
           {problemText(plan.error)}
         </Box>
       )}

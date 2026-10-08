@@ -2,7 +2,7 @@
 // black box over the name, then upload the masked image and hand the new scan to the caller (the scan page takes it
 // from "Extracting…" to the review form). Full screen on a phone.
 import CloseRounded from '@mui/icons-material/CloseRounded'
-import UploadFileRounded from '@mui/icons-material/UploadFileRounded'
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { endpoints } from '@fitness/shared/api'
 import { apiQueryKey, call, problemText } from '../../../api'
+import { dashedSurface } from '../../../components'
 import { tokens } from '../../../theme'
 import { MaskEditor } from './MaskEditor'
 import { ACCEPT, DEFAULT_MASK, maskedSheet, renderSheet, type MaskBox } from './sheet'
@@ -87,11 +88,20 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
   }
 
   return (
-    <Dialog open={open} onClose={close} fullScreen={fullScreen} fullWidth maxWidth="sm" aria-labelledby="scan-upload-title">
+    <Dialog
+      open={open}
+      onClose={close}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="scan-upload-title"
+      // Full screen on a phone: no card corners or hairline against the screen edge.
+      sx={fullScreen ? { '& .MuiDialog-paper': { borderRadius: 0, border: 0 } } : undefined}
+    >
       <DialogTitle id="scan-upload-title" sx={{ display: 'flex', alignItems: 'center', gap: 2, pr: 2 }}>
         <Box sx={{ flex: 1 }}>{step.kind === 'mask' || step.kind === 'uploading' ? 'Hide your name' : 'Upload a scan sheet'}</Box>
-        <IconButton aria-label="Close" onClick={close} disabled={step.kind === 'uploading'} sx={{ width: tokens.tapTarget, height: tokens.tapTarget }}>
-          <CloseRounded />
+        <IconButton aria-label="Close" onClick={close} disabled={step.kind === 'uploading'}>
+          <CloseRounded fontSize="small" />
         </IconButton>
       </DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 3, alignContent: 'start' }}>
@@ -104,37 +114,43 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
         {error && <Alert severity="error">{error}</Alert>}
 
         {step.kind === 'pick' && (
-          <>
-            <Box sx={{ color: 'text.secondary', fontSize: tokens.font.size.emphasis, lineHeight: 1.5 }}>
+          <Box sx={{ ...dashedSurface, display: 'grid', justifyItems: 'center', gap: 3, px: 5, py: 7, textAlign: 'center' }}>
+            <Box
+              aria-hidden
+              sx={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: `${tokens.radius.control}px`, bgcolor: tokens.accent.soft, color: tokens.accent.main }}
+            >
+              <UploadFileOutlined fontSize="small" />
+            </Box>
+            <Box sx={{ maxWidth: 400, color: tokens.ink.muted, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
               Share the result sheet from the Evolt Active app, or save it from app.evoltactive.com. You'll hide your name before anything
               is uploaded.
             </Box>
-            <Button variant="contained" size="large" startIcon={<UploadFileRounded />} onClick={() => input.current?.click()} data-testid="scan-pick">
+            <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => input.current?.click()} data-testid="scan-pick">
               Choose the sheet (PDF, PNG or JPG)
             </Button>
-          </>
+          </Box>
         )}
 
         {step.kind === 'rendering' && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center', color: 'text.secondary' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center', color: tokens.ink.muted, fontSize: tokens.font.size.small }}>
             <CircularProgress size={24} /> Opening {step.name}…
           </Box>
         )}
 
         {(step.kind === 'mask' || step.kind === 'uploading') && (
           <>
-            <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: 1.5 }}>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted, lineHeight: tokens.font.leading.small }}>
               Drag the black box over your name; drag a corner to resize it. Only the masked image is uploaded and read.
             </Box>
             {step.kind === 'mask' ? (
               <MaskEditor sheet={step.sheet} box={box} onChange={setBox} />
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center', color: 'text.secondary' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center', color: tokens.ink.muted, fontSize: tokens.font.size.small }}>
                 <CircularProgress size={24} /> Uploading…
               </Box>
             )}
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', position: 'sticky', bottom: 0, bgcolor: 'background.paper', py: 2 }}>
-              <Button onClick={() => input.current?.click()} disabled={step.kind === 'uploading'}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', position: 'sticky', bottom: 0, bgcolor: tokens.ink.card, py: 3 }}>
+              <Button variant="outlined" onClick={() => input.current?.click()} disabled={step.kind === 'uploading'}>
                 Another file
               </Button>
               <Button variant="contained" onClick={() => void upload()} disabled={step.kind === 'uploading'} data-testid="scan-upload">

@@ -123,16 +123,19 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
             body={swap ? 'Your equipment profile and exclusions leave nothing else here.' : 'Try fewer words or clear a filter.'}
           />
         ) : (
-          <ExerciseList
-            exercises={results}
-            onSelect={pick}
-            pickedIds={pickedIds}
-            trailing={(e) => (
-              <IconButton aria-label={`About ${e.name}`} onClick={() => setInfo(e.id)}>
-                <InfoOutlined />
-              </IconButton>
-            )}
-          />
+          // Full-bleed in the sheet: the rows bring their own 20 px gutter, so thumbs line up with the search box.
+          <Box sx={{ mx: -5 }}>
+            <ExerciseList
+              exercises={results}
+              onSelect={pick}
+              pickedIds={pickedIds}
+              trailing={(e) => (
+                <IconButton aria-label={`About ${e.name}`} onClick={() => setInfo(e.id)}>
+                  <InfoOutlined fontSize="small" />
+                </IconButton>
+              )}
+            />
+          </Box>
         )}
       </Sheet>
       {info && (

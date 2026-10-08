@@ -3,14 +3,14 @@
 // input_method 'favorite' with a scale; a recent food logs as a one-item manual meal.
 import AddRounded from '@mui/icons-material/AddRounded'
 import Box from '@mui/material/Box'
-import ButtonBase from '@mui/material/ButtonBase'
+import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
 import type { Favourite, Nutrients } from '@fitness/shared/schemas'
 import { useState, type ReactNode } from 'react'
 import { problemText, useApiQuery } from '../../../api'
-import { formatNumber, NumberField, parseNumber, SectionHeader } from '../../../components'
+import { formatNumber, NumberField, outlinedIconButton, parseNumber, SectionHeader, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { scaled } from './nutrition'
 import { useRecentFoods, type RecentFood } from './reads'
@@ -31,7 +31,7 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
   const recentRows = recents.filter((r) => !favFoodIds.has(r.foodId))
 
   return (
-    <Box sx={{ display: 'grid', gap: 5 }} data-testid="favourites-pane">
+    <Box sx={{ display: 'grid', gap: 4 }} data-testid="favourites-pane">
       <Box>
         <SectionHeader title="Favourites" />
         {favourites.isLoading ? (
@@ -46,7 +46,7 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
             None yet. Save a logged meal as a favourite from the Log tab and it becomes one tap here.
           </Box>
         ) : (
-          <Box sx={{ display: 'grid', gap: 1 }}>
+          <Box>
             {favs.map((fav) => (
               <FavouriteRow key={fav.id} favourite={fav} onLog={onLog} busy={busy} />
             ))}
@@ -56,7 +56,7 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
       {recentRows.length > 0 && (
         <Box>
           <SectionHeader title="Recent" subtitle="Foods from the last three days, at the grams you last had." />
-          <Box sx={{ display: 'grid', gap: 1 }}>
+          <Box>
             {recentRows.map((food) => (
               <RecentRow key={food.foodId} food={food} onLog={onLog} busy={busy} />
             ))}
@@ -161,23 +161,9 @@ function RecentRow({ food, onLog, busy }: { food: RecentFood; onLog: (meal: Quic
 
 function AdjustButton({ label, onClick, aria }: { label: string; onClick: () => void; aria: string }) {
   return (
-    <ButtonBase
-      onClick={onClick}
-      aria-label={aria}
-      sx={{
-        minHeight: tokens.tapTarget,
-        minWidth: 64,
-        px: 3,
-        borderRadius: tokens.radius.chip,
-        border: `1px solid ${tokens.ink.border}`,
-        fontSize: tokens.font.size.small,
-        fontWeight: tokens.font.weight.label,
-        fontVariantNumeric: 'tabular-nums',
-        color: 'text.primary',
-      }}
-    >
+    <Button variant="outlined" size="small" onClick={onClick} aria-label={aria} sx={{ minWidth: 64, ...tabularNums }}>
       {label}
-    </ButtonBase>
+    </Button>
   )
 }
 
@@ -199,15 +185,15 @@ function Row({
   return (
     <Box
       data-testid={testId}
-      sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1, borderBottom: 1, borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}
+      sx={{ display: 'flex', alignItems: 'center', gap: 2, py: '10px', '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Box>
-        <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</Box>
+        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.body, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: 'text.secondary', ...tabularNums, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</Box>
       </Box>
       {adjust}
-      <IconButton aria-label={`Log ${label}`} onClick={onLog} disabled={disabled} sx={{ bgcolor: tokens.ink.text, color: tokens.ink.card, '&:hover': { bgcolor: tokens.ink.text }, '&.Mui-disabled': { bgcolor: tokens.ink.border } }}>
-        <AddRounded />
+      <IconButton aria-label={`Log ${label}`} onClick={onLog} disabled={disabled} size="small" sx={outlinedIconButton}>
+        <AddRounded fontSize="small" />
       </IconButton>
     </Box>
   )

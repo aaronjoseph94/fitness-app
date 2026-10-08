@@ -102,24 +102,34 @@ export function WeeklyReport(props: WeeklyReportProps) {
   ]
 
   return (
-    <Box sx={{ display: 'grid', gap: 2, '@media print': { gap: 1.5 } }}>
-      <Box component="header" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 2, breakInside: 'avoid' }}>
-        <Box sx={{ mr: 'auto' }}>
-          <Box className="report-secondary" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, letterSpacing: 0.3 }}>
+    <Box sx={{ display: 'grid', gap: 4, '@media print': { gap: 1.5 } }}>
+      <Box component="header" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 4, rowGap: 2, breakInside: 'avoid', '@media print': { gap: 2 } }}>
+        <Box sx={{ mr: 'auto', minWidth: 0 }}>
+          <Box
+            className="report-secondary"
+            sx={{ fontSize: tokens.font.size.micro, fontWeight: tokens.font.weight.label, letterSpacing: tokens.font.em.micro, color: tokens.ink.secondary, '@media print': { fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.body, letterSpacing: 0.3 } }}
+          >
             WEEKLY REPORT · {week}
           </Box>
-          <Box component="h1" sx={{ m: 0, fontSize: 24, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}>
+          <Box
+            component="h1"
+            sx={{ m: 0, mt: '4px', fontSize: tokens.font.size.largeTitle, fontWeight: tokens.font.weight.heading, letterSpacing: tokens.font.em.title, lineHeight: tokens.font.leading.largeTitle, '@media print': { mt: 0, fontSize: 24, letterSpacing: 'normal' } }}
+          >
             {weekTitle(from, to)}
           </Box>
-          <Box className="report-secondary" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 0.5 }} data-testid="report-author">
+          <Box
+            className="report-secondary"
+            sx={{ mt: '4px', fontSize: tokens.font.size.small, color: tokens.ink.secondary, '@media print': { mt: 0.5, fontSize: tokens.font.size.caption } }}
+            data-testid="report-author"
+          >
             {review ? `${AUTHOR_TEXT[review.author]} · updated ${review.updated_at.slice(0, 10)}` : 'No review yet · engine metrics only'}
           </Box>
         </Box>
         <Box sx={{ textAlign: 'right' }} data-testid="report-trend">
-          <Box sx={{ fontSize: 28, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: tokens.metric.weight }}>
+          <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: tokens.ink.text }}>
             {kg(m.trend_end_kg)}
           </Box>
-          <Box className="report-secondary" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
+          <Box className="report-secondary" sx={{ mt: '2px', fontSize: tokens.font.size.caption, color: tokens.ink.secondary, '@media print': { mt: 0 } }}>
             trend {m.trend_change_kg === null ? '' : `${formatSigned(m.trend_change_kg, 1)} kg · `}
             {m.forecast ? `${formatNumber(m.forecast.weekly_rate_kg, 2)} kg/wk${m.forecast.finish_date ? ` · finish ${m.forecast.finish_date}` : ''}` : 'no forecast'}
           </Box>
@@ -191,7 +201,7 @@ export function WeeklyReport(props: WeeklyReportProps) {
         <Panel title="Training volume per week" subtitle="Sets × reps × kg by muscle group, last reviewed weeks" testId="report-volume">
           <TrainingVolumeChart weeks={volumeWeeks(m, history.map((r) => r.metrics))} groups={VOLUME_GROUPS} width={half} height={fixed ? 100 : 200} legend />
         </Panel>
-        <Box sx={{ display: 'grid', gap: 2, alignContent: 'start', '@media print': { gap: 1.5 } }}>
+        <Box sx={{ display: 'grid', gap: 4, alignContent: 'start', '@media print': { gap: 1.5 } }}>
           <PrsPanel metrics={m} />
           <FastsPanel metrics={m} />
         </Box>
@@ -220,7 +230,7 @@ function ReviewPanel({ review, metrics }: { review: WeeklyReview | null; metrics
         {review.narrative}
       </Box>
       {(review.highlights.length > 0 || review.concerns.length > 0) && (
-        <Box sx={{ mt: 1.5, display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, '@media print': { gridTemplateColumns: '1fr 1fr', gap: 1.5 } }}>
+        <Box sx={{ mt: 3, display: 'grid', gap: 4, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, '@media print': { mt: 1.5, gridTemplateColumns: '1fr 1fr', gap: 1.5 } }}>
           <Bullets title="Highlights" items={review.highlights} color={tokens.status.good} />
           <Bullets title="Concerns" items={review.concerns} color={tokens.status.warning} />
         </Box>

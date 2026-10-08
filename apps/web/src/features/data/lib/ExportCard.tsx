@@ -69,86 +69,88 @@ export function ExportCard({ online }: { online: boolean }) {
     }
   }
 
+  const startButton = (
+    <Button
+      variant={state.kind === 'ready' ? 'outlined' : 'contained'}
+      startIcon={state.kind === 'ready' ? undefined : <DownloadRounded />}
+      onClick={() => void start()}
+      disabled={!online}
+      data-testid="export-start"
+    >
+      {state.kind === 'ready' ? 'Export again' : state.kind === 'failed' ? 'Try again' : 'Export everything'}
+    </Button>
+  )
+  const offlineHelp = !online && <Help>Exporting needs a connection.</Help>
+
   return (
-    <DataCard id="export" title="Export everything">
-      <Help>
-        One zip with a CSV per table, <b>full.json</b> (every table, for restoring) and your photos, scan
-        sheets and report PDFs. It is built on this phone; the server only hands over the data.
-      </Help>
+    <DataCard
+      id="export"
+      title="Export everything"
+      description={
+        <>
+          One zip with a CSV per table, <b>full.json</b> (every table, for restoring) and your photos, scan sheets and report PDFs. It is built on
+          this device; the server only hands over the data.
+        </>
+      }
+    >
+      <Stack spacing={4}>
+        {state.kind === 'building' && (
+          <ProgressLine
+            testId="export-progress"
+            done={state.progress.done}
+            total={state.progress.total}
+            label={state.progress.label}
+            unit={state.progress.phase === 'tables' ? 'rows' : 'files'}
+          />
+        )}
 
-      {state.kind === 'building' && (
-        <ProgressLine
-          testId="export-progress"
-          done={state.progress.done}
-          total={state.progress.total}
-          label={state.progress.label}
-          unit={state.progress.phase === 'tables' ? 'rows' : 'files'}
-        />
-      )}
-
-      {state.kind === 'ready' && (
-        <Box sx={{ mt: 4 }} data-testid="export-ready">
-          <Alert severity="success" sx={{ mb: 3 }}>
-            Export ready: {formatNumber(state.built.rows)} rows from {state.built.tables} tables and{' '}
-            {formatNumber(state.built.files)} files, {formatBytes(state.built.blob.size)}.
-          </Alert>
-          {state.built.missing.length > 0 && (
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              {state.built.missing.length} file{state.built.missing.length === 1 ? '' : 's'} could not be
-              fetched and are not in the zip (listed in its README).
+        {state.kind === 'ready' && (
+          <Stack spacing={3} data-testid="export-ready">
+            <Alert severity="success">
+              Export ready: {formatNumber(state.built.rows)} rows from {state.built.tables} tables and {formatNumber(state.built.files)} files,{' '}
+              {formatBytes(state.built.blob.size)}.
             </Alert>
-          )}
-          <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            <Button
-              variant="contained"
-              startIcon={<DownloadRounded />}
-              onClick={() => save(state.built)}
-              sx={{ minHeight: 44 }}
-            >
-              Save zip
-            </Button>
-            {shareable(state.built) && (
-              <Button
-                variant="outlined"
-                startIcon={<IosShareRounded />}
-                onClick={() => void share(state.built)}
-                sx={{ minHeight: 44 }}
-              >
-                Share…
-              </Button>
+            {state.built.missing.length > 0 && (
+              <Alert severity="warning">
+                {state.built.missing.length} file{state.built.missing.length === 1 ? '' : 's'} could not be fetched and are not in the zip (listed in its
+                README).
+              </Alert>
             )}
+            {/* One action row once the zip is ready: Save zip, Share… and Export again side by side. */}
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' }}>
+              <Button variant="contained" startIcon={<DownloadRounded />} onClick={() => save(state.built)}>
+                Save zip
+              </Button>
+              {shareable(state.built) && (
+                <Button variant="outlined" startIcon={<IosShareRounded />} onClick={() => void share(state.built)}>
+                  Share…
+                </Button>
+              )}
+              {startButton}
+              {offlineHelp}
+            </Box>
           </Stack>
-        </Box>
-      )}
+        )}
 
-      {state.kind === 'failed' && (
-        <Alert severity="error" sx={{ mt: 4 }} data-testid="export-error">
-          Export stopped. {state.message}
-        </Alert>
-      )}
+        {state.kind === 'failed' && (
+          <Alert severity="error" data-testid="export-error">
+            Export stopped. {state.message}
+          </Alert>
+        )}
 
-      <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
-        {state.kind === 'building' ? (
-          <Button onClick={() => abort.current?.abort()} sx={{ minHeight: 44 }}>
-            Cancel
-          </Button>
-        ) : (
-          <Button
-            variant={state.kind === 'ready' ? 'text' : 'contained'}
-            onClick={() => void start()}
-            disabled={!online}
-            sx={{ minHeight: 44 }}
-            data-testid="export-start"
-          >
-            {state.kind === 'ready'
-              ? 'Export again'
-              : state.kind === 'failed'
-                ? 'Try again'
-                : 'Export everything'}
-          </Button>
+        {state.kind !== 'ready' && (
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' }}>
+            {state.kind === 'building' ? (
+              <Button variant="outlined" onClick={() => abort.current?.abort()}>
+                Cancel
+              </Button>
+            ) : (
+              startButton
+            )}
+            {offlineHelp}
+          </Box>
         )}
       </Stack>
-      {!online && <Help>Exporting needs a connection.</Help>}
     </DataCard>
   )
 }

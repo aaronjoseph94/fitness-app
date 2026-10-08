@@ -9,7 +9,6 @@ import ButtonBase from '@mui/material/ButtonBase'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
-import { alpha } from '@mui/material/styles'
 import { useState } from 'react'
 import { useOnline } from '../../../../offline'
 import { tokens } from '../../../../theme'
@@ -64,7 +63,7 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
           </Box>
         ))}
         {Array.from({ length: preparing }, (_, i) => (
-          <Box key={`preparing-${i}`} sx={{ width: THUMB, height: THUMB, display: 'grid', placeItems: 'center', borderRadius: `${tokens.radius.control}px`, bgcolor: tokens.ink.page }}>
+          <Box key={`preparing-${i}`} sx={{ width: THUMB, height: THUMB, display: 'grid', placeItems: 'center', borderRadius: `${tokens.radius.control}px`, bgcolor: tokens.ink.fill }}>
             <CircularProgress size={20} aria-label="Preparing photo" />
           </Box>
         ))}
@@ -77,16 +76,18 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
               width: THUMB,
               height: THUMB,
               borderRadius: `${tokens.radius.control}px`,
-              border: `1px dashed ${tokens.ink.border}`,
+              border: `1px dashed ${tokens.ink.dashed}`,
+              bgcolor: tokens.ink.panel,
               color: tokens.ink.secondary,
               display: 'grid',
               placeItems: 'center',
               gap: 0.5,
               fontSize: tokens.font.size.caption,
-              '&:hover': { bgcolor: alpha(tokens.ink.text, 0.03) },
+              fontWeight: tokens.font.weight.label,
+              '&:hover': { bgcolor: tokens.ink.fill },
             }}
           >
-            <AddAPhotoOutlined />
+            <AddAPhotoOutlined sx={{ fontSize: 20, color: tokens.accent.main }} />
             {photos.length === 0 ? 'Photo' : 'Add'}
           </ButtonBase>
         )}
@@ -103,7 +104,7 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
         slotProps={{ htmlInput: { maxLength: 500 } }}
       />
 
-      <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.5 }}>
+      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: tokens.font.leading.small }}>
         Photos are shrunk to 1,024 px and their location data is removed on this phone before they're sent.
       </Box>
 
@@ -117,7 +118,7 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
         </Box>
       )}
       {error && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
+        <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
           {error}
         </Box>
       )}

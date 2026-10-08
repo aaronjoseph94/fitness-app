@@ -7,6 +7,7 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import InputAdornment from '@mui/material/InputAdornment'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
@@ -85,7 +86,7 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
           input: {
             startAdornment: (
               <InputAdornment position="start">
-                <SearchRounded sx={{ color: 'text.secondary' }} />
+                <SearchRounded sx={{ fontSize: 18, color: 'text.secondary' }} />
               </InputAdornment>
             ),
             endAdornment: search.isFetching ? (
@@ -97,7 +98,7 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
         }}
       />
       {q.length >= 2 && search.isError && (
-        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>
           {problemText(search.error)} You can add it as a new food, or describe the meal instead.
         </Box>
       )}
@@ -105,16 +106,30 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
         <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>No foods match “{q}”. Add it as a new food.</Box>
       )}
       {results.length > 0 && (
-        <List dense disablePadding aria-label="Search results" sx={{ border: 1, borderColor: 'divider', borderRadius: `${tokens.radius.control}px` }}>
+        <List
+          dense
+          disablePadding
+          aria-label="Search results"
+          sx={{ border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.control}px`, overflow: 'hidden' }}
+        >
           {results.map((food) => (
-            <ListItemButton key={food.id} onClick={() => onPick(pickedFromFood(food))} sx={{ minHeight: tokens.tapTarget }}>
-              <ListItemText
-                primary={food.brand ? `${food.name} · ${food.brand}` : food.name}
-                secondary={`${formatNumber(food.kcal_per_100g)} kcal · ${formatNumber(food.protein_g, 1)} g protein per 100 g`}
-                slotProps={{ primary: { noWrap: true, sx: { color: 'text.primary', fontSize: tokens.font.size.emphasis } }, secondary: { sx: { fontSize: tokens.font.size.label } } }}
-              />
-              <AddRounded sx={{ color: 'text.secondary', ml: 2 }} />
-            </ListItemButton>
+            // Each button sits in a list item: a list may hold only list items.
+            <ListItem key={food.id} disablePadding sx={{ '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}>
+              <ListItemButton
+                onClick={() => onPick(pickedFromFood(food))}
+                sx={{ minHeight: tokens.tapTarget, px: 3, borderRadius: 0, '&:hover': { bgcolor: tokens.ink.panel } }}
+              >
+                <ListItemText
+                  primary={food.brand ? `${food.name} · ${food.brand}` : food.name}
+                  secondary={`${formatNumber(food.kcal_per_100g)} kcal · ${formatNumber(food.protein_g, 1)} g protein per 100 g`}
+                  slotProps={{
+                    primary: { noWrap: true, sx: { color: 'text.primary', fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label } },
+                    secondary: { sx: { fontSize: tokens.font.size.caption, fontVariantNumeric: 'tabular-nums' } },
+                  }}
+                />
+                <AddRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.label, ml: 2 }} />
+              </ListItemButton>
+            </ListItem>
           ))}
         </List>
       )}
@@ -183,7 +198,7 @@ function NewFoodForm({
       sx={{ display: 'grid', gap: 3 }}
       data-testid="new-food-form"
     >
-      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>New food. Values per 100 g, as on the label.</Box>
+      <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>New food. Values per 100 g, as on the label.</Box>
       <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus slotProps={{ htmlInput: { maxLength: 200 } }} />
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
         {MACROS.map(({ key, label, unit }) => (
@@ -198,12 +213,12 @@ function NewFoodForm({
         ))}
       </Box>
       {create.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
+        <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
           {problemText(create.error)}
         </Box>
       )}
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 2 }}>
-        <Button variant="text" onClick={onCancel}>
+        <Button variant="outlined" onClick={onCancel}>
           Cancel
         </Button>
         <Button type="submit" variant="contained" disabled={!valid || create.isPending}>

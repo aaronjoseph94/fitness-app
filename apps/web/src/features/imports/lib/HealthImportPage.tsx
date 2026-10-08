@@ -1,23 +1,25 @@
 // Owns: the Apple Watch file import screen (/imports/health, SPEC §8 route 2) — pick a CSV or JSON export (Health Auto
 // Export or similar), check the guessed columns for date, steps, active energy and sleep, preview the mapped days,
 // then POST /api/imports/health in pages of at most 500 rows and show what was saved. Rows upsert by date.
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import LinearProgress from '@mui/material/LinearProgress'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
+import MuiTable from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
 import type { HealthImportResult } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { apiQueryKey, call, problemText } from '../../../api'
-import { formatNumber, SectionHeader } from '../../../components'
+import { cardSurface, formatNumber, PageHeader, Panel, ProgressBar, Segmented, tabularNums, wellSurface } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf } from '../../quick-log'
 import { applyMapping, guessMapping, type Mapping } from './mapping'
@@ -36,8 +38,6 @@ const OPTIONAL: { key: Optional; label: string }[] = [
   { key: 'in_bed_at', label: 'Sleep start (in bed)' },
   { key: 'woke_at', label: 'Sleep end (woke)' },
 ]
-
-const toggleSx = { '& .MuiToggleButton-root': { minHeight: tokens.tapTarget, textTransform: 'none', fontWeight: tokens.font.weight.label } }
 
 function ColumnSelect({ label, value, columns, required, onChange }: { label: string; value: string | null; columns: string[]; required?: boolean; onChange: (v: string | null) => void }) {
   return (
@@ -112,96 +112,133 @@ export function HealthImportPage() {
 
   const set = (key: keyof Mapping, value: string | null) => setMapping((m) => (m ? { ...m, [key]: value } : m))
 
+  const chooseButton = (
+    <Button variant={table ? 'outlined' : 'contained'} startIcon={<UploadFileRounded />} onClick={() => input.current?.click()} disabled={running}>
+      {table ? 'Choose another file' : 'Choose a file'}
+    </Button>
+  )
+
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="health-import-page">
-      <Card sx={{ p: 4 }}>
-        <SectionHeader title="Export file" subtitle="CSV or JSON (Health Auto Export or similar); days already logged are replaced." />
-        <input
-          ref={input}
-          type="file"
-          accept=".csv,.json,.txt,text/csv,application/json"
-          hidden
-          data-testid="health-file-input"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ''
-            void pick(file)
-          }}
-        />
-        <Button variant={table ? 'outlined' : 'contained'} startIcon={<UploadFileRounded />} onClick={() => input.current?.click()} sx={{ mt: 3 }} disabled={running}>
-          {table ? 'Choose another file' : 'Choose a file'}
-        </Button>
+    <Stack spacing={`${tokens.rhythm.section}px`} data-testid="health-import-page">
+      <PageHeader title="Import Apple Watch data" subtitle="Steps and sleep from a health export file, one row per day. Rows upsert by date, so importing again is safe." />
+      <input
+        ref={input}
+        type="file"
+        accept=".csv,.json,.txt,text/csv,application/json"
+        hidden
+        data-testid="health-file-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          void pick(file)
+        }}
+      />
+      <Panel id="health-file" title="Export file" description="CSV or JSON (Health Auto Export or similar); days already logged are replaced." actions={chooseButton}>
         {table && (
-          <Box sx={{ mt: 2, fontSize: tokens.font.size.label, color: 'text.secondary' }}>
-            {fileName}: {formatNumber(table.rows.length)} rows, {table.columns.length} columns ({table.format.toUpperCase()})
+          <Box sx={{ ...wellSurface, display: 'flex', alignItems: 'center', gap: 3, px: '14px', py: '10px', minWidth: 0 }}>
+            <DescriptionOutlined aria-hidden sx={{ fontSize: 20, color: tokens.ink.muted, flex: 'none' }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.text, overflowWrap: 'anywhere' }}>{fileName}</Box>
+              <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary, ...tabularNums }}>
+                {formatNumber(table.rows.length)} rows · {table.columns.length} columns · {table.format.toUpperCase()}
+              </Box>
+            </Box>
           </Box>
         )}
-      </Card>
+      </Panel>
 
       {error && <Alert severity="error">{error}</Alert>}
 
       {table && mapping && (
-        <Card sx={{ p: 4 }} data-testid="health-mapping">
-          <SectionHeader title="Columns" subtitle="Guessed from the column names; change any that are wrong." />
-          <Box sx={{ display: 'grid', gap: 3, mt: 3 }}>
+        <Panel id="health-columns" title="Columns" description="Guessed from the column names; change any that are wrong." testId="health-mapping">
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3, alignItems: 'start' }}>
             <ColumnSelect label="Date" required value={mapping.date} columns={table.columns} onChange={(v) => v && set('date', v)} />
             {OPTIONAL.map((o) => (
               <ColumnSelect key={o.key} label={o.label} value={mapping[o.key]} columns={table.columns} onChange={(v) => set(o.key, v)} />
             ))}
             {mapping.asleep && (
-              <ToggleButtonGroup value={mapping.asleep_unit} exclusive fullWidth size="small" aria-label="Time asleep is in" onChange={(_, v: Mapping['asleep_unit'] | null) => v && set('asleep_unit', v)} sx={toggleSx}>
-                <ToggleButton value="h">Asleep in hours</ToggleButton>
-                <ToggleButton value="min">Asleep in minutes</ToggleButton>
-              </ToggleButtonGroup>
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <Segmented
+                  ariaLabel="Time asleep is in"
+                  fullWidth
+                  value={mapping.asleep_unit}
+                  onChange={(v) => set('asleep_unit', v)}
+                  options={[
+                    { value: 'h', label: 'Asleep in hours' },
+                    { value: 'min', label: 'Asleep in minutes' },
+                  ]}
+                />
+              </Box>
             )}
           </Box>
-        </Card>
+        </Panel>
       )}
 
       {mapped && (
-        <Card sx={{ p: 4 }} data-testid="health-preview">
-          <SectionHeader
-            title="Preview"
-            subtitle={`${formatNumber(mapped.rows.length)} days: steps on ${formatNumber(withSteps)}, sleep on ${formatNumber(withSleep)}${mapped.skipped ? `; ${formatNumber(mapped.skipped)} ${mapped.skipped === 1 ? 'row' : 'rows'} skipped` : ''}`}
-          />
+        <Panel
+          id="health-preview"
+          title="Preview"
+          description={`${formatNumber(mapped.rows.length)} days: steps on ${formatNumber(withSteps)}, sleep on ${formatNumber(withSleep)}${mapped.skipped ? `; ${formatNumber(mapped.skipped)} ${mapped.skipped === 1 ? 'row' : 'rows'} skipped` : ''}`}
+          padding="none"
+          testId="health-preview"
+          footer={
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px', px: `${tokens.pad.card.x}px`, py: '12px' }}>
+              <Box sx={{ flex: '1 1 160px', fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
+                {mapped.rows.length > PREVIEW_ROWS ? `The last ${PREVIEW_ROWS} days.` : 'Every day in the file.'}
+              </Box>
+              <Button variant="contained" disabled={running || mapped.rows.length === 0} onClick={() => void run()} data-testid="health-import" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                {running ? 'Importing…' : `Import ${formatNumber(mapped.rows.length)} days`}
+              </Button>
+            </Box>
+          }
+        >
           {mapped.reasons.length > 0 && (
-            <Box component="ul" sx={{ m: 0, mt: 2, pl: 2.5, fontSize: tokens.font.size.label, color: 'text.secondary' }}>
+            <Box component="ul" sx={{ m: 0, mb: 3, mx: `${tokens.pad.card.x}px`, pl: '18px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
               {mapped.reasons.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </Box>
           )}
-          <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 1.3fr', columnGap: 2, fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums' }}>
-            {['Date', 'Steps', 'Asleep', 'In bed → woke'].map((h) => (
-              <Box key={h} sx={{ color: 'text.secondary', fontSize: tokens.font.size.caption, pb: 1, borderBottom: `1px solid ${tokens.ink.border}` }}>
-                {h}
-              </Box>
-            ))}
-            {mapped.rows.slice(-PREVIEW_ROWS).map((r) => (
-              <Box key={r.date} sx={{ display: 'contents', '& > *': { py: 1, borderBottom: `1px solid ${tokens.ink.border}` } }}>
-                <Box>{r.date}</Box>
-                <Box>{r.steps !== undefined ? formatNumber(r.steps) : '—'}</Box>
-                <Box>{r.asleep_min !== undefined ? `${formatNumber(r.asleep_min / 60, 1)} h` : '—'}</Box>
-                <Box>{r.in_bed_at && r.woke_at ? `${clockOf(r.in_bed_at)} → ${clockOf(r.woke_at)}` : '—'}</Box>
-              </Box>
-            ))}
+          <Box sx={{ overflowX: 'auto' }}>
+            <MuiTable size="small" aria-label="Mapped days">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell align="right">Steps</TableCell>
+                  <TableCell align="right">Asleep</TableCell>
+                  <TableCell align="right">In bed → woke</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {mapped.rows.slice(-PREVIEW_ROWS).map((r) => (
+                  <TableRow key={r.date} sx={{ '&:last-of-type td': { borderBottom: 0 } }}>
+                    <TableCell sx={{ ...tabularNums, whiteSpace: 'nowrap' }}>{r.date}</TableCell>
+                    <TableCell align="right">{r.steps !== undefined ? formatNumber(r.steps) : '—'}</TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {r.asleep_min !== undefined ? `${formatNumber(r.asleep_min / 60, 1)} h` : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {r.in_bed_at && r.woke_at ? `${clockOf(r.in_bed_at)} → ${clockOf(r.woke_at)}` : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </MuiTable>
           </Box>
-          {mapped.rows.length > PREVIEW_ROWS && <Box sx={{ mt: 1, fontSize: tokens.font.size.caption, color: 'text.secondary' }}>The last {PREVIEW_ROWS} days.</Box>}
-          <Button variant="contained" sx={{ mt: 3 }} fullWidth disabled={running || mapped.rows.length === 0} onClick={() => void run()} data-testid="health-import">
-            {running ? 'Importing…' : `Import ${formatNumber(mapped.rows.length)} days`}
-          </Button>
-        </Card>
+        </Panel>
       )}
 
       {progress && (
-        <Card sx={{ p: 4 }} data-testid="health-import-result" aria-live="polite">
-          <LinearProgress variant="determinate" value={(progress.done / progress.total) * 100} />
-          <Box sx={{ mt: 2, fontSize: tokens.font.size.emphasis }}>
-            {progress.done < progress.total ? `Sent ${formatNumber(progress.done)} of ${formatNumber(progress.total)} days…` : 'Done.'} Steps saved for{' '}
-            {formatNumber(progress.result.steps_upserted)} days, sleep for {formatNumber(progress.result.sleep_upserted)} nights
+        <Box sx={{ ...cardSurface, px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px` }} data-testid="health-import-result" aria-live="polite">
+          <ProgressBar value={progress.done / progress.total} label="Import progress" color={progress.done < progress.total ? tokens.accent.main : tokens.tone.success.solid} />
+          <Box sx={{ mt: 3, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>
+            <Box component="span" sx={{ fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+              {progress.done < progress.total ? `Sent ${formatNumber(progress.done)} of ${formatNumber(progress.total)} days…` : 'Done.'}
+            </Box>{' '}
+            Steps saved for {formatNumber(progress.result.steps_upserted)} days, sleep for {formatNumber(progress.result.sleep_upserted)} nights
             {progress.result.skipped ? `; ${formatNumber(progress.result.skipped)} skipped by the server` : ''}.
           </Box>
-        </Card>
+        </Box>
       )}
     </Stack>
   )

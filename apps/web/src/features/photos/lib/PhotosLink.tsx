@@ -3,11 +3,10 @@
 import ChevronRight from '@mui/icons-material/ChevronRight'
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
 import Box from '@mui/material/Box'
-import Card from '@mui/material/Card'
-import CardActionArea from '@mui/material/CardActionArea'
+import ButtonBase from '@mui/material/ButtonBase'
 import { Link as RouterLink } from 'react-router'
-import { formatShortDate } from '../../../components'
-import { tokens } from '../../../theme'
+import { cardSurface, formatShortDate } from '../../../components'
+import { tokens, transitionOf } from '../../../theme'
 import { POSE_LABEL, usePhotos } from './data'
 import { PhotoImage, TrendWeight } from './PhotoParts'
 
@@ -16,26 +15,43 @@ export function PhotosLink() {
   const latest = data?.[0]
   const count = data?.length ?? 0
   return (
-    <Card data-testid="photos-link">
-      <CardActionArea component={RouterLink} to={latest ? '/photos' : '/photos/new'} sx={{ display: 'flex', alignItems: 'center', gap: 4, p: 4, justifyContent: 'flex-start' }}>
-        <Box sx={{ width: 48, height: 64, flex: 'none', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', bgcolor: tokens.chart.grid, display: 'grid', placeItems: 'center' }}>
-          {latest ? <PhotoImage photo={latest} /> : <PhotoCameraOutlined sx={{ color: tokens.ink.secondary }} />}
+    <ButtonBase
+      component={RouterLink}
+      to={latest ? '/photos' : '/photos/new'}
+      data-testid="photos-link"
+      sx={{
+        ...cardSurface,
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'flex-start',
+        textAlign: 'left',
+        alignItems: 'center',
+        gap: '14px',
+        px: '16px',
+        py: '14px',
+        color: 'inherit',
+        textDecoration: 'none',
+        transition: transitionOf(['background-color'], tokens.motion.duration.fast),
+        '&:hover': { bgcolor: tokens.ink.panel },
+      }}
+    >
+      <Box sx={{ width: 36, height: 48, flex: 'none', borderRadius: `${tokens.radius.inner}px`, overflow: 'hidden', bgcolor: tokens.ink.fill, display: 'grid', placeItems: 'center' }}>
+        {latest ? <PhotoImage photo={latest} /> : <PhotoCameraOutlined sx={{ fontSize: 18, color: tokens.accent.main }} />}
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body, color: tokens.ink.text }}>Progress photos</Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary, display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {latest ? (
+            <>
+              {count} {count === 1 ? 'photo' : 'photos'} · last {POSE_LABEL[latest.pose].toLowerCase()} {formatShortDate(latest.date)}
+              <TrendWeight kg={latest.weight_kg} size={tokens.font.size.caption} />
+            </>
+          ) : (
+            'Front, side and back, private, never sent to any AI'
+          )}
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: tokens.font.size.body }}>Progress photos</Box>
-          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-            {latest ? (
-              <>
-                {count} {count === 1 ? 'photo' : 'photos'} · last {POSE_LABEL[latest.pose].toLowerCase()} {formatShortDate(latest.date)}
-                <TrendWeight kg={latest.weight_kg} />
-              </>
-            ) : (
-              'Front, side and back, private, never sent to any AI'
-            )}
-          </Box>
-        </Box>
-        <ChevronRight sx={{ color: tokens.ink.secondary }} />
-      </CardActionArea>
-    </Card>
+      </Box>
+      <ChevronRight aria-hidden sx={{ fontSize: 18, color: tokens.ink.faint }} />
+    </ButtonBase>
   )
 }

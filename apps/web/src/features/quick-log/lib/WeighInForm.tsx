@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { useEffect, useId, useState } from 'react'
-import { formatNumber, NumberField, parseNumber, PendingBadge } from '../../../components'
+import { formatNumber, NumberField, outlinedIconButton, parseNumber, PendingBadge, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
 import { useLastWeight } from './reads'
@@ -73,8 +73,8 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
       data-testid="weigh-in-form"
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <IconButton aria-label="Minus 0.1 kg" onClick={() => nudge(-0.1)} sx={{ border: 1, borderColor: 'divider' }}>
-          <RemoveRounded />
+        <IconButton aria-label="Minus 0.1 kg" onClick={() => nudge(-0.1)} sx={outlinedIconButton}>
+          <RemoveRounded fontSize="small" />
         </IconButton>
         <NumberField
           label="Weight"
@@ -90,12 +90,12 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
             htmlInput: {
               'aria-label': 'Weight in kg',
               'aria-describedby': showWeightProblem ? weightHelpId : undefined,
-              style: { fontSize: 32, fontWeight: tokens.font.weight.number, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
+              style: { fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
             },
           }}
         />
-        <IconButton aria-label="Plus 0.1 kg" onClick={() => nudge(0.1)} sx={{ border: 1, borderColor: 'divider' }}>
-          <AddRounded />
+        <IconButton aria-label="Plus 0.1 kg" onClick={() => nudge(0.1)} sx={outlinedIconButton}>
+          <AddRounded fontSize="small" />
         </IconButton>
       </Box>
       {/* Under the whole row (not inside the field) so the ± buttons stay level with the number. */}
@@ -105,7 +105,7 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
         </FormHelperText>
       )}
 
-      <Box sx={{ minHeight: 20, fontSize: tokens.font.size.label, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Box sx={{ minHeight: 20, fontSize: tokens.font.size.small, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', ...tabularNums }}>
         {isLoading && !last ? (
           'Looking up your last weigh-in…'
         ) : onDate ? (
@@ -145,7 +145,7 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
       )}
 
       {save.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
+        <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
           {problemText(save.error)}
         </Box>
       )}

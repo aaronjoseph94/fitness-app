@@ -45,27 +45,27 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
   }
 
   return (
-    <Dialog open={photo !== null} onClose={close} fullScreen={phone} maxWidth="sm" fullWidth aria-label="Progress photo">
+    <Dialog open={photo !== null} onClose={close} fullScreen={phone} maxWidth="sm" fullWidth slotProps={{ paper: { 'aria-label': 'Progress photo' } }}>
       {photo && (
         <Stack sx={{ height: '100%', pb: 'env(safe-area-inset-bottom, 0px)' }} data-testid="photo-viewer">
-          <Stack direction="row" sx={{ alignItems: 'center', px: 2, pt: 'calc(8px + env(safe-area-inset-top, 0px))', pb: 1 }}>
-            <Box sx={{ flex: 1, minWidth: 0, pl: 2 }}>
-              <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: 17 }}>{POSE_LABEL[photo.pose]}</Box>
-              <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{takenAtFormat.format(new Date(photo.taken_at))}</Box>
+          <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 2, px: 5, pt: 'calc(16px + env(safe-area-inset-top, 0px))', pb: 3 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: tokens.font.size.cardTitle, lineHeight: tokens.font.leading.cardTitle }}>{POSE_LABEL[photo.pose]}</Box>
+              <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{takenAtFormat.format(new Date(photo.taken_at))}</Box>
             </Box>
-            <IconButton aria-label="Close" onClick={close}>
-              <Close />
+            <IconButton aria-label="Close" onClick={close} sx={{ mr: -2, mt: -1 }}>
+              <Close fontSize="small" />
             </IconButton>
           </Stack>
-          <Box sx={{ flex: 1, minHeight: 0, px: 4, display: 'flex', justifyContent: 'center' }}>
-            <Box sx={{ width: '100%', maxHeight: phone ? 'none' : '60vh', aspectRatio: '3 / 4', borderRadius: `${tokens.radius.card}px`, overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, minHeight: 0, px: 5, display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ width: '100%', maxHeight: phone ? 'none' : '60vh', aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill }}>
               <PhotoImage photo={photo} fit="contain" eager />
             </Box>
           </Box>
-          <Stack spacing={1} sx={{ px: 5, pt: 3 }}>
+          <Stack spacing={1} sx={{ px: 5, pt: 4 }}>
             <Box sx={{ display: 'flex', gap: 3, alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Trend weight</Box>
-              {photo.weight_kg === null ? <Box sx={{ fontSize: tokens.font.size.emphasis }}>—</Box> : <TrendWeight kg={photo.weight_kg} size={17} />}
+              <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>Trend weight</Box>
+              {photo.weight_kg === null ? <Box sx={{ fontSize: tokens.font.size.body }}>—</Box> : <TrendWeight kg={photo.weight_kg} size={tokens.font.size.cardTitle} />}
             </Box>
             <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text }}>
               {photo.nearest_scan ? (
@@ -88,11 +88,11 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
             {photo.note && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{photo.note}</Box>}
           </Stack>
           {remove.isError && (
-            <Alert severity="warning" variant="outlined" sx={{ mx: 5, mt: 3 }}>
+            <Alert severity="warning" sx={{ mx: 5, mt: 3 }}>
               Couldn't delete. {problemText(remove.error)}
             </Alert>
           )}
-          <Stack direction="row" spacing={3} sx={{ px: 5, py: 4 }}>
+          <Stack direction="row" spacing={2} sx={{ px: 5, pt: 4, pb: 5 }}>
             {confirming ? (
               <>
                 <Button variant="outlined" onClick={() => setConfirming(false)} sx={{ flex: 1 }}>
@@ -110,7 +110,7 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
               </>
             ) : (
               <>
-                <Button variant="outlined" startIcon={<DeleteOutlined />} onClick={() => setConfirming(true)} sx={{ flex: 1 }}>
+                <Button variant="outlined" color="error" startIcon={<DeleteOutlined />} onClick={() => setConfirming(true)} sx={{ flex: 1 }}>
                   Delete
                 </Button>
                 <Button variant="contained" startIcon={<CompareOutlined />} onClick={() => onCompare(photo)} sx={{ flex: 1 }}>

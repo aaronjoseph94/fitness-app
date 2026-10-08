@@ -2,7 +2,6 @@
 // Worker's reason: an exclusion, the body-only rail, an equipment status), "Un-hide" (DELETE /api/exclusions/:id with
 // the exercise's id, then the library refreshes), and the way to the equipment profile. The body-only rail has no
 // un-hide; an equipment status is changed on the Equipment page, so after an un-hide the reason left (if any) shows.
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
@@ -11,7 +10,9 @@ import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { problemText, useApiMutation } from '../../../api'
+import { Banner } from '../../../components'
 import { tokens } from '../../../theme'
+import { sentence } from './labels'
 import { useRefreshLibrary } from './useExercises'
 
 /** Library rule 3 (Worker): equipment 'body only', or none at all, is outside the allowed set whatever Aaron un-hides. */
@@ -24,18 +25,17 @@ export function HiddenNotice({ exercise }: { exercise: Pick<ExerciseSummary, 'id
   const rail = isRail(exercise)
 
   return (
-    <Alert severity="warning" variant="outlined" data-testid="hidden-notice">
-      <Stack spacing={2}>
-        <Box>
-          Hidden: {exercise.excluded_reason ?? 'outside your allowed exercise set'}. The picker and the AI leave it out.
-        </Box>
+    // 2a's warning banner: why it is hidden on the first line, the way back as small buttons under it.
+    <Banner tone="warning" title="Hidden" testId="hidden-notice">
+      <Stack spacing={2} sx={{ mt: '2px' }}>
+        <Box>{sentence((exercise.excluded_reason ?? 'outside your allowed exercise set').replace(/\.$/, ''))}. The picker and the AI leave it out.</Box>
         {unhide.error && <Box sx={{ color: tokens.status.flag }}>{problemText(unhide.error)}</Box>}
         {queued && <Box>Un-hides when you&apos;re back online.</Box>}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
           {!rail && (
             <Button
               variant="outlined"
-              color="inherit"
+              size="small"
               disabled={unhide.isPending || queued}
               onClick={() =>
                 unhide.mutate(
@@ -53,11 +53,11 @@ export function HiddenNotice({ exercise }: { exercise: Pick<ExerciseSummary, 'id
               Un-hide
             </Button>
           )}
-          <Button component={RouterLink} to="/train/equipment" color="inherit">
+          <Button component={RouterLink} to="/train/equipment" variant="outlined" size="small">
             Equipment
           </Button>
         </Box>
       </Stack>
-    </Alert>
+    </Banner>
   )
 }

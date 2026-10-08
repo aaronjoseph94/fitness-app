@@ -1,31 +1,36 @@
-// Owns: small pieces the Data page's cards share — the titled card shell, a labelled determinate progress line,
+// Owns: small pieces the Data page's cards share — the titled 2a card, a labelled determinate progress line,
 // how an instant reads (Edmonton local date and time), byte sizes, and turning a failed call into one sentence.
 import Box from '@mui/material/Box'
-import Card from '@mui/material/Card'
-import LinearProgress from '@mui/material/LinearProgress'
 import { localTime, today } from '@fitness/shared/engine'
 import type { ReactNode } from 'react'
 import { isApiError, problemText } from '../../../api'
-import { formatNumber } from '../../../components'
+import { formatNumber, Panel, ProgressBar, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 
-export function DataCard({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+/** The 2a card every section of the page sits in: title, a 13 px muted description, then the card's own body. */
+export function DataCard({
+  id,
+  title,
+  description,
+  tone,
+  children,
+}: {
+  id: string
+  title: string
+  description?: ReactNode
+  tone?: 'card' | 'panel'
+  children?: ReactNode
+}) {
   return (
-    <Card component="section" aria-labelledby={`${id}-title`} data-testid={`data-${id}`} sx={{ p: 4 }}>
-      <Box
-        component="h2"
-        id={`${id}-title`}
-        sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.3 }}
-      >
-        {title}
-      </Box>
+    <Panel id={id} title={title} description={description} tone={tone} testId={`data-${id}`}>
       {children}
-    </Card>
+    </Panel>
   )
 }
 
+/** A 13 px muted line inside a card body (a status, a caveat). */
 export function Help({ children }: { children: ReactNode }) {
-  return <Box sx={{ mt: 1.5, fontSize: tokens.font.size.small, lineHeight: 1.55, color: tokens.ink.secondary }}>{children}</Box>
+  return <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{children}</Box>
 }
 
 export function ProgressLine({
@@ -41,22 +46,15 @@ export function ProgressLine({
   unit: string
   testId: string
 }) {
-  const value = total > 0 ? Math.min(100, (done / total) * 100) : 0
+  const value = total > 0 ? Math.min(1, done / total) : 0
   return (
-    <Box sx={{ mt: 4 }} data-testid={testId}>
-      <LinearProgress
-        variant="determinate"
-        value={value}
-        aria-label={label}
-        sx={{ height: 8, borderRadius: tokens.radius.chip }}
-      />
-      <Box sx={{ mt: 1.5, display: 'flex', gap: 2, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
-        <Box
-          sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        >
+    <Box data-testid={testId}>
+      <ProgressBar value={value} label={label} />
+      <Box sx={{ mt: 2, display: 'flex', gap: 2, fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
           {label}
         </Box>
-        <Box sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        <Box sx={{ ...tabularNums, whiteSpace: 'nowrap' }}>
           {formatNumber(done)} / {formatNumber(total)} {unit}
         </Box>
       </Box>

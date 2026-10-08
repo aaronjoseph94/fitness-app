@@ -88,9 +88,9 @@ export function FoodIcon({ name, size = 32 }: { name: string; size?: number }) {
         width: size,
         height: size,
         flex: 'none',
-        borderRadius: tokens.radius.chip,
-        bgcolor: tokens.ink.page,
-        border: `1px solid ${tokens.ink.border}`,
+        // 2a's icon tile: the muted fill at the control radius, no outline.
+        borderRadius: `${tokens.radius.control}px`,
+        bgcolor: tokens.ink.fill,
         display: 'grid',
         placeItems: 'center',
       }}

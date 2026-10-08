@@ -1,6 +1,7 @@
 // Owns: the report's screen-only toolbar (hidden in print and in the archived PDF) — back to Progress, previous/next
 // week, Print (the browser dialog), Save PDF (the Worker renders and archives the page; a 501 on local dev shows its
 // message), and Draft / Redraft review (queues the weekly_review job and refreshes when it finishes).
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import PictureAsPdfRounded from '@mui/icons-material/PictureAsPdfRounded'
@@ -16,6 +17,7 @@ import type { ReviewAuthor } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call, isApiError, useApiQuery } from '../../../api'
+import { tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 
 export interface ReportToolbarProps {
@@ -75,18 +77,24 @@ export function ReportToolbar({ week, prevWeek, nextWeek, author, started, onDra
   }
 
   return (
-    <Box className="no-print" sx={{ mb: 4, display: 'grid', gap: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Link component={RouterLink} to="/progress" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, minHeight: tokens.tapTarget, display: 'inline-flex', alignItems: 'center', mr: 'auto' }}>
+    <Box className="no-print" sx={{ mb: 6, display: 'grid', gap: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Button component={RouterLink} to="/progress" color="inherit" size="small" startIcon={<ArrowBackRounded />} sx={{ ml: -2, mr: 'auto', color: tokens.ink.label }}>
           Progress
-        </Link>
-        <IconButton component={RouterLink} to={`/reports/week/${prevWeek}`} aria-label={`Previous week ${prevWeek}`} data-testid="report-prev">
-          <ChevronLeftRounded />
-        </IconButton>
-        <Box sx={{ fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums', color: tokens.ink.secondary }}>{week}</Box>
-        <IconButton component={RouterLink} to={`/reports/week/${nextWeek}`} aria-label={`Next week ${nextWeek}`} data-testid="report-next">
-          <ChevronRightRounded />
-        </IconButton>
+        </Button>
+        <Box
+          role="group"
+          aria-label="Week"
+          sx={{ display: 'inline-flex', alignItems: 'center', gap: '2px', p: '2px', border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.control}px` }}
+        >
+          <IconButton component={RouterLink} to={`/reports/week/${prevWeek}`} size="small" aria-label={`Previous week ${prevWeek}`} data-testid="report-prev">
+            <ChevronLeftRounded fontSize="small" />
+          </IconButton>
+          <Box sx={{ px: 2, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, ...tabularNums, color: tokens.ink.text }}>{week}</Box>
+          <IconButton component={RouterLink} to={`/reports/week/${nextWeek}`} size="small" aria-label={`Next week ${nextWeek}`} data-testid="report-next">
+            <ChevronRightRounded fontSize="small" />
+          </IconButton>
+        </Box>
       </Box>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <Button variant="contained" startIcon={<PrintRounded />} onClick={() => window.print()} data-testid="report-print">

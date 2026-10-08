@@ -2,6 +2,7 @@
 // (tables with row counts, files, export date), the overwrite opt-in, and the restore itself with progress, a resume
 // after a failure (same restore id, from the failed step), and a reload of every screen's data when it finishes.
 import RestoreRounded from '@mui/icons-material/RestoreRounded'
+import UploadFileRounded from '@mui/icons-material/UploadFileRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -11,7 +12,7 @@ import Stack from '@mui/material/Stack'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { apiQueryKey, isApiError } from '../../../api'
-import { formatNumber } from '../../../components'
+import { formatNumber, tabularNums, wellSurface } from '../../../components'
 import { tokens } from '../../../theme'
 import { DataCard, failureText, formatBytes, Help, localStamp, ProgressLine } from './parts'
 import {
@@ -117,173 +118,139 @@ export function RestoreCard({ online }: { online: boolean }) {
   const rowSteps = steps?.steps.filter((s) => s.kind === 'rows').length ?? 0
 
   return (
-    <DataCard id="restore" title="Restore from export">
-      <Alert severity="warning" sx={{ mt: 3 }} data-testid="restore-warning">
-        Restore is for a <b>fresh instance</b>: a new deployment that holds only the seed. It writes every row
-        and file from the export into this app, replacing rows with the same id, and deletes nothing else. It
-        refuses an app that already has logs unless you tick “merge over existing data”.
-      </Alert>
-
-      <input
-        ref={input}
-        type="file"
-        accept=".zip,application/zip"
-        hidden
-        onChange={(e) => void pick(e)}
-        data-testid="restore-file"
-      />
-
-      {state.kind === 'reading' && <Help>Reading {state.name}…</Help>}
-      {pickError && (
-        <Alert severity="error" sx={{ mt: 3 }}>
-          {pickError}
+    <DataCard
+      id="restore"
+      title="Restore from export"
+      description="Write an export zip back into this app: every row and file, with progress, and a resume if it stops."
+    >
+      <Stack spacing={4}>
+        <Alert severity="warning" data-testid="restore-warning">
+          Restore is for a <b>fresh instance</b>: a new deployment that holds only the seed. It writes every row and file from the export into this app,
+          replacing rows with the same id, and deletes nothing else. It refuses an app that already has logs unless you tick “merge over existing data”.
         </Alert>
-      )}
 
-      {files && (
-        <Box sx={{ mt: 4 }} data-testid="restore-preview">
-          <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{files.fileName}</Box>
-          <Help>
-            Exported {localStamp(files.exportedAt)} · {formatNumber(files.totalRows)} rows ·{' '}
-            {formatNumber(files.files.length)} files · {formatBytes(files.zip.byteLength)}
-            {files.missingFiles > 0 && ` · ${files.missingFiles} listed files are not in the zip`}
-          </Help>
-          <Box
-            component="ul"
-            sx={{
-              listStyle: 'none',
-              m: 0,
-              mt: 3,
-              p: 0,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-              columnGap: 4,
-            }}
-          >
-            {files.tables.map((t) => (
-              <Box
-                component="li"
-                key={t.table}
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 2,
-                  py: 1,
-                  fontSize: tokens.font.size.small,
-                  borderBottom: `1px solid ${tokens.ink.border}`,
-                }}
-              >
+        <input ref={input} type="file" accept=".zip,application/zip" hidden onChange={(e) => void pick(e)} data-testid="restore-file" />
+
+        {state.kind === 'reading' && <Help>Reading {state.name}…</Help>}
+        {pickError && <Alert severity="error">{pickError}</Alert>}
+
+        {files && (
+          <Box data-testid="restore-preview">
+            <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.body, overflowWrap: 'anywhere' }}>
+              {files.fileName}
+            </Box>
+            <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, ...tabularNums }}>
+              Exported {localStamp(files.exportedAt)} · {formatNumber(files.totalRows)} rows · {formatNumber(files.files.length)} files ·{' '}
+              {formatBytes(files.zip.byteLength)}
+              {files.missingFiles > 0 && ` · ${files.missingFiles} listed files are not in the zip`}
+            </Box>
+            <Box
+              component="ul"
+              aria-label="Tables in this export"
+              sx={{
+                ...wellSurface,
+                listStyle: 'none',
+                m: 0,
+                mt: 3,
+                px: 4,
+                py: 1,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                columnGap: 6,
+              }}
+            >
+              {files.tables.map((t) => (
                 <Box
+                  component="li"
+                  key={t.table}
                   sx={{
-                    color: tokens.ink.secondary,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    py: 2,
+                    fontSize: tokens.font.size.small,
+                    lineHeight: tokens.font.leading.small,
+                    borderBottom: `1px solid ${tokens.ink.border}`,
                   }}
                 >
-                  {label(t.table)}
+                  <Box sx={{ color: tokens.ink.secondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label(t.table)}</Box>
+                  <Box sx={{ ...tabularNums, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>{formatNumber(t.rows)}</Box>
                 </Box>
-                <Box sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: tokens.font.weight.label }}>
-                  {formatNumber(t.rows)}
-                </Box>
-              </Box>
-            ))}
+              ))}
+            </Box>
           </Box>
-        </Box>
-      )}
+        )}
 
-      {state.kind === 'preview' && (
-        <FormControlLabel
-          sx={{
-            mt: 3,
-            alignItems: 'flex-start',
-            '& .MuiFormControlLabel-label': { pt: 1.25, fontSize: tokens.font.size.small, lineHeight: 1.45 },
-          }}
-          control={
-            <Checkbox
-              checked={overwrite}
-              onChange={(e) => setOverwrite(e.target.checked)}
-              data-testid="restore-overwrite"
-            />
-          }
-          label="Merge over existing data. Only if this app already has logs and you mean to write the export over them."
-        />
-      )}
-
-      {state.kind === 'running' && steps && (
-        <ProgressLine
-          testId="restore-progress"
-          done={steps.done}
-          total={steps.steps.length}
-          label={stepLabel(steps.steps[steps.done])}
-          unit={`steps (${rowSteps} pages, ${steps.steps.length - rowSteps} files)`}
-        />
-      )}
-
-      {state.kind === 'failed' && (
-        <Alert severity="error" sx={{ mt: 4 }} data-testid="restore-error">
-          {state.message}
-        </Alert>
-      )}
-
-      {state.kind === 'done' && (
-        <Alert severity="success" sx={{ mt: 4 }} data-testid="restore-done">
-          Restored {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)}{' '}
-          files. Every screen now shows the restored data.
-        </Alert>
-      )}
-
-      <Stack direction="row" spacing={2} useFlexGap sx={{ mt: 4, flexWrap: 'wrap' }}>
         {state.kind === 'preview' && (
-          <Button
-            variant="contained"
-            color="warning"
-            startIcon={<RestoreRounded />}
-            disabled={!online}
-            onClick={() => start(state.opened)}
-            sx={{ minHeight: 44 }}
-            data-testid="restore-start"
-          >
-            Restore {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)}{' '}
-            files
-          </Button>
+          <FormControlLabel
+            sx={{
+              m: 0,
+              alignItems: 'flex-start',
+              gap: 1,
+              '& .MuiFormControlLabel-label': { pt: '9px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body },
+            }}
+            control={<Checkbox checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} data-testid="restore-overwrite" sx={{ ml: '-9px' }} />}
+            label="Merge over existing data. Only if this app already has logs and you mean to write the export over them."
+          />
         )}
-        {state.kind === 'failed' && !state.notFresh && (
-          <Button
-            variant="contained"
-            disabled={!online}
-            onClick={() => void go(state.opened, state.run)}
-            sx={{ minHeight: 44 }}
-          >
-            Resume
-          </Button>
+
+        {state.kind === 'running' && steps && (
+          <ProgressLine
+            testId="restore-progress"
+            done={steps.done}
+            total={steps.steps.length}
+            label={stepLabel(steps.steps[steps.done])}
+            unit={`steps (${rowSteps} pages, ${steps.steps.length - rowSteps} files)`}
+          />
         )}
-        {state.kind === 'failed' && state.notFresh && (
-          <Button
-            variant="contained"
-            onClick={() => setState({ kind: 'preview', opened: state.opened })}
-            sx={{ minHeight: 44 }}
-          >
-            Back
-          </Button>
+
+        {state.kind === 'failed' && (
+          <Alert severity="error" data-testid="restore-error">
+            {state.message}
+          </Alert>
         )}
-        {state.kind === 'running' ? (
-          <Button onClick={() => abort.current?.abort()} sx={{ minHeight: 44 }}>
-            Stop
-          </Button>
-        ) : (
-          <Button
-            variant={state.kind === 'idle' || state.kind === 'reading' ? 'outlined' : 'text'}
-            disabled={state.kind === 'reading'}
-            onClick={() => input.current?.click()}
-            sx={{ minHeight: 44 }}
-            data-testid="restore-pick"
-          >
-            {state.kind === 'idle' || state.kind === 'reading' ? 'Choose export zip' : 'Choose another zip'}
-          </Button>
+
+        {state.kind === 'done' && (
+          <Alert severity="success" data-testid="restore-done">
+            Restored {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)} files. Every screen now shows the restored
+            data.
+          </Alert>
         )}
+
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' }}>
+          {state.kind === 'preview' && (
+            <Button variant="contained" color="warning" startIcon={<RestoreRounded />} disabled={!online} onClick={() => start(state.opened)} data-testid="restore-start">
+              Restore {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)} files
+            </Button>
+          )}
+          {state.kind === 'failed' && !state.notFresh && (
+            <Button variant="contained" disabled={!online} onClick={() => void go(state.opened, state.run)}>
+              Resume
+            </Button>
+          )}
+          {state.kind === 'failed' && state.notFresh && (
+            <Button variant="contained" onClick={() => setState({ kind: 'preview', opened: state.opened })}>
+              Back
+            </Button>
+          )}
+          {state.kind === 'running' ? (
+            <Button variant="outlined" onClick={() => abort.current?.abort()}>
+              Stop
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              startIcon={state.kind === 'idle' || state.kind === 'reading' ? <UploadFileRounded /> : undefined}
+              disabled={state.kind === 'reading'}
+              onClick={() => input.current?.click()}
+              data-testid="restore-pick"
+            >
+              {state.kind === 'idle' || state.kind === 'reading' ? 'Choose export zip' : 'Choose another zip'}
+            </Button>
+          )}
+          {state.kind === 'running' && <Help>Keep this screen open until the restore finishes.</Help>}
+        </Box>
       </Stack>
-      {state.kind === 'running' && <Help>Keep this screen open until the restore finishes.</Help>}
     </DataCard>
   )
 }

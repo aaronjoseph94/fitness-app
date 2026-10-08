@@ -60,9 +60,9 @@ export function MaskEditor({ sheet, box, onChange }: { sheet: HTMLCanvasElement;
         position: 'absolute',
         width: 28,
         height: 28,
-        borderRadius: tokens.radius.chip,
+        borderRadius: `${tokens.radius.pill}px`,
         bgcolor: tokens.ink.card,
-        border: `3px solid ${tokens.metric.weight}`,
+        border: `3px solid ${tokens.accent.main}`,
         touchAction: 'none',
         cursor: 'nwse-resize',
         ...(mode === 'se' ? { right: 2, bottom: 2 } : { left: 2, top: 2 }),
@@ -71,7 +71,7 @@ export function MaskEditor({ sheet, box, onChange }: { sheet: HTMLCanvasElement;
   )
 
   return (
-    <Box ref={frame} data-testid="scan-mask-editor" sx={{ position: 'relative', width: '100%', userSelect: 'none', border: `1px solid ${tokens.ink.border}`, borderRadius: 2, overflow: 'hidden', touchAction: 'pan-y' }}>
+    <Box ref={frame} data-testid="scan-mask-editor" sx={{ position: 'relative', width: '100%', userSelect: 'none', border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', touchAction: 'pan-y' }}>
       <Box component="canvas" ref={view} aria-label="The result sheet" sx={{ display: 'block', width: '100%', height: 'auto' }} />
       <Box
         data-testid="scan-mask-box"
@@ -87,7 +87,7 @@ export function MaskEditor({ sheet, box, onChange }: { sheet: HTMLCanvasElement;
           width: `${box.w * 100}%`,
           height: `${box.h * 100}%`,
           bgcolor: MASK_COLOUR,
-          outline: `2px dashed ${tokens.metric.weight}`,
+          outline: `2px dashed ${tokens.accent.main}`,
           outlineOffset: 2,
           cursor: 'move',
           touchAction: 'none',

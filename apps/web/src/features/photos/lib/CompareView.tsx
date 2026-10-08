@@ -5,11 +5,9 @@ import MenuItem from '@mui/material/MenuItem'
 import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import type { ProgressPhoto } from '@fitness/shared/schemas'
 import { useRef, useState, type PointerEvent } from 'react'
-import { formatNumber, formatSigned } from '../../../components'
+import { formatNumber, formatSigned, Panel, Segmented, tabularNums } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
 import { POSE_LABEL } from './data'
 import { PhotoFacts, PhotoImage } from './PhotoParts'
@@ -63,42 +61,49 @@ function changeText(before: ProgressPhoto, after: ProgressPhoto): string {
 
 export function CompareView({ photos, before, after, mode, onChange }: CompareViewProps) {
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="photo-compare">
-      <Stack direction="row" spacing={2}>
-        <PhotoSelect label="Before" value={before.id} photos={photos} onPick={(id) => onChange({ before: id })} />
-        <PhotoSelect label="After" value={after.id} photos={photos} onPick={(id) => onChange({ after: id })} />
-      </Stack>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3, flexWrap: 'wrap' }}>
-        <ToggleButtonGroup
-          value={mode}
-          exclusive
-          size="small"
-          onChange={(_, next: CompareMode | null) => next && onChange({ mode: next })}
-          aria-label="Compare as"
-          sx={{ '& .MuiToggleButton-root': { minHeight: tokens.tapTarget, px: 4, textTransform: 'none', fontWeight: tokens.font.weight.label } }}
-        >
-          <ToggleButton value="side">Side by side</ToggleButton>
-          <ToggleButton value="slider">Slider</ToggleButton>
-        </ToggleButtonGroup>
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.metric.weight, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
+    <Panel
+      title="Compare two photos"
+      description={
+        <Box component="span" sx={{ color: tokens.ink.label, fontWeight: tokens.font.weight.label, ...tabularNums }}>
           {changeText(before, after)}
         </Box>
-      </Box>
-      {mode === 'side' ? (
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-          {[before, after].map((p, i) => (
-            <Box key={`${i}-${p.id}`} sx={{ minWidth: 0 }}>
-              <Box sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}` }}>
-                <PhotoImage photo={p} eager />
+      }
+      actions={
+        <Segmented
+          ariaLabel="Compare as"
+          tone="outline"
+          size="small"
+          value={mode}
+          onChange={(next) => onChange({ mode: next })}
+          options={[
+            { value: 'side', label: 'Side by side' },
+            { value: 'slider', label: 'Slider' },
+          ]}
+        />
+      }
+      testId="photo-compare"
+    >
+      <Stack spacing={4}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
+          <PhotoSelect label="Before" value={before.id} photos={photos} onPick={(id) => onChange({ before: id })} />
+          <PhotoSelect label="After" value={after.id} photos={photos} onPick={(id) => onChange({ after: id })} />
+        </Stack>
+        {mode === 'side' ? (
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+            {[before, after].map((p, i) => (
+              <Box key={`${i}-${p.id}`} sx={{ minWidth: 0 }}>
+                <Box sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill }}>
+                  <PhotoImage photo={p} eager />
+                </Box>
+                <PhotoFacts photo={p} showPose />
               </Box>
-              <PhotoFacts photo={p} showPose />
-            </Box>
-          ))}
-        </Box>
-      ) : (
-        <RevealSlider before={before} after={after} />
-      )}
-    </Stack>
+            ))}
+          </Box>
+        ) : (
+          <RevealSlider before={before} after={after} />
+        )}
+      </Stack>
+    </Panel>
   )
 }
 
@@ -123,7 +128,7 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
     dragging.current = false
   }
 
-  const label = { position: 'absolute', top: 8, px: 2, py: 0.5, borderRadius: `${tokens.radius.chip}px`, fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, bgcolor: withAlpha(tokens.ink.card, 0.85), color: tokens.ink.text, pointerEvents: 'none' } as const
+  const label = { position: 'absolute', top: 8, px: 2, py: '3px', borderRadius: `${tokens.radius.badge}px`, fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, bgcolor: withAlpha(tokens.ink.card, 0.9), color: tokens.ink.text, pointerEvents: 'none' } as const
 
   return (
     <Stack spacing={2} data-testid="photo-compare-slider">
@@ -139,9 +144,10 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
           maxWidth: 480,
           mx: 'auto',
           aspectRatio: '3 / 4',
-          borderRadius: `${tokens.radius.card}px`,
+          borderRadius: `${tokens.radius.control}px`,
           overflow: 'hidden',
           border: `1px solid ${tokens.ink.border}`,
+          bgcolor: tokens.ink.fill,
           touchAction: 'none',
           userSelect: 'none',
           cursor: 'ew-resize',
