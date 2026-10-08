@@ -85,7 +85,7 @@ type PushNotification = import('@fitness/shared/schemas').PushNotification
 
 /** The payload, read defensively: a malformed push still shows something and opens the app. */
 function readPush(data: PushMessageData | null): PushNotification {
-  const fallback: PushNotification = { title: 'Fitness', body: '', url: '/', tag: 'fitness' }
+  const fallback: PushNotification = { title: "Aaron's Fitness Tracker", body: '', url: '/', tag: 'fitness' }
   if (!data) return fallback
   try {
     const p = data.json() as Partial<Record<keyof PushNotification, unknown>>

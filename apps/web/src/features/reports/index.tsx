@@ -10,6 +10,7 @@ import { today } from '@fitness/shared/engine'
 import { useCallback, useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useParams, useSearchParams } from 'react-router'
+import { APP_NAME } from '../../app/brand'
 import { EagerCharts } from '../../charts'
 import { formatNumber, formatSigned } from '../../components'
 import { PrintStyles } from './lib/parts'
@@ -43,7 +44,7 @@ export function WeeklyReportPage() {
 
 function BadWeek({ week }: { week: string }) {
   useEffect(() => {
-    document.title = 'Report not found · Fitness'
+    document.title = `Report not found · ${APP_NAME}`
   }, [])
   return (
     <Alert severity="warning" data-testid="report-bad-week">
@@ -60,7 +61,7 @@ function Report({ range }: { range: { week: string; from: string; to: string } }
   const { refetch } = data
   // The document title names the week: it is the tab title and the saved PDF's title.
   useEffect(() => {
-    document.title = `Week ${Number(range.week.slice(-2))} report · Fitness`
+    document.title = `Week ${Number(range.week.slice(-2))} report · ${APP_NAME}`
   }, [range.week])
   const onDrafted = useCallback(() => void refetch(), [refetch])
   const m = data.metrics

@@ -3,6 +3,7 @@
 // its chrome.
 import { useMatches } from 'react-router'
 import type { TabKey } from '../ui-store'
+import { APP_NAME } from '../brand'
 
 export type PageWidth = 'narrow' | 'wide'
 
@@ -31,7 +32,7 @@ export interface RouteHandle {
   quickLog?: boolean
 }
 
-const FALLBACK: RouteHandle = { title: 'Fitness' }
+const FALLBACK: RouteHandle = { title: APP_NAME }
 
 function isRouteHandle(handle: unknown): handle is RouteHandle {
   return typeof handle === 'object' && handle !== null && typeof (handle as RouteHandle).title === 'string'

@@ -185,8 +185,9 @@ export default defineConfig({
       },
       manifest: {
         id: '/',
-        name: 'Fitness',
-        short_name: 'Fitness',
+        name: "Aaron's Fitness Tracker",
+        // The home-screen label: iOS shows about twelve characters before it ellipsises.
+        short_name: "Aaron's Fitness",
         description: "Aaron's AI-first fitness tracker",
         lang: 'en-CA',
         start_url: '/',

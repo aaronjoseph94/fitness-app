@@ -16,6 +16,7 @@ import { Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { visuallyHidden } from '../../../components'
 import { tokens } from '../../../theme'
 import { useUiStore } from '../../ui-store'
+import { APP_NAME } from '../../brand'
 import { useRouteHandle } from '../route-handle'
 import { tabByKey } from '../tabs'
 import { AskAiHost } from './AskAiHost'
@@ -68,7 +69,7 @@ export function AppShell() {
   }, [tab, setLastTab])
 
   useEffect(() => {
-    document.title = tab === 'today' ? 'Fitness' : `${title} · Fitness`
+    document.title = tab === 'today' ? APP_NAME : `${title} · ${APP_NAME}`
   }, [tab, title])
 
   return (

@@ -1,5 +1,5 @@
 // Owns: the bar at the top of every in-app page. From `md` up it is 2a's 56 px header: the sidebar toggle, the
-// breadcrumb ("Fitness › Train › Session"), the search field that opens the ⌘K command palette, "Ask AI" (the slide-up
+// breadcrumb ("Aaron's Fitness Tracker › Train › Session"), the search field that opens the ⌘K command palette, "Ask AI" (the slide-up
 // panel; not on the AI tab, which is the chat), Reminders, and the avatar that opens Settings. On a phone it is the
 // slim top bar: a back arrow on a page below a tab (the brand tile on a tab), the page's name once the page's own title
 // has scrolled under it, the sync chip, Ask AI and Settings. Either one shows a thin progress line while a lazy page
@@ -24,6 +24,7 @@ import { outlinedIconButton } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens, transitionOf } from '../../../theme'
 import { useUiStore } from '../../ui-store'
 import type { Crumb } from '../route-handle'
+import { APP_NAME } from '../../brand'
 import { tabByKey } from '../tabs'
 import { BrandTile } from './BrandTile'
 import { HEADER_HEIGHT, safeArea, shellColumnSx } from './layout'
@@ -123,7 +124,7 @@ function Breadcrumb({ title, trail }: { title: string; trail: readonly Crumb[] }
   const separator = (
     <ChevronRightRounded aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint, flex: 'none' }} />
   )
-  // On a tight row the steps after "Fitness" give way with an ellipsis (the page's own name last) rather than running
+  // On a tight row the steps after the app name give way with an ellipsis (the page's own name last) rather than running
   // under the search field; each keeps its first letters.
   const step = { display: 'flex', alignItems: 'center', gap: 2, minWidth: 'calc(24px + 2.5em)' } as const
   const clip = {
@@ -166,7 +167,7 @@ function Breadcrumb({ title, trail }: { title: string; trail: readonly Crumb[] }
         }}
       >
         <Box component="li" sx={{ flex: 'none' }}>
-          {link({ title: 'Fitness', path: '/' })}
+          {link({ title: APP_NAME, path: '/' })}
         </Box>
         {trail.map((crumb) => (
           <Box component="li" key={crumb.path} sx={step}>

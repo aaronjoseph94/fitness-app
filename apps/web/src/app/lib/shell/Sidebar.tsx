@@ -16,8 +16,9 @@ import { visuallyHidden } from '../../../components'
 import { tokens, transitionOf } from '../../../theme'
 import { BODY_DESTINATIONS, SETTINGS_DESTINATION, TABS, type Destination } from '../tabs'
 import { BrandTile } from './BrandTile'
+import { APP_NAME } from '../../brand'
 import { navInset, safeArea } from './layout'
-import { AccountStatus, OWNER } from './SyncStatus'
+import { AccountStatus } from './SyncStatus'
 
 export const SIDEBAR_ID = 'app-sidebar'
 
@@ -201,21 +202,25 @@ export function Sidebar({ collapsed, pagePath, sectionPath }: SidebarProps) {
         }}
       >
         <BrandTile />
-        <Box sx={collapsed ? visuallyHidden : { flex: 1, minWidth: 0 }}>
-          <Box
-            sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}
-          >
-            Fitness
-          </Box>
-          <Box
-            sx={{
-              fontSize: tokens.font.size.caption,
-              lineHeight: tokens.font.leading.caption,
-              color: tokens.ink.muted,
-            }}
-          >
-            {OWNER.name}’s tracker
-          </Box>
+        {/* One line at 13 px: the full name fits the 240 px sidebar beside the tile; the ellipsis is a safety net only. */}
+        <Box
+          sx={
+            collapsed
+              ? visuallyHidden
+              : {
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: tokens.font.size.small,
+                  fontWeight: tokens.font.weight.heading,
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.01em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }
+          }
+        >
+          {APP_NAME}
         </Box>
       </Box>
 

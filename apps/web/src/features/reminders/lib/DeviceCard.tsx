@@ -20,7 +20,7 @@ function InstallSteps() {
         In Safari, tap Share <IosShareRounded aria-label="Share" sx={{ fontSize: tokens.font.size.body, verticalAlign: '-3px' }} />, then{' '}
         <b>Add to Home Screen</b>.
       </li>
-      <li>Open Fitness from your Home Screen.</li>
+      <li>Open Aaron’s Fitness from your Home Screen.</li>
       <li>Come back to Settings → Reminders and tap Enable notifications.</li>
     </Box>
   )
@@ -52,7 +52,7 @@ export function DeviceCard({ device, online, onDone }: { device: PushDevice; onl
     description = (
       <>
         Notifications are blocked for this app.{' '}
-        {isIos() ? 'Turn them on in iPhone Settings → Notifications → Fitness.' : 'Allow them in this site’s settings in your browser, then reload.'}
+        {isIos() ? 'Turn them on in iPhone Settings → Notifications → Aaron’s Fitness.' : 'Allow them in this site’s settings in your browser, then reload.'}
       </>
     )
   } else if (subscribed) {
