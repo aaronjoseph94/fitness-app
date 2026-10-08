@@ -10,6 +10,9 @@ export const SecretName = z.enum([
   'ZAI_API_KEY',
   'OPENROUTER_API_KEY',
   'GROQ_API_KEY',
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'GEMINI_PAID_API_KEY',
   'USDA_FDC_API_KEY',
   'MCP_BEARER_TOKEN',
   'HEALTH_WEBHOOK_TOKEN',
@@ -17,15 +20,26 @@ export const SecretName = z.enum([
 export type SecretName = z.infer<typeof SecretName>
 
 /**
- * The LLM provider keys (SPEC §9). The router's chain order is data in the Worker's providers.json (Groq → OpenRouter →
- * Gemini last). This array is the name set only — Settings UI order lives in apps/web secrets.ts.
+ * The LLM provider keys (SPEC §9). The router's chain order is data in the Worker's providers.json (paid models first
+ * when their key is set, then Groq → OpenRouter → Gemini last). This array is the name set only — Settings UI order
+ * lives in apps/web secrets.ts.
  */
 export const LLM_SECRET_NAMES = [
   'GEMINI_API_KEY',
   'ZAI_API_KEY',
   'OPENROUTER_API_KEY',
   'GROQ_API_KEY',
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'GEMINI_PAID_API_KEY',
 ] as const satisfies readonly SecretName[]
+
+/**
+ * The pay-as-you-go keys (SPEC §9 "Paid models"), in the order the router tries them: Claude (Anthropic), ChatGPT
+ * (OpenAI), Gemini Pro. Google issues one key for both tiers, so the Pro model has its own name: setting it is the
+ * opt-in (a free-only key would make every call fail over through a billing error first).
+ */
+export const PAID_SECRET_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_PAID_API_KEY'] as const satisfies readonly SecretName[]
 
 /** Where a configured secret's value comes from: stored by the app, or a Worker secret (wrangler / dashboard). */
 export const SecretSource = z.enum(['app', 'env', 'none'])

@@ -1,9 +1,29 @@
 {
-  "$comment": "Owns: the LLM router's data — free-tier providers, exact model ids, per-quota RPM/RPD/TPM/TPD limits and the chains per job kind. Limits change: update the numbers and `checked`, not the code. Moved from SPEC §9's src/ai/providers.json into the llm module (apps/worker/src/modules/llm/providers.json). Text chain priority (Aaron, 2026-10-06): Groq → OpenRouter → Gemini last. Vision has no Groq model, so OpenRouter leads vision with Gemini last.",
-  "checked": "2026-10-06",
+  "$comment": "Owns: the LLM router's data — providers, exact model ids, per-quota RPM/RPD/TPM/TPD limits and the chains per job kind. Limits change: update the numbers and `checked`, not the code. Moved from SPEC §9's src/ai/providers.json into the llm module (apps/worker/src/modules/llm/providers.json). Paid models (SPEC §9, 2026-10-08) are plain entries marked `paid: true` that lead both chains — Claude → ChatGPT → Gemini Pro — and are tried only when their key is set (the router skips a model without a key as no_key), so setting a key opts in and removing it falls back to the free chain; each paid quota's rpd is our own cost cap of 200 requests/day per provider (background jobs stop at 80 % of it), not the provider's limit. Free text chain priority (Aaron, 2026-10-06): Groq → OpenRouter → Gemini last. Vision has no Groq model, so OpenRouter leads free vision with Gemini last.",
+  "checked": "2026-10-08",
   "background_share": 0.8,
   "retry": { "max_retries": 1, "base_ms": 400, "max_wait_ms": 3000 },
   "providers": {
+    "anthropic": {
+      "api": "anthropic",
+      "base_url": "https://api.anthropic.com/v1",
+      "key_env": "ANTHROPIC_API_KEY",
+      "headers": { "anthropic-version": "2023-06-01" },
+      "source": "https://platform.claude.com/docs/en/api/messages — pay-as-you-go; prices per MTok in/out on each model's note."
+    },
+    "openai": {
+      "api": "openai",
+      "base_url": "https://api.openai.com/v1",
+      "key_env": "OPENAI_API_KEY",
+      "max_tokens_param": "max_completion_tokens",
+      "source": "https://developers.openai.com/api/docs/pricing — pay-as-you-go; reasoning models take max_completion_tokens, not max_tokens."
+    },
+    "gemini-paid": {
+      "api": "gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "key_env": "GEMINI_PAID_API_KEY",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing — Google issues one key for both tiers; GEMINI_PAID_API_KEY is the same key with billing on, named apart so setting it is the opt-in (a free-only key would fail every Pro call over with a billing error first)."
+    },
     "gemini": {
       "api": "gemini",
       "base_url": "https://generativelanguage.googleapis.com/v1beta",
@@ -31,6 +51,30 @@
     }
   },
   "quotas": {
+    "anthropic-paid": {
+      "rpm": 20,
+      "rpd": 200,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Our own cost cap, not Anthropic's limit: 200 requests/day shared by the Claude models; background jobs stop at 80 %."
+    },
+    "openai-paid": {
+      "rpm": 20,
+      "rpd": 200,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Our own cost cap, not OpenAI's limit: 200 requests/day shared by the ChatGPT models; background jobs stop at 80 %."
+    },
+    "gemini-paid": {
+      "rpm": 20,
+      "rpd": 200,
+      "tpm": null,
+      "tpd": null,
+      "day_tz": "UTC",
+      "note": "Our own cost cap, not Google's limit: 200 requests/day for Gemini Pro; background jobs stop at 80 %."
+    },
     "gemini-3.8-flash": {
       "rpm": 10,
       "rpd": 250,
@@ -77,12 +121,84 @@
       "tpm": null,
       "tpd": null,
       "day_tz": "UTC",
-      "note": "Shared by every :free model on the account. Second in the text chain after Groq; this daily cap is reached before Gemini is tried."
+      "note": "Shared by every :free model on the account. Second in the free text chain after Groq; this daily cap is reached before Gemini is tried."
     },
     "groq-gpt-oss-120b": { "rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "day_tz": "UTC" },
     "groq-qwen3.8-27b": { "rpm": 30, "rpd": 1000, "tpm": 8000, "tpd": 200000, "day_tz": "UTC" }
   },
   "models": {
+    "anthropic-opus-5-5": {
+      "provider": "anthropic",
+      "model": "claude-opus-5-5",
+      "quota": "anthropic-paid",
+      "vision": true,
+      "tools": true,
+      "json": "prompt",
+      "params": { "output_config": { "effort": "low" } },
+      "timeout_ms": 24000,
+      "paid": true,
+      "note": "$4 in / $20 out per MTok (2026-10-08). Swap the chain entry for anthropic-sonnet-5-5 or anthropic-haiku-5-5 to spend less."
+    },
+    "anthropic-sonnet-5-5": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "quota": "anthropic-paid",
+      "vision": true,
+      "tools": true,
+      "json": "prompt",
+      "params": { "output_config": { "effort": "low" } },
+      "timeout_ms": 24000,
+      "paid": true,
+      "note": "$2 in / $10 out per MTok (2026-10-08). Not in a chain: edit the chain line to use it."
+    },
+    "anthropic-haiku-5-5": {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "quota": "anthropic-paid",
+      "vision": true,
+      "tools": true,
+      "json": "prompt",
+      "params": { "output_config": { "effort": "low" } },
+      "timeout_ms": 24000,
+      "paid": true,
+      "note": "$0.10 in / $0.50 out per MTok (2026-10-08). Not in a chain: edit the chain line to use it."
+    },
+    "openai-gpt-6.1-sol": {
+      "provider": "openai",
+      "model": "gpt-6.1-sol",
+      "quota": "openai-paid",
+      "vision": true,
+      "tools": true,
+      "json": "json_schema",
+      "params": { "reasoning_effort": "low" },
+      "timeout_ms": 24000,
+      "paid": true,
+      "note": "$2 in / $10 out per MTok (2026-10-08). The flagship gpt-6-astra is $10 / $50; openai-gpt-6-luna below is the cheap option."
+    },
+    "openai-gpt-6-luna": {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "quota": "openai-paid",
+      "vision": true,
+      "tools": true,
+      "json": "json_schema",
+      "params": { "reasoning_effort": "low" },
+      "timeout_ms": 24000,
+      "paid": true,
+      "note": "$0.10 in / $0.50 out per MTok (2026-10-08). Not in a chain: edit the chain line to use it."
+    },
+    "gemini-pro": {
+      "provider": "gemini-paid",
+      "model": "gemini-3.1-pro-preview",
+      "quota": "gemini-paid",
+      "vision": true,
+      "tools": true,
+      "json": "native",
+      "params": { "thinkingConfig": { "thinkingLevel": "low" } },
+      "timeout_ms": 24000,
+      "paid": true,
+      "note": "$2 in / $12 out per MTok up to 200k context (2026-10-08). Paid only: no free tier."
+    },
     "gemini-flash": {
       "provider": "gemini",
       "model": "gemini-3.8-flash",
@@ -172,6 +288,9 @@
   },
   "chains": {
     "text": [
+      "anthropic-opus-5-5",
+      "openai-gpt-6.1-sol",
+      "gemini-pro",
       "groq-gpt-oss-120b",
       "groq-qwen3.8-27b",
       "openrouter-qwen3.8-27b",
@@ -181,6 +300,14 @@
       "gemini-flash",
       "gemini-flash-lite"
     ],
-    "vision": ["openrouter-qwen3.8-27b", "glm-4.6v-flash", "gemini-flash", "gemini-flash-lite"]
+    "vision": [
+      "anthropic-opus-5-5",
+      "openai-gpt-6.1-sol",
+      "gemini-pro",
+      "openrouter-qwen3.8-27b",
+      "glm-4.6v-flash",
+      "gemini-flash",
+      "gemini-flash-lite"
+    ]
   }
 }

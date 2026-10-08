@@ -1,6 +1,7 @@
 // Owns: the Settings tab's two 2026-10-06 promises — every profile field is editable and a save persists (no
 // read-only profile rows), and the rows that were deliberately removed stay removed (the breakfast switch, the
-// styleguide link and its route).
+// styleguide link and its route) — and the AI page's 2026-10-08 one: the paid models (Claude, ChatGPT, Gemini Pro)
+// are key rows of their own, above the free tiers.
 import { expect, test } from './support'
 
 /** Every profile field the page must expose as a row (the shared ProfilePatch, in the page's order). */
@@ -70,4 +71,25 @@ test('the removed rows and routes are gone', async ({ page }) => {
 
   await page.goto('/styleguide')
   await expect(page.getByRole('heading', { name: 'Page not found', level: 2 })).toBeVisible()
+})
+
+/** The paid keys in the router's order (SPEC §9 "Paid models"); each is a secret row like the free ones. */
+const PAID_KEYS = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_PAID_API_KEY'] as const
+
+test('the AI page offers the paid models above the free tiers', async ({ page }) => {
+  await page.goto('/settings/ai')
+  await expect(page.getByRole('heading', { name: 'AI and Claude', level: 1 })).toBeVisible()
+
+  await expect(page.getByRole('heading', { name: 'Paid models', level: 2, exact: true })).toBeVisible()
+  // The e2e Worker has no LLM keys at all (playwright.config.ts), so every paid row reads as not set.
+  for (const name of PAID_KEYS) {
+    const row = page.getByTestId(`secret-${name}`)
+    await expect(row, `${name} row`).toBeVisible()
+    await expect(row, `${name} is not set on the e2e Worker`).toContainText('Not set')
+  }
+
+  // Tried before the free tiers, so listed before them.
+  const paid = await page.getByTestId('settings-paid').boundingBox()
+  const free = await page.getByTestId('settings-models').boundingBox()
+  expect(paid && free && paid.y < free.y, 'the paid card sits above the free Models card').toBe(true)
 })

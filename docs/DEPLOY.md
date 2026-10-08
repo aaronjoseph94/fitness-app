@@ -54,8 +54,10 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | `OPENROUTER_API_KEY` | Primary LLM (free `:free` models) | openrouter.ai → Keys |
 | `GEMINI_API_KEY` | Fallback LLM (free tier) | aistudio.google.com → Get API key |
 | `ZAI_API_KEY` | GLM fallback (free Flash models) | z.ai → API keys |
-| `OPENROUTER_API_KEY` | `:free` model fallback (50 req/day; 1,000/day after a one-time $10 top-up) | openrouter.ai → Keys |
 | `GROQ_API_KEY` | Fast text fallback | console.groq.com → API keys |
+| `ANTHROPIC_API_KEY` | Optional, pay as you go: puts Claude Opus 5.5 first for every AI job, capped by the app at 200 requests/day. Set it here or in the app under Settings → AI | console.anthropic.com → API keys (a Claude Pro subscription does not include this) |
+| `OPENAI_API_KEY` | Optional, pay as you go: GPT-6.1 Sol, tried after Claude, same cap | platform.openai.com → API keys (a ChatGPT Plus subscription does not include this) |
+| `GEMINI_PAID_API_KEY` | Optional, pay as you go: Gemini 3.1 Pro, tried after ChatGPT, same cap. The same Google key as `GEMINI_API_KEY` with billing turned on; setting this name is the opt-in | aistudio.google.com → Get API key, then turn on billing |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push keys | `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts` |
 | `VAPID_SUBJECT` | `mailto:` contact for push services | your email |
 

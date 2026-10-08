@@ -7,10 +7,20 @@ import raw from '../providers.json'
 const Count = z.number().int().positive()
 
 const ProviderSpec = z.object({
-  api: z.enum(['gemini', 'openai']),
+  api: z.enum(['gemini', 'openai', 'anthropic']),
   base_url: z.url(),
-  key_env: z.enum(['GEMINI_API_KEY', 'ZAI_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY']),
+  key_env: z.enum([
+    'GEMINI_API_KEY',
+    'ZAI_API_KEY',
+    'OPENROUTER_API_KEY',
+    'GROQ_API_KEY',
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'GEMINI_PAID_API_KEY',
+  ]),
   headers: z.record(z.string(), z.string()).optional(),
+  /** The output-cap key of an OpenAI-compatible body: OpenAI's own reasoning models reject `max_tokens`. */
+  max_tokens_param: z.enum(['max_tokens', 'max_completion_tokens']).default('max_tokens'),
 })
 export type ProviderSpec = z.infer<typeof ProviderSpec>
 
@@ -34,9 +44,11 @@ const ModelSpec = z.object({
   tools: z.boolean(),
   /** native: Gemini responseJsonSchema; json_schema / json_object: OpenAI response_format; prompt: schema in the system prompt only. */
   json: z.enum(['native', 'json_schema', 'json_object', 'prompt']),
-  /** Provider-specific request params merged into generationConfig (Gemini) or the body (OpenAI-compatible). */
+  /** Provider-specific request params merged into generationConfig (Gemini) or the body (OpenAI-compatible, Anthropic). */
   params: z.record(z.string(), z.json()).optional(),
   timeout_ms: Count.default(20_000),
+  /** Pay-as-you-go (SPEC §9 "Paid models"): tried first when its key is set, capped by its own quota's rpd. */
+  paid: z.boolean().default(false),
 })
 export type ModelSpec = z.infer<typeof ModelSpec>
 

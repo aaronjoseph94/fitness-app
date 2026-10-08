@@ -3,6 +3,7 @@
 // usage rows. Logs carry provider, model, reason and status only: never prompt, image or reply content.
 import * as z from 'zod'
 import type { Deps } from '../../../lib/deps'
+import { anthropicAdapter } from './anthropic'
 import {
   candidatesFor,
   defaultConfig,
@@ -63,7 +64,7 @@ const MIN_ATTEMPT_MS = 1_000
 const DEFAULT_COOLDOWN_MS = 60_000
 const DAILY_QUOTA_COOLDOWN_MS = 60 * 60_000
 
-const adapters = { gemini: geminiAdapter, openai: openaiAdapter } as const
+const adapters = { gemini: geminiAdapter, openai: openaiAdapter, anthropic: anthropicAdapter } as const
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 export function createRouter(deps: Deps, opts: RouterOptions = {}) {

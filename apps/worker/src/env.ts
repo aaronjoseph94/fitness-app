@@ -26,6 +26,10 @@ export interface Env {
   ZAI_API_KEY?: string
   OPENROUTER_API_KEY?: string
   GROQ_API_KEY?: string
+  /** Paid models (SPEC §9): Claude through the Anthropic API, ChatGPT through the OpenAI API, Gemini Pro (a Google key with billing on). */
+  ANTHROPIC_API_KEY?: string
+  OPENAI_API_KEY?: string
+  GEMINI_PAID_API_KEY?: string
   USDA_FDC_API_KEY?: string
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string

@@ -9,7 +9,7 @@ A single-user, AI-first fitness tracker (installable PWA + Cloudflare Worker) th
 **Goals**
 
 - Log meals (text, photo, voice, barcode), weigh-ins, tape measurements, water, fasts, workouts (sets, reps, load), sleep and steps from Apple Watch, Evolt 360 scans, and progress photos.
-- An LLM job runs after every log and nightly/weekly, using free tiers only (OpenRouter `:free` primary, Z.ai, Gemini and Groq as fallbacks), and proposes adjustments to targets, meals and training.
+- An LLM job runs after every log and nightly/weekly, using free tiers by default (OpenRouter `:free` primary, Z.ai, Gemini and Groq as fallbacks; a paid model goes first when its key is set, section 9), and proposes adjustments to targets, meals and training.
 - Deterministic engine owns the numbers (targets, trend weight, forecast, progression); the LLM explains, suggests and proposes. Every AI change is a plan version with a reason and one-tap revert.
 - Workouts suggested from the real equipment profile (have / don't have / dislike / can't use) and from a library where every exercise has images and a video link; a muscle map shows what any workout (AI or custom) trains.
 - Evolt scans uploaded as images, extracted to structured data, compared over time, and fed into the plan.
@@ -18,7 +18,7 @@ A single-user, AI-first fitness tracker (installable PWA + Cloudflare Worker) th
 **Non-goals (v1)**
 
 - No multi-user, social or sharing features; no app-store build (PWA only).
-- No paid LLM tiers; no native HealthKit integration (Apple Watch data arrives by manual entry, file import or an iOS Shortcut webhook).
+- Free tiers by default; paid models (Claude, ChatGPT, Gemini Pro) are optional — a key set in Settings puts that model first, capped at 200 requests a day per provider. No native HealthKit integration (Apple Watch data arrives by manual entry, file import or an iOS Shortcut webhook).
 - No medical advice: the calorie floor, fasting pattern and any change to them stay between Aaron, his doctor and his dietitian. The app enforces those rails; it never lowers them.
 
 ## 2. User constraints and baseline data
@@ -173,7 +173,7 @@ fitness/
 
 **Bindings and secrets**
 
-Bindings in `wrangler.toml`: `DB` (D1), `FILES` (R2), `ASSETS` (static assets), `BROWSER` (Browser Rendering). Secrets via `wrangler secret put`: `GEMINI_API_KEY`, `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `MCP_BEARER_TOKEN`, `HEALTH_WEBHOOK_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`. Vars: `APP_ORIGIN`, `TZ_NAME=America/Edmonton`.
+Bindings in `wrangler.toml`: `DB` (D1), `FILES` (R2), `ASSETS` (static assets), `BROWSER` (Browser Rendering). Secrets via `wrangler secret put`: `GEMINI_API_KEY`, `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_PAID_API_KEY` (the three optional paid models, section 9), `MCP_BEARER_TOKEN`, `HEALTH_WEBHOOK_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`. Vars: `APP_ORIGIN`, `TZ_NAME=America/Edmonton`.
 
 **Working conventions for Claude Code**
 
@@ -362,7 +362,7 @@ Claude connected through the custom connector can read the whole app and change 
 - MCP prompts shipped by the server, so Claude knows the procedure without Aaron re-explaining it: `coach_review` (weekly: read the bundle, check rails, lean-loss guard, protein, volume per muscle vs the last block, sleep and steps against the trend, fasts and scan due; then propose and apply, and end with next week's plan), `scan_debrief` (after a confirmed scan), `program_design` (build or rebuild the Mon–Thu plan from the equipment profile and history), `plateau_check`.
 - Dashboard: `set_dashboard_note(text, until?)` pins Claude's note to the top of Today; when a Claude review ran that week, its narrative replaces the AI draft's in `weekly_reviews`, so the printed summary carries Claude's words.
 - How it runs: in any Claude chat (web, desktop, mobile) with the connector on, "run my coach review" invokes the prompt; Claude reads, discusses, and applies on approval. Aaron may also schedule it from Claude if scheduled tasks on his plan can call the connector.
-- Later option: route the in-app Ask AI to Claude through the Claude API instead of the free router. Out of scope while the free-tier constraint stands; the tools layer already makes it a one-adapter change.
+- Available in-app since 2026-10-08 (it was the "later option"): setting an Anthropic key under Settings → AI routes Ask AI — and every other job — to Claude Opus 5.5 through the Claude API, ahead of the free router (the paid models in section 9); remove the key and the free router is back. The MCP connector stays the coach's seat either way.
 
 **Next-week plan (weekly recommendations)**
 
@@ -386,7 +386,15 @@ Every week the app holds one `week_plans` row for the coming Monday to Sunday, a
 
 The engine computes; the LLM reads the computed state and proposes. Every LLM call returns JSON validated against a Zod schema, and nothing an LLM returns touches the database without passing the guardrails in code.
 
-**Providers (free tiers, as of 2026-10-04; limits change, so they live in `apps/worker/src/ai/providers.json`)**
+**Paid models (optional, 2026-10-08)** — pay as you go, keyed from the developer consoles (a Claude Pro or ChatGPT Plus subscription does not include API access). A set key puts its model ahead of every free tier below, for every job type; remove it and the free chains are back unchanged.
+
+| Provider | Model | Price per MTok (in / out) | Role | Cap |
+| --- | --- | --- | --- | --- |
+| Anthropic (Claude) | `claude-opus-5-5` | $4 / $20 | First in every chain when its key is set | 200 requests/day, our own; background jobs stop at 80 % |
+| OpenAI (ChatGPT) | `gpt-6.1-sol` | $2 / $10 | After Claude, before the free tiers, when its key is set | 200 requests/day, our own; background jobs stop at 80 % |
+| Google AI Studio (Gemini Pro) | `gemini-3.1-pro-preview` | $2 / $12 (paid tier only) | After ChatGPT, before the free tiers, when `GEMINI_PAID_API_KEY` is set — the same Google key as the free row with billing on; that name is the opt-in | 200 requests/day, our own; background jobs stop at 80 % |
+
+**Providers (free tiers, as of 2026-10-04; limits change, so they live in `apps/worker/src/modules/llm/providers.json`)**
 
 | Provider | Models | Role | Known limits |
 | --- | --- | --- | --- |
@@ -396,11 +404,11 @@ The engine computes; the LLM reads the computed state and proposes. Every LLM ca
 | OpenRouter `:free` | DeepSeek V4 Flash, Kimi K2.6, Qwen, GLM-4.5-Air, MiniMax M2.5 | Second fallback, model experiments | 50 requests/day; 1,000/day after a one-time $10 top-up |
 | Groq | Qwen, Kimi, Llama | Fast text fallback | Free tier with daily caps |
 
-DeepSeek's own API and Kimi's API are paid, so they are reached only through OpenRouter's free models. Claude is not in this table because it is not called by the Worker: it reaches the same data through the MCP connector from Aaron's own Claude chats (section 8) and takes the review, program-design and plan-rewrite work that a Flash-class model should not be trusted with.
+DeepSeek's own API and Kimi's API are paid, so they are reached only through OpenRouter's free models. Claude is in the paid table, not this one: without an Anthropic key the Worker never calls it, and it reaches the same data through the MCP connector from Aaron's own Claude chats (section 8), taking the review, program-design and plan-rewrite work that a Flash-class model should not be trusted with.
 
 **Router**
 
-- One interface: `complete({ system, messages, images?, tools?, schema, maxTokens })` with adapters per provider (OpenAI-compatible where offered). Chain per job type: OpenRouter `:free` → GLM → Gemini Flash → Groq; vision jobs: OpenRouter → GLM-4.6V → Gemini Flash.
+- One interface: `complete({ system, messages, images?, tools?, schema, maxTokens })` with adapters per provider (OpenAI-compatible where offered). Chain per job type: any paid model whose key is set (Claude → ChatGPT → Gemini Pro), then Groq → OpenRouter `:free` → GLM → Gemini Flash last (Aaron, 2026-10-06); vision jobs: the same paid models, then OpenRouter → GLM-4.6V → Gemini Flash.
 - Per-provider token buckets (RPM and RPD from `providers.json`), queue with priority (user-facing jobs first), retry with backoff on 429/5xx, failover on schema-validation failure after one repair attempt.
 - Every job row stores provider, model, latency, token counts and the validated output; a daily budget guard stops non-urgent jobs (nightly summaries) when 80% of a provider's daily quota is used.
 - Expected load: 10–30 calls a day. Event-driven only; no polling the model.

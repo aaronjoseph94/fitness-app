@@ -1,5 +1,5 @@
 // Owns: the llm module's vocabulary — the provider-neutral conversation (Msg, ToolDef, ToolCall), the request and
-// result shapes callers see, and the internal adapter seam (one Gemini adapter, one OpenAI-compatible adapter).
+// result shapes callers see, and the internal adapter seam (one Gemini adapter, one OpenAI-compatible adapter, one Anthropic Messages adapter).
 import type { JobType } from '@fitness/shared/schemas'
 import type * as z from 'zod'
 import type { ModelSpec, ProviderSpec } from './config'

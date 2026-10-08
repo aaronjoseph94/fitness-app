@@ -76,7 +76,8 @@ export const openaiAdapter: Adapter = {
     const body: Record<string, unknown> = {
       model: spec.model,
       messages: messages(call, inPrompt ? call.system + schemaInstruction(schema) : call.system),
-      max_tokens: call.maxTokens,
+      // `max_tokens`, or `max_completion_tokens` where the provider's reasoning models reject the old name (data).
+      [provider.max_tokens_param]: call.maxTokens,
       ...spec.params,
     }
     if (schema && spec.json === 'json_schema')

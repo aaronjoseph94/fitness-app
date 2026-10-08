@@ -1,5 +1,6 @@
 // Owns: the llm module's entry-point tests — failover, schema repair, the 80 % daily guard, vision routing, the
-// tool-call loop with Gemini thought signatures, and the requeue errors. Providers are fake fetches; D1 is real.
+// tool-call loop with Gemini thought signatures and with Anthropic thinking blocks, and the requeue errors.
+// Providers are fake fetches; D1 is real.
 import { MealAnalysisOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
@@ -21,7 +22,12 @@ const NOW = new Date('2026-10-05T18:00:00.000Z')
 function deps(now: () => Date = () => NOW): Deps {
   return {
     db: createDb(env.DB),
-    env: { ...env, GEMINI_API_KEY: 'test-gemini-key', ZAI_API_KEY: 'test-zai-key' },
+    env: {
+      ...env,
+      GEMINI_API_KEY: 'test-gemini-key',
+      ZAI_API_KEY: 'test-zai-key',
+      ANTHROPIC_API_KEY: 'test-anthropic-key',
+    },
     now,
     actor: 'ai',
     waitUntil: () => {},
@@ -73,9 +79,53 @@ function config(tag: string): ProvidersConfig {
   }
 }
 
+/** A paid provider first, a free one second: the shape of the shipped chains once a paid key is set. */
+function paidConfig(tag: string): ProvidersConfig {
+  return {
+    checked: '2026-10-08',
+    background_share: 0.8,
+    retry: { max_retries: 1, base_ms: 1, max_wait_ms: 50 },
+    providers: {
+      anthropic: {
+        api: 'anthropic',
+        base_url: 'https://anthropic.test/v1',
+        key_env: 'ANTHROPIC_API_KEY',
+        headers: { 'anthropic-version': '2023-06-01' },
+      },
+      zai: { api: 'openai', base_url: 'https://zai.test/api/paas/v4', key_env: 'ZAI_API_KEY' },
+    },
+    quotas: {
+      [`anthropic-${tag}`]: { rpm: 1000, rpd: 200, tpm: null, tpd: null },
+      [`zai-${tag}`]: { rpm: 1000, rpd: null, tpm: null, tpd: null },
+    },
+    models: {
+      claude: {
+        provider: 'anthropic',
+        model: 'claude-opus-5-5',
+        quota: `anthropic-${tag}`,
+        vision: true,
+        tools: true,
+        json: 'prompt',
+        params: { output_config: { effort: 'low' } },
+        paid: true,
+      },
+      'glm-text': {
+        provider: 'zai',
+        model: 'glm-4.7-flash',
+        quota: `zai-${tag}`,
+        vision: false,
+        tools: true,
+        json: 'json_object',
+      },
+    },
+    chains: { text: ['claude', 'glm-text'], vision: ['claude'] },
+  }
+}
+
 interface Sent {
   host: string
   model: string
+  headers: Record<string, string>
   body: any
 }
 
@@ -87,6 +137,7 @@ function fakeFetch(reply: (sent: Sent, n: number) => Response | Promise<Response
     const s = {
       host: u.host,
       model: u.host === 'gemini.test' ? u.pathname.split('/models/')[1]!.split(':')[0]! : body.model,
+      headers: init.headers as Record<string, string>,
       body,
     }
     sent.push(s)
@@ -263,6 +314,95 @@ describe('llm router', () => {
     expect(sent[1]!.body.contents[2]).toEqual({
       role: 'user',
       parts: [{ functionResponse: { id: 'fc_1', name: 'get_today', response: { remaining_kcal: 620 } } }],
+    })
+  })
+
+  it('runs the tool loop through the Anthropic adapter and replays its thinking block verbatim', async () => {
+    const thinking = {
+      type: 'thinking',
+      thinking: "Today's numbers first.",
+      signature: 'c2lnbmVkLWJ5LWNsYXVkZQ==',
+    }
+    const toolUse = { type: 'tool_use', id: 'toolu_1', name: 'get_today', input: { date: '2026-10-05' } }
+    const { fetch, sent } = fakeFetch((_s, n) =>
+      Response.json(
+        n === 1
+          ? {
+              type: 'message',
+              role: 'assistant',
+              content: [thinking, toolUse],
+              stop_reason: 'tool_use',
+              usage: { input_tokens: 200, output_tokens: 50 },
+            }
+          : {
+              type: 'message',
+              role: 'assistant',
+              content: [{ type: 'text', text: 'You have 620 kcal left today.' }],
+              stop_reason: 'end_turn',
+              usage: { input_tokens: 300, output_tokens: 20, cache_read_input_tokens: 10 },
+            },
+      ),
+    )
+    const llm = createLlmRouter(deps(), { fetch, config: paidConfig('anthropic') })
+    const tools = [
+      {
+        name: 'get_today',
+        description: "Today's targets and intake",
+        parameters: z.object({ date: z.iso.date() }),
+      },
+    ]
+    const history: Msg[] = [{ role: 'user', content: 'How much can I still eat today?' }]
+
+    const first = await llm.chat({
+      job: 'ask_ai',
+      system: 'You are the coach.',
+      messages: history,
+      tools,
+      maxTokens: 1234,
+      priority: 'user',
+    })
+
+    expect(sent[0]!.host).toBe('anthropic.test')
+    expect(sent[0]!.headers).toMatchObject({
+      'x-api-key': 'test-anthropic-key',
+      'anthropic-version': '2023-06-01',
+    })
+    const body = sent[0]!.body
+    expect(typeof body.system).toBe('string')
+    expect(body.tools[0].input_schema).toMatchObject({ type: 'object', required: ['date'] })
+    expect(body.max_tokens).toBe(1234)
+    expect(body.output_config).toEqual({ effort: 'low' })
+    expect(body).not.toHaveProperty('thinking')
+    expect(body).not.toHaveProperty('tool_choice')
+    expect(first).toMatchObject({ type: 'tool_calls', provider: 'anthropic', tokens_in: 200, tokens_out: 50 })
+    if (first.type !== 'tool_calls') return
+    expect(first.toolCalls).toEqual([{ id: 'toolu_1', name: 'get_today', args: { date: '2026-10-05' } }])
+    expect(first.message.native?.provider).toBe('anthropic')
+
+    const second = await llm.chat({
+      job: 'ask_ai',
+      system: 'You are the coach.',
+      messages: [
+        ...history,
+        first.message,
+        { role: 'tool', toolCallId: 'toolu_1', name: 'get_today', content: '{"ok":true}' },
+      ],
+      tools,
+      priority: 'user',
+    })
+
+    expect(second).toMatchObject({
+      type: 'reply',
+      data: 'You have 620 kcal left today.',
+      tokens_in: 310,
+      tokens_out: 20,
+    })
+    const replay = sent[1]!.body.messages
+    expect(replay).toHaveLength(3)
+    expect(replay[1]).toEqual({ role: 'assistant', content: [thinking, toolUse] })
+    expect(replay[2]).toEqual({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '{"ok":true}' }],
     })
   })
 

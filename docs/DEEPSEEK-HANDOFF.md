@@ -190,7 +190,7 @@ pnpm build
 
 **If** the thumbnail step says `sharp` is unavailable, the app falls back to JPEG. Report it and continue.
 
-### A7. Secrets (check only; nothing new this round)
+### A7. Secrets (check only; nothing new is required — the paid-model keys are optional)
 
 ```sh
 cd apps/worker && npx wrangler secret list
@@ -202,6 +202,7 @@ cd apps/worker && npx wrangler secret list
 - `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`;
 - `HEALTH_WEBHOOK_TOKEN`, `MCP_BEARER_TOKEN`, `FILE_URL_SECRET`;
 - `GEMINI_API_KEY`, plus optionally `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`;
+- optionally the paid models (2026-10-08, pay as you go; absent is fine, and Aaron can paste them in the app under Settings → AI instead): `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_PAID_API_KEY`;
 - `USDA_FDC_API_KEY` (legacy: USDA is no longer queried since 2026-10-06; its absence is fine);
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
 

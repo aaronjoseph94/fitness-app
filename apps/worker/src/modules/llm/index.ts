@@ -1,6 +1,7 @@
-// Owns: the LLM router's interface (the Router in GLOSSARY.md). One call goes down a chain of free-tier providers
-// (text: OpenRouter :free → GLM → Gemini Flash → Groq; vision: OpenRouter :free → GLM-4.6V-Flash → Gemini Flash) and
-// returns data validated against the caller's Zod schema, or the tool calls the model asked for.
+// Owns: the LLM router's interface (the Router in GLOSSARY.md). One call goes down a chain of providers — the paid
+// models lead when their key is set (Claude → ChatGPT → Gemini Pro, each capped at 200 requests/day by its own quota),
+// then the free tiers (text: Groq → OpenRouter :free → GLM → Gemini Flash; vision: OpenRouter :free → GLM-4.6V-Flash →
+// Gemini Flash) — and returns data validated against the caller's Zod schema, or the tool calls the model asked for.
 //
 // Interface facts callers rely on:
 // - complete() resolves only with schema-valid data. chat() also returns tool calls; the caller runs the tools,

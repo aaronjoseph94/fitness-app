@@ -1,7 +1,8 @@
-// Owns: the AI settings page (2a kit) — the provider keys the AI runs on, and how Claude connects. A key lives in the Worker
-// (never in the web bundle) and comes back as status only, so this screen shows whether one is set, where it came from
-// and its last four characters, never the value. Reads GET /api/settings/secrets and GET /api/settings/connection;
-// every edit is one PUT or DELETE /api/settings/secrets/:name. Needs a connection.
+// Owns: the AI settings page (2a kit) — the paid models (Claude, ChatGPT, Gemini Pro: a set key puts that model first),
+// the free provider keys the AI falls back on, and how Claude connects. A key lives in the Worker (never in the web
+// bundle) and comes back as status only, so this screen shows whether one is set, where it came from and its last four
+// characters, never the value. Reads GET /api/settings/secrets and GET /api/settings/connection; every edit is one PUT
+// or DELETE /api/settings/secrets/:name. Needs a connection.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,7 +19,7 @@ import { formatDateTime } from '../quick-log'
 import { copyText } from './lib/copy'
 import { CopyRow, ReadOnlyRow, SettingsGroup, ValueRow } from './lib/rows'
 import { SecretDialog } from './lib/SecretDialog'
-import { isConfigured, MODEL_SECRET_NAMES, SECRET_FIELDS, sourceLabel } from './lib/secrets'
+import { isConfigured, MODEL_SECRET_NAMES, PAID_SECRET_NAMES, SECRET_FIELDS, sourceLabel } from './lib/secrets'
 import { useConnection, useSecretMutations, useSecrets } from './lib/useSecrets'
 
 const saveError = (error: unknown) => problemText(error, 'Setting a key needs a connection.')
@@ -93,7 +94,7 @@ export function AiSettingsPage() {
   }
 
   const statuses = new Map(secrets.data.secrets.map((s) => [s.name, s]))
-  const modelKeysSet = MODEL_SECRET_NAMES.filter((name) => isConfigured(statuses.get(name)))
+  const modelKeysSet = [...PAID_SECRET_NAMES, ...MODEL_SECRET_NAMES].filter((name) => isConfigured(statuses.get(name)))
   const locked = !online || update.saving
   const mcpUrl = connection.data?.mcp_url ?? ''
 
@@ -157,7 +158,7 @@ export function AiSettingsPage() {
       {modelKeysSet.length === 0 && (
         <Alert severity="warning" data-testid="ai-not-set-up">
           No model key is set, so the AI paths are off: logged meals wait for you to itemise them and weekly reviews come
-          from the engine alone. Add the OpenRouter key to turn them back on.
+          from the engine alone. Add the OpenRouter key, or a paid one, to turn them back on.
         </Alert>
       )}
 
@@ -185,9 +186,17 @@ export function AiSettingsPage() {
       )}
 
       <SettingsGroup
+        id="paid"
+        title="Paid models"
+        subtitle="Pay as you go, tried top to bottom before the free tiers. Set a key and its model answers first; remove it and the free models take over. At most 200 paid requests a day per provider (prices are per million tokens — roughly words)."
+      >
+        {PAID_SECRET_NAMES.map(secretRow)}
+      </SettingsGroup>
+
+      <SettingsGroup
         id="models"
         title="Models"
-        subtitle="Free tiers, tried top to bottom; one key is enough."
+        subtitle="Free tiers, tried top to bottom after any paid model; one key is enough."
       >
         {MODEL_SECRET_NAMES.map(secretRow)}
       </SettingsGroup>

@@ -1,8 +1,12 @@
 // Owns: what each runtime secret is (pure) — its label, what it unlocks, where Aaron gets one, the prefix its provider
-// uses so a pasted value can be sanity-checked, and how a stored secret reads back. The list is in the router's chain
-// order (Groq → OpenRouter → Gemini last). Never a value: the API returns status only, so nothing here can put a
-// key on screen that the Worker would not have sent.
+// uses so a pasted value can be sanity-checked, and how a stored secret reads back. Two lists feed the AI page: the paid
+// models (Claude → ChatGPT → Gemini Pro; a set key puts that model first in every chain) and the free tiers in the
+// router's chain order (Groq → OpenRouter → Gemini last). Never a value: the API returns status only, so nothing here
+// can put a key on screen that the Worker would not have sent.
 import type { SecretName, SecretStatus } from '@fitness/shared/schemas'
+
+/** The paid keys in the router's order (Claude → ChatGPT → Gemini Pro); the shared schema owns the list. */
+export { PAID_SECRET_NAMES } from '@fitness/shared/schemas'
 
 export interface SecretField {
   name: SecretName
@@ -19,6 +23,30 @@ export interface SecretField {
 }
 
 export const SECRET_FIELDS: Record<SecretName, SecretField> = {
+  ANTHROPIC_API_KEY: {
+    name: 'ANTHROPIC_API_KEY',
+    label: 'Claude (Anthropic)',
+    help: 'Claude Opus 5.5 answers first for everything the AI does — about $4 per million words in and $20 out. Pay as you go; a Claude Pro subscription does not include this.',
+    where: 'console.anthropic.com → API keys',
+    url: 'https://console.anthropic.com/settings/keys',
+    prefix: 'sk-ant-',
+  },
+  OPENAI_API_KEY: {
+    name: 'OPENAI_API_KEY',
+    label: 'ChatGPT (OpenAI)',
+    help: 'GPT-6.1 Sol, tried after Claude — about $2 per million words in and $10 out. Pay as you go; a ChatGPT Plus subscription does not include this.',
+    where: 'platform.openai.com → API keys',
+    url: 'https://platform.openai.com/api-keys',
+    prefix: 'sk-',
+  },
+  GEMINI_PAID_API_KEY: {
+    name: 'GEMINI_PAID_API_KEY',
+    label: 'Gemini Pro (Google)',
+    help: 'Gemini 3.1 Pro, tried after ChatGPT — about $2 per million words in and $12 out. The same Google key as the free row, with billing turned on in AI Studio; pasting it here is what turns Pro on.',
+    where: 'Google AI Studio → Get API key, then turn on billing',
+    url: 'https://aistudio.google.com/apikey',
+    prefix: 'AIza',
+  },
   GROQ_API_KEY: {
     name: 'GROQ_API_KEY',
     label: 'Groq',
@@ -77,8 +105,9 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
 }
 
 /**
- * The provider keys the Models section offers, in the router's chain order (Groq → OpenRouter → Gemini last;
- * providers.json is the source of truth). The food key used to be listed here and is retired: food matching is Canadian now.
+ * The free provider keys the Models section offers, in the router's chain order (Groq → OpenRouter → Gemini last;
+ * providers.json is the source of truth). Any paid key (PAID_SECRET_NAMES above) is tried ahead of all of these. The
+ * food key used to be listed here and is retired: food matching is Canadian now.
  */
 export const MODEL_SECRET_NAMES: readonly SecretName[] = ['GROQ_API_KEY', 'OPENROUTER_API_KEY', 'ZAI_API_KEY', 'GEMINI_API_KEY']
 

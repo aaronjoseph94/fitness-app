@@ -6,7 +6,7 @@
 
 - **Aaron**: the one user. Every write is attributed to an **Actor**.
 - **Actor**: who made a change: `user` (Aaron in the app), `ai` (a job run by the model chain), `mcp` (Claude through the connector). Stored on every write and event.
-- **Coach**: Claude via MCP doing judgement work (weekly review, scan debrief, program design, plateau check). The **Clerk** is the free-tier LLM doing per-log work (meal parsing, day adjustment, scan extraction).
+- **Coach**: Claude via MCP doing judgement work (weekly review, scan debrief, program design, plateau check). The **Clerk** is the free-tier LLM doing per-log work (meal parsing, day adjustment, scan extraction) — or, with a paid key set, the same paid model does the clerk work in the Worker.
 
 ## Rails and plans
 
@@ -56,6 +56,6 @@
 
 - **Job**: a row in `ai_jobs` (`queued → running → done | failed`) with a lease; run in `waitUntil` after the response and swept by the 5-minute cron.
 - **Event**: a row in `ai_events` the dashboard and MCP read: `adjustment`, `proposal`, `review`, `note`, `change`.
-- **Router**: the LLM provider chain (Groq → OpenRouter `:free` → GLM → Gemini last; vision starts at OpenRouter) with quotas, retries, schema repair and failover.
+- **Router**: the LLM provider chain — any paid model whose key is set first (Claude → ChatGPT → Gemini Pro), then the free tiers (Groq → OpenRouter `:free` → GLM → Gemini last; vision starts at OpenRouter) — with quotas, retries, schema repair and failover.
 - **Tools layer**: the typed operations shared by Ask AI and MCP (`get_today`, `apply_review`, …); each tool calls the same worker modules as the REST routes.
 - **Review bundle**: the one compact JSON a coach reads for a period (`get_review_bundle`).
