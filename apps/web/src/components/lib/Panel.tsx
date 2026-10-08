@@ -1,4 +1,4 @@
-// Owns: the 2a card shell — a white card (1 px #E4E4E7, radius 12, the card whisper) with an optional header row
+// Owns: the 2a card shell — a white card (1 px `ink.border`, radius 12, the card whisper) with an optional header row
 // (a title over a muted description, right-hand actions: 16/600 over 13 px, padding 16 × 20 × 12; or for a small card
 // 14/600 over 12 px with 12 px muted actions, its title as far down as the body's top padding, 18 or 16 dense) and a
 // body that is padded (18 × 20, or 16 × 18 dense) or flush (for a table or `ListRow`s, which bring their own gutters;
@@ -29,7 +29,7 @@ export interface PanelProps {
   tone?: 'card' | 'panel' | 'dashed'
   /** A 12 px muted line under the body, pinned to the card's bottom. */
   caption?: ReactNode
-  /** Full-bleed footer behind a #E4E4E7 hairline (the weight trend's four stats). */
+  /** Full-bleed footer behind an `ink.border` rule (the weight trend's four stats). */
   footer?: ReactNode
   /** Fill the parent's height (a grid cell), so a row of cards ends level and their captions line up. */
   fill?: boolean
@@ -192,7 +192,7 @@ export interface PanelRowProps {
   leading?: ReactNode
   /** Right-most slot after the value, e.g. a small StatusChip. */
   trailing?: ReactNode
-  /** Hairline colour between rows. Default #F4F4F5; on a #FAFAFA panel pass `tokens.ink.border`. */
+  /** Hairline colour between rows. Default `ink.hairline`; on an `ink.panel` panel pass `tokens.ink.border`. */
   hairline?: string
   testId?: string
 }

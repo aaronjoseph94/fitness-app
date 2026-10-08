@@ -1,4 +1,4 @@
-// Owns: the exercise thumbnail — 2a's #F4F4F5 tile holding the first step image (lazy, square-cropped) or a dumbbell glyph when the
+// Owns: the exercise thumbnail — 2a's `ink.fill` tile holding the first step image (lazy, square-cropped) or a dumbbell glyph when the
 // exercise has no image or it fails to load (images are fetched at build time and may be missing in dev). It shows the
 // 112 px WebP thumbnail next to the step image (/exercises/<id>/thumb.webp, ~2 KB, written by the exercises fetch
 // script), falling back to the full step JPEG (~70 KB) when the browser has no WebP or the thumbnail is missing.
@@ -41,7 +41,7 @@ export function ExerciseThumb({ exercise, size = 56 }: ExerciseThumbProps) {
         width: size,
         height: size,
         flex: 'none',
-        // 2a's thumb tile: #F4F4F5 at the control radius, a faint glyph when there is no image.
+        // 2a's thumb tile: `ink.fill` at the control radius, a faint glyph when there is no image.
         borderRadius: `${tokens.radius.control}px`,
         overflow: 'hidden',
         bgcolor: tokens.ink.fill,

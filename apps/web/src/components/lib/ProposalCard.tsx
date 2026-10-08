@@ -1,8 +1,8 @@
 // Owns: the proposal card shell (SPEC §6/§8) in its 2a form (README, Today "Proposal card"): a header row — the blue
 // sparkle, who proposed it (default "Proposal") and the neutral "Pending" chip — the title at 15/600, the one-line
-// summary, the before → after rows on #FAFAFA (old value struck through, new value bold), and the actions: "Accept"
-// in the dark button, "Reject" in the outline one and a "Why?" link on the right. Decisions go out through the same
-// callbacks as before; once decided, the buttons give way to the status line.
+// summary, the before → after rows on `ink.panel` (old value struck through, new value bold), and the actions:
+// "Accept" in the dark button, "Reject" in the outline one and a "Why?" link on the right. Decisions go out through
+// `onAccept` / `onReject`; once decided, the buttons give way to the status line.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'

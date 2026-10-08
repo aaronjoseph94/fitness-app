@@ -1,8 +1,9 @@
-// Owns: the 2a before → after row a proposal shows — the label on the left in #52525B, the old value struck through and
-// the new one in bold on the right, on a #FAFAFA strip at the control radius — and the list that stacks them 6 px apart
-// as a description list (label = term, change = definition). The struck value is muted ink rather than 2a's #A1A1AA,
-// which is 2.56:1 and the value is information; screen readers, which do not announce a strike-through, hear
-// "130 g, changes to 140 g". `size="small"` is 2a's rail-card row: 12 px, 6 × 8 padding, the inner radius, 4 px apart.
+// Owns: the 2a before → after row a proposal shows — the label on the left in `ink.label`, the old value struck through
+// and the new one in bold on the right, on an `ink.panel` strip at the control radius — and the list that stacks them
+// 6 px apart as a description list (label = term, change = definition). The struck value is `ink.muted` rather than
+// 2a's `ink.faint`, which is 2.56:1 and the value is information; screen readers, which do not announce a
+// strike-through, hear "130 g, changes to 140 g". `size="small"` is 2a's rail-card row: 12 px, 6 × 8 padding, the
+// inner radius, 4 px apart.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
@@ -12,7 +13,7 @@ export interface BeforeAfterProps {
   label: ReactNode
   from: ReactNode
   to: ReactNode
-  /** Strip colour. Default `tokens.ink.panel` (#FAFAFA); on a #FAFAFA card pass `tokens.ink.card`. */
+  /** Strip colour. Default `tokens.ink.panel`; on an `ink.panel` card pass `tokens.ink.card`. */
   background?: string
   /** `small`: 12 px, 6 × 8 padding, the inner radius (2a's rail card). Default `medium`. */
   size?: 'medium' | 'small'

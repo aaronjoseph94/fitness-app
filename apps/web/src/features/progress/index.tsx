@@ -46,13 +46,6 @@ export function ProgressPage() {
   const profile = settings.data?.profile
   const rails = settings.data?.settings
   const sincePlan = profile?.start_date === from ? ' since the plan started' : ''
-  const subtitle = [
-    `${formatShortDate(from)} – ${formatShortDate(to)}`,
-    `${length} days`,
-    summary ? `${summary.daysWithData} with data${sincePlan}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
   const dim = { opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }
   // After the title (0) and the stat cards (150–330 ms), each later group rises 90 ms after the one before it.
   const section = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 360)
@@ -61,7 +54,20 @@ export function ProgressPage() {
     <Stack spacing={5} data-testid="progress-page" aria-busy={refreshing}>
       <PageHeader
         title="Progress"
-        subtitle={<Box component="span" sx={{ fontVariantNumeric: 'tabular-nums' }}>{subtitle}</Box>}
+        subtitle={
+          <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+            {formatShortDate(from)} – {formatShortDate(to)} · {length} days
+            {/* The count lands with the range's data: until then it is held invisibly, and below 900 px (where the title
+                shares its row or a phone's width) it takes a line of its own, so the subtitle has its final height from
+                the first paint and nothing under it moves. */}
+            <Box component="span" sx={{ display: { xs: 'block', md: 'inline' }, visibility: summary ? 'visible' : 'hidden' }}>
+              <Box component="span" sx={{ display: { xs: 'none', md: 'inline' } }}>
+                {' · '}
+              </Box>
+              {summary?.daysWithData ?? length} with data{sincePlan}
+            </Box>
+          </Box>
+        }
         action={
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, width: { xs: '100%', sm: 'auto' } }}>
             <RangeToggle value={range} onChange={(next) => setParams(next === '4w' ? {} : { range: next }, { replace: true })} />

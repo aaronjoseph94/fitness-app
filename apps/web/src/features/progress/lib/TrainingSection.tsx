@@ -39,7 +39,7 @@ export function TrainingSection({ sessions, from, to }: TrainingSectionProps) {
     return (
       <Box>
         {header}
-        <QueryStateCard query={sessions} what="your sessions" height={220} />
+        <QueryStateCard query={sessions} what="your sessions" height={220} titleSize="card" />
       </Box>
     )
   return (

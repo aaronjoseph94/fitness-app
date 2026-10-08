@@ -86,11 +86,13 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
       </Columns>
       {rows && (
         <Box sx={{ mt: 4 }}>
-          <Columns md={3}>
+          {/* The three cards fill their row, so it ends level whatever each chart's height. */}
+          <Columns md={3} align="stretch">
             <Column>
               <ChartCard
                 title="Water"
                 titleSize="card"
+                fill
                 subtitle={targets ? `ml per day; target ${formatNumber(targets.water_ml)} ml` : 'ml per day'}
                 empty={
                   hasAny(water, (d) => d.ml)
@@ -109,6 +111,7 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
               <ChartCard
                 title="Steps"
                 titleSize="card"
+                fill
                 subtitle={targets ? `Per day with the 14-day median; target ${formatNumber(targets.steps)}` : 'Per day with the 14-day median'}
                 empty={
                   hasAny(steps, (d) => d.steps)
@@ -123,6 +126,7 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
               <ChartCard
                 title="Sleep"
                 titleSize="card"
+                fill
                 subtitle={`Hours asleep against ${SLEEP_TARGET_H} h, and bedtime`}
                 empty={
                   hasAny(sleep, (n) => n.hours)

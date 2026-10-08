@@ -1,5 +1,5 @@
 // Owns: the builder's summary card in Train's "today card" idiom (2a) — a white card whose content sits on the left
-// and whose right 260 px is a #FAFAFA panel holding the 200 px muscle map, its legend and a caption. On a phone the
+// and whose right 260 px is an `ink.panel` panel holding the 200 px muscle map, its legend and a caption. On a phone the
 // panel drops under the content. Shared by the workout builder and the AI workout preview.
 import Box from '@mui/material/Box'
 import type { Muscle } from '@fitness/shared/schemas'

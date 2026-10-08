@@ -1,7 +1,7 @@
 // Owns: the two pieces every 2a stat surface is made of, so the stat card and any tile built on it cannot drift
-// apart: the head row (13/500 #52525B label, a right-aligned 16 px #A1A1AA glyph, an optional badge) and the figure
-// (a 28/600 tabular value — 40 for a hero — with its unit in 13 px muted, counting up once on mount when asked).
-// Internal to the kit.
+// apart: the head row (13/500 `ink.label` label, a right-aligned 16 px `ink.faint` glyph, an optional badge) and the
+// figure (a 28/600 tabular value — 40 for a hero — with its unit in 13 px muted, counting up once on mount when
+// asked). Internal to the kit.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'

@@ -10,7 +10,6 @@ export {
   actorLabel,
   targetAmount,
   targetLabel,
-  planChangeRow,
   planChangeRows,
   planChangeTitle,
   planChangeHeading,

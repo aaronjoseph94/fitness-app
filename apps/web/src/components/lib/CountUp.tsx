@@ -31,10 +31,13 @@ export function CountUp({ value, from = 0, precision = 0, delay = 0 }: CountUpPr
   const text = fmt(value)
 
   useLayoutEffect(() => {
-    const node = ref.current?.firstChild
-    if (played.current || !node || node.nodeType !== Node.TEXT_NODE || prefersReducedMotion() || !Number.isFinite(from)) return
+    const box = ref.current
+    const node = box?.firstChild
+    if (played.current || !box || !node || node.nodeType !== Node.TEXT_NODE || prefersReducedMotion() || !Number.isFinite(from)) return
     played.current = true
     const final = text
+    // Hold the final number's width while it counts, so a unit or pill beside it never reflows mid-count.
+    box.style.minWidth = `${box.getBoundingClientRect().width}px`
     let lastWritten = final
     const write = (s: string) => {
       lastWritten = s
@@ -45,6 +48,7 @@ export function CountUp({ value, from = 0, precision = 0, delay = 0 }: CountUpPr
     const finish = () => {
       cancelAnimationFrame(frame)
       write(final)
+      box.style.minWidth = ''
     }
     const tick = (now: number) => {
       const elapsed = now - begin
@@ -59,6 +63,7 @@ export function CountUp({ value, from = 0, precision = 0, delay = 0 }: CountUpPr
     return () => {
       cancelAnimationFrame(frame)
       clearTimeout(timer)
+      box.style.minWidth = ''
       // Interrupted with React's text still ours (StrictMode's dev remount, an unmount): put the real value back and
       // allow a replay. If React already wrote a new value, it owns the node — leave it.
       if (node.nodeValue === lastWritten && lastWritten !== final) {
@@ -71,7 +76,7 @@ export function CountUp({ value, from = 0, precision = 0, delay = 0 }: CountUpPr
   }, [value])
 
   return (
-    <Box component="span" ref={ref}>
+    <Box component="span" ref={ref} sx={{ display: 'inline-block' }}>
       {text}
     </Box>
   )

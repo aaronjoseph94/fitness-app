@@ -3,10 +3,10 @@
 // divider, and the account block with the sync state. It collapses to a 76 px icon rail (the header's toggle), where
 // each item keeps its name for assistive tech and in a tooltip.
 //
-// The selected destination is marked the 2a way: a #F4F4F5 fill with a 1 px inset ring, ink text at 600 and the filled
-// glyph — not colour alone (WCAG 1.4.1) — and `aria-current="page"`. On a page below a section (a session under Train,
-// a scan under Scans) the section's item keeps the mark with `aria-current="true"`: it is where the page lives, not the
-// page itself.
+// The selected destination is marked the 2a way: an `ink.fill` background with a 1 px inset `ink.border` ring, ink
+// text at 600 and the filled glyph — not colour alone (WCAG 1.4.1) — and `aria-current="page"`. On a page below a
+// section (a session under Train, a scan under Scans) the section's item keeps the mark with `aria-current="true"`: it
+// is where the page lives, not the page itself.
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import Tooltip from '@mui/material/Tooltip'
@@ -121,7 +121,7 @@ function Group({
                 lineHeight: tokens.font.leading.micro,
                 letterSpacing: tokens.font.em.micro,
                 textTransform: 'uppercase',
-                // 2a draws these #A1A1AA (2.56:1); muted keeps a group's name readable (4.63:1 on the panel).
+                // 2a draws these `ink.faint` (2.56:1); `ink.muted` keeps a group's name readable (4.63:1 on the panel).
                 color: tokens.ink.muted,
               }
         }

@@ -39,8 +39,8 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
       <Box>
         {header}
         <Box sx={{ display: 'grid', gap: 4 }}>
-          <QueryStateCard query={days} what="your days" height={frameHeight(220)} />
-          {isQueryLoading(days) && <QueryStateCard query={days} what="your days" height={frameHeight(220)} />}
+          <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />
+          {isQueryLoading(days) && <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />}
         </Box>
       </Box>
     )
@@ -131,7 +131,7 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
         </Box>
 
         {!fasts.data ? (
-          <QueryStateCard query={fasts} what="your fasts" height={90} />
+          <QueryStateCard query={fasts} what="your fasts" height={90} titleSize="card" />
         ) : (
           <ChartCard title="Fasting" titleSize="card" subtitle={`${fastsLine} · planned, done, partial, missed`}>
             <FastingStrip fasts={entries} from={from} to={stripTo} />

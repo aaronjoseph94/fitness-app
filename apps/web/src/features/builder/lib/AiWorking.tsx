@@ -1,5 +1,5 @@
 // Owns: the waiting state of an AI workout job — what the AI is doing, and a calm note when the free tier is slow — as
-// a 2a #FAFAFA panel.
+// a 2a `ink.panel` panel.
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'

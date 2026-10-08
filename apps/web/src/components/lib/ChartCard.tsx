@@ -1,9 +1,9 @@
 // Owns: the card every chart sits in (2a): a header row — title 16/600 over a 13 px muted description, or 14/600 over
 // 12 px for a chart in a grid of cards, and right-hand actions (a segmented range) — legend keys under it, the chart,
 // an optional 12 px caption pinned to the bottom (with `fill`, captions line up across a row of cards), an optional
-// full-bleed footer behind a hairline (the weight trend's four stats), or the 2a empty state (a dashed #FAFAFA slot)
-// when there is nothing to plot. Built on `Panel`, so it is the same white, hairline-bordered, radius-12 card as every
-// other. Prints without breaking across pages.
+// full-bleed footer behind a hairline (the weight trend's four stats), or the 2a empty state (a dashed `ink.panel`
+// slot) when there is nothing to plot. Built on `Panel`, so it is the same white, hairline-bordered, radius-12 card as
+// every other. Prints without breaking across pages.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { EmptyState, type EmptyStateProps } from './EmptyState'

@@ -91,7 +91,13 @@ export function TodayPage() {
         testId="today-hero"
         title={`${greetingFor(new Date().getHours())}, Aaron`}
         pageName="Today"
-        subtitle={subtitle}
+        subtitle={
+          // The day of the plan and the session land after the date and wrap it onto a second line on a phone: that line
+          // is held from the first paint, so the cards under the title never move.
+          <Box component="span" sx={{ display: 'block', minHeight: { xs: `${2 * tokens.font.leading.body}em`, sm: 0 } }}>
+            {subtitle}
+          </Box>
+        }
         action={
           // From `md` up the title row carries the log button; a phone has the floating one and the quick-log row.
           <Button

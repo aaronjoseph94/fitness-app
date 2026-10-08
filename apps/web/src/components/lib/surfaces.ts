@@ -4,7 +4,7 @@
 // values.
 import { tokens } from '../../theme'
 
-/** A white card: 1 px #E4E4E7, radius 12, the card whisper. */
+/** A white card: 1 px `ink.border`, radius 12, the card whisper. */
 export const cardSurface = {
   bgcolor: tokens.ink.card,
   border: `1px solid ${tokens.ink.border}`,
@@ -12,21 +12,21 @@ export const cardSurface = {
   boxShadow: tokens.elevation.card,
 } as const
 
-/** A tinted panel: #FAFAFA, 1 px #E4E4E7, radius 12, no shadow (goal rail, next-scan card, "About this data"). */
+/** A tinted panel: `ink.panel`, 1 px `ink.border`, radius 12, no shadow (goal rail, next-scan card, "About this data"). */
 export const panelSurface = {
   bgcolor: tokens.ink.panel,
   border: `1px solid ${tokens.ink.border}`,
   borderRadius: `${tokens.radius.card}px`,
 } as const
 
-/** An empty slot: dashed #D4D4D8 on #FAFAFA, radius 12. */
+/** An empty slot: dashed `ink.dashed` on `ink.panel`, radius 12. */
 export const dashedSurface = {
   bgcolor: tokens.ink.panel,
   border: `1px dashed ${tokens.ink.dashed}`,
   borderRadius: `${tokens.radius.card}px`,
 } as const
 
-/** The highlighted card (today's template, the current exercise): accent border + a 3 px #EFF6FF ring. */
+/** The highlighted card (today's template, the current exercise): accent border + a 3 px `accent.soft` ring. */
 export const highlightSurface = {
   bgcolor: tokens.ink.card,
   border: `1px solid ${tokens.accent.main}`,
@@ -34,7 +34,7 @@ export const highlightSurface = {
   boxShadow: tokens.elevation.highlight,
 } as const
 
-/** A small #FAFAFA well inside a card (a stat tile, the proposal strip), radius 8. */
+/** A small `ink.panel` well inside a card (a stat tile, the proposal strip), radius 8. */
 export const wellSurface = {
   bgcolor: tokens.ink.panel,
   borderRadius: `${tokens.radius.control}px`,

@@ -1,6 +1,6 @@
-// Owns: the 2a empty state — a dashed #D4D4D8 slot on #FAFAFA at the card radius, a 16/600 title, one 13 px muted line
-// and one outline action on the right (wrapping under the text when narrow). The Log's empty meal slots are the
-// pattern. `compact` tightens the padding for a slot inside a chart card.
+// Owns: the 2a empty state — a dashed `ink.dashed` slot on `ink.panel` at the card radius, a 16/600 title, one 13 px
+// muted line and one outline action on the right (wrapping under the text when narrow). The Log's empty meal slots are
+// the pattern. `compact` tightens the padding for a slot inside a chart card.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import type { ReactNode } from 'react'

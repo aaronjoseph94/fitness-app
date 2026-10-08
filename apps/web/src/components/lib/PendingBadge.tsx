@@ -1,5 +1,6 @@
-// Owns: the small "pending" pill (offline-queued logs, proposals awaiting a tap) — 2a's neutral pill: #F4F4F5, 11/500
-// #52525B, radius 999 — with an optional count ("Pending · 2"). It is a live `status`, so a count change is announced.
+// Owns: the small "pending" pill (offline-queued logs, proposals awaiting a tap) — 2a's neutral pill: 11/500
+// `tone.neutral.text` on `tone.neutral.bg`, radius 999 — with an optional count ("Pending · 2"). It is a live
+// `status`, so a count change is announced.
 import Box from '@mui/material/Box'
 import { tokens } from '../../theme'
 

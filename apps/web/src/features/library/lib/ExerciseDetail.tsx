@@ -1,7 +1,7 @@
 // Owns: the body of an exercise's detail view (SPEC §7) as 2a cards — animated demo when matched (with the Gym visual
 // credit its terms require; a GIF that fails to load leaves the step images), both step images, a "Muscles and
 // equipment" card (primary / secondary muscles, equipment, category, level, mechanic and force as rows beside the
-// muscle map on a #FAFAFA panel — primary at level 4, secondary at level 2 — with the YouTube form-video search),
+// muscle map on an `ink.panel` panel — primary at level 4, secondary at level 2 — with the YouTube form-video search),
 // "How to" (GET /api/exercises/:id: the cached list has none), the strength chart with PRs and next session's
 // suggestion from GET /api/history/exercises/:id, and "Hide forever" (or, when hidden, why and "Un-hide"). Shared by
 // the detail sheet (cards under the sheet's h2) and the /train/library/:id page (cards under its h1). The cards rise in
@@ -63,7 +63,7 @@ function Media({ exercise, delay }: { exercise: ExerciseSummary; delay: number }
   const gif = exercise.gif_url && !broken.has(exercise.gif_url) ? exercise.gif_url : null
   const steps = exercise.image_paths.filter((p) => !broken.has(p)).slice(0, 2)
   if (!gif && steps.length === 0) return null
-  // 2a frame: white, 1 px #E4E4E7, the control radius.
+  // 2a frame: white, 1 px `ink.border`, the control radius.
   const frame = {
     borderRadius: `${tokens.radius.control}px`,
     border: `1px solid ${tokens.ink.border}`,
@@ -188,7 +188,7 @@ function Instructions({ exerciseId, heading, delay }: { exerciseId: string; head
 
 const muscleNames = (muscles: readonly Muscle[]) => muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
 
-/** Muscles and equipment: label/value rows beside the muscle map on Train's 260 px #FAFAFA side panel. */
+/** Muscles and equipment: label/value rows beside the muscle map on Train's 260 px `ink.panel` side panel. */
 function Overview({ exercise, heading }: { exercise: ExerciseSummary; heading: Heading }) {
   const rows: [string, string][] = [
     ['Primary', muscleNames(exercise.primary_muscles)],

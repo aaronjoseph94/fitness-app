@@ -4,7 +4,7 @@
 // Screen sizes follow 2a; every size on paper stays as it was measured to fit a week on two Letter pages.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
-import { cardSurface, tabularNums } from '../../../components'
+import { cardSurface, statValue, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 
 /** Chart widths when the page is laid out for paper: Letter (215.9 mm) − 2 × 15 mm ≈ 703 px of content. */
@@ -103,11 +103,8 @@ export function StatStrip({ stats }: { stats: readonly Stat[] }) {
           </Box>
           <Box
             sx={{
+              ...statValue('small'),
               mt: '2px',
-              fontSize: tokens.font.size.bigNumberSmall,
-              fontWeight: tokens.font.weight.number,
-              letterSpacing: tokens.font.em.number,
-              ...tabularNums,
               lineHeight: 1.25,
               whiteSpace: 'nowrap',
               '@media print': { mt: 0, fontSize: 17, letterSpacing: 'normal' },

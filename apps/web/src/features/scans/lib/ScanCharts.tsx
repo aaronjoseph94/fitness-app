@@ -31,7 +31,7 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
       <ChartCard
         title="Fat and lean mass"
         subtitle={`Per scan; fat target ${formatNumber(TARGETS.fatMassKg, 1)} kg at goal`}
-        titleSize="card"
+        titleSize={stacked ? undefined : 'card'}
         headingComponent={headingComponent}
         testId="scan-chart-composition"
       >
@@ -40,7 +40,7 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
       <ChartCard
         title="Body fat and visceral level"
         subtitle={`Per scan; gauges for ${scanDay(latest.date)}`}
-        titleSize="card"
+        titleSize={stacked ? undefined : 'card'}
         headingComponent={headingComponent}
         testId="scan-chart-fat-visceral"
       >
@@ -60,7 +60,7 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
         <ChartCard
           title="Segmental fat"
           subtitle={`Baseline ${scanDay(baseline.date)} vs ${scanDay(latest.date)}, kg`}
-          titleSize="card"
+          titleSize={stacked ? undefined : 'card'}
           headingComponent={headingComponent}
           testId="scan-chart-segments"
         >

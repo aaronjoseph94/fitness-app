@@ -183,7 +183,7 @@ function ExerciseList({ exercises, name }: { exercises: readonly TemplateExercis
             }}
           >
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              <Box component="span" aria-hidden sx={{ mr: 2, color: tokens.ink.faint, fontVariantNumeric: 'tabular-nums' }}>
+              <Box component="span" aria-hidden sx={{ mr: 2, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
                 {i + 1}
               </Box>
               {name(e.exercise_id)}

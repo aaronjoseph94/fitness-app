@@ -1,9 +1,9 @@
 // Owns: the 2a key stat — a 12 px muted label over a tabular 600 value (16 or 20 px, or any type-scale size) with
 // an optional unit, a trailing slot (a delta) and a 12 px caption run inline after it ("−1.0 kg  on pace"), then an
 // optional 12 px note under the value ("range 10–20 %"), caption and note optionally in a status colour — and
-// `KeyStatGrid`, which lays them out in cells divided by #E4E4E7 rules (or the lighter row hairline), a set count per
-// row or one per breakpoint (the weight trend's four-stat footer, the session's stat strip). The value can count up
-// once on mount.
+// `KeyStatGrid`, which lays them out in cells divided by `ink.border` rules (or the lighter `ink.hairline`), a set
+// count per row or one per breakpoint (the weight trend's four-stat footer, the session's stat strip). The value can
+// count up once on mount.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens, type Tone } from '../../theme'
@@ -132,7 +132,7 @@ export interface KeyStatGridProps {
    * (`{ xs: 2, sm: 4, md: 2, lg: 4 }`). Default 4.
    */
   columns?: number | CellsPerBreakpoint
-  /** Draw the #E4E4E7 rule above the grid (as a card footer does). Default false — a `Panel` footer draws its own. */
+  /** Draw the `ink.border` rule above the grid (as a card footer does). Default false — a `Panel` footer draws its own. */
   ruleAbove?: boolean
   /** The rules between cells: `border` (`ink.border`, default) or `hairline` (`ink.hairline`). The rule above stays `border`. */
   rule?: 'border' | 'hairline'

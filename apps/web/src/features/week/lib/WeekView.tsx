@@ -138,7 +138,7 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
           const isToday = d.date === today
           const done = (view.days[i]?.sessions_done ?? 0) > 0
           const strong = isToday ? tokens.font.weight.heading : undefined
-          // #71717A on today's #EFF6FF tint is 4.44:1, under AA for 13 px text; the row's muted text steps up to #52525B.
+          // `ink.muted` on today's `accent.soft` tint is 4.44:1, under AA for 13 px text; the row's muted text steps up to `ink.label`.
           const muted = isToday ? tokens.ink.label : tokens.ink.secondary
           return (
             <TableRow

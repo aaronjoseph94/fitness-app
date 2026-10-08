@@ -121,7 +121,7 @@ export function NothingWaiting() {
   )
 }
 
-/** The #FAFAFA card at the foot of the rail: the rails every proposal is checked against. */
+/** The `ink.panel` card at the foot of the rail: the rails every proposal is checked against. */
 export function RailsCard() {
   return (
     <Box

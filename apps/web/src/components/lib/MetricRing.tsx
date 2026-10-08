@@ -3,8 +3,9 @@
 // second lap is drawn over the first with a surface-coloured ring so "over target" reads at a glance. The arc draws
 // from 0 on mount over 1.4 s on the entrance curve; under reduced motion it is simply there.
 //
-// Props are unchanged; new: `color` (any token colour, for a ring that is not a metric — the goal ring is the accent)
-// and `trackColor` (default the colour's 16 % tint; 2a puts the neutral #F4F4F5 on white and #E4E4E7 on a panel).
+// `color` overrides the metric's colour with any token colour, for a ring that is not a metric (the goal ring is the
+// accent). `trackColor` defaults to the arc colour's 16 % tint; 2a puts the neutral `ink.fill` on white and
+// `ink.border` on a panel.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { enterEasing, tokens, withAlpha, type MetricKey } from '../../theme'

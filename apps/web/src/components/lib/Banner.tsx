@@ -1,6 +1,7 @@
 // Owns: the 2a banner — a tinted strip with a 1 px border, radius 10, 13 px text and an 18 px glyph in the tone's own
-// colour: info (#EFF6FF / #BFDBFE / #1E3A8A — a session's start notes, an offline read), warning (#FEF3C7, deep amber
-// text — the next fast, a failed read), danger and success. An optional title, and an action on the right (a retry).
+// colour, all from `BANNER_TONES`: info (`tone.info` bg / border / text — a session's start notes, an offline read),
+// warning (`tone.warning.bg`, `tone.warning.deep` text — the next fast, a failed read), danger and success. An optional
+// title, and an action on the right (a retry).
 // MUI's <Alert> is themed to the same look; use this where a banner is part of a layout rather than a notice.
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded'

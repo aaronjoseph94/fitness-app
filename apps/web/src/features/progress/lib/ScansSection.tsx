@@ -25,7 +25,7 @@ export function ScansSection() {
         }
       />
       {!confirmed ? (
-        <QueryStateCard query={scans} what="the scans" height={220} />
+        <QueryStateCard query={scans} what="the scans" height={220} titleSize="card" />
       ) : confirmed.length === 0 ? (
         <ChartCard
           title="Body composition across scans"

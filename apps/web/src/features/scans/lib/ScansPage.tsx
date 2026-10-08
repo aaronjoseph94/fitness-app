@@ -178,9 +178,7 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
                 ) : left === 0 ? (
                   <StatusChip size="small" tone="warning" label="Due today" />
                 ) : (
-                  <Box component="span" sx={{ px: '7px', py: '1px', borderRadius: `${tokens.radius.badge}px`, border: `1px dashed ${tokens.ink.dashed}`, fontSize: tokens.font.size.micro, color: tokens.ink.muted, whiteSpace: 'nowrap' }}>
-                    Upcoming
-                  </Box>
+                  <StatusChip size="small" tone="dashed" label="Upcoming" />
                 )}
               </TableCell>
             </TableRow>

@@ -2,7 +2,7 @@
 // never both on screen) — six tabs, the filled glyph and the accent for the active one, tapping the active tab scrolls
 // back to the top, padded for the iOS home indicator.
 //
-// 2a's chrome: an opaque white bar with the #E4E4E7 hairline above it, the same edge the desktop header draws. The
+// 2a's chrome: an opaque white bar with the `ink.border` hairline above it, the same edge the desktop header draws. The
 // selected tab is tinted and takes the filled glyph, the second, non-colour signal (WCAG 1.4.1), and `aria-current`.
 import BottomNavigation from '@mui/material/BottomNavigation'
 import BottomNavigationAction from '@mui/material/BottomNavigationAction'

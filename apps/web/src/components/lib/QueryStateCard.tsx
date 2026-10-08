@@ -1,7 +1,7 @@
 // Owns: what a read shows before it has data — a chart-shaped skeleton card while it loads (the title and description
-// lines of a ChartCard, line for line, over a block of the chart's height), then a 2a banner that says why: the info
-// banner when offline with nothing saved on this phone yet, the warning banner for a sign-in that expired or the
-// server's answer, with "Try again" on its right.
+// lines of a ChartCard, line for line at either title size, over a block of the chart's height), then a 2a banner that
+// says why: the info banner when offline with nothing saved on this phone yet, the warning banner for a sign-in that
+// expired or the server's answer, with "Try again" on its right.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -47,18 +47,33 @@ export interface QueryStateCardProps {
   what: string
   /** Height of the skeleton's chart block: the chart's whole frame (legend, unit caption and plot). Default 200. */
   height?: number
+  /** The header of the card it stands in for: `section` 16 px over 13 px (default), `card` 14 px over 12 px (a ChartCard
+   * with `titleSize="card"`, its title from the card's 18 px top padding). */
+  titleSize?: 'section' | 'card'
 }
 
 /** The skeleton while `query` loads, otherwise its error banner. Render it only while the read has no data. */
-export function QueryStateCard({ query, what, height = 200 }: QueryStateCardProps) {
+export function QueryStateCard({ query, what, height = 200, titleSize = 'section' }: QueryStateCardProps) {
+  const card = titleSize === 'card'
   if (isQueryLoading(query))
     return (
-      <Card data-testid="chart-skeleton" aria-busy="true" sx={{ px: `${tokens.pad.card.x}px`, pt: `${tokens.pad.header.top}px`, pb: `${tokens.pad.card.y}px` }}>
-        {/* The same line boxes as ChartCard's title and description, so the loaded card has the skeleton's height. */}
-        <Box sx={{ fontSize: tokens.font.size.cardTitle, lineHeight: tokens.font.leading.cardTitle }}>
+      <Card
+        data-testid="chart-skeleton"
+        aria-busy="true"
+        sx={{ px: `${tokens.pad.card.x}px`, pt: `${card ? tokens.pad.card.y : tokens.pad.header.top}px`, pb: `${tokens.pad.card.y}px` }}
+      >
+        {/* The same line boxes as ChartCard's title and description (Panel's, per title size), so the loaded card has the
+            skeleton's height. */}
+        <Box sx={{ fontSize: card ? tokens.font.size.body : tokens.font.size.cardTitle, lineHeight: tokens.font.leading.cardTitle }}>
           <Skeleton variant="text" width="40%" />
         </Box>
-        <Box sx={{ mt: '3px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
+        <Box
+          sx={{
+            mt: card ? '2px' : '3px',
+            fontSize: card ? tokens.font.size.caption : tokens.font.size.small,
+            lineHeight: card ? tokens.font.leading.caption : tokens.font.leading.small,
+          }}
+        >
           <Skeleton variant="text" width="65%" />
         </Box>
         <Skeleton variant="rounded" height={height} sx={{ mt: '14px', borderRadius: `${tokens.radius.control}px` }} />

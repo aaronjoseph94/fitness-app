@@ -1,6 +1,6 @@
 // Owns: the 2a segmented control, built on MUI's ToggleButtonGroup (so keyboard, `aria-pressed` and the exclusive
 // choice come from MUI) in two looks:
-//   • `default` — a #F4F4F5 track 3 px in, radius 9; the selected segment white with the segment shadow (page title
+//   • `default` — an `ink.fill` track 3 px in, radius 9; the selected segment white with the segment shadow (page title
 //     rows: "Today / 7 days / 30 days", "30 / 90 / 180 days");
 //   • `outline` — a 1 px `ink.border` frame with no fill, 12 px segments, the selected one on `ink.fill` inside a
 //     1 px `ink.control` ring, so the choice reads at 3:1 and not by its fill alone (a card header's "12 days /

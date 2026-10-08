@@ -1,7 +1,7 @@
-// Owns: the 2a list row (Settings, "More", any card of rows) — a full-width row, 12 × 20 padding, a #F4F4F5 hairline
-// above it, a 14/500 label with an optional 12 px muted help line, the value on the right in #52525B (tabular), and a
-// chevron when the row goes somewhere; hover `ink.panel`. It is a button (`onClick`), a router link (`component` +
-// `to`) or, with neither, a plain row whose `trailing` slot holds its own control (a Switch).
+// Owns: the 2a list row (Settings, "More", any card of rows) — a full-width row, 12 × 20 padding, an `ink.hairline`
+// rule above it, a 14/500 label with an optional 12 px muted help line, the value on the right in `ink.label`
+// (tabular), and a chevron when the row goes somewhere; hover `ink.panel`. It is a button (`onClick`), a router link
+// (`component` + `to`) or, with neither, a plain row whose `trailing` slot holds its own control (a Switch).
 // `variant="card"` is the same content as a standalone bordered card (Train's tool cards).
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
@@ -14,11 +14,11 @@ export interface ListRowProps {
   label: ReactNode
   /** A muted line under the label. */
   help?: ReactNode
-  /** Right-aligned value (#52525B, tabular). */
+  /** Right-aligned value (`ink.label`, tabular). */
   value?: ReactNode
   /** Replaces the value + chevron, e.g. a `<Switch>` (give it an accessible name) or a status chip. */
   trailing?: ReactNode
-  /** Leading 18 px glyph in muted ink; with `iconTile` it sits in a 36 px #F4F4F5 tile in accent blue instead. */
+  /** Leading 18 px glyph in muted ink; with `iconTile` it sits in a 36 px `ink.fill` tile in accent blue instead. */
   icon?: SvgIconComponent
   iconTile?: boolean
   onClick?: () => void

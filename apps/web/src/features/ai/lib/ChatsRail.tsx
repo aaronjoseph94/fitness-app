@@ -77,7 +77,7 @@ export function ChatsRail() {
                   bgcolor: 'transparent',
                   boxShadow: active ? `inset 0 0 0 1px ${tokens.ink.border}` : 'none',
                   color: tokens.ink.text,
-                  // On the #F4F4F5 fill the time line steps up to #52525B (#71717A there is 4.39:1, under AA).
+                  // On the `ink.fill` background the time line steps up to `ink.label` (`ink.muted` there is 4.39:1, under AA).
                   '&:hover, &[aria-current]': { bgcolor: tokens.ink.fill, '& .chat-when': { color: tokens.ink.label } },
                   // Inset, like the kit's flush rows: the scrolling list would clip a ring drawn outside the row.
                   '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width },

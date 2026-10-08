@@ -3,7 +3,7 @@
 // rest seconds (one-tap presets), note; and the row menu (about, swap, remove). An exercise outside the allowed set
 // (hidden, or its equipment marked since the template was saved) says so in place of its prescription.
 // 2a: the session logger's exercise card — a 44 px thumb tile, "1 · Name" 15/600 with the 13 px muted prescription, an
-// expand glyph and an outlined ⋯ button; open, it takes the blue border + ring and its editors sit on a #FAFAFA strip.
+// expand glyph and an outlined ⋯ button; open, it takes the blue border + ring and its editors sit on an `ink.panel` strip.
 import AddRounded from '@mui/icons-material/AddRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import DragIndicatorRounded from '@mui/icons-material/DragIndicatorRounded'
@@ -168,7 +168,7 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
       </Box>
 
       {expanded && (
-        // The editors on a #FAFAFA strip under the header, like the logger's column-header strip.
+        // The editors on an `ink.panel` strip under the header, like the logger's column-header strip.
         <Box
           sx={{
             px: `${tokens.pad.card.x}px`,

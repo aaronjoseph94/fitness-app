@@ -4,7 +4,7 @@
 // Start / Save bar, and "Delete template" (asks first; sessions started from it keep their sets). The fill's pending
 // workout proposal goes with the next create or start (accepting it). Leaving with unsaved changes asks first.
 // 2a: the page's h1 ("Workout builder", or "Edit template") with Duplicate / Delete on the right, a summary card in
-// Train's today-card idiom (name, notes and sets | the muscle map and what it trains on a #FAFAFA panel), the exercise
+// Train's today-card idiom (name, notes and sets | the muscle map and what it trains on an `ink.panel` panel), the exercise
 // cards and the sticky bar (above the bottom tabs on a phone, at the bottom of the window from `md` up).
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'

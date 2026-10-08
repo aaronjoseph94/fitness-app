@@ -4,7 +4,7 @@
 // section looks and behaves the same.
 //
 // Built on the kit: a group is a flush `Panel` (title 16/600, 13 px description, actions right), each row a `ListRow`
-// (14/500 label, 12 px help, #52525B value, chevron, #F4F4F5 hairline above, hover #FAFAFA).
+// (14/500 label, 12 px help, `ink.label` value, chevron, `ink.hairline` above, hover `ink.panel`).
 import ContentCopyRounded from '@mui/icons-material/ContentCopyRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
@@ -125,7 +125,7 @@ export function SwitchRow({
 
 /**
  * A row whose value is text to copy (the connector URL, a token you just generated): the label and a Copy button on one
- * line, the value wrapping underneath in a #FAFAFA well that is easy to select by hand when the browser refuses the
+ * line, the value wrapping underneath in an `ink.panel` well that is easy to select by hand when the browser refuses the
  * clipboard.
  */
 export function CopyRow({
@@ -234,7 +234,7 @@ export function DayTiles({ days }: { days: readonly Weekday[] }) {
                 placeItems: 'center',
                 borderRadius: `${tokens.radius.inner}px`,
                 bgcolor: on ? tokens.dark.bg : tokens.ink.fill,
-                color: on ? tokens.dark.text : tokens.ink.faint,
+                color: on ? tokens.dark.text : tokens.ink.label,
                 fontSize: tokens.font.size.micro,
                 fontWeight: tokens.font.weight.heading,
                 lineHeight: 1,

@@ -40,8 +40,8 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
       <Box>
         {header}
         <Box sx={{ display: 'grid', gap: 4 }}>
-          <QueryStateCard query={trend} what="the weight trend" height={frameHeight(240)} />
-          {isQueryLoading(trend) && <QueryStateCard query={trend} what="the weight trend" />}
+          <QueryStateCard query={trend} what="the weight trend" height={frameHeight(240)} titleSize="card" />
+          {isQueryLoading(trend) && <QueryStateCard query={trend} what="the weight trend" titleSize="card" />}
         </Box>
       </Box>
     )

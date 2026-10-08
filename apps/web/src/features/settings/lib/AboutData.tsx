@@ -1,5 +1,5 @@
 // Owns: the "About this data" card (2a) — where each kind of data is kept (D1 and R2 on Cloudflare, this phone's queue
-// and cache, with what is waiting in it now) and what never reaches an LLM, in three short columns on the #FAFAFA
+// and cache, with what is waiting in it now) and what never reaches an LLM, in three short columns on the `ink.panel`
 // panel, then the time zone and the way to export everything.
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'

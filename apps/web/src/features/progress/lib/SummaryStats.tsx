@@ -1,8 +1,9 @@
 // Owns: the four headline numbers for the selected range (2a stat cards) — trend change with the weekly rate, average
 // intake and average protein against their targets, and logging adherence — each a big number with a pill right of
 // it and a caption saying what it is. Two per row on a phone, four across from 900 px.
-// Before the range's data arrives (`summary` null) the cards show dashes with captions of the same length, so the
-// grid has its final height from the first paint and the charts under it never move.
+// Before the range's data arrives (`summary` null) the cards show dashes with captions of the same length and hold
+// their pills' room (`delta={null}`), so the grid has its final height from the first paint and the charts under it
+// never move.
 import Box from '@mui/material/Box'
 import type { Forecast, TargetValues } from '@fitness/shared/schemas'
 import { formatNumber, formatSigned, Reveal, StatCard, staggerDelay, StatusChip } from '../../../components'
@@ -25,6 +26,10 @@ const FILL = { height: '100%' }
 
 const delay = (i: number) => staggerDelay(i, tokens.motion.stagger.card, 150)
 
+/** A phone card with its numbers in: label, value, the delta pill on a row of its own, a two-line caption. Each phone
+ * row is at least this tall, so the rows hold their height when the range's numbers and captions land. */
+const PHONE_CARD_HEIGHT = 165
+
 export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) {
   const s = summary
   const change = s?.trendChangeKg ?? null
@@ -43,7 +48,12 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
     <Box
       data-testid="progress-summary"
       aria-busy={summary === null || undefined}
-      sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}
+      sx={{
+        display: 'grid',
+        gap: 4,
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+        gridAutoRows: { xs: `minmax(${PHONE_CARD_HEIGHT}px, auto)`, sm: 'auto' },
+      }}
     >
       <Reveal delay={delay(0)} sx={FILL}>
         <StatCard
@@ -51,7 +61,7 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
           value={change === null ? null : formatSigned(change, 1)}
           unit="kg"
           precision={2}
-          delta={rate === null ? undefined : { value: rate, unit: 'kg/wk', good: 'down' }}
+          delta={s === null ? null : rate === null ? undefined : { value: rate, unit: 'kg/wk', good: 'down' }}
           footnote={`${trendLine}${expected}`}
           testId="stat-trend-change"
         />
@@ -61,7 +71,13 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
           label="Average intake"
           value={avgKcal}
           unit="kcal"
-          delta={avgKcal !== null && kcalTarget ? { value: avgKcal - kcalTarget, unit: '', period: `vs ${formatNumber(kcalTarget)}`, good: 'neutral' } : undefined}
+          delta={
+            s === null
+              ? null
+              : avgKcal !== null && kcalTarget
+                ? { value: avgKcal - kcalTarget, unit: '', period: `vs ${formatNumber(kcalTarget)}`, good: 'neutral' }
+                : undefined
+          }
           countUp
           delay={delay(1)}
           footnote={
@@ -79,7 +95,13 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
           label="Average protein"
           value={avgProtein}
           unit="g"
-          delta={avgProtein !== null && proteinTarget ? { value: avgProtein - proteinTarget, unit: '', period: `vs ${formatNumber(proteinTarget)}`, good: 'up' } : undefined}
+          delta={
+            s === null
+              ? null
+              : avgProtein !== null && proteinTarget
+                ? { value: avgProtein - proteinTarget, unit: '', period: `vs ${formatNumber(proteinTarget)}`, good: 'up' }
+                : undefined
+          }
           countUp
           delay={delay(2)}
           footnote={

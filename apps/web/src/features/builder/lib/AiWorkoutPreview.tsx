@@ -3,7 +3,7 @@
 // the same primary muscle) and about, then "Start
 // session" or "Save as template". Controlled: the caller holds the draft and applies swaps through `onSwap`.
 // 2a: a summary card in Train's today-card idiom (the AI's reasoning, guard notes and the set count | the muscle map on
-// a #FAFAFA panel), the exercises as a card of rows, and the sticky Save / Start bar. The two cards rise in on mount.
+// an `ink.panel` panel), the exercises as a card of rows, and the sticky Save / Start bar. The two cards rise in on mount.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'

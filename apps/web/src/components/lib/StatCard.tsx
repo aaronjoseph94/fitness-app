@@ -1,12 +1,8 @@
 // Owns: the 2a stat card (Today's five across, the Dashboard tiles, Progress' summary cards): `padding 18 × 20 × 16`;
-// a 13/500 #52525B label with a 16 px #A1A1AA glyph right-aligned; a 28/600 tabular value with its unit
+// a 13/500 `ink.label` label with a 16 px `ink.faint` glyph right-aligned; a 28/600 tabular value with its unit
 // ("/ 1,400 kcal") in 13 px muted; an optional signed delta at the right of the value (a tinted pill, or plain
 // coloured text); an optional 6 px progress bar in the metric colour; a slot for a sparkline (`MiniBars`); and a 12 px
 // muted caption whose <strong> is the 500 ink key figure. The value can count up once on mount.
-//
-// Restyled for 2a (2026-10-07) without changing a prop: `icon` is now the right-aligned glyph rather than a tinted
-// tile, `metric` colours the progress fill (the old accent dot is gone — the label names the metric), and a delta that
-// is bad for the plan reads in the warning amber 2a uses for a shortfall. New: `progress`, `deltaStyle`, `countUp`.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'

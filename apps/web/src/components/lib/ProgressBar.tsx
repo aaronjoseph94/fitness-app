@@ -1,6 +1,6 @@
-// Owns: the 2a progress bar — a 6 px fully round #F4F4F5 track with a fill in a metric (or any token) colour that grows
-// from 0 on mount over 1.4 s on the entrance curve (in place under reduced motion). It is a `progressbar` with its own
-// accessible name, so the number it stands for is announced, not just drawn.
+// Owns: the 2a progress bar — a 6 px fully round `ink.fill` track with a fill in a metric (or any token) colour that
+// grows from 0 on mount over 1.4 s on the entrance curve (in place under reduced motion). It is a `progressbar` with
+// its own accessible name, so the number it stands for is announced, not just drawn.
 import Box from '@mui/material/Box'
 import { enterEasing, tokens, type MetricKey } from '../../theme'
 import { useEntrance } from './useEntrance'
@@ -14,7 +14,7 @@ export interface ProgressBarProps {
   color?: string
   /** Accessible name, e.g. "Calories against target". */
   label: string
-  /** Track colour. Default `tokens.ink.fill`. On a #FAFAFA panel use `tokens.ink.border`. */
+  /** Track colour. Default `tokens.ink.fill`. On an `ink.panel` panel use `tokens.ink.border`. */
   trackColor?: string
   /** Grow delay in ms, to follow the card's entrance. Default 0. */
   delay?: number
