@@ -8,7 +8,7 @@ import { endpoints } from '@fitness/shared/api'
 import type { ChatProposal, Proposal } from '@fitness/shared/schemas'
 import { useApiQuery } from '../../../api'
 import { actorLabel } from '../../proposals'
-import { isQueryLoading, Reveal, staggerDelay, visuallyHidden } from '../../../components'
+import { isQueryLoading, QueryStateCard, Reveal, staggerDelay, visuallyHidden } from '../../../components'
 import { tokens } from '../../../theme'
 import { ProposalItem } from './ProposalItem'
 import { useThreadStore } from './thread-store'
@@ -94,10 +94,12 @@ export function PendingProposals() {
 
 /**
  * The rail's heading when nothing waits, so the column still says what lands in it — once the feed has said so. While
- * it loads the line is a skeleton, and a feed it could not read claims nothing.
+ * it loads the line is a skeleton, and a feed it could not read claims nothing: offline it says it needs a connection,
+ * and a failed read online is the kit's warning banner with Try again.
  */
 export function NothingWaiting() {
   const feed = useFeed()
+  const offline = feed.fetchStatus === 'paused' || feed.error?.kind === 'network'
   return (
     <Box component="section" aria-labelledby="ask-ai-pending-title">
       <RailTitle count={0} />
@@ -109,8 +111,10 @@ export function NothingWaiting() {
           </>
         ) : feed.data && !feed.isError ? (
           'Nothing right now. What the AI proposes waits here until you accept or reject it.'
-        ) : (
+        ) : offline ? (
           'Proposals need a connection.'
+        ) : (
+          <QueryStateCard query={feed} what="proposals" />
         )}
       </Box>
     </Box>

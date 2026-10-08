@@ -8,7 +8,7 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { fastDay } from '@fitness/shared/engine'
 import { useState } from 'react'
-import { formatNumber, LoadProblem, MetricRing, PendingBadge, tabularNums } from '../../../components'
+import { formatNumber, LoadProblem, MetricRing, PendingBadge, statValue, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, dateOf, formatDateTime, formatDuration, instantAt, relativeDay, shiftDate, todayLocal } from './dates'
 import { fastsInMonth, useFasts, useNow, type FastView } from './fasts'
@@ -82,7 +82,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
               centreCaption={`of ${fastHours} h`}
             />
             <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1.2, ...tabularNums }}>
+              <Box sx={{ ...statValue('small'), lineHeight: 1.2 }}>
                 {formatDuration(now - Date.parse(active.startedAt))}
               </Box>
               <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1, lineHeight: tokens.font.leading.small }}>

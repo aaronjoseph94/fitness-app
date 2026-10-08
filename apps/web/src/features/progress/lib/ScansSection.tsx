@@ -29,6 +29,7 @@ export function ScansSection() {
       ) : confirmed.length === 0 ? (
         <ChartCard
           title="Body composition across scans"
+          titleSize="card"
           subtitle="Per Evolt scan"
           empty={{ title: 'No scans yet', body: 'Upload an Evolt sheet and every metric is charted here.', action: { label: 'Go to scans', onClick: () => void navigate('/scans') } }}
           testId="progress-scans"

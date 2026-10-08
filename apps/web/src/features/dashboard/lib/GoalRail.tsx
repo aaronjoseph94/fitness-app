@@ -23,7 +23,7 @@ import type { SvgIconComponent } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router'
 import { addDays, daysBetween, fastDay, weekdayOf, weekStart } from '@fitness/shared/engine'
 import type { DaySummary, LocalDate, TargetValues } from '@fitness/shared/schemas'
-import { cardSurface, formatNumber, formatShortDate, formatWeekday, MetricRing, Panel, PanelRow, StatusChip, type StatusChipTone } from '../../../components'
+import { cardSurface, formatDayRange, formatNumber, formatShortDate, formatWeekday, MetricRing, Panel, PanelRow, StatusChip, type StatusChipTone } from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
 import { confirmedScans } from '../../scans/charts'
 import { effectiveRate, lastTrend, milestoneTimelines } from '../../progress/series'
@@ -160,11 +160,6 @@ function trainingDates(from: LocalDate, to: LocalDate, trainingDays: readonly st
   return out
 }
 
-/** "Oct 5 – 11", or "Sep 28 – Oct 4" across a month end. */
-function dayRange(from: LocalDate, to: LocalDate): string {
-  return from.slice(0, 7) === to.slice(0, 7) ? `${formatShortDate(from)} – ${Number(to.slice(8))}` : `${formatShortDate(from)} – ${formatShortDate(to)}`
-}
-
 /** "in 17 days", "today", "3 days overdue". */
 function dueIn(date: LocalDate, today: LocalDate): string {
   const days = daysBetween(today, date)
@@ -245,7 +240,7 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
       id="plan-rail"
       title="Against the plan"
       headingComponent="h3"
-      description={`Since ${formatShortDate(planStart)} · this week ${dayRange(thisWeek, weekEnd)}`}
+      description={`Since ${formatShortDate(planStart)} · this week ${formatDayRange(thisWeek, weekEnd)}`}
       testId="dashboard-goal-rail"
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, mt: '4px' }}>

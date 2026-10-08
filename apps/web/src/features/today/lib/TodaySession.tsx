@@ -1,6 +1,6 @@
 // Owns: Today's session card (2a) — the session today's plan holds (name, exercises, sets, and the workout reminder's
 // time as its chip), the muscles it trains as a muscle map with the hardest-worked muscles listed beside it, and
-// "Start session" (the Train tab, where it starts) and "Edit" (its template in the builder); once a session is under
+// "Start session" (the Train tab, where it starts) and "Edit" (aria "Edit template": its template in the builder); once a session is under
 // way or done, that session instead (resume or view it); otherwise "Training day" or "Rest day". Reads only what the
 // day and the week plan already carry: exercise names live in the library, which Today does not load.
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
@@ -9,10 +9,9 @@ import Button from '@mui/material/Button'
 import { muscleLevels, weekdayOf } from '@fitness/shared/engine'
 import type { DayView, LocalDate, Muscle, MuscleScores, Reminder, Weekday, WeekPlan } from '@fitness/shared/schemas'
 import { Link as RouterLink } from 'react-router'
-import { formatNumber, Panel, PanelRow, StatusChip } from '../../../components'
+import { formatClockTime, formatNumber, Panel, PanelRow, StatusChip } from '../../../components'
 import { levelLabel, MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
-import { clockLabel } from './event-view'
 
 /** Muscles listed beside the map. */
 const MUSCLES_SHOWN = 5
@@ -52,7 +51,7 @@ export function TodaySession({ date, day, plan, trainingDays, reminder }: TodayS
   const planned = day?.planned_session ?? plan?.plan.sessions[wd] ?? null
   const training = day?.targets ? day.targets.training_planned : plan ? plan.plan.sessions[wd] !== null : (trainingDays?.includes(wd) ?? false)
   const fastDay = day?.fast.is_fast_day === true || day?.targets?.is_fast_day === true || (plan?.plan.fast_dates.includes(date) ?? false)
-  const time = reminder?.enabled && reminder.time ? clockLabel(reminder.time) : null
+  const time = reminder?.enabled && reminder.time ? formatClockTime(reminder.time) : null
   const fastNote = fastDay && (
     <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, color: tokens.ink.muted }}>Fast day: keep any training light.</Box>
   )
@@ -110,7 +109,7 @@ export function TodaySession({ date, day, plan, trainingDays, reminder }: TodayS
             Start session
           </Button>
           {planned.template_id && (
-            <Button component={RouterLink} to={`/train/builder/${planned.template_id}`} variant="outlined">
+            <Button component={RouterLink} to={`/train/builder/${planned.template_id}`} variant="outlined" aria-label="Edit template">
               Edit
             </Button>
           )}

@@ -3,7 +3,7 @@
 // time or an exercise swap.
 import type { ChatProposal } from '@fitness/shared/schemas'
 import { formatShortDate, type ProposalChange, type ProposalStatus } from '../../../components'
-import { planChangeRow, planChangeTitle, REMINDER_LABEL } from '../../proposals'
+import { planChangeHeading, planChangeRows, REMINDER_LABEL } from '../../proposals'
 
 export interface ChatProposalView {
   title: string
@@ -30,9 +30,9 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
   switch (body.kind) {
     case 'plan_change':
       return {
-        title: planChangeTitle(body.changes),
+        title: planChangeHeading(p.summary, body.changes),
         summary: p.summary,
-        changes: body.changes.map(planChangeRow),
+        changes: planChangeRows(body.changes),
         why: [...new Set(body.changes.map((c) => c.reason))].join(' '),
         status: p.status,
         replaced: false,

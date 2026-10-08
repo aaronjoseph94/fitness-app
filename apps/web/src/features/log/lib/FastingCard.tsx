@@ -10,10 +10,11 @@ import ButtonBase from '@mui/material/ButtonBase'
 import { fastDay } from '@fitness/shared/engine'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, formatShortDate, formatWeekday, LoadProblem, PendingBadge } from '../../../components'
-import { COARSE_POINTER_QUERY, tokens, withAlpha } from '../../../theme'
+import { fastLook } from '../../../charts'
+import { formatClock, formatNumber, formatShortDate, formatWeekday, LoadProblem, PendingBadge } from '../../../components'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { dateOf, formatDateTime, fastsInMonth, shiftDate, useFasts, useLogMutation, useLogSettings, useNow, type FastView } from '../../quick-log'
-import { clock12, dayLabel, longDayLabel } from './labels'
+import { dayLabel, longDayLabel } from './labels'
 import { CardMeta, LoadingRows, LogCard } from './LogCard'
 
 const HISTORY_MAX = 6
@@ -81,7 +82,7 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
                 Next: {longDayLabel(dayOf(next))}
               </Box>
               <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.tone.warning.text, fontVariantNumeric: 'tabular-nums' }}>
-                {formatNumber(fastHours)} h from {clock12(next.startedAt)} {formatWeekday(dateOf(next.startedAt))}
+                {formatNumber(fastHours)} h from {formatClock(next.startedAt)} {formatWeekday(dateOf(next.startedAt))}
               </Box>
               {later.length > 0 && (
                 <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.tone.warning.text, fontVariantNumeric: 'tabular-nums' }}>
@@ -130,9 +131,10 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
 }
 
 /**
- * 2a's fasting strip: one cell per day, today dark, a planned fast dashed amber, completed / partial in the fasting slate.
- * A day with a fast is a button: tapping it puts its date, status and hours in the line under the strip (the kit's
- * FastingStrip tap caption), in place of the range labels.
+ * 2a's fasting strip: one cell per day, today dark, a planned fast dashed amber, completed / partial in the fasting slate
+ * (the chart kit's `fastLook`, shared with every fasting day strip; a running fast looks partial). A day with a fast is
+ * a button: tapping it puts its date, status and hours in the line under the strip (the kit's FastingStrip tap caption),
+ * in place of the range labels.
  */
 function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today: string; dayOf: (f: FastView) => string }) {
   const [selected, setSelected] = useState<string | null>(null)
@@ -156,27 +158,14 @@ function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today:
           const f = byDay.get(d)
           const status = f?.status
           const isToday = d === today
+          const look = status ? fastLook(status === 'active' ? 'partial' : status) : undefined
           const cellSx = {
             height: 18,
             minWidth: 0,
             boxSizing: 'border-box',
             borderRadius: `${tokens.chart.barRadius}px`,
-            bgcolor:
-              status === 'completed'
-                ? tokens.metric.fasting
-                : status === 'partial' || status === 'active'
-                  ? withAlpha(tokens.metric.fasting, 0.45)
-                  : status === 'planned' || status === 'missed'
-                    ? 'transparent'
-                    : isToday
-                      ? tokens.dark.bg
-                      : tokens.ink.fill,
-            border:
-              status === 'planned'
-                ? `1.5px dashed ${tokens.tone.warning.text}`
-                : status === 'missed'
-                  ? `1.5px dashed ${tokens.chart.target}`
-                  : undefined,
+            bgcolor: look?.fill ?? (look?.dashed ? 'transparent' : isToday ? tokens.dark.bg : tokens.ink.fill),
+            border: look?.dashed ? `1.5px dashed ${look.dashed}` : undefined,
             boxShadow: d === selected ? `inset 0 0 0 1.5px ${tokens.ink.text}` : f && isToday ? `inset 0 0 0 1.5px ${tokens.dark.bg}` : undefined,
           } as const
           if (!f) return <Box key={d} aria-hidden sx={cellSx} />

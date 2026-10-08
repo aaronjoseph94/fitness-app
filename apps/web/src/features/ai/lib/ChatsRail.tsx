@@ -6,6 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Skeleton from '@mui/material/Skeleton'
+import { QueryStateCard } from '../../../components'
 import { tokens } from '../../../theme'
 import { useThreadStore } from './thread-store'
 import { useThreads } from './useChat'
@@ -46,11 +47,17 @@ export function ChatsRail() {
             No past chats yet
           </Box>
         )}
-        {threads.isError && (
-          <Box component="li" sx={noteSx}>
-            Past chats need a connection
-          </Box>
-        )}
+        {/* Offline it needs a connection; a failed read online is the kit's warning banner with Try again. */}
+        {threads.isError &&
+          (threads.fetchStatus === 'paused' || threads.error?.kind === 'network' ? (
+            <Box component="li" sx={noteSx}>
+              Past chats need a connection
+            </Box>
+          ) : (
+            <li>
+              <QueryStateCard query={threads} what="your chats" />
+            </li>
+          ))}
         {threads.data?.map((m) => {
           const active = m.thread_id === threadId
           return (

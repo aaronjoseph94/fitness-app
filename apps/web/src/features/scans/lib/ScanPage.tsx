@@ -5,7 +5,6 @@
 // wrong scan after a confirm.
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -13,13 +12,25 @@ import Skeleton from '@mui/material/Skeleton'
 import type { Scan, ScanFlag } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router'
-import { Banner, cardSurface, formatShortDate, PageHeader, Panel, StatCard, StatusChip, type BannerTone } from '../../../components'
+import {
+  Banner,
+  cardSurface,
+  formatClock,
+  formatShortDate,
+  isQueryLoading,
+  PageHeader,
+  Panel,
+  QueryStateCard,
+  StatCard,
+  StatusChip,
+  type BannerTone,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, todayLocal } from '../../quick-log'
 import { DeleteScanDialog } from './DeleteScanDialog'
 import { DeltaTable } from './DeltaTable'
 import { formFrom } from './form'
-import { scanClock, scanDay } from './format'
+import { scanDay } from './format'
 import { useDiscardScan, useReextractScan, useScan, useScans, useScanSettings } from './hooks'
 import { ReviewForm } from './ReviewForm'
 import { ScanCharts } from './ScanCharts'
@@ -241,7 +252,7 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
       <Box>
         <PageHeader
           title={`Scan · ${scanDay(scan.date)}`}
-          subtitle={`Evolt 360 at ${scanClock(r.scanned_at)} · ${prev ? `changes since ${formatShortDate(prev.date)}` : 'the baseline'}`}
+          subtitle={`Evolt 360 at ${formatClock(r.scanned_at)} · ${prev ? `changes since ${formatShortDate(prev.date)}` : 'the baseline'}`}
           action={
             <>
               <SheetLink scan={scan} />
@@ -283,7 +294,7 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
           Delete this scan
         </Button>
       </Box>
-      {deleting && <DeleteScanDialog scanId={scan.id} date={scan.date} onClose={() => setDeleting(false)} />}
+      {deleting && <DeleteScanDialog scanId={scan.id} date={scanDay(scan.date)} onClose={() => setDeleting(false)} />}
     </Box>
   )
 }
@@ -294,14 +305,20 @@ export function ScanPage() {
   const scan = useScan(id, !isNew)
   const scans = useScans()
   if (isNew) return <ManualEntry />
-  if (scan.isPending)
+  if (isQueryLoading(scan))
     return (
       <Box sx={page}>
-        <Skeleton variant="rounded" height={64} />
+        <PageHeader title="Scan" />
         <Skeleton variant="rounded" height={220} />
       </Box>
     )
-  if (!scan.data) return <Alert severity="error">{problemText(scan.error)}</Alert>
+  if (!scan.data)
+    return (
+      <Box sx={page}>
+        <PageHeader title="Scan" />
+        <QueryStateCard query={scan} what="this scan" />
+      </Box>
+    )
   const s = scan.data
   if (!s.confirmed || !s.record) return <PendingScan scan={s} />
   const all = confirmedScans(scans.data ?? [s])

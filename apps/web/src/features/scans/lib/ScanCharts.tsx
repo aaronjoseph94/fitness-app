@@ -4,6 +4,7 @@
 import Box from '@mui/material/Box'
 import { BodyCompositionChart, BodyFatVisceralChart, Gauge, SegmentalFatChart } from '../../../charts'
 import { ChartCard, formatNumber } from '../../../components'
+import { scanDay } from './format'
 import { BODY_FAT_GAUGE, compositionSeries, fatSeries, segmentalFat, TARGETS, VISCERAL_GAUGE, type ConfirmedScan } from './series'
 
 interface ScanChartsProps {
@@ -30,6 +31,7 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
       <ChartCard
         title="Fat and lean mass"
         subtitle={`Per scan; fat target ${formatNumber(TARGETS.fatMassKg, 1)} kg at goal`}
+        titleSize="card"
         headingComponent={headingComponent}
         testId="scan-chart-composition"
       >
@@ -37,7 +39,8 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
       </ChartCard>
       <ChartCard
         title="Body fat and visceral level"
-        subtitle={`Per scan; gauges for ${latest.date}`}
+        subtitle={`Per scan; gauges for ${scanDay(latest.date)}`}
+        titleSize="card"
         headingComponent={headingComponent}
         testId="scan-chart-fat-visceral"
       >
@@ -56,11 +59,12 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
       {latest.id !== baseline.id && (
         <ChartCard
           title="Segmental fat"
-          subtitle={`Baseline ${baseline.date} vs ${latest.date}, kg`}
+          subtitle={`Baseline ${scanDay(baseline.date)} vs ${scanDay(latest.date)}, kg`}
+          titleSize="card"
           headingComponent={headingComponent}
           testId="scan-chart-segments"
         >
-          <SegmentalFatChart segments={segmentalFat(baseline.record, latest.record)} baselineLabel={baseline.date} latestLabel={latest.date} width={width} />
+          <SegmentalFatChart segments={segmentalFat(baseline.record, latest.record)} baselineLabel={scanDay(baseline.date)} latestLabel={scanDay(latest.date)} width={width} />
         </ChartCard>
       )}
     </Box>

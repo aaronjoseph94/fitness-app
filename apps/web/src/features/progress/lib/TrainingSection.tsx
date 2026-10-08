@@ -76,6 +76,7 @@ function VolumeCard({ sessions, index, from, to }: CardProps) {
   return (
     <ChartCard
       title="Weekly volume"
+      titleSize="card"
       subtitle={`kg lifted, stacked by muscle group · ${formatNumber(thisWeek)} kg this week`}
       empty={lifted ? undefined : { title: 'No sets logged yet', body: 'Finish a session with loads and reps and its week fills in.' }}
       testId="progress-volume"
@@ -97,6 +98,7 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
   return (
     <ChartCard
       title="Volume map"
+      titleSize="card"
       subtitle={`${formatShortDate(start)} – ${formatShortDate(end)} · ${formatNumber(volume.volume_kg)} kg lifted`}
       action={
         <Box component="span" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
@@ -145,6 +147,7 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
   return (
     <ChartCard
       title="Strength per exercise"
+      titleSize="card"
       subtitle="Estimated 1RM (Epley) and the top set, per session"
       action={
         options.length > 0 && id ? (

@@ -10,14 +10,16 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import type { ScanChange, ScanSegment } from '@fitness/shared/schemas'
-import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { BodyCompositionChart } from '../../../charts'
 import {
-  CountUp,
+  deltaTone,
+  formatClock,
   formatNumber,
   formatShortDate,
   formatSigned,
+  KeyStat,
+  KeyStatGrid,
   LegendChips,
   Panel,
   ProgressBar,
@@ -28,7 +30,7 @@ import {
 } from '../../../components'
 import { MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
-import { scanClock, scanDay } from './format'
+import { scanDay } from './format'
 import {
   BODY_FAT_RANGE,
   compositionSeries,
@@ -39,18 +41,6 @@ import {
   type ConfirmedScan,
 } from './series'
 
-/**
- * A small card's 12 px description (2a), inside the Panel's description slot. A block, so its wrapped lines use its own
- * 12 px line height rather than the slot's 13 px one.
- */
-function Caption({ children }: { children: ReactNode }) {
-  return (
-    <Box component="span" sx={{ display: 'block', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption }}>
-      {children}
-    </Box>
-  )
-}
-
 /** The lean-loss guard of a scan against the one before it; the first scan is the baseline. */
 export function GuardChip({ change, size = 'medium' }: { change: ScanChange | null; size?: 'medium' | 'small' }) {
   if (!change) return <StatusChip size={size} label="Baseline" />
@@ -59,11 +49,11 @@ export function GuardChip({ change, size = 'medium' }: { change: ScanChange | nu
   return <StatusChip size={size} tone="success" label="Lean held" />
 }
 
-/** The change since the previous scan beside a value, green when it went the good way, amber when not. */
+/** The change since the previous scan beside a value, in the kit's delta tone: green the good way, amber not. */
 function Delta({ value, precision, good, since }: { value: number | undefined; precision: number; good: 'up' | 'down'; since: string }) {
   if (value === undefined) return null
   const flat = Math.abs(value) < 10 ** -precision / 2
-  const colour = flat ? tokens.ink.label : (value < 0) === (good === 'down') ? tokens.tone.success.text : tokens.tone.warning.text
+  const colour = tokens.tone[deltaTone({ value, good }, precision)].text
   return (
     <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, letterSpacing: 0, color: colour }}>
       {flat ? formatNumber(0, precision) : formatSigned(value, precision)}
@@ -72,59 +62,8 @@ function Delta({ value, precision, good, since }: { value: number | undefined; p
   )
 }
 
-const strip = {
-  display: 'grid',
-  // Four across, except on a phone and from `md` to `lg`, where the card shares its row with the next-scan card (~500 px).
-  gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
-  // 1 px gaps over the hairline colour draw the rules between cells, in rows or in a 2 × 2 grid alike.
-  gap: '1px',
-  bgcolor: tokens.ink.hairline,
-  borderTop: `1px solid ${tokens.ink.border}`,
-} as const
-
-const cellLabel = { fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted } as const
-
-function Headline({ label, value, precision, unit, caption, warn, delta }: { label: string; value: number; precision: number; unit?: string; caption?: string; warn?: boolean; delta?: ReactNode }) {
-  return (
-    <Box sx={{ bgcolor: tokens.ink.card, px: `${tokens.pad.card.x}px`, py: '14px', minWidth: 0 }}>
-      <Box sx={cellLabel}>{label}</Box>
-      <Box
-        sx={{
-          mt: '4px',
-          display: 'flex',
-          alignItems: 'baseline',
-          flexWrap: 'wrap',
-          columnGap: '6px',
-          fontSize: tokens.font.size.bigNumberSmall,
-          fontWeight: tokens.font.weight.number,
-          letterSpacing: tokens.font.em.number,
-          lineHeight: 1.2,
-          ...tabularNums,
-        }}
-      >
-        <span>
-          <CountUp value={value} precision={precision} />
-          {unit && (
-            <Box component="span" sx={{ ml: '4px', fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, letterSpacing: 0, color: tokens.ink.muted }}>
-              {unit}
-            </Box>
-          )}
-        </span>
-        {delta}
-      </Box>
-      {caption && <Box sx={{ ...cellLabel, mt: '2px', color: warn ? tokens.tone.warning.text : tokens.ink.muted }}>{caption}</Box>}
-    </Box>
-  )
-}
-
-function Reading({ label, value }: { label: string; value: string }) {
-  return (
-    <Box sx={{ bgcolor: tokens.ink.card, px: `${tokens.pad.card.x}px`, py: '12px', minWidth: 0 }}>
-      <Box sx={cellLabel}>{label}</Box>
-      <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, ...tabularNums }}>{value}</Box>
-    </Box>
-  )
-}
+/** Four across, except on a phone and from `md` to `lg`, where the card shares its row with the next-scan card (~500 px). */
+const cells = { xs: 2, sm: 4, md: 2, lg: 4 }
 
 export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
   const r = scan.record
@@ -145,7 +84,7 @@ export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
       title={`Latest scan · ${scanDay(scan.date)}`}
       description={
         <>
-          {[prev ? `${prev.days} days after ${since}` : 'The baseline', scanClock(r.scanned_at), r.conditions.time_of_day, 'confirmed by you'].join(' · ')}
+          {[prev ? `${prev.days} days after ${since}` : 'The baseline', formatClock(r.scanned_at), r.conditions.time_of_day, 'confirmed by you'].join(' · ')}
           {/* On a phone the chip and the link drop under the description, so the title keeps the card's width. */}
           <Box component="span" sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 2, mt: 2 }}>
             {guardAndLink}
@@ -155,40 +94,53 @@ export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
       actions={<Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>{guardAndLink}</Box>}
       padding="none"
     >
-      <Box sx={strip}>
-        <Headline label="Weight" value={r.weight_kg} precision={1} unit="kg" delta={delta(prev?.fat_vs_lean.weight_kg, 1, 'down')} />
-        <Headline
+      <KeyStatGrid ruleAbove rule="hairline" columns={cells}>
+        <KeyStat
+          size={tokens.font.size.bigNumberSmall}
+          countUp
+          label="Weight"
+          value={r.weight_kg}
+          precision={1}
+          unit="kg"
+          trailing={delta(prev?.fat_vs_lean.weight_kg, 1, 'down')}
+        />
+        <KeyStat
+          size={tokens.font.size.bigNumberSmall}
+          countUp
           label="Body fat"
           value={r.body_fat_pct}
           precision={1}
           unit="%"
-          caption={`range ${BODY_FAT_RANGE.low}–${BODY_FAT_RANGE.high} %`}
-          warn={outOfRange}
-          delta={delta(prev?.deltas.body_fat_pct, 1, 'down')}
+          trailing={delta(prev?.deltas.body_fat_pct, 1, 'down')}
+          note={`range ${BODY_FAT_RANGE.low}–${BODY_FAT_RANGE.high} %`}
+          noteTone={outOfRange ? 'warning' : undefined}
         />
-        <Headline
+        <KeyStat
+          size={tokens.font.size.bigNumberSmall}
+          countUp
           label="Lean mass"
           value={r.lean_body_mass_kg}
           precision={1}
           unit="kg"
-          caption={`${formatNumber(r.skeletal_muscle_mass_kg, 1)} kg skeletal muscle`}
-          delta={delta(prev?.fat_vs_lean.lean_kg, 1, 'up')}
+          trailing={delta(prev?.fat_vs_lean.lean_kg, 1, 'up')}
+          note={`${formatNumber(r.skeletal_muscle_mass_kg, 1)} kg skeletal muscle`}
         />
-        <Headline
+        <KeyStat
+          size={tokens.font.size.bigNumberSmall}
+          countUp
           label="Visceral level"
           value={r.visceral_fat_level}
-          precision={0}
-          caption={`target ${TARGETS.visceralLevel} or lower`}
-          warn={r.visceral_fat_level > TARGETS.visceralLevel}
-          delta={delta(prev?.deltas.visceral_fat_level, 0, 'down')}
+          trailing={delta(prev?.deltas.visceral_fat_level, 0, 'down')}
+          note={`target ${TARGETS.visceralLevel} or lower`}
+          noteTone={r.visceral_fat_level > TARGETS.visceralLevel ? 'warning' : undefined}
         />
-      </Box>
-      <Box sx={strip}>
-        <Reading label="Visceral fat" value={`${formatNumber(r.visceral_fat_kg, 1)} kg · ${formatNumber(r.visceral_fat_area_cm2)} cm²`} />
-        <Reading label="Subcutaneous fat" value={`${formatNumber(r.subcutaneous_fat_kg, 1)} kg`} />
-        <Reading label="BMR · TEE" value={`${formatNumber(r.bmr_kcal)} · ${formatNumber(r.tee_kcal)} kcal`} />
-        <Reading label="Waist-to-hip · bio age" value={`${formatNumber(r.waist_hip_ratio, 2)} · ${formatNumber(r.bio_age)}`} />
-      </Box>
+      </KeyStatGrid>
+      <KeyStatGrid ruleAbove rule="hairline" dense columns={cells}>
+        <KeyStat size={tokens.font.size.small} label="Visceral fat" value={`${formatNumber(r.visceral_fat_kg, 1)} kg · ${formatNumber(r.visceral_fat_area_cm2)} cm²`} />
+        <KeyStat size={tokens.font.size.small} label="Subcutaneous fat" value={`${formatNumber(r.subcutaneous_fat_kg, 1)} kg`} />
+        <KeyStat size={tokens.font.size.small} label="BMR · TEE" value={`${formatNumber(r.bmr_kcal)} · ${formatNumber(r.tee_kcal)} kcal`} />
+        <KeyStat size={tokens.font.size.small} label="Waist-to-hip · bio age" value={`${formatNumber(r.waist_hip_ratio, 2)} · ${formatNumber(r.bio_age)}`} />
+      </KeyStatGrid>
     </Panel>
   )
 }
@@ -198,9 +150,7 @@ export function CompositionCard({ scans }: { scans: readonly ConfirmedScan[] }) 
     <Panel
       title="Fat and lean mass"
       titleSize="card"
-      description={
-        <Caption>Per scan · the plan expects fat to carry the loss; lean should hold near {formatNumber(TARGETS.leanMassKg)} kg at goal</Caption>
-      }
+      description={`Per scan · the plan expects fat to carry the loss; lean should hold near ${formatNumber(TARGETS.leanMassKg)} kg at goal`}
       actions={
         <LegendChips
           dense
@@ -228,7 +178,7 @@ export function SegmentsCard({ scan }: { scan: ConfirmedScan }) {
     <Panel
       title="Segments"
       titleSize="card"
-      description={<Caption>Lean and fat per limb · torso fat target under {formatNumber(TARGETS.torsoFatKg, 1)} kg</Caption>}
+      description={`Lean and fat per limb · torso fat target under ${formatNumber(TARGETS.torsoFatKg, 1)} kg`}
       // The table carries the numbers; the figure only shows where the fat sits.
       actions={
         <Box aria-hidden sx={{ width: 64, mt: '-6px', mb: '-10px', lineHeight: 0 }}>

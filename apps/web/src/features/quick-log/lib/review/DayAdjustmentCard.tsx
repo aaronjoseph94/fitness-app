@@ -11,7 +11,7 @@ import { endpoints } from '@fitness/shared/api'
 import type { Remaining } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { problemText, useApiQuery } from '../../../../api'
-import { cardSurface, formatNumber, StatusChip, tabularNums } from '../../../../components'
+import { cardSurface, formatNumber, statValue, StatusChip, tabularNums } from '../../../../components'
 import { tokens } from '../../../../theme'
 import { clockOf, instantAt, todayLocal } from '../dates'
 import { defaultSlot, SLOT_LABEL, SLOT_TIME } from '../nutrition'
@@ -64,7 +64,7 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
 
       {kcal !== null && (
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '6px', mt: 2 }}>
-          <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, ...tabularNums, color: tokens.ink.text, lineHeight: 1.1 }}>
+          <Box sx={{ ...statValue('standard'), color: tokens.ink.text, lineHeight: 1.1 }}>
             {formatNumber(Math.abs(kcal))}
           </Box>
           <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{kcal >= 0 ? 'kcal left' : 'kcal over'}</Box>

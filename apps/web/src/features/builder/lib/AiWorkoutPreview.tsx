@@ -15,7 +15,7 @@ import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import type { ExerciseSummary, WorkoutDraft } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
-import { outlinedIconButton, Panel, Reveal, staggerDelay } from '../../../components'
+import { outlinedIconButton, Panel, Reveal, staggerDelay, statValue } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, ExerciseThumb, useExerciseIndex } from '../../library'
@@ -85,7 +85,7 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
             </Box>
           )}
           <Box sx={{ mt: 5, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '6px' }}>
-            <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: tokens.font.leading.number, fontVariantNumeric: 'tabular-nums', color: tokens.ink.text }}>
+            <Box sx={{ ...statValue('standard'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}>
               {training.totalSets}
             </Box>
             <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>sets · {draft.exercises.length} exercises</Box>

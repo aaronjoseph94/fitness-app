@@ -1,5 +1,5 @@
 // Owns: the scan's numbers beside their changes — each whole-body metric and each segment's fat and lean, with the
-// change since the previous scan and since the baseline, coloured by whether the direction is good.
+// change since the previous scan and since the baseline, in the kit's delta tone (green the good way, amber not).
 import Box from '@mui/material/Box'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -7,7 +7,7 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import type { ScanChange, ScanMetricField, ScanRecord } from '@fitness/shared/schemas'
-import { formatNumber, formatShortDate, formatSigned } from '../../../components'
+import { deltaTone, formatNumber, formatShortDate, formatSigned } from '../../../components'
 import { tokens } from '../../../theme'
 import { SEGMENT_LABEL, SEGMENTS } from './series'
 
@@ -31,12 +31,8 @@ const ROWS: { key: ScanMetricField; label: string; unit: string; dp: number; goo
 function Delta({ value, dp, good }: { value: number | undefined; dp: number; good: Good }) {
   if (value === undefined) return <Box component="span" sx={{ color: tokens.ink.muted }}>—</Box>
   const flat = Math.abs(value) < 10 ** -dp / 2
-  const ok = good === 'neutral' || flat ? null : (value < 0) === (good === 'down')
   return (
-    <Box
-      component="span"
-      sx={{ color: ok === null ? tokens.ink.label : ok ? tokens.tone.success.text : tokens.tone.danger.text, fontWeight: tokens.font.weight.label }}
-    >
+    <Box component="span" sx={{ color: tokens.tone[deltaTone({ value, good }, dp)].text, fontWeight: tokens.font.weight.label }}>
       {flat ? formatNumber(0, dp) : formatSigned(value, dp)}
     </Box>
   )

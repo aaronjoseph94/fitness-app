@@ -13,11 +13,10 @@ import type { ChatProposal, ProposalApplied, ProposalBody } from '@fitness/share
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call } from '../../../api'
-import { BeforeAfterList, type ProposalStatus } from '../../../components'
+import { BeforeAfterList, formatRecentTime, type ProposalStatus } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { useProposalDecision, type Decision } from '../../proposals'
 import { chatProposalView } from './proposal-view'
-import { proposalWhen } from './when'
 
 type FollowUp = { to: string; label: string } | null
 
@@ -62,12 +61,6 @@ const linkSx = {
   fontSize: tokens.font.size.caption,
   fontWeight: tokens.font.weight.label,
   [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
-} as const
-
-/** The rail card's before → after rows at 2a's 12 px (6 × 8, radius 6) instead of the kit's 13 px. */
-const compactRows = {
-  '& dl': { gap: '4px' },
-  '& dl > div': { px: '8px', py: '6px', borderRadius: `${tokens.radius.inner}px`, fontSize: tokens.font.size.caption },
 } as const
 
 export interface ProposalItemProps {
@@ -137,7 +130,8 @@ export function ProposalItem({ proposal, source = 'Proposal · Ask AI', when, va
           <AutoAwesomeRounded aria-hidden sx={{ fontSize: 18, color: tokens.accent.main, flex: 'none' }} />
           <Box sx={{ flex: '1 1 220px', minWidth: 0 }}>
             {title}
-            <Box sx={{ color: tokens.ink.muted }}>{view.summary}</Box>
+            {/* A short summary is already the title (planChangeHeading); don't say it twice. */}
+            {view.summary !== view.title && <Box sx={{ color: tokens.ink.muted }}>{view.summary}</Box>}
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', ml: 'auto' }}>{decision}</Box>
         </Box>
@@ -169,13 +163,13 @@ export function ProposalItem({ proposal, source = 'Proposal · Ask AI', when, va
         <Box component="span" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {view.replaced ? 'Proposal · rejected or replaced by a newer plan' : source}
         </Box>
-        {when && <Box component="span" sx={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{proposalWhen(when)}</Box>}
+        {when && <Box component="span" sx={{ flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{formatRecentTime(when)}</Box>}
       </Box>
       <Box sx={{ mt: '8px' }}>{title}</Box>
       {/* 2a's rail card says it with its before → after rows; the summary line stands in only where there are none. */}
       {view.changes.length > 0 ? (
-        <Box sx={{ mt: '8px', ...compactRows }}>
-          <BeforeAfterList changes={view.changes} />
+        <Box sx={{ mt: '8px' }}>
+          <BeforeAfterList size="small" changes={view.changes} />
         </Box>
       ) : (
         <Box sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>{view.summary}</Box>

@@ -7,7 +7,7 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, MetricRing, NumberField, outlinedIconButton, parseNumber, PendingBadge, tabularNums } from '../../../components'
+import { formatNumber, MetricRing, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { instantOnDate, todayLocal } from './dates'
 import { useWater } from './reads'
@@ -72,7 +72,7 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
           centre={water.known ? `${Math.round((water.totalMl / Math.max(1, water.targetMl)) * 100)}%` : '—'}
         />
         <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1.1, ...tabularNums }}>
+          <Box sx={{ ...statValue('standard'), lineHeight: 1.1 }}>
             {water.known ? formatNumber(water.totalMl) : '—'}
             <Box component="span" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, letterSpacing: 0, color: 'text.secondary' }}>
               {' '}

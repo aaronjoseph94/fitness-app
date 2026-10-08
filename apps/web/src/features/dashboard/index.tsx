@@ -14,7 +14,7 @@ import { Link as RouterLink, useSearchParams } from 'react-router'
 import { problemText, signInAgain } from '../../api'
 import { useLocalToday } from '../../app/local-today'
 import { LinkRow, SettingsGroup } from '../settings/rows'
-import { formatLongDate, formatShortDate, PageHeader, SectionHeader, Segmented } from '../../components'
+import { formatLongDate, formatShortDate, PageHeader, Reveal, SectionHeader, Segmented, staggerDelay } from '../../components'
 import { tokens, transitionOf } from '../../theme'
 import { BodySection } from './lib/BodySection'
 import { GoalRail, goalFacts, LatestDay } from './lib/GoalRail'
@@ -31,6 +31,9 @@ function isWindowKey(value: string | null): value is WindowKey {
 
 /** 2a: 24 px between the title row and each section on a desktop (the shell's main gap); a phone keeps 24 too. */
 const PAGE_GAP = 6
+
+/** 2a's entrance: the four sections rise in 90 ms apart, after the Now band (80 ms): 170, 260, 350 and 440 ms. */
+const sectionDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 170)
 
 export function DashboardPage() {
   const [params, setParams] = useSearchParams()
@@ -127,10 +130,18 @@ export function DashboardPage() {
         </Box>
       </Box>
 
-      <BodySection data={data} />
-      <NutritionSection data={data} />
-      <RecoverySection data={data} />
-      <TrainingSection data={data} />
+      <Reveal delay={sectionDelay(0)}>
+        <BodySection data={data} />
+      </Reveal>
+      <Reveal delay={sectionDelay(1)}>
+        <NutritionSection data={data} />
+      </Reveal>
+      <Reveal delay={sectionDelay(2)}>
+        <RecoverySection data={data} />
+      </Reveal>
+      <Reveal delay={sectionDelay(3)}>
+        <TrainingSection data={data} />
+      </Reveal>
 
       {/* A phone has no sidebar: these are its way to the pages the desktop sidebar lists. */}
       <Box sx={{ display: { md: 'none' } }}>

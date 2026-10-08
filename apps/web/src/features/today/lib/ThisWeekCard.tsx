@@ -1,6 +1,7 @@
 // Owns: Today's "This week" card (2a) — the week's dates and whose plan it is ("Oct 5 – 11 · Coach plan"), one 34 px
 // cell per day Monday to Sunday (a session done: green check; today: blue; a session planned: dashed; a fast: amber
-// timer; rest: plain), and the legend, with the fast day's hours and water target and the plan's status. Under it the
+// timer; rest: plain; the scan day ringed beside its weekday), and the legend, with the fast day's hours and water
+// target and the plan's status. Under it the
 // plan's focus note, any proposed plan for this week or later (the week module's banner: Review → Accept), today's
 // carbs, fat and fibre targets (the stat cards carry the rest), and what the plan changed from last week. Days come
 // from the week view's actuals and plan; without a week plan, today's targets and the settings' training days.
@@ -13,7 +14,7 @@ import Button from '@mui/material/Button'
 import { addDays, eachDate, FAST_DAY_EXTRA_WATER_ML, weekdayOf, weekStart } from '@fitness/shared/engine'
 import type { DayView, LocalDate, Weekday, WeekPlan, WeekPlanAuthor, WeekPlanView } from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { formatNumber, formatShortDate, formatWeekday, LegendChips, Panel, type LegendItem } from '../../../components'
+import { formatDayRange, formatNumber, formatShortDate, formatWeekday, LegendChips, Panel, type LegendItem } from '../../../components'
 import { tokens } from '../../../theme'
 import { PlanBadge, ProposedBanner } from '../../week'
 
@@ -109,8 +110,8 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
   const monday = weekStart(date)
   const sunday = addDays(monday, 6)
   const plan = week?.active ?? null
-  const days = eachDate(monday, sunday).map((d) => ({ date: d, mark: markOf(d, date, day, week, trainingDays) }))
-  const range = `${formatShortDate(monday)} – ${monday.slice(5, 7) === sunday.slice(5, 7) ? Number(sunday.slice(8)) : formatShortDate(sunday)}`
+  const days = eachDate(monday, sunday).map((d) => ({ date: d, mark: markOf(d, date, day, week, trainingDays), scan: plan?.plan.scan_date === d }))
+  const range = formatDayRange(monday, sunday)
   const fastWater = (plan?.plan.water_ml ?? waterTargetMl) + FAST_DAY_EXTRA_WATER_ML
   const legend: LegendItem[] = [
     { label: 'Done', color: tokens.tone.success.text },
@@ -118,6 +119,7 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
   ]
   if (days.some((d) => d.mark === 'fast'))
     legend.push({ label: `${fastHours ? `${fastHours} h fast` : 'Fast'} · water ${formatNumber(fastWater / 1000, 1)} L`, color: tokens.tone.warning.text })
+  if (days.some((d) => d.scan)) legend.push({ label: 'Scan', color: tokens.metric.lean, mark: 'ring' })
   // Today's materialised targets know best; else the plan's for this weekday. Calories, protein, water and steps are on
   // the stat cards, so the card adds the other three.
   const t = day?.targets ?? plan?.plan.targets[weekdayOf(date)] ?? null
@@ -138,7 +140,7 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
         aria-label="This week’s days"
         sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}
       >
-        {days.map(({ date: d, mark }) => {
+        {days.map(({ date: d, mark, scan }) => {
           const isToday = d === date
           const Glyph = GLYPH[mark]
           return (
@@ -146,7 +148,7 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
               component="li"
               key={d}
               aria-current={isToday ? 'date' : undefined}
-              aria-label={`${formatWeekday(d)} ${formatShortDate(d)}${isToday ? ', today' : ''}: ${MARK_TEXT[mark]}`}
+              aria-label={`${formatWeekday(d)} ${formatShortDate(d)}${isToday ? ', today' : ''}: ${MARK_TEXT[mark]}${scan ? ', Evolt scan' : ''}`}
               sx={{ minWidth: 0, textAlign: 'center' }}
             >
               <Box
@@ -165,6 +167,12 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
                 }}
               >
                 {formatWeekday(d)}
+                {scan && (
+                  <Box
+                    component="span"
+                    sx={{ display: 'inline-block', ml: '3px', width: 6, height: 6, borderRadius: `${tokens.radius.pill}px`, border: `1.5px solid ${tokens.metric.lean}` }}
+                  />
+                )}
               </Box>
             </Box>
           )

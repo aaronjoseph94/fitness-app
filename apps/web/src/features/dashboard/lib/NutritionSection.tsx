@@ -5,11 +5,10 @@
 import Box from '@mui/material/Box'
 import type { DaySummary, TargetValues } from '@fitness/shared/schemas'
 import { CalendarHeatmap, CaloriesChart } from '../../../charts'
-import { Column, Columns, formatNumber, MeterRow } from '../../../components'
+import { ChartCard, Column, Columns, formatNumber, MeterRow } from '../../../components'
 import { useUiStore } from '../../../app/ui-store'
 import { tokens } from '../../../theme'
 import { caloriesDays, latestTargets, proteinAdherence } from '../../progress/series'
-import { DashCard } from './DashCard'
 import { DashboardSection, WIDE_ROW } from './Section'
 import type { DashboardData } from './useDashboardData'
 
@@ -37,14 +36,16 @@ export function NutritionSection({ data }: { data: DashboardData }) {
     <DashboardSection id="nutrition" title="Nutrition" subtitle="What went in against the targets and the rails">
       <Columns md={2} lg={WIDE_ROW.tracks} align="stretch">
         <Column span={WIDE_ROW.wide} mdSpan={2}>
-          <DashCard
+          <ChartCard
+            titleSize="card"
+            fill
             title="Calories per day, by meal"
             subtitle={rails.length ? rails.join(' · ') : 'kcal per day by meal slot'}
             empty={noMeals ? { ...noMeals, action: { label: 'Log a meal', onClick: () => openQuickLog('meal') } } : null}
             testId="dashboard-calories"
           >
             <CaloriesChart days={caloriesDays(rows)} target={targets?.kcal} height={CALORIES_HEIGHT} />
-          </DashCard>
+          </ChartCard>
         </Column>
 
         <Column span={WIDE_ROW.narrow} mdSpan={1}>
@@ -52,7 +53,9 @@ export function NutritionSection({ data }: { data: DashboardData }) {
         </Column>
 
         <Column span={WIDE_ROW.narrow} mdSpan={1}>
-          <DashCard
+          <ChartCard
+            titleSize="card"
+            fill
             title="Protein adherence"
             subtitle={proteinTarget ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank` : 'Share of the protein target'}
             empty={noMeals}
@@ -65,7 +68,7 @@ export function NutritionSection({ data }: { data: DashboardData }) {
               testId="chart-protein-adherence"
               describe={(v) => (v === null ? 'No meals logged or a fast day' : v >= 1 ? 'At or above target' : `${Math.round(v * 100)} % of target`)}
             />
-          </DashCard>
+          </ChartCard>
         </Column>
       </Columns>
     </DashboardSection>
@@ -90,7 +93,9 @@ function MacrosCard({ rows, targets, empty }: { rows: readonly DaySummary[]; tar
   const avg = (key: (typeof MACROS)[number]['key']) => (eaten.length ? eaten.reduce((sum, d) => sum + d.intake[key], 0) / eaten.length : null)
   const short = eaten.filter((d) => d.targets && d.intake.protein_g < d.targets.protein_g).length
   return (
-    <DashCard
+    <ChartCard
+      titleSize="card"
+      fill
       title="Macros, daily average"
       subtitle={targets ? 'Grams against the targets' : 'Grams per day'}
       empty={empty}
@@ -115,6 +120,6 @@ function MacrosCard({ rows, targets, empty }: { rows: readonly DaySummary[]; tar
           )
         })}
       </Box>
-    </DashCard>
+    </ChartCard>
   )
 }

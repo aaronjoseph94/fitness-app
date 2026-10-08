@@ -52,13 +52,19 @@ const STATIC_MOUNTS: StaticMount[] = [
   { url: '/wasm/zxing_reader.wasm', source: zxingReaderWasm(), kind: 'file' },
 ]
 
-/** Dev: serve each mount from its source. Build: copy each existing source into dist at its URL path. */
+/**
+ * Dev: serve each mount from its source. Build: copy each existing source into dist at its URL path. Vite also calls
+ * closeBundle when a dev or Vitest server closes, so the copy runs only for a real build (else ~150 MB of exercise
+ * media lands in whatever outDir that server was given, e.g. Vitest's `dummy-non-existing-folder`).
+ */
 function staticMounts(mounts: readonly StaticMount[]): Plugin {
   let outDir = ''
+  let building = false
   return {
     name: 'fitness:static-mounts',
     configResolved(config) {
       outDir = resolve(config.root, config.build.outDir)
+      building = config.command === 'build'
     },
     configureServer(server) {
       for (const { url, source, kind } of mounts) {
@@ -77,6 +83,7 @@ function staticMounts(mounts: readonly StaticMount[]): Plugin {
       }
     },
     closeBundle() {
+      if (!building) return
       for (const { url, source } of mounts) {
         if (!source || !existsSync(source)) continue
         const target = join(outDir, ...url.split('/').filter(Boolean))

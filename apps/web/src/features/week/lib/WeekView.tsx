@@ -23,7 +23,7 @@ import { addDays, weekStart } from '@fitness/shared/engine'
 import { Weekday, type LocalDate, type WeekDayActual, type WeekPlan, type WeekPlanView } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { WeekPlanVsActualChart, type PlanDay, type SessionStatus } from '../../../charts'
-import { formatNumber, formatShortDate, formatWeekday, isQueryLoading, Panel, QueryStateCard, visuallyHidden } from '../../../components'
+import { formatDayRange, formatNumber, formatShortDate, formatWeekday, isQueryLoading, Panel, QueryStateCard, visuallyHidden } from '../../../components'
 import { tokens } from '../../../theme'
 import { AUTHOR, Label, PlanBadge, planDays } from './parts'
 import { ProposedBanner } from './ProposedBanner'
@@ -32,14 +32,6 @@ import { useRevertWeekPlan, useWeekPlan } from './useWeekPlan'
 export interface WeekViewProps {
   /** Today (America/Edmonton); the view opens on its week. */
   date: LocalDate
-}
-
-/** "Oct 5 – 11", or "Sep 28 – Oct 4" across a month. */
-function weekRange(monday: LocalDate): string {
-  const sunday = addDays(monday, 6)
-  return monday.slice(0, 7) === sunday.slice(0, 7)
-    ? `${formatShortDate(monday)} – ${Number(sunday.slice(8))}`
-    : `${formatShortDate(monday)} – ${formatShortDate(sunday)}`
 }
 
 /** "1,400 · 130 g". */
@@ -132,7 +124,7 @@ const cellSx = {
 function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; today: LocalDate }) {
   const last = view.last_week.days
   return (
-    <Table data-testid="week-view-days" aria-label={`Week plan, ${weekRange(plan.week_start)}`} sx={{ '& .MuiTableCell-root': cellSx }}>
+    <Table data-testid="week-view-days" aria-label={`Week plan, ${formatDayRange(plan.week_start, addDays(plan.week_start, 6))}`} sx={{ '& .MuiTableCell-root': cellSx }}>
       <TableHead>
         <TableRow>
           <TableCell>Day</TableCell>
@@ -205,7 +197,7 @@ export function WeekView({ date }: WeekViewProps) {
   const plan = data?.active ?? null
   const shown = plan ?? data?.proposed ?? null
   const thisWeek = weekStart(date)
-  const range = weekRange(monday)
+  const range = formatDayRange(monday, addDays(monday, 6))
   const label = monday === thisWeek ? null : monday === addDays(thisWeek, 7) ? 'Next week' : monday === addDays(thisWeek, -7) ? 'Last week' : null
   const changes = plan ? (data?.changes.active ?? []) : (data?.changes.proposed ?? [])
   const open = addDays(monday, 6) >= date

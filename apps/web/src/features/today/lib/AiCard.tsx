@@ -13,11 +13,11 @@ import type { AiEvent, Proposal } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call, useApiQuery } from '../../../api'
-import { Panel, ProposalCard } from '../../../components'
+import { formatRecentTime, Panel, ProposalCard } from '../../../components'
 import { tokens } from '../../../theme'
-import { useProposalDecision } from '../../proposals'
+import { PROPOSAL_TITLE_MAX, useProposalDecision } from '../../proposals'
 import { DayAdjustmentCard, latestAdjustment, todayLocal } from '../../quick-log'
-import { activityWhen, eventView, proposalView } from './event-view'
+import { eventView, proposalView } from './event-view'
 import { useRefreshAfterDecision } from './useEventFeed'
 
 interface AiCardProps {
@@ -27,9 +27,6 @@ interface AiCardProps {
   /** The live feed, newest first. */
   events: readonly AiEvent[]
 }
-
-/** A proposer's summary up to this long is the card's title (2a); a longer one reads under the change's own title. */
-const TITLE_MAX = 80
 
 /** How far back a safety flag still shows on Today (the nightly job notes each kind at most once a week). */
 const FLAG_DAYS = 7
@@ -79,7 +76,7 @@ export function AiCard({ latest, pendingCount, events }: AiCardProps) {
     <Stack spacing={4}>
       {flag && (
         <Alert severity="warning" data-testid="today-flag">
-          <Box sx={{ fontWeight: tokens.font.weight.label }}>Safety flag · {activityWhen(flag.created_at)}</Box>
+          <Box sx={{ fontWeight: tokens.font.weight.label }}>Safety flag · {formatRecentTime(flag.created_at)}</Box>
           {flag.summary}
         </Alert>
       )}
@@ -98,7 +95,7 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
     () => refresh(),
   )
   const view = proposalView(proposal)
-  const short = proposal.summary.length <= TITLE_MAX
+  const short = proposal.summary.length <= PROPOSAL_TITLE_MAX
 
   return (
     <Box>
@@ -152,27 +149,29 @@ function EventCard({ event }: { event: AiEvent }) {
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {}, { enabled: favouriteIds.length > 0, staleTime: 5 * 60_000 })
   const view = eventView(event, (id) => favourites.data?.find((f) => f.id === id)?.label ?? null)
   return (
-    <Panel testId="today-event" padding="dense" component="article" ariaLabel={view.title}>
-      <Box data-kind={event.kind} sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>{view.source}</Box>
-        <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{activityWhen(event.created_at)}</Box>
-      </Box>
-      <Box component="h2" sx={{ m: 0, mt: '8px', fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.itemTitle }}>
-        {view.title}
-      </Box>
-      {view.text && <Box sx={{ mt: '4px', fontSize: tokens.font.size.small, color: tokens.ink.muted, lineHeight: tokens.font.leading.small }}>{view.text}</Box>}
-      {view.details.length > 0 && (
-        <Box component="ul" sx={{ m: 0, mt: 2, pl: 5, fontSize: tokens.font.size.small, color: tokens.ink.body, lineHeight: tokens.font.leading.small }}>
-          {view.details.map((d) => (
-            <li key={d}>{d}</li>
-          ))}
+    <Box data-testid="today-event" data-kind={event.kind} sx={{ minWidth: 0 }}>
+      <Panel padding="dense" component="article" ariaLabel={view.title}>
+        <Box sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>{view.source}</Box>
+          <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatRecentTime(event.created_at)}</Box>
         </Box>
-      )}
-      {view.link && (
-        <Link component={RouterLink} to={view.link.to} sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, mt: 1, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}>
-          {view.link.label}
-        </Link>
-      )}
-    </Panel>
+        <Box component="h2" sx={{ m: 0, mt: '8px', fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.itemTitle }}>
+          {view.title}
+        </Box>
+        {view.text && <Box sx={{ mt: '4px', fontSize: tokens.font.size.small, color: tokens.ink.muted, lineHeight: tokens.font.leading.small }}>{view.text}</Box>}
+        {view.details.length > 0 && (
+          <Box component="ul" sx={{ m: 0, mt: 2, pl: 5, fontSize: tokens.font.size.small, color: tokens.ink.body, lineHeight: tokens.font.leading.small }}>
+            {view.details.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </Box>
+        )}
+        {view.link && (
+          <Link component={RouterLink} to={view.link.to} sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, mt: 1, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}>
+            {view.link.label}
+          </Link>
+        )}
+      </Panel>
+    </Box>
   )
 }

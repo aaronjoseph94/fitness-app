@@ -6,7 +6,6 @@ import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRou
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import EventOutlined from '@mui/icons-material/EventOutlined'
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
@@ -24,14 +23,16 @@ import {
   formatNumber,
   formatShortDate,
   formatSigned,
+  isQueryLoading,
   ListRow,
   PageHeader,
   Panel,
   panelSurface,
+  QueryStateCard,
   Reveal,
   StatusChip,
   staggerDelay,
-  tabularNums,
+  statValue,
 } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { shiftDate, todayLocal } from '../../quick-log'
@@ -40,7 +41,6 @@ import { useScans, useScanSchedule } from './hooks'
 import { CompositionCard, GuardChip, LatestScanCard, SegmentsCard, WaterCard } from './LatestScan'
 import { confirmedScans, type ConfirmedScan } from './series'
 import { UploadSheet } from './UploadSheet'
-import { problemText } from '../../../api'
 
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
@@ -82,7 +82,7 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
         </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '6px 10px', mt: '10px' }}>
-        <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1, ...tabularNums }}>
+        <Box sx={{ ...statValue('standard'), lineHeight: 1 }}>
           {due ? weekdayDay(due) : '—'}
         </Box>
         <StatusChip shape="pill" tone={status.left !== null && status.left <= 0 ? 'warning' : 'outline'} label={status.text} />
@@ -251,7 +251,7 @@ export function ScansPage() {
   const subtitle = 'Body composition every 4–6 weeks, same conditions each time: morning, fasted, no training the day before'
 
   // While the list loads or fails, only the title: Upload and Enter by hand appear with the list, as they always have.
-  if (scans.isPending)
+  if (isQueryLoading(scans))
     return (
       <Box sx={page}>
         <PageHeader title={title} subtitle={subtitle} />
@@ -266,7 +266,7 @@ export function ScansPage() {
     return (
       <Box sx={page}>
         <PageHeader title={title} subtitle={subtitle} />
-        <Alert severity="error">{problemText(scans.error)}</Alert>
+        <QueryStateCard query={scans} what="the scan list" />
       </Box>
     )
 

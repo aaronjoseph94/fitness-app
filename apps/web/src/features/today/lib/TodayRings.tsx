@@ -16,9 +16,8 @@ import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import type { DayView } from '@fitness/shared/schemas'
 import { useEffect, useState, type ReactNode } from 'react'
-import { formatNumber, PendingBadge, Reveal, StatCard, StatusChip, staggerDelay } from '../../../components'
+import { formatClock, formatNumber, PendingBadge, Reveal, StatCard, StatusChip, staggerDelay } from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
-import { clockTime } from './event-view'
 import type { PendingToday } from './pending'
 
 /** SPEC §9 readiness compares sleep with 7.5 h. */
@@ -168,7 +167,7 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
       progress: ratio(sleepH, SLEEP_TARGET_H),
       name: sentence('Sleep', sleepH, SLEEP_TARGET_H, 'h', 1),
       footnote:
-        sleepH === null ? 'Not logged' : bed ? <strong>{`${clockTime(bed.in_bed_at!)} – ${clockTime(bed.woke_at!)}`}</strong> : 'Last night',
+        sleepH === null ? 'Not logged' : bed ? <strong>{`${formatClock(bed.in_bed_at!)} – ${formatClock(bed.woke_at!)}`}</strong> : 'Last night',
     },
   ]
 }

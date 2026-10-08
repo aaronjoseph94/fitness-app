@@ -34,7 +34,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router'
 import { apiQueryKey, problemText, useApiMutation, useApiQuery } from '../../../api'
-import { Banner, dashedSurface, EmptyState, formatShortDate, LoadProblem, PageHeader, Reveal, SectionHeader, staggerDelay, StatusChip } from '../../../components'
+import { Banner, dashedSurface, EmptyState, formatShortDate, LoadProblem, PageHeader, Reveal, SectionHeader, staggerDelay, statValue, StatusChip } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, useExerciseIndex } from '../../library'
@@ -278,7 +278,7 @@ export function BuilderPage() {
           <Box sx={{ mt: 5, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '6px' }}>
             <Box
               data-testid="builder-sets"
-              sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: tokens.font.leading.number, fontVariantNumeric: 'tabular-nums', color: tokens.ink.text }}
+              sx={{ ...statValue('standard'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}
             >
               {training.totalSets}
             </Box>

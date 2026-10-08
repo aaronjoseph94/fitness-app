@@ -13,12 +13,29 @@ import type { AiEvent, PlanVersion, Proposal, Rails } from '@fitness/shared/sche
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call, useApiQuery } from '../../../api'
-import { cardSurface, formatNumber, KeyStat, KeyStatGrid, LoadProblem, PageHeader, Panel, ProposalCard, SectionHeader, tabularNums } from '../../../components'
+import {
+  cardSurface,
+  formatNumber,
+  KeyStat,
+  KeyStatGrid,
+  LoadProblem,
+  PageHeader,
+  Panel,
+  ProposalCard,
+  Reveal,
+  SectionHeader,
+  staggerDelay,
+  statValue,
+  tabularNums,
+} from '../../../components'
 import { tokens } from '../../../theme'
-import { useProposalDecision } from '../../proposals'
+import { planChangeRows, useProposalDecision } from '../../proposals'
 import { formatDateTime } from '../../quick-log'
-import { actorLabel, changeRows, DEFAULT_ROWS, FIELD, guardLines, isGuardNote, overrideRows, railsText } from './plan-view'
+import { actorLabel, DEFAULT_ROWS, FIELD, guardLines, isGuardNote, overrideRows, railsText } from './plan-view'
 import { VersionCard } from './VersionCard'
+
+/** 2a's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
+const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.section)
 
 export function PlanPage() {
   const versions = useApiQuery(endpoints.plan.versions, {})
@@ -47,50 +64,58 @@ export function PlanPage() {
       {versions.isLoading ? (
         <Skeleton variant="rounded" height={236} />
       ) : active ? (
-        <ActiveTargets active={active} rails={rails} />
+        <Reveal delay={enter(1)}>
+          <ActiveTargets active={active} rails={rails} />
+        </Reveal>
       ) : versions.error ? (
         <LoadProblem what="The plan" error={versions.error} onRetry={() => void versions.refetch()} />
       ) : null}
 
       {pending.length > 0 && (
-        <section aria-labelledby="plan-waiting-title">
-          <SectionHeader id="plan-waiting" title="Waiting for you" subtitle="Nothing changes until you accept. The rails are checked again when you do." />
-          <Stack spacing={4}>
-            {pending.map((p) => (
-              <PendingProposal key={p.id} proposal={p} active={active} rails={rails} autoApplySafe={settings.data?.settings.auto_apply_safe ?? false} onDecided={setNotice} />
-            ))}
-          </Stack>
-        </section>
+        <Reveal delay={enter(2)}>
+          <section aria-labelledby="plan-waiting-title">
+            <SectionHeader id="plan-waiting" title="Waiting for you" subtitle="Nothing changes until you accept. The rails are checked again when you do." />
+            <Stack spacing={4}>
+              {pending.map((p) => (
+                <PendingProposal key={p.id} proposal={p} active={active} rails={rails} autoApplySafe={settings.data?.settings.auto_apply_safe ?? false} onDecided={setNotice} />
+              ))}
+            </Stack>
+          </section>
+        </Reveal>
       )}
 
       {verdicts.length > 0 && (
-        <section aria-labelledby="plan-held-title">
-          <SectionHeader id="plan-held" title="Held back by the rails" subtitle="Changes the guards dropped before they reached you." />
-          <Box sx={{ ...cardSurface, overflow: 'hidden' }} data-testid="guard-verdicts">
-            {verdicts.map((note) => (
-              <GuardVerdict key={note.id} note={note} />
-            ))}
-          </Box>
-        </section>
+        <Reveal delay={enter(3)}>
+          <section aria-labelledby="plan-held-title">
+            <SectionHeader id="plan-held" title="Held back by the rails" subtitle="Changes the guards dropped before they reached you." />
+            <Box sx={{ ...cardSurface, overflow: 'hidden' }} data-testid="guard-verdicts">
+              {verdicts.map((note) => (
+                <GuardVerdict key={note.id} note={note} />
+              ))}
+            </Box>
+          </section>
+        </Reveal>
       )}
 
-      <section aria-labelledby="plan-versions-title">
-        <SectionHeader id="plan-versions" title="Versions" subtitle="Newest first. Restoring makes a new version; nothing is ever deleted." />
-        {versions.isLoading ? (
-          <Stack spacing={4}>
-            <Skeleton variant="rounded" height={160} />
-            <Skeleton variant="rounded" height={160} />
-          </Stack>
-        ) : versions.error && list.length === 0 ? (
-          <LoadProblem what="Plan versions" error={versions.error} onRetry={() => void versions.refetch()} />
-        ) : (
-          <Stack spacing={4}>
-            {list.map((v) => (
-              <VersionCard key={v.id} version={v} active={active} onRestored={(created) => setNotice(`Restored as version ${created.version}.`)} />
-            ))}
-          </Stack>
-        )}
-      </section>
+      <Reveal delay={enter(4)}>
+        <section aria-labelledby="plan-versions-title">
+          <SectionHeader id="plan-versions" title="Versions" subtitle="Newest first. Restoring makes a new version; nothing is ever deleted." />
+          {versions.isLoading ? (
+            <Stack spacing={4}>
+              <Skeleton variant="rounded" height={160} />
+              <Skeleton variant="rounded" height={160} />
+            </Stack>
+          ) : versions.error && list.length === 0 ? (
+            <LoadProblem what="Plan versions" error={versions.error} onRetry={() => void versions.refetch()} />
+          ) : (
+            <Stack spacing={4}>
+              {list.map((v) => (
+                <VersionCard key={v.id} version={v} active={active} onRestored={(created) => setNotice(`Restored as version ${created.version}.`)} />
+              ))}
+            </Stack>
+          )}
+        </section>
+      </Reveal>
 
       <Snackbar
         open={notice !== null}
@@ -136,7 +161,7 @@ function ActiveTargets({ active, rails }: { active: PlanVersion; rails: Rails | 
       }
     >
       <Box sx={{ px: `${tokens.pad.card.x}px`, pb: '16px', display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '8px', rowGap: '4px' }}>
-        <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, lineHeight: 1.1, ...tabularNums, color: tokens.ink.text }}>
+        <Box sx={{ ...statValue('standard'), lineHeight: 1.1, color: tokens.ink.text }}>
           {formatNumber(active.targets.defaults.kcal)}
         </Box>
         <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>kcal a day</Box>
@@ -187,7 +212,7 @@ function PendingProposal({
       title={proposal.summary}
       source={`Proposal · ${actorLabel(proposal.actor)} · ${formatDateTime(proposal.created_at)}`}
       summary={[...new Set(changes.map((c) => c.reason))].join(' ')}
-      changes={changeRows(changes).map((r) => ({ label: r.label, from: r.from, to: r.to }))}
+      changes={planChangeRows(changes)}
       status={d.status}
       busy={d.busy}
       onAccept={d.onAccept}

@@ -1,62 +1,13 @@
 // Owns: how an AI event reads on Today (pure) — a proposal as the ProposalCard's title, before → after rows (with units;
 // one row per field and amount, its weekdays folded into "Protein · Mon–Thu") and its "why"; any other event (day
 // adjustment, review, note, change) as a source line, title, text and details; any event as a row of the recent
-// activity table (time, who, what, value); and Today's 12-hour clock ("2:02 PM", Edmonton).
-import { isoWeek, localDate, TIMEZONE, today } from '@fitness/shared/engine'
-import { Weekday, type AiEvent, type PlanChange, type Proposal, type ProposalStatus } from '@fitness/shared/schemas'
-import { formatNumber, formatSigned, type ProposalChange } from '../../../components'
-import { actorLabel, planChangeRow, planChangeTitle, REMINDER_LABEL, TARGET_FIELD, targetAmount } from '../../proposals'
+// activity table (time, who, what, value).
+import { isoWeek } from '@fitness/shared/engine'
+import type { AiEvent, Proposal, ProposalStatus } from '@fitness/shared/schemas'
+import { formatNumber, formatRecentTime, formatSigned, type ProposalChange } from '../../../components'
+import { actorLabel, planChangeRows, planChangeTitle, REMINDER_LABEL } from '../../proposals'
 
 export { actorLabel }
-
-const clock = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, hour: 'numeric', minute: '2-digit' })
-const weekdayClock = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, weekday: 'short', hour: 'numeric', minute: '2-digit' })
-
-/** "2026-10-07T20:02:00Z" → "2:02 PM" (Edmonton). */
-export function clockTime(instant: string): string {
-  return clock.format(new Date(instant))
-}
-
-/** A stored Edmonton time "16:30" → "4:30 PM". */
-export function clockLabel(time: string): string {
-  const [h = 0, m = 0] = time.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
-}
-
-/** An activity row's time: "2:02 PM" when it is from today, else "Tue 4:31 PM". */
-export function activityWhen(instant: string, now: number = Date.now()): string {
-  return localDate(instant) === today(now) ? clockTime(instant) : weekdayClock.format(new Date(instant)).replace(',', '')
-}
-
-/** "mon" → "Mon". */
-const shortDay = (d: Weekday) => d.charAt(0).toUpperCase() + d.slice(1)
-
-/** "Mon–Thu" for three or more days in a row, else "Mon, Wed". */
-function dayList(days: readonly Weekday[]): string {
-  const at = [...new Set(days)].map((d) => Weekday.options.indexOf(d)).sort((a, b) => a - b)
-  const first = at[0]!
-  const last = at[at.length - 1]!
-  if (at.length >= 3 && last - first === at.length - 1) return `${shortDay(Weekday.options[first]!)}–${shortDay(Weekday.options[last]!)}`
-  return at.map((i) => shortDay(Weekday.options[i]!)).join(', ')
-}
-
-/** One row per field and amount: weekday overrides moving the same way fold into "Protein · Mon–Thu". */
-function planChangeRows(changes: readonly PlanChange[]): ProposalChange[] {
-  const groups = new Map<string, PlanChange[]>()
-  for (const c of changes) {
-    const key = `${c.field}|${c.weekday === null ? 'all' : 'day'}|${c.from}|${c.to}`
-    groups.set(key, [...(groups.get(key) ?? []), c])
-  }
-  return [...groups.values()].map((group) => {
-    const c = group[0]!
-    if (group.length === 1 || c.weekday === null) return planChangeRow(c)
-    return {
-      label: `${TARGET_FIELD[c.field].label} · ${dayList(group.map((g) => g.weekday!))}`,
-      from: targetAmount(c.field, c.from),
-      to: targetAmount(c.field, c.to),
-    }
-  })
-}
 
 export interface ProposalView {
   title: string
@@ -178,7 +129,7 @@ const ADJUSTMENT_STATUS = { ok: 'On track', over: 'A little over', protein_short
 
 /** Any event as a row of Today's recent activity table, timed by its last update (the feed's order). */
 export function activityRow(e: AiEvent, now: number = Date.now()): ActivityRow {
-  const base = { id: e.id, when: activityWhen(e.updated_at, now), who: actorLabel(e.actor), ai: e.actor !== 'user', text: e.summary, value: '' }
+  const base = { id: e.id, when: formatRecentTime(e.updated_at, now), who: actorLabel(e.actor), ai: e.actor !== 'user', text: e.summary, value: '' }
   switch (e.kind) {
     case 'adjustment': {
       const r = e.body.remaining

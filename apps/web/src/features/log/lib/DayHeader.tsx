@@ -11,7 +11,7 @@ import type SvgIcon from '@mui/material/SvgIcon'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import type { ReactNode } from 'react'
-import { cardSurface, CountUp, formatNumber, formatSigned, LoadProblem, MeterRow, PendingBadge, ProgressBar, StatusChip } from '../../../components'
+import { cardSurface, CountUp, formatNumber, formatSigned, LoadProblem, MeterRow, PendingBadge, ProgressBar, statValue, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, usePendingLogs, visibleSlots } from '../../quick-log'
 
@@ -71,7 +71,7 @@ function BigValue({ value, unit }: { value: ReactNode; unit: ReactNode }) {
     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '6px', mt: '10px', flexWrap: 'wrap' }}>
       <Box
         component="span"
-        sx={{ fontSize: tokens.font.size.bigNumberMedium, fontWeight: tokens.font.weight.number, lineHeight: 1, letterSpacing: tokens.font.em.hero, fontVariantNumeric: 'tabular-nums' }}
+        sx={{ ...statValue('medium'), lineHeight: 1 }}
       >
         {value}
       </Box>

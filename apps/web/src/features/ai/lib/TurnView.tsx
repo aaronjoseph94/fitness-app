@@ -4,11 +4,12 @@
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import Box from '@mui/material/Box'
 import { Fragment, type ReactNode } from 'react'
+import { formatClock } from '../../../components'
 import { tokens } from '../../../theme'
 import { ProposalItem } from './ProposalItem'
 import { ToolChips } from './ToolChips'
 import type { Turn } from './useChat'
-import { clockTime, replyWhen } from './when'
+import { replyWhen } from './when'
 
 /** `**bold**` spans inside one line. */
 function inline(text: string): ReactNode[] {
@@ -157,7 +158,7 @@ export function TurnView({ turn }: { turn: Turn }) {
               </Box>
             )}
             <Box sx={{ mt: '8px', fontSize: tokens.font.size.caption, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
-              {question.content ? replyWhen(question.created_at, reply.created_at) : clockTime(reply.created_at)}
+              {question.content ? replyWhen(question.created_at, reply.created_at) : formatClock(reply.created_at)}
               {waitingForTap && ' · nothing changes until you tap'}
             </Box>
           </Box>

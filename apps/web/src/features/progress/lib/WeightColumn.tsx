@@ -71,6 +71,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
       <Box sx={{ display: 'grid', gap: 4 }}>
         <ChartCard
           title="Weight trend"
+          titleSize="card"
           subtitle={`Weigh-ins as dots, EWMA trend as the line${bandPct !== null ? ` · ±${bandPct} % forecast band to ${formatNumber(goalKg, 0)} kg` : ''}`}
           empty={
             weighed
@@ -108,6 +109,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
 
         <ChartCard
           title="Weekly loss vs expected"
+          titleSize="card"
           subtitle={rate === null ? 'Trend change per ISO week' : `Trend change per ISO week · expected ${formatSigned(-rate, 2)} kg`}
           action={
             weeks.length > 0 ? (
@@ -123,6 +125,7 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
 
         <ChartCard
           title="Milestones"
+          titleSize="card"
           subtitle="Weight and composition targets with the date each was reached"
           action={
             <Button variant="text" size="tiny" component={RouterLink} to="/scans">

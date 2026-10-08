@@ -14,7 +14,7 @@
 // Names: every token name the app imported before 2a is kept, re-valued (a page restyled later still compiles and
 // already looks closer); 2a's own names are added beside them. Where an old name now means a 2a role it says so —
 // `ink.secondary` IS 2a's "muted" (#71717A, every caption and description), and `ink.label` is 2a's "secondary"
-// (#52525B, stat labels and row values). The cleanup phase removes the legacy names nothing uses any more.
+// (#52525B, stat labels and row values). Legacy names still in use are kept; unused ones are removed.
 //
 // Accessibility decisions (measured on white unless stated, WCAG 2.2 AA):
 //   • Text ink: #09090B 19.9:1, #3F3F46 10.4:1, #52525B 7.7:1, #71717A 4.83:1 (4.63 on #FAFAFA). #A1A1AA is 2.56:1,
@@ -27,7 +27,7 @@
 //     info 9.52. White on `accent.main` 4.73, on `accent.deep` 5.70, on `dark.bg` 19.9.
 //   • Metric colours: the app's measured palette is kept (README: "where the app already has a measured colour for a
 //     metric, keep it and map the tints as 12 % / 16 % alphas of it"). Every one clears 3:1 on white (WCAG 1.4.11);
-//     2a's illustrative water #0EA5E9 would not (2.77:1). Tints are `metricTint()` / `metricSoft()`.
+//     2a's illustrative water #0EA5E9 would not (2.77:1). Tints are `metricTint()`.
 //   • Focus: buttons and every ButtonBase get a 2 px #166FE5 ring 2 px out (MUI 9's `focusVisible` theme option, which
 //     also insets the ring on clip-prone rows); inputs get the 2a ring — blue border + 3 px #DBEAFE (WCAG 2.4.7).
 //   • Touch: on a coarse pointer every button, icon button, chip, segment and menu row keeps a 44 px target and inputs
@@ -90,6 +90,15 @@ const METRIC = {
   fasting: '#475569',
 } as const
 
+/** Status palettes — text on its own tint (`tokens.tone`; `tokens.status` reads its text colours). */
+const TONE = {
+  success: { text: '#15803D', bg: '#DCFCE7', soft: '#F0FDF4', border: '#BBF7D0', solid: '#16A34A', light: '#86EFAC' },
+  warning: { text: '#B45309', bg: '#FEF3C7', deep: '#92400E', border: '#FDE68A' },
+  danger: { text: '#B91C1C', bg: '#FEE2E2', soft: '#FEF2F2', border: '#FECACA' },
+  info: { text: '#1E3A8A', bg: BLUE[50], border: BLUE[200], icon: BLUE.main },
+  neutral: { text: ZINC[600], bg: ZINC[100] },
+} as const
+
 export const tokens = {
   font: {
     /** Geist (variable, self-hosted by `main.tsx`), then the platform's own face. */
@@ -121,26 +130,9 @@ export const tokens = {
       bigNumberSmall: 22,
       bigNumberMedium: 34,
       bigNumberLarge: 40,
-      statNumber: 28,
     },
-    /** Letter-spacing in px (2a's em values × the size). Only the large steps tighten; micro labels open up. */
-    tracking: {
-      largeTitle: -0.52,
-      title1: -0.33,
-      sectionTitle: 0,
-      cardTitle: 0,
-      itemTitle: 0,
-      body: 0,
-      emphasis: 0,
-      small: 0,
-      label: 0,
-      caption: 0,
-      micro: 0.44,
-      /** A stat value (28 × −.02em). */
-      number: -0.56,
-      /** A hero value (40 × −.03em). */
-      hero: -1.2,
-    },
+    /** Letter-spacing in px: the h2 (22 × −.015em). Everything else tracks in `em` below. */
+    tracking: { title1: -0.33 },
     /** 2a's letter-spacing as em, for anything sized off-scale: titles and stats −.02em, heroes −.03em, micro +.04em. */
     em: { title: '-0.02em', number: '-0.02em', hero: '-0.03em', micro: '0.04em' },
     leading: {
@@ -186,8 +178,6 @@ export const tokens = {
     page: WHITE,
     /** Tinted panels and the sidebar. */
     panel: ZINC[50],
-    /** Legacy name for a raised well inside a card — now the 2a panel tint. */
-    sunken: ZINC[50],
     /** Muted fill: progress tracks, segmented-control track, hover, neutral chip. */
     fill: ZINC[100],
   },
@@ -196,7 +186,6 @@ export const tokens = {
     main: BLUE.main,
     /** 2a hover of `main`; also blue text on `soft` (5.24:1). */
     deep: BLUE.hover,
-    hover: BLUE.hover,
     /** Tint: highlighted rows, info chip and banner, AI tile. */
     soft: BLUE[50],
     /** The 3 px input focus ring and a light blue fill. */
@@ -211,32 +200,12 @@ export const tokens = {
   /** The dark surface: the Accept button, the user's chat bubble, the rest-timer bar, tooltips, the dark segment. */
   dark: { bg: INK, hover: '#27272A', border: ZINC[700], text: WHITE, muted: ZINC[400] },
   /** Status palettes — text on its own tint. Never a metric colour. */
-  tone: {
-    success: { text: '#15803D', bg: '#DCFCE7', soft: '#F0FDF4', border: '#BBF7D0', solid: '#16A34A', light: '#86EFAC' },
-    warning: { text: '#B45309', bg: '#FEF3C7', deep: '#92400E', border: '#FDE68A' },
-    danger: { text: '#B91C1C', bg: '#FEE2E2', soft: '#FEF2F2', border: '#FECACA' },
-    info: { text: '#1E3A8A', bg: BLUE[50], border: BLUE[200], icon: BLUE.main },
-    neutral: { text: ZINC[600], bg: ZINC[100] },
-  },
+  tone: TONE,
   /** One colour per metric, used identically in rings, charts, the report and legends (kept from the measured palette:
-   * each clears 3:1 on white). Tints come from `metricTint()` (16 %) and `metricSoft()` (12 %). */
+   * each clears 3:1 on white). Its tint comes from `metricTint()` (16 %). */
   metric: METRIC,
-  /** Legacy: the gradient a `MetricCard` with `surface="gradient"` is filled with. 2a has no gradient surfaces. */
-  gradient: {
-    weight: ['#0B4FC4', '#166FE5'],
-    calories: ['#9A3412', '#C2410C'],
-    protein: ['#5B21B6', '#7C3AED'],
-    carbs: ['#713F12', '#A16207'],
-    fat: ['#155E75', '#0E7490'],
-    water: ['#0C4A6E', '#0369A1'],
-    steps: ['#14532D', '#15803D'],
-    sleep: ['#312E81', '#4338CA'],
-    fatMass: ['#831843', '#9D174D'],
-    lean: ['#064E3B', '#047857'],
-    fasting: ['#1E293B', '#475569'],
-  },
   /** Status text colours under their legacy names (good = success text, warning, flag = danger text). */
-  status: { good: '#15803D', warning: '#B45309', flag: '#B91C1C' },
+  status: { good: TONE.success.text, warning: TONE.warning.text, flag: TONE.danger.text },
   /** The printed report (SPEC §11 print: black text on white): body text, secondary text, the running header. */
   print: { text: '#000000', secondary: '#333333', header: '#444444', page: WHITE },
   chart: {
@@ -292,10 +261,8 @@ export const tokens = {
     /** The focus ring's corners on a plain text link or a text-only button. */
     link: 4,
   },
-  /** Legacy translucent materials. 2a's chrome is opaque white with a hairline; the fills are near-opaque to match. */
+  /** Translucent materials. 2a's chrome and sheets are opaque white with a hairline. */
   material: {
-    chrome: { fill: 'rgba(255,255,255,0.94)', blur: 'blur(12px) saturate(160%)' },
-    sheet: { fill: 'rgba(255,255,255,0.96)', blur: 'blur(16px) saturate(160%)' },
     /** Behind a modal task. */
     scrim: 'rgba(9,9,11,0.4)',
     /** A row's press highlight. */
@@ -332,7 +299,6 @@ export const tokens = {
       fast: 200,
       base: 320,
       slow: 420,
-      slower: 560,
       /** The entrance rise + fade. */
       enter: ENTER_DURATION,
       /** Bars growing and rings drawing. */
@@ -361,7 +327,7 @@ export const tokens = {
   /** 4 px base spacing scale. */
   space: (n: number) => n * 4,
   /** Gaps (2a): label → value 8–10, between cards 16, between sections 20–24, card padding 18–20. */
-  rhythm: { tight: 8, group: 16, block: 20, section: 24, page: 36 },
+  rhythm: { tight: 8, block: 20, section: 24, page: 36 },
   /** Card padding (2a): standard `18px 20px`, dense `16px 18px`; header row `16px 20px 12px`. */
   pad: { card: { y: 18, x: 20 }, dense: { y: 16, x: 18 }, header: { top: 16, x: 20, bottom: 12 } },
   tapTarget: 44,
@@ -374,7 +340,7 @@ export const tokens = {
     /** 2a's reading column (Settings' cards; a narrow page on a desktop). */
     readingMax: 820,
     bottomNavHeight: 64,
-    /** Legacy desktop rail width (the 2a sidebar replaces the rail: `sidebarWidth`). */
+    /** The icon rail the 2a sidebar collapses to (`navWidth(true)`). */
     railWidth: 76,
     /** 2a sidebar and header. */
     sidebarWidth: 240,
@@ -394,7 +360,7 @@ export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 /** Media query for the reduced-motion preference (WCAG 2.3.3): no travel, short cross-fades instead. */
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
-/** Reduced transparency: a translucent surface turns opaque rather than blurring (`chromeSurface`/`sheetSurface`). */
+/** Reduced transparency: a translucent surface turns opaque rather than blurring. */
 export const REDUCED_TRANSPARENCY_QUERY = '(prefers-reduced-transparency: reduce)'
 
 /** More contrast: a translucent surface turns opaque and gains a defined border. */
@@ -424,17 +390,6 @@ export function withAlpha(hex: string, alpha: number): string {
 /** A metric's track tint (16 %): mini-bar days off target, a meal stack's lighter segment, a ring's track. */
 export function metricTint(metric: MetricKey): string {
   return withAlpha(tokens.metric[metric], 0.16)
-}
-
-/** A metric's soft tint (12 %): an icon tile or a chip behind the metric colour. */
-export function metricSoft(metric: MetricKey): string {
-  return withAlpha(tokens.metric[metric], 0.12)
-}
-
-/** The CSS gradient for a legacy gradient metric card, left to right. */
-export function metricGradient(metric: MetricKey): string {
-  const [from, to] = tokens.gradient[metric]
-  return `linear-gradient(135deg, ${from} 0%, ${to} 100%)`
 }
 
 /** True when the browser can animate with a `linear()` easing curve (the sheet spring). */
@@ -485,24 +440,6 @@ export function transitionOf(
   }
   return list.map((p) => `${p} ${duration}ms ${easing}`).join(', ')
 }
-
-/** The nav layer's surface (2a: white, near-opaque), spread into the `sx` of the fixed/sticky element that owns it. */
-export const chromeSurface = {
-  backgroundColor: tokens.material.chrome.fill,
-  backdropFilter: tokens.material.chrome.blur,
-  WebkitBackdropFilter: tokens.material.chrome.blur,
-  '@media (prefers-reduced-transparency: reduce)': { backgroundColor: tokens.ink.card, backdropFilter: 'none', WebkitBackdropFilter: 'none' },
-  '@media (prefers-contrast: more)': { backgroundColor: tokens.ink.card, borderColor: tokens.ink.text },
-} as const
-
-/** A sheet, the Ask AI panel, the command palette. Same fallbacks as the chrome. */
-export const sheetSurface = {
-  backgroundColor: tokens.material.sheet.fill,
-  backdropFilter: tokens.material.sheet.blur,
-  WebkitBackdropFilter: tokens.material.sheet.blur,
-  '@media (prefers-reduced-transparency: reduce)': { backgroundColor: tokens.ink.card, backdropFilter: 'none', WebkitBackdropFilter: 'none' },
-  '@media (prefers-contrast: more)': { backgroundColor: tokens.ink.card, borderColor: tokens.ink.text },
-} as const
 
 declare module '@mui/material/styles' {
   interface Palette {

@@ -4,7 +4,7 @@
 // summary of the reminder preferences the Settings list shows.
 import { FAST_DAY_EXTRA_WATER_ML } from '@fitness/shared/engine'
 import { ProfilePatch, SettingsPatch, type Profile, type ReminderPrefs, type Settings, type Weekday } from '@fitness/shared/schemas'
-import { formatNumber } from '../../../components'
+import { formatClockTime, formatNumber } from '../../../components'
 
 export type NumberKey =
   | 'calorie_floor'
@@ -98,17 +98,11 @@ export function formatDays(days: readonly Weekday[]): string {
   return list.length ? list.join(', ') : 'None'
 }
 
-/** "7:00 AM" for a stored "07:00" (24 h `HH:MM`, Edmonton time). */
-function clockTime(time: string): string {
-  const [h = 0, m = 0] = time.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
-}
-
 /** "Weigh-in 7:00 AM · workout 4:30 PM on training days · water when behind pace": the reminders that are on. */
 export function reminderSummary(reminders: ReminderPrefs): string {
   const parts: string[] = []
-  if (reminders.weigh_in.enabled && reminders.weigh_in.time) parts.push(`weigh-in ${clockTime(reminders.weigh_in.time)}`)
-  if (reminders.workout.enabled && reminders.workout.time) parts.push(`workout ${clockTime(reminders.workout.time)} on training days`)
+  if (reminders.weigh_in.enabled && reminders.weigh_in.time) parts.push(`weigh-in ${formatClockTime(reminders.weigh_in.time)}`)
+  if (reminders.workout.enabled && reminders.workout.time) parts.push(`workout ${formatClockTime(reminders.workout.time)} on training days`)
   if (reminders.water.enabled) parts.push('water when behind pace')
   const line = parts.length ? parts.join(' · ') : 'weigh-in, workout and water reminders are off'
   return line.charAt(0).toUpperCase() + line.slice(1)

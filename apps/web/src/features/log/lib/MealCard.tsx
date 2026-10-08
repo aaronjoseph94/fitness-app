@@ -18,11 +18,10 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, PendingBadge, StatusChip, type StatusChipTone } from '../../../components'
+import { formatClock, formatNumber, PendingBadge, StatusChip, type StatusChipTone } from '../../../components'
 import { tokens } from '../../../theme'
 import { useLogMutation } from '../../quick-log'
 import { FoodGlyph } from './FoodGlyph'
-import { clock12 } from './labels'
 import type { ItemView, MealView } from './meals'
 import { problemText } from '../../../api'
 
@@ -185,7 +184,7 @@ export function MealCard({ meal, ...actions }: MealActionsProps & MealBodyProps)
   return (
     <Box data-testid="meal-card" sx={{ borderTop: `1px solid ${tokens.ink.border}` }}>
       <Box sx={{ ...gutter, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', py: '10px' }}>
-        <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{clock12(meal.eatenAt)}</Box>
+        <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{formatClock(meal.eatenAt)}</Box>
         <MealActions meal={meal} onEdit={actions.onEdit} onFavourite={actions.onFavourite} onDelete={actions.onDelete} />
       </Box>
       <MealBody meal={meal} onReview={actions.onReview} />

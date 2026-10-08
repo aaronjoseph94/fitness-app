@@ -32,10 +32,6 @@ export function diffRows(diff: PlanDiff): DiffRow[] {
   }))
 }
 
-export function changeRows(changes: readonly PlanChange[]): DiffRow[] {
-  return diffRows(changes.map((c) => ({ field: c.field, weekday: c.weekday, from: c.from, to: c.to })))
-}
-
 /** What changes going from `from` to `to`: every default that differs, then every weekday override that differs. */
 export function targetsDiff(from: PlanTargets, to: PlanTargets): PlanDiff {
   const out: PlanDiff = []

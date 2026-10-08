@@ -7,11 +7,10 @@
 import { addDays, dayAdherence, fastDay } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useUiStore } from '../../../app/ui-store'
-import type { FastEntry, FastStatus } from '../../../charts'
-import { Column, Columns, formatLongDate, formatNumber, formatShortDate, formatWeekday, MiniBars } from '../../../components'
-import { tokens, metricTint, type MetricKey } from '../../../theme'
+import { fastLook, type FastEntry, type FastStatus } from '../../../charts'
+import { ChartCard, Column, Columns, formatLongDate, formatNumber, formatShortDate, formatWeekday, MiniBars } from '../../../components'
+import { tokens, type MetricKey } from '../../../theme'
 import { fastEntries, hasAny, latestTargets, sleepNights, stepsDays, waterDays } from '../../progress/series'
-import { DashCard } from './DashCard'
 import { DayStrip, type DayCell } from './DayStrip'
 import { barSeries } from './kpis'
 import { DashboardSection } from './Section'
@@ -38,8 +37,8 @@ function hits(values: readonly (number | null | undefined)[], target: number | u
   return `Hit on ${present.filter((v) => v >= target).length} of ${present.length} ${present.length === 1 ? 'day' : 'days'}`
 }
 
-function Bars({ values, metric, target, label }: { values: readonly (number | null | undefined)[]; metric: MetricKey; target?: number; label: string }) {
-  return <MiniBars values={barSeries(values.map((v) => v ?? null))} metric={metric} target={target} height={BAR_HEIGHT} label={label} />
+function Bars({ values, metric, target, label, testId }: { values: readonly (number | null | undefined)[]; metric: MetricKey; target?: number; label: string; testId: string }) {
+  return <MiniBars values={barSeries(values.map((v) => v ?? null))} metric={metric} target={target} height={BAR_HEIGHT} label={label} testId={testId} />
 }
 
 export function RecoverySection({ data }: { data: DashboardData }) {
@@ -74,7 +73,9 @@ export function RecoverySection({ data }: { data: DashboardData }) {
           next, so no card is narrower than its title and target line. */}
       <Columns xs={1} sm={2} md={6} lg={12} align="stretch">
         <Column span={4} mdSpan={2}>
-          <DashCard
+          <ChartCard
+            titleSize="card"
+            fill
             title="Water"
             action={targets ? `target ${formatNumber(targets.water_ml)} ml` : undefined}
             caption={[hits(waterValues, targets?.water_ml), avgWater !== null ? `average ${formatNumber(avgWater)} ml` : null].filter(Boolean).join(' · ')}
@@ -85,24 +86,28 @@ export function RecoverySection({ data }: { data: DashboardData }) {
                 : { title: 'No water logged in this window', body: 'Quick-add 250, 500 or 750 ml and the bars fill in.', action: { label: 'Log water', onClick: () => openQuickLog('water') } }
             }
           >
-            <Bars values={waterValues} metric="water" target={targets?.water_ml} label={`Water per day in this window${targets ? `; target ${formatNumber(targets.water_ml)} ml` : ''}`} />
-          </DashCard>
+            <Bars values={waterValues} metric="water" target={targets?.water_ml} label={`Water per day in this window${targets ? `; target ${formatNumber(targets.water_ml)} ml` : ''}`} testId="chart-dashboard-water" />
+          </ChartCard>
         </Column>
 
         <Column span={4} mdSpan={2}>
-          <DashCard
+          <ChartCard
+            titleSize="card"
+            fill
             title="Steps"
             action={targets ? `target ${formatNumber(targets.steps)}` : undefined}
             caption={[hits(stepsValues, targets?.steps), bestSteps ? `best ${formatNumber(bestSteps.value)} on ${formatShortDate(bestSteps.date)}` : null].filter(Boolean).join(' · ')}
             testId="dashboard-steps"
             empty={hasAny(steps, (d) => d.steps) ? null : { title: 'No steps in this window', body: 'Steps arrive from the Apple Watch Shortcut or the manual form.' }}
           >
-            <Bars values={stepsValues} metric="steps" target={targets?.steps} label={`Steps per day in this window${targets ? `; target ${formatNumber(targets.steps)}` : ''}`} />
-          </DashCard>
+            <Bars values={stepsValues} metric="steps" target={targets?.steps} label={`Steps per day in this window${targets ? `; target ${formatNumber(targets.steps)}` : ''}`} testId="chart-dashboard-steps" />
+          </ChartCard>
         </Column>
 
         <Column span={4} mdSpan={2}>
-          <DashCard
+          <ChartCard
+            titleSize="card"
+            fill
             title="Sleep"
             action={`target ${SLEEP_TARGET_H} h`}
             caption={[
@@ -118,8 +123,8 @@ export function RecoverySection({ data }: { data: DashboardData }) {
                 : { title: 'No sleep in this window', body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.' }
             }
           >
-            <Bars values={sleepValues} metric="sleep" target={SLEEP_TARGET_H} label={`Hours asleep per night in this window; target ${SLEEP_TARGET_H} h`} />
-          </DashCard>
+            <Bars values={sleepValues} metric="sleep" target={SLEEP_TARGET_H} label={`Hours asleep per night in this window; target ${SLEEP_TARGET_H} h`} testId="chart-dashboard-sleep" />
+          </ChartCard>
         </Column>
 
         <Column span={6} mdSpan={3}>
@@ -144,11 +149,12 @@ function datesBetween(from: LocalDate, to: LocalDate): LocalDate[] {
   return out
 }
 
-const FAST_LOOK: Record<FastStatus, Pick<DayCell, 'fill' | 'dashed'> & { word: string }> = {
-  completed: { fill: tokens.metric.fasting, word: 'fast completed' },
-  partial: { fill: metricTint('fasting'), word: 'fast broken off early' },
-  planned: { dashed: tokens.tone.warning.text, word: 'fast planned' },
-  missed: { dashed: tokens.ink.faint, word: 'planned fast missed' },
+/** A fast's day in words; its look is the charts' `fastLook`, shared with every fasting strip. */
+const FAST_WORD: Record<FastStatus, string> = {
+  completed: 'fast completed',
+  partial: 'fast broken off early',
+  planned: 'fast planned',
+  missed: 'planned fast missed',
 }
 
 /**
@@ -164,7 +170,7 @@ function FastingCard({ data, entries, fastHours, today, onStart }: { data: Dashb
   const cells: DayCell[] = datesBetween(from, to).map((date) => {
     const fast = byDate.get(date)
     const day = `${formatWeekday(date)}, ${formatShortDate(date)}`
-    if (fast) return { date, fill: FAST_LOOK[fast.status].fill, dashed: FAST_LOOK[fast.status].dashed, description: `${day}: ${FAST_LOOK[fast.status].word}` }
+    if (fast) return { date, ...fastLook(fast.status), description: `${day}: ${FAST_WORD[fast.status]}` }
     if (date === today) return { date, fill: tokens.accent.main, description: `${day}: today` }
     if (date > today) return { date, dashed: tokens.ink.dashed, description: `${day}: ahead` }
     return { date, fill: tokens.ink.fill, description: `${day}: no fast` }
@@ -182,7 +188,9 @@ function FastingCard({ data, entries, fastHours, today, onStart }: { data: Dashb
     .join(' · ')
   const perMonth = data.settings?.fasts_per_month
   return (
-    <DashCard
+    <ChartCard
+      titleSize="card"
+      fill
       title="Fasting"
       action={perMonth ? `${perMonth} × ${fastHours} h a month` : undefined}
       caption={summary.charAt(0).toUpperCase() + summary.slice(1)}
@@ -199,8 +207,9 @@ function FastingCard({ data, entries, fastHours, today, onStart }: { data: Dashb
         startLabel={formatShortDate(from)}
         endLabel={to > today ? formatWeekday(to) : formatShortDate(to)}
         mark={{ index: cells.findIndex((c) => c.date === today), label: 'today' }}
+        testId="chart-dashboard-fasting"
       />
-    </DashCard>
+    </ChartCard>
   )
 }
 
@@ -229,7 +238,9 @@ function LoggingCard({ data, today }: { data: DashboardData; today: string }) {
     .filter(Boolean)
     .join(' · ')
   return (
-    <DashCard
+    <ChartCard
+      titleSize="card"
+      fill
       title="Logging"
       action="weigh-in · meals · water"
       caption={summary}
@@ -243,7 +254,7 @@ function LoggingCard({ data, today }: { data: DashboardData; today: string }) {
         endLabel={days.at(-1) ? formatShortDate(days.at(-1)!.date) : undefined}
         testId="chart-logging-adherence"
       />
-    </DashCard>
+    </ChartCard>
   )
 }
 

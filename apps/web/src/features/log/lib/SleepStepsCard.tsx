@@ -13,10 +13,9 @@ import { endpoints } from '@fitness/shared/api'
 import type { DayView, HealthSource } from '@fitness/shared/schemas'
 import { useEffect, useId, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
-import { formatNumber, NumberField, parseNumber, PendingBadge, Segmented, StatusChip, wellSurface } from '../../../components'
+import { formatClock, formatNumber, NumberField, parseNumber, PendingBadge, Segmented, StatusChip, statValue, wellSurface } from '../../../components'
 import { tokens } from '../../../theme'
 import { clockOf, instantAt, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
-import { clock12 } from './labels'
 import { LogCard } from './LogCard'
 import { problemText } from '../../../api'
 
@@ -104,7 +103,7 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
       meta={
         <>
           {pendingSteps.length + pendingSleep.length > 0 && <PendingBadge />}
-          {serverSleep && <StatusChip tone="outline" size="small" label={`${SOURCE_LABEL[serverSleep.source]} · ${clock12(serverSleep.updated_at)}`} />}
+          {serverSleep && <StatusChip tone="outline" size="small" label={`${SOURCE_LABEL[serverSleep.source]} · ${formatClock(serverSleep.updated_at)}`} />}
         </>
       }
       testId="log-sleep-steps"
@@ -117,7 +116,7 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
           unit={serverSleep ? 'h' : undefined}
           caption={
             serverSleep?.in_bed_at && serverSleep.woke_at
-              ? `${clock12(serverSleep.in_bed_at)} – ${clock12(serverSleep.woke_at)}`
+              ? `${formatClock(serverSleep.in_bed_at)} – ${formatClock(serverSleep.woke_at)}`
               : serverSleep
                 ? 'asleep'
                 : known
@@ -209,7 +208,7 @@ function Tile({ label, value, unit, caption }: { label: string; value: string | 
   return (
     <Box sx={{ ...wellSurface, px: 3, py: '10px', minWidth: 0 }}>
       <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>{label}</Box>
-      <Box sx={{ mt: '2px', fontSize: tokens.font.size.bigNumberSmall, fontWeight: tokens.font.weight.number, lineHeight: 1.3, letterSpacing: tokens.font.em.number, fontVariantNumeric: 'tabular-nums' }}>
+      <Box sx={{ mt: '2px', ...statValue('small'), lineHeight: 1.3 }}>
         {value ?? <Skeleton variant="text" width={64} sx={{ display: 'inline-block' }} />}
         {unit && (
           <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.body, color: tokens.ink.secondary, letterSpacing: 0 }}>

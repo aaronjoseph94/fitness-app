@@ -10,7 +10,7 @@ import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import type { ReactNode } from 'react'
 import { Sparkline } from '../../../charts'
-import { Column, Columns, CountUp, formatNumber, formatShortDate, MiniBars, ProgressBar, Reveal, StatCard, StatusChip } from '../../../components'
+import { Column, Columns, CountUp, deltaTone, formatNumber, formatShortDate, MiniBars, ProgressBar, Reveal, StatCard, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 import type { GoalFacts } from './GoalRail'
 import { barSeries, type Kpi, type KpiGroup } from './kpis'
@@ -127,7 +127,7 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
               <Box component="span" sx={{ alignSelf: 'center' }}>
                 <StatusChip
                   shape="pill"
-                  tone={delta.value < 0 === (delta.good === 'down') ? 'success' : 'warning'}
+                  tone={deltaTone(delta, precision)}
                   icon={delta.value < 0 ? TrendingDownRounded : TrendingUpRounded}
                   label={`${formatNumber(Math.abs(delta.value), precision)} ${kpi.unit ?? ''} ${delta.period}`}
                   ariaLabel={`${delta.value < 0 ? 'Down' : 'Up'} ${formatNumber(Math.abs(delta.value), precision)} ${kpi.unit ?? ''} ${delta.period}`}
@@ -199,6 +199,7 @@ function MetricTile({ kpi }: { kpi: Kpi }) {
             metric={kpi.metric ?? 'weight'}
             target={kpi.reference}
             label={`${kpi.label}: ${present} ${bars.length === kpi.series?.length ? 'days' : 'weeks'} in this window${kpi.reference !== undefined ? `, against a target of ${formatNumber(kpi.reference, kpi.precision ?? 0)}` : ''}`}
+            testId={`chart-kpi-${kpi.key}`}
           />
         ) : undefined
       }

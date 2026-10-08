@@ -13,12 +13,11 @@ import type { LocalDate, WorkoutSession } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
 import { StrengthChart, TrainingVolumeChart } from '../../../charts'
-import { Column, Columns, formatNumber, formatShortDate, WindowSlider } from '../../../components'
+import { ChartCard, Column, Columns, formatNumber, formatShortDate, WindowSlider } from '../../../components'
 import { MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { strengthSessions, useExerciseIndex, type ExerciseIndex } from '../../library'
 import { exercisesByUse, sessionVolumeWeeks, volumeBetween, VOLUME_GROUPS } from '../../progress/series'
-import { DashCard } from './DashCard'
 import { DashboardSection, WIDE_ROW } from './Section'
 import type { DashboardData } from './useDashboardData'
 
@@ -65,14 +64,16 @@ function VolumeCard({ sessions, index, from, to }: CardProps) {
   const total = useMemo(() => weeks.reduce((sum, w) => sum + Object.values(w.volume).reduce((s, kg) => s + kg, 0), 0), [weeks])
   const count = sessions.length
   return (
-    <DashCard
+    <ChartCard
+      titleSize="card"
+      fill
       title="Weekly volume"
       subtitle={`kg lifted (sets × reps × load), stacked by muscle group · ${count} ${count === 1 ? 'session' : 'sessions'}, ${formatNumber(total)} kg in this window`}
       empty={lifted ? null : { title: 'No sets logged yet', body: 'Finish a session with loads and reps and its week fills in.' }}
       testId="dashboard-volume"
     >
       <TrainingVolumeChart weeks={weeks} groups={VOLUME_GROUPS} height={CHART_HEIGHT} />
-    </DashCard>
+    </ChartCard>
   )
 }
 
@@ -86,7 +87,9 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
   const volume = useMemo(() => volumeBetween(sessions, index.all, start, end), [sessions, index.all, start, end])
   const levels = muscleLevels(volume.volume_by_muscle)
   return (
-    <DashCard
+    <ChartCard
+      titleSize="card"
+      fill
       title="Volume map"
       subtitle={`Volume per muscle, ${formatShortDate(start)} – ${formatShortDate(end)} · ${formatNumber(volume.volume_kg)} kg`}
       testId="dashboard-volume-map"
@@ -107,7 +110,7 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
           />
         )}
       </Stack>
-    </DashCard>
+    </ChartCard>
   )
 }
 
@@ -125,7 +128,9 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
   )
   const points = useMemo(() => (history.data ? strengthSessions(history.data) : []), [history.data])
   return (
-    <DashCard
+    <ChartCard
+      titleSize="card"
+      fill
       title="Strength"
       subtitle="Top set load and estimated 1RM (Epley), per session"
       empty={
@@ -162,7 +167,7 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
         </TextField>
       )}
       {history.data ? <StrengthChart sessions={points} height={CHART_HEIGHT} /> : <EmptyHistory loading={history.isPending} />}
-    </DashCard>
+    </ChartCard>
   )
 }
 

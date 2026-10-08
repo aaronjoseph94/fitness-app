@@ -10,10 +10,9 @@ import IconButton from '@mui/material/IconButton'
 import Skeleton from '@mui/material/Skeleton'
 import type { DayView, Favourite, MealSlot } from '@fitness/shared/schemas'
 import { useState, type ReactNode } from 'react'
-import { formatNumber, LoadProblem, Panel } from '../../../components'
+import { formatClock, formatNumber, LoadProblem, Panel } from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, visibleSlots } from '../../quick-log'
-import { clock12 } from './labels'
 import { LoadingRows } from './LogCard'
 import { MEAL_CARD_PX, MealActions, MealBody, MealCard } from './MealCard'
 import { DeleteMealDialog, MealEditor, SaveFavouriteDialog } from './MealDialogs'
@@ -103,7 +102,7 @@ export function MealsSection({ day, meals, favourites, onAdd }: MealsSectionProp
             <Box key={slot} data-testid={`slot-${slot}`}>
               <SlotCard
                 slot={slot}
-                description={[clock12(only.eatenAt), plannedText, from].filter(Boolean).join(' · ')}
+                description={[formatClock(only.eatenAt), plannedText, from].filter(Boolean).join(' · ')}
                 actions={
                   <>
                     <MealActions meal={only} {...handlers(only)} />

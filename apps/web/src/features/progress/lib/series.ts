@@ -270,6 +270,9 @@ export function stepsDays(days: readonly DaySummary[]): StepsDay[] {
   return days.map((d) => ({ date: d.date, steps: d.steps }))
 }
 
+/** SPEC §9 readiness compares sleep with 7.5 h. */
+export const SLEEP_TARGET_H = 7.5
+
 /** Hours asleep (asleep_min / 60) and the Edmonton wall-clock bedtime of each night (date = wake date). */
 export function sleepNights(days: readonly DaySummary[]): SleepNight[] {
   return days.map((d) => ({

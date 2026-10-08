@@ -20,7 +20,7 @@ import {
   WeeklyLossChart,
   WeightTrendChart,
 } from '../../../charts'
-import { formatNumber, formatShortDate, formatSigned, formatWeekday } from '../../../components'
+import { formatNumber, formatShortDate, formatSigned, formatWeekday, statValue } from '../../../components'
 import { MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { Muted, Pair, Panel, PRINT_FULL, PRINT_HALF, StatStrip, Table, type Stat } from './parts'
@@ -126,7 +126,7 @@ export function WeeklyReport(props: WeeklyReportProps) {
           </Box>
         </Box>
         <Box sx={{ textAlign: 'right' }} data-testid="report-trend">
-          <Box sx={{ fontSize: tokens.font.size.bigNumber, fontWeight: tokens.font.weight.number, letterSpacing: tokens.font.em.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: tokens.ink.text }}>
+          <Box sx={{ ...statValue('standard'), lineHeight: 1.1, color: tokens.ink.text }}>
             {kg(m.trend_end_kg)}
           </Box>
           <Box className="report-secondary" sx={{ mt: '2px', fontSize: tokens.font.size.caption, color: tokens.ink.secondary, '@media print': { mt: 0 } }}>
