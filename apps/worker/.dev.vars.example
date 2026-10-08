@@ -1,0 +1,21 @@
+# Owns: local-only secrets for `wrangler dev`. Copy to .dev.vars (gitignored). Never commit real keys.
+DEV_AUTH_BYPASS=1
+HEALTH_WEBHOOK_TOKEN=dev-health-token
+MCP_BEARER_TOKEN=dev-mcp-token
+FILE_URL_SECRET=dev-file-url-secret-change-me
+ACCESS_AUD=
+ACCESS_TEAM_DOMAIN=
+# Aaron's Access login email; when set, any other Access identity gets 403 (leave empty locally).
+ACCESS_EMAIL=
+GEMINI_API_KEY=
+ZAI_API_KEY=
+OPENROUTER_API_KEY=
+GROQ_API_KEY=
+# Legacy: USDA is no longer queried (2026-10-06); harmless when empty.
+USDA_FDC_API_KEY=
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+# Service token for the weekly PDF in production; unused locally.
+ACCESS_CLIENT_ID=
+ACCESS_CLIENT_SECRET=
