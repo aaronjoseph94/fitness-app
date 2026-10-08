@@ -196,7 +196,8 @@ capture on the whole header and silently broke every button in it; the Playwrigh
    moving a destination out of the bar changes navigation. **Chosen:** keep six, note the deviation here. If it ever
    needs to shrink, "Ask AI" is the right one to move — it already exists as a sheet on every other tab.
 2. **System font over the app's own face.** The HIG prefers the system face; the app shipped Outfit. **Chosen:** the
-   system stack. One line in `theme.ts` reverts it, and `@fontsource-variable/outfit` is still installed.
+   system stack. One line in `theme.ts` reverted it at the time; the `@fontsource-variable/outfit` package was removed on
+   2026-10-08 (the 2a redesign uses Geist).
 3. **A dark secondary text colour instead of Apple's `secondaryLabel`.** Apple's `secondaryLabel` over white measures
    about 3.4:1, under the 4.5:1 this app holds itself to. **Chosen:** keep `#5F6B7C` (4.91:1 on the grouped grey) —
    the HIG's accessibility guidance outranks its colour picker.
