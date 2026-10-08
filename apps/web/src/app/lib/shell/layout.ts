@@ -32,10 +32,10 @@ export const navInset = `var(${NAV_VAR}, 0px)`
  * 2a's content column: 1,144 px is what its 1,440 px design leaves between the 240 px sidebar and the 28 px main
  * padding on each side. Wider windows centre the column rather than stretching the cards past their drawn proportions.
  */
-export const CONTENT_MAX = 1440 - layout.sidebarWidth - 2 * layout.mainPadding.x
+export const CONTENT_MAX = layout.maxContent
 
 /** A narrow page's reading column on a desktop (2a Settings' content column); a phone keeps the `sm` width. */
-export const READING_MAX = 820
+export const READING_MAX = layout.readingMax
 
 const GUTTER = `${tokens.space(4)}px`
 

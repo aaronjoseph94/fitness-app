@@ -37,7 +37,7 @@ const SHORTCUT =
 
 /** A keyboard focus ring for a plain link (MUI draws one only on its own buttons). */
 const linkFocus = {
-  borderRadius: '4px',
+  borderRadius: `${tokens.radius.link}px`,
   '&:focus-visible': {
     outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
     outlineOffset: tokens.focusRing.offset,
@@ -237,7 +237,7 @@ function SearchField() {
           flex: 'none',
           px: '6px',
           py: '1px',
-          borderRadius: '5px',
+          borderRadius: `${tokens.radius.kbd}px`,
           border: `1px solid ${tokens.ink.border}`,
           bgcolor: tokens.ink.panel,
           fontFamily: 'inherit',

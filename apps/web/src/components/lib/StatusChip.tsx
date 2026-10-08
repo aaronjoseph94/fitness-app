@@ -5,7 +5,7 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
-import { tokens, type Tone } from '../../theme'
+import { CHIP_TONES, tokens, type Tone } from '../../theme'
 
 export type StatusChipTone = Tone | 'outline' | 'dark'
 
@@ -29,12 +29,13 @@ export interface StatusChipProps {
   testId?: string
 }
 
+/** The theme's badge colours (shared with MUI's filled `<Chip>`) plus a dot colour; the outline and dark looks are the kit's own. */
 const TONES: Record<StatusChipTone, { bg: string; text: string; border?: string; dot: string; weight: number }> = {
-  success: { bg: tokens.tone.success.bg, text: tokens.tone.success.text, dot: tokens.tone.success.solid, weight: tokens.font.weight.heading },
-  warning: { bg: tokens.tone.warning.bg, text: tokens.tone.warning.text, dot: tokens.tone.warning.text, weight: tokens.font.weight.heading },
-  danger: { bg: tokens.tone.danger.bg, text: tokens.tone.danger.text, dot: tokens.tone.danger.text, weight: tokens.font.weight.heading },
-  info: { bg: tokens.accent.soft, text: tokens.accent.deep, dot: tokens.accent.main, weight: tokens.font.weight.label },
-  neutral: { bg: tokens.tone.neutral.bg, text: tokens.tone.neutral.text, dot: tokens.ink.faint, weight: tokens.font.weight.label },
+  success: { ...CHIP_TONES.success, dot: tokens.tone.success.solid },
+  warning: { ...CHIP_TONES.warning, dot: tokens.tone.warning.text },
+  danger: { ...CHIP_TONES.danger, dot: tokens.tone.danger.text },
+  info: { ...CHIP_TONES.info, dot: tokens.accent.main },
+  neutral: { ...CHIP_TONES.neutral, dot: tokens.ink.faint },
   outline: { bg: tokens.ink.card, text: tokens.ink.label, border: tokens.ink.border, dot: tokens.ink.faint, weight: tokens.font.weight.label },
   dark: { bg: tokens.dark.bg, text: tokens.dark.text, dot: tokens.accent.bright, weight: tokens.font.weight.label },
 }
@@ -71,7 +72,7 @@ export function StatusChip({
         px: small ? '5px' : '7px',
         py: small ? 0 : '2px',
         border,
-        borderRadius: shape === 'pill' ? `${tokens.radius.pill}px` : `${small ? 5 : tokens.radius.badge}px`,
+        borderRadius: shape === 'pill' ? `${tokens.radius.pill}px` : `${small ? tokens.radius.badgeSmall : tokens.radius.badge}px`,
         bgcolor: t.bg,
         color: t.text,
         fontSize: small ? tokens.font.size.micro : tokens.font.size.caption,

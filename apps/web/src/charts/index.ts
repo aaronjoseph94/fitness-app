@@ -55,7 +55,7 @@ export {
   type SessionStatus,
 } from './lib/TrainingCharts'
 export { CalendarHeatmap, type CalendarHeatmapProps, type HeatmapDay } from './lib/CalendarHeatmap'
-export { FastingStrip, type FastingStripProps, type FastEntry, type FastStatus } from './lib/FastingStrip'
+export { FastingStrip, fastLook, type FastingStripProps, type FastEntry, type FastStatus } from './lib/FastingStrip'
 export { MilestoneTimeline, type MilestoneTimelineProps, type Milestone } from './lib/MilestoneTimeline'
 export { Gauge, type GaugeProps, type GaugeBand, type GaugeTone } from './lib/Gauge'
 export { Sparkline, type SparklineProps } from './lib/Sparkline'

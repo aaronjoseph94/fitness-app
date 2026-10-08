@@ -2,10 +2,9 @@
 // as "a new version is ready", which a reload fixes; the same failure with no network says so instead.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import { isRouteErrorResponse, useRouteError } from 'react-router'
+import { Panel } from '../../../components'
 
 const STALE_CHUNK =
   /dynamically imported module|Importing a module script failed|error loading dynamically imported/i
@@ -26,20 +25,15 @@ export function RouteError() {
           : 'An unexpected error happened.'
   if (!staleChunk) console.error(error)
   return (
-    <Box sx={{ p: 4, maxWidth: (theme) => theme.breakpoints.values.sm, mx: 'auto' }}>
-      <Card component="section" role="alert">
-        <CardContent>
-          <Typography variant="sectionTitle" component="h2">
-            {title}
-          </Typography>
-          <Typography variant="body2" sx={{ mt: 1, mb: 4, overflowWrap: 'anywhere' }}>
-            {detail}
-          </Typography>
-          <Button variant="contained" onClick={() => window.location.reload()}>
-            Reload
-          </Button>
-        </CardContent>
-      </Card>
+    <Box role="alert" sx={{ p: 4, maxWidth: (theme) => theme.breakpoints.values.sm, mx: 'auto' }}>
+      <Panel title={title}>
+        <Typography variant="body2" sx={{ mb: 4, overflowWrap: 'anywhere' }}>
+          {detail}
+        </Typography>
+        <Button variant="contained" onClick={() => window.location.reload()}>
+          Reload
+        </Button>
+      </Panel>
     </Box>
   )
 }

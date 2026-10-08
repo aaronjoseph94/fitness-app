@@ -141,7 +141,7 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
           <TableCell align="right">Last week</TableCell>
         </TableRow>
       </TableHead>
-      <TableBody sx={{ '& tr:last-of-type td': { borderBottom: 0 } }}>
+      <TableBody>
         {planDays(plan).map((d, i) => {
           const isToday = d.date === today
           const done = (view.days[i]?.sessions_done ?? 0) > 0

@@ -1,4 +1,6 @@
-// Owns: how numbers and dates look everywhere in the UI (en-CA grouping, fixed precision, ISO dates per SPEC §2).
+// Owns: how numbers, dates and times look everywhere in the UI (en-CA grouping, fixed precision, ISO dates per SPEC §2,
+// and the 12-hour Edmonton clock: "2:02 PM").
+import { localDate, TIMEZONE, today } from '@fitness/shared/engine'
 
 const formatters = new Map<string, Intl.NumberFormat>()
 
@@ -50,6 +52,12 @@ export function formatShortDate(date: string | number): string {
   return shortDate.format(typeof date === 'number' ? date : dateToTime(date))
 }
 
+/** ("2026-10-05", "2026-10-11") → "Oct 5 – 11"; across a month end → "Sep 28 – Oct 4". */
+export function formatDayRange(from: string, to: string): string {
+  const end = from.slice(0, 7) === to.slice(0, 7) ? String(Number(to.slice(8, 10))) : formatShortDate(to)
+  return `${formatShortDate(from)} – ${end}`
+}
+
 /** "2026-10-04" → "Oct". */
 export function formatMonth(date: string | number): string {
   return monthOnly.format(typeof date === 'number' ? date : dateToTime(date))
@@ -63,4 +71,24 @@ export function formatWeekday(date: string | number): string {
 /** "2026-10-04" → "Sunday, October 4". Used by the greeting hero, so the whole title reads as one line. */
 export function formatLongDate(date: string | number): string {
   return longDate.format(typeof date === 'number' ? date : dateToTime(date))
+}
+
+// en-US, not en-CA: en-CA writes "p.m.".
+const clock = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, hour: 'numeric', minute: '2-digit' })
+const weekdayClock = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, weekday: 'short', hour: 'numeric', minute: '2-digit' })
+
+/** "2026-10-07T20:02:00Z" → "2:02 PM" (Edmonton). */
+export function formatClock(instant: string): string {
+  return clock.format(new Date(instant))
+}
+
+/** "2:02 PM" when the instant is from today (Edmonton), else "Tue 4:31 PM". */
+export function formatRecentTime(instant: string, now: number = Date.now()): string {
+  return localDate(instant) === today(now) ? formatClock(instant) : weekdayClock.format(new Date(instant)).replace(',', '')
+}
+
+/** A stored Edmonton time "16:30" → "4:30 PM". */
+export function formatClockTime(time: string): string {
+  const [h = 0, m = 0] = time.split(':').map(Number)
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }

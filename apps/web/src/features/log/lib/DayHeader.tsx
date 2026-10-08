@@ -11,7 +11,7 @@ import type SvgIcon from '@mui/material/SvgIcon'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import type { ReactNode } from 'react'
-import { cardSurface, CountUp, formatNumber, formatSigned, LoadProblem, PendingBadge, ProgressBar, StatusChip } from '../../../components'
+import { cardSurface, CountUp, formatNumber, formatSigned, LoadProblem, MeterRow, PendingBadge, ProgressBar, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, usePendingLogs, visibleSlots } from '../../quick-log'
 
@@ -196,7 +196,7 @@ function DayHeaderSkeleton({ isToday }: { isToday: boolean }) {
         <PartLabel>Macros against {isToday ? 'today’s' : 'the day’s'} targets</PartLabel>
         <MacroGrid>
           {MACROS.map((label) => (
-            <MacroBar key={label} label={label} color={tokens.ink.fill} value={null} target={null} kind="limit" />
+            <MeterRow key={label} label={label} value={null} target={null} unit="g" color={tokens.ink.fill} caption={null} loading delay={400} />
           ))}
         </MacroGrid>
       </Box>
@@ -224,47 +224,21 @@ function macroCaption(kind: MacroKind, value: number, target: number): { text: s
   return gap >= 0 ? { text: `${formatNumber(gap)} g left`, tone: 'muted' } : { text: `${formatNumber(-gap)} g over`, tone: 'muted' }
 }
 
-/** One macro against its target; `value` null while the day loads. */
-function MacroBar({ label, color, value, target, kind }: { label: string; color: string; value: number | null; target: number | null; kind: MacroKind }) {
-  const ratio = value !== null && target && target > 0 ? value / target : null
-  const caption = value !== null && target !== null ? macroCaption(kind, value, target) : null
+/** One macro against its target, with how its gap reads under the bar. */
+function MacroBar({ label, color, value, target, kind }: { label: string; color: string; value: number; target: number | null; kind: MacroKind }) {
+  const caption = target !== null ? macroCaption(kind, value, target) : null
   return (
-    <Box sx={{ minWidth: 0 }}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 1, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
-        <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-          {label}
-        </Box>
-        <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {value === null ? (
-            pendingValue(56)
-          ) : (
-            <>
-              <Box component="b" sx={{ fontWeight: tokens.font.weight.heading }}>
-                {formatNumber(value)}
-              </Box>{' '}
-              <Box component="span" sx={{ color: tokens.ink.secondary }}>
-                {target !== null ? `/ ${formatNumber(target)} g${kind === 'minimum' ? ' min' : ''}` : 'g'}
-              </Box>
-            </>
-          )}
-        </Box>
-      </Box>
-      <Box sx={{ mt: '6px' }}>
-        <ProgressBar value={ratio} color={color} label={label} delay={400} />
-      </Box>
-      <Box
-        sx={{
-          mt: '5px',
-          minHeight: 15,
-          fontSize: tokens.font.size.micro,
-          lineHeight: tokens.font.leading.micro,
-          color: caption?.tone === 'warning' ? tokens.tone.warning.text : caption?.tone === 'success' ? tokens.tone.success.text : tokens.ink.secondary,
-          fontWeight: caption && caption.tone !== 'muted' ? tokens.font.weight.heading : tokens.font.weight.body,
-        }}
-      >
-        {caption?.text}
-      </Box>
-    </Box>
+    <MeterRow
+      label={label}
+      value={value}
+      target={target}
+      unit="g"
+      floor={kind === 'minimum'}
+      color={color}
+      caption={caption?.text ?? null}
+      captionTone={caption?.tone}
+      delay={400}
+    />
   )
 }
 

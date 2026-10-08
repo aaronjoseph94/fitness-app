@@ -46,30 +46,61 @@ export interface Tab extends Destination {
   label: string
 }
 
-const tab = (
-  key: TabKey,
-  path: string,
-  title: string,
-  label: string,
-  Icon: typeof SvgIcon,
-  ActiveIcon: typeof SvgIcon,
-): Tab => ({
-  key,
-  path,
-  title,
-  label,
-  Icon,
-  ActiveIcon,
-  testId: `rail-${key}`,
-})
-
 export const TABS: readonly Tab[] = [
-  tab('today', '/', 'Today', 'Today', TodayOutlined, TodayRounded),
-  tab('dashboard', '/dashboard', 'Dashboard', 'Dashboard', SpaceDashboardOutlined, SpaceDashboardRounded),
-  tab('log', '/log', 'Log', 'Log', RestaurantOutlined, RestaurantRounded),
-  tab('train', '/train', 'Train', 'Train', FitnessCenterOutlined, FitnessCenterRounded),
-  tab('progress', '/progress', 'Progress', 'Progress', InsightsOutlined, InsightsRounded),
-  tab('ai', '/ai', 'Ask AI', 'AI', AutoAwesomeOutlined, AutoAwesomeRounded),
+  {
+    key: 'today',
+    path: '/',
+    label: 'Today',
+    title: 'Today',
+    Icon: TodayOutlined,
+    ActiveIcon: TodayRounded,
+    testId: 'rail-today',
+  },
+  {
+    key: 'dashboard',
+    path: '/dashboard',
+    label: 'Dashboard',
+    title: 'Dashboard',
+    Icon: SpaceDashboardOutlined,
+    ActiveIcon: SpaceDashboardRounded,
+    testId: 'rail-dashboard',
+  },
+  {
+    key: 'log',
+    path: '/log',
+    label: 'Log',
+    title: 'Log',
+    Icon: RestaurantOutlined,
+    ActiveIcon: RestaurantRounded,
+    testId: 'rail-log',
+  },
+  {
+    key: 'train',
+    path: '/train',
+    label: 'Train',
+    title: 'Train',
+    Icon: FitnessCenterOutlined,
+    ActiveIcon: FitnessCenterRounded,
+    testId: 'rail-train',
+  },
+  {
+    key: 'progress',
+    path: '/progress',
+    label: 'Progress',
+    title: 'Progress',
+    Icon: InsightsOutlined,
+    ActiveIcon: InsightsRounded,
+    testId: 'rail-progress',
+  },
+  {
+    key: 'ai',
+    path: '/ai',
+    label: 'AI',
+    title: 'Ask AI',
+    Icon: AutoAwesomeOutlined,
+    ActiveIcon: AutoAwesomeRounded,
+    testId: 'rail-ai',
+  },
 ]
 
 /**
@@ -109,7 +140,7 @@ export const SETTINGS_DESTINATION: Destination = {
 }
 
 export function tabByKey(key: TabKey): Tab {
-  const found = TABS.find((t) => t.key === key)
-  if (!found) throw new Error(`Unknown tab "${key}"`)
-  return found
+  const tab = TABS.find((t) => t.key === key)
+  if (!tab) throw new Error(`Unknown tab "${key}"`)
+  return tab
 }

@@ -109,7 +109,6 @@ export function DashboardPage() {
       data-testid="dashboard-page"
       sx={{ pb: { xs: 4, md: 0 }, opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }}
     >
-      {/* The route handle says `hero: true`, so this owns the page's h1 and the window rides beside it. */}
       <PageHeader
         testId="dashboard-hero"
         title="Welcome back, Aaron"

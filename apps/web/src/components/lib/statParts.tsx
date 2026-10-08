@@ -1,13 +1,14 @@
-// Owns: the two pieces every 2a stat surface is made of, so the stat card, the plain metric card and any tile built
-// on them cannot drift apart: the head row (13/500 #52525B label, a right-aligned 16 px #A1A1AA glyph, an optional
-// badge) and the figure (a 28/600 tabular value — 40 for a hero — with its unit in 13 px muted, counting up once on
-// mount when asked). Internal to the kit.
+// Owns: the two pieces every 2a stat surface is made of, so the stat card and any tile built on it cannot drift
+// apart: the head row (13/500 #52525B label, a right-aligned 16 px #A1A1AA glyph, an optional badge) and the figure
+// (a 28/600 tabular value — 40 for a hero — with its unit in 13 px muted, counting up once on mount when asked).
+// Internal to the kit.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
 import { CountUp } from './CountUp'
 import { formatNumber } from './format'
+import { statValue } from './surfaces'
 
 export function StatHead({ label, icon: Icon, badge }: { label: ReactNode; icon?: SvgIconComponent; badge?: ReactNode }) {
   return (
@@ -54,13 +55,11 @@ export function StatFigure({ value, unit, precision, hero = false, countUp = fal
       <Box
         component="span"
         sx={{
+          ...statValue(hero ? 'large' : 'standard'),
           // A hero steps down to 34 on a phone; a stat value stays 28 (its unit wraps under it in a narrow card).
-          fontSize: hero ? { xs: tokens.font.size.bigNumberMedium, sm: tokens.font.size.bigNumberLarge } : tokens.font.size.bigNumber,
-          fontWeight: tokens.font.weight.number,
+          ...(hero && { fontSize: { xs: tokens.font.size.bigNumberMedium, sm: tokens.font.size.bigNumberLarge } }),
           lineHeight: tokens.font.leading.number,
-          letterSpacing: hero ? tokens.font.em.hero : tokens.font.em.number,
           color: tokens.ink.text,
-          fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
         }}
       >

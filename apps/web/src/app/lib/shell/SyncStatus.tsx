@@ -304,7 +304,7 @@ export function AccountStatus({ collapsed }: { collapsed: boolean }) {
             fontSize: tokens.font.size.caption,
             lineHeight: tokens.font.leading.caption,
             color: failing ? tokens.tone.danger.text : tokens.ink.muted,
-            borderRadius: '4px',
+            borderRadius: `${tokens.radius.link}px`,
             ...(failing && { textDecoration: 'underline', textUnderlineOffset: '2px' }),
           }}
         >

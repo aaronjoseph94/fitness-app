@@ -67,7 +67,7 @@ const cardDelay = (index: number) => staggerDelay(index, tokens.motion.stagger.s
 
 /** 2a: the section nav's column; the cards' column beside it is at most 820 px, its cards 24 px apart. */
 const NAV_WIDTH = 200
-const columnSx = { display: 'grid', gap: `${tokens.rhythm.section}px`, maxWidth: 820, minWidth: 0 } as const
+const columnSx = { display: 'grid', gap: `${tokens.rhythm.section}px`, maxWidth: tokens.layout.readingMax, minWidth: 0 } as const
 
 /** Loading and the failed read sit where the cards will be, beside the (not yet shown) section nav. */
 const pendingSx = { ...columnSx, ml: { md: `${NAV_WIDTH + 28}px` } } as const

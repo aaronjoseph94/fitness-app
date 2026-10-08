@@ -1,7 +1,7 @@
 // Owns: the fasting calendar strip (custom SVG): one row per month, one 20 px slot per day (2a: `chart.grid` cells,
 // radius 3, 3 px apart), fasts marked as completed (the fasting colour), partial (its light step), planned (a dashed
 // amber outline) or missed (a dashed grey outline), and today filled in the accent; tap a fast for its date, status and real
-// duration.
+// duration. `fastLook` is that status → look mapping, shared with every other fasting day strip.
 import Box from '@mui/material/Box'
 import { today as localToday } from '@fitness/shared/engine'
 import { useState } from 'react'
@@ -37,6 +37,8 @@ const ROW_GAP = 8
 const DASH = '3 2'
 /** Today's slot (2a Dashboard: the accent), distinct from a completed fast's slate. */
 const TODAY = tokens.accent.main
+const PARTIAL = tintOnCard(tokens.metric.fasting, 0.45)
+const PLANNED = tokens.tone.warning.text
 const STATUS_TEXT: Record<FastStatus, string> = {
   completed: 'Completed',
   partial: 'Partial',
@@ -44,12 +46,21 @@ const STATUS_TEXT: Record<FastStatus, string> = {
   missed: 'Missed',
 }
 
+/**
+ * A fast's look on a day strip: a filled cell (completed in the fasting colour, partial at 45 % of it over the card) or
+ * a dashed outline (planned amber, missed grey). Each strip keeps its own cell size, empty-day and today colours.
+ */
+export function fastLook(status: FastStatus): { fill?: string; dashed?: string } {
+  if (status === 'completed') return { fill: tokens.metric.fasting }
+  if (status === 'partial') return { fill: PARTIAL }
+  if (status === 'planned') return { dashed: PLANNED }
+  return { dashed: tokens.chart.target }
+}
+
 export function FastingStrip({ fasts, from, to, width, legend = true, today }: FastingStripProps) {
   const [ref, w] = useWidth(width)
   const [selected, setSelected] = useState<string | null>(null)
   const C = tokens.metric.fasting
-  const PARTIAL = tintOnCard(C, 0.45)
-  const PLANNED = tokens.tone.warning.text
   const now = today ?? localToday(new Date())
   const byDate = new Map(fasts.map((f) => [f.date.slice(0, 10), f]))
   const cellW = Math.max(4, (w - LABEL_W - GAP * 30) / 31)
@@ -122,19 +133,12 @@ export function FastingStrip({ fasts, from, to, width, legend = true, today }: F
                   const f = byDate.get(date)
                   const x = LABEL_W + d * (cellW + GAP)
                   const isSel = date === selected
-                  let fill: string = date === now ? TODAY : tokens.chart.grid
-                  let stroke = 'none'
-                  let dash: string | undefined
-                  if (f?.status === 'completed') fill = C
-                  else if (f?.status === 'partial') fill = PARTIAL
-                  else if (f?.status === 'planned') {
-                    fill = tokens.ink.card
-                    stroke = PLANNED
-                    dash = DASH
-                  } else if (f?.status === 'missed') {
-                    stroke = tokens.chart.target
-                    dash = DASH
-                  }
+                  const look = f ? fastLook(f.status) : undefined
+                  // A planned slot is cleared to the card so its outline reads; a missed one keeps the day's fill.
+                  const fill =
+                    look?.fill ?? (f?.status === 'planned' ? tokens.ink.card : date === now ? TODAY : tokens.chart.grid)
+                  let stroke = look?.dashed ?? 'none'
+                  let dash = look?.dashed ? DASH : undefined
                   if (f && date === now) {
                     stroke = TODAY
                     dash = undefined

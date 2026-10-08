@@ -31,8 +31,12 @@ function errorText(error: ApiError | null, what: string, offline: boolean): stri
       return `Your sign-in expired. Sign in again to load ${what}.`
     case 'invalid-response':
       return `The server sent ${what} in a shape this version of the app doesn't expect. Reloading the app usually fixes it.`
-    default:
-      return `Couldn't load ${what}${error.status ? ` (HTTP ${error.status})` : ''}. ${error.message}`
+    default: {
+      const status = error.status ? ` (HTTP ${error.status})` : ''
+      // transport.ts falls back to `HTTP ${status}` as the message when the body has none: don't say it twice.
+      const detail = error.message && error.message !== `HTTP ${error.status}` ? ` ${error.message}` : ''
+      return `Couldn't load ${what}${status}.${detail}`
+    }
   }
 }
 

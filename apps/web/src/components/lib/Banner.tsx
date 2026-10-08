@@ -9,7 +9,7 @@ import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
-import { tokens } from '../../theme'
+import { BANNER_TONES, tokens } from '../../theme'
 
 export type BannerTone = 'info' | 'warning' | 'danger' | 'success'
 
@@ -28,23 +28,12 @@ export interface BannerProps {
   testId?: string
 }
 
+/** The theme's banner colours (shared with MUI's `<Alert>`) plus each tone's default glyph. */
 const TONES: Record<BannerTone, { bg: string; border: string; text: string; icon: string; glyph: SvgIconComponent }> = {
-  info: { bg: tokens.tone.info.bg, border: tokens.tone.info.border, text: tokens.tone.info.text, icon: tokens.tone.info.icon, glyph: InfoRounded },
-  warning: {
-    bg: tokens.tone.warning.bg,
-    border: tokens.tone.warning.border,
-    text: tokens.tone.warning.deep,
-    icon: tokens.tone.warning.text,
-    glyph: WarningAmberRounded,
-  },
-  danger: { bg: tokens.tone.danger.soft, border: tokens.tone.danger.border, text: tokens.tone.danger.text, icon: tokens.tone.danger.text, glyph: ErrorOutlineRounded },
-  success: {
-    bg: tokens.tone.success.soft,
-    border: tokens.tone.success.border,
-    text: tokens.tone.success.text,
-    icon: tokens.tone.success.solid,
-    glyph: CheckCircleRounded,
-  },
+  info: { ...BANNER_TONES.info, glyph: InfoRounded },
+  warning: { ...BANNER_TONES.warning, glyph: WarningAmberRounded },
+  danger: { ...BANNER_TONES.danger, glyph: ErrorOutlineRounded },
+  success: { ...BANNER_TONES.success, glyph: CheckCircleRounded },
 }
 
 export function Banner({ tone = 'info', title, children, icon, action, role, testId }: BannerProps) {

@@ -5,9 +5,9 @@
 import Box from '@mui/material/Box'
 import type { DaySummary, TargetValues } from '@fitness/shared/schemas'
 import { CalendarHeatmap, CaloriesChart } from '../../../charts'
-import { Column, Columns, formatNumber, ProgressBar } from '../../../components'
+import { Column, Columns, formatNumber, MeterRow } from '../../../components'
 import { useUiStore } from '../../../app/ui-store'
-import { tokens, type MetricKey } from '../../../theme'
+import { tokens } from '../../../theme'
 import { caloriesDays, latestTargets, proteinAdherence } from '../../progress/series'
 import { DashCard } from './DashCard'
 import { DashboardSection, WIDE_ROW } from './Section'
@@ -72,13 +72,13 @@ export function NutritionSection({ data }: { data: DashboardData }) {
   )
 }
 
-const MACROS: readonly { key: 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'; label: string; metric: MetricKey; floor?: true }[] = [
-  { key: 'protein_g', label: 'Protein', metric: 'protein' },
-  { key: 'carbs_g', label: 'Carbs', metric: 'carbs' },
+const MACROS: readonly { key: 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'; label: string; color: string; floor?: true }[] = [
+  { key: 'protein_g', label: 'Protein', color: tokens.metric.protein },
+  { key: 'carbs_g', label: 'Carbs', color: tokens.metric.carbs },
   // Fat's target is a minimum (settings.fat_min_g), not an amount to land on.
-  { key: 'fat_g', label: 'Fat', metric: 'fat', floor: true },
-  // Fibre has no metric colour of its own; it shares the green of the plant-side habits (steps).
-  { key: 'fibre_g', label: 'Fibre', metric: 'steps' },
+  { key: 'fat_g', label: 'Fat', color: tokens.metric.fat, floor: true },
+  // No fibre colour in the metric palette: 2a's fibre green is the success tone's solid (as on the Log tab).
+  { key: 'fibre_g', label: 'Fibre', color: tokens.tone.success.solid },
 ]
 
 /**
@@ -102,26 +102,16 @@ function MacrosCard({ rows, targets, empty }: { rows: readonly DaySummary[]; tar
           const value = avg(m.key)
           const target = targets?.[m.key] ?? null
           return (
-            <Box key={m.key} sx={{ fontSize: tokens.font.size.small }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, color: tokens.ink.text }}>
-                <span>{m.label}</span>
-                <Box component="span" sx={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                  <Box component="b" sx={{ fontWeight: tokens.font.weight.heading }}>
-                    {formatNumber(value)}
-                  </Box>
-                  <Box component="span" sx={{ color: tokens.ink.secondary }}>
-                    {target ? ` / ${formatNumber(target)} g${m.floor ? ' min' : ''}` : ' g'}
-                  </Box>
-                </Box>
-              </Box>
-              <Box sx={{ mt: '5px' }}>
-                <ProgressBar
-                  value={value !== null && target ? value / target : null}
-                  metric={m.metric}
-                  label={`${m.label}: ${formatNumber(value)} of ${m.floor ? 'a minimum of ' : ''}${formatNumber(target)} g a day`}
-                />
-              </Box>
-            </Box>
+            <MeterRow
+              key={m.key}
+              label={m.label}
+              value={value}
+              target={target}
+              unit="g"
+              floor={m.floor}
+              color={m.color}
+              barLabel={`${m.label}: ${formatNumber(value)} of ${m.floor ? 'a minimum of ' : ''}${formatNumber(target)} g a day`}
+            />
           )
         })}
       </Box>

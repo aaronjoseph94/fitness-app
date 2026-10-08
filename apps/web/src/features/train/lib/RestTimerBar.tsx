@@ -9,7 +9,7 @@ import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { useEffect, useRef, useState } from 'react'
-import { tokens } from '../../../theme'
+import { tokens, transitionOf } from '../../../theme'
 import { useLoggerStore } from './logger-store'
 import { notifyRestOver } from './rest'
 
@@ -62,8 +62,11 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
   const remaining = rest ? rest.ends_at - now : 0
   const over = rest !== null && remaining <= 0
 
+  const next = rest ? upNext(rest.exercise_id) : null
+  /** What the bar and the notification say when the rest ends: the set to do next, or that none is left. */
+  const overText = next ? `Next set: ${next}` : 'All sets ticked'
   const nextName = useRef('')
-  nextName.current = rest ? nameOf(rest.exercise_id) : ''
+  nextName.current = overText
   const endsAt = rest?.ends_at ?? null
 
   useEffect(() => {
@@ -71,7 +74,7 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
     if (fired.current !== endsAt) {
       fired.current = endsAt
       // A rest that ended long ago (the app was closed) is cleared quietly.
-      if (Date.now() - endsAt < 60_000) void notifyRestOver(`Next set: ${nextName.current}`)
+      if (Date.now() - endsAt < 60_000) void notifyRestOver(nextName.current)
     }
     const t = setTimeout(clearRest, DONE_SHOWN_MS)
     return () => clearTimeout(t)
@@ -79,7 +82,6 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
 
   if (!rest) return null
   const left = Math.min(100, Math.max(0, (remaining / (rest.total_sec * 1000)) * 100))
-  const next = upNext(rest.exercise_id)
 
   return (
     <Box
@@ -121,7 +123,7 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
         <Box sx={{ flex: { xs: 1, sm: 'none' }, minWidth: 0, maxWidth: { sm: '40%' } }}>
           <Box sx={{ ...CAPTION_SX, color: over ? tokens.dark.text : tokens.dark.muted }}>
             {over
-              ? `Next set: ${next ?? nameOf(rest.exercise_id)}`
+              ? overText
               : next
                 ? `Rest · then ${next}`
                 : `Rest · ${nameOf(rest.exercise_id)}`}
@@ -165,7 +167,7 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
                 height: '100%',
                 borderRadius: { sm: `${tokens.radius.pill}px` },
                 bgcolor: tokens.accent.bright,
-                transition: 'width 250ms linear',
+                transition: transitionOf('width', 250, 'linear'),
               }}
             />
           </Box>

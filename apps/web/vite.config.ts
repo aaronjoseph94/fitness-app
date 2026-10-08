@@ -161,7 +161,19 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
         // Runtime-cached by src/sw.ts instead of precached: exercise media, food icons (loaded with a meal), the barcode
         // WASM (1 MB, on the first scan) and pdf.js with its worker (~1.7 MB, only when a scan PDF is opened).
-        globIgnores: ['exercises/**', 'media/**', 'wasm/**', 'food-icons/**', 'assets/pdf-*.js', 'assets/pdf.worker.min-*'],
+        // Geist's latin-ext, cyrillic and vietnamese files are not precached: the UI is English (latin only), the browser
+        // fetches them by unicode-range if a name ever needs one, and offline those glyphs use the system face.
+        globIgnores: [
+          'exercises/**',
+          'media/**',
+          'wasm/**',
+          'food-icons/**',
+          'assets/pdf-*.js',
+          'assets/pdf.worker.min-*',
+          'assets/geist-latin-ext-*',
+          'assets/geist-cyrillic*',
+          'assets/geist-vietnamese-*',
+        ],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {
@@ -189,5 +201,13 @@ export default defineConfig({
   preview: { proxy: workerProxy },
   // 'hidden': maps are written for local debugging but never referenced from the bundles, and public/.assetsignore
   // keeps *.map out of the Worker's static assets, so they are never uploaded or served.
-  build: { sourcemap: 'hidden' },
+  // The kit barrel (src/components/index.ts) is pure re-exports. Marked side-effect-free so the shell's few imports
+  // from it don't pull every kit module (and MUI's ToggleButtonGroup) into the entry chunk. Every other module keeps
+  // rolldown's default (its package.json `sideEffects`, else true).
+  build: {
+    sourcemap: 'hidden',
+    rolldownOptions: {
+      treeshake: { moduleSideEffects: [{ test: /\/src\/components\/index\.ts$/, sideEffects: false }] },
+    },
+  },
 })

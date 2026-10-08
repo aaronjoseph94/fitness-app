@@ -13,7 +13,7 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { useEffect, useId, useRef, useState, type Ref } from 'react'
 import { formatNumber, parseNumber } from '../../../components'
-import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens, transitionOf } from '../../../theme'
 import type { LastSet, LoggerSet } from './logger-model'
 
 /**
@@ -51,7 +51,7 @@ const FIELD_SX = {
   bgcolor: tokens.ink.card,
   fontSize: tokens.font.size.small,
   fontVariantNumeric: 'tabular-nums',
-  transition: 'border-color 160ms, box-shadow 160ms',
+  transition: transitionOf(['border-color', 'box-shadow'], 160),
   [COARSE_POINTER_QUERY]: { height: tokens.tapTarget, fontSize: 16 },
 } as const
 
@@ -109,7 +109,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
         py: '8px',
         fontSize: tokens.font.size.small,
         bgcolor: set.done ? tokens.tone.success.soft : 'transparent',
-        transition: 'background-color 160ms',
+        transition: transitionOf('background-color', 160),
         '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
       }}
     >
@@ -196,7 +196,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
             borderRadius: `${tokens.radius.inner}px`,
             display: 'grid',
             placeItems: 'center',
-            transition: 'border-color 160ms, background-color 160ms',
+            transition: transitionOf(['border-color', 'background-color'], 160),
             ...(set.done
               ? { bgcolor: tokens.tone.success.solid, color: tokens.ink.card }
               : { bgcolor: tokens.ink.card, border: `1.5px solid ${tokens.ink.control}` }),

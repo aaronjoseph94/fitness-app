@@ -73,7 +73,7 @@ const routes: RouteObject[] = [
           { path: 'train/session/:id', handle: { title: 'Session', trail: TRAIL.train, width: 'wide' } satisfies RouteHandle, lazy: page(() => import('../../features/train'), 'SessionPage') },
           {
             path: 'train/library',
-            handle: { title: 'Exercise library', trail: TRAIL.train } satisfies RouteHandle,
+            handle: { title: 'Exercise library', trail: TRAIL.train, width: 'wide' } satisfies RouteHandle,
             lazy: page(() => import('../../features/library'), 'LibraryPage'),
           },
           {
@@ -81,7 +81,7 @@ const routes: RouteObject[] = [
             handle: { title: 'Exercise', trail: TRAIL.library } satisfies RouteHandle,
             lazy: page(() => import('../../features/library'), 'ExercisePage'),
           },
-          { path: 'train/equipment', handle: { title: 'Equipment', trail: TRAIL.train } satisfies RouteHandle, lazy: page(() => import('../../features/library'), 'EquipmentPage') },
+          { path: 'train/equipment', handle: { title: 'Equipment', trail: TRAIL.train, width: 'wide' } satisfies RouteHandle, lazy: page(() => import('../../features/library'), 'EquipmentPage') },
           {
             path: 'train/builder',
             handle: { title: 'Workout builder', trail: TRAIL.train } satisfies RouteHandle,

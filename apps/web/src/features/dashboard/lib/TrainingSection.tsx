@@ -5,7 +5,6 @@
 // own read (GET /api/history/exercises/:id).
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
@@ -14,9 +13,9 @@ import type { LocalDate, WorkoutSession } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
 import { StrengthChart, TrainingVolumeChart } from '../../../charts'
-import { Column, Columns, formatNumber, formatShortDate } from '../../../components'
+import { Column, Columns, formatNumber, formatShortDate, WindowSlider } from '../../../components'
 import { MuscleMap, MuscleMapLegend } from '../../../muscle-map'
-import { COARSE_POINTER_QUERY, tokens, withAlpha } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { strengthSessions, useExerciseIndex, type ExerciseIndex } from '../../library'
 import { exercisesByUse, sessionVolumeWeeks, volumeBetween, VOLUME_GROUPS } from '../../progress/series'
 import { DashCard } from './DashCard'
@@ -96,50 +95,21 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
         <MuscleMap levels={levels} size={MAP_SIZE} body="light" title={`Weekly volume per muscle, ${start} to ${end}`} />
         <MuscleMapLegend dense />
         {span > 0 && (
-          <Box sx={{ width: '100%', px: 2 }}>
-            <Slider
-              value={endOffset}
-              min={0}
-              max={span}
-              step={1}
-              onChange={(_, v) => setOffset(v as number)}
-              valueLabelDisplay="auto"
-              valueLabelFormat={(v) => `7 days to ${formatShortDate(addDays(from, v))}`}
-              getAriaValueText={(v) => `7 days to ${addDays(from, v)}`}
-              aria-label="Week shown on the map"
-              data-testid="volume-map-slider"
-              sx={sliderSx}
-            />
-          </Box>
+          <WindowSlider
+            from={from}
+            to={to}
+            start={start}
+            end={end}
+            value={endOffset}
+            onChange={setOffset}
+            ariaLabel="Week shown on the map"
+            testId="volume-map-slider"
+          />
         )}
       </Stack>
     </DashCard>
   )
 }
-
-const SLIDER_COLOR = tokens.muscleMap.steps[tokens.muscleMap.steps.length - 1]
-const DOT = 20
-
-/**
- * The week slider with 44 px touch targets (SPEC §11): the rail's hit area and the thumb are tapTarget tall, while
- * the thumb still draws MUI's 20 px dot (its ::before) with the hover, focus and drag halos around the dot.
- */
-const sliderSx = {
-  color: SLIDER_COLOR,
-  py: `${(tokens.tapTarget - 4) / 2}px`,
-  '& .MuiSlider-thumb': {
-    width: tokens.tapTarget,
-    height: tokens.tapTarget,
-    bgcolor: 'transparent',
-    '&::before': { width: DOT, height: DOT, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'currentColor' },
-    '&::after': { width: tokens.tapTarget, height: tokens.tapTarget },
-    '&:hover, &.Mui-focusVisible, &.Mui-active': { boxShadow: 'none' },
-    '&:hover::before, &.Mui-focusVisible::before': { boxShadow: `0 0 0 8px ${withAlpha(SLIDER_COLOR, 0.16)}` },
-    '&.Mui-active::before': { boxShadow: `0 0 0 14px ${withAlpha(SLIDER_COLOR, 0.16)}` },
-  },
-  // The value label sits over the dot as before (the thumb box grew by 12 px above it).
-  '& .MuiSlider-valueLabel': { top: (tokens.tapTarget - DOT) / 2 - 10 },
-} as const
 
 function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>) {
   const options = useMemo(

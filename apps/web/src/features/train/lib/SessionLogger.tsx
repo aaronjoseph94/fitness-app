@@ -92,8 +92,8 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
   const counts = setCounts(session)
   const picked = useMemo(() => new Set(session.exercises.map((e) => e.exercise_id)), [session.exercises])
   const nameOf = useCallback((id: string) => index.byId.get(id)?.name ?? 'exercise', [index.byId])
-  const [folded] = useState(() => foldedAtStart(session))
-  const currentId = session.exercises.find((e) => e.sets.some((s) => !s.done))?.exercise_id ?? null
+  const [folded] = useState(() => (session.finished ? new Set<string>() : foldedAtStart(session)))
+  const currentId = session.finished ? null : (session.exercises.find((e) => e.sets.some((s) => !s.done))?.exercise_id ?? null)
   const conflicts = session.recovery?.conflicts ?? []
 
   /** The next set to do after a rest: the rested exercise's next open set, else the next exercise with one. */
@@ -414,7 +414,7 @@ function ProgressPanel({ session, done, planned, now }: { session: LoggerSession
                   key={e.exercise_id}
                   sx={{
                     height: 6,
-                    borderRadius: '3px',
+                    borderRadius: `${tokens.radius.pill}px`,
                     background: `linear-gradient(90deg, ${tokens.tone.success.solid} ${share}%, ${tokens.ink.border} ${share}%)`,
                   }}
                 />

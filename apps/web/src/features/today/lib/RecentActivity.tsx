@@ -51,7 +51,7 @@ export function RecentActivity({ events }: { events: readonly AiEvent[] }) {
       ) : (
         // Time and value keep their own width (an empty value takes none); the event takes the rest and wraps. On a
         // phone the value moves under the event, which needs the width.
-        <Table aria-label="Recent activity" sx={{ '& tbody tr:last-of-type td': { borderBottom: 0, pb: '12px' }, '& td': { verticalAlign: 'top' } }}>
+        <Table aria-label="Recent activity" sx={{ '& tbody tr:last-of-type td': { pb: '12px' }, '& td': { verticalAlign: 'top' } }}>
           <TableHead>
             <TableRow>
               <TableCell sx={{ whiteSpace: 'nowrap' }}>Time</TableCell>

@@ -16,13 +16,23 @@ import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { daysBetween, weekdayOf } from '@fitness/shared/engine'
 import { useState } from 'react'
-import { Column, Columns, formatLongDate, greetingFor, isQueryLoading, PageHero, QueryStateCard, Reveal, staggerDelay } from '../../components'
+import {
+  Column,
+  Columns,
+  formatClockTime,
+  formatLongDate,
+  greetingFor,
+  isQueryLoading,
+  PageHeader,
+  QueryStateCard,
+  Reveal,
+  staggerDelay,
+} from '../../components'
 import { useLocalToday } from '../../app/local-today'
 import { useUiStore } from '../../app/ui-store'
 import { tokens } from '../../theme'
 import { AiCard, TodayAdjustment } from './lib/AiCard'
 import { CoachNote } from './lib/CoachNote'
-import { clockLabel } from './lib/event-view'
 import { HealthDialog } from './lib/HealthDialog'
 import { HeroChart } from './lib/HeroChart'
 import { QuickLogRow } from './lib/QuickLogRow'
@@ -72,13 +82,12 @@ export function TodayPage() {
   // "Wednesday, October 7 · Day 12 of the plan · Upper B — Pull at 4:30 PM", from what has arrived.
   const planDay = profile?.start_date && profile.start_date <= date ? daysBetween(profile.start_date, date) + 1 : null
   const session = day.data?.session ? null : (day.data?.planned_session ?? weekPlan?.plan.sessions[weekdayOf(date)] ?? null)
-  const at = workoutReminder?.enabled && workoutReminder.time ? ` at ${clockLabel(workoutReminder.time)}` : ''
+  const at = workoutReminder?.enabled && workoutReminder.time ? ` at ${formatClockTime(workoutReminder.time)}` : ''
   const subtitle = [formatLongDate(date), planDay && `Day ${planDay} of the plan`, session && `${session.name}${at}`].filter(Boolean).join(' · ')
 
   return (
     <Stack spacing={{ xs: 4, md: 5 }} data-testid="today-page">
-      {/* The route handle says `hero: true`, so the top bar keeps only its controls and this owns the page's h1. */}
-      <PageHero
+      <PageHeader
         testId="today-hero"
         title={`${greetingFor(new Date().getHours())}, Aaron`}
         pageName="Today"

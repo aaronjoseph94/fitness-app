@@ -2,7 +2,7 @@
 // the new one in bold on the right, on a #FAFAFA strip at the control radius — and the list that stacks them 6 px apart
 // as a description list (label = term, change = definition). The struck value is muted ink rather than 2a's #A1A1AA,
 // which is 2.56:1 and the value is information; screen readers, which do not announce a strike-through, hear
-// "130 g, changes to 140 g".
+// "130 g, changes to 140 g". `size="small"` is 2a's rail-card row: 12 px, 6 × 8 padding, the inner radius, 4 px apart.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
@@ -14,11 +14,14 @@ export interface BeforeAfterProps {
   to: ReactNode
   /** Strip colour. Default `tokens.ink.panel` (#FAFAFA); on a #FAFAFA card pass `tokens.ink.card`. */
   background?: string
+  /** `small`: 12 px, 6 × 8 padding, the inner radius (2a's rail card). Default `medium`. */
+  size?: 'medium' | 'small'
   testId?: string
 }
 
 /** One row. Render it inside a `BeforeAfterList` (it is a `<dt>`/`<dd>` pair). */
-export function BeforeAfter({ label, from, to, background = tokens.ink.panel, testId }: BeforeAfterProps) {
+export function BeforeAfter({ label, from, to, background = tokens.ink.panel, size = 'medium', testId }: BeforeAfterProps) {
+  const small = size === 'small'
   return (
     <Box
       data-testid={testId}
@@ -29,11 +32,11 @@ export function BeforeAfter({ label, from, to, background = tokens.ink.panel, te
         flexWrap: 'wrap',
         columnGap: 3,
         rowGap: 0.5,
-        px: '10px',
-        py: '8px',
-        borderRadius: `${tokens.radius.control}px`,
+        px: small ? '8px' : '10px',
+        py: small ? '6px' : '8px',
+        borderRadius: `${small ? tokens.radius.inner : tokens.radius.control}px`,
         bgcolor: background,
-        fontSize: tokens.font.size.small,
+        fontSize: small ? tokens.font.size.caption : tokens.font.size.small,
         lineHeight: tokens.font.leading.small,
       }}
     >
@@ -61,16 +64,18 @@ export function BeforeAfter({ label, from, to, background = tokens.ink.panel, te
 export interface BeforeAfterListProps {
   changes: readonly { label: string; from: ReactNode; to: ReactNode }[]
   background?: string
+  /** Row size, passed to every row; `small` also stacks them 4 px apart. Default `medium`. */
+  size?: 'medium' | 'small'
   testId?: string
 }
 
 /** The stack of before → after rows, as a description list. */
-export function BeforeAfterList({ changes, background, testId }: BeforeAfterListProps) {
+export function BeforeAfterList({ changes, background, size = 'medium', testId }: BeforeAfterListProps) {
   if (changes.length === 0) return null
   return (
-    <Box component="dl" data-testid={testId} sx={{ m: 0, display: 'grid', gap: '6px' }}>
+    <Box component="dl" data-testid={testId} sx={{ m: 0, display: 'grid', gap: size === 'small' ? '4px' : '6px' }}>
       {changes.map((c) => (
-        <BeforeAfter key={c.label} label={c.label} from={c.from} to={c.to} background={background} />
+        <BeforeAfter key={c.label} label={c.label} from={c.from} to={c.to} background={background} size={size} />
       ))}
     </Box>
   )

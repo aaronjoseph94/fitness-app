@@ -274,7 +274,24 @@ export const tokens = {
    * Radii, px. `chip` keeps its legacy meaning — fully round (pills, dots, tracks) — and `pill` says so; a 2a badge is
    * `badge`. Write radii as `${n}px` in an `sx`: MUI multiplies a bare number by `shape.borderRadius`.
    */
-  radius: { card: 12, control: 8, inner: 6, chip: 999, pill: 999, badge: 6, segment: 7, segmentTrack: 9, panel: 10, bar: 2 },
+  radius: {
+    card: 12,
+    control: 8,
+    inner: 6,
+    chip: 999,
+    pill: 999,
+    badge: 6,
+    /** A small (11 px) badge. */
+    badgeSmall: 5,
+    segment: 7,
+    segmentTrack: 9,
+    panel: 10,
+    bar: 2,
+    /** A keyboard key (the header's ⌘K). */
+    kbd: 5,
+    /** The focus ring's corners on a plain text link or a text-only button. */
+    link: 4,
+  },
   /** Legacy translucent materials. 2a's chrome is opaque white with a hairline; the fills are near-opaque to match. */
   material: {
     chrome: { fill: 'rgba(255,255,255,0.94)', blur: 'blur(12px) saturate(160%)' },
@@ -352,7 +369,10 @@ export const tokens = {
   focusRing: { width: 2, offset: 2, color: BLUE.main, inputRing: 3 },
   layout: {
     phoneWidth: 390,
-    maxContent: 1120,
+    /** 2a's content column: 1,440 design − 240 sidebar − 2 × 28 main padding. */
+    maxContent: 1144,
+    /** 2a's reading column (Settings' cards; a narrow page on a desktop). */
+    readingMax: 820,
     bottomNavHeight: 64,
     /** Legacy desktop rail width (the 2a sidebar replaces the rail: `sidebarWidth`). */
     railWidth: 76,
@@ -499,27 +519,15 @@ declare module '@mui/material/styles' {
     dark?: PaletteOptions['primary']
   }
   interface TypographyVariants {
-    bigNumber: React.CSSProperties
-    hero: React.CSSProperties
-    label: React.CSSProperties
-    micro: React.CSSProperties
     sectionTitle: React.CSSProperties
   }
   interface TypographyVariantsOptions {
-    bigNumber?: React.CSSProperties
-    hero?: React.CSSProperties
-    label?: React.CSSProperties
-    micro?: React.CSSProperties
     sectionTitle?: React.CSSProperties
   }
 }
 
 declare module '@mui/material/Typography' {
   interface TypographyPropsVariantOverrides {
-    bigNumber: true
-    hero: true
-    label: true
-    micro: true
     sectionTitle: true
   }
 }
@@ -554,22 +562,31 @@ const press = (scale: number) => ({
   '@media (prefers-reduced-motion: reduce)': { '&:active': { transform: 'none' } },
 })
 
-/** The colours a filled chip / banner takes for each MUI colour name. */
-const CHIP_TONES = {
-  default: { bg: tone.neutral.bg, text: tone.neutral.text, weight: font.weight.label },
-  primary: { bg: accent.soft, text: accent.deep, weight: font.weight.label },
+/** A badge's colours per tone: tint, text, weight. MUI's filled `<Chip>` and the kit's `StatusChip` both read it. */
+export const CHIP_TONES = {
+  neutral: { bg: tone.neutral.bg, text: tone.neutral.text, weight: font.weight.label },
   info: { bg: accent.soft, text: accent.deep, weight: font.weight.label },
-  secondary: { bg: accent.soft, text: accent.deep, weight: font.weight.label },
   success: { bg: tone.success.bg, text: tone.success.text, weight: font.weight.heading },
   warning: { bg: tone.warning.bg, text: tone.warning.text, weight: font.weight.heading },
-  error: { bg: tone.danger.bg, text: tone.danger.text, weight: font.weight.heading },
-} as const
+  danger: { bg: tone.danger.bg, text: tone.danger.text, weight: font.weight.heading },
+} as const satisfies Record<Tone, { bg: string; text: string; weight: number }>
 
-/** The banner (Alert) look for each severity: tint, border, text, icon. */
-const BANNERS = {
+/** The tone each MUI colour name takes on a filled `<Chip>`. */
+const CHIP_COLOUR_TONES = {
+  default: 'neutral',
+  primary: 'info',
+  info: 'info',
+  secondary: 'info',
+  success: 'success',
+  warning: 'warning',
+  error: 'danger',
+} as const satisfies Record<string, Tone>
+
+/** A banner's look per tone: tint, border, text, icon. MUI's `<Alert>` and the kit's `Banner` both read it. */
+export const BANNER_TONES = {
   info: { bg: tone.info.bg, border: tone.info.border, text: tone.info.text, icon: tone.info.icon },
   warning: { bg: tone.warning.bg, border: tone.warning.border, text: tone.warning.deep, icon: tone.warning.text },
-  error: { bg: tone.danger.soft, border: tone.danger.border, text: tone.danger.text, icon: tone.danger.text },
+  danger: { bg: tone.danger.soft, border: tone.danger.border, text: tone.danger.text, icon: tone.danger.text },
   success: { bg: tone.success.soft, border: tone.success.border, text: tone.success.text, icon: tone.success.solid },
 } as const
 
@@ -630,28 +647,6 @@ export const theme = createTheme({
       textTransform: 'uppercase',
     },
     sectionTitle: { fontSize: font.size.sectionTitle, fontWeight: font.weight.heading, lineHeight: font.leading.sectionTitle },
-    label: { fontSize: font.size.label, fontWeight: font.weight.label, lineHeight: font.leading.label, color: ink.label },
-    micro: {
-      fontSize: font.size.micro,
-      fontWeight: font.weight.label,
-      lineHeight: font.leading.micro,
-      letterSpacing: font.em.micro,
-      textTransform: 'uppercase',
-    },
-    bigNumber: {
-      fontSize: font.size.bigNumber,
-      fontWeight: font.weight.number,
-      lineHeight: font.leading.number,
-      letterSpacing: font.em.number,
-      fontVariantNumeric: 'tabular-nums',
-    },
-    hero: {
-      fontSize: font.size.bigNumberLarge,
-      fontWeight: font.weight.number,
-      lineHeight: font.leading.number,
-      letterSpacing: font.em.hero,
-      fontVariantNumeric: 'tabular-nums',
-    },
   },
   components: {
     MuiCssBaseline: {
@@ -679,7 +674,9 @@ export const theme = createTheme({
     },
     MuiButtonBase: {
       defaultProps: { disableRipple: true },
-      styleOverrides: { root: { WebkitTapHighlightColor: 'transparent' } },
+      // `fontFamily: 'inherit'`: a bare ButtonBase (the header's search field, an accordion summary) otherwise keeps the
+      // browser's button font; Button, Tab, MenuItem and ToggleButton set their own type after this.
+      styleOverrides: { root: { WebkitTapHighlightColor: 'transparent', fontFamily: 'inherit' } },
     },
     MuiPaper: {
       defaultProps: { elevation: 0 },
@@ -792,7 +789,7 @@ export const theme = createTheme({
         sizeSmall: {
           minHeight: 18,
           padding: '1px 6px',
-          borderRadius: 5,
+          borderRadius: radius.badgeSmall,
           fontSize: font.size.micro,
           '& .MuiChip-icon': { fontSize: 12, marginLeft: -1, marginRight: 3 },
         },
@@ -802,15 +799,18 @@ export const theme = createTheme({
         clickable: { ...touchTarget(), '&:active': { boxShadow: 'none' } },
       },
       variants: [
-        ...(Object.entries(CHIP_TONES) as [keyof typeof CHIP_TONES, (typeof CHIP_TONES)[keyof typeof CHIP_TONES]][]).map(([color, t]) => ({
-          props: { variant: 'filled' as const, color },
-          style: {
-            backgroundColor: t.bg,
-            color: t.text,
-            fontWeight: t.weight,
-            '&.MuiChip-clickable:hover, &.MuiChip-clickable.Mui-focusVisible': { backgroundColor: t.bg, filter: 'brightness(0.96)' },
-          },
-        })),
+        ...(Object.entries(CHIP_COLOUR_TONES) as [keyof typeof CHIP_COLOUR_TONES, Tone][]).map(([color, chipTone]) => {
+          const t = CHIP_TONES[chipTone]
+          return {
+            props: { variant: 'filled' as const, color },
+            style: {
+              backgroundColor: t.bg,
+              color: t.text,
+              fontWeight: t.weight,
+              '&.MuiChip-clickable:hover, &.MuiChip-clickable.Mui-focusVisible': { backgroundColor: t.bg, filter: 'brightness(0.96)' },
+            },
+          }
+        }),
         {
           props: { variant: 'outlined' as const },
           style: { '&.MuiChip-clickable:hover': { backgroundColor: ink.fill } },
@@ -852,11 +852,11 @@ export const theme = createTheme({
     MuiAlert: {
       styleOverrides: {
         root: ({ ownerState }) => {
-          const b = BANNERS[ownerState.severity ?? 'info']
+          const b = BANNER_TONES[ownerState.severity === 'error' ? 'danger' : (ownerState.severity ?? 'info')]
           if (ownerState.variant === 'filled') return { borderRadius: radius.panel }
           return {
             alignItems: 'flex-start',
-            padding: '10px 14px',
+            padding: '11px 14px',
             borderRadius: radius.panel,
             border: `1px solid ${b.border}`,
             backgroundColor: b.bg,
@@ -985,9 +985,10 @@ export const theme = createTheme({
           borderBottom: `1px solid ${ink.border}`,
         },
         alignRight: { fontVariantNumeric: 'tabular-nums' },
-        sizeSmall: { padding: '6px 10px' },
       },
     },
+    // 2a: a table sits flush in its card, so its last row draws no hairline.
+    MuiTableBody: { styleOverrides: { root: { '& tr:last-of-type td': { borderBottom: 0 } } } },
     MuiTableRow: { styleOverrides: { root: { '&.MuiTableRow-hover:hover': { backgroundColor: ink.panel } } } },
     // A dialog (2a): radius 12, hairline border, the overlay shadow; title 16/600; actions right with an 8 px gap.
     MuiDialog: {

@@ -237,7 +237,7 @@ export function SegmentsCard({ scan }: { scan: ConfirmedScan }) {
       }
       padding="none"
     >
-      <Table sx={{ '& th': { borderTop: 0, py: '6px' }, '& td': { py: '8px' }, '& tbody tr:last-of-type td': { borderBottom: 0 }, mb: '10px' }}>
+      <Table sx={{ '& th': { borderTop: 0, py: '6px' }, '& td': { py: '8px' }, mb: '10px' }}>
         <TableHead>
           <TableRow>
             <TableCell>Segment</TableCell>

@@ -200,7 +200,7 @@ export function HealthImportPage() {
             </Box>
           )}
           <Box sx={{ overflowX: 'auto' }}>
-            <MuiTable size="small" aria-label="Mapped days">
+            <MuiTable aria-label="Mapped days">
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
@@ -211,7 +211,7 @@ export function HealthImportPage() {
               </TableHead>
               <TableBody>
                 {mapped.rows.slice(-PREVIEW_ROWS).map((r) => (
-                  <TableRow key={r.date} sx={{ '&:last-of-type td': { borderBottom: 0 } }}>
+                  <TableRow key={r.date}>
                     <TableCell sx={{ ...tabularNums, whiteSpace: 'nowrap' }}>{r.date}</TableCell>
                     <TableCell align="right">{r.steps !== undefined ? formatNumber(r.steps) : '—'}</TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>

@@ -1,7 +1,6 @@
-// Owns: the 2a page title row every page opens with — the page's single `h1` (26/600, −.02em), a 14 px muted subtitle
-// under it, and the page's own controls on the right (a segmented window, "+ Log", "Export"), wrapping under the title
-// on a phone. A route that shows one marks its handle `hero: true` so the top bar drops its own title. `PageHeader` is
-// the same component under its 2a name.
+// Owns: `PageHeader`, the page title row every 2a page opens with — the page's single `h1` (26/600, −.02em), a 14 px
+// muted subtitle under it, and the page's own controls on the right (a segmented window, "+ Log", "Export"), wrapping
+// under the title on a phone. The shell sees this `h1` in `main` and drops its own fallback heading.
 //
 // It rises into place once on mount (2a: 26 px over 700 ms, expo-out; opacity + transform only, so no CLS). Under
 // `prefers-reduced-motion` it cross-fades in place instead.
@@ -34,8 +33,8 @@ export const visuallyHidden = {
   border: 0,
 } as const
 
-export interface PageHeroProps {
-  /** Legacy: a small 13 px line above the title. 2a pages put the greeting in the title itself. */
+export interface PageHeaderProps {
+  /** A small 13 px line above the title (the session logger's ← Train link and chips). */
   eyebrow?: ReactNode
   title: ReactNode
   /**
@@ -64,7 +63,7 @@ export function greetingFor(hour: number): string {
   return 'Good evening'
 }
 
-export function PageHero({ eyebrow, title, pageName, subtitle, action, delay = 0, testId }: PageHeroProps) {
+export function PageHeader({ eyebrow, title, pageName, subtitle, action, delay = 0, testId }: PageHeaderProps) {
   const { entered, reduced } = useEntrance()
   return (
     <Box
@@ -100,6 +99,3 @@ export function PageHero({ eyebrow, title, pageName, subtitle, action, delay = 0
     </Box>
   )
 }
-
-/** The 2a name for the page title row (the same component). */
-export const PageHeader = PageHero

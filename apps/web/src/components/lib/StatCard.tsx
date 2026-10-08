@@ -63,7 +63,7 @@ export interface StatCardProps {
 }
 
 /** The delta's tone: good for the plan → success, bad → warning (2a's shortfall amber), flat or neutral → neutral. */
-function deltaTone(delta: StatDelta, precision: number): 'success' | 'warning' | 'neutral' {
+export function deltaTone(delta: StatDelta, precision: number): 'success' | 'warning' | 'neutral' {
   const flat = Math.abs(delta.value) < 10 ** -precision / 2
   if (delta.good === 'neutral' || flat) return 'neutral'
   return delta.value < 0 === (delta.good === 'down') ? 'success' : 'warning'

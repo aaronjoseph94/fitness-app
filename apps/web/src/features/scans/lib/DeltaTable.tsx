@@ -62,7 +62,7 @@ export function DeltaTable({ record, previous, baseline }: { record: ScanRecord;
     </TableRow>
   )
   return (
-    <Table data-testid="scan-delta-table" sx={{ '& tbody tr:last-of-type td': { borderBottom: 0 } }}>
+    <Table data-testid="scan-delta-table">
       <TableHead>
         <TableRow>
           <TableCell>Metric</TableCell>

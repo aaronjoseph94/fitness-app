@@ -370,8 +370,8 @@ export function ChartFrame({ testId, label, legend, unit, width, empty, height, 
         >
           <AxisCaption inline>{caption}</AxisCaption>
           {hasLegend && (
-            <Box sx={{ minWidth: 0, flex: '0 1 auto', '& > ul': { justifyContent: 'flex-end' } }}>
-              <LegendChips items={legend!} dense />
+            <Box sx={{ minWidth: 0, flex: '0 1 auto' }}>
+              <LegendChips items={legend!} dense align="end" />
             </Box>
           )}
         </Box>

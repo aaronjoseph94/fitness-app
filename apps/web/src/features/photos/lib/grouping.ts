@@ -3,15 +3,15 @@
 import type { Pose, ProgressPhoto } from '@fitness/shared/schemas'
 
 const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-const monthShort = new Intl.DateTimeFormat('en-CA', { month: 'short', timeZone: 'UTC' })
+const monthShort = new Intl.DateTimeFormat('en-CA', { month: 'short', year: '2-digit', timeZone: 'UTC' })
 
 /** "2026-10-04" → "2026-10". */
 export const monthOf = (date: string) => date.slice(0, 7)
 
-/** "2026-10" → "October 2026" (long) or "Oct ’26" (short; "Oct 26" would read as a day). */
+/** "2026-10" → "October 2026" (long) or "Oct 26" (short). */
 export function monthLabel(month: string, style: 'long' | 'short' = 'long'): string {
   const at = Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1)
-  return style === 'long' ? monthName.format(at) : `${monthShort.format(at)} ’${month.slice(2, 4)}`
+  return (style === 'long' ? monthName : monthShort).format(at)
 }
 
 export interface MonthGroup {

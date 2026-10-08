@@ -94,7 +94,7 @@ const NUMBER_COLUMN = { xs: 112, sm: 128 }
 function DiffTable({ rows }: { rows: readonly DiffRow[] }) {
   return (
     <Box sx={{ overflowX: 'auto' }}>
-      <Table size="small" aria-label="What changed" sx={{ tableLayout: 'fixed' }}>
+      <Table aria-label="What changed" sx={{ tableLayout: 'fixed' }}>
         <TableHead>
           <TableRow>
             <TableCell>Target</TableCell>
@@ -111,7 +111,7 @@ function DiffTable({ rows }: { rows: readonly DiffRow[] }) {
         </TableHead>
         <TableBody>
           {rows.map((r) => (
-            <TableRow key={r.key} sx={{ '&:last-of-type td': { borderBottom: 0 } }}>
+            <TableRow key={r.key}>
               <TableCell sx={{ fontWeight: tokens.font.weight.label }}>{r.label}</TableCell>
               <TableCell align="right" sx={{ color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
                 {r.from}

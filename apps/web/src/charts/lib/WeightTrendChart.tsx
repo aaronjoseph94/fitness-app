@@ -148,7 +148,7 @@ export function WeightTrendChart({
     ],
   )
 
-  const label = 'Weight trend with forecast'
+  const label = forecast.length ? 'Weight trend with forecast' : 'Weight trend'
   const summary = [
     `Trend ${seriesSummary(
       points.map((p) => ({ date: p.date, value: p.trend })),

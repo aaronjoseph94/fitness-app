@@ -17,6 +17,8 @@ export interface LegendChipsProps {
   items: readonly LegendItem[]
   /** Smaller text and keys, for thumbnails and dense cards. */
   dense?: boolean
+  /** Which end of the row the keys pack to (a chart header's legend sits right). Default `start`. */
+  align?: 'start' | 'end'
 }
 
 function Key({ color, mark = 'bar', dense }: { color: string; mark?: LegendMark; dense: boolean }) {
@@ -32,7 +34,7 @@ function Key({ color, mark = 'bar', dense }: { color: string; mark?: LegendMark;
   )
 }
 
-export function LegendChips({ items, dense = false }: LegendChipsProps) {
+export function LegendChips({ items, dense = false, align = 'start' }: LegendChipsProps) {
   if (items.length === 0) return null
   return (
     <Box
@@ -44,6 +46,7 @@ export function LegendChips({ items, dense = false }: LegendChipsProps) {
         p: 0,
         display: 'flex',
         flexWrap: 'wrap',
+        justifyContent: align === 'end' ? 'flex-end' : undefined,
         columnGap: dense ? '10px' : '14px',
         rowGap: 1,
       }}

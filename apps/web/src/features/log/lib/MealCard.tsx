@@ -214,7 +214,6 @@ function ItemTable({ meal }: { meal: MealView }) {
       <Table
         aria-label="Items"
         sx={{
-          '& tbody tr:last-of-type td': { borderBottom: 0 },
           [NARROW]: {
             '& .item-source': { display: 'none' },
             '& .item-protein': { pr: `${tokens.pad.card.x}px` },

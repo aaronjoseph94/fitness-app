@@ -1,7 +1,9 @@
 // Owns: the 2a card shell — a white card (1 px #E4E4E7, radius 12, the card whisper) with an optional header row
-// (title 16/600 — or 14/600 for a small card — a 13 px muted description, right-hand actions; padding 16 × 20 × 12)
-// and a body that is padded (18 × 20, or 16 × 18 dense) or flush (for a table or `ListRow`s, which bring their own
-// gutters), plus an optional footer behind a hairline. Tones: `card` (default), `panel` (#FAFAFA, no shadow — the
+// (a title over a muted description, right-hand actions: 16/600 over 13 px, or for a small card 14/600 over 12 px with
+// 12 px muted actions; padding 16 × 20 × 12) and a body that is padded (18 × 20, or 16 × 18 dense) or flush (for a
+// table or `ListRow`s, which bring their own gutters), then an optional 12 px muted caption pinned to the bottom (so
+// captions line up across a row of `fill` cards of different heights) and an optional footer behind a hairline.
+// `fill` stretches the card to its grid cell. Tones: `card` (default), `panel` (#FAFAFA, no shadow — the
 // Dashboard's goal rail, Scans' next-scan card), `dashed` (an empty slot) and `highlight` (the blue border + 3 px ring
 // of today's template). `PanelRow` is the 13 px label/value row with #F4F4F5 hairlines between rows.
 import Box from '@mui/material/Box'
@@ -16,13 +18,20 @@ export interface PanelProps {
   actions?: ReactNode
   /** Heading level of the title, so the page outline never skips a level. Default h2. */
   headingComponent?: 'h2' | 'h3' | 'h4'
-  /** `section` 16/600 (default) or `card` 14/600 (a small card: "Coach note", "Recent activity"). */
+  /**
+   * `section` 16/600 + a 13 px description (default), or `card` 14/600 + a 12 px description and 12 px muted actions (a
+   * small card: "Recent activity", a chart in a grid of cards).
+   */
   titleSize?: 'section' | 'card'
   /** `standard` 18 × 20 (default), `dense` 16 × 18, `none` (flush: tables and ListRows). */
   padding?: 'standard' | 'dense' | 'none'
   tone?: 'card' | 'panel' | 'dashed' | 'highlight'
+  /** A 12 px muted line under the body, pinned to the card's bottom. */
+  caption?: ReactNode
   /** Full-bleed footer behind a #E4E4E7 hairline (the weight trend's four stats). */
   footer?: ReactNode
+  /** Fill the parent's height (a grid cell), so a row of cards ends level and their captions line up. */
+  fill?: boolean
   children?: ReactNode
   /** Root element. Default `section` when titled, otherwise `div`. */
   component?: 'section' | 'aside' | 'div' | 'article' | 'nav'
@@ -47,7 +56,9 @@ export function Panel({
   titleSize = 'section',
   padding = 'standard',
   tone = 'card',
+  caption,
   footer,
+  fill = false,
   children,
   component,
   ariaLabel,
@@ -58,6 +69,7 @@ export function Panel({
   const hasHeader = Boolean(title || actions)
   const hasBody = children !== undefined && children !== null && children !== false
   const headingId = id && title ? `${id}-title` : undefined
+  const card = titleSize === 'card'
   return (
     <Box
       component={component ?? (title ? 'section' : 'div')}
@@ -72,6 +84,7 @@ export function Panel({
         scrollMarginTop: tokens.layout.scrollPadding.top,
         // Flush children (tables, rows) must not poke out past the rounded corners.
         overflow: padding === 'none' ? 'hidden' : undefined,
+        ...(fill && { height: '100%', display: 'flex', flexDirection: 'column' }),
       }}
     >
       {hasHeader && (
@@ -85,7 +98,7 @@ export function Panel({
             pt: `${tokens.pad.header.top}px`,
             px: `${padding === 'dense' ? pad.x : tokens.pad.header.x}px`,
             // Flush rows bring their own hairline 12 px under the header; a header-only card closes at its top padding.
-            pb: !hasBody && !footer ? `${tokens.pad.header.top}px` : padding === 'none' ? `${tokens.pad.header.bottom}px` : 0,
+            pb: !hasBody && !caption && !footer ? `${tokens.pad.header.top}px` : padding === 'none' ? `${tokens.pad.header.bottom}px` : 0,
           }}
         >
           {/* Basis 0 with a 140 px floor: the title takes what the actions leave and only wraps them under it when
@@ -97,7 +110,7 @@ export function Panel({
                 id={headingId}
                 sx={{
                   m: 0,
-                  fontSize: titleSize === 'card' ? tokens.font.size.body : tokens.font.size.cardTitle,
+                  fontSize: card ? tokens.font.size.body : tokens.font.size.cardTitle,
                   fontWeight: tokens.font.weight.heading,
                   lineHeight: tokens.font.leading.cardTitle,
                   color: tokens.ink.text,
@@ -107,12 +120,33 @@ export function Panel({
               </Box>
             )}
             {description && (
-              <Box sx={{ mt: '3px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+              <Box
+                sx={{
+                  mt: card ? '2px' : '3px',
+                  fontSize: card ? tokens.font.size.caption : tokens.font.size.small,
+                  lineHeight: card ? tokens.font.leading.caption : tokens.font.leading.small,
+                  color: tokens.ink.secondary,
+                }}
+              >
                 {description}
               </Box>
             )}
           </Box>
-          {actions && <Box sx={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>{actions}</Box>}
+          {actions && (
+            <Box
+              sx={{
+                flex: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                ml: 'auto',
+                // A small card's plain-text action ("target 9,000") is a 12 px muted note.
+                ...(card && { fontSize: tokens.font.size.caption, color: tokens.ink.secondary }),
+              }}
+            >
+              {actions}
+            </Box>
+          )}
         </Box>
       )}
       {hasBody && (
@@ -120,10 +154,25 @@ export function Panel({
           sx={
             padding === 'none'
               ? { minWidth: 0 }
-              : { px: `${pad.x}px`, pt: hasHeader ? '14px' : `${pad.y}px`, pb: `${pad.y}px`, minWidth: 0 }
+              : { px: `${pad.x}px`, pt: hasHeader ? '14px' : `${pad.y}px`, pb: caption ? 0 : `${pad.y}px`, minWidth: 0 }
           }
         >
           {children}
+        </Box>
+      )}
+      {caption && (
+        <Box
+          sx={{
+            mt: 'auto',
+            px: `${pad.x}px`,
+            pt: '10px',
+            pb: `${pad.y}px`,
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.secondary,
+          }}
+        >
+          {caption}
         </Box>
       )}
       {footer && <Box sx={{ borderTop: `1px solid ${tokens.ink.border}`, minWidth: 0 }}>{footer}</Box>}

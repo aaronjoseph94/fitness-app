@@ -1,6 +1,6 @@
-// Owns: the ⌘K / Ctrl-K command palette — one keyboard-first way to log something or jump anywhere. Every other
-// affordance in this app is a phone one (a floating log button, a bottom bar, a slide-up sheet); this is the
-// desktop-native path to the same actions, and the only place a keyboard can reach every screen without a mouse.
+// Owns: the ⌘K / Ctrl-K command palette — one keyboard-first way to log something or jump to any screen, including
+// the ones the sidebar does not list (library, equipment, builder, the settings pages). The desktop header's search
+// field opens it too.
 import SearchRounded from '@mui/icons-material/SearchRounded'
 import Box from '@mui/material/Box'
 import Dialog from '@mui/material/Dialog'

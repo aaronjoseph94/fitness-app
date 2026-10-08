@@ -198,7 +198,7 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
                       color: 'inherit',
                       textDecoration: 'none',
                       '&:hover': { textDecoration: 'underline' },
-                      '&:focus-visible': { outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`, outlineOffset: `${tokens.focusRing.offset}px`, borderRadius: '2px' },
+                      '&:focus-visible': { outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`, outlineOffset: `${tokens.focusRing.offset}px`, borderRadius: `${tokens.radius.bar}px` },
                     }}
                   >
                     <TableDate date={s.date} />
@@ -219,7 +219,7 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
           })}
         </TableBody>
       </Table>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', px: `${tokens.pad.card.x}px`, pt: '12px', pb: '14px', fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', px: `${tokens.pad.card.x}px`, pt: '12px', pb: '14px', borderTop: `1px solid ${tokens.ink.hairline}`, fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
           <StatusChip size="small" tone="danger" label="Lean loss" />
           lean is over 25 % of the loss between scans

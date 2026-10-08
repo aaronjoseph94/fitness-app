@@ -38,7 +38,7 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
           border: `1px solid ${tokens.ink.border}`,
           borderRadius: `${tokens.radius.card}px`,
           boxShadow: tokens.elevation.card,
-          '&:focus-within': { borderColor: tokens.accent.main, boxShadow: `0 0 0 3px ${tokens.accent.ring}` },
+          '&:focus-within': { borderColor: tokens.accent.main, boxShadow: `0 0 0 ${tokens.focusRing.inputRing}px ${tokens.accent.ring}` },
         }}
       >
         <InputBase
