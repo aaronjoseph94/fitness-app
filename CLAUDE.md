@@ -71,6 +71,8 @@ pnpm check                               # typecheck + deep-module boundaries
 
 ## How we work
 
+**Workflow and prompts: [`docs/ENGINEERING-WORKFLOW.md`](docs/ENGINEERING-WORKFLOW.md).** Every task starts by naming the matching scenario there and following its steps and skills (Superpowers, Matt Pocock, Addy Osmani, Karpathy), including on small requests. Before every push to `main`: `code-review` and `code-review-and-quality` on the diff; `codebase-design` before any new module; `security-and-hardening` for anything touching keys, auth, user data or money. Where that file and this one differ, this one wins.
+
 1. Phase by phase (SPEC §12). Before each phase: a short plan (files, migrations, components, tests), then wait for Aaron's go.
 2. Within a phase: feature by feature, one commit per feature with a clear message. Parallel agents where the work splits cleanly (Aaron's standing preference).
 3. The engine (`packages/shared/engine`) is built first in every phase that touches numbers, with Vitest fixtures, before any UI or LLM code uses it.
