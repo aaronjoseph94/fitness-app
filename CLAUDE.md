@@ -21,7 +21,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 
 ## Stack
 
-- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, the system font stack (Apple-conventions rebuild — see `docs/APPLE-DESIGN.md`).
+- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Geist (self-hosted variable font, OFL) on the "2a" design — a 240 px sidebar + 56 px header from md up, bottom tabs on phones, hairline white cards (spec: `docs/design/design_handoff_fitness_2a/README.md`; the kit lives in `apps/web/src/components`).
 - **Worker** (`apps/worker`, config `wrangler.jsonc`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp` (`@modelcontextprotocol/server` v2 + `@modelcontextprotocol/hono`, stateless, new server per request), job runner (`ai_jobs` + `ctx.waitUntil()` + one 5-minute cron). D1 via Drizzle ORM, R2 for files, Browser Rendering (`BROWSER.quickAction('pdf')`) for archived PDFs, Cloudflare Access JWT on every request.
 - **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/engine`), guardrails (`packages/shared/engine/guards.ts`).
 - **Exercises** (`packages/exercises`): free-exercise-db seed, muscle-group mapping, images served as static assets.

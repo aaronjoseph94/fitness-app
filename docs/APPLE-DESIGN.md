@@ -5,6 +5,8 @@ Human Interface Guidelines left a choice open and I made one.
 
 Written 2026-10-06. Companion to `docs/SPEC.md` §11 (visual language) and `docs/PROGRESS.md`.
 
+> **Superseded 2026-10-08.** The interface now follows the "2a" design (`docs/design/design_handoff_fitness_2a/README.md`; tokens and the decisions behind them at the top of `apps/web/src/theme.ts`). This file is kept as the record of the Apple-conventions pass; its token values and component notes no longer describe the app.
+
 ## 1. Audit — what needed rework
 
 Every screen, component and interaction reviewed, in the order the app presents them. "Rework" means the current
