@@ -98,6 +98,24 @@ export function effectiveRate(
   return days > 0 && from.kg > goalKg ? (from.kg - goalKg) / (days / 7) : forecast.weekly_rate_kg
 }
 
+/**
+ * When the ± band reaches the goal (SPEC §9: band = rate × (1 ∓ 0.20)), with rate = effectiveRate:
+ *   early = from.date + ⌈(from.kg − goal) / (rate × band.high / weekly_rate_kg) × 7⌉ days
+ *   late  = from.date + ⌈(from.kg − goal) / (rate × band.low / weekly_rate_kg) × 7⌉ days
+ * Null when the rate is not a loss or the trend is already at the goal.
+ */
+export function forecastBandDates(
+  from: { date: LocalDate; kg: number },
+  forecast: Pick<Forecast, 'weekly_rate_kg' | 'band'> & { finish_date?: LocalDate | null },
+  goalKg: number,
+): { early: LocalDate; late: LocalDate } | null {
+  const rate = effectiveRate(from, forecast, goalKg)
+  if (rate === null) return null
+  const early = expectedOn(goalKg, from, rate * (forecast.band.high / forecast.weekly_rate_kg))
+  const late = expectedOn(goalKg, from, rate * (forecast.band.low / forecast.weekly_rate_kg))
+  return early && late ? { early, late } : null
+}
+
 /** Date the trend reaches `kg` at `rate` kg/week from `from`: from.date + ⌈(from.kg − kg) / rate × 7⌉ days. */
 export function expectedOn(kg: number, from: { date: LocalDate; kg: number } | null, rate: number | null): LocalDate | null {
   if (!from || rate === null || !(rate > 0) || kg >= from.kg) return null
@@ -120,6 +138,55 @@ export function milestoneTimelines(
     .map((m) => ({ label: m.label, reachedOn: m.reached_on, expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate) }))
   const composition = rows.filter((m) => m.kind !== 'weight').map((m) => ({ label: shortLabel(m), reachedOn: m.reached_on }))
   return { weight, composition }
+}
+
+export interface MilestoneItem {
+  label: string
+  /** `done` reached · `next` the next weight milestone · `later` a composition milestone not reached yet. */
+  state: 'done' | 'next' | 'later'
+  reachedOn: LocalDate | null
+  /** Forecast date of the next weight milestone. */
+  expectedOn: LocalDate | null
+  /** Trend kg still to lose to the next weight milestone: from.kg − target. */
+  awayKg: number | null
+  /** What measures it: the trend weight, an Evolt scan, or the tape (waist-to-hip). */
+  source: 'weight' | 'scan' | 'tape'
+}
+
+/**
+ * The Progress milestones list: the weight milestones reached and the next one (heaviest first), then every
+ * composition milestone in its own order. Weight milestones past the next one are left out: each comes into view as
+ * the one before it is reached.
+ */
+export function milestoneList(
+  rows: readonly MilestoneRow[],
+  from: { date: LocalDate; kg: number } | null,
+  rate: number | null,
+): MilestoneItem[] {
+  const weight = rows.filter((m) => m.kind === 'weight').sort((a, b) => b.target_value - a.target_value)
+  const next = weight.find((m) => !m.reached_on)
+  const items: MilestoneItem[] = weight
+    .filter((m) => m.reached_on || m === next)
+    .map((m) => ({
+      label: m.label,
+      state: m.reached_on ? 'done' : 'next',
+      reachedOn: m.reached_on,
+      expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate),
+      awayKg: m.reached_on || !from ? null : round(from.kg - m.target_value, 1),
+      source: 'weight',
+    }))
+  for (const m of rows) {
+    if (m.kind === 'weight') continue
+    items.push({
+      label: m.label,
+      state: m.reached_on ? 'done' : 'later',
+      reachedOn: m.reached_on,
+      expectedOn: null,
+      awayKg: null,
+      source: m.kind === 'whr' ? 'tape' : 'scan',
+    })
+  }
+  return items
 }
 
 /** Timeline labels must fit ~55 px at phone width: "Visceral ≤ 9", "BF < 30 %", "WHR < 0.90", "Torso < 10.4 kg". */
@@ -359,26 +426,47 @@ export function latestTargets(days: readonly DaySummary[]): TargetValues | null 
 export interface RangeSummary {
   /** trend(last) − trend(first) in the range, kg. */
   trendChangeKg: number | null
+  /** The first and last trend weight in the range, kg, and the days between their dates. */
+  trendFromKg: number | null
+  trendToKg: number | null
+  trendDays: number
   /** Mean kcal over days with at least one meal logged, fast days excluded. */
   avgKcal: number | null
   avgProteinG: number | null
   /** Days with meals logged (not fast days), the base of both averages. */
   loggedDays: number
+  /** Logged days (as above) with protein at or above that day's target. */
+  proteinHitDays: number
   /** Share of days meeting all three logging checks (GLOSSARY "Adherence"). */
   adherence: number | null
+  /** Days meeting all three checks, out of `days`. */
+  adherentDays: number
+  days: number
+  /** Days with anything logged: a weigh-in, a meal, water or a fast day. */
+  daysWithData: number
   fastDays: number
 }
 
 export function rangeSummary(days: readonly DaySummary[], points: readonly TrendPoint[]): RangeSummary {
   const trends = points.filter((p) => p.trend_kg !== null)
+  const first = trends[0]
+  const last = trends.at(-1)
   const logged = days.filter((d) => d.meals_logged > 0 && !d.is_fast_day)
   const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
+  const adherentDays = days.filter((d) => dayAdherence(d).adherent).length
   return {
-    trendChangeKg: trends.length >= 2 ? round(trends.at(-1)!.trend_kg! - trends[0]!.trend_kg!) : null,
+    trendChangeKg: trends.length >= 2 ? round(last!.trend_kg! - first!.trend_kg!) : null,
+    trendFromKg: first?.trend_kg ?? null,
+    trendToKg: last?.trend_kg ?? null,
+    trendDays: first && last ? daysBetween(first.date, last.date) : 0,
     avgKcal: mean(logged.map((d) => d.intake.kcal)),
     avgProteinG: mean(logged.map((d) => d.intake.protein_g)),
     loggedDays: logged.length,
-    adherence: days.length ? days.filter((d) => dayAdherence(d).adherent).length / days.length : null,
+    proteinHitDays: logged.filter((d) => d.targets !== null && d.targets.protein_g > 0 && d.intake.protein_g >= d.targets.protein_g).length,
+    adherence: days.length ? adherentDays / days.length : null,
+    adherentDays,
+    days: days.length,
+    daysWithData: days.filter((d) => d.weight_kg !== null || d.meals_logged > 0 || d.water_ml > 0 || d.is_fast_day).length,
     fastDays: days.filter((d) => d.is_fast_day).length,
   }
 }

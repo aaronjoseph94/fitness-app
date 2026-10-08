@@ -1,34 +1,20 @@
-// Owns: the 4 w / 12 w / all segmented control at the top of Progress (44 px segments, full width on a phone).
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import { tokens } from '../../../theme'
+// Owns: the 4 weeks / 12 weeks / All segmented control in the Progress title row (the kit's Segmented; full width on a
+// phone, where it wraps under the title).
+import type { Theme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { Segmented } from '../../../components'
 import { RANGES, type RangeKey } from './range'
 
 export function RangeToggle({ value, onChange }: { value: RangeKey; onChange: (range: RangeKey) => void }) {
+  const phone = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   return (
-    <ToggleButtonGroup
+    <Segmented
+      ariaLabel="Range"
       value={value}
-      exclusive
-      onChange={(_, next: RangeKey | null) => next && onChange(next)}
-      aria-label="Range"
-      data-testid="progress-range"
-      sx={{
-        width: { xs: '100%', sm: 'auto' },
-        '& .MuiToggleButton-root': {
-          flex: { xs: 1, sm: 'none' },
-          minHeight: tokens.tapTarget,
-          px: 5,
-          textTransform: 'none',
-          fontWeight: tokens.font.weight.label,
-          fontSize: tokens.font.size.emphasis,
-        },
-      }}
-    >
-      {RANGES.map((r) => (
-        <ToggleButton key={r.key} value={r.key}>
-          {r.label}
-        </ToggleButton>
-      ))}
-    </ToggleButtonGroup>
+      onChange={onChange}
+      options={RANGES.map((r) => ({ value: r.key, label: r.label }))}
+      fullWidth={phone}
+      testId="progress-range"
+    />
   )
 }

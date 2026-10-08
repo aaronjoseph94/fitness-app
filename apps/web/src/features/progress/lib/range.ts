@@ -6,8 +6,8 @@ import type { LocalDate } from '@fitness/shared/schemas'
 export type RangeKey = '4w' | '12w' | 'all'
 
 export const RANGES: readonly { key: RangeKey; label: string; days: number | null }[] = [
-  { key: '4w', label: '4 w', days: 28 },
-  { key: '12w', label: '12 w', days: 84 },
+  { key: '4w', label: '4 weeks', days: 28 },
+  { key: '12w', label: '12 weeks', days: 84 },
   { key: 'all', label: 'All', days: null },
 ]
 

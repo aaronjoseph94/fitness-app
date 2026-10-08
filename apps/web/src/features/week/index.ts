@@ -4,4 +4,7 @@
 // Second entry point: ./queries (the week view read's input).
 export { WeekPlanCard, type WeekPlanCardProps } from './lib/WeekPlanCard'
 export { WeekView, type WeekViewProps } from './lib/WeekView'
-export { useWeekPlan } from './lib/useWeekPlan'
+export { useProposedWeekPlans, useWeekPlan } from './lib/useWeekPlan'
+// The pieces Today's 2a "This week" card composes itself (Review → Accept of a proposed plan, the plan badge).
+export { ProposedBanner } from './lib/ProposedBanner'
+export { PlanBadge } from './lib/parts'

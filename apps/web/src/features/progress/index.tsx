@@ -1,20 +1,26 @@
-// Owns: the Progress tab (SPEC §11 chart inventory) — range selector (4 w / 12 w / all, kept in ?range=), the range's
-// headline numbers, then two columns from 900 px: weight and body (left), food, water and recovery (right), then
-// training (weekly volume, the weekly volume map with its 7-day slider, strength per exercise). Data: GET /api/days,
-// /api/trend, /api/fasts, /api/sessions, /api/settings.
+// Owns: the Progress tab (SPEC §11 chart inventory, 2a layout) — the title row with the range selector (4 weeks /
+// 12 weeks / all, kept in ?range=) and a link to last week's report, the range's four headline numbers, then two
+// columns from 900 px: weight and body (left), food, water and recovery (right); training (weekly volume, the volume
+// map with its 7-day slider, strength per exercise); the week plan beside the weekly reviews; then the measurements
+// and adherence calendars (waist and WHR, photos, protein and logging adherence) and last the scans.
+// Data: GET /api/days, /api/trend, /api/fasts, /api/sessions, /api/settings.
 // Second entry point: ./series (the weight-series mapping Today shares); third: ./queries (the range the URL asks
 // for).
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import Box from '@mui/material/Box'
-import Grid from '@mui/material/Grid'
+import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import { useSearchParams } from 'react-router'
-import { Column, Columns } from '../../components'
+import { addDays, isoWeek } from '@fitness/shared/engine'
+import { Link as RouterLink, useSearchParams } from 'react-router'
+import { Column, Columns, formatShortDate, PageHeader, Reveal, staggerDelay } from '../../components'
 import { useLocalToday } from '../../app/local-today'
 import { tokens, transitionOf } from '../../theme'
+import { DetailSection } from './lib/DetailSection'
 import { HabitsColumn } from './lib/HabitsColumn'
 import type { RangeKey } from './lib/range'
 import { RangeToggle } from './lib/RangeToggle'
 import { latestTargets, rangeDays, rangeSummary } from './lib/series'
+import { ScansSection } from './lib/ScansSection'
 import { SummaryStats } from './lib/SummaryStats'
 import { TrainingSection } from './lib/TrainingSection'
 import { useProgressData } from './lib/useProgressData'
@@ -35,56 +41,87 @@ export function ProgressPage() {
   const length = rangeDays(from, to)
   const goalKg = settings.data?.profile.goal_weight_kg ?? DEFAULT_GOAL_KG
   const summary = days.data && trend.data ? rangeSummary(days.data, trend.data.points) : null
-  const proteinTarget = days.data ? (latestTargets(days.data)?.protein_g ?? null) : null
+  const targets = days.data ? latestTargets(days.data) : null
   const refreshing = days.isPlaceholderData || trend.isPlaceholderData
+  const profile = settings.data?.profile
+  const rails = settings.data?.settings
+  const sincePlan = profile?.start_date === from ? ' since the plan started' : ''
+  const subtitle = [
+    `${formatShortDate(from)} – ${formatShortDate(to)}`,
+    `${length} days`,
+    summary ? `${summary.daysWithData} with data${sincePlan}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const dim = { opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }
+  // After the title (0) and the stat cards (150–330 ms), each later group rises 90 ms after the one before it.
+  const section = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 360)
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="progress-page" aria-busy={refreshing}>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3 }}>
-        <RangeToggle value={range} onChange={(next) => setParams(next === '4w' ? {} : { range: next }, { replace: true })} />
-        <Box
-          sx={{
-            fontSize: tokens.font.size.small,
-            color: tokens.ink.secondary,
-            lineHeight: tokens.font.leading.small,
-            letterSpacing: tokens.font.tracking.small,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {from} – {to}
+    <Stack spacing={5} data-testid="progress-page" aria-busy={refreshing}>
+      <PageHeader
+        title="Progress"
+        subtitle={<Box component="span" sx={{ fontVariantNumeric: 'tabular-nums' }}>{subtitle}</Box>}
+        action={
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, width: { xs: '100%', sm: 'auto' } }}>
+            <RangeToggle value={range} onChange={(next) => setParams(next === '4w' ? {} : { range: next }, { replace: true })} />
+            <Button variant="outlined" startIcon={<DescriptionOutlined />} component={RouterLink} to={`/reports/week/${isoWeek(addDays(date, -7))}`}>
+              Weekly report
+            </Button>
+          </Box>
+        }
+      />
+
+      <SummaryStats summary={summary} targets={targets} forecast={trend.data?.forecast ?? null} />
+
+      <Reveal delay={section(0)}>
+        <Box sx={dim}>
+          <Columns md={2}>
+            <Column>
+              <WeightColumn
+                trend={trend}
+                range={range}
+                rangeLength={length}
+                goalKg={goalKg}
+                start={profile ? { date: profile.start_date, kg: profile.start_weight_kg } : null}
+              />
+            </Column>
+            <Column>
+              <HabitsColumn
+                days={days}
+                fasts={fasts}
+                from={from}
+                to={to}
+                fastHours={rails?.fast_hours ?? DEFAULT_FAST_HOURS}
+                fastsPerMonth={rails?.fasts_per_month ?? null}
+                rails={rails ? { floor: rails.calorie_floor, ceiling: rails.calorie_ceiling } : null}
+              />
+            </Column>
+          </Columns>
         </Box>
+      </Reveal>
+
+      <Reveal delay={section(1)}>
+        <TrainingSection sessions={sessions} from={from} to={to} />
+      </Reveal>
+
+      {/* The week and its reviews are both lists of the recent past, so from 900 px they sit side by side. */}
+      <Reveal delay={section(2)}>
+        <Columns md={2}>
+          <Column>
+            <WeekViewSection date={date} />
+          </Column>
+          <Column>
+            <WeeklyReviewsSection />
+          </Column>
+        </Columns>
+      </Reveal>
+
+      <Box sx={dim}>
+        <DetailSection trend={trend} days={days} />
       </Box>
 
-      <SummaryStats summary={summary} proteinTarget={proteinTarget} days={length} />
-
-      <Grid container spacing={4} sx={{ opacity: refreshing ? 0.6 : 1, transition: transitionOf('opacity', tokens.motion.duration.fast) }}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <WeightColumn trend={trend} range={range} rangeLength={length} goalKg={goalKg} />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <HabitsColumn
-            days={days}
-            fasts={fasts}
-            from={from}
-            to={to}
-            fastHours={settings.data?.settings.fast_hours ?? DEFAULT_FAST_HOURS}
-          />
-        </Grid>
-      </Grid>
-
-      <TrainingSection sessions={sessions} from={from} to={to} />
-
-      {/* The week and its reviews are both lists of the recent past, so from 900 px they sit side by side and
-          together fit one screen instead of two. A phone still reads them one after the other. */}
-      <Columns md={2}>
-        <Column>
-          <WeekViewSection date={date} />
-        </Column>
-        <Column>
-          <WeeklyReviewsSection />
-        </Column>
-      </Columns>
+      <ScansSection />
     </Stack>
   )
 }
-

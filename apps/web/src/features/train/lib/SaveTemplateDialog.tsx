@@ -82,8 +82,8 @@ export function SaveTemplateDialog({
           }
         />
       </DialogContent>
-      <DialogActions sx={{ px: 4, pb: 3 }}>
-        <Button onClick={onClose} disabled={create.isPending}>
+      <DialogActions>
+        <Button variant="outlined" onClick={onClose} disabled={create.isPending}>
           Cancel
         </Button>
         <Button

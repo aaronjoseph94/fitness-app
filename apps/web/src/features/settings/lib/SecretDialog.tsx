@@ -101,10 +101,10 @@ export function SecretDialog({ field, status, saving, error, onSave, onRemove, o
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 6, pb: 4 }}>
+      <DialogActions>
         {removing ? (
           <>
-            <Button onClick={() => setRemoving(false)} disabled={saving}>
+            <Button variant="outlined" onClick={() => setRemoving(false)} disabled={saving}>
               Keep it
             </Button>
             <Button variant="contained" onClick={onRemove} disabled={saving} data-testid="secret-remove">
@@ -113,7 +113,7 @@ export function SecretDialog({ field, status, saving, error, onSave, onRemove, o
           </>
         ) : (
           <>
-            <Button onClick={onClose} disabled={saving}>
+            <Button variant="outlined" onClick={onClose} disabled={saving}>
               Cancel
             </Button>
             {stored && (

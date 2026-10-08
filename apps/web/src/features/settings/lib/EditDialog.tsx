@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField'
 import type { Settings } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { tokens } from '../../../theme'
-import { checkValue, formatValue, parseWhole, type NumberField } from './fields'
+import { checkValue, formatValue, helpFor, parseWhole, type NumberField } from './fields'
 
 interface EditDialogProps {
   field: NumberField
@@ -30,6 +30,7 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
   const value = parseWhole(text)
   const problem = checkValue(field, value, settings)
   const unchanged = value === current
+  const help = helpFor(field, settings)
 
   const next = () => {
     setTouched(true)
@@ -58,7 +59,7 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
           </Box>
         ) : (
           <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
-            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>{field.help}</Box>
+            {help && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>{help}</Box>}
             <TextField
               label={field.label}
               value={text}
@@ -83,13 +84,13 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 6, pb: 4 }}>
+      <DialogActions>
         {confirming ? (
-          <Button onClick={() => setConfirming(false)} disabled={saving}>
+          <Button variant="outlined" onClick={() => setConfirming(false)} disabled={saving}>
             Back
           </Button>
         ) : (
-          <Button onClick={onClose} disabled={saving}>
+          <Button variant="outlined" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
         )}

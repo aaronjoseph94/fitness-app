@@ -1,10 +1,10 @@
 // Owns: one set row in the session logger — set number, last session's set greyed (tap to copy), kg and reps
 // fields with greyed hints (what a tick logs when they are left empty), optional RPE 6–10, and the done tick.
-// Sized for a 390 px phone: 28 / flex / 68 / 52 / 44 / 44 px columns, 16 px inputs (no iOS zoom), 44 px taps; tighter
+// 2a's row from `sm` up: 48 / 110 / 1fr / 1fr / 90 / 56 px columns, 34 px inputs, a 22 px check tile; done rows tint
+// green. On a phone: 28 / flex / 68 / 52 / 44 / 44 px columns, 44 px inputs at 16 px (no iOS zoom), 44 px taps; tighter
 // gaps under 375 px, and no Previous column under 360 px (SET_GRID_SX), so the done tick stays inside the card.
 // A problem (a tick with no load, a load or reps out of range) is said in words under the row, not only in red.
-import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
-import RadioButtonUncheckedRounded from '@mui/icons-material/RadioButtonUncheckedRounded'
+import CheckRounded from '@mui/icons-material/CheckRounded'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
@@ -13,23 +13,46 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { useEffect, useId, useRef, useState, type Ref } from 'react'
 import { formatNumber, parseNumber } from '../../../components'
-import { tokens, withAlpha } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import type { LastSet, LoggerSet } from './logger-model'
 
 /**
- * The set table's grid, shared with the column header row so the two line up. Content width = viewport − 56 px (page
- * gutters, card padding); the columns need 236 px + Previous (≥ 48) + gaps: 6 px gaps fit from 375 px, 4 px gaps from
- * 360 px, and under 360 px (a 320 px phone) the Previous column goes; the kg / reps hints still show last session.
+ * The set table's grid, shared with the column header row so the two line up. From `sm` it is 2a's
+ * `48px 110px 1fr 1fr 90px 56px` with 10 px gaps. On a phone, content width = viewport − 58 px (page gutters, card
+ * border and row padding); the columns need 236 px + Previous (≥ 48) + gaps: 6 px gaps fit from 375 px, 4 px gaps
+ * from 360 px, and under 360 px (a 320 px phone) the Previous column goes; the kg / reps hints still show last session.
  */
 export const SET_GRID_SX = {
   display: 'grid',
-  gridTemplateColumns: '28px minmax(48px, 1fr) 68px 52px 44px 44px',
-  gap: 1.5,
-  '@media (max-width: 374.95px)': { gap: 1 },
+  gridTemplateColumns: {
+    xs: '28px minmax(48px, 1fr) 68px 52px 44px 44px',
+    sm: '48px 110px minmax(0, 1fr) minmax(0, 1fr) 90px 56px',
+  },
+  gap: { xs: '6px', sm: '10px' },
+  '@media (max-width: 374.95px)': { gap: '4px' },
   '@media (max-width: 359.95px)': {
     gridTemplateColumns: '28px 68px 52px 44px 44px',
     '& > [data-col="previous"]': { display: 'none' },
   },
+} as const
+
+/** The set table's side gutters: 2a's 18 px from `sm`, 12 px on a phone. */
+export const SET_GUTTER_SX = { px: { xs: '12px', sm: '18px' } } as const
+
+/**
+ * A 34 px set-row field (44 px at 16 px text on a touch screen): white, radius 7. Its outline is the ≥3:1 control
+ * grey rather than 2a's light card border: these fields have no label of their own beside them (WCAG 1.4.11).
+ */
+const FIELD_SX = {
+  height: 34,
+  boxSizing: 'border-box',
+  borderRadius: `${tokens.radius.segment}px`,
+  border: `1px solid ${tokens.ink.control}`,
+  bgcolor: tokens.ink.card,
+  fontSize: tokens.font.size.small,
+  fontVariantNumeric: 'tabular-nums',
+  transition: 'border-color 160ms, box-shadow 160ms',
+  [COARSE_POINTER_QUERY]: { height: tokens.tapTarget, fontSize: 16 },
 } as const
 
 const RPE_STEPS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const
@@ -45,11 +68,6 @@ export interface SetRowProps {
 }
 
 const kg = (n: number | null) => (n === null ? '' : String(Math.round(n * 100) / 100))
-
-export function formatSet(reps: number | null, load: number | null): string {
-  if (reps === null && load === null) return '—'
-  return `${reps ?? '–'} × ${load === null ? '–' : formatNumber(load, load % 1 ? 1 : 0)}`
-}
 
 export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious, onToggle }: SetRowProps) {
   const loadRef = useRef<HTMLInputElement>(null)
@@ -86,54 +104,41 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
       data-done={set.done || undefined}
       sx={{
         ...SET_GRID_SX,
+        ...SET_GUTTER_SX,
         alignItems: 'center',
-        mx: -1.5,
-        px: 1.5,
-        py: 0.5,
-        borderRadius: `${tokens.radius.control}px`,
-        bgcolor: set.done ? withAlpha(tokens.status.good, 0.08) : 'transparent',
+        py: '8px',
+        fontSize: tokens.font.size.small,
+        bgcolor: set.done ? tokens.tone.success.soft : 'transparent',
         transition: 'background-color 160ms',
+        '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
       }}
     >
-      <Box
-        sx={{
-          width: 26,
-          height: 26,
-          borderRadius: tokens.radius.chip,
-          display: 'grid',
-          placeItems: 'center',
-          fontSize: tokens.font.size.label,
-          fontWeight: tokens.font.weight.heading,
-          color: set.done ? tokens.ink.card : tokens.ink.secondary,
-          bgcolor: set.done ? tokens.status.good : tokens.chart.grid,
-        }}
-      >
-        {n}
-      </Box>
+      <Box sx={{ fontWeight: tokens.font.weight.heading, color: tokens.ink.text, fontVariantNumeric: 'tabular-nums' }}>{n}</Box>
       <ButtonBase
         data-col="previous"
         onClick={onCopyPrevious}
         disabled={!previous}
         aria-label={
           previous
-            ? `Copy last session's set ${n}: ${formatSet(previous.reps, previous.load_kg)} kg`
+            ? `Copy last session's set ${n}: ${liftText(previous)}`
             : `No set ${n} last session`
         }
         sx={{
           justifyContent: 'flex-start',
-          height: 44,
-          px: 1,
-          borderRadius: `${tokens.radius.control}px`,
+          height: 34,
+          px: '6px',
+          mx: '-6px',
+          borderRadius: `${tokens.radius.inner}px`,
           fontSize: tokens.font.size.small,
-          color: tokens.ink.secondary,
-          // Full ink-secondary (4.8:1) when there is a set to copy; dimmed only when disabled.
-          opacity: previous ? 1 : 0.5,
+          color: tokens.ink.muted,
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
+          '&:hover': { bgcolor: tokens.ink.fill },
+          [COARSE_POINTER_QUERY]: { height: tokens.tapTarget },
         }}
       >
-        {previous ? formatSet(previous.reps, previous.load_kg) : '—'}
+        {previous ? liftText(previous, false) : '—'}
       </ButtonBase>
       <NumberCell
         inputRef={loadRef}
@@ -162,28 +167,43 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
         onClick={(e) => setRpeAnchor(e.currentTarget)}
         aria-label={set.rpe === null ? `Set ${n} RPE (optional)` : `Set ${n} RPE ${set.rpe}`}
         sx={{
-          height: 44,
-          borderRadius: `${tokens.radius.control}px`,
-          fontSize: set.rpe === null ? 11 : 15,
-          fontWeight: set.rpe === null ? tokens.font.weight.label : tokens.font.weight.heading,
-          color: set.rpe === null ? tokens.ink.secondary : tokens.ink.text,
-          fontVariantNumeric: 'tabular-nums',
+          ...FIELD_SX,
+          justifyContent: { xs: 'center', sm: 'flex-start' },
+          px: { xs: 0, sm: '10px' },
+          color: set.rpe === null ? tokens.ink.muted : tokens.ink.text,
+          '&:hover': { borderColor: tokens.ink.label },
         }}
       >
-        {set.rpe ?? 'RPE'}
+        {set.rpe ?? '—'}
       </ButtonBase>
       <IconButton
         onClick={toggle}
         aria-label={set.done ? `Set ${n} done, tap to undo` : `Mark set ${n} done`}
         aria-pressed={set.done}
         data-testid="set-done"
-        sx={{ color: set.done ? tokens.status.good : tokens.ink.secondary }}
+        sx={{
+          justifySelf: 'center',
+          '&:hover': { bgcolor: 'transparent' },
+          '&:hover > span': set.done ? {} : { borderColor: tokens.tone.success.solid },
+        }}
       >
-        {set.done ? (
-          <CheckCircleRounded sx={{ fontSize: 30 }} />
-        ) : (
-          <RadioButtonUncheckedRounded sx={{ fontSize: 30 }} />
-        )}
+        <Box
+          component="span"
+          sx={{
+            width: 22,
+            height: 22,
+            boxSizing: 'border-box',
+            borderRadius: `${tokens.radius.inner}px`,
+            display: 'grid',
+            placeItems: 'center',
+            transition: 'border-color 160ms, background-color 160ms',
+            ...(set.done
+              ? { bgcolor: tokens.tone.success.solid, color: tokens.ink.card }
+              : { bgcolor: tokens.ink.card, border: `1.5px solid ${tokens.ink.control}` }),
+          }}
+        >
+          {set.done && <CheckRounded sx={{ fontSize: 16, stroke: 'currentColor', strokeWidth: 1.5 }} />}
+        </Box>
       </IconButton>
       <Menu
         anchorEl={rpeAnchor}
@@ -199,7 +219,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
               onValues({ rpe })
               setRpeAnchor(null)
             }}
-            sx={{ minHeight: tokens.tapTarget, fontVariantNumeric: 'tabular-nums' }}
+            sx={{ fontVariantNumeric: 'tabular-nums' }}
           >
             RPE {rpe}
           </MenuItem>
@@ -209,7 +229,7 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
             onValues({ rpe: null })
             setRpeAnchor(null)
           }}
-          sx={{ minHeight: tokens.tapTarget, color: tokens.ink.secondary }}
+          sx={{ color: tokens.ink.secondary }}
         >
           No RPE
         </MenuItem>
@@ -219,13 +239,22 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
           id={problemId}
           role="alert"
           data-testid="set-problem"
-          sx={{ gridColumn: '1 / -1', pl: 9, pb: 1, fontSize: tokens.font.size.label, color: tokens.status.flag, lineHeight: 1.4 }}
+          sx={{ gridColumn: '1 / -1', fontSize: tokens.font.size.caption, color: tokens.status.flag, lineHeight: 1.4 }}
         >
           {problem}
         </Box>
       )}
     </Box>
   )
+}
+
+/**
+ * A set as 2a writes it, load first: "45 kg × 12" (the finish summary, a screen reader), or "45 × 12" under the
+ * Previous column's heading.
+ */
+export function liftText(set: Pick<LastSet, 'reps' | 'load_kg'>, withUnit = true): string {
+  const load = set.load_kg === null ? '–' : `${formatNumber(set.load_kg, set.load_kg % 1 ? 1 : 0)}${withUnit ? ' kg' : ''}`
+  return `${load} × ${set.reps ?? '–'}`
 }
 
 interface NumberCellProps {
@@ -309,17 +338,15 @@ function NumberCell({
         'data-testid': testId,
       }}
       sx={{
-        height: tokens.tapTarget,
-        borderRadius: '10px',
-        // ≥3:1 outline so the field reads as a field (WCAG 1.4.11); red when its value is the problem.
-        border: `1px solid ${invalid || error ? tokens.status.flag : tokens.ink.control}`,
-        bgcolor: tokens.ink.card,
-        fontSize: tokens.font.size.body,
-        fontWeight: tokens.font.weight.label,
-        fontVariantNumeric: 'tabular-nums',
-        '& input': { textAlign: 'center', p: 0, height: '100%' },
-        '& input::placeholder': { color: tokens.ink.secondary, opacity: 1 },
-        '&.Mui-focused': { borderColor: tokens.metric.weight },
+        ...FIELD_SX,
+        // Red when its value is the problem; 2a's blue border and 3 px ring when focused.
+        ...(invalid || error ? { borderColor: tokens.status.flag } : {}),
+        px: '10px',
+        '& input': { p: 0, height: '100%' },
+        '&.Mui-focused': {
+          borderColor: invalid || error ? tokens.status.flag : tokens.accent.main,
+          boxShadow: `0 0 0 ${tokens.focusRing.inputRing}px ${invalid || error ? tokens.tone.danger.bg : tokens.accent.ring}`,
+        },
       }}
     />
   )

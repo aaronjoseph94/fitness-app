@@ -1,17 +1,19 @@
-// Owns: the "About this data" section — where each kind of data is kept (D1, R2, this phone's queue and cache), who
-// can read it (Access, the AI, the Coach) and what never leaves (photos to any AI), in plain words.
+// Owns: the "About this data" card (2a) — where each kind of data is kept (D1 and R2 on Cloudflare, this phone's queue
+// and cache, with what is waiting in it now) and what never reaches an LLM, in three short columns on the #FAFAFA
+// panel, then the time zone and the way to export everything.
 import Box from '@mui/material/Box'
-import Card from '@mui/material/Card'
+import Link from '@mui/material/Link'
 import type { ReactNode } from 'react'
-import { SectionHeader } from '../../../components'
+import { Link as RouterLink } from 'react-router'
+import { Panel } from '../../../components'
 import { useOnline, usePendingWrites } from '../../../offline'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 
 function Item({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Box component="li" sx={{ py: 3, '&:not(:last-child)': { borderBottom: `1px solid ${tokens.ink.border}` } }}>
-      <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading }}>{title}</Box>
-      <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.55 }}>{children}</Box>
+    <Box>
+      <Box sx={{ fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>{title}</Box>
+      {children}
     </Box>
   )
 }
@@ -20,39 +22,41 @@ export function AboutData({ timezone }: { timezone: string }) {
   const pending = usePendingWrites().length
   const online = useOnline()
   return (
-    <Box component="section" aria-labelledby="about-title" data-testid="settings-about">
-      <SectionHeader id="about" title="About this data" subtitle="Yours alone: one person, one app." />
-      <Card sx={{ px: 4, py: 1 }}>
-        <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-          <Item title="Your logs">
-            Weigh-ins, meals, water, fasts, sleep, steps, plans and AI events live in one Cloudflare D1 database. Every request
-            passes Cloudflare Access, so only you can sign in.
-          </Item>
-          <Item title="Photos, scan sheets and reports">
-            Kept in a private Cloudflare R2 bucket and opened only through short-lived signed links.
-          </Item>
-          <Item title="On this phone">
-            Logs made offline wait in a queue in the browser’s storage (IndexedDB) and sync in order when you’re back online
-            {pending > 0 ? ` (${pending} waiting now${online ? '' : ', offline'})` : ' (nothing waiting now)'}. Recent screens
-            are cached so the app opens without a connection.
-          </Item>
-          <Item title="The AI">
-            Free-tier models read your logs to suggest changes inside the rails. They never see your name, photos of you or
-            photo metadata. Progress photos never go to any AI.
-          </Item>
-          <Item title="The Coach">
-            Claude reaches the same data only through the connector you add in your own Claude chats, and works inside the
-            same rails. Every change it makes is a plan version you can revert.
-          </Item>
-          <Item title="Times and units">
-            Instants are stored in UTC and shown for {timezone}; dates read 2026-10-05. Units are kg, cm, ml, kcal and g.
-          </Item>
-          <Item title="Export">
-            Export and restore (under More) zips every table and your photos on this phone; the server also keeps a
-            per-table JSON backup each month.
-          </Item>
-        </Box>
-      </Card>
-    </Box>
+    <Panel id="about" title="About this data" tone="panel" testId="settings-about">
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(3, minmax(0, 1fr))' },
+          gap: 4,
+          mt: '-2px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: tokens.ink.label,
+        }}
+      >
+        <Item title="Kept on Cloudflare">
+          Logs, plans, scans and reviews in D1; photos and sheets in R2. Single user, behind Access.
+        </Item>
+        <Item title="Kept on this device">
+          The offline queue and the last day’s cache. Writes sync when you’re back online
+          {pending > 0 ? ` (${pending} waiting now${online ? '' : ', offline'}).` : '.'}
+        </Item>
+        <Item title="Never sent to an LLM">
+          Progress photos. Meal photos are downscaled to 1,024 px and the name on a scan sheet is masked first.
+        </Item>
+      </Box>
+      <Box sx={{ mt: 3, fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted }}>
+        Time zone {timezone} ·{' '}
+        <Link
+          component={RouterLink}
+          to="/settings/data"
+          underline="hover"
+          // A 44 px tap target on touch, still on the footer's line of text.
+          sx={{ color: tokens.accent.main, [COARSE_POINTER_QUERY]: { display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget } }}
+        >
+          Export everything
+        </Link>
+      </Box>
+    </Panel>
   )
 }

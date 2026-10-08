@@ -1,4 +1,4 @@
-// Owns: Ask AI (SPEC §8) on the web — the AI tab page (proposals waiting for a tap, then the chat) and the slide-up
+// Owns: Ask AI (SPEC §8) on the web — the AI tab page (2a: chats, the thread, proposals waiting for a tap) and the slide-up
 // panel the shell offers on every other tab; both show the same thread. Reads/writes: GET/POST /api/ai/chat, GET
 // /api/events, POST /api/proposals/:id/accept|reject, POST /api/templates, POST /api/week-plans/:id/apply.
 import Drawer from '@mui/material/Drawer'
@@ -10,7 +10,7 @@ export { SUGGESTIONS } from './lib/Chat'
 
 export function AskAiPage() {
   const pending = usePendingProposals()
-  // Nothing waiting: no rail, so the thread takes the width instead of leaving a column-shaped gap beside it.
+  // Nothing waiting: a phone shows nothing above the thread, and a desktop's rail says so in one quiet line.
   return <Chat variant="page" aside={pending.length ? <PendingProposals /> : undefined} />
 }
 

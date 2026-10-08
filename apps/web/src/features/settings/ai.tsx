@@ -1,17 +1,17 @@
-// Owns: the AI settings page — the provider keys the AI runs on, and how Claude connects. A key lives in the Worker
+// Owns: the AI settings page (2a kit) — the provider keys the AI runs on, and how Claude connects. A key lives in the Worker
 // (never in the web bundle) and comes back as status only, so this screen shows whether one is set, where it came from
 // and its last four characters, never the value. Reads GET /api/settings/secrets and GET /api/settings/connection;
 // every edit is one PUT or DELETE /api/settings/secrets/:name. Needs a connection.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import type { SecretName } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { problemText, signInAgain } from '../../api'
+import { PageHeader, Panel } from '../../components'
 import { useOnline } from '../../offline'
 import { tokens } from '../../theme'
 import { formatDateTime } from '../quick-log'
@@ -22,6 +22,18 @@ import { isConfigured, MODEL_SECRET_NAMES, SECRET_FIELDS, sourceLabel } from './
 import { useConnection, useSecretMutations, useSecrets } from './lib/useSecrets'
 
 const saveError = (error: unknown) => problemText(error, 'Setting a key needs a connection.')
+
+/** A card's numbered or bulleted note: 13 px body copy on the card's 20 px gutter, the markers hanging inside it. */
+const listSx = {
+  m: 0,
+  pt: 0,
+  pb: `${tokens.pad.card.y}px`,
+  pl: `${tokens.pad.card.x + 18}px`,
+  pr: `${tokens.pad.card.x}px`,
+  fontSize: tokens.font.size.small,
+  lineHeight: tokens.font.leading.emphasis,
+  color: tokens.ink.label,
+} as const
 
 export function AiSettingsPage() {
   const secrets = useSecrets()
@@ -36,37 +48,49 @@ export function AiSettingsPage() {
   /** What "Copy" last put on the clipboard, so the button can say so. */
   const [copied, setCopied] = useState<string | null>(null)
 
+  const header = (
+    <PageHeader
+      title="AI and Claude"
+      subtitle="The keys the AI runs on and how Claude connects. A key stays in the Worker; this page only shows whether it is set."
+    />
+  )
+
   // A read paused offline without data is not loading: it falls through to the offline message.
   if (secrets.isPending && secrets.fetchStatus !== 'paused')
     return (
-      <Stack spacing={4} aria-busy="true">
+      <Stack spacing={6} aria-busy="true">
+        {header}
         {[0, 1].map((i) => (
           <Skeleton key={i} variant="rounded" height={200} sx={{ borderRadius: `${tokens.radius.card}px` }} />
         ))}
       </Stack>
     )
-  if (!secrets.data)
+  if (!secrets.data) {
+    // 2a: offline is the calm info banner, a failed read the warning banner (as QueryStateCard draws them).
+    const offline = secrets.fetchStatus === 'paused' || secrets.error?.kind === 'network'
     return (
-      <Alert
-        severity="error"
-        data-testid="ai-settings-error"
-        action={
-          secrets.error?.kind === 'auth-expired' ? (
-            <Button color="inherit" onClick={signInAgain}>
-              Sign in again
-            </Button>
-          ) : (
-            <Button color="inherit" onClick={() => void secrets.refetch()}>
-              Try again
-            </Button>
-          )
-        }
-      >
-        {secrets.fetchStatus === 'paused' || secrets.error?.kind === 'network'
-          ? 'You’re offline and the key list hasn’t been loaded on this phone yet.'
-          : `Couldn't load the key list. ${problemText(secrets.error)}`}
-      </Alert>
+      <Stack spacing={6}>
+        {header}
+        <Alert
+          severity={offline ? 'info' : 'warning'}
+          data-testid="ai-settings-error"
+          action={
+            secrets.error?.kind === 'auth-expired' ? (
+              <Button color="inherit" onClick={signInAgain}>
+                Sign in again
+              </Button>
+            ) : (
+              <Button color="inherit" onClick={() => void secrets.refetch()}>
+                Try again
+              </Button>
+            )
+          }
+        >
+          {offline ? 'You’re offline and the key list hasn’t been loaded on this phone yet.' : `Couldn't load the key list. ${problemText(secrets.error)}`}
+        </Alert>
+      </Stack>
     )
+  }
 
   const statuses = new Map(secrets.data.secrets.map((s) => [s.name, s]))
   const modelKeysSet = MODEL_SECRET_NAMES.filter((name) => isConfigured(statuses.get(name)))
@@ -123,7 +147,8 @@ export function AiSettingsPage() {
   }
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="ai-settings-page" sx={{ pb: 4 }}>
+    <Stack spacing={6} data-testid="ai-settings-page" sx={{ pb: { xs: 4, md: 0 } }}>
+      {header}
       {!online && (
         <Alert severity="info" data-testid="ai-settings-offline">
           You’re offline. These are the last known key states; setting a key needs a connection.
@@ -137,28 +162,26 @@ export function AiSettingsPage() {
       )}
 
       {revealed && (
-        <Card data-testid="secret-revealed" sx={{ px: 4, py: 3, borderLeft: `4px solid ${tokens.status.good}` }}>
-          <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading }}>
-            {SECRET_FIELDS[revealed.name].label} saved
-          </Box>
-          <Box sx={{ mt: 0.5, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
-            Copy it now if you need it elsewhere. Keys are write-only: this screen never shows the value again.
-          </Box>
-          <Box sx={{ mt: 3 }}>
-            <CopyRow
-              label="Value"
-              value={revealed.value}
-              copied={copied === 'revealed'}
-              onCopy={() => void copy('revealed', revealed.value)}
-              testId="revealed-copy"
-            />
-          </Box>
-          <Box sx={{ mt: 2 }}>
-            <Button size="small" onClick={() => setRevealed(null)}>
+        <Panel
+          id="secret-revealed"
+          title={`${SECRET_FIELDS[revealed.name].label} saved`}
+          description="Copy it now if you need it elsewhere. Keys are write-only: this screen never shows the value again."
+          actions={
+            <Button variant="outlined" size="small" onClick={() => setRevealed(null)}>
               Hide
             </Button>
-          </Box>
-        </Card>
+          }
+          padding="none"
+          testId="secret-revealed"
+        >
+          <CopyRow
+            label="Value"
+            value={revealed.value}
+            copied={copied === 'revealed'}
+            onCopy={() => void copy('revealed', revealed.value)}
+            testId="revealed-copy"
+          />
+        </Panel>
       )}
 
       <SettingsGroup
@@ -197,18 +220,7 @@ export function AiSettingsPage() {
       </SettingsGroup>
 
       <SettingsGroup id="connector-how" title="Adding the connector to Claude">
-        <Box
-          component="ol"
-          sx={{
-            m: 0,
-            py: 3,
-            pl: 8,
-            pr: 4,
-            fontSize: tokens.font.size.small,
-            color: tokens.ink.secondary,
-            lineHeight: 1.65,
-          }}
-        >
+        <Box component="ol" sx={listSx}>
           <li>In Claude, open Settings → Connectors → Add custom connector.</li>
           <li>Paste the connector URL above.</li>
           <li>
@@ -222,9 +234,8 @@ export function AiSettingsPage() {
         </Box>
       </SettingsGroup>
 
-      <SettingsGroup id="key-storage"        title="Where these keys live"
-      >
-        <Box component="ul" sx={{ m: 0, py: 3, pl: 8, pr: 4, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.65 }}>
+      <SettingsGroup id="key-storage" title="Where these keys live">
+        <Box component="ul" sx={listSx}>
           <li>
             In this app’s own Cloudflare D1 database, written only through your signed-in session. They never enter the web
             bundle or the offline cache, and the API only ever returns whether a key is set, where it came from and its

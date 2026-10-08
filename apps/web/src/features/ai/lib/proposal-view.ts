@@ -1,5 +1,6 @@
 // Owns: how something Ask AI proposed reads on its card (pure) — title, source line, before → after rows with units,
-// the card status — for a plan change, a workout, a week plan, a reminder time or an exercise swap.
+// the reason a plan change or a workout gives, the card status — for a plan change, a workout, a week plan, a reminder
+// time or an exercise swap.
 import type { ChatProposal } from '@fitness/shared/schemas'
 import { formatShortDate, type ProposalChange, type ProposalStatus } from '../../../components'
 import { planChangeRow, planChangeTitle, REMINDER_LABEL } from '../../proposals'
@@ -8,6 +9,8 @@ export interface ChatProposalView {
   title: string
   summary: string
   changes: ProposalChange[]
+  /** A plan change's reason (its changes' distinct reasons, joined) or a workout's rationale, for the card's "Why:" line. */
+  why?: string
   status: ProposalStatus
   /** A superseded week plan (rejected, or replaced by a newer one): neither applied now nor waiting. */
   replaced: boolean
@@ -26,13 +29,21 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
   const body = p.body
   switch (body.kind) {
     case 'plan_change':
-      return { title: planChangeTitle(body.changes), summary: p.summary, changes: body.changes.map(planChangeRow), status: p.status, replaced: false }
+      return {
+        title: planChangeTitle(body.changes),
+        summary: p.summary,
+        changes: body.changes.map(planChangeRow),
+        why: [...new Set(body.changes.map((c) => c.reason))].join(' '),
+        status: p.status,
+        replaced: false,
+      }
     case 'workout': {
       const sets = body.workout.exercises.reduce((n, e) => n + e.sets, 0)
       return {
         title: body.date ? `Workout for ${formatShortDate(body.date)}` : 'Suggested workout',
         summary: body.workout.rationale || p.summary,
         changes: [{ label: 'Exercises · sets', from: '—', to: `${body.workout.exercises.length} · ${sets}` }],
+        why: body.workout.rationale || undefined,
         status: p.status,
         replaced: false,
       }

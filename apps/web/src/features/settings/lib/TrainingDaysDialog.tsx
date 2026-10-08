@@ -1,4 +1,5 @@
-// Owns: the dialog that picks training days — seven 44 px day chips in week order, saved together.
+// Owns: the dialog that picks training days — seven day segments in week order (the kit's segmented control, 44 px on
+// touch), saved together.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -38,7 +39,11 @@ export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: Tra
           sx={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-            '& .MuiToggleButton-root': { minHeight: tokens.tapTarget, px: 0, textTransform: 'none', fontWeight: tokens.font.weight.label },
+            // Several days are on at once, so a picked day is dark (the kit's dark segment, like the row's day tiles)
+            // rather than the white-on-track that only marks the one choice of a single-select.
+            '& .MuiToggleButton-root': {
+              '&.Mui-selected, &.Mui-selected:hover': { bgcolor: tokens.dark.bg, color: tokens.dark.text, boxShadow: 'none' },
+            },
           }}
         >
           {WEEKDAYS.map((d) => (
@@ -56,8 +61,8 @@ export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: Tra
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 6, pb: 4 }}>
-        <Button onClick={onClose} disabled={saving}>
+      <DialogActions>
+        <Button variant="outlined" onClick={onClose} disabled={saving}>
           Cancel
         </Button>
         <Button variant="contained" onClick={() => onSave(ordered)} disabled={saving || unchanged}>

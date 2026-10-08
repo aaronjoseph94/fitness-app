@@ -1,11 +1,12 @@
-// Owns: one proposed week plan waiting for a tap — the week, who proposed it, and Review, which opens the Accept dialog.
+// Owns: one proposed week plan waiting for a tap (2a info strip: the accent tint, a blue hairline, radius 10) — the
+// week, who proposed it, and Review, which opens the Accept dialog. The caller spaces it.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { addDays } from '@fitness/shared/engine'
 import type { WeekPlan } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { formatShortDate } from '../../../components'
-import { tokens, withAlpha } from '../../../theme'
+import { tokens } from '../../../theme'
 import { AcceptPlanDialog } from './AcceptPlanDialog'
 import { AUTHOR } from './parts'
 
@@ -16,20 +17,25 @@ export function ProposedBanner({ plan }: { plan: WeekPlan }) {
     <Box
       data-testid="week-plan-proposed"
       sx={{
-        mt: 3,
-        p: 3,
+        py: '10px',
+        px: '14px',
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
-        borderRadius: `${tokens.radius.control}px`,
-        bgcolor: withAlpha(tokens.metric.weight, 0.06),
+        gap: 3,
+        borderRadius: `${tokens.radius.panel}px`,
+        border: `1px solid ${tokens.accent.border}`,
+        bgcolor: tokens.accent.soft,
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>New plan for {range}</Box>
-        <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Proposed by {AUTHOR[plan.author]}</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+          New plan for {range}
+        </Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
+          Proposed by {AUTHOR[plan.author]}
+        </Box>
       </Box>
-      <Button variant="outlined" onClick={() => setOpen(true)} sx={{ minHeight: tokens.tapTarget, flex: 'none' }}>
+      <Button variant="outlined" size="small" onClick={() => setOpen(true)} sx={{ flex: 'none' }}>
         Review
       </Button>
       {open && <AcceptPlanDialog plan={plan} open onClose={() => setOpen(false)} />}

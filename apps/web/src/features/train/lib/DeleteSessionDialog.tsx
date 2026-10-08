@@ -32,8 +32,10 @@ export function DeleteSessionDialog({ open, sessionId, setsDone, onClose }: Dele
           ? `Its ${setsDone} ticked set${setsDone === 1 ? '' : 's'} and its summary go for good; progression and readiness forget it.`
           : 'Nothing was ticked, so only the session goes.'}
       </DialogContent>
-      <DialogActions sx={{ px: 4, pb: 3 }}>
-        <Button onClick={onClose}>Keep it</Button>
+      <DialogActions>
+        <Button variant="outlined" onClick={onClose}>
+          Keep it
+        </Button>
         <Button color="error" onClick={confirm} data-testid="confirm-delete-session">
           Delete
         </Button>

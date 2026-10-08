@@ -1,6 +1,6 @@
 // Owns: confirming a proposed week plan before it applies — who wrote it, the focus note, each day (kcal or fast,
 // session), what it changes from last week, and Accept (POST /api/week-plans/:id/apply). Accepting sets that week's
-// daily targets and planned sessions; it is one plan version, so it can be reverted.
+// daily targets and planned sessions; it is one plan version, so it can be reverted. 2a: Accept is the dark button.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -58,7 +58,7 @@ export function AcceptPlanDialog({ plan, open, onClose, onAccepted }: AcceptPlan
             <Box
               component="li"
               key={d.date}
-              sx={{ display: 'flex', gap: 2, py: 1, fontSize: tokens.font.size.small, '& + &': { borderTop: `1px solid ${tokens.ink.border}` } }}
+              sx={{ display: 'flex', gap: 2, py: 1, fontSize: tokens.font.size.small, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
             >
               <Box sx={{ width: 44, flex: 'none', fontWeight: tokens.font.weight.label }}>{formatWeekday(d.date)}</Box>
               <Box sx={{ width: 84, flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{d.fast ? 'Fast' : `${formatNumber(d.kcal)} kcal`}</Box>
@@ -96,10 +96,10 @@ export function AcceptPlanDialog({ plan, open, onClose, onAccepted }: AcceptPlan
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={apply.isPending}>
+        <Button variant="outlined" onClick={onClose} disabled={apply.isPending}>
           Not now
         </Button>
-        <Button variant="contained" onClick={accept} disabled={apply.isPending} data-testid="accept-week-plan">
+        <Button variant="contained" color="dark" onClick={accept} disabled={apply.isPending} data-testid="accept-week-plan">
           {apply.isPending ? 'Accepting…' : 'Accept plan'}
         </Button>
       </DialogActions>

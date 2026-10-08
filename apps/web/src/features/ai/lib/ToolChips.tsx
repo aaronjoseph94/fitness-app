@@ -1,6 +1,7 @@
-// Owns: the "which tools were called" row under an Ask AI reply — one small chip per call (a failed call is marked),
-// tapping a chip opens what was sent and what came back as JSON.
-import BuildOutlined from '@mui/icons-material/BuildOutlined'
+// Owns: the "which tools were called" row above an Ask AI reply — one outline pill per call with a green check (a
+// failed call is marked in amber), tapping a pill opens what was sent and what came back as JSON.
+import CheckRounded from '@mui/icons-material/CheckRounded'
+import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Collapse from '@mui/material/Collapse'
@@ -23,22 +24,28 @@ export function ToolChips({ calls, tools }: { calls: readonly ToolCall[]; tools:
   const selected = calls.find((c) => c.id === open) ?? null
   return (
     <Box data-testid="ask-ai-tools">
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
         {calls.map((c) => (
           <Chip
             key={c.id}
-            size="small"
             variant="outlined"
-            icon={<BuildOutlined sx={{ fontSize: tokens.font.size.small }} />}
+            icon={
+              c.ok === false ? (
+                <ErrorOutlineRounded sx={{ fontSize: 14 }} />
+              ) : c.ok ? (
+                <CheckRounded sx={{ fontSize: 14, color: tokens.tone.success.solid }} />
+              ) : undefined
+            }
             label={c.ok === false ? `${c.name} · failed` : c.name}
             onClick={() => setOpen(open === c.id ? null : c.id)}
             aria-expanded={open === c.id}
             sx={{
-              fontSize: tokens.font.size.caption,
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              color: c.ok === false ? tokens.status.warning : tokens.ink.secondary,
-              borderColor: tokens.ink.border,
-              bgcolor: open === c.id ? tokens.ink.page : 'transparent',
+              py: '2px',
+              borderRadius: `${tokens.radius.pill}px`,
+              fontSize: tokens.font.size.micro,
+              fontWeight: tokens.font.weight.body,
+              color: c.ok === false ? tokens.tone.warning.text : tokens.ink.label,
+              bgcolor: open === c.id ? tokens.ink.fill : tokens.ink.card,
             }}
           />
         ))}
@@ -51,12 +58,13 @@ export function ToolChips({ calls, tools }: { calls: readonly ToolCall[]; tools:
             sx={{
               m: 0,
               mt: 2,
-              p: 3,
+              px: '12px',
+              py: '10px',
               maxHeight: 280,
               overflow: 'auto',
               border: `1px solid ${tokens.ink.border}`,
               borderRadius: `${tokens.radius.control}px`,
-              bgcolor: tokens.ink.page,
+              bgcolor: tokens.ink.panel,
               fontSize: tokens.font.size.caption,
               lineHeight: 1.45,
               color: tokens.ink.text,

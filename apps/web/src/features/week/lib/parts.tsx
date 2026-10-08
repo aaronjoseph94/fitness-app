@@ -4,36 +4,19 @@ import Box from '@mui/material/Box'
 import { addDays, muscleLevels } from '@fitness/shared/engine'
 import { Weekday, type WeekPlan, type WeekPlanAuthor, type WeekPlanSession } from '@fitness/shared/schemas'
 import type { ReactNode } from 'react'
+import { StatusChip } from '../../../components'
 import { MuscleMap } from '../../../muscle-map'
-import { tokens, withAlpha } from '../../../theme'
+import { tokens } from '../../../theme'
 
 export const AUTHOR: Record<WeekPlanAuthor, string> = { claude_mcp: 'Claude', gemini: 'Gemini', user: 'you' }
 
-/** "Active · by Claude" in status green, "Proposed · by Gemini" outlined. */
+const STATUS_LABEL = { active: 'Active', proposed: 'Proposed', superseded: 'Superseded' } as const
+const STATUS_TONE = { active: 'success', proposed: 'info', superseded: 'neutral' } as const
+
+/** 2a's status chip: "Active" in success green, "Proposed" in the info blue, "Superseded" neutral. Who wrote the plan
+ * is in the card's description. */
 export function PlanBadge({ plan }: { plan: Pick<WeekPlan, 'status' | 'author'> }) {
-  const active = plan.status === 'active'
-  const label = `${plan.status === 'active' ? 'Active' : plan.status === 'proposed' ? 'Proposed' : 'Superseded'} · by ${AUTHOR[plan.author]}`
-  return (
-    <Box
-      component="span"
-      data-testid="week-plan-badge"
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        px: 2,
-        height: 24,
-        borderRadius: `${tokens.radius.chip}px`,
-        fontSize: tokens.font.size.caption,
-        fontWeight: tokens.font.weight.label,
-        whiteSpace: 'nowrap',
-        color: active ? tokens.status.good : tokens.ink.secondary,
-        bgcolor: active ? withAlpha(tokens.status.good, 0.1) : 'transparent',
-        border: `1px solid ${active ? 'transparent' : tokens.ink.border}`,
-      }}
-    >
-      {label}
-    </Box>
-  )
+  return <StatusChip tone={STATUS_TONE[plan.status]} label={STATUS_LABEL[plan.status]} testId="week-plan-badge" />
 }
 
 export function sessionSets(session: WeekPlanSession): number {

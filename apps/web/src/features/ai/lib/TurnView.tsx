@@ -1,13 +1,14 @@
-// Owns: one Ask AI turn on screen — Aaron's question as a dark bubble on the right, the reply as plain text on the left
-// (paragraphs, lists and **bold** from the model's light Markdown; never raw HTML), the tool chips, the proposal cards,
-// and the "thinking" line while the reply is on its way.
+// Owns: one Ask AI turn on screen (2a) — Aaron's question as a dark bubble on the right; the reply beside the blue
+// sparkle tile: the tool pills, the text (paragraphs, lists and **bold** from the model's light Markdown; never raw
+// HTML), the proposals as strips, and the time it came back; and the "thinking" row while the reply is on its way.
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import Box from '@mui/material/Box'
-import LinearProgress from '@mui/material/LinearProgress'
 import { Fragment, type ReactNode } from 'react'
 import { tokens } from '../../../theme'
 import { ProposalItem } from './ProposalItem'
 import { ToolChips } from './ToolChips'
 import type { Turn } from './useChat'
+import { clockTime, replyWhen } from './when'
 
 /** `**bold**` spans inside one line. */
 function inline(text: string): ReactNode[] {
@@ -56,26 +57,80 @@ export function ReplyText({ text }: { text: string }) {
       </Box>,
     )
   }
-  return <Box sx={{ display: 'grid', gap: 2.5, fontSize: tokens.font.size.body, lineHeight: 1.5, color: tokens.ink.text }}>{blocks}</Box>
+  return <Box sx={{ display: 'grid', gap: '10px', fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.text }}>{blocks}</Box>
+}
+
+/** The AI's 28 px blue sparkle tile, at the start of every reply, of the thinking row and of the empty thread's note. */
+export function AiTile() {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        width: 28,
+        height: 28,
+        flex: 'none',
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: `${tokens.radius.control}px`,
+        bgcolor: tokens.accent.soft,
+        color: tokens.accent.main,
+      }}
+    >
+      <AutoAwesomeRounded sx={{ fontSize: 16 }} />
+    </Box>
+  )
+}
+
+/** Three dots breathing in turn (static under reduced motion) beside "Looking it up…". */
+function Thinking() {
+  return (
+    <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+      <AiTile />
+      <Box
+        aria-hidden
+        sx={{
+          display: 'inline-flex',
+          gap: '3px',
+          '@keyframes ai-breathe': { '0%, 100%': { opacity: 0.35 }, '50%': { opacity: 1 } },
+          '& > span': {
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            bgcolor: tokens.ink.faint,
+            animation: 'ai-breathe 1200ms ease-in-out infinite',
+          },
+          '& > span:nth-of-type(2)': { animationDelay: '200ms' },
+          '& > span:nth-of-type(3)': { animationDelay: '400ms' },
+          '@media (prefers-reduced-motion: reduce)': { '& > span': { animation: 'none' } },
+        }}
+      >
+        <span />
+        <span />
+        <span />
+      </Box>
+      Looking it up…
+    </Box>
+  )
 }
 
 export function TurnView({ turn }: { turn: Turn }) {
   const { question, reply, tools } = turn
+  const waitingForTap = reply?.proposals.some((p) => p.status === 'pending')
   return (
-    <Box component="li" data-testid="ask-ai-turn" sx={{ listStyle: 'none', display: 'grid', gap: 3 }}>
+    <Box component="li" data-testid="ask-ai-turn" sx={{ listStyle: 'none', display: 'grid', gap: '18px' }}>
       {question.content && (
         <Box
           data-testid="ask-ai-question"
           sx={{
             justifySelf: 'end',
-            maxWidth: '85%',
-            px: 3.5,
-            py: 2.5,
+            maxWidth: { xs: '85%', md: 520 },
+            px: '14px',
+            py: '10px',
             borderRadius: `${tokens.radius.card}px ${tokens.radius.card}px 4px ${tokens.radius.card}px`,
-            bgcolor: tokens.ink.text,
-            color: tokens.ink.card,
+            bgcolor: tokens.dark.bg,
+            color: tokens.dark.text,
             fontSize: tokens.font.size.body,
-            lineHeight: 1.45,
+            lineHeight: tokens.font.leading.body,
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
           }}
@@ -83,19 +138,29 @@ export function TurnView({ turn }: { turn: Turn }) {
           {question.content}
         </Box>
       )}
-      {turn.waiting && (
-        <Box role="status" sx={{ display: 'grid', gap: 2, maxWidth: 220 }}>
-          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Looking it up…</Box>
-          <LinearProgress color="inherit" sx={{ height: 2, borderRadius: 1, color: tokens.ink.secondary }} />
-        </Box>
-      )}
+      {turn.waiting && <Thinking />}
       {reply && (
-        <Box data-testid="ask-ai-reply" sx={{ display: 'grid', gap: 3, minWidth: 0 }}>
-          <ReplyText text={reply.content} />
-          {reply.tool_calls && reply.tool_calls.length > 0 && <ToolChips calls={reply.tool_calls} tools={tools} />}
-          {reply.proposals.map((p) => (
-            <ProposalItem key={p.id} proposal={p} />
-          ))}
+        <Box sx={{ display: 'flex', gap: '12px', maxWidth: 720, minWidth: 0 }}>
+          <AiTile />
+          <Box data-testid="ask-ai-reply" sx={{ flex: 1, minWidth: 0 }}>
+            {reply.tool_calls && reply.tool_calls.length > 0 && (
+              <Box sx={{ mb: '8px' }}>
+                <ToolChips calls={reply.tool_calls} tools={tools} />
+              </Box>
+            )}
+            <ReplyText text={reply.content} />
+            {reply.proposals.length > 0 && (
+              <Box sx={{ display: 'grid', gap: '8px', mt: '10px' }}>
+                {reply.proposals.map((p) => (
+                  <ProposalItem key={p.id} proposal={p} variant="strip" />
+                ))}
+              </Box>
+            )}
+            <Box sx={{ mt: '8px', fontSize: tokens.font.size.caption, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
+              {question.content ? replyWhen(question.created_at, reply.created_at) : clockTime(reply.created_at)}
+              {waitingForTap && ' · nothing changes until you tap'}
+            </Box>
+          </Box>
         </Box>
       )}
     </Box>

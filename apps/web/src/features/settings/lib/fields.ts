@@ -1,7 +1,9 @@
 // Owns: what each editable setting is (pure) — label, unit, whether it is a rail (edits need confirmation), help copy
 // in GLOSSARY terms — and how a typed value is checked: the SettingsPatch schema, plus floor ≤ ceiling against the
-// value already stored. Also what each editable profile field is, every one of them Aaron's to change.
-import { ProfilePatch, SettingsPatch, type Profile, type Settings, type Weekday } from '@fitness/shared/schemas'
+// value already stored. Also what each editable profile field is, every one of them Aaron's to change, and the one-line
+// summary of the reminder preferences the Settings list shows.
+import { FAST_DAY_EXTRA_WATER_ML } from '@fitness/shared/engine'
+import { ProfilePatch, SettingsPatch, type Profile, type ReminderPrefs, type Settings, type Weekday } from '@fitness/shared/schemas'
 import { formatNumber } from '../../../components'
 
 export type NumberKey =
@@ -21,21 +23,22 @@ export interface NumberField {
   unit: string
   /** A rail (GLOSSARY): set with the doctor and dietitian; editing asks for confirmation. */
   rail: boolean
-  help: string
+  /** One line under the label (and in the editor); a field that names itself has none. */
+  help?: string
 }
 
 export const RAIL_FIELDS: readonly NumberField[] = [
-  { key: 'calorie_floor', label: 'Calorie floor', unit: 'kcal', rail: true, help: 'Nothing is ever proposed below this.' },
-  { key: 'calorie_ceiling', label: 'Calorie ceiling', unit: 'kcal', rail: true, help: 'Review proposals stay at or under this.' },
-  { key: 'protein_min_g', label: 'Protein minimum', unit: 'g', rail: true, help: 'Protein is never proposed below this.' },
-  { key: 'fat_min_g', label: 'Fat minimum', unit: 'g', rail: true, help: 'Fat is never proposed below this.' },
-  { key: 'fasts_per_month', label: 'Fasts per month', unit: '', rail: true, help: 'Planned fasts, on dates you pick.' },
-  { key: 'fast_hours', label: 'Fast length', unit: 'h', rail: true, help: 'How long a planned fast lasts.' },
+  { key: 'calorie_floor', label: 'Calorie floor', unit: 'kcal', rail: true, help: 'The AI never proposes a day below this' },
+  { key: 'calorie_ceiling', label: 'Calorie ceiling for proposals', unit: 'kcal', rail: true, help: 'A proposed day never goes above this' },
+  { key: 'protein_min_g', label: 'Protein minimum', unit: 'g', rail: true, help: 'A proposed day never goes below this' },
+  { key: 'fat_min_g', label: 'Fat minimum', unit: 'g', rail: true },
+  { key: 'fasts_per_month', label: 'Fasts per month', unit: '', rail: true, help: 'Planned fasts the week plan may place' },
+  { key: 'fast_hours', label: 'Fast length', unit: 'h', rail: true, help: 'How long a planned fast lasts' },
 ]
 
 export const TARGET_FIELDS: readonly NumberField[] = [
-  { key: 'fibre_target_g', label: 'Fibre', unit: 'g', rail: false, help: 'Daily fibre target.' },
-  { key: 'water_target_ml', label: 'Water', unit: 'ml', rail: false, help: 'Daily water target; fast days add to it.' },
+  { key: 'fibre_target_g', label: 'Fibre', unit: 'g', rail: false },
+  { key: 'water_target_ml', label: 'Water', unit: 'ml', rail: false },
 ]
 
 export const SCAN_FIELD: NumberField = {
@@ -43,7 +46,14 @@ export const SCAN_FIELD: NumberField = {
   label: 'Scan interval',
   unit: 'days',
   rail: false,
-  help: 'How often an Evolt scan comes due (28 days = 4 weeks).',
+  help: 'How often an Evolt scan comes due · same conditions each time',
+}
+
+/** The field's help line; water's names the fast-day target it implies (target + FAST_DAY_EXTRA_WATER_ML). */
+export function helpFor(field: NumberField, settings: Settings): string | undefined {
+  if (field.key === 'water_target_ml')
+    return `Fast days go up to ${formatNumber(settings.water_target_ml + FAST_DAY_EXTRA_WATER_ML)} ml automatically`
+  return field.help
 }
 
 export function formatValue(field: NumberField, value: number): string {
@@ -86,6 +96,22 @@ export const WEEKDAYS: readonly { key: Weekday; short: string; long: string }[] 
 export function formatDays(days: readonly Weekday[]): string {
   const list = WEEKDAYS.filter((d) => days.includes(d.key)).map((d) => d.short)
   return list.length ? list.join(', ') : 'None'
+}
+
+/** "7:00 AM" for a stored "07:00" (24 h `HH:MM`, Edmonton time). */
+function clockTime(time: string): string {
+  const [h = 0, m = 0] = time.split(':').map(Number)
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+/** "Weigh-in 7:00 AM · workout 4:30 PM on training days · water when behind pace": the reminders that are on. */
+export function reminderSummary(reminders: ReminderPrefs): string {
+  const parts: string[] = []
+  if (reminders.weigh_in.enabled && reminders.weigh_in.time) parts.push(`weigh-in ${clockTime(reminders.weigh_in.time)}`)
+  if (reminders.workout.enabled && reminders.workout.time) parts.push(`workout ${clockTime(reminders.workout.time)} on training days`)
+  if (reminders.water.enabled) parts.push('water when behind pace')
+  const line = parts.length ? parts.join(' · ') : 'weigh-in, workout and water reminders are off'
+  return line.charAt(0).toUpperCase() + line.slice(1)
 }
 
 /** Every editable profile field: nothing on the Profile card is read-only. */

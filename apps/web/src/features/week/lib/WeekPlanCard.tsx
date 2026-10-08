@@ -10,7 +10,7 @@ import type { DayView, LocalDate, Weekday, WeekPlan, WeekPlanSession } from '@fi
 import { useState } from 'react'
 import { formatNumber, formatShortDate, formatWeekday } from '../../../components'
 import { tokens } from '../../../theme'
-import { Label, PlanBadge, sessionDetail, SessionThumb } from './parts'
+import { AUTHOR, Label, PlanBadge, sessionDetail, SessionThumb } from './parts'
 import { ProposedBanner } from './ProposedBanner'
 import { useProposedWeekPlans, useWeekPlan } from './useWeekPlan'
 
@@ -166,7 +166,7 @@ export function WeekPlanCard({ date, day, trainingDays }: WeekPlanCardProps) {
   const changes = view.data?.changes.active ?? []
   const [allChanges, setAllChanges] = useState(false)
   const monday = weekStart(date)
-  const source = `${formatShortDate(monday)} – ${formatShortDate(addDays(monday, 6))}${plan ? '' : ' · from your daily targets'}`
+  const source = `${formatShortDate(monday)} – ${formatShortDate(addDays(monday, 6))}${plan ? ` · plan by ${AUTHOR[plan.author]}` : ' · from your daily targets'}`
 
   return (
     <Card data-testid="this-week" sx={{ p: 4 }}>
@@ -187,7 +187,9 @@ export function WeekPlanCard({ date, day, trainingDays }: WeekPlanCardProps) {
       )}
 
       {(proposed.data ?? []).slice(0, 2).map((p) => (
-        <ProposedBanner key={p.id} plan={p} />
+        <Box key={p.id} sx={{ mt: 3 }}>
+          <ProposedBanner plan={p} />
+        </Box>
       ))}
 
       <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${tokens.ink.border}` }}>

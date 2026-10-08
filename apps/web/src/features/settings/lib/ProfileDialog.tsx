@@ -101,8 +101,8 @@ export function ProfileDialog({ field, profile, saving, error, onSave, onClose }
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 6, pb: 4 }}>
-        <Button onClick={onClose} disabled={saving}>
+      <DialogActions>
+        <Button variant="outlined" onClick={onClose} disabled={saving}>
           Cancel
         </Button>
         <Button

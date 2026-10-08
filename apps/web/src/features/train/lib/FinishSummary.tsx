@@ -1,20 +1,31 @@
-// Owns: the session finish screen (SPEC §7 "Finish") — duration, total volume, sets and PRs as stat cards, the muscle
-// map of what was trained (levels from the session's muscle scores), volume per muscle as a compact bar list, the
-// PRs (best load at a rep count, best e1RM), each exercise's ticked sets, one-tap "Save as template", "Edit sets" (back
-// into the logger; saving finishes it again with the same end time) and "Delete session".
+// Owns: the session finish screen (SPEC §7 "Finish"; 2a kit) — the title row ("Upper B — Pull done", the date, a
+// pending badge while the finish is queued), duration, total volume, sets and PRs as stat cards, the muscle map of
+// what was trained (levels from the session's muscle scores), volume per muscle as a compact bar list, the PRs (best
+// load at a rep count, best e1RM), each exercise's ticked sets, one-tap "Save as template", "Edit sets" (back into the
+// logger; saving finishes it again with the same end time), "Back to Train" and "Delete session".
 import BookmarkAddOutlined from '@mui/icons-material/BookmarkAddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import EmojiEventsRounded from '@mui/icons-material/EmojiEventsRounded'
+import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
+import TaskAltRounded from '@mui/icons-material/TaskAltRounded'
+import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Card from '@mui/material/Card'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import type { PersonalRecord } from '@fitness/shared/schemas'
-import type { ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { formatNumber, formatShortDate, formatWeekday, PendingBadge, StatCard } from '../../../components'
+import {
+  formatNumber,
+  formatShortDate,
+  formatWeekday,
+  PageHeader,
+  Panel,
+  PendingBadge,
+  ProgressBar,
+  StatCard,
+} from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { useExerciseIndex } from '../../library'
@@ -22,30 +33,10 @@ import { DeleteSessionDialog } from './DeleteSessionDialog'
 import type { LoggerSession } from './logger-model'
 import { loggerState } from './logger-store'
 import { SaveTemplateDialog } from './SaveTemplateDialog'
-import { formatSet } from './SetRow'
+import { liftText } from './SetRow'
 import { finishView } from './summary'
 
-function SectionCard({
-  title,
-  subtitle,
-  children,
-  testId,
-}: {
-  title: string
-  subtitle?: string
-  children: ReactNode
-  testId?: string
-}) {
-  return (
-    <Card sx={{ p: 4 }} data-testid={testId}>
-      <Box component="h3" sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>
-        {title}
-      </Box>
-      {subtitle && <Box sx={{ mt: 0.5, fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{subtitle}</Box>}
-      <Box sx={{ mt: 3 }}>{children}</Box>
-    </Card>
-  )
-}
+const MUTED_SX = { fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted } as const
 
 function prText(pr: PersonalRecord): { title: string; detail: string } {
   const lift = `${formatNumber(pr.load_kg, pr.load_kg % 1 ? 1 : 0)} kg × ${pr.reps}`
@@ -81,168 +72,152 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
     .filter((x) => x.sets.length > 0)
 
   return (
-    <Stack spacing={3} data-testid="session-summary">
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 2 }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
-            {formatWeekday(session.date)} {formatShortDate(session.date)}
-          </Box>
-          <Box
-            component="h2"
-            sx={{ m: 0, fontSize: 24, fontWeight: tokens.font.weight.heading, lineHeight: 1.25 }}
-          >
-            {session.name ? `${session.name} done` : 'Session done'}
-          </Box>
-        </Box>
-        {queued && <PendingBadge label="Syncs when online" />}
-      </Box>
+    <Box data-testid="session-summary" sx={{ display: 'grid', gap: 4, minWidth: 0 }}>
+      <PageHeader
+        title={session.name ? `${session.name} done` : 'Session done'}
+        subtitle={`${formatWeekday(session.date)}, ${formatShortDate(session.date)}`}
+        action={queued ? <PendingBadge label="Syncs when online" /> : undefined}
+      />
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-        <StatCard label="Duration" value={summary.duration_min} unit="min" testId="summary-duration" />
-        <StatCard label="Volume" value={summary.total_volume_kg} unit="kg" testId="summary-volume" />
-        <StatCard label="Sets" value={view.sets_done} />
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: 4 }}>
+        <StatCard label="Duration" icon={TimerOutlined} value={summary.duration_min} unit="min" testId="summary-duration" />
+        <StatCard label="Volume" icon={FitnessCenterRounded} value={summary.total_volume_kg} unit="kg" testId="summary-volume" />
+        <StatCard label="Sets" icon={TaskAltRounded} value={view.sets_done} />
         <StatCard
           label="PRs"
+          icon={EmojiEventsRounded}
           value={view.prs_pending ? '—' : summary.prs.length}
           footnote={view.prs_pending ? 'After it syncs' : undefined}
         />
       </Box>
 
-      <SectionCard
-        title="What you trained"
-        subtitle="Sets × 1.0 for main muscles, × 0.5 for helpers"
-        testId="summary-muscle-map"
-      >
-        {view.volume.length === 0 && Object.keys(summary.muscle_scores).length === 0 ? (
-          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
-            No ticked sets, so nothing was trained.
-          </Box>
-        ) : (
-          <Stack spacing={3} sx={{ alignItems: 'center' }}>
-            <MuscleMap levels={view.levels} size={300} title="Muscles trained this session" />
-            <MuscleMapLegend dense />
-          </Stack>
-        )}
-      </SectionCard>
-
-      {view.volume.length > 0 && (
-        <SectionCard
-          title="Volume per muscle"
-          subtitle="Reps × kg, main muscles in full, helpers at half"
-          testId="summary-volume-by-muscle"
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, gap: 4, alignItems: 'start' }}>
+        <Panel
+          title="What you trained"
+          description="Sets × 1.0 for main muscles, × 0.5 for helpers"
+          testId="summary-muscle-map"
         >
-          <Stack spacing={2}>
-            {view.volume.map(({ muscle, kg }) => (
-              <Box
-                key={muscle}
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: '92px 1fr 72px',
-                  gap: 2,
-                  alignItems: 'center',
-                  fontSize: tokens.font.size.small,
-                }}
-              >
-                <Box sx={{ color: tokens.ink.text }}>{MUSCLE_LABELS[muscle]}</Box>
-                <Box sx={{ height: 8, borderRadius: 4, bgcolor: tokens.chart.grid, overflow: 'hidden' }}>
-                  <Box
-                    sx={{
-                      height: '100%',
-                      width: `${maxKg ? Math.max(4, (kg / maxKg) * 100) : 0}%`,
-                      bgcolor: tokens.muscleMap.steps[3],
-                      borderRadius: 4,
-                    }}
-                  />
-                </Box>
-                <Box
-                  sx={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: tokens.ink.secondary }}
-                >
-                  {formatNumber(kg)} kg
-                </Box>
-              </Box>
-            ))}
-          </Stack>
-        </SectionCard>
-      )}
+          {view.volume.length === 0 && Object.keys(summary.muscle_scores).length === 0 ? (
+            <Box sx={MUTED_SX}>No ticked sets, so nothing was trained.</Box>
+          ) : (
+            <Stack spacing={3} sx={{ alignItems: 'center' }}>
+              <MuscleMap levels={view.levels} size={300} title="Muscles trained this session" />
+              <MuscleMapLegend dense />
+            </Stack>
+          )}
+        </Panel>
 
-      <SectionCard title="Personal records" testId="summary-prs">
-        {view.prs_pending ? (
-          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
-            PRs are checked against your history once this session syncs.
-          </Box>
-        ) : summary.prs.length === 0 ? (
-          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
-            No new records this time. Consistency is what moves them.
-          </Box>
-        ) : (
-          <Stack spacing={2.5}>
-            {summary.prs.map((pr) => {
-              const t = prText(pr)
-              return (
-                <Box
-                  key={`${pr.exercise_id}-${pr.kind}-${pr.reps}`}
-                  sx={{ display: 'flex', gap: 2.5, alignItems: 'flex-start' }}
-                >
-                  <EmojiEventsRounded sx={{ color: tokens.metric.carbs, mt: 0.25 }} aria-hidden />
-                  <Box sx={{ minWidth: 0 }}>
-                    <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.heading }}>
-                      {name(pr.exercise_id)}
+        <Box sx={{ display: 'grid', gap: 4, minWidth: 0 }}>
+          {view.volume.length > 0 && (
+            <Panel
+              title="Volume per muscle"
+              description="Reps × kg, main muscles in full, helpers at half"
+              testId="summary-volume-by-muscle"
+            >
+              <Stack spacing={2}>
+                {view.volume.map(({ muscle, kg }) => (
+                  <Box
+                    key={muscle}
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: '92px minmax(0, 1fr) 72px',
+                      gap: 3,
+                      alignItems: 'center',
+                      fontSize: tokens.font.size.small,
+                    }}
+                  >
+                    <Box sx={{ color: tokens.ink.text }}>{MUSCLE_LABELS[muscle]}</Box>
+                    <ProgressBar
+                      value={maxKg ? Math.max(0.04, kg / maxKg) : 0}
+                      color={tokens.accent.main}
+                      label={`${MUSCLE_LABELS[muscle]} volume`}
+                    />
+                    <Box sx={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: tokens.ink.label }}>
+                      {formatNumber(kg)} kg
                     </Box>
-                    <Box sx={{ fontSize: tokens.font.size.small }}>{t.title}</Box>
-                    <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>{t.detail}</Box>
                   </Box>
-                </Box>
-              )
-            })}
-          </Stack>
-        )}
-      </SectionCard>
+                ))}
+              </Stack>
+            </Panel>
+          )}
+
+          <Panel title="Personal records" testId="summary-prs">
+            {view.prs_pending ? (
+              <Box sx={MUTED_SX}>PRs are checked against your history once this session syncs.</Box>
+            ) : summary.prs.length === 0 ? (
+              <Box sx={MUTED_SX}>No new records this time. Consistency is what moves them.</Box>
+            ) : (
+              <Stack spacing={3}>
+                {summary.prs.map((pr) => {
+                  const t = prText(pr)
+                  return (
+                    <Box key={`${pr.exercise_id}-${pr.kind}-${pr.reps}`} sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+                      <EmojiEventsRounded sx={{ fontSize: 18, color: tokens.tone.warning.text, mt: '1px' }} aria-hidden />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>{name(pr.exercise_id)}</Box>
+                        <Box sx={{ fontSize: tokens.font.size.small }}>{t.title}</Box>
+                        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>{t.detail}</Box>
+                      </Box>
+                    </Box>
+                  )
+                })}
+              </Stack>
+            )}
+          </Panel>
+        </Box>
+      </Box>
 
       {done.length > 0 && (
-        <SectionCard title="Exercises">
-          <Stack spacing={2.5}>
-            {done.map(({ e, sets }) => (
-              <Box key={e.exercise_id}>
-                <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label }}>{name(e.exercise_id)}</Box>
-                <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {sets.map((s) => formatSet(s.reps, s.load_kg)).join(' · ')} kg
-                </Box>
-                {e.note.trim() && (
-                  <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, fontStyle: 'italic' }}>
-                    {e.note.trim()}
-                  </Box>
-                )}
+        <Panel title="Exercises">
+          {done.map(({ e, sets }) => (
+            <Box
+              key={e.exercise_id}
+              sx={{ py: '8px', '&:first-of-type': { pt: 0 }, '&:last-of-type': { pb: 0 }, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+            >
+              <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }}>{name(e.exercise_id)}</Box>
+              <Box sx={{ ...MUTED_SX, fontVariantNumeric: 'tabular-nums' }}>
+                {sets.map((s) => liftText(s)).join(' · ')}
               </Box>
-            ))}
-          </Stack>
-        </SectionCard>
+              {e.note.trim() && (
+                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, fontStyle: 'italic' }}>{e.note.trim()}</Box>
+              )}
+            </Box>
+          ))}
+        </Panel>
       )}
 
-      <Button
-        variant="contained"
-        size="large"
-        startIcon={<BookmarkAddOutlined />}
-        onClick={() => setSaving(true)}
-        disabled={done.length === 0}
-        data-testid="summary-save-template"
-      >
-        Save as template
-      </Button>
-      <Button
-        variant="outlined"
-        size="large"
-        startIcon={<EditOutlined />}
-        onClick={() => loggerState().update(session.id, (c) => ({ ...c, editing: true }))}
-        data-testid="summary-edit"
-      >
-        Edit sets
-      </Button>
-      <Button size="large" onClick={() => void navigate('/train')}>
-        Back to Train
-      </Button>
-      <Button size="large" color="error" onClick={() => setDeleting(true)} data-testid="delete-session">
-        Delete session
-      </Button>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<BookmarkAddOutlined />}
+          onClick={() => setSaving(true)}
+          disabled={done.length === 0}
+          data-testid="summary-save-template"
+          sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
+        >
+          Save as template
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<EditOutlined />}
+          onClick={() => loggerState().update(session.id, (c) => ({ ...c, editing: true }))}
+          data-testid="summary-edit"
+          sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
+        >
+          Edit sets
+        </Button>
+        <Button variant="outlined" onClick={() => void navigate('/train')} sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}>
+          Back to Train
+        </Button>
+        <Button
+          color="error"
+          onClick={() => setDeleting(true)}
+          data-testid="delete-session"
+          sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
+        >
+          Delete session
+        </Button>
+      </Box>
       <DeleteSessionDialog open={deleting} sessionId={session.id} setsDone={view.sets_done} onClose={() => setDeleting(false)} />
 
       <SaveTemplateDialog
@@ -268,6 +243,6 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
           ) : undefined
         }
       />
-    </Stack>
+    </Box>
   )
 }
