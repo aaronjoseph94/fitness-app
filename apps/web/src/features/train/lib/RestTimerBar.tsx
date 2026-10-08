@@ -8,7 +8,7 @@
 import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { tokens, transitionOf } from '../../../theme'
 import { useLoggerStore } from './logger-store'
 import { notifyRestOver } from './rest'
@@ -80,11 +80,33 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
     return () => clearTimeout(t)
   }, [endsAt, over, clearRest])
 
+  const shown = rest !== null
+  const bar = useRef<HTMLDivElement>(null)
+  // While the bar is up it is part of the bottom chrome: the page's bottom scroll padding grows to clear it, so a
+  // control that takes keyboard focus never lands behind it (WCAG 2.4.11). `bottom` is the bar's sticky offset.
+  useLayoutEffect(() => {
+    const el = bar.current
+    if (!shown || !el) return
+    const root = document.documentElement
+    const fit = () => {
+      const clear = parseFloat(getComputedStyle(el).bottom) + el.offsetHeight + tokens.space(4)
+      root.style.scrollPaddingBottom = `max(calc(${tokens.layout.scrollPadding.bottom}px + env(safe-area-inset-bottom, 0px)), ${clear}px)`
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('scroll-padding-bottom')
+    }
+  }, [shown])
+
   if (!rest) return null
   const left = Math.min(100, Math.max(0, (remaining / (rest.total_sec * 1000)) * 100))
 
   return (
     <Box
+      ref={bar}
       sx={{
         position: 'sticky',
         bottom: {
@@ -113,6 +135,8 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
           bgcolor: over ? tokens.tone.success.text : tokens.dark.bg,
           color: tokens.dark.text,
           boxShadow: tokens.elevation.floating,
+          // The theme's blue ring vanishes on the finished-rest green (1.06:1); white reads on green (5.02:1) and ink (19.9:1).
+          '& .MuiButtonBase-root.Mui-focusVisible': { outlineColor: tokens.dark.text },
         }}
       >
         {/* From `sm`: on a phone the captions need the room more than the glyph does. */}

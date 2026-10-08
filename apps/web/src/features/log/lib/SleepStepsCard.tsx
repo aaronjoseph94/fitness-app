@@ -14,7 +14,7 @@ import type { DayView, HealthSource } from '@fitness/shared/schemas'
 import { useEffect, useId, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { formatClock, formatNumber, NumberField, parseNumber, PendingBadge, Segmented, StatusChip, statValue, wellSurface } from '../../../components'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { clockOf, instantAt, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
 import { LogCard } from './LogCard'
 import { problemText } from '../../../api'
@@ -138,7 +138,15 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
           component={RouterLink}
           to="/imports/health"
           data-testid="log-health-import"
-          sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label }}
+          sx={{
+            // A 24 px target (WCAG 2.5.8), 44 on touch, centred in the button's row, so the row keeps its height.
+            display: 'inline-flex',
+            alignItems: 'center',
+            minHeight: tokens.space(6),
+            [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+            fontSize: tokens.font.size.caption,
+            fontWeight: tokens.font.weight.label,
+          }}
         >
           Import an Apple Watch export
         </Link>

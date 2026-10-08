@@ -23,6 +23,8 @@ const MISTAP_H = 1
 /** The strip: ten days back to three ahead of today (2a's 14 cells). */
 const STRIP_BACK = 10
 const STRIP_DAYS = 14
+/** On touch, a fast's hit area is 44 × 44 centred on its cell (insets from the padding box, so the border doesn't shrink it). */
+const TOUCH_REACH = `calc(50% - ${tokens.tapTarget / 2}px)`
 
 function monthStart(date: string, deltaMonths: number): string {
   const [y, m] = date.split('-').map(Number) as [number, number]
@@ -154,7 +156,7 @@ function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today:
         data-testid="chart-fasting"
         sx={{ display: 'grid', gridTemplateColumns: `repeat(${STRIP_DAYS}, minmax(0, 1fr))`, gap: '3px' }}
       >
-        {days.map((d) => {
+        {days.map((d, i) => {
           const f = byDay.get(d)
           const status = f?.status
           const isToday = d === today
@@ -169,6 +171,8 @@ function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today:
             boxShadow: d === selected ? `inset 0 0 0 1.5px ${tokens.ink.text}` : f && isToday ? `inset 0 0 0 1.5px ${tokens.dark.bg}` : undefined,
           } as const
           if (!f) return <Box key={d} aria-hidden sx={cellSx} />
+          // Beside another fast the hit area stops at the 3 px gap, so a tap on one fast's cell never lands on its neighbour.
+          const side = (n: string | undefined) => (n !== undefined && byDay.has(n) ? '-3px' : TOUCH_REACH)
           return (
             <ButtonBase
               key={d}
@@ -178,8 +182,8 @@ function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today:
               sx={{
                 ...cellSx,
                 position: 'relative',
-                // The 18 px cell stays as drawn; on touch its hit area runs 13 px above and below (44 px).
-                [COARSE_POINTER_QUERY]: { '&::after': { content: '""', position: 'absolute', insetInline: 0, insetBlock: -13 } },
+                // The 18 px cell stays as drawn; on touch its hit area is 44 × 44 around it.
+                [COARSE_POINTER_QUERY]: { '&::after': { content: '""', position: 'absolute', top: TOUCH_REACH, bottom: TOUCH_REACH, left: side(days[i - 1]), right: side(days[i + 1]) } },
               }}
             />
           )

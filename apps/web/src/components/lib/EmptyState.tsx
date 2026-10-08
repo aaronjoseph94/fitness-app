@@ -1,27 +1,14 @@
 // Owns: the 2a empty state — a dashed #D4D4D8 slot on #FAFAFA at the card radius, a 16/600 title, one 13 px muted line
 // and one outline action on the right (wrapping under the text when narrow). The Log's empty meal slots are the
 // pattern. `compact` tightens the padding for a slot inside a chart card.
-//
-// 2a dropped the unDraw illustrations from the render. The `illustration` prop, `ILLUSTRATIONS` and `illustrationUrl`
-// stay exported so no caller breaks (public/illustrations is untouched); the cleanup phase removes them.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
 
-/** Files in apps/web/public/illustrations/ (no longer drawn; kept for callers until cleanup). */
-export const ILLUSTRATIONS = ['empty', 'training', 'meals', 'progress', 'schedule', 'goals'] as const
-export type Illustration = (typeof ILLUSTRATIONS)[number]
-
-export function illustrationUrl(name: Illustration): string {
-  return `${import.meta.env.BASE_URL}illustrations/${name}.svg`
-}
-
 export interface EmptyStateProps {
   title: string
   body?: ReactNode
-  /** Legacy: ignored by the 2a render (kept so callers compile). */
-  illustration?: Illustration | null
   /** An outline button `{ label, onClick }`, or any node. */
   action?: { label: string; onClick: () => void } | ReactNode
   /** Tighter padding, for use inside a card. */

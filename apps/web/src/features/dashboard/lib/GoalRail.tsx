@@ -360,8 +360,9 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
 
 /**
  * A latest-day cell narrower than this (the 40 px ring, its 10 px gap and "1,750 / 3,000 ml", about 91 px at 12 px)
- * drops the unit, so the figures never ellipsise: at 1200 px with the full sidebar, and in a phone's half-width cell.
- * The label names the metric; the ring's accessible name keeps the unit.
+ * drops the unit: at 1200 px with the full sidebar, and in a phone's half-width cell. In the narrowest phone cell
+ * (320 px) the value and target wrap at the slash instead of being cut. The label names the metric; the ring's
+ * accessible name keeps the unit.
  */
 const CELL_UNIT_MIN = 145
 
@@ -413,7 +414,7 @@ export function LatestDay({ data }: { data: DashboardData }) {
             />
             <Box sx={{ minWidth: 0 }}>
               <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: tokens.ink.text, whiteSpace: 'nowrap' }}>{row.label}</Box>
-              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
                 {formatNumber(row.value, row.key === 'sleep' ? 1 : 0)} / {formatNumber(row.target, row.key === 'sleep' ? 1 : 0)}
                 {/* The label already says "Steps"; the unit would only crowd a phone's half-width cell. */}
                 {row.key !== 'steps' && (

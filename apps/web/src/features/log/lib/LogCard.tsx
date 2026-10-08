@@ -45,7 +45,7 @@ export function CardMeta({ children }: { children: ReactNode }) {
 /** Placeholder rows while a list loads; `height` per row (default 40). */
 export function LoadingRows({ rows = 2, height = 40 }: { rows?: number; height?: number }) {
   return (
-    <Box sx={{ display: 'grid', gap: 2 }} aria-busy="true" aria-label="Loading">
+    <Box sx={{ display: 'grid', gap: 2 }} role="status" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} variant="rounded" height={height} />
       ))}

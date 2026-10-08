@@ -1,7 +1,7 @@
 // Owns: the 2a list row (Settings, "More", any card of rows) — a full-width row, 12 × 20 padding, a #F4F4F5 hairline
 // above it, a 14/500 label with an optional 12 px muted help line, the value on the right in #52525B (tabular), and a
-// chevron when the row goes somewhere; hover #FAFAFA. It is a button (`onClick`), a link (`href`, or `component` +
-// `to` for a router link) or, with neither, a plain row whose `trailing` slot holds its own control (a Switch).
+// chevron when the row goes somewhere; hover `ink.panel`. It is a button (`onClick`), a router link (`component` +
+// `to`) or, with neither, a plain row whose `trailing` slot holds its own control (a Switch).
 // `variant="card"` is the same content as a standalone bordered card (Train's tool cards).
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
@@ -22,17 +22,12 @@ export interface ListRowProps {
   icon?: SvgIconComponent
   iconTile?: boolean
   onClick?: () => void
-  href?: string
-  /** A router link: `component={Link} to="/plan"`. */
+  /** A router link: `component={Link} to="/plan"`. An interactive row without `trailing` shows the chevron. */
   component?: ElementType
   to?: string
-  /** Show the chevron. Default: when the row is interactive and has no `trailing`. */
-  chevron?: boolean
   disabled?: boolean
   /** `row` (default): flush in a card, hairline above. `card`: a bordered card of its own. */
   variant?: 'row' | 'card'
-  /** Draw the hairline above a row. Default true (set false on a card's first row if its header has none). */
-  divider?: boolean
   testId?: string
 }
 
@@ -44,17 +39,14 @@ export function ListRow({
   icon: Icon,
   iconTile = false,
   onClick,
-  href,
   component,
   to,
-  chevron,
   disabled = false,
   variant = 'row',
-  divider = true,
   testId,
 }: ListRowProps) {
-  const interactive = Boolean(onClick || href || to)
-  const showChevron = chevron ?? (interactive && !trailing)
+  const interactive = Boolean(onClick || to)
+  const showChevron = interactive && !trailing
   const card = variant === 'card'
 
   const content = (
@@ -115,9 +107,7 @@ export function ListRow({
     bgcolor: tokens.ink.card,
     ...(card
       ? { border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.card}px`, boxShadow: tokens.elevation.card }
-      : divider
-        ? { borderTop: `1px solid ${tokens.ink.hairline}` }
-        : {}),
+      : { borderTop: `1px solid ${tokens.ink.hairline}` }),
     ...(interactive && {
       transition: transitionOf('background-color', tokens.motion.duration.instant),
       '@media (hover: hover)': { '&:hover': { bgcolor: tokens.ink.panel } },
@@ -135,9 +125,9 @@ export function ListRow({
       </Box>
     )
   }
-  // A router link (`component` + `to`), a plain link (`href`) or a button: ButtonBase renders whichever element it is
-  // given and keeps one focus ring and one press state for all three.
-  const as: Record<string, unknown> = component ? { component, to } : href ? { component: 'a', href } : {}
+  // A router link (`component` + `to`) or a button: ButtonBase renders whichever element it is given and keeps one
+  // focus ring and one press state for both.
+  const as: Record<string, unknown> = component ? { component, to } : {}
   return (
     <ButtonBase data-testid={testId} onClick={onClick} disabled={disabled} {...as} sx={sx}>
       {content}

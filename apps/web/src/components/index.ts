@@ -21,7 +21,7 @@ export { WindowSlider, type WindowSliderProps } from './lib/WindowSlider'
 export { MiniBars, type MiniBarsProps } from './lib/MiniBars'
 export { StatusChip, type StatusChipProps, type StatusChipTone } from './lib/StatusChip'
 export { Banner, type BannerProps, type BannerTone } from './lib/Banner'
-export { BeforeAfter, BeforeAfterList, type BeforeAfterProps, type BeforeAfterListProps } from './lib/BeforeAfter'
+export { BeforeAfterList, type BeforeAfterListProps } from './lib/BeforeAfter'
 export { ListRow, type ListRowProps } from './lib/ListRow'
 export { Segmented, type SegmentedProps, type SegmentedOption } from './lib/Segmented'
 export {
@@ -35,13 +35,7 @@ export {
   statValue,
 } from './lib/surfaces'
 export { Column, Columns, type ColumnProps, type ColumnsProps } from './lib/Board'
-export {
-  EmptyState,
-  ILLUSTRATIONS,
-  illustrationUrl,
-  type EmptyStateProps,
-  type Illustration,
-} from './lib/EmptyState'
+export { EmptyState, type EmptyStateProps } from './lib/EmptyState'
 export { PendingBadge, type PendingBadgeProps } from './lib/PendingBadge'
 export { QueryStateCard, isQueryLoading, type QueryStateCardProps } from './lib/QueryStateCard'
 export { LoadProblem, NumberField, parseNumber, type NumberFieldProps } from './lib/forms'

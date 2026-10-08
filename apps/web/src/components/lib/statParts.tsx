@@ -41,13 +41,14 @@ export interface StatFigureProps {
   precision: number
   hero?: boolean
   countUp?: boolean
-  countFrom?: number
   delay?: number
   /** Right of the value, pushed to the row's end (a delta pill); wraps under the value when the card is narrow. */
   trailing?: ReactNode
+  /** On a phone, give `trailing` its own right-aligned row, so the card's height never depends on the number's width. */
+  trailingBelowOnPhone?: boolean
 }
 
-export function StatFigure({ value, unit, precision, hero = false, countUp = false, countFrom, delay, trailing }: StatFigureProps) {
+export function StatFigure({ value, unit, precision, hero = false, countUp = false, delay, trailing, trailingBelowOnPhone = false }: StatFigureProps) {
   const display = typeof value === 'number' || value === null ? formatNumber(value, precision) : value
   const numeric = typeof value === 'number' && Number.isFinite(value)
   return (
@@ -63,14 +64,26 @@ export function StatFigure({ value, unit, precision, hero = false, countUp = fal
           whiteSpace: 'nowrap',
         }}
       >
-        {countUp && numeric ? <CountUp value={value} precision={precision} from={countFrom} delay={delay} /> : display}
+        {countUp && numeric ? <CountUp value={value} precision={precision} delay={delay} /> : display}
       </Box>
       {unit && value !== null && (
         <Box component="span" sx={{ fontSize: hero ? tokens.font.size.body : tokens.font.size.small, color: tokens.ink.secondary, minWidth: 0 }}>
           {unit}
         </Box>
       )}
-      {trailing && <Box sx={{ ml: 'auto', display: 'inline-flex', alignSelf: 'center', minWidth: 0 }}>{trailing}</Box>}
+      {trailing && (
+        <Box
+          sx={{
+            ml: 'auto',
+            display: 'inline-flex',
+            alignSelf: 'center',
+            minWidth: 0,
+            ...(trailingBelowOnPhone && { flexBasis: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }),
+          }}
+        >
+          {trailing}
+        </Box>
+      )}
     </Box>
   )
 }

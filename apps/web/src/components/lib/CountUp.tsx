@@ -17,20 +17,17 @@ export interface CountUpProps {
   value: number
   /** Where the count starts. Default 0 (the weight trend counts down from the start weight). */
   from?: number
-  /** Decimal places, for the default formatter. Default 0. */
+  /** Decimal places; every frame and the final value are `formatNumber(n, precision)` (en-CA grouping). Default 0. */
   precision?: number
-  /** Formats every frame and the final value. Default `formatNumber(n, precision)` (en-CA grouping). */
-  format?: (n: number) => string
   /** ms before counting starts, to line up with the card's entrance. Default 0. */
   delay?: number
-  /** ms. Default `tokens.motion.duration.count` (1,600). */
-  duration?: number
 }
 
-export function CountUp({ value, from = 0, precision = 0, format, delay = 0, duration = tokens.motion.duration.count }: CountUpProps) {
+export function CountUp({ value, from = 0, precision = 0, delay = 0 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null)
   const played = useRef(false)
-  const fmt = format ?? ((n: number) => formatNumber(n, precision))
+  const duration = tokens.motion.duration.count
+  const fmt = (n: number) => formatNumber(n, precision)
   const text = fmt(value)
 
   useLayoutEffect(() => {

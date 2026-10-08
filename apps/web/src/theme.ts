@@ -11,10 +11,9 @@
 // expo-out curve, 60–90 ms apart), number count-ups (~1.6 s) and chart/bar/ring draws (1.4–1.6 s); under reduced
 // motion everything appears in place with a 200 ms cross-fade.
 //
-// Names: every token name the app imported before 2a is kept, re-valued (a page restyled later still compiles and
-// already looks closer); 2a's own names are added beside them. Where an old name now means a 2a role it says so —
-// `ink.secondary` IS 2a's "muted" (#71717A, every caption and description), and `ink.label` is 2a's "secondary"
-// (#52525B, stat labels and row values). Legacy names still in use are kept; unused ones are removed.
+// Names: the pre-2a token names still in use are kept, re-valued; unused ones were removed. 2a's own names are added
+// beside them. Where an old name now means a 2a role it says so — `ink.secondary` IS 2a's "muted" (#71717A, every
+// caption and description), and `ink.label` is 2a's "secondary" (#52525B, stat labels and row values).
 //
 // Accessibility decisions (measured on white unless stated, WCAG 2.2 AA):
 //   • Text ink: #09090B 19.9:1, #3F3F46 10.4:1, #52525B 7.7:1, #71717A 4.83:1 (4.63 on #FAFAFA). #A1A1AA is 2.56:1,
@@ -22,6 +21,10 @@
 //     information. That moves three 2a details to `ink.muted`: chart axis labels, input placeholders and the
 //     struck-through "before" value of a proposal.
 //   • Unselected segments sit on #F4F4F5, where #71717A measures 4.40:1, so they use `ink.label` (7.03:1) instead.
+//   • The selected segment carries a 1 px `ink.control` ring (3.25:1 on its white pill): 2a's white pill on #F4F4F5
+//     is 1.1:1, which alone does not mark the state (WCAG 1.4.11).
+//   • An off switch's track is `ink.control` (3.25:1 on white, and under the white knob): 2a's #E4E4E7 is 1.27:1.
+//   • A primary text button's hover text turns `accent.deep` (5.19:1 on the #F4F4F5 hover fill): #166FE5 on it is 4.30:1.
 //   • The info-blue chip's text is `accent.deep` (#1263CC, 5.24:1 on #EFF6FF): #166FE5 on it is only 4.35:1.
 //   • Status text on its own tint: success 4.57, warning 4.51 (banner body uses `warning.deep` 6.37), danger 5.30,
 //     info 9.52. White on `accent.main` 4.73, on `accent.deep` 5.70, on `dark.bg` 19.9.
@@ -326,7 +329,8 @@ export const tokens = {
   },
   /** 4 px base spacing scale. */
   space: (n: number) => n * 4,
-  /** Gaps (2a): label → value 8–10, between cards 16, between sections 20–24, card padding 18–20. */
+  /** Gaps (2a), px: tight 8 (label → value, bar → caption), block 20 (a page grid's gap), section 24 (between
+   * sections), page 36 (main's bottom padding). Card padding is `pad`. */
   rhythm: { tight: 8, block: 20, section: 24, page: 36 },
   /** Card padding (2a): standard `18px 20px`, dense `16px 18px`; header row `16px 20px 12px`. */
   pad: { card: { y: 18, x: 20 }, dense: { y: 16, x: 18 }, header: { top: 16, x: 20, bottom: 12 } },
@@ -686,6 +690,8 @@ export const theme = createTheme({
         { props: { variant: 'outlined', color: 'error' }, style: { color: tone.danger.text, '&:hover': { backgroundColor: tone.danger.soft } } },
         { props: { variant: 'text', color: 'error' }, style: { color: tone.danger.text, '&:hover': { backgroundColor: tone.danger.soft } } },
         { props: { variant: 'text', color: 'inherit' }, style: { '&:hover': { backgroundColor: ink.fill } } },
+        // #166FE5 on the #F4F4F5 hover fill is 4.30:1; accent.deep is 5.19:1.
+        { props: { variant: 'text', color: 'primary' }, style: { '&:hover': { color: accent.deep } } },
       ],
     },
     // Icon buttons: a square at the control radius, ghost by default — 36 / 30 (small) / 26 (tiny) / 40 (large).
@@ -840,7 +846,7 @@ export const theme = createTheme({
     MuiFormHelperText: { styleOverrides: { root: { fontSize: font.size.caption, marginLeft: 2, marginRight: 2 } } },
     MuiTextField: { defaultProps: { fullWidth: true, size: 'medium' } },
     // A segmented control (2a): a #F4F4F5 track, 3 px in, radius 9; segments 13/500 radius 7, the selected one white
-    // with the segment shadow. The kit's `Segmented` adds the outline and dark variants.
+    // with a 1 px ink.control ring and the segment shadow. The kit's `Segmented` adds the outline and dark variants.
     MuiToggleButtonGroup: {
       styleOverrides: {
         root: {
@@ -867,7 +873,7 @@ export const theme = createTheme({
           backgroundColor: 'transparent',
           transition: `background-color ${motion.duration.fast}ms ${motion.easing.standard}, color ${motion.duration.fast}ms ${motion.easing.standard}, box-shadow ${motion.duration.fast}ms ${motion.easing.standard}`,
           '&:hover': { backgroundColor: 'transparent', color: ink.text },
-          '&.Mui-selected, &.Mui-selected:hover': { backgroundColor: ink.card, color: ink.text, boxShadow: elevation.segment },
+          '&.Mui-selected, &.Mui-selected:hover': { backgroundColor: ink.card, color: ink.text, boxShadow: `inset 0 0 0 1px ${ink.control}, ${elevation.segment}` },
           '&.Mui-disabled': { border: 0, color: ink.disabled },
           ...touchTarget(),
         },
@@ -875,7 +881,8 @@ export const theme = createTheme({
         sizeLarge: { padding: '8px 16px', fontSize: font.size.body },
       },
     },
-    // Switch (2a): a 40 × 22 pill, off #E4E4E7, on #166FE5, an 18 px white knob. On touch the hidden input grows to 44 px.
+    // Switch (2a): a 40 × 22 pill, off #8E8E96 (ink.control; 2a's #E4E4E7 is 1.27:1 — WCAG 1.4.11), on #166FE5, an
+    // 18 px white knob. On touch the hidden input grows to 44 px.
     MuiSwitch: {
       defaultProps: { disableRipple: true },
       styleOverrides: {
@@ -895,7 +902,7 @@ export const theme = createTheme({
           '&:hover': { backgroundColor: 'transparent' },
         },
         thumb: { width: 18, height: 18, color: WHITE, boxShadow: elevation.knob },
-        track: { borderRadius: 11, backgroundColor: ink.border, opacity: 1 },
+        track: { borderRadius: 11, backgroundColor: ink.control, opacity: 1 },
       },
     },
     MuiCheckbox: { styleOverrides: { root: { color: ink.control, '&.Mui-checked': { color: accent.main } } } },

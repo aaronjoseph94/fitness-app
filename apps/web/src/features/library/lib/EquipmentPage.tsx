@@ -43,12 +43,16 @@ interface Row {
   pending: boolean
 }
 
-/** The selected segment wears its status: green "Have", amber "Dislike", red "Can't use"; "Don't have" stays neutral white. */
+/**
+ * The selected segment wears its status: green "Have", amber "Dislike", red "Can't use", each ringed 1 px in its own
+ * text colour (≥4.5:1 on its tint and on the track; the tint alone is 1.0:1 on the track and the theme's ink.control
+ * ring 2.96:1 on the green — WCAG 1.4.11); "Don't have" stays neutral white with the theme's ring.
+ */
 const STATUS_SELECTED: Record<EquipmentStatus, { bgcolor: string; color: string; boxShadow?: string }> = {
-  have: { bgcolor: tokens.tone.success.bg, color: tokens.tone.success.text, boxShadow: 'none' },
+  have: { bgcolor: tokens.tone.success.bg, color: tokens.tone.success.text, boxShadow: `inset 0 0 0 1px ${tokens.tone.success.text}` },
   dont_have: { bgcolor: tokens.ink.card, color: tokens.ink.text },
-  dislike: { bgcolor: tokens.tone.warning.bg, color: tokens.tone.warning.text, boxShadow: 'none' },
-  cant_use: { bgcolor: tokens.tone.danger.bg, color: tokens.tone.danger.text, boxShadow: 'none' },
+  dislike: { bgcolor: tokens.tone.warning.bg, color: tokens.tone.warning.text, boxShadow: `inset 0 0 0 1px ${tokens.tone.warning.text}` },
+  cant_use: { bgcolor: tokens.tone.danger.bg, color: tokens.tone.danger.text, boxShadow: `inset 0 0 0 1px ${tokens.tone.danger.text}` },
 }
 
 /**

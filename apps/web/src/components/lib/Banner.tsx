@@ -19,8 +19,6 @@ export interface BannerProps {
   /** A bold first line. */
   title?: ReactNode
   children?: ReactNode
-  /** The leading glyph. Default per tone; `null` for none. */
-  icon?: SvgIconComponent | null
   /** Right-hand slot, e.g. `<Button size="small" variant="outlined">Try again</Button>`. */
   action?: ReactNode
   /** `alert` for a failure the person should hear at once, `status` for a calm update. Default none. */
@@ -28,7 +26,7 @@ export interface BannerProps {
   testId?: string
 }
 
-/** The theme's banner colours (shared with MUI's `<Alert>`) plus each tone's default glyph. */
+/** The theme's banner colours (shared with MUI's `<Alert>`) plus each tone's glyph. */
 const TONES: Record<BannerTone, { bg: string; border: string; text: string; icon: string; glyph: SvgIconComponent }> = {
   info: { ...BANNER_TONES.info, glyph: InfoRounded },
   warning: { ...BANNER_TONES.warning, glyph: WarningAmberRounded },
@@ -36,9 +34,9 @@ const TONES: Record<BannerTone, { bg: string; border: string; text: string; icon
   success: { ...BANNER_TONES.success, glyph: CheckCircleRounded },
 }
 
-export function Banner({ tone = 'info', title, children, icon, action, role, testId }: BannerProps) {
+export function Banner({ tone = 'info', title, children, action, role, testId }: BannerProps) {
   const t = TONES[tone]
-  const Glyph = icon === null ? null : (icon ?? t.glyph)
+  const Glyph = t.glyph
   return (
     <Box
       role={role}
@@ -58,7 +56,7 @@ export function Banner({ tone = 'info', title, children, icon, action, role, tes
         minWidth: 0,
       }}
     >
-      {Glyph && <Glyph aria-hidden sx={{ fontSize: 18, color: t.icon, flex: 'none', mt: '1px' }} />}
+      <Glyph aria-hidden sx={{ fontSize: 18, color: t.icon, flex: 'none', mt: '1px' }} />
       <Box sx={{ flex: 1, minWidth: 0, '& b, & strong': { fontWeight: tokens.font.weight.heading } }}>
         {title && <Box sx={{ fontWeight: tokens.font.weight.heading }}>{title}</Box>}
         {children}

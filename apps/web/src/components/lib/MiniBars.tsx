@@ -10,12 +10,11 @@ export interface MiniBarsProps {
   /** One value per day, oldest first. `null` is a day with nothing logged (an empty slot). */
   values: readonly (number | null)[]
   metric: MetricKey
-  /** Draws the dashed target line and decides the default `hit`. */
+  /**
+   * Draws the dashed target line; a day at or over it is on target (full colour; none without a target). The scale
+   * tops out at the larger of the biggest value and the target, with 15 % headroom.
+   */
   target?: number | null
-  /** Top of the scale. Default: the larger of the biggest value and the target, with 15 % headroom. */
-  max?: number
-  /** Which days count as on target (full colour). Default: value ≥ target (none when there is no target). */
-  hit?: (value: number, index: number) => boolean
   /** Strip height, px. Default 40. */
   height?: number
   /** Accessible summary, e.g. "Average 1,319 kcal a day over 12 days; target 1,400". */
@@ -26,11 +25,11 @@ export interface MiniBarsProps {
 /** Each bar starts this many ms after the one before it. */
 const BAR_STAGGER = 30
 
-export function MiniBars({ values, metric, target, max, hit, height = 40, label, testId }: MiniBarsProps) {
+export function MiniBars({ values, metric, target, height = 40, label, testId }: MiniBarsProps) {
   const { entered, reduced } = useEntrance()
   const numbers = values.filter((v): v is number => v !== null && Number.isFinite(v))
-  const top = max ?? Math.max(...numbers, target ?? 0, 1) * 1.15
-  const isHit = hit ?? ((v: number) => target !== null && target !== undefined && v >= target)
+  const top = Math.max(...numbers, target ?? 0, 1) * 1.15
+  const isHit = (v: number) => target !== null && target !== undefined && v >= target
   const color = tokens.metric[metric]
   const tint = metricTint(metric)
   const targetTop = target !== null && target !== undefined && top > 0 ? Math.max(0, Math.min(100, (1 - target / top) * 100)) : null
@@ -54,7 +53,7 @@ export function MiniBars({ values, metric, target, max, hit, height = 40, label,
               // An empty day keeps its slot as a 2 px stub, so the strip still reads as consecutive days.
               height: v === null ? '2px' : `${pct}%`,
               borderRadius: `${tokens.radius.bar}px`,
-              bgcolor: v === null ? tokens.ink.fill : isHit(v, i) ? color : tint,
+              bgcolor: v === null ? tokens.ink.fill : isHit(v) ? color : tint,
               transformOrigin: 'bottom',
               transform: entered ? 'none' : 'scaleY(0)',
               transition: reduced ? 'none' : `transform ${tokens.motion.duration.grow}ms ${enterEasing()} ${i * BAR_STAGGER}ms`,

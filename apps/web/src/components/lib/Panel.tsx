@@ -1,15 +1,16 @@
 // Owns: the 2a card shell — a white card (1 px #E4E4E7, radius 12, the card whisper) with an optional header row
-// (a title over a muted description, right-hand actions: 16/600 over 13 px, or for a small card 14/600 over 12 px with
-// 12 px muted actions; padding 16 × 20 × 12) and a body that is padded (18 × 20, or 16 × 18 dense) or flush (for a
-// table or `ListRow`s, which bring their own gutters), then an optional 12 px muted caption pinned to the bottom (so
-// captions line up across a row of `fill` cards of different heights) and an optional footer behind a hairline.
-// `fill` stretches the card to its grid cell. Tones: `card` (default), `panel` (#FAFAFA, no shadow — the
-// Dashboard's goal rail, Scans' next-scan card), `dashed` (an empty slot) and `highlight` (the blue border + 3 px ring
-// of today's template). `PanelRow` is the 13 px label/value row with #F4F4F5 hairlines between rows.
+// (a title over a muted description, right-hand actions: 16/600 over 13 px, padding 16 × 20 × 12; or for a small card
+// 14/600 over 12 px with 12 px muted actions, its title as far down as the body's top padding, 18 or 16 dense) and a
+// body that is padded (18 × 20, or 16 × 18 dense) or flush (for a table or `ListRow`s, which bring their own gutters;
+// a table wider than the card scrolls sideways), then an optional 12 px muted caption pinned to the bottom (so captions
+// line up across a row of `fill` cards of different heights) and an optional footer behind a hairline. `fill`
+// stretches the card to its grid cell. Tones: `card` (default), `panel` (`ink.panel`, no shadow — the
+// Dashboard's goal rail, Scans' next-scan card) and `dashed` (an empty slot). `PanelRow` is the 13 px label/value row
+// with `ink.hairline` rules between rows.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
-import { cardSurface, dashedSurface, highlightSurface, panelSurface } from './surfaces'
+import { cardSurface, dashedSurface, panelSurface } from './surfaces'
 
 export interface PanelProps {
   title?: ReactNode
@@ -25,7 +26,7 @@ export interface PanelProps {
   titleSize?: 'section' | 'card'
   /** `standard` 18 × 20 (default), `dense` 16 × 18, `none` (flush: tables and ListRows). */
   padding?: 'standard' | 'dense' | 'none'
-  tone?: 'card' | 'panel' | 'dashed' | 'highlight'
+  tone?: 'card' | 'panel' | 'dashed'
   /** A 12 px muted line under the body, pinned to the card's bottom. */
   caption?: ReactNode
   /** Full-bleed footer behind a #E4E4E7 hairline (the weight trend's four stats). */
@@ -34,7 +35,7 @@ export interface PanelProps {
   fill?: boolean
   children?: ReactNode
   /** Root element. Default `section` when titled, otherwise `div`. */
-  component?: 'section' | 'aside' | 'div' | 'article' | 'nav'
+  component?: 'section' | 'aside' | 'div' | 'article'
   /** Names an untitled `section`/`aside` for assistive tech. */
   ariaLabel?: string
   id?: string
@@ -45,7 +46,6 @@ const SURFACES = {
   card: cardSurface,
   panel: panelSurface,
   dashed: dashedSurface,
-  highlight: highlightSurface,
 } as const
 
 export function Panel({
@@ -70,6 +70,8 @@ export function Panel({
   const hasBody = children !== undefined && children !== null && children !== false
   const headingId = id && title ? `${id}-title` : undefined
   const card = titleSize === 'card'
+  // A small card's title sits as far down as its body's top padding (2a: 18, or 16 dense); a section title at 16.
+  const headerTop = card ? pad.y : tokens.pad.header.top
   return (
     <Box
       component={component ?? (title ? 'section' : 'div')}
@@ -82,7 +84,10 @@ export function Panel({
         minWidth: 0,
         breakInside: 'avoid',
         scrollMarginTop: tokens.layout.scrollPadding.top,
-        // Flush children (tables, rows) must not poke out past the rounded corners.
+        // Flush children (tables, rows) must not poke out past the rounded corners. A table wider than the card scrolls
+        // sideways inside the flush body (below) rather than being cut off (WCAG 1.4.10's data-table exception); other
+        // flush content stays clipped here, so a control a pixel or two past the gutter (a Switch's hidden input) draws
+        // no scrollbar.
         overflow: padding === 'none' ? 'hidden' : undefined,
         ...(fill && { height: '100%', display: 'flex', flexDirection: 'column' }),
       }}
@@ -95,10 +100,10 @@ export function Panel({
             alignItems: description ? 'flex-start' : 'center',
             flexWrap: 'wrap',
             gap: '8px 12px',
-            pt: `${tokens.pad.header.top}px`,
+            pt: `${headerTop}px`,
             px: `${padding === 'dense' ? pad.x : tokens.pad.header.x}px`,
             // Flush rows bring their own hairline 12 px under the header; a header-only card closes at its top padding.
-            pb: !hasBody && !caption && !footer ? `${tokens.pad.header.top}px` : padding === 'none' ? `${tokens.pad.header.bottom}px` : 0,
+            pb: !hasBody && !caption && !footer ? `${headerTop}px` : padding === 'none' ? `${tokens.pad.header.bottom}px` : 0,
           }}
         >
           {/* Basis 0 with a 140 px floor: the title takes what the actions leave and only wraps them under it when
@@ -153,7 +158,7 @@ export function Panel({
         <Box
           sx={
             padding === 'none'
-              ? { minWidth: 0 }
+              ? { minWidth: 0, '&:has(table)': { overflowX: 'auto' } }
               : { px: `${pad.x}px`, pt: hasHeader ? '14px' : `${pad.y}px`, pb: caption ? 0 : `${pad.y}px`, minWidth: 0 }
           }
         >

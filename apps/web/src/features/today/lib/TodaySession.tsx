@@ -36,7 +36,8 @@ function Muscles({ scores, title }: { scores: MuscleScores; title: string }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <MuscleMap levels={levels} size={128} title={title} body="light" />
-      <Box sx={{ flex: 1, minWidth: 0 }}>
+      {/* The rows never shrink past their longest label and value; on a narrow card the map gives up the room. */}
+      <Box sx={{ flex: 1, minWidth: 'min-content' }}>
         {top.map(([muscle]) => (
           <PanelRow key={muscle} label={MUSCLE_LABELS[muscle]} value={levelLabel(levels[muscle])} />
         ))}

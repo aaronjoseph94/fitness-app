@@ -1,10 +1,10 @@
 // Owns: the 2a segmented control, built on MUI's ToggleButtonGroup (so keyboard, `aria-pressed` and the exclusive
-// choice come from MUI) in three looks:
+// choice come from MUI) in two looks:
 //   • `default` — a #F4F4F5 track 3 px in, radius 9; the selected segment white with the segment shadow (page title
 //     rows: "Today / 7 days / 30 days", "30 / 90 / 180 days");
-//   • `outline` — a 1 px #E4E4E7 frame with no fill, 12 px segments, the selected one on #F4F4F5 (a card header's
-//     "12 days / 8 weeks / Journey");
-//   • `dark` — the outline frame with the selected segment #09090B and white (the Log's date switcher).
+//   • `outline` — a 1 px `ink.border` frame with no fill, 12 px segments, the selected one on `ink.fill` inside a
+//     1 px `ink.control` ring, so the choice reads at 3:1 and not by its fill alone (a card header's "12 days /
+//     8 weeks / Journey").
 // Segments are 13/500 (12 small) and 44 px tall on a touch screen. A choice can never be cleared: clicking the
 // selected segment again does nothing, as a segmented control should.
 import ToggleButton from '@mui/material/ToggleButton'
@@ -27,7 +27,7 @@ export interface SegmentedProps<T extends string | number> {
   options: readonly SegmentedOption<T>[]
   /** The group's accessible name, e.g. "Window". */
   ariaLabel: string
-  tone?: 'default' | 'outline' | 'dark'
+  tone?: 'default' | 'outline'
   size?: 'medium' | 'small'
   /** Stretch to the container, segments sharing the width (phones). */
   fullWidth?: boolean
@@ -44,13 +44,8 @@ export function Segmented<T extends string | number>({
   fullWidth = false,
   testId,
 }: SegmentedProps<T>) {
-  const framed = tone !== 'default'
-  const selected =
-    tone === 'dark'
-      ? { bgcolor: tokens.dark.bg, color: tokens.dark.text, boxShadow: 'none' }
-      : tone === 'outline'
-        ? { bgcolor: tokens.ink.fill, color: tokens.ink.text, boxShadow: 'none' }
-        : {}
+  const framed = tone === 'outline'
+  const selected = framed ? { bgcolor: tokens.ink.fill, color: tokens.ink.text, boxShadow: `inset 0 0 0 1px ${tokens.ink.control}` } : {}
   return (
     <ToggleButtonGroup
       value={value}
@@ -66,7 +61,7 @@ export function Segmented<T extends string | number>({
         ...(framed && {
           bgcolor: 'transparent',
           border: `1px solid ${tokens.ink.border}`,
-          borderRadius: `${tone === 'outline' ? tokens.radius.control : tokens.radius.segmentTrack}px`,
+          borderRadius: `${tokens.radius.control}px`,
         }),
         '& .MuiToggleButton-root': {
           ...(framed && { borderRadius: `${tokens.radius.inner}px` }),

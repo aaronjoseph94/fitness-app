@@ -54,7 +54,14 @@ export function DashboardSection({ id, title, subtitle, defaultOpen = false, chi
     >
       <AccordionSummary
         expandIcon={<ExpandMoreRounded />}
-        sx={{ minHeight: tokens.tapTarget, px: `${tokens.pad.card.x}px`, py: 1, '& .MuiAccordionSummary-content': { my: '14px' } }}
+        // The ring goes inset (as on the kit's flush rows): the card's overflow:hidden would clip an outset one.
+        sx={{
+          minHeight: tokens.tapTarget,
+          px: `${tokens.pad.card.x}px`,
+          py: 1,
+          '& .MuiAccordionSummary-content': { my: '14px' },
+          '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width },
+        }}
       >
         <Box sx={{ minWidth: 0 }}>
           <Box

@@ -1,4 +1,4 @@
-// Owns: the 2a key stat — a 12 px muted label over a tabular 600 value (16, 20 or 28 px, or any type-scale size) with
+// Owns: the 2a key stat — a 12 px muted label over a tabular 600 value (16 or 20 px, or any type-scale size) with
 // an optional unit, a trailing slot (a delta) and a 12 px caption run inline after it ("−1.0 kg  on pace"), then an
 // optional 12 px note under the value ("range 10–20 %"), caption and note optionally in a status colour — and
 // `KeyStatGrid`, which lays them out in cells divided by #E4E4E7 rules (or the lighter row hairline), a set count per
@@ -27,20 +27,16 @@ export interface KeyStatProps {
   /** Colours the note, as `captionTone` does the caption. Default muted. */
   noteTone?: Tone
   /**
-   * `sm` 16 px (default — a footer stat), `md` 20 px (a stat strip), `lg` 28 px (a stat cell), or a
-   * `tokens.font.size.*` value (`bigNumberSmall` 22 for Scans' headline cells).
+   * `sm` 16 px (default — a footer stat), `md` 20 px (a stat strip), or a `tokens.font.size.*` value
+   * (`bigNumberSmall` 22 for Scans' headline cells).
    */
-  size?: 'sm' | 'md' | 'lg' | number
+  size?: 'sm' | 'md' | number
   /** Count a numeric value up once on mount. */
   countUp?: boolean
-  /** Where the count starts. Default 0. */
-  countFrom?: number
-  /** ms before the count starts. */
-  delay?: number
   testId?: string
 }
 
-const SIZES = { sm: 16, md: 20, lg: 28 } as const
+const SIZES = { sm: 16, md: 20 } as const
 
 const CAPTION_TONES: Record<Tone, string> = {
   success: tokens.tone.success.text,
@@ -62,8 +58,6 @@ export function KeyStat({
   noteTone,
   size = 'sm',
   countUp = false,
-  countFrom,
-  delay,
   testId,
 }: KeyStatProps) {
   const numeric = typeof value === 'number' && Number.isFinite(value)
@@ -86,7 +80,7 @@ export function KeyStat({
           overflowWrap: 'anywhere',
         }}
       >
-        {countUp && numeric ? <CountUp value={value} precision={precision} from={countFrom} delay={delay} /> : display}
+        {countUp && numeric ? <CountUp value={value} precision={precision} /> : display}
         {unit && value !== null && (
           <Box component="span" sx={{ ml: '4px', fontSize: small ? tokens.font.size.caption : tokens.font.size.small, fontWeight: tokens.font.weight.body, letterSpacing: 0, color: tokens.ink.secondary }}>
             {unit}

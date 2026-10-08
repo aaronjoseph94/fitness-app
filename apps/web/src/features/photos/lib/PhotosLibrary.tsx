@@ -107,7 +107,6 @@ export function PhotosLibrary() {
         <LoadProblem what="Your photos" error={error} onRetry={() => void refetch()} />
       ) : shown.length === 0 ? (
         <EmptyState
-          illustration="progress"
           title={pose ? `No ${POSE_LABEL[pose].toLowerCase()} photos yet` : 'No progress photos yet'}
           body="Front, side and back, lined up with the outline. Private: never sent to any AI."
           action={
@@ -137,7 +136,6 @@ export function PhotosLibrary() {
         />
       ) : (
         <EmptyState
-          illustration={null}
           title="Two photos to compare"
           body="Compare needs two photos. Take one next week, same spot and light."
           testId="photos-compare-empty"

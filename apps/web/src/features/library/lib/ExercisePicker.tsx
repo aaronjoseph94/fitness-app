@@ -114,11 +114,10 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
         ) : index.error && index.all.length === 0 ? (
           <LoadProblem what="The exercise library" error={index.error} onRetry={index.refetch} />
         ) : index.paused ? (
-          <EmptyState compact illustration="training" title="Not loaded yet" body="The library isn't on this phone yet — connect once to load it." />
+          <EmptyState compact title="Not loaded yet" body="The library isn't on this phone yet — connect once to load it." />
         ) : results.length === 0 ? (
           <EmptyState
             compact
-            illustration="training"
             title={swap ? 'No other exercise for that muscle' : 'No exercise matches'}
             body={swap ? 'Your equipment profile and exclusions leave nothing else here.' : 'Try fewer words or clear a filter.'}
           />

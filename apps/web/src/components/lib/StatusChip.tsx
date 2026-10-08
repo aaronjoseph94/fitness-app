@@ -1,13 +1,14 @@
 // Owns: the 2a badge / chip — a small non-interactive label in one of the status tones (success, warning, danger,
-// info-blue, neutral), an outline, or the dark fill; as a badge (radius 6) or a pill (999), at 12 px (medium) or 11 px
-// (small), with an optional leading glyph or status dot. Text always sits on its own tint at ≥4.5:1 (see theme.ts).
+// info-blue, neutral), an outline, or a dashed outline (something still to come: Scans' "Upcoming"); as a badge
+// (radius 6) or a pill (999), at 12 px (medium) or 11 px (small), with an optional leading glyph or status dot. Text
+// always sits on its own tint at ≥4.5:1 (see theme.ts).
 // For a chip a person taps, use MUI's <Chip onClick> (themed to the same look) instead.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { CHIP_TONES, tokens, type Tone } from '../../theme'
 
-export type StatusChipTone = Tone | 'outline' | 'dark'
+export type StatusChipTone = Tone | 'outline' | 'dashed'
 
 export interface StatusChipProps {
   /** Default `neutral`. */
@@ -24,12 +25,10 @@ export interface StatusChipProps {
   shape?: 'badge' | 'pill'
   /** Accessible name when the visible text is not enough (e.g. a bare count). */
   ariaLabel?: string
-  /** `status` announces a change (a sync state); default none. */
-  role?: 'status'
   testId?: string
 }
 
-/** The theme's badge colours (shared with MUI's filled `<Chip>`) plus a dot colour; the outline and dark looks are the kit's own. */
+/** The theme's badge colours (shared with MUI's filled `<Chip>`) plus a dot colour; the two outline looks are the kit's own. */
 const TONES: Record<StatusChipTone, { bg: string; text: string; border?: string; dot: string; weight: number }> = {
   success: { ...CHIP_TONES.success, dot: tokens.tone.success.solid },
   warning: { ...CHIP_TONES.warning, dot: tokens.tone.warning.text },
@@ -37,7 +36,7 @@ const TONES: Record<StatusChipTone, { bg: string; text: string; border?: string;
   info: { ...CHIP_TONES.info, dot: tokens.accent.main },
   neutral: { ...CHIP_TONES.neutral, dot: tokens.ink.faint },
   outline: { bg: tokens.ink.card, text: tokens.ink.label, border: tokens.ink.border, dot: tokens.ink.faint, weight: tokens.font.weight.label },
-  dark: { bg: tokens.dark.bg, text: tokens.dark.text, dot: tokens.accent.bright, weight: tokens.font.weight.label },
+  dashed: { bg: 'transparent', text: tokens.ink.muted, border: tokens.ink.dashed, dot: tokens.ink.faint, weight: tokens.font.weight.body },
 }
 
 export function StatusChip({
@@ -49,17 +48,15 @@ export function StatusChip({
   size = 'medium',
   shape = 'badge',
   ariaLabel,
-  role,
   testId,
 }: StatusChipProps) {
   const t = TONES[tone]
   const small = size === 'small'
   // A 1 px border is drawn inside the box (box-sizing), so an outline chip is the same size as a filled one.
-  const border = t.border ? `1px solid ${t.border}` : '1px solid transparent'
+  const border = t.border ? `1px ${tone === 'dashed' ? 'dashed' : 'solid'} ${t.border}` : '1px solid transparent'
   return (
     <Box
       component="span"
-      role={role}
       aria-label={ariaLabel}
       data-testid={testId}
       sx={{

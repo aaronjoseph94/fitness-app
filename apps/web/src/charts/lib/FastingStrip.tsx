@@ -26,8 +26,6 @@ export interface FastingStripProps {
   to: string
   width?: number
   legend?: boolean
-  /** The local date drawn as today (filled in the accent). Default: today in America/Edmonton. */
-  today?: string
 }
 
 const LABEL_W = 30
@@ -57,11 +55,12 @@ export function fastLook(status: FastStatus): { fill?: string; dashed?: string }
   return { dashed: tokens.chart.target }
 }
 
-export function FastingStrip({ fasts, from, to, width, legend = true, today }: FastingStripProps) {
+export function FastingStrip({ fasts, from, to, width, legend = true }: FastingStripProps) {
   const [ref, w] = useWidth(width)
   const [selected, setSelected] = useState<string | null>(null)
   const C = tokens.metric.fasting
-  const now = today ?? localToday(new Date())
+  // Today in America/Edmonton, drawn in the accent.
+  const now = localToday(new Date())
   const byDate = new Map(fasts.map((f) => [f.date.slice(0, 10), f]))
   const cellW = Math.max(4, (w - LABEL_W - GAP * 30) / 31)
 

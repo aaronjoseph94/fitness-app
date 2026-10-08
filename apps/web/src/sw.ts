@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 // Owns: the service worker — the precached app shell (offline launch), navigation fallback to index.html, runtime
-// caches (exercise media, illustrations, food icons, the barcode WASM, pdf.js), and Web Push. No Background Sync: iOS
+// caches (exercise media, food icons, the barcode WASM, pdf.js), and Web Push. No Background Sync: iOS
 // lacks it, so the page flushes the offline queue itself.
 import { clientsClaim, type WorkboxPlugin } from 'workbox-core'
 import { ExpirationPlugin } from 'workbox-expiration'
@@ -43,15 +43,6 @@ registerRoute(
   new CacheFirst({
     cacheName: 'exercise-media',
     plugins: [imagesOnly, new ExpirationPlugin({ maxEntries: 2000, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true })],
-  }),
-)
-
-// Illustrations not in the precache (empty states and the like): show the cached copy, refresh in the background.
-registerRoute(
-  ({ url }) => isSameOrigin(url) && url.pathname.startsWith('/illustrations/'),
-  new StaleWhileRevalidate({
-    cacheName: 'illustrations',
-    plugins: [imagesOnly, new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true })],
   }),
 )
 

@@ -9,10 +9,9 @@
 // is bad for the plan reads in the warning amber 2a uses for a shortfall. New: `progress`, `deltaStyle`, `countUp`.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
-import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import type { ReactNode } from 'react'
-import { tokens, transitionOf, type MetricKey } from '../../theme'
+import { tokens, type MetricKey } from '../../theme'
 import { formatSigned } from './format'
 import { ProgressBar } from './ProgressBar'
 import { StatCaption, StatFigure, StatHead } from './statParts'
@@ -34,7 +33,8 @@ export interface StatCardProps {
   unit?: string
   /** Decimal places for a numeric value. Default 0. */
   precision?: number
-  delta?: StatDelta
+  /** The signed change. `null` = loading: keep the pill's room, so the card does not grow when it lands. */
+  delta?: StatDelta | null
   /** `pill` (default): a tinted pill right of the value (Progress). `text`: 12/600 coloured text (Dashboard tiles). */
   deltaStyle?: 'pill' | 'text'
   /** The metric this card reports: colours the progress bar. */
@@ -49,14 +49,10 @@ export interface StatCardProps {
   footnote?: ReactNode
   /** Right of the label, e.g. a <PendingBadge/>. */
   badge?: ReactNode
-  /** Makes the whole card a tap target. */
-  onClick?: () => void
   /** Big-number size. `hero` (40 px) is the one per view. Default `standard` (28 px). */
   emphasis?: 'standard' | 'hero'
   /** Count a numeric value up once on mount (~1.6 s; never under reduced motion). */
   countUp?: boolean
-  /** Where the count starts. Default 0. */
-  countFrom?: number
   /** ms before the count and the bar start, to follow the card's entrance stagger. */
   delay?: number
   testId?: string
@@ -96,61 +92,41 @@ export function StatCard({
   sparkline,
   footnote,
   badge,
-  onClick,
   emphasis = 'standard',
   countUp = false,
-  countFrom,
   delay = 0,
   testId,
 }: StatCardProps) {
-  const body = (
-    <Box sx={{ px: `${tokens.pad.card.x}px`, pt: `${tokens.pad.card.y}px`, pb: '16px', width: '100%', textAlign: 'left', minWidth: 0 }}>
-      <StatHead label={label} icon={icon} badge={badge} />
-      <StatFigure
-        value={value}
-        unit={unit}
-        precision={precision}
-        hero={emphasis === 'hero'}
-        countUp={countUp}
-        countFrom={countFrom}
-        delay={delay}
-        trailing={delta && <Delta delta={delta} fallbackUnit={unit} precision={precision} style={deltaStyle} />}
-      />
-      {progress !== undefined && progress !== null && (
-        <Box sx={{ mt: '12px' }}>
-          <ProgressBar value={progress} metric={metric} label={`${label} against target`} delay={delay} />
-        </Box>
-      )}
-      {sparkline && <Box sx={{ mt: '12px' }}>{sparkline}</Box>}
-      {footnote && <StatCaption>{footnote}</StatCaption>}
+  const trailing = delta ? (
+    <Delta delta={delta} fallbackUnit={unit} precision={precision} style={deltaStyle} />
+  ) : delta === null && deltaStyle === 'pill' ? (
+    <Box aria-hidden sx={{ visibility: 'hidden' }}>
+      <StatusChip tone="neutral" shape="pill" label="–" />
     </Box>
-  )
+  ) : undefined
 
   return (
-    <Card
-      data-testid={testId}
-      sx={{
-        height: '100%',
-        display: 'flex',
-        ...(onClick && {
-          // 2a: a card's border never changes on hover; a clickable one deepens its whisper of shadow.
-          '@media (hover: hover)': { '&:hover': { boxShadow: tokens.elevation.raised } },
-          '&:active': { transform: 'scale(0.99)' },
-          '@media (prefers-reduced-motion: reduce)': { '&:active': { transform: 'none' } },
-          transition: transitionOf(['box-shadow', 'transform'], tokens.motion.duration.fast, tokens.motion.easing.standard),
-        }),
-      }}
-    >
-      {onClick ? (
-        <ButtonBase
-          onClick={onClick}
-          sx={{ display: 'flex', alignItems: 'stretch', width: '100%', minHeight: tokens.tapTarget, borderRadius: 'inherit', font: 'inherit', color: 'inherit' }}
-        >
-          {body}
-        </ButtonBase>
-      ) : (
-        body
-      )}
+    <Card data-testid={testId} sx={{ height: '100%', display: 'flex' }}>
+      <Box sx={{ px: `${tokens.pad.card.x}px`, pt: `${tokens.pad.card.y}px`, pb: '16px', width: '100%', textAlign: 'left', minWidth: 0 }}>
+        <StatHead label={label} icon={icon} badge={badge} />
+        <StatFigure
+          value={value}
+          unit={unit}
+          precision={precision}
+          hero={emphasis === 'hero'}
+          countUp={countUp}
+          delay={delay}
+          trailing={trailing}
+          trailingBelowOnPhone={deltaStyle === 'pill'}
+        />
+        {progress !== undefined && progress !== null && (
+          <Box sx={{ mt: '12px' }}>
+            <ProgressBar value={progress} metric={metric} label={`${label} against target`} delay={delay} />
+          </Box>
+        )}
+        {sparkline && <Box sx={{ mt: '12px' }}>{sparkline}</Box>}
+        {footnote && <StatCaption>{footnote}</StatCaption>}
+      </Box>
     </Card>
   )
 }

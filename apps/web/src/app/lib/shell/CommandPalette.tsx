@@ -71,7 +71,7 @@ export function CommandPalette() {
   const setOpen = useUiStore((s) => s.setPaletteOpen)
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
-  const results = useRef<HTMLUListElement>(null)
+  const results = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
 
   // Closing clears the query, so the palette always opens on the full list rather than the last search.
@@ -136,6 +136,15 @@ export function CommandPalette() {
           aria-label="Search commands"
           data-testid="palette-input"
           slotProps={{
+            // A combobox over the listbox below: focus stays in the field, and the highlighted row is announced as the
+            // active option while the arrow keys move it.
+            htmlInput: {
+              role: 'combobox',
+              'aria-expanded': true,
+              'aria-controls': 'palette-results',
+              'aria-autocomplete': 'list',
+              'aria-activedescendant': matches.length ? `palette-option-${index}` : undefined,
+            },
             input: {
               startAdornment: (
                 <InputAdornment position="start">
@@ -158,10 +167,32 @@ export function CommandPalette() {
           }}
         />
       </Box>
-      <List ref={results} dense data-testid="palette-results" sx={{ maxHeight: 420, overflowY: 'auto', py: 2, mt: 2 }}>
+      <List
+        ref={results}
+        component="div"
+        role="listbox"
+        id="palette-results"
+        aria-label="Commands"
+        dense
+        data-testid="palette-results"
+        sx={{
+          maxHeight: 420,
+          overflowY: 'auto',
+          py: 2,
+          mt: 2,
+          // The highlight must read on its own (WCAG 1.4.11): 2a's blue row tint plus a 2 px accent bar, not a 1.09:1 grey.
+          '& .MuiListItemButton-root.Mui-selected, & .MuiListItemButton-root.Mui-selected:hover': {
+            backgroundColor: tokens.accent.soft,
+            boxShadow: `inset 2px 0 0 ${tokens.accent.main}`,
+          },
+        }}
+      >
         {matches.map((command, i) => (
           <ListItemButton
             key={command.label}
+            id={`palette-option-${i}`}
+            role="option"
+            aria-selected={i === index}
             data-index={i}
             selected={i === index}
             // The pointer and the keyboard share one highlight, so moving the mouse never leaves two rows lit.
@@ -172,15 +203,18 @@ export function CommandPalette() {
             <ListItemText
               primary={command.label}
               secondary={command.hint}
+              // Ink and label ink, not the dense list's muted body2, which is 4.4:1 on a highlighted row. The hint's
+              // colour goes on the root, where the theme's ListItemText override sets it.
+              sx={{ '& .MuiListItemText-secondary': { color: tokens.ink.label } }}
               slotProps={{
-                primary: { sx: { fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label } },
+                primary: { sx: { fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.text } },
                 secondary: { sx: { fontSize: tokens.font.size.label } },
               }}
             />
           </ListItemButton>
         ))}
         {matches.length === 0 && (
-          <ListItemButton disabled data-index={0} sx={{ minHeight: tokens.tapTarget }}>
+          <ListItemButton disabled role="option" aria-selected={false} data-index={0} sx={{ minHeight: tokens.tapTarget }}>
             <ListItemText primary={`Nothing matches “${query.trim()}”.`} />
           </ListItemButton>
         )}

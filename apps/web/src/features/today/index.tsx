@@ -143,7 +143,7 @@ export function TodayPage() {
           </Reveal>
         </Column>
         <Column>
-          <Box sx={{ display: 'grid', gap: 4, alignItems: 'start', gridTemplateColumns: { sm: 'repeat(2, minmax(0, 1fr))', lg: 'minmax(0, 1fr)' } }}>
+          <Box sx={{ display: 'grid', gap: 4, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'minmax(0, 1fr)' } }}>
             {/* Until the day and the week answer, placeholders; if either fails, its banner: "Rest day" or an empty
                 week would be a claim. */}
             {isQueryLoading(day) || isQueryLoading(week) ? (

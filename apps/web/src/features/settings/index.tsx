@@ -65,12 +65,14 @@ const SECTIONS: readonly NavSection[] = [
 /** 2a: the title rises in at 150 ms, then the cards follow 90 ms apart from 300 ms. */
 const cardDelay = (index: number) => staggerDelay(index, tokens.motion.stagger.section, 300)
 
-/** 2a: the section nav's column; the cards' column beside it is at most 820 px, its cards 24 px apart. */
+/**
+ * 2a: the section nav's column; the cards' column beside it is at most 820 px, its cards 24 px apart. Loading and the
+ * failed read draw the same page (nav, then the column with the title first), so React keeps one page box and one
+ * title when the data lands: nothing moves (no CLS) and the title fades in once.
+ */
 const NAV_WIDTH = 200
+const pageSx = { display: 'grid', gridTemplateColumns: { md: `${NAV_WIDTH}px minmax(0, 1fr)` }, gap: '28px', alignItems: 'start', pb: { xs: 4, md: 0 } } as const
 const columnSx = { display: 'grid', gap: `${tokens.rhythm.section}px`, maxWidth: tokens.layout.readingMax, minWidth: 0 } as const
-
-/** Loading and the failed read sit where the cards will be, beside the (not yet shown) section nav. */
-const pendingSx = { ...columnSx, ml: { md: `${NAV_WIDTH + 28}px` } } as const
 
 export function SettingsPage() {
   const query = useSettings()
@@ -91,36 +93,42 @@ export function SettingsPage() {
   // A read paused offline without data is not loading: it falls through to the offline message.
   if (query.isPending && query.fetchStatus !== 'paused')
     return (
-      <Box sx={pendingSx} aria-busy="true">
-        {header}
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} variant="rounded" height={160} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-        ))}
+      <Box sx={pageSx} aria-busy="true">
+        <SectionNav sections={SECTIONS} delay={150} />
+        <Box sx={columnSx}>
+          {header}
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} variant="rounded" height={160} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+          ))}
+        </Box>
       </Box>
     )
   if (!query.data) {
     // 2a: offline is the calm info banner, a failed read the warning banner (as QueryStateCard draws them).
     const offline = query.fetchStatus === 'paused' || query.error?.kind === 'network'
     return (
-      <Box sx={pendingSx}>
-        {header}
-        <Alert
-          severity={offline ? 'info' : 'warning'}
-          data-testid="settings-error"
-          action={
-            query.error?.kind === 'auth-expired' ? (
-              <Button color="inherit" onClick={signInAgain}>
-                Sign in again
-              </Button>
-            ) : (
-              <Button color="inherit" onClick={() => void query.refetch()}>
-                Try again
-              </Button>
-            )
-          }
-        >
-          {offline ? 'You’re offline and settings haven’t been loaded on this phone yet.' : `Couldn't load settings. ${problemText(query.error)}`}
-        </Alert>
+      <Box sx={pageSx}>
+        <SectionNav sections={SECTIONS} delay={150} />
+        <Box sx={columnSx}>
+          {header}
+          <Alert
+            severity={offline ? 'info' : 'warning'}
+            data-testid="settings-error"
+            action={
+              query.error?.kind === 'auth-expired' ? (
+                <Button color="inherit" onClick={signInAgain}>
+                  Sign in again
+                </Button>
+              ) : (
+                <Button color="inherit" onClick={() => void query.refetch()}>
+                  Try again
+                </Button>
+              )
+            }
+          >
+            {offline ? 'You’re offline and settings haven’t been loaded on this phone yet.' : `Couldn't load settings. ${problemText(query.error)}`}
+          </Alert>
+        </Box>
       </Box>
     )
   }
@@ -172,10 +180,7 @@ export function SettingsPage() {
   )
 
   return (
-    <Box
-      data-testid="settings-page"
-      sx={{ display: 'grid', gridTemplateColumns: { md: `${NAV_WIDTH}px minmax(0, 1fr)` }, gap: '28px', alignItems: 'start', pb: { xs: 4, md: 0 } }}
-    >
+    <Box data-testid="settings-page" sx={pageSx}>
       <SectionNav sections={SECTIONS} delay={150} />
       <Box sx={columnSx}>
         {header}
