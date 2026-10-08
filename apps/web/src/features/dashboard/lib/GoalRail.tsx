@@ -359,12 +359,12 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
 }
 
 /**
- * A latest-day cell narrower than this (the 40 px ring, its 10 px gap and "1,750 / 3,000 ml", about 91 px at 12 px)
- * drops the unit: at 1200 px with the full sidebar, and in a phone's half-width cell. In the narrowest phone cell
- * (320 px) the value and target wrap at the slash instead of being cut. The label names the metric; the ring's
- * accessible name keeps the unit.
+ * A latest-day cell narrower than this (the 40 px ring, its 10 px gap and the longest value line, a four-digit
+ * intake against its target, "1,688 / 1,400 kcal", about 100 px at 12 px) drops the unit: at 1200–1280 px with the
+ * full sidebar, and in a phone's half-width cell. In the narrowest phone cell (320 px) the value and target wrap at
+ * the slash instead of being cut. The label names the metric; the ring's accessible name keeps the unit.
  */
-const CELL_UNIT_MIN = 145
+const CELL_UNIT_MIN = 152
 
 /**
  * The latest day's targets — what each one stands at against its target — as a slim strip under the headline band.

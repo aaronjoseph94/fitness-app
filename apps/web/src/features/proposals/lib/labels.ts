@@ -43,7 +43,7 @@ export function targetLabel(field: TargetField, weekday: Weekday | null): string
   return `${TARGET_FIELD[field].label}${weekday ? `, ${WEEKDAY_LABEL[weekday]}` : ''}`
 }
 
-export function planChangeRow(c: PlanChange): ProposalChange {
+function planChangeRow(c: PlanChange): ProposalChange {
   return { label: targetLabel(c.field, c.weekday), from: targetAmount(c.field, c.from), to: targetAmount(c.field, c.to) }
 }
 

@@ -96,7 +96,9 @@ export function StatCard({
   const trailing = delta ? (
     <Delta delta={delta} fallbackUnit={unit} precision={precision} style={deltaStyle} />
   ) : delta === null && deltaStyle === 'pill' ? (
-    <Box aria-hidden sx={{ visibility: 'hidden' }}>
+    // Only a phone gives the pill a row of its own; from sm it sits beside the value, where a placeholder's width can
+    // only differ from the real pill's.
+    <Box aria-hidden sx={{ visibility: 'hidden', display: { sm: 'none' } }}>
       <StatusChip tone="neutral" shape="pill" label="–" />
     </Box>
   ) : undefined

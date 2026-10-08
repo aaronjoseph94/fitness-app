@@ -100,6 +100,8 @@ export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extr
           // The input fills the box's height, so the whole 36 / 44 px is the tap target.
           '& .MuiInputBase-input': { height: 'auto', alignSelf: 'stretch', py: 0 },
           [COARSE_POINTER_QUERY]: { '& .MuiInputBase-root': { height: tokens.tapTarget } },
+          // One clear control: the X below, not the browser's own search-cancel glyph beside it.
+          '& input::-webkit-search-cancel-button': { WebkitAppearance: 'none', display: 'none' },
         }}
         slotProps={{
           htmlInput: { 'aria-label': 'Search exercises', autoCapitalize: 'off', autoCorrect: 'off', spellCheck: false, enterKeyHint: 'search' },

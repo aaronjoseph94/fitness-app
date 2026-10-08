@@ -16,7 +16,6 @@
     "@emotion/styled": "catalog:",
     "@fitness/shared": "workspace:*",
     "@fontsource-variable/geist": "catalog:",
-    "@fontsource-variable/outfit": "catalog:",
     "@mui/icons-material": "catalog:",
     "@mui/material": "catalog:",
     "@tanstack/react-query": "catalog:",

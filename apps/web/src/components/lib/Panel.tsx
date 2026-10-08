@@ -70,8 +70,9 @@ export function Panel({
   const hasBody = children !== undefined && children !== null && children !== false
   const headingId = id && title ? `${id}-title` : undefined
   const card = titleSize === 'card'
-  // A small card's title sits as far down as its body's top padding (2a: 18, or 16 dense); a section title at 16.
-  const headerTop = card ? pad.y : tokens.pad.header.top
+  // A small card's title sits as far down as its body's top padding (2a: 18, or 16 dense); a section title, and a
+  // flush card's (its table starts under the header: Today-2a's Recent activity), at 16.
+  const headerTop = card && padding !== 'none' ? pad.y : tokens.pad.header.top
   return (
     <Box
       component={component ?? (title ? 'section' : 'div')}

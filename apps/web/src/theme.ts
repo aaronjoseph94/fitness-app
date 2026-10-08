@@ -21,8 +21,8 @@
 //     information. That moves three 2a details to `ink.muted`: chart axis labels, input placeholders and the
 //     struck-through "before" value of a proposal.
 //   • Unselected segments sit on #F4F4F5, where #71717A measures 4.40:1, so they use `ink.label` (7.03:1) instead.
-//   • The selected segment carries a 1 px `ink.control` ring (3.25:1 on its white pill): 2a's white pill on #F4F4F5
-//     is 1.1:1, which alone does not mark the state (WCAG 1.4.11).
+//   • The selected segment carries a 1 px `ink.control` ring (3.25:1 on its white pill, 2.96:1 against the #F4F4F5
+//     track): 2a's white pill on #F4F4F5 is 1.1:1, which alone does not mark the state (WCAG 1.4.11).
 //   • An off switch's track is `ink.control` (3.25:1 on white, and under the white knob): 2a's #E4E4E7 is 1.27:1.
 //   • A primary text button's hover text turns `accent.deep` (5.19:1 on the #F4F4F5 hover fill): #166FE5 on it is 4.30:1.
 //   • The info-blue chip's text is `accent.deep` (#1263CC, 5.24:1 on #EFF6FF): #166FE5 on it is only 4.35:1.
@@ -329,7 +329,7 @@ export const tokens = {
   },
   /** 4 px base spacing scale. */
   space: (n: number) => n * 4,
-  /** Gaps (2a), px: tight 8 (label → value, bar → caption), block 20 (a page grid's gap), section 24 (between
+  /** Gaps (2a), px: tight 8 (bar → caption; 2a's label → value is 10), block 20 (a page grid's gap), section 24 (between
    * sections), page 36 (main's bottom padding). Card padding is `pad`. */
   rhythm: { tight: 8, block: 20, section: 24, page: 36 },
   /** Card padding (2a): standard `18px 20px`, dense `16px 18px`; header row `16px 20px 12px`. */
@@ -846,7 +846,7 @@ export const theme = createTheme({
     MuiFormHelperText: { styleOverrides: { root: { fontSize: font.size.caption, marginLeft: 2, marginRight: 2 } } },
     MuiTextField: { defaultProps: { fullWidth: true, size: 'medium' } },
     // A segmented control (2a): a #F4F4F5 track, 3 px in, radius 9; segments 13/500 radius 7, the selected one white
-    // with a 1 px ink.control ring and the segment shadow. The kit's `Segmented` adds the outline and dark variants.
+    // with a 1 px ink.control ring and the segment shadow. The kit's `Segmented` adds the outline variant.
     MuiToggleButtonGroup: {
       styleOverrides: {
         root: {
