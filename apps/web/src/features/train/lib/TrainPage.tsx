@@ -1,42 +1,76 @@
-// Owns: the Train tab (SPEC §7, §11) — the date and readiness chip as the section header, the today card (the session
-// in progress, today's finished session, the planned one, or the way to generate), templates with mini muscle maps and
-// Start, recent sessions, and one compact strip of four icon buttons into the library, the equipment profile, the
-// builder and AI workouts. Three blocks and a strip, no explanatory copy: the tab opens on the session, and everything
-// else is a label. On a desktop the sections sit on the shared board: today's session takes the full width, templates
-// and recent sessions share a row, and the tool strip closes the page; on a phone the board is one column in this same
-// order, so the tab reads exactly as it did.
-import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
+// Owns: the Train tab (SPEC §7, §11; 2a "Train") — the title row (the date as the page's h1, the kind of day and
+// sessions done this week, the readiness chip and "Blank session"), the today card (the session in progress, today's
+// finished session, the planned one, or the way to generate) across the full width, then templates (2 × 2 cards with
+// mini muscle maps and Start) beside recent sessions and this week's totals (above them below lg), and a row of four
+// tool cards into the library, the equipment profile, the builder and AI workouts. On a phone everything is one column
+// in this order.
+import AddRounded from '@mui/icons-material/AddRounded'
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import EditNoteRounded from '@mui/icons-material/EditNoteRounded'
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
-import Card from '@mui/material/Card'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { today } from '@fitness/shared/engine'
 import type { Template } from '@fitness/shared/schemas'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Column, Columns, EmptyState, formatShortDate, formatWeekday, LoadProblem, SectionHeader } from '../../../components'
-import { tokens } from '../../../theme'
+import {
+  Column,
+  Columns,
+  dateToTime,
+  EmptyState,
+  formatShortDate,
+  ListRow,
+  LoadProblem,
+  PageHeader,
+  Reveal,
+  SectionHeader,
+  staggerDelay,
+} from '../../../components'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
+import { useExerciseIndex } from '../../library'
 import { useNow } from '../../quick-log'
 import { ReadinessChip } from './ReadinessChip'
-import { RecentSessions } from './RecentSessions'
+import { lastDoneByTemplate, RecentSessions, weekTotals } from './RecentSessions'
 import { useStartSession } from './session'
 import { TemplateCard } from './TemplateCard'
 import { GENERATE_PATH, TodayCard } from './TodayCard'
 import { useTrainData } from './useTrainData'
 
-/** The four ways out of this tab, as one strip of equal buttons: icon over a single word. */
-const TOOLS: { to: string; label: string; Icon: SvgIconComponent; testId: string }[] = [
-  { to: '/train/library', label: 'Library', Icon: MenuBookOutlined, testId: 'link-library' },
-  { to: '/train/equipment', label: 'Equipment', Icon: FitnessCenterRounded, testId: 'link-equipment' },
-  { to: '/train/builder', label: 'Builder', Icon: EditNoteRounded, testId: 'link-builder' },
-  { to: GENERATE_PATH, label: 'AI workout', Icon: AutoAwesomeOutlined, testId: 'link-ai' },
+/** The four ways out of this tab, as a row of tool cards. */
+const TOOLS: { to: string; label: string; help?: string; Icon: SvgIconComponent; testId: string }[] = [
+  { to: '/train/library', label: 'Exercise library', Icon: MenuBookOutlined, testId: 'link-library' },
+  { to: '/train/equipment', label: 'Equipment', help: 'The machines at your gym', Icon: FitnessCenterRounded, testId: 'link-equipment' },
+  { to: '/train/builder', label: 'Workout builder', help: 'Create or edit a template', Icon: EditNoteRounded, testId: 'link-builder' },
+  { to: GENERATE_PATH, label: 'AI workout', help: 'From your equipment and readiness', Icon: AutoAwesomeRounded, testId: 'link-ai' },
 ]
+
+const weekdayLong = new Intl.DateTimeFormat('en-CA', { weekday: 'long', timeZone: 'UTC' })
+
+const cardSkeleton = { borderRadius: `${tokens.radius.card}px` } as const
+
+/** Template cards two a row wherever two fit at 300 px, else one; never three (each is at least half the row). */
+const templateGrid = {
+  display: 'grid',
+  gap: 4,
+  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, max(300px, calc(50% - 8px))), 1fr))',
+} as const
+
+/**
+ * "+ New template" reads as a link in the section header: its 10 px padding hangs past the column's edge and its
+ * height (a small button's 32 px, 44 on touch) past the title's line box, so the Templates and Recent headers keep
+ * one height.
+ */
+const titleLine = tokens.font.size.sectionTitle * tokens.font.leading.sectionTitle
+const headerLink = {
+  mr: '-10px',
+  my: `${(titleLine - 32) / 2}px`,
+  [COARSE_POINTER_QUERY]: { my: `${(titleLine - tokens.tapTarget) / 2}px` },
+} as const
 
 export function TrainPage() {
   // Edmonton's date, re-read every minute (the app stays open across midnight).
@@ -44,148 +78,164 @@ export function TrainPage() {
   const navigate = useNavigate()
   const { day, sessions, templates, active, activeCounts, unsynced, readiness } = useTrainData(date)
   const start = useStartSession()
+  const index = useExerciseIndex()
 
   const startTemplate = useCallback(
     (t: Template) => start({ origin: 'template', template_id: t.id, name: t.name, exercises: t.exercises }),
     [start],
   )
+  const lastDone = useMemo(() => lastDoneByTemplate(sessions.data ?? []), [sessions.data])
+  const week = useMemo(() => weekTotals(sessions.data ?? [], unsynced, date), [sessions.data, unsynced, date])
+
+  const inProgress = Boolean(active || (day.data?.session && day.data.session.ended_at === null))
+  // Not before today's session is known: an open session started on another device would hide it again.
+  const showBlank = !inProgress && !day.isLoading
+  const todayTemplate = day.data?.planned_session?.template_id ?? null
+  const kind = day.data?.fast.is_fast_day
+    ? 'Fast day'
+    : day.data?.targets?.training_planned === false
+      ? 'Rest day'
+      : day.data?.targets?.training_planned || day.data?.planned_session
+        ? 'Training day'
+        : null
+  const done = sessions.data ? `${week.sessions} session${week.sessions === 1 ? '' : 's'} done this week` : null
+  const libraryHelp = index.all.length > 0 ? `${index.allowed.length} allowed of ${index.all.length}` : undefined
 
   return (
-    <Stack spacing={{ xs: 6, md: 8 }} data-testid="train-page">
-      {/* `gap={5}` matches the `spacing={5}` this page used when it was one stack, so a phone sees the same rhythm. */}
-      <Columns md={2} lg={3} gap={5}>
-        <Column span={3} mdSpan={2}>
-          {/* The date is the heading and the readiness chip its action: the tab opens on the session, not on a header. */}
-          <Box component="section" aria-labelledby="today-title">
-            <SectionHeader
-              id="today"
-              title={`${formatWeekday(date)} ${formatShortDate(date)}`}
-              action={readiness ? <ReadinessChip readiness={readiness} /> : undefined}
-            />
-            {day.isLoading && !active ? (
-              <Skeleton variant="rounded" height={148} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-            ) : (
-              <TodayCard
-                day={day.data}
-                active={active}
-                activeCounts={activeCounts}
-                templates={templates.data ?? []}
-                onStart={start}
-              />
-            )}
-          </Box>
-        </Column>
-
-        <Column span={2} mdSpan={1}>
-          <Box component="section" aria-labelledby="templates-title">
-            <SectionHeader
-              id="templates"
-              title="Templates"
-              action={
-                <Button component={Link} to="/train/builder" size="small">
-                  New
-                </Button>
-              }
-            />
-            {templates.isLoading ? (
-              <Stack spacing={2}>
-                <Skeleton variant="rounded" height={124} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-                <Skeleton variant="rounded" height={124} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-              </Stack>
-            ) : templates.error && !templates.data ? (
-              <LoadProblem
-                what="Your templates"
-                error={templates.error}
-                onRetry={() => void templates.refetch()}
-              />
-            ) : templates.data?.length ? (
-              // One column when there is no room, two or more once the board gives the templates the width.
-              <Box
-                sx={{
-                  display: 'grid',
-                  gap: 2,
-                  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))' },
-                }}
+    <Stack spacing={5} data-testid="train-page">
+      <PageHeader
+        title={`${weekdayLong.format(dateToTime(date))}, ${formatShortDate(date)}`}
+        pageName="Train"
+        subtitle={[kind, done].filter(Boolean).join(' · ') || undefined}
+        action={
+          <>
+            {readiness && <ReadinessChip readiness={readiness} />}
+            {showBlank && (
+              <Button
+                variant="outlined"
+                startIcon={<AddRounded />}
+                onClick={() => start({ origin: 'blank', template_id: null, name: null, exercises: [] })}
+                data-testid="start-blank"
               >
-                {templates.data.map((t) => (
-                  <TemplateCard key={t.id} template={t} onStart={startTemplate} />
-                ))}
-              </Box>
-            ) : (
-              <Card>
+                Blank session
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      {/* 2a's entrance: the title row, then each band rises in reading order, a section's stagger apart. */}
+      <Reveal delay={staggerDelay(1, tokens.motion.stagger.section)}>
+        {day.isLoading && !active ? (
+          <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 220, md: 288 } }} />
+        ) : day.error && !day.data && !active ? (
+          <LoadProblem what="Today's session" error={day.error} onRetry={() => void day.refetch()} />
+        ) : (
+          <TodayCard
+            day={day.data}
+            active={active}
+            activeCounts={activeCounts}
+            templates={templates.data ?? []}
+            lastDone={lastDone}
+            onStart={start}
+          />
+        )}
+      </Reveal>
+
+      <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
+        {/* 2 : 1 from lg; below that each takes the full width, so the templates keep two cards a row. */}
+        <Columns md={1} lg={3}>
+          <Column span={2}>
+            <Box component="section" aria-labelledby="templates-title">
+              <SectionHeader
+                id="templates"
+                title="Templates"
+                action={
+                  <Button component={Link} to="/train/builder" size="small" startIcon={<AddRounded />} sx={headerLink}>
+                    New template
+                  </Button>
+                }
+              />
+              {templates.isLoading ? (
+                <Box sx={templateGrid}>
+                  <Skeleton variant="rounded" height={166} sx={cardSkeleton} />
+                  <Skeleton variant="rounded" height={166} sx={cardSkeleton} />
+                </Box>
+              ) : templates.error && !templates.data ? (
+                <LoadProblem
+                  what="Your templates"
+                  error={templates.error}
+                  onRetry={() => void templates.refetch()}
+                />
+              ) : templates.data?.length ? (
+                <Box sx={templateGrid}>
+                  {templates.data.map((t) => (
+                    <TemplateCard
+                      key={t.id}
+                      template={t}
+                      onStart={startTemplate}
+                      today={t.id === todayTemplate}
+                      lastDone={lastDone.get(t.id)}
+                    />
+                  ))}
+                </Box>
+              ) : (
                 <EmptyState
-                  compact
-                  illustration="training"
                   title="No templates yet"
+                  body="Build one from the exercise library."
                   action={{ label: 'Build a template', onClick: () => void navigate('/train/builder') }}
                 />
-              </Card>
-            )}
-          </Box>
-        </Column>
+              )}
+            </Box>
+          </Column>
 
-        <Column span={1}>
-          <Box component="section" aria-labelledby="recent-title">
-            <SectionHeader id="recent" title="Recent" />
-            {sessions.isLoading ? (
-              <Skeleton variant="rounded" height={160} sx={{ borderRadius: `${tokens.radius.card}px` }} />
-            ) : sessions.error && !sessions.data ? (
-              <LoadProblem
-                what="Recent sessions"
-                error={sessions.error}
-                onRetry={() => void sessions.refetch()}
-              />
-            ) : (sessions.data?.length ?? 0) + unsynced.length > 0 ? (
-              <RecentSessions sessions={sessions.data ?? []} unsynced={unsynced} templates={templates.data} />
-            ) : (
-              <Card>
-                <EmptyState compact illustration="schedule" title="No sessions yet" />
-              </Card>
-            )}
-          </Box>
-        </Column>
+          <Column span={1}>
+            <Box component="section" aria-labelledby="recent-title">
+              <SectionHeader id="recent" title="Recent" />
+              {sessions.isLoading ? (
+                <Skeleton variant="rounded" height={160} sx={cardSkeleton} />
+              ) : sessions.error && !sessions.data ? (
+                <LoadProblem
+                  what="Recent sessions"
+                  error={sessions.error}
+                  onRetry={() => void sessions.refetch()}
+                />
+              ) : (sessions.data?.length ?? 0) + unsynced.length > 0 ? (
+                <RecentSessions sessions={sessions.data ?? []} unsynced={unsynced} templates={templates.data} week={week} />
+              ) : (
+                <EmptyState title="No sessions yet" body="Finished sessions show here." />
+              )}
+            </Box>
+          </Column>
+        </Columns>
+      </Reveal>
 
-        <Column span={3} mdSpan={2}>
-          {/* A strip, not a list: four equal buttons, each a name and a glyph, so the page ends on a small, quiet row. */}
-          <Box
-            component="nav"
-            aria-label="Training tools"
-            data-testid="train-tools"
-            sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 2 }}
-          >
-            {TOOLS.map(({ to, label, Icon, testId }) => (
-              <ButtonBase
-                key={to}
-                component={Link}
-                to={to}
-                data-testid={testId}
-                sx={{
-                  minHeight: 76,
-                  px: 1,
-                  py: 2,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                  borderRadius: `${tokens.radius.card}px`,
-                  bgcolor: tokens.ink.card,
-                  boxShadow: tokens.elevation.card,
-                  color: tokens.ink.text,
-                  '@media (hover: hover)': {
-                    '&:hover': { color: tokens.accent.main },
-                  },
-                }}
-              >
-                <Icon sx={{ fontSize: 24, color: tokens.accent.main }} aria-hidden />
-                <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, textAlign: 'center' }}>
-                  {label}
-                </Box>
-              </ButtonBase>
-            ))}
-          </Box>
-        </Column>
-      </Columns>
+      <Reveal delay={staggerDelay(3, tokens.motion.stagger.section)}>
+        <Box
+          component="nav"
+          aria-label="Training tools"
+          data-testid="train-tools"
+          sx={{
+            display: 'grid',
+            gap: 4,
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
+          }}
+        >
+          {TOOLS.map(({ to, label, help, Icon, testId }) => (
+            <ListRow
+              key={to}
+              variant="card"
+              icon={Icon}
+              iconTile
+              label={label}
+              help={testId === 'link-library' ? libraryHelp : help}
+              component={Link}
+              to={to}
+              testId={testId}
+            />
+          ))}
+        </Box>
+      </Reveal>
     </Stack>
   )
 }

@@ -1,87 +1,143 @@
-// Owns: one meal on the Log tab — time, status (analysing / review / confirmed), its photos, items with grams and kcal,
-// the text it was logged as, pending state — and its actions: open the review (while analysing, or to check items),
-// confirm a meal in review as it is, edit, save as favourite, delete. A failed analysis reads calmly with "Add items".
+// Owns: one meal on the Log tab (2a) — its status chip (analysing / to review / confirmed), pending state, kcal and
+// actions menu (edit, save as favourite, delete), which sit in the slot card's header when the meal is the slot's only
+// one; and its body: photos, the text it was logged as, the analysis progress (open the review), a failed analysis that
+// reads calmly with "Add items", the item table (icon and name with an "Estimated" chip, grams, kcal, protein, where
+// the item came from), and Review / Confirm for a meal in review (confirm as it is). `MealCard` is the meal with its
+// own time row, for a slot holding several meals.
 import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, PendingBadge } from '../../../components'
+import { formatNumber, PendingBadge, StatusChip, type StatusChipTone } from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, useLogMutation } from '../../quick-log'
-import type { MealView } from './meals'
+import { useLogMutation } from '../../quick-log'
+import { FoodGlyph } from './FoodGlyph'
+import { clock12 } from './labels'
+import type { ItemView, MealView } from './meals'
 import { problemText } from '../../../api'
 
-interface MealCardProps {
+interface MealActionsProps {
   meal: MealView
-  /** Open the review (analysis progress, then the item list and Confirm). */
-  onReview: () => void
   onEdit: () => void
   onFavourite: () => void
   onDelete: () => void
 }
 
-const STATUS_LABEL = { parsing: 'Analysing', review: 'To review', confirmed: null } as const
+interface MealBodyProps {
+  meal: MealView
+  /** Open the review (analysis progress, then the item list and Confirm). */
+  onReview: () => void
+}
 
-/** Height of a confirmed meal's card with one line of items at phone width: what a slot holds while its meals load. */
-export const MEAL_CARD_PX = 104
+const STATUS: Record<MealView['status'], { label: string; tone: StatusChipTone }> = {
+  parsing: { label: 'Analysing', tone: 'info' },
+  review: { label: 'To review', tone: 'warning' },
+  confirmed: { label: 'Confirmed', tone: 'success' },
+}
 
-export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: MealCardProps) {
+/** What a slot holds while its meals load: a meal's header row, table head and two item rows. */
+export const MEAL_CARD_PX = 120
+
+/** The meal's row padding: the card's 20 px gutter (the item table brings its own). */
+const gutter = { px: `${tokens.pad.card.x}px` } as const
+
+const canActOn = (meal: MealView) => meal.meal !== null && meal.pending !== 'create'
+const aiAnalysed = (meal: MealView) => meal.inputMethod === 'text' || meal.inputMethod === 'voice' || meal.inputMethod === 'photo'
+const analysisFailed = (meal: MealView) => meal.status === 'review' && aiAnalysed(meal) && meal.items.length === 0
+
+/** The meal's kcal as its header shows it: nothing while analysing or after a failed analysis with no items yet. */
+export function mealKcal(meal: MealView): string {
+  if ((meal.status === 'parsing' || analysisFailed(meal)) && meal.items.length === 0) return ''
+  return meal.totals ? `${formatNumber(meal.totals.kcal)} kcal` : '— kcal'
+}
+
+/** Status chip, pending badge, kcal (14/600) and the actions menu. */
+export function MealActions({ meal, onEdit, onFavourite, onDelete }: MealActionsProps) {
   const [menu, setMenu] = useState<HTMLElement | null>(null)
+  const status = STATUS[meal.status]
+  const kcal = mealKcal(meal)
+  const pick = (action: () => void) => () => {
+    setMenu(null)
+    action()
+  }
+  return (
+    <>
+      {meal.pending && (meal.queued || meal.pending === 'create') && <PendingBadge label={meal.pending === 'edit' ? 'Edit pending' : 'Pending'} />}
+      <StatusChip tone={status.tone} label={status.label} />
+      {kcal && (
+        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{kcal}</Box>
+      )}
+      {canActOn(meal) && (
+        <IconButton size="small" aria-label="Meal actions" onClick={(e) => setMenu(e.currentTarget)} sx={{ color: tokens.ink.secondary }}>
+          <MoreHorizRounded sx={{ fontSize: 18 }} />
+        </IconButton>
+      )}
+      <Menu anchorEl={menu} open={menu !== null} onClose={() => setMenu(null)}>
+        <MenuItem onClick={pick(onEdit)}>Edit</MenuItem>
+        <MenuItem disabled={!meal.items.some((i) => i.foodId)} onClick={pick(onFavourite)}>
+          Save as favourite
+        </MenuItem>
+        <MenuItem onClick={pick(onDelete)} sx={{ color: 'error.main' }}>
+          Delete
+        </MenuItem>
+      </Menu>
+    </>
+  )
+}
+
+/** Everything under the meal's header, flush to the card's edges (the table runs edge to edge). */
+export function MealBody({ meal, onReview }: MealBodyProps) {
   const confirm = useLogMutation(endpoints.nutrition.updateMeal)
-  const status = STATUS_LABEL[meal.status]
-  const canAct = meal.meal !== null && meal.pending !== 'create'
-  const analysed = meal.inputMethod === 'text' || meal.inputMethod === 'voice' || meal.inputMethod === 'photo'
-  const failed = meal.status === 'review' && analysed && meal.items.length === 0
+  const canAct = canActOn(meal)
+  const failed = analysisFailed(meal)
 
   return (
-    <Box data-testid="meal-card" sx={{ py: 2, borderTop: 1, borderColor: 'divider' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: tokens.tapTarget }}>
-        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>{clockOf(meal.eatenAt)}</Box>
-        {status && <Chip size="small" variant="outlined" label={status} sx={{ color: 'text.secondary', borderColor: 'divider' }} />}
-        {meal.pending && (meal.queued || meal.pending === 'create') && <PendingBadge label={meal.pending === 'edit' ? 'Edit pending' : 'Pending'} />}
-        <Box sx={{ flex: 1 }} />
-        <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, fontVariantNumeric: 'tabular-nums' }}>
-          {(meal.status === 'parsing' || failed) && meal.items.length === 0 ? '' : meal.totals ? `${formatNumber(meal.totals.kcal)} kcal` : '— kcal'}
-        </Box>
-        {canAct && (
-          <IconButton aria-label="Meal actions" onClick={(e) => setMenu(e.currentTarget)} edge="end">
-            <MoreHorizRounded />
-          </IconButton>
-        )}
-      </Box>
-
+    <>
       {meal.photos.length > 0 && (
-        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5 }} aria-label="Meal photos">
+        <Box sx={{ ...gutter, pb: 3, display: 'flex', gap: 1.5 }} aria-label="Meal photos">
           {meal.photos.map((src) => (
-            <Box key={src} component="img" src={src} alt="" sx={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 2, border: 1, borderColor: 'divider' }} />
+            <Box
+              key={src}
+              component="img"
+              src={src}
+              alt=""
+              sx={{ width: 48, height: 48, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}` }}
+            />
           ))}
         </Box>
       )}
 
       {meal.rawText && (meal.items.length === 0 || meal.status !== 'confirmed') && (
-        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: 1.5, mb: 1 }}>“{meal.rawText}”</Box>
+        <Box sx={{ ...gutter, pb: 3, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>“{meal.rawText}”</Box>
       )}
 
       {meal.status === 'parsing' && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }} data-testid="meal-analysing-row">
-          <Box sx={{ flex: 1 }}>
+        <Box sx={{ ...gutter, pb: 4, display: 'flex', alignItems: 'center', gap: 3 }} data-testid="meal-analysing-row">
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             {canAct ? (
               <>
-                <LinearProgress sx={{ height: 4, borderRadius: tokens.radius.chip, bgcolor: tokens.ink.border, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }} />
-                <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mt: 1 }}>The AI is working out the items.</Box>
+                <LinearProgress
+                  aria-label="Analysing"
+                  sx={{ height: 6, borderRadius: `${tokens.radius.pill}px`, bgcolor: tokens.ink.fill, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }}
+                />
+                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 2 }}>The AI is working out the items.</Box>
               </>
             ) : (
-              <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary' }}>Saved on this phone. It's analysed once it syncs.</Box>
+              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>Saved on this phone. It's analysed once it syncs.</Box>
             )}
           </Box>
           {canAct && (
-            <Button variant="text" onClick={onReview}>
+            <Button variant="outlined" size="dense" onClick={onReview}>
               Open
             </Button>
           )}
@@ -89,58 +145,20 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
       )}
 
       {failed && canAct && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }} data-testid="meal-analysis-failed">
-          <Box sx={{ flex: 1, fontSize: tokens.font.size.label, color: 'text.secondary', lineHeight: 1.5 }}>The AI couldn't read this one. Add the items yourself.</Box>
-          <Button variant="contained" onClick={onReview}>
+        <Box sx={{ ...gutter, pb: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 3 }} data-testid="meal-analysis-failed">
+          <Box sx={{ flex: '1 1 200px', fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
+            The AI couldn't read this one. Add the items yourself.
+          </Box>
+          <Button variant="contained" size="dense" onClick={onReview}>
             Add items
           </Button>
         </Box>
       )}
 
-      {meal.items.length > 0 && (
-        // minmax(0, 1fr): a long name must not widen the column past the card. It wraps to two lines, then ellipsis;
-        // grams and kcal stay on its first line, kcal right-aligned.
-        <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 0.75 }}>
-          {meal.items.map((item) => (
-            <Box component="li" key={item.id} sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.small, alignItems: 'baseline' }}>
-              <Box
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  lineHeight: 1.4,
-                  overflowWrap: 'anywhere',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}
-              >
-                {item.description}
-                {item.estimated && (
-                  <Box component="span" sx={{ color: 'text.secondary', fontSize: tokens.font.size.caption }}>
-                    {' '}
-                    · estimated
-                  </Box>
-                )}
-              </Box>
-              {item.grams > 0 && (
-                <Box sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums', flex: 'none' }}>{formatNumber(item.grams)} g</Box>
-              )}
-              <Box sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums', flex: 'none', minWidth: 64, textAlign: 'right' }}>
-                {item.nutrients ? `${formatNumber(item.nutrients.kcal)} kcal` : '—'}
-              </Box>
-            </Box>
-          ))}
-        </Box>
-      )}
-      {meal.totals && meal.totals.kcal > 0 && (
-        <Box sx={{ fontSize: tokens.font.size.caption, color: 'text.secondary', mt: 1, fontVariantNumeric: 'tabular-nums' }}>
-          {formatNumber(meal.totals.protein_g)} g protein · {formatNumber(meal.totals.carbs_g)} g carbs · {formatNumber(meal.totals.fat_g)} g fat
-        </Box>
-      )}
+      {meal.items.length > 0 && <ItemTable meal={meal} />}
 
       {meal.status === 'review' && canAct && !failed && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+        <Box sx={{ ...gutter, py: 3, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, borderTop: `1px solid ${tokens.ink.hairline}` }}>
           <Button variant="outlined" onClick={onReview} data-testid="meal-review-open">
             Review
           </Button>
@@ -154,41 +172,101 @@ export function MealCard({ meal, onReview, onEdit, onFavourite, onDelete }: Meal
         </Box>
       )}
       {confirm.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small, mt: 1 }}>
+        <Box role="alert" sx={{ ...gutter, pb: 3, color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
           {problemText(confirm.error)}
         </Box>
       )}
+    </>
+  )
+}
 
-      <Menu anchorEl={menu} open={menu !== null} onClose={() => setMenu(null)}>
-        <MenuItem
-          sx={{ minHeight: tokens.tapTarget }}
-          onClick={() => {
-            setMenu(null)
-            onEdit()
-          }}
-        >
-          Edit
-        </MenuItem>
-        <MenuItem
-          sx={{ minHeight: tokens.tapTarget }}
-          disabled={!meal.items.some((i) => i.foodId)}
-          onClick={() => {
-            setMenu(null)
-            onFavourite()
-          }}
-        >
-          Save as favourite
-        </MenuItem>
-        <MenuItem
-          sx={{ minHeight: tokens.tapTarget, color: 'error.main' }}
-          onClick={() => {
-            setMenu(null)
-            onDelete()
-          }}
-        >
-          Delete
-        </MenuItem>
-      </Menu>
+/** A meal in a slot holding several: its own time row (time, status, kcal, menu) over its body. */
+export function MealCard({ meal, ...actions }: MealActionsProps & MealBodyProps) {
+  return (
+    <Box data-testid="meal-card" sx={{ borderTop: `1px solid ${tokens.ink.border}` }}>
+      <Box sx={{ ...gutter, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', py: '10px' }}>
+        <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{clock12(meal.eatenAt)}</Box>
+        <MealActions meal={meal} onEdit={actions.onEdit} onFavourite={actions.onFavourite} onDelete={actions.onDelete} />
+      </Box>
+      <MealBody meal={meal} onReview={actions.onReview} />
+    </Box>
+  )
+}
+
+/**
+ * Where an item came from, as far as the meal knows. An item carries no food source (2a's "CNF"), only whether it links
+ * to a food in the database, so such an item reads "Database".
+ */
+function sourceOf(meal: MealView, item: ItemView): { label: string; tone: StatusChipTone } {
+  if (meal.inputMethod === 'favorite') return { label: 'Favourite', tone: 'outline' }
+  if (item.estimated || aiAnalysed(meal)) return { label: 'AI', tone: 'info' }
+  if (meal.inputMethod === 'barcode') return { label: 'Barcode', tone: 'outline' }
+  return { label: item.foodId ? 'Database' : 'By hand', tone: 'outline' }
+}
+
+/** Below this card width the Source column goes (a phone, the half-width column at `md`). */
+const NARROW = '@container (max-width: 479px)'
+
+/** 2a's item table: Item (icon, name, "Estimated") · Grams · kcal · Protein · Source. */
+function ItemTable({ meal }: { meal: MealView }) {
+  return (
+    <Box sx={{ containerType: 'inline-size' }}>
+      <Table
+        aria-label="Items"
+        sx={{
+          '& tbody tr:last-of-type td': { borderBottom: 0 },
+          [NARROW]: {
+            '& .item-source': { display: 'none' },
+            '& .item-protein': { pr: `${tokens.pad.card.x}px` },
+          },
+        }}
+      >
+        <TableHead>
+          <TableRow>
+            {/* Half the card for the name, as 2a's table gives it; the numbers share the rest. */}
+            <TableCell sx={{ width: '50%' }}>Item</TableCell>
+            <TableCell align="right">Grams</TableCell>
+            <TableCell align="right">kcal</TableCell>
+            <TableCell align="right" className="item-protein">
+              Protein
+            </TableCell>
+            <TableCell align="right" className="item-source">
+              Source
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {meal.items.map((item) => {
+            const source = sourceOf(meal, item)
+            return (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                    <FoodGlyph name={item.description} />
+                    {/* The chip drops under the name rather than splitting it, when the column is narrow. */}
+                    <Box sx={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 6px' }}>
+                      <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                        {item.description}
+                      </Box>
+                      {item.estimated && <StatusChip tone="warning" size="small" label="Estimated" />}
+                    </Box>
+                  </Box>
+                </TableCell>
+                <TableCell align="right" sx={{ color: tokens.ink.label, whiteSpace: 'nowrap' }}>
+                  {item.grams > 0 ? `${formatNumber(item.grams)} g` : '—'}
+                </TableCell>
+                <TableCell align="right">{item.nutrients ? formatNumber(item.nutrients.kcal) : '—'}</TableCell>
+                <TableCell align="right" className="item-protein" sx={{ whiteSpace: 'nowrap' }}>
+                  {item.nutrients ? `${formatNumber(item.nutrients.protein_g)} g` : '—'}
+                </TableCell>
+                <TableCell align="right" className="item-source">
+                  <StatusChip tone={source.tone} size="small" label={source.label} />
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
     </Box>
   )
 }

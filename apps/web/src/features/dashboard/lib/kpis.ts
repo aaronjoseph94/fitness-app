@@ -1,7 +1,8 @@
 // Owns: the Dashboard's headline metrics (pure) — the six numbers Aaron wants first, each with its value, a delta
 // against the start of the window (or against its target), the daily series its sparkline draws, and a footnote saying
-// exactly what the number is. Data in, tiles out: no React, no fetching (the `icon` is a component reference purely so
-// the tile and the metric read as the same thing everywhere; nothing here renders).
+// exactly what the number is — plus `barSeries`, which folds a long window into bars a 2a mini-bar strip can draw.
+// Data in, tiles out: no React, no fetching (the `icon` is a component reference purely so the tile and the metric read
+// as the same thing everywhere; nothing here renders).
 import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
 import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
 import EggAltRounded from '@mui/icons-material/EggAltRounded'
@@ -61,6 +62,9 @@ export interface Kpi {
   icon?: SvgIconComponent
   /** Daily values across the window, oldest first; null where the day has no value. */
   series?: readonly (number | null)[]
+  /** The dates of the first and last entries of `series` (the hero's sparkline labels them). */
+  seriesFrom?: string
+  seriesTo?: string
   /** A target drawn as a dashed line on the sparkline. */
   reference?: number
   footnote: string
@@ -94,11 +98,15 @@ function last(values: readonly (number | null)[]): number | null {
 export function dashboardKpis(data: DashboardData): Kpi[] {
   const days = data.days
   // The weigh-in history runs the whole window even when the day rows are clipped to the profile's start date
-  // (GET /api/days returns nothing before it), so the weight sparkline comes from the trend series itself.
-  const weightSeries = (data.trend?.points ?? []).map((p) => p.trend_kg)
+  // (GET /api/days returns nothing before it), so the weight sparkline comes from the trend series itself — from its
+  // first trend value on, so the line starts at the card's left edge rather than after a run of empty days.
+  const trendPoints = data.trend?.points ?? []
+  const firstTrend = trendPoints.findIndex((p) => p.trend_kg !== null)
+  const weightPoints = firstTrend < 0 ? [] : trendPoints.slice(firstTrend)
+  const weightSeries = weightPoints.map((p) => p.trend_kg)
   const target = [...days].reverse().find((d) => d.targets && !d.is_fast_day)?.targets ?? null
 
-  const trendNow = lastTrend(data.trend?.points ?? [])
+  const trendNow = lastTrend(trendPoints)
   const trendStart = weightSeries.find((v) => v !== null) ?? null
   const goalDone = goalProgress(data.profile?.start_weight_kg ?? null, trendNow?.kg ?? null, data.profile?.goal_weight_kg ?? null)
 
@@ -109,11 +117,13 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
   const sleepSeries = days.map((d) => (d.sleep_min === null ? null : round(d.sleep_min / 60, 1)))
   const waterSeries = days.map((d) => (d.water_ml > 0 ? d.water_ml : null))
   const loggedDays = kcalSeries.filter((v) => v !== null).length
+  const proteinHit = target ? proteinSeries.filter((v) => v !== null && v >= target.protein_g).length : 0
   const avgKcal = mean(kcalSeries)
   const avgProtein = mean(proteinSeries)
   const avgSteps = mean(stepsSeries)
   const avgSleep = mean(sleepSeries)
   const avgWater = mean(waterSeries)
+  const waterHit = target ? waterSeries.some((v) => v !== null && v >= target.water_ml) : false
 
   const out: Kpi[] = []
   const push = (kpi: Kpi) => out.push(kpi)
@@ -131,12 +141,14 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     metric: 'weight',
     icon: MonitorWeightRounded,
     series: weightSeries,
+    seriesFrom: weightPoints[0]?.date,
+    seriesTo: weightPoints.at(-1)?.date,
     delta:
       trendNow && trendStart !== null
         ? { value: round(trendNow.kg - trendStart), period: 'this window', good: 'down' }
         : undefined,
     footnote: data.profile
-      ? `Goal ${round(data.profile.goal_weight_kg, 1)} kg by ${data.profile.goal_date}`
+      ? `Goal ${data.profile.goal_weight_kg.toFixed(1)} kg by ${data.profile.goal_date}`
       : 'Smoothed daily weight',
   })
 
@@ -153,9 +165,11 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     reference: target?.kcal,
     delta:
       avgKcal !== null && target
-        ? { value: Math.round(avgKcal - target.kcal), period: 'vs target', good: 'neutral' }
+        ? { value: Math.round(avgKcal - target.kcal), unit: '', period: 'vs target', good: 'neutral' }
         : undefined,
-    footnote: loggedDays ? `Over ${loggedDays} logged ${loggedDays === 1 ? 'day' : 'days'}, fasts excluded` : 'No meals logged yet',
+    footnote: loggedDays
+      ? `Over ${loggedDays} logged ${loggedDays === 1 ? 'day' : 'days'}, fasts excluded${target ? ` · target ${target.kcal.toLocaleString()}` : ''}`
+      : 'No meals logged yet',
   })
 
   push({
@@ -169,11 +183,14 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     icon: EggAltRounded,
     series: proteinSeries,
     reference: target?.protein_g,
+    // Protein is the one tile whose shortfall reads amber: "protein first" is the plan's standing priority.
     delta:
       avgProtein !== null && target
-        ? { value: Math.round(avgProtein - target.protein_g), period: 'vs target', good: 'neutral' }
+        ? { value: Math.round(avgProtein - target.protein_g), unit: '', period: 'vs target', good: 'up' }
         : undefined,
-    footnote: target ? `Daily average; target ${target.protein_g} g` : 'Daily average',
+    footnote: target
+      ? `Daily average · target ${target.protein_g} g · hit on ${proteinHit} of ${loggedDays} ${loggedDays === 1 ? 'day' : 'days'}`
+      : 'Daily average',
   })
 
   push({
@@ -186,7 +203,11 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     icon: DirectionsWalkRounded,
     series: stepsSeries,
     reference: target?.steps,
-    footnote: target ? `Daily average; target ${target.steps.toLocaleString()}` : 'Daily average',
+    delta:
+      avgSteps !== null && target
+        ? { value: Math.round(avgSteps - target.steps), unit: '', period: 'vs target', good: 'neutral' }
+        : undefined,
+    footnote: target ? `Daily average · target ${target.steps.toLocaleString()}` : 'Daily average',
   })
 
   push({
@@ -201,7 +222,11 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     icon: BedtimeRounded,
     series: sleepSeries,
     reference: SLEEP_TARGET_H,
-    footnote: `Hours asleep; ${SLEEP_TARGET_H} h is the readiness target`,
+    delta:
+      avgSleep !== null
+        ? { value: round(avgSleep - SLEEP_TARGET_H, 1), unit: '', period: `vs ${SLEEP_TARGET_H} h`, good: 'neutral' }
+        : undefined,
+    footnote: `Hours asleep · ${SLEEP_TARGET_H} h is the readiness target`,
   })
 
   push({
@@ -215,8 +240,28 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     icon: WaterDropRounded,
     series: waterSeries,
     reference: target?.water_ml,
-    footnote: target ? `Daily average; target ${target.water_ml.toLocaleString()} ml` : 'Daily average',
+    delta:
+      avgWater !== null && target
+        ? { value: Math.round(avgWater - target.water_ml), unit: '', period: 'vs target', good: 'neutral' }
+        : undefined,
+    footnote: target ? `Daily average · target ${target.water_ml.toLocaleString()} ml${waterHit ? ' · dark bars hit it' : ''}` : 'Daily average',
   })
 
   return out
+}
+
+/** A mini-bar strip stays legible up to a month of days; past that, each bar is a week. */
+const MAX_DAILY_BARS = 31
+const DAYS_PER_BAR = 7
+
+/**
+ * The bars a 2a mini-bar strip draws for a window: one per day up to a month, else one per 7 days counted back from the
+ * latest day (bar = mean of the days present in it, null when it has none), so a 90- or 180-day window is 13 or 26 bars
+ * rather than bars thinner than the gaps between them. Pure.
+ */
+export function barSeries(values: readonly (number | null)[]): (number | null)[] {
+  if (values.length <= MAX_DAILY_BARS) return [...values]
+  const bars: (number | null)[] = []
+  for (let end = values.length; end > 0; end -= DAYS_PER_BAR) bars.unshift(mean(values.slice(Math.max(0, end - DAYS_PER_BAR), end)))
+  return bars
 }

@@ -4,7 +4,7 @@
 import { endpoints } from '@fitness/shared/api'
 import type { AiEvent } from '@fitness/shared/schemas'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { apiQueryKey, call } from '../../../api'
+import { apiQueryKey, call, type ApiError } from '../../../api'
 
 const EVENT_POLL_MS = 15_000
 /** Events kept on the phone for the feed; Today shows the newest. */
@@ -34,7 +34,8 @@ function refreshDependents(queryClient: QueryClient): void {
 
 export function useEventFeed() {
   const queryClient = useQueryClient()
-  return useQuery({
+  // `call` throws ApiError, so the page can show a failed feed with the shared QueryStateCard.
+  return useQuery<EventFeed, ApiError>({
     queryKey: FEED_KEY,
     queryFn: async ({ signal }): Promise<EventFeed> => {
       const previous = queryClient.getQueryData<EventFeed>(FEED_KEY)

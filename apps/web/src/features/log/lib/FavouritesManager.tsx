@@ -1,10 +1,12 @@
-// Owns: the favourites manager — the one-tap list in its order, moved up or down (PATCH sort_order), renamed, a food's
-// default grams or a recipe's grams per food edited (PATCH /api/favorites/:id). New favourites come from a logged meal
-// ("Save as favourite" on a meal). Edits waiting to sync show as pending.
+// Owns: the favourites on the Log tab (2a rail card) — the one-tap list in its order (icon, name and grams or a
+// "Recipe" chip, kcal), and behind "Manage" each one moved up or down (PATCH sort_order), renamed, a food's default
+// grams or a recipe's grams per food edited (PATCH /api/favorites/:id). New favourites come from a logged meal ("Save as
+// favourite" on a meal). Edits waiting to sync show as pending.
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import StarRounded from '@mui/icons-material/StarRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -16,11 +18,12 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import type { Favourite, Food, Meal } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { apiQueryKey, problemText } from '../../../api'
-import { formatNumber, LoadProblem, NumberField, parseNumber, PendingBadge } from '../../../components'
+import { formatNumber, LoadProblem, NumberField, outlinedIconButton, parseNumber, PendingBadge, StatusChip } from '../../../components'
 import { tokens } from '../../../theme'
 import { useLogMutation, usePendingLogs } from '../../quick-log'
+import { FoodGlyph } from './FoodGlyph'
 import { LoadingRows, LogCard } from './LogCard'
 
 interface FavouriteRow {
@@ -85,6 +88,9 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
   const rows = useFavouriteRows(favourites)
   const update = useLogMutation(endpoints.nutrition.updateFavourite)
   const [editing, setEditing] = useState<Favourite | null>(null)
+  /** The reorder and edit controls show once Manage is pressed. */
+  const [managing, setManaging] = useState(false)
+  const listId = useId()
 
   /** Move one place up or down: renumber everything 10, 20, 30… and PATCH only the rows whose order changed. */
   const move = (index: number, delta: -1 | 1) => {
@@ -99,44 +105,64 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
   }
 
   return (
-    <LogCard title="Favourites" subtitle="One-tap meals in the meal form, in this order" collapsible testId="log-favourites">
+    <LogCard
+      title="Favourites"
+      icon={StarRounded}
+      meta={
+        rows.length > 0 && (
+          <Button variant="text" size="tiny" aria-expanded={managing} aria-controls={listId} onClick={() => setManaging((m) => !m)} sx={{ my: '-6px', mr: '-10px' }}>
+            {managing ? 'Done' : 'Manage'}
+          </Button>
+        )
+      }
+      testId="log-favourites"
+    >
       {isLoading && rows.length === 0 ? (
         <LoadingRows rows={2} />
       ) : error != null && rows.length === 0 ? (
         <LoadProblem what="Favourites" error={error} onRetry={onRetry} />
       ) : rows.length === 0 ? (
-        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
           None yet. On any logged meal, open its menu and choose “Save as favourite”; a meal with several foods becomes a recipe.
         </Box>
       ) : (
-        <Box component="ol" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+        <Box component="ol" id={listId} aria-label="Favourites, in the order the meal form shows them" sx={{ listStyle: 'none', p: 0, m: 0, mt: '-6px' }}>
           {rows.map(({ favourite: f, pending }, i) => (
-            <Box component="li" key={f.id} data-testid="favourite-manager-row" sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderTop: i === 0 ? 0 : 1, borderColor: 'divider' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: tokens.font.size.emphasis, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.label}</Box>
-                <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <span>
-                    {f.kind === 'food' ? `${formatNumber(f.default_grams)} g` : `Recipe · ${f.recipe.length} ${f.recipe.length === 1 ? 'food' : 'foods'}`}
-                    {f.totals.kcal > 0 && ` · ${formatNumber(f.totals.kcal)} kcal`}
-                  </span>
-                  {pending && <PendingBadge />}
+            <Box
+              component="li"
+              key={f.id}
+              data-testid="favourite-manager-row"
+              sx={{ display: 'flex', alignItems: 'center', gap: '10px', minHeight: 42, py: 1, fontSize: tokens.font.size.small, borderTop: `1px solid ${tokens.ink.hairline}` }}
+            >
+              <FoodGlyph name={f.label} size={20} />
+              <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {f.label}
+                  {f.kind === 'food' && ` · ${formatNumber(f.default_grams)} g`}
                 </Box>
+                {f.kind === 'recipe' && <StatusChip tone="outline" size="small" label="Recipe" />}
+                {pending && <PendingBadge />}
               </Box>
-              <IconButton aria-label={`Move ${f.label} up`} disabled={i === 0} onClick={() => move(i, -1)}>
-                <ArrowUpwardRounded fontSize="small" />
-              </IconButton>
-              <IconButton aria-label={`Move ${f.label} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
-                <ArrowDownwardRounded fontSize="small" />
-              </IconButton>
-              <IconButton aria-label={`Edit ${f.label}`} onClick={() => setEditing(f)}>
-                <EditOutlined fontSize="small" />
-              </IconButton>
+              {f.totals.kcal > 0 && <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{formatNumber(f.totals.kcal)} kcal</Box>}
+              {managing && (
+                <Box sx={{ flex: 'none', display: 'flex', gap: 1 }}>
+                  <IconButton size="tiny" aria-label={`Move ${f.label} up`} disabled={i === 0} onClick={() => move(i, -1)} sx={outlinedIconButton}>
+                    <ArrowUpwardRounded sx={{ fontSize: 16 }} />
+                  </IconButton>
+                  <IconButton size="tiny" aria-label={`Move ${f.label} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)} sx={outlinedIconButton}>
+                    <ArrowDownwardRounded sx={{ fontSize: 16 }} />
+                  </IconButton>
+                  <IconButton size="tiny" aria-label={`Edit ${f.label}`} onClick={() => setEditing(f)} sx={outlinedIconButton}>
+                    <EditOutlined sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Box>
+              )}
             </Box>
           ))}
         </Box>
       )}
       {update.isError && (
-        <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small, mt: 2 }}>
+        <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small, mt: 2 }}>
           {problemText(update.error)}
         </Box>
       )}

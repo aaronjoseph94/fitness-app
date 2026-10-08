@@ -1,24 +1,26 @@
-// Owns: the Log tab's date switcher — previous / next day (never past today), the day as "Today · 2026-10-05" which
-// opens the native date picker, and a "Today" jump when looking at another day. Sticks under the top bar, and while it
-// is on screen the page's scroll padding grows by its height so a focused control never lands under it (WCAG 2.4.11).
+// Owns: the Log tab's date switcher (2a: an outline frame in the title row) — previous / next day (never past today),
+// the neighbouring days by name, the day shown as a dark segment ("Today · Wed, Oct 7") which opens the native date
+// picker, and a "Today" jump when looking at another day.
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
+import TodayRounded from '@mui/icons-material/TodayRounded'
 import Box from '@mui/material/Box'
-import GlobalStyles from '@mui/material/GlobalStyles'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import type { ChangeEvent } from 'react'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { relativeDay, shiftDate } from '../../quick-log'
+import { dayLabel, shortDayLabel } from './labels'
 
-/** The shell's sticky top bar: one tap target plus 12 px. */
-const TOP_BAR = tokens.tapTarget + tokens.space(3)
-/** This bar: one tap target plus 4 px above and below. */
-const HEIGHT = tokens.tapTarget + tokens.space(2)
-const scrollPadding = {
-  html: {
-    scrollPaddingTop: `calc(${tokens.layout.scrollPadding.top + HEIGHT}px + env(safe-area-inset-top, 0px))`,
-  },
+/** A neighbouring day's segment: 13/500 like a segmented control's, hidden on a phone where the chevrons do the job. */
+const neighbourSx = {
+  display: { xs: 'none', sm: 'inline-flex' },
+  px: '12px',
+  fontSize: tokens.font.size.small,
+  color: tokens.ink.label,
+  borderRadius: `${tokens.radius.inner}px`,
+  fontVariantNumeric: 'tabular-nums',
+  '&.Mui-disabled': { color: tokens.ink.disabled },
 } as const
 
 export function DateSwitcher({
@@ -31,90 +33,92 @@ export function DateSwitcher({
   onChange: (date: string) => void
 }) {
   const isToday = date === today
+  const previous = shiftDate(date, -1)
+  const next = shiftDate(date, 1)
+  const relative = relativeDay(date, today)
+  const label = relative === 'Today' || relative === 'Yesterday' ? `${relative} · ${dayLabel(date)}` : dayLabel(date)
   return (
-    <>
-      <GlobalStyles styles={scrollPadding} />
+    <Box
+      data-testid="date-switcher"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2px',
+        p: '3px',
+        maxWidth: '100%',
+        border: `1px solid ${tokens.ink.border}`,
+        borderRadius: `${tokens.radius.segmentTrack}px`,
+        bgcolor: tokens.ink.card,
+      }}
+    >
+      <IconButton size="small" aria-label="Previous day" onClick={() => onChange(previous)} sx={{ borderRadius: `${tokens.radius.inner}px` }}>
+        <ChevronLeftRounded sx={{ fontSize: 18 }} />
+      </IconButton>
+      <Button variant="text" color="inherit" size="tiny" onClick={() => onChange(previous)} sx={neighbourSx}>
+        {shortDayLabel(previous)}
+      </Button>
       <Box
-        data-testid="date-switcher"
         sx={{
-          position: 'sticky',
-          top: `calc(${TOP_BAR}px + env(safe-area-inset-top, 0px))`,
-          zIndex: 2,
-          bgcolor: 'background.default',
-          mx: -1,
-          px: 1,
-          py: 1,
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
+          gap: '6px',
+          minHeight: 30,
+          px: '12px',
+          minWidth: 0,
+          borderRadius: `${tokens.radius.inner}px`,
+          bgcolor: tokens.dark.bg,
+          color: tokens.dark.text,
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.label,
+          lineHeight: 1.4,
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+          [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+          // The input is invisible, so its keyboard focus ring is drawn on the segment it covers.
+          '&:has(input:focus-visible)': {
+            outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+            outlineOffset: tokens.focusRing.offset,
+          },
         }}
       >
-        <IconButton aria-label="Previous day" onClick={() => onChange(shiftDate(date, -1))}>
-          <ChevronLeftRounded />
-        </IconButton>
-        <Box
-          sx={{
-            position: 'relative',
-            flex: 1,
-            minWidth: 0,
-            textAlign: 'center',
-            minHeight: tokens.tapTarget,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            borderRadius: `${tokens.radius.control}px`,
-            // The input is invisible, so its keyboard focus ring is drawn on the label it covers.
-            '&:has(input:focus-visible)': {
-              outline: `${tokens.focusRing.width}px solid ${tokens.ink.text}`,
-              outlineOffset: tokens.focusRing.offset,
-            },
-          }}
-        >
-          <Box
-            sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}
-          >
-            {relativeDay(date, today)}
-          </Box>
-          <Box
-            sx={{
-              fontSize: tokens.font.size.label,
-              color: 'text.secondary',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {date}
-          </Box>
-          {/* The native picker sits invisibly over the label so a tap opens it on iOS and Android. */}
-          <Box
-            component="input"
-            type="date"
-            aria-label="Pick a day"
-            value={date}
-            max={today}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              e.target.value && onChange(e.target.value > today ? today : e.target.value)
-            }
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              opacity: 0,
-              cursor: 'pointer',
-              border: 0,
-              p: 0,
-            }}
-          />
+        <TodayRounded aria-hidden sx={{ fontSize: 16 }} />
+        <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {label}
         </Box>
-        {!isToday && (
-          <Button size="small" variant="text" onClick={() => onChange(today)} sx={{ minWidth: 0, px: 2 }}>
-            Today
-          </Button>
-        )}
-        <IconButton aria-label="Next day" onClick={() => onChange(shiftDate(date, 1))} disabled={isToday}>
-          <ChevronRightRounded />
-        </IconButton>
+        {/* The native picker sits invisibly over the segment so a tap opens it on iOS and Android. */}
+        <Box
+          component="input"
+          type="date"
+          aria-label="Pick a day"
+          value={date}
+          max={today}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            e.target.value && onChange(e.target.value > today ? today : e.target.value)
+          }
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0,
+            cursor: 'pointer',
+            border: 0,
+            p: 0,
+          }}
+        />
       </Box>
-    </>
+      <Button variant="text" color="inherit" size="tiny" onClick={() => onChange(next)} disabled={isToday} sx={neighbourSx}>
+        {shortDayLabel(next)}
+      </Button>
+      <IconButton size="small" aria-label="Next day" onClick={() => onChange(next)} disabled={isToday} sx={{ borderRadius: `${tokens.radius.inner}px` }}>
+        <ChevronRightRounded sx={{ fontSize: 18 }} />
+      </IconButton>
+      {!isToday && (
+        <Button size="tiny" variant="text" onClick={() => onChange(today)} sx={{ fontSize: tokens.font.size.small }}>
+          Today
+        </Button>
+      )}
+    </Box>
   )
 }
