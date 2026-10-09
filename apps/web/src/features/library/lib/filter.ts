@@ -1,5 +1,7 @@
 // Owns: narrowing the library — free-text search over name / equipment / muscles, the muscle, equipment, category and
-// level filters, allowed-only by default, and the swap list (same primary muscle as a given exercise). Pure functions.
+// level filters, allowed-only by default, and the swap list (the engine's swap rule: same primary muscle and same kind of
+// lift as a given exercise). Pure functions.
+import { swapCandidates } from '@fitness/shared/engine'
 import type { ExerciseSummary, ExerciseCategory, Muscle } from '@fitness/shared/schemas'
 
 export interface ExerciseFilter {
@@ -56,23 +58,17 @@ export function filterExercises(list: readonly ExerciseSummary[], input: FilterI
 }
 
 /**
- * Swap candidates for `target`: allowed exercises sharing at least one of its primary muscles, ranked by primary-muscle
- * overlap, then same equipment, then secondary overlap; the target itself is left out.
+ * Swap candidates for `target` (engine `swapCandidates`): allowed exercises sharing at least one of its primary muscles
+ * and the same kind of lift (strength and powerlifting together; cardio and Olympic lifts only with their own kind),
+ * neither the target nor any id in `exclude`, ranked by
+ *   10 × shared primary + 4 if same mechanic + 3 if same equipment + 1 per shared secondary, then by name.
  */
-export function sameMuscleCandidates(list: readonly ExerciseSummary[], target: ExerciseSummary): ExerciseSummary[] {
-  const primary = new Set(target.primary_muscles)
-  const secondary = new Set(target.secondary_muscles)
-  return list
-    .filter((e) => e.id !== target.id && e.allowed && e.primary_muscles.some((m) => primary.has(m)))
-    .map((e) => ({
-      e,
-      score:
-        e.primary_muscles.filter((m) => primary.has(m)).length * 10 +
-        (e.equipment === target.equipment ? 3 : 0) +
-        e.secondary_muscles.filter((m) => secondary.has(m)).length,
-    }))
-    .sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name))
-    .map((x) => x.e)
+export function sameMuscleCandidates(
+  list: readonly ExerciseSummary[],
+  target: ExerciseSummary,
+  exclude?: ReadonlySet<string>,
+): ExerciseSummary[] {
+  return swapCandidates(target, list, exclude)
 }
 
 /** Equipment values present in the library, most common first. */

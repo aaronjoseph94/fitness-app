@@ -1,7 +1,9 @@
 // Owns: the exercise picker sheet (SPEC §7) — search and filter the allowed exercise set (never a hidden exercise: the
 // picker fills templates, sessions and AI drafts, and the rails keep those to the allowed set; the library page browses
 // hidden ones), tap a row to pick, ⓘ to look at the exercise first. With `sameMuscleAs` it becomes the swap list: allowed
-// exercises sharing a primary muscle with that exercise, closest first. With `keepOpen` it stays up for several picks.
+// exercises sharing a primary muscle and the kind of lift with that exercise, closest first, leaving out the ones already
+// picked, with equipment chips for the candidates' equipment only and no category chip. With `keepOpen` it stays up for
+// several picks.
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -25,11 +27,11 @@ export interface ExercisePickerProps {
   onPick: (exercise: ExerciseSummary) => void
   /** Filters set when the picker opens. */
   initialFilter?: { muscle?: Muscle; equipment?: string }
-  /** Swap mode: only allowed exercises sharing a primary muscle with this exercise. */
+  /** Swap mode: only allowed exercises sharing a primary muscle and the kind of lift with this exercise. */
   sameMuscleAs?: string
   /** Stay open after a pick (builder: add several in a row). Default false: a pick closes the picker. */
   keepOpen?: boolean
-  /** Exercises already chosen, marked "Added". */
+  /** Exercises already chosen: marked "Added" when adding, left out when swapping (one card per exercise). */
   pickedIds?: ReadonlySet<string>
   /** Sheet title. Default "Add exercise" ("Swap exercise" in swap mode). */
   title?: string
@@ -55,18 +57,18 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
 
   const target = sameMuscleAs ? index.byId.get(sameMuscleAs) : undefined
   const swap = sameMuscleAs !== undefined
-  const equipment = useMemo(() => equipmentValues(index.allowed), [index.allowed])
+  // Swap mode: the candidates before any search or chip, so the equipment chip offers only what they use.
+  const pool = useMemo(() => (swap && target ? sameMuscleCandidates(index.all, target, pickedIds) : []), [swap, target, index.all, pickedIds])
+  const equipment = useMemo(() => equipmentValues(swap ? pool : index.allowed), [swap, pool, index.allowed])
 
   const results = useMemo(() => {
     if (swap) {
-      if (!target) return []
-      const pool = sameMuscleCandidates(index.all, target)
-      const narrowed = filterExercises(pool, { ...filter, muscle: undefined, q: query })
+      const narrowed = filterExercises(pool, { ...filter, muscle: undefined, category: undefined, q: query })
       // Keep the closeness order unless a search re-ranks it.
       return query.trim() ? narrowed : pool.filter((e) => narrowed.includes(e))
     }
     return filterExercises(index.all, { ...filter, q: query })
-  }, [swap, target, index.all, filter, query])
+  }, [swap, pool, index.all, filter, query])
 
   const pick = (e: ExerciseSummary) => {
     onPick(e)
@@ -96,7 +98,7 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
             filter={filter}
             onFilter={setFilter}
             equipment={equipment}
-            hide={swap ? ['muscle'] : []}
+            hide={swap ? ['muscle', 'category'] : []}
           />
         }
         footer={
@@ -119,7 +121,7 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
           <EmptyState
             compact
             title={swap ? 'No other exercise for that muscle' : 'No exercise matches'}
-            body={swap ? 'Your equipment profile and exclusions leave nothing else here.' : 'Try fewer words or clear a filter.'}
+            body={swap ? 'Your equipment profile, exclusions and the exercises already picked leave nothing else here.' : 'Try fewer words or clear a filter.'}
           />
         ) : (
           // Full-bleed in the sheet: the rows bring their own 20 px gutter, so thumbs line up with the search box.
@@ -127,7 +129,7 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
             <ExerciseList
               exercises={results}
               onSelect={pick}
-              pickedIds={pickedIds}
+              pickedIds={swap ? undefined : pickedIds}
               trailing={(e) => (
                 <IconButton aria-label={`About ${e.name}`} onClick={() => setInfo(e.id)}>
                   <InfoOutlined fontSize="small" />
