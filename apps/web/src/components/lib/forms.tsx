@@ -23,7 +23,7 @@ export function LoadProblem({ what, error, onRetry }: { what: string; error: unk
       }
       sx={{ alignItems: 'center' }}
     >
-      {offline ? `${what} isn't on this phone yet. It loads when you're back online.` : `${what} didn't load. ${problemText(error)}`}
+      {offline ? `${what} isn't on this device yet. It loads when you're back online.` : `${what} didn't load. ${problemText(error)}`}
     </Alert>
   )
 }

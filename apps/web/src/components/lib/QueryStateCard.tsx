@@ -1,6 +1,6 @@
 // Owns: what a read shows before it has data — a chart-shaped skeleton card while it loads (the title and description
 // lines of a ChartCard, line for line at either title size, over a block of the chart's height), then a 2a banner that
-// says why: the info banner when offline with nothing saved on this phone yet, the warning banner for a sign-in that
+// says why: the info banner when offline with nothing saved on this device yet, the warning banner for a sign-in that
 // expired or the server's answer, with "Try again" on its right.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -21,7 +21,7 @@ export function isQueryLoading(query: Pick<UseQueryResult, 'isPending' | 'fetchS
 
 /** Why a read failed, in the app's calm voice. `offline`: paused without data. */
 function errorText(error: ApiError | null, what: string, offline: boolean): string {
-  const notHereYet = `You're offline and ${what} hasn't been loaded on this phone yet. It fills in once you're back online.`
+  const notHereYet = `You're offline and ${what} hasn't been loaded on this device yet. It fills in once you're back online.`
   if (offline) return notHereYet
   if (!error) return `Couldn't load ${what}.`
   switch (error.kind) {

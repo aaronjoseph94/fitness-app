@@ -108,7 +108,7 @@ export function LibraryPage() {
         ) : index.error && index.all.length === 0 ? (
           <LoadProblem what="The exercise library" error={index.error} onRetry={index.refetch} />
         ) : index.paused ? (
-          <EmptyState title="Not loaded yet" body="The library isn't on this phone yet — connect once to load it." />
+          <EmptyState title="Not loaded yet" body="The library isn't on this device yet — connect once to load it." />
         ) : results.length === 0 ? (
           <EmptyState title="No exercise matches" body="Try fewer words or clear a filter." />
         ) : (
@@ -141,7 +141,7 @@ export function ExercisePage() {
         ) : index.error && index.all.length === 0 ? (
           <LoadProblem what="The exercise" error={index.error} onRetry={index.refetch} />
         ) : index.paused ? (
-          <EmptyState title="Not loaded yet" body="The library isn't on this phone yet — connect once to load it." />
+          <EmptyState title="Not loaded yet" body="The library isn't on this device yet — connect once to load it." />
         ) : (
           <EmptyState title="Exercise not found" body="It may have been removed from the library." action={<Button component={RouterLink} to="/train/library" variant="outlined">Open the library</Button>} />
         )}

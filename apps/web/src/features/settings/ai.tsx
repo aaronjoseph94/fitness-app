@@ -87,7 +87,7 @@ export function AiSettingsPage() {
             )
           }
         >
-          {offline ? 'You’re offline and the key list hasn’t been loaded on this phone yet.' : `Couldn't load the key list. ${problemText(secrets.error)}`}
+          {offline ? 'You’re offline and the key list hasn’t been loaded on this device yet.' : `Couldn't load the key list. ${problemText(secrets.error)}`}
         </Alert>
       </Stack>
     )

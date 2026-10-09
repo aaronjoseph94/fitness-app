@@ -126,7 +126,7 @@ export function SettingsPage() {
               )
             }
           >
-            {offline ? 'You’re offline and settings haven’t been loaded on this phone yet.' : `Couldn't load settings. ${problemText(query.error)}`}
+            {offline ? 'You’re offline and settings haven’t been loaded on this device yet.' : `Couldn't load settings. ${problemText(query.error)}`}
           </Alert>
         </Box>
       </Box>

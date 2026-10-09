@@ -98,7 +98,7 @@ export function DashboardPage() {
         >
           {error
             ? `Couldn't load the dashboard. ${problemText(error)}`
-            : "You're offline and the dashboard hasn't loaded on this phone yet. It fills in once you're back online."}
+            : "You're offline and the dashboard hasn't loaded on this device yet. It fills in once you're back online."}
         </Alert>
       </Stack>
     )

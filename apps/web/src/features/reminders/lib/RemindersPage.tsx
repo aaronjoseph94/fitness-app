@@ -80,7 +80,7 @@ export function RemindersPage() {
               }
             >
               {query.fetchStatus === 'paused' || query.error?.kind === 'network'
-                ? 'You’re offline and reminders haven’t been loaded on this phone yet.'
+                ? 'You’re offline and reminders haven’t been loaded on this device yet.'
                 : `Couldn’t load reminders. ${query.error?.message ?? ''}`}
             </Alert>
           )}
