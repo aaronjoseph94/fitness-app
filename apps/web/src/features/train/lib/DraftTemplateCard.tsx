@@ -24,6 +24,22 @@ import { useProposalDecision } from '../../proposals'
 /** "Open the template" after Keep: a text link, 44 px tall on touch. */
 const OPEN_LINK = { display: 'inline-flex', alignItems: 'center', [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget } } as const
 
+/** Dismiss is drawn at 26 px and pulled into the 20 px title line, so it adds no height there (the text sits where a
+ * TemplateCard's does); on touch the drawn box stays 26 px and its hit area is 44 × 44 around it. */
+const DISMISS_SIZE = 26
+const DISMISS = {
+  ...outlinedIconButton,
+  my: '-3px',
+  mr: '-2px',
+  flex: 'none',
+  color: tokens.ink.label,
+  [COARSE_POINTER_QUERY]: {
+    minWidth: 0,
+    minHeight: 0,
+    '&::after': { content: '""', position: 'absolute', inset: (DISMISS_SIZE - tokens.tapTarget) / 2 },
+  },
+} as const
+
 export interface DraftTemplateCardProps {
   draft: PendingWorkout
 }
@@ -53,7 +69,7 @@ export function DraftTemplateCard({ draft }: DraftTemplateCardProps) {
         <MuscleMap levels={muscleLevels(scores)} size={92} title={`Muscles in ${name}`} />
       </Box>
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
           <Box
             component="h3"
             sx={{
@@ -69,13 +85,14 @@ export function DraftTemplateCard({ draft }: DraftTemplateCardProps) {
           {d.status === 'pending' && (
             // Dismiss sits where TemplateCard has its chip, so Keep and Preview fit one row at the grid's 300 px.
             <IconButton
+              size="tiny"
               onClick={d.onReject}
               disabled={d.busy || !d.onReject}
               aria-label={`Dismiss ${name}`}
               data-testid="draft-dismiss"
-              sx={{ ...outlinedIconButton, width: 32, height: 32, mt: '-4px', mr: '-4px', flex: 'none', color: tokens.ink.label }}
+              sx={DISMISS}
             >
-              <CloseRounded sx={{ fontSize: 16 }} />
+              <CloseRounded sx={{ fontSize: 14 }} />
             </IconButton>
           )}
         </Box>
