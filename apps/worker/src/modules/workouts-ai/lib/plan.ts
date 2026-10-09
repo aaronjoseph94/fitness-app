@@ -122,13 +122,13 @@ export const SYSTEM_PROMPT = [
   'Reply with JSON only.',
 ].join('\n')
 
-/** The equipment his gym has, as the prompt shows it: the machines grouped by area, the bars and plates, and what is not there. */
+/** The equipment his gym has, as the prompt shows it: the machines grouped by area, the bars and plates, and the rows not to use. */
 export interface GymFloor {
   areas: readonly { area: string; machines: readonly string[] }[]
   /** Library equipment values and anything else without an area (barbell, dumbbell, cable, …). */
   also: readonly string[]
   /** Rows with a blocking status: "t-bar row: don't have (No T-bar row at your gym)". */
-  missing: readonly string[]
+  blocked: readonly string[]
 }
 
 const STATUS_WORD: Record<Exclude<EquipmentItem['status'], 'have'>, string> = {
@@ -139,16 +139,17 @@ const STATUS_WORD: Record<Exclude<EquipmentItem['status'], 'have'>, string> = {
 
 /**
  * Aaron's equipment profile as the floor of the prompt: `have` machines under their area (in EQUIPMENT_AREAS order,
- * then A–Z within an area), everything else he has as one line, and the blocking rows as what the gym does not have.
+ * then A–Z within an area), everything else he has as one line, and the blocking rows (don't have, can't use,
+ * dislike) as what not to use.
  * The body-only rail is left out: the system prompt already says machines and free weights only.
  */
 export function gymFloor(equipment: readonly EquipmentItem[]): GymFloor {
   const grouped = new Map<string, string[]>()
   const also: string[] = []
-  const missing: string[] = []
+  const blocked: string[] = []
   const detail = (e: EquipmentItem) => (e.note ? `${e.equipment} (${e.note})` : e.equipment)
   for (const e of equipment) {
-    if (e.status !== 'have') missing.push(`${e.equipment}: ${STATUS_WORD[e.status]}${e.note ? ` (${e.note})` : ''}`)
+    if (e.status !== 'have') blocked.push(`${e.equipment}: ${STATUS_WORD[e.status]}${e.note ? ` (${e.note})` : ''}`)
     else if (e.equipment === 'body only') continue
     else if (e.area) grouped.set(e.area, [...(grouped.get(e.area) ?? []), detail(e)])
     else also.push(detail(e))
@@ -160,7 +161,7 @@ export function gymFloor(equipment: readonly EquipmentItem[]): GymFloor {
   const areas = [...grouped.entries()]
     .map(([area, machines]) => ({ area, machines: [...machines].sort((a, b) => a.localeCompare(b)) }))
     .sort((a, b) => rank(a.area) - rank(b.area) || a.area.localeCompare(b.area))
-  return { areas, also, missing }
+  return { areas, also, blocked }
 }
 
 export interface PromptInput {
@@ -214,7 +215,7 @@ export function buildPrompt(p: PromptInput): string {
     'Your gym (program only from this):',
     ...p.gym.areas.map((a) => `${a.area}: ${a.machines.join(', ')}`),
     ...(p.gym.also.length ? [`Also available: ${p.gym.also.join(', ')}`] : []),
-    ...(p.gym.missing.length ? [`Not at your gym: ${p.gym.missing.join('; ')}`] : []),
+    ...(p.gym.blocked.length ? [`Do not use (don't have, can't use or dislike): ${p.gym.blocked.join('; ')}`] : []),
     ...(p.mode === 'fill'
       ? [
           '',

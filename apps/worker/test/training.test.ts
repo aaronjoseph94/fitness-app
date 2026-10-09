@@ -167,7 +167,7 @@ describe('AI workouts', () => {
     expect(prompt).toContain('Your gym (program only from this):')
     expect(prompt).toContain('Hammer Strength: iso-lateral row (Plate-loaded.)')
     expect(prompt).toContain('Also available: barbell, machine')
-    expect(prompt).toContain("Not at your gym: smith machine: don't have (No T-bar at your gym.)")
+    expect(prompt).toContain("Do not use (don't have, can't use or dislike): smith machine: don't have (No T-bar at your gym.)")
     const ids = draft.exercises.map((e) => e.exercise_id)
     expect(ids).not.toContain(pushup.id)
     expect(draft.guard_notes).toContainEqual(expect.stringContaining('Dropped Pushups'))

@@ -1,8 +1,9 @@
 // Owns: the equipment profile screen (/train/equipment, SPEC §7) — every library equipment value and each named
 // machine with have / don't have / dislike / can't use and an optional note, saved per tap with PUT /api/equipment
 // (queued offline, shown at once), and "Add machine". The machines are his gym's floor, grouped by area (EQUIPMENT_AREAS):
-// the machines he has under their part of the gym, then "Not at your gym" — the machines his club lacks, whose absence
-// is what takes their exercises out of the allowed set. A status change reshapes that set, so the library refreshes.
+// the machines at the gym under their part of it (whatever their status: one he dislikes or can't use is still
+// there), then "Not at your gym" — the machines marked "Don't have". Any status but "Have" takes their exercises out
+// of the allowed set. A status change reshapes that set, so the library refreshes.
 // 2a: the page's h1 with the allowed count, an "Equipment" card of rows and one card per area, each row a 14/500 name
 // with a 12 px muted line (exercise count, note) and the status as a small segmented control tinted by status.
 import AddRounded from '@mui/icons-material/AddRounded'
@@ -31,7 +32,7 @@ import { tokens } from '../../../theme'
 import { equipmentLabel, isLibraryEquipment, LIBRARY_EQUIPMENT, MACHINE_SUGGESTIONS, sentence, STATUS_LABEL } from './labels'
 import { useExerciseIndex, useRefreshLibrary } from './useExercises'
 
-/** The group of machines his club lacks (after the areas he has). */
+/** The group of machines marked "Don't have" (after the areas). */
 const NOT_AT_GYM = 'Not at your gym'
 
 interface Row {
@@ -175,7 +176,7 @@ export function EquipmentPage() {
     return c
   }, [index.all])
 
-  /** Library values in the fixed order, then the machines: his areas in EQUIPMENT_AREAS order, then what the gym lacks. */
+  /** Library values in the fixed order, then the machines: the areas in EQUIPMENT_AREAS order, then what the gym lacks. */
   const rows = useMemo(() => {
     const byName = new Map<string, Row>()
     for (const name of LIBRARY_EQUIPMENT) byName.set(name, { equipment: name, status: null, note: null, area: null, pending: false })
@@ -189,9 +190,11 @@ export function EquipmentPage() {
       const sorted = [...group].sort((a, b) => a.equipment.localeCompare(b.equipment))
       if (sorted.length) groups.push({ title, rows: sorted })
     }
-    for (const area of EQUIPMENT_AREAS) add(area, machines.filter((r) => r.status === 'have' && r.area === area))
-    add('Other', machines.filter((r) => r.status === 'have' && !(EQUIPMENT_AREAS as readonly string[]).includes(r.area ?? '')))
-    add(NOT_AT_GYM, machines.filter((r) => r.status !== 'have'))
+    // Only "Don't have" means the club lacks it; a machine he dislikes or can't use stays where it stands in the gym.
+    const atGym = machines.filter((r) => r.status !== 'dont_have')
+    for (const area of EQUIPMENT_AREAS) add(area, atGym.filter((r) => r.area === area))
+    add('Other', atGym.filter((r) => !(EQUIPMENT_AREAS as readonly string[]).includes(r.area ?? '')))
+    add(NOT_AT_GYM, machines.filter((r) => r.status === 'dont_have'))
     return { library: LIBRARY_EQUIPMENT.map((n) => byName.get(n)!), groups, all }
   }, [profile.data, local])
 

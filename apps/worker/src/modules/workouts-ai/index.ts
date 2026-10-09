@@ -1,6 +1,6 @@
 // Owns: AI workouts (SPEC §7, §9) — the workout_generate and workout_fill jobs: read the planning context, ask the
 // LLM router for a session drawn only from the allowed exercise set *and* from the equipment profile (the prompt
-// carries his gym's machines, grouped by area, with what it does not have), repair and guard it deterministically,
+// carries his gym's machines, grouped by area, with what not to use: don't have, can't use, dislike), repair and guard it deterministically,
 // set default loads from the engine's progression and muscle scores from the engine, and write one pending `workout`
 // proposal (the web previews it; saving a template or starting a session with its proposal_id accepts it).
 // Interface:

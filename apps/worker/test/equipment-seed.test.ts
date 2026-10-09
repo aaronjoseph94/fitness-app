@@ -111,7 +111,7 @@ describe("Aaron's equipment profile", () => {
       'chair squat',
       'elliptical',
     ])
-    // Every absence explains itself: the reason is what the prompt's "Not at your gym" list and the library show.
+    // Every absence explains itself: the reason is what the prompt's "Do not use" list and the library show.
     for (const row of seed.equipment.filter((e) => e.status !== 'have')) expect(row.note, row.equipment).toBeTruthy()
     expect(new Set(seed.equipment.map((e) => e.equipment)).size).toBe(seed.equipment.length)
   })
@@ -174,5 +174,16 @@ describe("Aaron's equipment profile", () => {
     expect(excludedBecause(byName('Barbell Seated Calf Raise'))).toBeNull()
     // The one kickback in the library is filed as bodyweight, so the rail takes it whatever the machines offer.
     expect(excludedBecause(byName('Glute Kickback'))).toMatch(/Bodyweight exercise/)
+  })
+})
+
+describe('blocking statuses', () => {
+  // The screen keeps a disliked or can't-use machine in its area (it is still at the gym); the allowed set must still drop it.
+  it('dislike and cant_use take exercises out like dont_have', () => {
+    const row = { id: 'x', name: 'Leg Extensions', category: 'strength' as const, equipment: 'machine' }
+    const why = (status: 'dislike' | 'cant_use') =>
+      exclusionReason(row, toRules([], [{ equipment: 'leg extension', kind: 'machine', status, note: null }]))
+    expect(why('dislike')).toBe('Equipment leg extension: dislike')
+    expect(why('cant_use')).toBe("Equipment leg extension: can't use")
   })
 })
