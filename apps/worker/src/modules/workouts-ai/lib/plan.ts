@@ -1,10 +1,15 @@
-// Owns: what the AI workout jobs ask for and show the model — the day's focus (from Aaron's note when he gave one, else
-// the weekly split: default upper / lower / upper / lower over the training days), the candidate exercises (allowed
-// set only, compact), the prompt, and the LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by
-// the repair step).
-import { EQUIPMENT_AREAS, Weekday, type EquipmentItem, type Muscle, type Readiness, type TemplateExerciseInput } from '@fitness/shared/schemas'
+// Owns: what the AI workout jobs ask for and show the model — their queue priority, the day's focus (from Aaron's note
+// when he gave one, else the weekly split: default upper / lower / upper / lower over the training days), the candidate
+// exercises (allowed set only, compact), the prompt (a day's session, or a split day's reusable template), and the
+// LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by the repair step).
+import { splitSlot } from '@fitness/shared/engine'
+import { EQUIPMENT_AREAS, type EquipmentItem, type Muscle, type Readiness, type TemplateExerciseInput, type Weekday } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import type { LibraryEntry, SessionDigest, TrainingDigest } from '../../training'
+
+/** ai_jobs.priority: Aaron's requests run before background drafts (the router also lets them use the whole quota). */
+export const USER_PRIORITY = 10
+export const BACKGROUND_PRIORITY = 0
 
 export type Focus = 'upper' | 'lower' | 'full'
 
@@ -22,8 +27,8 @@ export const FOCUS_MUSCLES: Record<Focus, readonly Muscle[]> = {
 /**
  * The day's focus:
  *   fill with a partial list → upper when its primary muscles are all upper (or core), lower when all lower, else full
- *   otherwise → position i of the weekday among the training days (Mon…Sun order): i even → upper, i odd → lower;
- *               not a training day → full
+ *   otherwise → the weekday's split slot (engine splitSlot: position i among the training days in Mon…Sun order,
+ *               i even → upper, i odd → lower); not a training day → full
  */
 export function dayFocus(weekday: Weekday, training_days: readonly Weekday[], partial_primary: readonly Muscle[]): Focus {
   const own = partial_primary.filter((m) => !CORE.includes(m))
@@ -32,9 +37,7 @@ export function dayFocus(weekday: Weekday, training_days: readonly Weekday[], pa
     if (own.every((m) => LOWER.includes(m))) return 'lower'
     return 'full'
   }
-  const order = Weekday.options.filter((d) => training_days.includes(d))
-  const i = order.indexOf(weekday)
-  return i < 0 ? 'full' : i % 2 === 0 ? 'upper' : 'lower'
+  return splitSlot(weekday, training_days)?.focus ?? 'full'
 }
 
 const LOWER_WORDS = /\b(lower|legs?|glutes?|quads?|quadriceps|hamstrings?|calf|calves)\b/i
@@ -166,6 +169,12 @@ export function gymFloor(equipment: readonly EquipmentItem[]): GymFloor {
 
 export interface PromptInput {
   mode: 'generate' | 'fill'
+  /**
+   * A split day's draft (workout_template): its name and the exercise slugs the earlier days of its focus hold, so
+   * Upper B varies from Upper A. It is a reusable template, so the prompt leaves out the day (date, readiness, fast
+   * day, neighbouring sessions). null for a day's session.
+   */
+  template: { name: string; earlier: readonly { name: string; slugs: readonly string[] }[] } | null
   date: string
   weekday: Weekday
   focus: Focus
@@ -194,16 +203,32 @@ function digestLine(s: SessionDigest, slugOf: PromptInput['slugOf']): string {
   return `${s.date}: ${s.sets_done} sets, ${Math.round(s.volume_kg)} kg; ${topMuscles(s.muscle_scores) || 'muscles n/a'}${prs.length ? `; PRs ${prs.join(', ')}` : ''}`
 }
 
-/** The user message: the day, readiness, recovery, recent training, templates, the partial list and the candidates. */
-export function buildPrompt(p: PromptInput): string {
+/**
+ * The day's lines: for a day's session its date, Aaron's note, readiness, fast day and the muscles to avoid; for a split
+ * day's template its name and what the earlier days of its focus already hold.
+ */
+function dayLines(p: PromptInput): string[] {
+  const focus = p.focus === 'full' ? 'full body' : `${p.focus} body`
+  if (p.template)
+    return [
+      `Template: "${p.template.name}". Focus: ${focus}. A reusable session for this day of the weekly split, not a plan for one date.`,
+      ...p.template.earlier.map((e) => `Already in ${e.name}: ${e.slugs.join(', ')}. Vary from it: other exercises for the same muscles where the list allows.`),
+    ]
   const r = p.readiness
   const readiness = `${r.score}/100 (sleep ${r.sleep_h ?? 'n/a'} h, yesterday's steps ${r.steps_vs_median ?? 'n/a'}x median, ${r.days_since_last_session ?? 'n/a'} days since last session)`
-  const lines = [
-    `Session date: ${p.date} (${p.weekday}). Focus: ${p.focus === 'full' ? 'full body' : `${p.focus} body`}.`,
+  return [
+    `Session date: ${p.date} (${p.weekday}). Focus: ${focus}.`,
     ...(p.note ? [`Client's note: ${p.note.replace(/\s+/g, ' ').slice(0, 200)}`] : []),
     `Readiness: ${readiness}${r.reduced_volume ? ' - reduce volume' : ''}.`,
     `Fast day: ${p.fast_day ? 'yes (24 h fast) - keep it light' : 'no'}.`,
     `Avoid as primary target (trained on a neighbouring day): ${p.avoid.length ? p.avoid.join(', ') : 'none'}.`,
+  ]
+}
+
+/** The user message: the day (or template), recent training, templates, the gym, the partial list and the candidates. */
+export function buildPrompt(p: PromptInput): string {
+  const lines = [
+    ...dayLines(p),
     `Total working sets: aim ${p.sets.aim}, allowed ${p.sets.min}-${p.sets.max}.`,
     '',
     'Last 14 days (date: sets, volume; muscle scores; PRs):',

@@ -61,8 +61,10 @@ const swapped = (template: Template, input: SwapInput): TemplateExerciseInput[] 
   )
 
 /**
- * Write the swap. The new exercise already passed the exercise_swap guard (allowed set, no excluded category); the rest
- * of the template stays as it was, so the whole-workout guards are not re-run on it (they bind ai-built templates).
+ * Write the swap. The new exercise already passed the exercise_swap guard (allowed set, no excluded category), and
+ * updateTemplate re-runs the whole-workout guards on the new list (checkExercises: every exercise in the allowed set,
+ * no excluded category, 12–28 sets), so a template that no longer passes them (a machine since marked don't have)
+ * answers 422 instead of being written.
  */
 async function writeSwap(deps: Deps, template: Template, input: SwapInput): Promise<Template> {
   const updated = await updateTemplate({ ...deps, actor: 'user' }, template.id, { exercises: swapped(template, input) })
@@ -108,8 +110,9 @@ export async function acceptTemplateSwap(deps: Deps, proposal: ProposalOf<'templ
 }
 
 /**
- * Accepting a workout proposal from the plan module: the draft becomes an AI template (guarded as its author). The
- * template takes the proposal's id, so a double-tapped or replayed accept rewrites the same template, never a second.
+ * Accepting a workout proposal from the plan module: the draft becomes an AI template (guarded as its author), named
+ * after its split day when it is one ("Upper A"), else "AI · <date>". The template takes the proposal's id, so a
+ * double-tapped or replayed accept rewrites the same template, never a second.
  */
 export async function acceptWorkout(deps: Deps, proposal: ProposalOf<'workout'>): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
   const { body } = proposal
@@ -117,7 +120,7 @@ export async function acceptWorkout(deps: Deps, proposal: ProposalOf<'workout'>)
     { ...deps, actor: proposal.actor },
     {
       id: proposal.id,
-      name: `AI · ${body.date ?? 'workout'}`,
+      name: body.workout.name ?? `AI · ${body.date ?? 'workout'}`,
       origin: 'ai',
       notes: body.workout.rationale || undefined,
       exercises: body.workout.exercises,

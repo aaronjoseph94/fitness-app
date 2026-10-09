@@ -10,6 +10,9 @@
 //   fast     every tick, once per fast          a planned fast that began on its own gets its day_adjustment card
 //   backup   every tick from 01:00 until done   the monthly per-table backup to R2, one table per tick (modules/export)
 //   remind   every tick 07:00–22:00             due Web Push reminders, once per local period each (modules/reminders)
+//   drafts   every tick, last                   at most one background workout_template job for the next split day with
+//                                               no template or draft (modules/workouts-ai ensureSplitDrafts); last, so
+//                                               the nightly's own jobs are queued first and the next sweep runs it
 // A run that throws releases its claim, so the next tick retries it.
 import { addDays, eachDate, isoWeek, localTime, safetyFlags, today, weekdayOf } from '@fitness/shared/engine'
 import { and, eq, gte, lt, max } from 'drizzle-orm'
@@ -22,7 +25,7 @@ import { adjustDayForFast, fastsBegunSince } from './modules/fasting'
 import { sweep, type SweepResult } from './modules/jobs'
 import { monthlyBackupStep } from './modules/export'
 import { ensureTargetsThrough, reforecast } from './modules/plan'
-import { planNextTrainingDay } from './modules/workouts-ai'
+import { ensureSplitDrafts, planNextTrainingDay } from './modules/workouts-ai'
 import { weeklyReviewHook } from './modules/reviews'
 import { noteScanDue } from './modules/scans'
 import { dispatchReminders } from './modules/reminders'
@@ -86,6 +89,7 @@ export async function runCron(deps: Deps): Promise<CronResult> {
   await startedFasts(deps).catch((e: unknown) => log('error', 'fast start cards failed; retried next tick', { error: String(e) }))
   if (time >= MONTHLY_AFTER) await monthlyBackupStep(deps, date.slice(0, 7)).catch((e: unknown) => log('error', 'monthly backup step failed; retried next tick', { error: String(e) }))
   await dispatchReminders(deps).catch((e: unknown) => log('error', 'reminders failed; due ones retry next tick', { error: String(e) }))
+  await ensureSplitDrafts(deps).catch((e: unknown) => log('error', 'split drafts failed; retried next tick', { error: String(e) }))
   return result
 }
 
