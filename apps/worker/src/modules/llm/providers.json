@@ -3,6 +3,7 @@
   "checked": "2026-10-08",
   "background_share": 0.8,
   "retry": { "max_retries": 1, "base_ms": 400, "max_wait_ms": 3000 },
+  "paid_fallback_reserve_ms": 6000,
   "providers": {
     "anthropic": {
       "api": "anthropic",

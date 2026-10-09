@@ -406,6 +406,41 @@ describe('llm router', () => {
     })
   })
 
+  it('leaves time for a free model when a paid one hangs, and does not retry the paid one', async () => {
+    const sent: string[] = []
+    // Claude never answers: its attempt ends only when the router's per-attempt timeout aborts it.
+    const fetch = (url: string, init: RequestInit) => {
+      const host = new URL(url).host
+      sent.push(host)
+      if (host === 'zai.test') return Promise.resolve(glmReply(JSON.stringify(lunch)))
+      return new Promise<Response>((_, reject) =>
+        init.signal!.addEventListener('abort', () => reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' }))),
+      )
+    }
+    const cfg = { ...paidConfig('slowpaid'), paid_fallback_reserve_ms: 1_200 }
+    cfg.models.claude = { ...cfg.models.claude!, timeout_ms: 60_000 }
+    const llm = createLlmRouter(deps(() => new Date()), { fetch, config: cfg })
+
+    const r = await llm.complete({ ...mealCall(), deadlineMs: 3_000 }) // Claude may use 1.8 s; 1.2 s stays for GLM
+
+    expect(r).toMatchObject({ data: lunch, provider: 'zai', model: 'glm-4.7-flash' })
+    expect(sent).toEqual(['anthropic.test', 'zai.test'])
+  })
+
+  it('skips a paid model whose key was refused, without a fetch, on the next call', async () => {
+    const { fetch, sent } = fakeFetch((s) =>
+      s.host === 'anthropic.test'
+        ? Response.json({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }, { status: 401 })
+        : glmReply(JSON.stringify(lunch)),
+    )
+    const llm = createLlmRouter(deps(), { fetch, config: paidConfig('refusedkey') })
+
+    expect(await llm.complete(mealCall())).toMatchObject({ provider: 'zai' })
+    expect(await llm.complete(mealCall())).toMatchObject({ provider: 'zai' })
+
+    expect(sent.map((x) => x.host)).toEqual(['anthropic.test', 'zai.test', 'zai.test'])
+  })
+
   it('signals a requeue: DeadlineError past the deadline, BudgetError when the fetch budget is spent', async () => {
     let clock = NOW.getTime()
     const slow = fakeFetch(() => {

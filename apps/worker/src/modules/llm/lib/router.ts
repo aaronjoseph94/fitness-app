@@ -1,6 +1,7 @@
 // Owns: running one call down the provider chain — key and budget checks, RPM pacing, retries with backoff on
 // 429/5xx/timeouts (Retry-After respected), one schema repair per model, failover, the overall deadline and the
-// usage rows. Logs carry provider, model, reason and status only: never prompt, image or reply content.
+// usage rows. Paid models lead and must leave time for a free one (paid_fallback_reserve_ms; a timed-out paid model is
+// not retried), and a refused key or spent credit puts its model on a cooldown so the next calls skip it. Logs carry provider, model, reason and status only: never prompt, image or reply content.
 import * as z from 'zod'
 import type { Deps } from '../../../lib/deps'
 import { anthropicAdapter } from './anthropic'
@@ -63,6 +64,10 @@ const DEFAULT_FETCH_BUDGET = 40
 const MIN_ATTEMPT_MS = 1_000
 const DEFAULT_COOLDOWN_MS = 60_000
 const DAILY_QUOTA_COOLDOWN_MS = 60 * 60_000
+/** A key refused outright (401/402/403): skip that model for a while rather than fail on it every call. */
+const AUTH_COOLDOWN_MS = 10 * 60_000
+/** Provider codes that mean "no credit left today": treated like a spent daily quota. */
+const OUT_OF_CREDIT = new Set(['DAILY_QUOTA', 'insufficient_quota'])
 
 const adapters = { gemini: geminiAdapter, openai: openaiAdapter, anthropic: anthropicAdapter } as const
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -141,7 +146,10 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
       attempts,
     })
 
-    for (const c of candidates) {
+    for (const [i, c] of candidates.entries()) {
+      // Paid first, free when it fails: a paid model with models after it stops in time for them to try.
+      // (never less than one attempt's minimum, or the fallback would have no time at all).
+      const reserve = c.spec.paid && i < candidates.length - 1 ? Math.max(config.paid_fallback_reserve_ms, MIN_ATTEMPT_MS) : 0
       const fail = (reason: FailureReason, status?: number) =>
         failures.push({
           provider: c.providerName,
@@ -191,6 +199,10 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
         }
         paced = false
         if (remaining() < MIN_ATTEMPT_MS) throw new DeadlineError(deadlineMs)
+        if (remaining() - reserve < MIN_ATTEMPT_MS) {
+          fail('timeout') // no time for this paid model and a fallback: go straight to the fallback
+          break
+        }
 
         attempts++
         let turn: ModelTurn
@@ -198,7 +210,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
           const wire = adapter.build(c.provider, c.spec, key, { ...prepared, messages })
           turn = adapter.parse(
             c.spec,
-            await send(fetchFn, budgets, wire, Math.min(c.spec.timeout_ms, remaining()), nowMs()),
+            await send(fetchFn, budgets, wire, Math.min(c.spec.timeout_ms, remaining() - reserve), nowMs()),
           )
         } catch (e) {
           if (!(e instanceof AttemptFailure)) throw e // BudgetError and programming errors
@@ -215,7 +227,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
               code: e.code,
             }),
           )
-          if (e.reason === 'rate_limited' && e.code === 'DAILY_QUOTA') {
+          if (e.reason === 'rate_limited' && e.code !== undefined && OUT_OF_CREDIT.has(e.code)) {
             coolDown(c.quotaKey, nowMs() + DAILY_QUOTA_COOLDOWN_MS)
             if (c.quota.rpd !== null)
               await recordExhausted(
@@ -228,7 +240,13 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
             fail('quota', e.status)
             break
           }
-          if (e.retryable && retries < config.retry.max_retries) {
+          if (e.status === 401 || e.status === 402 || e.status === 403) {
+            coolDown(c.quotaKey, nowMs() + AUTH_COOLDOWN_MS)
+            fail('client', e.status)
+            break
+          }
+          // A paid model that timed out is not asked again in this call: the time goes to the free models instead.
+          if (e.retryable && retries < config.retry.max_retries && !(c.spec.paid && e.reason === 'timeout')) {
             const backoff = e.retryAfterMs ?? config.retry.base_ms * 2 ** retries * (1 + Math.random() * 0.25)
             if (backoff <= config.retry.max_wait_ms && backoff < remaining() - MIN_ATTEMPT_MS) {
               retries++

@@ -58,6 +58,11 @@ export const ProvidersConfig = z
     /** Share of a daily quota background jobs may use. */
     background_share: z.number().gt(0).max(1),
     retry: z.object({ max_retries: z.number().int().min(0).max(3), base_ms: Count, max_wait_ms: Count }),
+    /**
+     * Time a paid model must leave for the models after it: its attempt ends this long before the call's deadline, so
+     * a slow or hung paid model still hands over to a free one (paid first, free when it fails).
+     */
+    paid_fallback_reserve_ms: Count.default(6_000),
     providers: z.record(z.string(), ProviderSpec),
     quotas: z.record(z.string(), QuotaSpec),
     models: z.record(z.string(), ModelSpec),
