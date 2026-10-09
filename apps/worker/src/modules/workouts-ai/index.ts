@@ -4,7 +4,8 @@
 // and guard it deterministically, set default loads from the engine's progression and muscle scores from the engine,
 // and write one pending `workout` proposal (the web previews it; saving a template or starting a session with its
 // proposal_id accepts it). A workout_template draft is one day of the weekly split ("Upper A"): a reusable template with
-// that name and no date (lib/split.ts picks the day; plan 2026-10-09-split-drafts-and-swap).
+// that name and no date (lib/split.ts picks the day; plan 2026-10-09-split-drafts-and-swap); writing it rejects that
+// day's older pending drafts, so a split day has at most one.
 // Interface:
 //   requestWorkout(deps, body)            → JobRef     POST /api/ai/workout: enqueue (user priority) + run soon
 //   draftWorkout(deps, llm, input)        → WorkoutDraft (with muscle_scores, guard_notes, proposal_id; name for a split
@@ -18,7 +19,7 @@
 // Registers the 'workout_generate', 'workout_fill' and 'workout_template' job handlers (≤ 8 external fetches each). A
 // job no provider could answer fails at once when Aaron asked for it or no provider has a key (JobFailed); otherwise
 // the runner retries it.
-import { muscleScores, splitSlot, today, weekdayOf, weekStart } from '@fitness/shared/engine'
+import { muscleScores, splitNameKey, splitSlot, today, weekdayOf, weekStart } from '@fitness/shared/engine'
 import {
   WeekPlanContent,
   type AiWorkoutRequest,
@@ -48,7 +49,7 @@ import {
   type Focus,
 } from './lib/plan'
 import { repairDraft } from './lib/repair'
-import { earlierSameFocus, nameKey } from './lib/split'
+import { earlierSameFocus, supersedeDraftsUpdate } from './lib/split'
 
 export { RepairError } from './lib/repair'
 export { BACKGROUND_PRIORITY, USER_PRIORITY } from './lib/plan'
@@ -103,7 +104,8 @@ const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower 
  * A split draft (`input.slot`) is a reusable template, not a plan for one day: focus = the slot's, sets 12–28 (aim
  * 16–22) with none of the day's cuts (readiness, fast day, deload load, neighbouring-day avoid; recovery is checked
  * when a session starts), recent training read as of today, the prompt names the template and lists what the earlier
- * days of its focus hold (B varies from A), and the proposal has `date: null` and `workout.name` = the slot's name.
+ * days of its focus hold (B varies from A), and the proposal has `date: null` and `workout.name` = the slot's name; the
+ * same batch rejects any older pending draft of that name (lower(trim(name)) = splitNameKey(slot.name)).
  */
 export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>, input: DraftInput): Promise<WorkoutDraft> {
   const ai: Deps = { ...deps, actor: 'ai' }
@@ -185,7 +187,7 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   const total = exercises.reduce((n, e) => n + e.sets, 0)
   const size = `${exercises.length} exercises, ${total} sets`
   input.signal?.throwIfAborted()
-  await eventInsert(ai, {
+  const insert = eventInsert(ai, {
     id: proposal_id,
     kind: 'proposal',
     summary: slot
@@ -195,6 +197,9 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
     proposal_status: 'pending',
     job_id: input.job_id ?? null,
   }).statement
+  // A split draft supersedes the day's older pending drafts in the same batch: at most one pending draft per split day.
+  if (slot) await deps.db.batch([supersedeDraftsUpdate(ai, { name: slot.name, keep_id: proposal_id }), insert])
+  else await insert
   return { ...workout, muscle_scores, proposal_id }
 }
 
@@ -289,7 +294,7 @@ export async function planNextTrainingDay(deps: Deps, todayDate: string): Promis
   const weekPlan = plans.map((p) => WeekPlanContent.safeParse(p.plan)).find((p) => p.success)
   if (weekPlan?.data?.sessions[weekdayOf(date)]) return skip('the active week plan has a session')
   const slot = s ? splitSlot(weekdayOf(date), s.training_days) : null
-  if (slot && templates.some((t) => nameKey(t.name) === nameKey(slot.name))) return skip("today's split template is ready")
+  if (slot && templates.some((t) => splitNameKey(t.name) === splitNameKey(slot.name))) return skip("today's split template is ready")
   if (proposals.length) return skip('a workout proposal is already pending')
   if (jobs.length) return skip('a workout job is already queued')
   const job = await enqueue(deps, { type: 'workout_generate', payload: { date, focus: null }, priority: BACKGROUND_PRIORITY })

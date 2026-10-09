@@ -2,7 +2,7 @@
 // Fixture rows are copied field for field from the pinned free-exercise-db (packages/exercises/data/free-exercise-db.json;
 // id = its source id). The shared package cannot import @fitness/exercises (that package depends on this one).
 import { describe, expect, test } from 'vitest'
-import { swapCandidates, swapScore, type SwapInfo } from '../index'
+import { sameLiftKind, swapCandidates, swapScore, type SwapInfo } from '../index'
 
 const row = (
   id: string,
@@ -59,5 +59,11 @@ describe('swap candidates', () => {
     const custom: SwapInfo = { id: 'u1', name: 'Pendulum Squat (club)', category: null, equipment: null, mechanic: null, primary_muscles: ['quadriceps'], secondary_muscles: [] }
     // 10×1 + 0 + 0 + 0 = 10: after Leg Extensions (13).
     expect(names(swapCandidates(legPress, [...library, custom]))).toEqual(['Hack Squat', 'Barbell Squat', 'Leg Extensions', 'Pendulum Squat (club)'])
+  })
+
+  test('same kind of lift: Box Squat (powerlifting) with Leg Press (strength) yes; Bicycling, Stationary (cardio) no', () => {
+    expect(sameLiftKind(boxSquat, legPress)).toBe(true)
+    expect(sameLiftKind(bike, legPress)).toBe(false)
+    expect(sameLiftKind(hangClean, hangClean)).toBe(true)
   })
 })

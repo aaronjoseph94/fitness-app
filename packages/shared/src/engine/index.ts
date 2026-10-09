@@ -64,9 +64,8 @@ export { muscleScores, muscleLevels, e1rm, sessionSummary } from './lib/muscles'
 export type { MuscleValues, MuscleLevel, SessionSetLike, PrRecord, SessionSummaryInput, SessionTotals } from './lib/muscles'
 
 // Training: the weekly upper / lower split, and swap candidates (same primary muscle, same kind of lift)
-export { splitSlots, splitSlot } from './lib/split'
-export type { SplitSlotLike } from './lib/split'
-export { swapCandidates, swapScore } from './lib/swap'
+export { splitSlots, splitSlot, splitNameKey } from './lib/split'
+export { swapCandidates, swapScore, sameLiftKind } from './lib/swap'
 export type { SwapInfo } from './lib/swap'
 
 // Guards (SPEC §9: packages/shared/engine/guards.ts)

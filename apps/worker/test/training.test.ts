@@ -1,13 +1,14 @@
 // Owns: tests at the training and workouts-ai seams — the allowed exercise set (body-only rail, exclusions, equipment
-// status), finishing a session (volume and an Epley PR), an AI draft repaired by the guards (fake LLM router), and
-// the nightly next-training-day hook. Rails from SPEC §2/§6; split Mon–Thu (CLAUDE.md decided defaults).
+// status), finishing a session (volume and an Epley PR), a template swap kept to the same kind of lift, an AI draft
+// repaired by the guards (fake LLM router), and the nightly next-training-day hook. Rails from SPEC §2/§6; split Mon–Thu
+// (CLAUDE.md decided defaults).
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { ai_events, createDb, equipment_profile, exercise_exclusions, exercises, plan_versions, settings, type NewRow } from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { deleteExclusion, finishSession, listExercises, logSet, startSession } from '../src/modules/training'
+import { createTemplate, deleteExclusion, finishSession, listExercises, logSet, startSession, swapTemplateExercise } from '../src/modules/training'
 import { draftWorkout, planNextTrainingDay } from '../src/modules/workouts-ai'
 import type { LlmRouter } from '../src/modules/llm'
 
@@ -49,7 +50,10 @@ const pushdown = ex('triceps-pushdown', 'Triceps Pushdown', 'cable', ['triceps']
 const pushup = ex('pushups', 'Pushups', 'body only', ['chest'], ['triceps'])
 const smith = ex('smith-machine-bench-press', 'Smith Machine Bench Press', 'machine', ['chest'], ['triceps']) // filed under the generic 'machine', as in free-exercise-db
 const hidden = ex('dumbbell-flyes', 'Dumbbell Flyes', 'dumbbell', ['chest'])
-const library = [bench, pulldown, row, press, curl, pushdown, pushup, smith, hidden]
+// Both allowed (machine: have) and both quadriceps; the bike is cardio (free-exercise-db Bicycling_Stationary).
+const legPress = ex('leg-press', 'Leg Press', 'machine', ['quadriceps'], ['calves', 'glutes', 'hamstrings'])
+const bike: Ex & { id: string } = { ...ex('bicycling-stationary', 'Bicycling, Stationary', 'machine', ['quadriceps'], ['calves', 'glutes', 'hamstrings']), category: 'cardio', mechanic: null }
+const library = [bench, pulldown, row, press, curl, pushdown, pushup, smith, hidden, legPress, bike]
 
 const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
 
@@ -140,6 +144,19 @@ describe('sessions', () => {
     // Epley: 62.5 × (1 + 8/30) = 79.17 vs 60 × (1 + 8/30) = 76
     expect(summary.prs).toContainEqual(expect.objectContaining({ kind: 'best_e1rm', e1rm_kg: 79.17, previous_best_kg: 76 }))
     expect(session.prs).toHaveLength(summary.prs.length)
+  })
+})
+
+describe('template swaps', () => {
+  it('a swap keeps the kind of lift: Leg Press for Bicycling, Stationary (same primary muscle, cardio) → 422', async () => {
+    const deps = at('2026-10-05T15:00:00.000Z')
+    const set = (exercise_id: string) => ({ exercise_id, sets: 4, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null })
+    const template = await createTemplate(deps, { id: crypto.randomUUID(), name: 'Lower A', origin: 'custom', exercises: [set(legPress.id), set(bench.id), set(pulldown.id)] })
+    await expect(swapTemplateExercise(deps, { template_id: template.id, from_exercise_id: legPress.id, to_exercise_id: bike.id })).rejects.toMatchObject({
+      status: 422,
+      code: 'different_kind_of_lift',
+      message: 'Bicycling, Stationary is not the same kind of lift as Leg Press',
+    })
   })
 })
 

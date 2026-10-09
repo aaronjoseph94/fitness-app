@@ -1,10 +1,11 @@
 // Owns: swapping one exercise of a template for another (SPEC §9 safe list: exercise swaps within the same primary
-// muscle, allowed exercise set only) — the checks, the guarded apply-or-propose through the plan module, and the
-// write: the new exercise takes the old one's place, sets, rep range and rest (target load cleared: another lift).
+// muscle and, by the engine rule the swap picker uses, the same kind of lift; allowed exercise set only) — the checks,
+// the guarded apply-or-propose through the plan module, and the write: the new exercise takes the old one's place,
+// sets, rep range and rest (target load cleared: another lift).
 // Also what accepting the AI proposals training owns does: a workout becomes a template; a template swap applies.
 // After a swap is written, the swap listeners run (week-plans registers one: planned sessions copied from the template
 // follow it), so training never imports week-plans.
-import { applyGuards, type ExerciseSwapChange } from '@fitness/shared/engine'
+import { applyGuards, sameLiftKind, type ExerciseSwapChange } from '@fitness/shared/engine'
 import type { ProposalApplied, ProposalBody, Template, TemplateExerciseInput } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
@@ -41,7 +42,11 @@ export async function templateSwapped(deps: Deps, swap: SwapInput): Promise<void
   }
 }
 
-/** The template and both exercises, after the checks no guard makes: in the template, in the library, same primary muscle. */
+/**
+ * The template and both exercises, after the checks no guard makes: in the template, in the library, same primary
+ * muscle, and the same kind of lift (engine sameLiftKind: strength / powerlifting / no category together, any other
+ * category only with itself), so no path swaps Leg Press for a bike the picker would never offer.
+ */
 function checkSwap(template: Template, library: Library, input: SwapInput): { from: LibraryEntry; to: LibraryEntry } {
   const from = library.byId.get(input.from_exercise_id)
   const to = library.byId.get(input.to_exercise_id)
@@ -52,6 +57,7 @@ function checkSwap(template: Template, library: Library, input: SwapInput): { fr
     throw new HttpError(422, 'already_in_template', `${to.name} is already in the template "${template.name}"`)
   if (!from.primary_muscles.some((m) => to.primary_muscles.includes(m)))
     throw new HttpError(422, 'different_primary_muscle', `${to.name} does not share a primary muscle with ${from.name}; a swap stays within the same muscle`)
+  if (!sameLiftKind(from, to)) throw new HttpError(422, 'different_kind_of_lift', `${to.name} is not the same kind of lift as ${from.name}`)
   return { from, to }
 }
 
@@ -73,8 +79,9 @@ async function writeSwap(deps: Deps, template: Template, input: SwapInput): Prom
 }
 
 /**
- * swap_template_exercise: checked (in the template, same primary muscle), then guarded as deps.actor — applied now
- * (Aaron, Claude; Ask AI only with auto_apply_safe on) or stored as a pending 'template_swap' proposal.
+ * swap_template_exercise: checked (in the template, same primary muscle, same kind of lift), then guarded as
+ * deps.actor — applied now (Aaron, Claude; Ask AI only with auto_apply_safe on) or stored as a pending 'template_swap'
+ * proposal.
  */
 export async function swapTemplateExercise(deps: Deps, input: SwapInput): Promise<SafeChangeResult<Template>> {
   const [template, library] = await Promise.all([getTemplate(deps, input.template_id), loadLibrary(deps)])

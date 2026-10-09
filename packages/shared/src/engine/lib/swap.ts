@@ -24,6 +24,15 @@ function liftKind(category: string | null): string {
   return category === null || category === 'strength' || category === 'powerlifting' ? 'lifting' : category
 }
 
+/**
+ * sameLiftKind(a, b) = liftKind(a.category) = liftKind(b.category): strength, powerlifting and no category swap with
+ * each other; any other category ("cardio", "olympic weightlifting", …) only with itself. The swap picker's filter and
+ * the Worker's swap check share it.
+ */
+export function sameLiftKind(a: Pick<SwapInfo, 'category'>, b: Pick<SwapInfo, 'category'>): boolean {
+  return liftKind(a.category) === liftKind(b.category)
+}
+
 const shared = (a: readonly Muscle[], b: readonly Muscle[]) => a.filter((m) => b.includes(m)).length
 const same = (a: string | null, b: string | null) => a !== null && b !== null && a === b
 
@@ -45,11 +54,10 @@ export function swapScore(target: SwapInfo, candidate: SwapInfo): number {
 /**
  * Swap candidates for `target`: every e in `library` with
  *   e.id ≠ target.id, e.id ∉ exclude, e.allowed ≠ false,
- *   |primary(e) ∩ primary(target)| ≥ 1, and liftKind(e.category) = liftKind(target.category)
+ *   |primary(e) ∩ primary(target)| ≥ 1, and sameLiftKind(e, target)
  * sorted by swapScore desc, then name asc.
  */
 export function swapCandidates<T extends SwapInfo>(target: SwapInfo, library: readonly T[], exclude?: ReadonlySet<string>): T[] {
-  const kind = liftKind(target.category)
   return library
     .filter(
       (e) =>
@@ -57,7 +65,7 @@ export function swapCandidates<T extends SwapInfo>(target: SwapInfo, library: re
         !exclude?.has(e.id) &&
         e.allowed !== false &&
         shared(e.primary_muscles, target.primary_muscles) > 0 &&
-        liftKind(e.category) === kind,
+        sameLiftKind(e, target),
     )
     .map((e) => ({ e, score: swapScore(target, e) }))
     .sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name))

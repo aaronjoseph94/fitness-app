@@ -20,7 +20,7 @@
 //   progressionFor(deps, input)          → the engine's suggestion per planned exercise (default loads)
 //   guardContext(deps, library, actor?)  → GuardContext for workout checks (engine applyGuards)
 //   swapTemplateExercise(deps, { template_id, from_exercise_id, to_exercise_id }) → SafeChangeResult<Template>
-//        safe list: same primary muscle, allowed set; applied now or proposed (plan.applySafeChange decides)
+//        safe list: same primary muscle and kind of lift, allowed set; applied now or proposed (plan.applySafeChange decides)
 //   onTemplateSwap(listener) / templateSwapped(deps, swap)  listeners run after any swap is written (week-plans
 //        registers one, so planned sessions copied from the template follow the swap)
 // Template/session creation with `proposal_id` accepts that pending AI workout proposal in the same batch.

@@ -1,10 +1,11 @@
 // Owns: the drafts of the weekly split (plan 2026-10-09-split-drafts-and-swap, decisions 3 and 5–9) — which split day
 // the cron drafts next as a workout_template job, and what the earlier days of a draft's focus already hold, so Upper B
-// varies from Upper A. A split day, a template and a draft are matched by name, trimmed and case-insensitive
-// ("Upper A" = " upper a "), so deleting or renaming a template brings a fresh draft for that day.
-import { splitSlots } from '@fitness/shared/engine'
+// varies from Upper A, and the statement that supersedes a day's older pending drafts when a new one is written (at
+// most one pending draft per split day). A split day, a template and a draft are matched by the engine's splitNameKey
+// (trimmed, case-insensitive: "Upper A" = " upper a "), so deleting or renaming a template brings a fresh draft.
+import { splitNameKey, splitSlots } from '@fitness/shared/engine'
 import { ProposalBody, type SplitSlot, type Template, type Weekday } from '@fitness/shared/schemas'
-import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, ne, or, sql } from 'drizzle-orm'
 import { ai_events, ai_jobs, settings, workout_templates } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { enqueue } from '../../jobs'
@@ -15,11 +16,12 @@ const HOUR_MS = 3_600_000
 const FAILED_WAIT_HOURS = 24
 /** A dismissed (rejected) draft keeps its split day from being drafted again for this long (decision 7). */
 const DISMISSED_DAYS = 28
-/** Drafts are read over this window (the ai_events created_at index); an older draft no longer counts. */
-const DRAFT_WINDOW_DAYS = 90
-
-/** The key a split day, a template and a draft are matched by. */
-export const nameKey = (name: string) => name.trim().toLowerCase()
+/**
+ * Drafts are read over this window (the ai_events created_at index): the dismissal window, so no more is read than a
+ * dismissal needs. An older draft no longer counts, so a draft left pending this long is drafted afresh (and the new
+ * one supersedes it: supersedeDraftsUpdate).
+ */
+const DRAFT_WINDOW_DAYS = DISMISSED_DAYS
 
 const hoursAgo = (deps: Deps, hours: number) => new Date(deps.now().getTime() - hours * HOUR_MS).toISOString()
 
@@ -31,6 +33,28 @@ const splitDraftRows = (deps: Deps) =>
     sql`json_extract(${ai_events.body}, '$.kind') = 'workout'`,
     sql`json_extract(${ai_events.body}, '$.workout.name') IS NOT NULL`,
   )
+
+/**
+ * Reject every other pending workout proposal for the split day `name` (json_extract $.workout.name, matched by
+ * lower(trim(…)) = splitNameKey(name)), for the db.batch that writes the new draft `keep_id`: at most one pending draft
+ * per split day. Every age, not only the draft window: an ignored draft is what this replaces. Decided as
+ * events.proposalDecisionUpdate decides (updated_at = read_at = now).
+ */
+export function supersedeDraftsUpdate(deps: Deps, input: { name: string; keep_id: string }) {
+  const now = deps.now().toISOString()
+  return deps.db
+    .update(ai_events)
+    .set({ proposal_status: 'rejected', read_at: now, updated_at: now })
+    .where(
+      and(
+        eq(ai_events.kind, 'proposal'),
+        eq(ai_events.proposal_status, 'pending'),
+        ne(ai_events.id, input.keep_id),
+        sql`json_extract(${ai_events.body}, '$.kind') = 'workout'`,
+        sql`lower(trim(json_extract(${ai_events.body}, '$.workout.name'))) = ${splitNameKey(input.name)}`,
+      ),
+    )
+}
 
 export interface SplitDraftResult {
   /** The split day queued ("Upper A"); null when nothing was queued. */
@@ -73,8 +97,8 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
   if (!slots.length) return stop('no training days are set')
   if (writing.length) return stop('a split draft is being written')
   if (failed.length) return stop('waiting after a failed draft')
-  const templated = new Set(templates.map((t) => nameKey(t.name)))
-  const open = slots.filter((slot) => !templated.has(nameKey(slot.name)))
+  const templated = new Set(templates.map((t) => splitNameKey(t.name)))
+  const open = slots.filter((slot) => !templated.has(splitNameKey(slot.name)))
   if (!open.length) return stop('every split day has a template')
 
   const drafts = await db
@@ -90,8 +114,8 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
         ),
       ),
     )
-  const drafted = new Set(drafts.flatMap((d) => (typeof d.name === 'string' ? [nameKey(d.name)] : [])))
-  const next = open.find((slot) => !drafted.has(nameKey(slot.name)))
+  const drafted = new Set(drafts.flatMap((d) => (typeof d.name === 'string' ? [splitNameKey(d.name)] : [])))
+  const next = open.find((slot) => !drafted.has(splitNameKey(slot.name)))
   if (!next) return stop('every split day has a template or a draft')
   const job = await enqueue(deps, { type: 'workout_template', payload: { slot: next }, priority: BACKGROUND_PRIORITY })
   return { slot: next.name, job_id: job.id, reason: 'queued' }
@@ -112,11 +136,11 @@ export async function earlierSameFocus(
   },
 ): Promise<{ name: string; slugs: string[] }[]> {
   const slots = splitSlots(input.training_days)
-  const at = slots.findIndex((s) => nameKey(s.name) === nameKey(input.slot.name))
+  const at = slots.findIndex((s) => splitNameKey(s.name) === splitNameKey(input.slot.name))
   const earlier = slots.slice(0, Math.max(at, 0)).filter((s) => s.focus === input.slot.focus)
   if (!earlier.length) return []
-  const held = new Map<string, string[]>(input.templates.map((t) => [nameKey(t.name), t.exercises.map((e) => e.exercise_id)]))
-  if (earlier.some((s) => !held.has(nameKey(s.name)))) {
+  const held = new Map<string, string[]>(input.templates.map((t) => [splitNameKey(t.name), t.exercises.map((e) => e.exercise_id)]))
+  if (earlier.some((s) => !held.has(splitNameKey(s.name)))) {
     const rows = await deps.db
       .select({ body: ai_events.body })
       .from(ai_events)
@@ -125,12 +149,12 @@ export async function earlierSameFocus(
     for (const row of rows) {
       const body = ProposalBody.safeParse(row.body)
       if (!body.success || body.data.kind !== 'workout' || !body.data.workout.name) continue
-      const key = nameKey(body.data.workout.name)
+      const key = splitNameKey(body.data.workout.name)
       if (!held.has(key)) held.set(key, body.data.workout.exercises.map((e) => e.exercise_id))
     }
   }
   return earlier.flatMap((s) => {
-    const slugs = (held.get(nameKey(s.name)) ?? []).flatMap((id) => input.slugOf(id) ?? [])
+    const slugs = (held.get(splitNameKey(s.name)) ?? []).flatMap((id) => input.slugOf(id) ?? [])
     return slugs.length ? [{ name: s.name, slugs }] : []
   })
 }

@@ -4,7 +4,7 @@
 // session in progress on this phone, today's split template (the template named for today's day of the split, when
 // the week plan leaves a training day open) and the split's AI drafts still waiting for Keep.
 import { endpoints } from '@fitness/shared/api'
-import { splitSlot, splitSlots, weekdayOf } from '@fitness/shared/engine'
+import { splitNameKey, splitSlot, splitSlots, weekdayOf } from '@fitness/shared/engine'
 import type { Readiness, SleepLog, Template } from '@fitness/shared/schemas'
 import { useMemo } from 'react'
 import { useApiQuery } from '../../../api'
@@ -23,9 +23,6 @@ function sleepMinutes(sleep: Pick<SleepLog, 'asleep_min' | 'in_bed_at' | 'woke_a
     ? Math.max(0, (Date.parse(sleep.woke_at) - Date.parse(sleep.in_bed_at)) / 60_000)
     : null
 }
-
-/** A template's or draft's name as the split matches it ("Upper A"): trimmed, case-insensitive. */
-const nameKey = (name: string) => name.trim().toLowerCase()
 
 export function useTrainData(date: string) {
   const day = useApiQuery(endpoints.day.get, { params: { date } })
@@ -74,7 +71,7 @@ export function useTrainData(date: string) {
     const view = day.data
     if (!view || !trainingDays || view.planned_session || view.targets?.training_planned === false) return null
     const slot = splitSlot(weekdayOf(date), trainingDays)
-    return slot ? (templates.data?.find((t) => nameKey(t.name) === nameKey(slot.name)) ?? null) : null
+    return slot ? (templates.data?.find((t) => splitNameKey(t.name) === splitNameKey(slot.name)) ?? null) : null
   }, [day.data, trainingDays, templates.data, date])
 
   /**
@@ -83,16 +80,16 @@ export function useTrainData(date: string) {
    */
   const drafts: PendingWorkout[] = useMemo(() => {
     if (!templates.data) return []
-    const taken = new Set(templates.data.map((t) => nameKey(t.name)))
+    const taken = new Set(templates.data.map((t) => splitNameKey(t.name)))
     const newest = pending.filter((w) => {
-      const key = w.draft.name ? nameKey(w.draft.name) : ''
+      const key = w.draft.name ? splitNameKey(w.draft.name) : ''
       if (!key || taken.has(key)) return false
       taken.add(key)
       return true
     })
-    const order = splitSlots(trainingDays ?? []).map((s) => nameKey(s.name))
+    const order = splitSlots(trainingDays ?? []).map((s) => splitNameKey(s.name))
     const rank = (w: PendingWorkout) => {
-      const i = order.indexOf(nameKey(w.draft.name ?? ''))
+      const i = order.indexOf(splitNameKey(w.draft.name ?? ''))
       return i < 0 ? order.length : i
     }
     return newest.sort((a, b) => rank(a) - rank(b))

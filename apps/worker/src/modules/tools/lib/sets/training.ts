@@ -168,16 +168,17 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     title: 'Swap an exercise in a template',
     area: 'training',
     description:
-      'Replace one exercise of a saved template with another that shares a primary muscle (e.g. a barbell press for a ' +
-      'dumbbell press when the bench is taken), keeping its place, sets, rep range and rest; the target load is cleared ' +
-      'so progression picks it. The new exercise must be in the allowed exercise set (list_exercises with the muscle). ' +
+      'Replace one exercise of a saved template with another of the same primary muscle and the same kind of lift ' +
+      '(e.g. a barbell press for a dumbbell press when the bench is taken), keeping its place, sets, rep range and ' +
+      'rest; the target load is cleared so progression picks it. The new exercise must be in the allowed exercise set ' +
+      '(list_exercises with the muscle). ' +
       'A safe-list change: from Claude it applies at once once agreed in chat; from the in-app assistant it applies at ' +
       'once only when auto-apply of safe changes is on in Settings, otherwise it waits as a proposal for a tap. ' +
       '`status` says which (applied, proposed or rejected with the rule).',
     input: z.object({
       template_id: Id.describe('The template id (a get_week_plan session\'s template_id, or get_review_bundle templates)'),
       from_exercise_id: Id.describe('The exercise in the template to replace'),
-      to_exercise_id: Id.describe('The allowed exercise to put in its place (same primary muscle)'),
+      to_exercise_id: Id.describe('The allowed exercise to put in its place (same primary muscle, same kind of lift)'),
     }),
     output: safeChangeOutput(Template),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
