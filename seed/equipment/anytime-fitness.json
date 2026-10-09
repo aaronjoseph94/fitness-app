@@ -217,7 +217,8 @@
       { "pattern": "neck resistance|head harness", "reason": "No head harness for neck work.", "except_equipment": [] },
       { "pattern": "inverted row|with straps", "reason": "No suspension trainer or straps at your gym.", "except_equipment": [] },
       { "pattern": "high box squat", "reason": "No plyo box at your gym.", "except_equipment": [] },
-      { "pattern": "sledgehammer", "reason": "No sledgehammer at your gym.", "except_equipment": [] }
+      { "pattern": "sledgehammer", "reason": "No sledgehammer at your gym.", "except_equipment": [] },
+      { "pattern": "^kettlebell (halo|overhead triceps extension)", "reason": "No pictures of it in the exercise library (Aaron, 2026-10-09).", "except_equipment": [] }
     ],
     "categories": [
       {

@@ -118,8 +118,8 @@ describe("Aaron's equipment profile", () => {
 
   it('allows exactly the exercises his floor can perform', () => {
     expect(library).toHaveLength(876)
-    expect(allowed).toHaveLength(466)
-    expect(allowed.filter((e) => e.category === 'strength' || e.category === 'powerlifting')).toHaveLength(421)
+    expect(allowed).toHaveLength(463) // 466, less the three kettlebell moves with no pictures (2026-10-09)
+    expect(allowed.filter((e) => e.category === 'strength' || e.category === 'powerlifting')).toHaveLength(418) // 421 less the same three
 
     // Machines he has: the Hammer Strength line files under the generic 'machine' in free-exercise-db, so the named
     // machines above are the only thing standing between these and the allowed set.
