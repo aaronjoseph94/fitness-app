@@ -36,7 +36,7 @@ export function StatusBanners() {
             </Button>
           }
         >
-          Your sign-in expired. Anything you log stays on this phone until you sign in.
+          Your sign-in expired. Anything you log stays on this device until you sign in.
         </Alert>
       )}
       {rejected.map((write) => (

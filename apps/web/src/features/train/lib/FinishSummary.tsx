@@ -234,7 +234,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         open={saved !== null}
         autoHideDuration={6000}
         onClose={() => setSaved(null)}
-        message={saved?.queued ? 'Template saved on this phone; it syncs when online' : 'Saved as a template'}
+        message={saved?.queued ? 'Template saved on this device; it syncs when online' : 'Saved as a template'}
         action={
           saved ? (
             <Button color="inherit" onClick={() => void navigate(`/train/builder/${saved.templateId}`)}>

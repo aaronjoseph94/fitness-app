@@ -15,7 +15,7 @@ export function RouteError() {
   const offline = staleChunk && typeof navigator !== 'undefined' && !navigator.onLine
   const title = offline ? "You're offline" : staleChunk ? 'A new version is ready' : 'Something went wrong'
   const detail = offline
-    ? 'This screen has not been saved on the phone yet. Reload once you are back online.'
+    ? 'This screen has not been saved on this device yet. Reload once you are back online.'
     : staleChunk
       ? 'Reload to open it.'
       : isRouteErrorResponse(error)

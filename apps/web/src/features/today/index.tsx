@@ -202,7 +202,7 @@ export function TodayPage() {
           open
           date={date}
           onClose={() => setHealthOpen(false)}
-          onDone={(status) => setNotice(status === 'queued' ? 'Saved on this phone; it syncs when you’re back online.' : 'Saved.')}
+          onDone={(status) => setNotice(status === 'queued' ? 'Saved on this device; it syncs when you’re back online.' : 'Saved.')}
         />
       )}
       <Snackbar

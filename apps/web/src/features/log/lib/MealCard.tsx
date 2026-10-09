@@ -132,7 +132,7 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
                 <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 2 }}>The AI is working out the items.</Box>
               </>
             ) : (
-              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>Saved on this phone. It's analysed once it syncs.</Box>
+              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>Saved on this device. It's analysed once it syncs.</Box>
             )}
           </Box>
           {canAct && (

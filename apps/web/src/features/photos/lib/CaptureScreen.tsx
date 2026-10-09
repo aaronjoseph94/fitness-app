@@ -314,7 +314,7 @@ export function CaptureScreen() {
               )}
               {queued > 0 && (
                 <Alert severity="info" data-testid="capture-queued">
-                  {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this phone and will upload when you're back online.
+                  {queued === 1 ? 'One photo is' : `${queued} photos are`} saved on this device and will upload when you're back online.
                 </Alert>
               )}
             </Stack>

@@ -74,7 +74,7 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
   const save = () => {
     const done: string[] = []
     const after = (label: string) => (outcome: { status: 'saved' | 'queued' }) => {
-      done.push(outcome.status === 'queued' ? `${label} (on this phone)` : label)
+      done.push(outcome.status === 'queued' ? `${label} (on this device)` : label)
       setSaved(`Saved ${done.join(' and ')}.`)
     }
     if (stepsChanged && stepsN !== null) {

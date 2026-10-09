@@ -141,7 +141,7 @@ export function BuilderPage() {
         leaving.current = true
         void navigate(`/train/builder/${outcome.templateId}`, { replace: true })
       }
-      setNotice(outcome.queued ? 'Saved on this phone · syncs when you’re back online' : 'Template saved')
+      setNotice(outcome.queued ? 'Saved on this device · syncs when you’re back online' : 'Template saved')
       return outcome.templateId
     } catch (e) {
       setNotice(problemText(e))

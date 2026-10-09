@@ -129,7 +129,7 @@ export function MeasurementsCard({ date }: { date: string }) {
               {
                 onSuccess: (o) => {
                   setValues({})
-                  setSaved(`Saved ${entries.length} ${entries.length === 1 ? 'site' : 'sites'} for ${date}${o.status === 'queued' ? ' on this phone' : ''}.`)
+                  setSaved(`Saved ${entries.length} ${entries.length === 1 ? 'site' : 'sites'} for ${date}${o.status === 'queued' ? ' on this device' : ''}.`)
                 },
               },
             )

@@ -208,7 +208,7 @@ export function EquipmentPage() {
         onSuccess: (outcome) => {
           setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, area, pending: outcome.status === 'queued' } }))
           refresh(outcome)
-          if (outcome.status === 'queued') setNotice('Saved on this phone · syncs when you’re back online')
+          if (outcome.status === 'queued') setNotice('Saved on this device · syncs when you’re back online')
         },
         onError: (error) => {
           setLocal((l) => {
