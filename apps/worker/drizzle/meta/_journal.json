@@ -57,6 +57,13 @@
       "when": 1791333969842,
       "tag": "0007_equipment_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791518372052,
+      "tag": "0008_hide_imageless_kettlebell",
+      "breakpoints": true
     }
   ]
 }

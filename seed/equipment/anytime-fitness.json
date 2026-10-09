@@ -82,7 +82,7 @@
       "kind": "machine",
       "status": "have",
       "area": "Free weights",
-      "note": "Flat, incline and decline (not on Aaron's list; assumed with the racks)."
+      "note": "Flat, incline and decline (assumed with the racks; not on the club's list)."
     },
 
     { "equipment": "curved manual treadmill", "kind": "machine", "status": "have", "area": "Cardio", "note": "Self-powered, no motor." },
@@ -218,7 +218,7 @@
       { "pattern": "inverted row|with straps", "reason": "No suspension trainer or straps at your gym.", "except_equipment": [] },
       { "pattern": "high box squat", "reason": "No plyo box at your gym.", "except_equipment": [] },
       { "pattern": "sledgehammer", "reason": "No sledgehammer at your gym.", "except_equipment": [] },
-      { "pattern": "^kettlebell (halo|overhead triceps extension)", "reason": "No pictures of it in the exercise library (Aaron, 2026-10-09).", "except_equipment": [] }
+      { "pattern": "^kettlebell (halo|overhead triceps extension)", "reason": "No pictures of it in the exercise library.", "except_equipment": [] }
     ],
     "categories": [
       {
@@ -237,7 +237,7 @@
     "equipment": [
       {
         "equipment": "body only",
-        "reason": "Bodyweight exercise; Aaron trains with machines and free weights only (SPEC §2)."
+        "reason": "Bodyweight exercise; training is machines and free weights only (SPEC §2)."
       }
     ]
   }
