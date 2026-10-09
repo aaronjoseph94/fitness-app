@@ -18,7 +18,7 @@ import { sessionDay, type SessionLine } from './RecentSessions'
 export interface TemplateCardProps {
   template: Template
   onStart: (template: Template) => void
-  /** Today's week-plan session is this template. */
+  /** Today's planned session is this template (the week plan's, or today's split template). */
   today?: boolean
   /** Its newest finished session in the recent window, if any. */
   lastDone?: SessionLine

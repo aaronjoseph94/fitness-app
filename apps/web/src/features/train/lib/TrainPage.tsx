@@ -1,9 +1,10 @@
 // Owns: the Train tab (SPEC §7, §11; 2a "Train") — the title row (the date as the page's h1, the kind of day and
 // sessions done this week, the readiness chip and "Blank session"), the today card (the session in progress, today's
-// finished session, the planned one, or the way to generate) across the full width, then templates (2 × 2 cards with
-// mini muscle maps and Start) beside recent sessions and this week's totals (above them below lg), and a row of four
-// tool cards into the library, the equipment profile, the builder and AI workouts. On a phone everything is one column
-// in this order.
+// finished session, the planned one — the week plan's or today's split template — or the way to generate) across the
+// full width, then templates (2 × 2 cards with mini muscle maps and Start, followed in the same grid by the split's AI
+// drafts waiting for Keep) beside recent sessions and this week's totals (above them below lg), and a row of four tool
+// cards into the library, the equipment profile, the builder and AI workouts. On a phone everything is one column in
+// this order.
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import EditNoteRounded from '@mui/icons-material/EditNoteRounded'
@@ -34,6 +35,7 @@ import {
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { useExerciseIndex } from '../../library'
 import { useNow } from '../../quick-log'
+import { DraftTemplateCard } from './DraftTemplateCard'
 import { ReadinessChip } from './ReadinessChip'
 import { lastDoneByTemplate, RecentSessions, weekTotals } from './RecentSessions'
 import { useStartSession } from './session'
@@ -76,7 +78,7 @@ export function TrainPage() {
   // Edmonton's date, re-read every minute (the app stays open across midnight).
   const date = today(useNow(60_000))
   const navigate = useNavigate()
-  const { day, sessions, templates, active, activeCounts, unsynced, readiness } = useTrainData(date)
+  const { day, sessions, templates, active, activeCounts, unsynced, readiness, splitTemplate, drafts } = useTrainData(date)
   const start = useStartSession()
   const index = useExerciseIndex()
 
@@ -90,12 +92,12 @@ export function TrainPage() {
   const inProgress = Boolean(active || (day.data?.session && day.data.session.ended_at === null))
   // Not before today's session is known: an open session started on another device would hide it again.
   const showBlank = !inProgress && !day.isLoading
-  const todayTemplate = day.data?.planned_session?.template_id ?? null
+  const todayTemplate = day.data?.planned_session?.template_id ?? splitTemplate?.id ?? null
   const kind = day.data?.fast.is_fast_day
     ? 'Fast day'
     : day.data?.targets?.training_planned === false
       ? 'Rest day'
-      : day.data?.targets?.training_planned || day.data?.planned_session
+      : day.data?.targets?.training_planned || day.data?.planned_session || splitTemplate
         ? 'Training day'
         : null
   const done = sessions.data ? `${week.sessions} session${week.sessions === 1 ? '' : 's'} done this week` : null
@@ -136,6 +138,7 @@ export function TrainPage() {
             active={active}
             activeCounts={activeCounts}
             templates={templates.data ?? []}
+            splitTemplate={splitTemplate}
             lastDone={lastDone}
             onStart={start}
           />
@@ -150,6 +153,7 @@ export function TrainPage() {
               <SectionHeader
                 id="templates"
                 title="Templates"
+                subtitle={drafts.length > 0 ? 'AI drafts for your split: keep the ones you like' : undefined}
                 action={
                   <Button component={Link} to="/train/builder" size="small" startIcon={<AddRounded />} sx={headerLink}>
                     New template
@@ -167,9 +171,9 @@ export function TrainPage() {
                   error={templates.error}
                   onRetry={() => void templates.refetch()}
                 />
-              ) : templates.data?.length ? (
+              ) : (templates.data?.length ?? 0) + drafts.length > 0 ? (
                 <Box sx={templateGrid}>
-                  {templates.data.map((t) => (
+                  {templates.data?.map((t) => (
                     <TemplateCard
                       key={t.id}
                       template={t}
@@ -177,6 +181,9 @@ export function TrainPage() {
                       today={t.id === todayTemplate}
                       lastDone={lastDone.get(t.id)}
                     />
+                  ))}
+                  {drafts.map((d) => (
+                    <DraftTemplateCard key={d.id} draft={d} />
                   ))}
                 </Box>
               ) : (

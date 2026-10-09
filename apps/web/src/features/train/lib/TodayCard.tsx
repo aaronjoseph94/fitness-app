@@ -1,9 +1,10 @@
 // Owns: the Train tab's "today" card (2a: a full-width card, its muscle map in a tinted panel on the right) — the
-// session in progress (resume), today's finished session, the week plan's planned session (its exercises, start it, or
-// generate with AI instead), the AI's pending draft for today (the nightly workout_generate when no week plan covers
-// the day: preview, swap, start or save it on the AI page, which accepts it), or, with none of those, the training
-// flag's "Training day" / "Rest day" with "Generate today's workout" (the AI page runs POST /api/ai/workout
-// {mode: 'generate'}). The blank session is the page header's button.
+// session in progress (resume), today's finished session, the planned session — the week plan's, else today's split
+// template ("Planned · your split", started as that template) — with its exercises, start it, or generate with AI
+// instead, the AI's pending draft for today (the nightly workout_generate when neither covers the day: preview, swap,
+// start or save it on the AI page, which accepts it), or, with none of those, the training flag's "Training day" /
+// "Rest day" with "Generate today's workout" (the AI page runs POST /api/ai/workout {mode: 'generate'}). The blank
+// session is the page header's button.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
 import Box from '@mui/material/Box'
@@ -29,6 +30,8 @@ export interface TodayCardProps {
   active: LoggerSession | null
   activeCounts: { done: number; planned: number; volume_kg: number } | null
   templates: readonly Template[]
+  /** The template named for today's day of the split ("Upper A"), when no week-plan session covers today. */
+  splitTemplate: Template | null
   /** Each template's newest finished session (the planned one's "last done"). */
   lastDone: ReadonlyMap<string, SessionLine>
   onStart: (input: StartInput) => void
@@ -41,6 +44,53 @@ function muscleCaption(top: readonly Muscle[]): string {
     .map((m) => MUSCLE_LABELS[m].toLowerCase())
     .join(', ')
   return names.charAt(0).toUpperCase() + names.slice(1)
+}
+
+/** What the planned branch shows and starts. */
+interface PlannedToday {
+  chip: string
+  name: string
+  exercises: readonly TemplateExerciseInput[]
+  /** The template whose "last done" shows, if any. */
+  template_id: string | null
+  start: StartInput
+  testId: string
+  startTestId: string
+}
+
+/** The week plan's session for today, else today's split template (started as that template), else null. */
+function plannedToday(
+  planned: DayView['planned_session'],
+  split: Template | null,
+  templates: readonly Template[],
+): PlannedToday | null {
+  if (planned) {
+    const templateExists = planned.template_id !== null && templates.some((t) => t.id === planned.template_id)
+    return {
+      chip: 'Planned · week plan',
+      name: planned.name,
+      exercises: planned.exercises,
+      template_id: planned.template_id,
+      start: {
+        origin: 'week_plan',
+        template_id: templateExists ? planned.template_id : null,
+        name: planned.name,
+        exercises: planned.exercises,
+      },
+      testId: 'today-planned',
+      startTestId: 'start-planned',
+    }
+  }
+  if (!split) return null
+  return {
+    chip: 'Planned · your split',
+    name: split.name,
+    exercises: split.exercises,
+    template_id: split.id,
+    start: { origin: 'template', template_id: split.id, name: split.name, exercises: split.exercises },
+    testId: 'today-split',
+    startTestId: 'start-split',
+  }
 }
 
 /** The muscle map panel on the card's right (below the content on a phone). */
@@ -199,10 +249,10 @@ function ExerciseList({ exercises, name }: { exercises: readonly TemplateExercis
   )
 }
 
-export function TodayCard({ day, active, activeCounts, templates, lastDone, onStart }: TodayCardProps) {
+export function TodayCard({ day, active, activeCounts, templates, splitTemplate, lastDone, onStart }: TodayCardProps) {
   const navigate = useNavigate()
   const index = useExerciseIndex()
-  const planned = day?.planned_session ?? null
+  const planned = plannedToday(day?.planned_session ?? null, splitTemplate, templates)
   const serverSession = day?.session ?? null
   const pending = usePendingWorkouts()
   const suggested = day ? (pending.find((w) => w.date === day.date) ?? null) : null
@@ -263,11 +313,10 @@ export function TodayCard({ day, active, activeCounts, templates, lastDone, onSt
     // What Start will log: exercises outside the allowed set by now are left out (useStartSession).
     const startable = planned.exercises.filter((e) => index.byId.get(e.exercise_id)?.allowed !== false)
     const training = draftMuscleLevels(startable, index.byId)
-    const templateExists = planned.template_id !== null && templates.some((t) => t.id === planned.template_id)
     const last = planned.template_id ? lastDone.get(planned.template_id) : undefined
     return (
       <Shell
-        chip={<StatusChip tone="info" label="Planned · week plan" />}
+        chip={<StatusChip tone="info" label={planned.chip} />}
         title={planned.name}
         body={
           <>
@@ -283,20 +332,13 @@ export function TodayCard({ day, active, activeCounts, templates, lastDone, onSt
             caption={training.top.length > 0 ? muscleCaption(training.top) : undefined}
           />
         }
-        testId="today-planned"
+        testId={planned.testId}
       >
         <Button
           variant="contained"
           startIcon={<PlayArrowRounded />}
-          onClick={() =>
-            onStart({
-              origin: 'week_plan',
-              template_id: templateExists ? planned.template_id : null,
-              name: planned.name,
-              exercises: planned.exercises,
-            })
-          }
-          data-testid="start-planned"
+          onClick={() => onStart(planned.start)}
+          data-testid={planned.startTestId}
         >
           Start session
         </Button>
