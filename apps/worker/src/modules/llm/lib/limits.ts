@@ -1,7 +1,8 @@
 // Owns: per-quota limits. RPM is an in-isolate token bucket; RPD and tokens per day live in `provider_usage`
 // (one row per quota key and day, the day taken in the quota's reset timezone) and feed the daily budget guard:
 // background calls stop at `background_share` (80 %) of a daily quota, user calls at 100 %. A 429 with a long
-// Retry-After puts the quota on an in-isolate cooldown so the next call skips it without a fetch.
+// Retry-After puts the quota on an in-isolate cooldown so the next call skips it without a fetch; a key the provider
+// refused is remembered per quota, so only that same key is skipped and a new one is tried at once.
 import { and, inArray, sql } from 'drizzle-orm'
 import { provider_usage, type Db } from '../../../db'
 import type { QuotaSpec } from './config'
@@ -32,6 +33,20 @@ export function coolingDown(quotaKey: string, nowMs: number): boolean {
 
 export function coolDown(quotaKey: string, untilMs: number): void {
   cooldowns.set(quotaKey, Math.max(untilMs, cooldowns.get(quotaKey) ?? 0))
+}
+
+/** The key each quota last had refused (401/402/403), held in memory only: never logged, never stored. */
+const refusedKeys = new Map<string, { key: string; until: number }>()
+
+/** The provider refused `key` for this quota: skip the quota while that key is still the one set, until `untilMs`. */
+export function refuseKey(quotaKey: string, key: string, untilMs: number): void {
+  refusedKeys.set(quotaKey, { key, until: untilMs })
+}
+
+/** True while `key` is the key this quota had refused and the hold hasn't run out. A different key is tried at once. */
+export function keyRefused(quotaKey: string, key: string, nowMs: number): boolean {
+  const r = refusedKeys.get(quotaKey)
+  return r !== undefined && r.key === key && r.until > nowMs
 }
 
 // ── Daily usage (D1) ────────────────────────────────────────────────────────────────────────────────────────────

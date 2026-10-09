@@ -17,10 +17,17 @@ export class BudgetError extends Error {
   }
 }
 
+/**
+ * Why one model was skipped or failed. Skips: `no_key`; `quota` (daily budget spent) and `cooldown` (a 429 or spent
+ * credit in this isolate), the only reasons to wait; `client` also covers a key the provider refused (401/402, 403 on
+ * a paid model), skipped while that same key is still the one set, since waiting won't fix it; `deadline_reserved`, a
+ * paid model with no time left beside the reserve its fallback needs. Failures: everything else.
+ */
 export type FailureReason =
   | 'no_key'
   | 'quota'
   | 'cooldown'
+  | 'deadline_reserved'
   | 'rate_limited'
   | 'server'
   | 'timeout'
@@ -39,7 +46,8 @@ export interface ProviderFailure {
 
 /**
  * Every model in the chain was skipped or failed. `quotaOnly` means nothing was tried because of daily quotas or
- * cooldowns: retry after the quota resets rather than marking the job failed.
+ * cooldowns (models without a key aside): retry after the quota resets rather than marking the job failed. A refused
+ * key (`client`) or a `deadline_reserved` skip is not waiting, so either makes it false.
  */
 export class ProvidersExhaustedError extends Error {
   override readonly name = 'ProvidersExhaustedError'
@@ -56,7 +64,7 @@ export class ProvidersExhaustedError extends Error {
 /** One attempt failed. `retryAfterMs` comes from Retry-After or Gemini's RetryInfo. Internal to the module. */
 export class AttemptFailure extends Error {
   constructor(
-    readonly reason: Exclude<FailureReason, 'no_key' | 'quota' | 'cooldown'>,
+    readonly reason: Exclude<FailureReason, 'no_key' | 'quota' | 'cooldown' | 'deadline_reserved'>,
     readonly status?: number,
     readonly retryAfterMs?: number,
     /** Provider error code (e.g. RESOURCE_EXHAUSTED), safe to log. */

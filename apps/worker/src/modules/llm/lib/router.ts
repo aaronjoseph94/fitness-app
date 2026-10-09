@@ -1,9 +1,14 @@
 // Owns: running one call down the provider chain — key and budget checks, RPM pacing, retries with backoff on
 // 429/5xx/timeouts (Retry-After respected), one schema repair per model, failover, the overall deadline and the
-// usage rows. Paid models lead and must leave time for a free one (paid_fallback_reserve_ms; a timed-out paid model is
-// not retried), and a refused key or spent credit puts its model on a cooldown so the next calls skip it. Logs carry provider, model, reason and status only: never prompt, image or reply content.
+// usage rows. It is the one place text leaves for a model: the system prompt, every message's text and every tool
+// description pass redactName first (SPEC §9 privacy); images, tool-call args and JSON schemas go as they are.
+// Paid models lead and leave time for a free one (paid_fallback_reserve_ms, at most 40 % of the deadline, held back
+// only when a later model could answer; a timed-out paid model is not retried). A refused key skips its model while
+// that same key is set; spent credit or a 429 puts the model on a cooldown so the next calls skip it.
+// Logs carry provider, model, reason and status only: never prompt, image or reply content.
 import * as z from 'zod'
 import type { Deps } from '../../../lib/deps'
+import { redactName } from '../../../lib/redact'
 import { anthropicAdapter } from './anthropic'
 import {
   candidatesFor,
@@ -25,11 +30,13 @@ import { createKeyResolver } from './keys'
 import {
   coolDown,
   coolingDown,
+  keyRefused,
   loadUsage,
   overDailyBudget,
   quotaDay,
   recordExhausted,
   recordUsage,
+  refuseKey,
   takeRpmToken,
   type DayUsage,
 } from './limits'
@@ -64,13 +71,17 @@ const DEFAULT_FETCH_BUDGET = 40
 const MIN_ATTEMPT_MS = 1_000
 const DEFAULT_COOLDOWN_MS = 60_000
 const DAILY_QUOTA_COOLDOWN_MS = 60 * 60_000
-/** A key refused outright (401/402/403): skip that model for a while rather than fail on it every call. */
+/** A key refused (401/402, or 403 on a paid model): its model is skipped this long while that same key is set. */
 const AUTH_COOLDOWN_MS = 10 * 60_000
+/** The most of a call's deadline the fallback reserve may take, so a short deadline still leaves a paid model time. */
+const RESERVE_SHARE = 0.4
 /** Provider codes that mean "no credit left today": treated like a spent daily quota. */
 const OUT_OF_CREDIT = new Set(['DAILY_QUOTA', 'insufficient_quota'])
 
 const adapters = { gemini: geminiAdapter, openai: openaiAdapter, anthropic: anthropicAdapter } as const
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+/** A message as a model may read it: its text redacted; tool-call args and a provider's native replay left verbatim. */
+const redactMsg = (m: Msg): Msg => ({ ...m, content: redactName(m.content) })
 
 export function createRouter(deps: Deps, opts: RouterOptions = {}) {
   const config = opts.config ? ProvidersConfig.parse(opts.config) : defaultConfig
@@ -87,13 +98,14 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
     const deadlineMs = req.deadlineMs ?? opts.deadlineMs ?? DEFAULT_DEADLINE_MS
     const remaining = () => start + deadlineMs - nowMs()
 
+    // The privacy edge: every text a model reads is redacted here, once, before any wire request is built.
     const prepared: PreparedCall = {
-      system: req.system,
-      messages: req.messages,
+      system: redactName(req.system),
+      messages: req.messages.map(redactMsg),
       images: (req.images ?? []).map((i) => ({ mime: i.mime, base64: toBase64(i.data) })),
       tools: (req.tools ?? []).map((t) => ({
         name: t.name,
-        description: t.description,
+        description: redactName(t.description),
         parameters: t.parameters instanceof z.ZodType ? jsonSchemaOf(t.parameters) : t.parameters,
       })),
       jsonSchema: req.schema ? jsonSchemaOf(req.schema) : null,
@@ -137,6 +149,30 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
       }
     }
 
+    /** The key to try this model with now, or why it is skipped: no key, its key refused, daily budget, cooldown. */
+    async function readiness(c: Candidate): Promise<{ key: string } | { skip: FailureReason }> {
+      const key = await resolveKey(c.provider.key_env)
+      if (!key) return { skip: 'no_key' }
+      // Waiting won't fix a refused key, so it is a client failure (quotaOnly stays false), not a cooldown.
+      if (keyRefused(c.quotaKey, key, nowMs())) return { skip: 'client' }
+      const used = usage.get(`${c.quotaKey}|${days.get(c.quotaKey)}`)
+      if (overDailyBudget(c.quota, used, req.priority, config.background_share)) return { skip: 'quota' }
+      if (coolingDown(c.quotaKey, nowMs())) return { skip: 'cooldown' }
+      return { key }
+    }
+
+    /** Time a paid model leaves for the models after it: none unless one of them could be tried now. */
+    async function reserveFor(c: Candidate, i: number): Promise<number> {
+      if (!c.spec.paid) return 0
+      for (const later of candidates.slice(i + 1))
+        if ('key' in (await readiness(later)))
+          return Math.max(
+            MIN_ATTEMPT_MS,
+            Math.min(config.paid_fallback_reserve_ms, Math.floor(deadlineMs * RESERVE_SHARE)),
+          )
+      return 0
+    }
+
     const meta = (c: Candidate) => ({
       provider: c.providerName,
       model: c.spec.model,
@@ -147,9 +183,6 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
     })
 
     for (const [i, c] of candidates.entries()) {
-      // Paid first, free when it fails: a paid model with models after it stops in time for them to try.
-      // (never less than one attempt's minimum, or the fallback would have no time at all).
-      const reserve = c.spec.paid && i < candidates.length - 1 ? Math.max(config.paid_fallback_reserve_ms, MIN_ATTEMPT_MS) : 0
       const fail = (reason: FailureReason, status?: number) =>
         failures.push({
           provider: c.providerName,
@@ -158,29 +191,17 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
           ...(status !== undefined ? { status } : {}),
         })
 
-      const key = await resolveKey(c.provider.key_env)
-      if (!key) {
-        fail('no_key')
+      const ready = await readiness(c)
+      if ('skip' in ready) {
+        fail(ready.skip)
         continue
       }
-      if (
-        overDailyBudget(
-          c.quota,
-          usage.get(`${c.quotaKey}|${days.get(c.quotaKey)}`),
-          req.priority,
-          config.background_share,
-        )
-      ) {
-        fail('quota')
-        continue
-      }
-      if (coolingDown(c.quotaKey, nowMs())) {
-        fail('cooldown')
-        continue
-      }
+      const { key } = ready
+      // Paid first, free when it fails: a paid model stops in time for a later model that could answer to try.
+      const reserve = await reserveFor(c, i)
 
       const adapter = adapters[c.provider.api]
-      let messages: Msg[] = req.messages
+      let messages: Msg[] = prepared.messages
       let retries = 0
       let repaired = false
       let paced = false
@@ -189,7 +210,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
         // RPM pacing: wait briefly for a token, otherwise move on to the next model.
         const wait = takeRpmToken(c.quotaKey, c.quota.rpm, nowMs())
         if (wait > 0) {
-          if (paced || wait > config.retry.max_wait_ms || wait > remaining() - MIN_ATTEMPT_MS) {
+          if (paced || wait > config.retry.max_wait_ms || wait > remaining() - reserve - MIN_ATTEMPT_MS) {
             fail('rate_limited')
             break
           }
@@ -200,7 +221,7 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
         paced = false
         if (remaining() < MIN_ATTEMPT_MS) throw new DeadlineError(deadlineMs)
         if (remaining() - reserve < MIN_ATTEMPT_MS) {
-          fail('timeout') // no time for this paid model and a fallback: go straight to the fallback
+          fail('deadline_reserved') // no time for this paid model beside its fallback: go straight to the fallback
           break
         }
 
@@ -240,15 +261,18 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
             fail('quota', e.status)
             break
           }
-          if (e.status === 401 || e.status === 402 || e.status === 403) {
-            coolDown(c.quotaKey, nowMs() + AUTH_COOLDOWN_MS)
+          // A refused key: 401, 402, or 403 from a paid model (OpenRouter's free tier answers 403 for moderation
+          // blocks, and its quota is shared by two models). Skipped while this same key is set; a new one is tried.
+          if (e.status === 401 || e.status === 402 || (e.status === 403 && c.spec.paid)) {
+            refuseKey(c.quotaKey, key, nowMs() + AUTH_COOLDOWN_MS)
             fail('client', e.status)
             break
           }
           // A paid model that timed out is not asked again in this call: the time goes to the free models instead.
           if (e.retryable && retries < config.retry.max_retries && !(c.spec.paid && e.reason === 'timeout')) {
             const backoff = e.retryAfterMs ?? config.retry.base_ms * 2 ** retries * (1 + Math.random() * 0.25)
-            if (backoff <= config.retry.max_wait_ms && backoff < remaining() - MIN_ATTEMPT_MS) {
+            // A wait that would eat into the fallback's reserve falls through with its real reason and cooldown.
+            if (backoff <= config.retry.max_wait_ms && backoff < remaining() - reserve - MIN_ATTEMPT_MS) {
               retries++
               await sleep(backoff)
               continue
@@ -292,7 +316,11 @@ export function createRouter(deps: Deps, opts: RouterOptions = {}) {
           repaired = true
           const error =
             json === undefined ? 'The reply was not parseable JSON.' : z.prettifyError(parsed.error)
-          messages = [...messages, message, { role: 'user', content: repairInstruction(error) }]
+          messages = [
+            ...messages,
+            redactMsg(message),
+            { role: 'user', content: redactName(repairInstruction(error)) },
+          ]
           continue
         }
         fail('invalid_output')

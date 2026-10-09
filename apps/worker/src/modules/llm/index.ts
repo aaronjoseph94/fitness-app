@@ -8,7 +8,13 @@
 //   appends `result.message` and one `tool` message per call, and calls chat() again (any provider can continue).
 // - Errors: DeadlineError (overall deadline, default 25 s) and BudgetError (external fetch budget, default 40 per
 //   router) mean "requeue the job"; ProvidersExhaustedError lists why each model was skipped or failed
-//   (`quotaOnly`: retry after the quota day resets).
+//   (`quotaOnly`: every model was skipped for a daily quota or a cooldown, or had no key: retry after the reset).
+//   A key the provider refused (401/402, 403 on a paid model) is `client`, not waiting: its model is skipped only
+//   while that same key is set, so a key fixed in Settings works on the next call.
+// - Paid models leave time for a later model that could answer (paid_fallback_reserve_ms, at most 40 % of the
+//   deadline); a paid model skipped for lack of time beside it is `deadline_reserved`, also not waiting.
+// - Privacy: the router is the choke point where text leaves — the system prompt, every message's text and every
+//   tool description are redacted of the user's name before any request is built (SPEC §9).
 // - Background calls stop at 80 % of a provider's daily quota (provider_usage); user calls may use all of it.
 // - Limits, model ids and chains are data in ./providers.json. Providers without a key in env are skipped.
 // - Create one router per invocation (the fetch budget is per router unless you pass a shared `budget`).

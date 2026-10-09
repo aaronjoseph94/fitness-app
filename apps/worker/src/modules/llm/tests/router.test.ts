@@ -1,6 +1,6 @@
 // Owns: the llm module's entry-point tests — failover, schema repair, the 80 % daily guard, vision routing, the
-// tool-call loop with Gemini thought signatures and with Anthropic thinking blocks, and the requeue errors.
-// Providers are fake fetches; D1 is real.
+// tool-call loop with Gemini thought signatures and with Anthropic thinking blocks, name redaction on the wire, the
+// paid-first fallback reserve, refused keys, and the requeue errors. Providers are fake fetches; D1 is real.
 import { MealAnalysisOutput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
@@ -19,7 +19,7 @@ import {
 /** 18:00 UTC = 11:00 in Los Angeles, so Gemini's quota day (Pacific) is 2026-10-05. */
 const NOW = new Date('2026-10-05T18:00:00.000Z')
 
-function deps(now: () => Date = () => NOW): Deps {
+function deps(now: () => Date = () => NOW, keys: Partial<Deps['env']> = {}): Deps {
   return {
     db: createDb(env.DB),
     env: {
@@ -27,6 +27,7 @@ function deps(now: () => Date = () => NOW): Deps {
       GEMINI_API_KEY: 'test-gemini-key',
       ZAI_API_KEY: 'test-zai-key',
       ANTHROPIC_API_KEY: 'test-anthropic-key',
+      ...keys,
     },
     now,
     actor: 'ai',
@@ -157,6 +158,35 @@ const glmReply = (content: string) =>
     usage: { prompt_tokens: 100, completion_tokens: 30 },
   })
 const unavailable = () => Response.json({ error: { code: 503, status: 'UNAVAILABLE' } }, { status: 503 })
+const claudeReply = (text: string) =>
+  Response.json({
+    type: 'message',
+    role: 'assistant',
+    content: [{ type: 'text', text }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 30 },
+  })
+
+/**
+ * Claude answers after `ms` (never, by default) unless the router's per-attempt timeout aborts it first; GLM answers
+ * at once. Real time: the abort comes from AbortSignal.timeout.
+ */
+function slowClaude(ms = 60_000) {
+  const sent: string[] = []
+  const fetch = (url: string, init: RequestInit) => {
+    const host = new URL(url).host
+    sent.push(host)
+    if (host === 'zai.test') return Promise.resolve(glmReply(JSON.stringify(lunch)))
+    return new Promise<Response>((resolve, reject) => {
+      const t = setTimeout(() => resolve(claudeReply(JSON.stringify(lunch))), ms)
+      init.signal!.addEventListener('abort', () => {
+        clearTimeout(t)
+        reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' }))
+      })
+    })
+  }
+  return { fetch, sent }
+}
 
 const lunch = {
   items: [
@@ -406,39 +436,198 @@ describe('llm router', () => {
     })
   })
 
-  it('leaves time for a free model when a paid one hangs, and does not retry the paid one', async () => {
-    const sent: string[] = []
-    // Claude never answers: its attempt ends only when the router's per-attempt timeout aborts it.
-    const fetch = (url: string, init: RequestInit) => {
-      const host = new URL(url).host
-      sent.push(host)
-      if (host === 'zai.test') return Promise.resolve(glmReply(JSON.stringify(lunch)))
-      return new Promise<Response>((_, reject) =>
-        init.signal!.addEventListener('abort', () => reject(Object.assign(new Error('timed out'), { name: 'TimeoutError' }))),
-      )
-    }
-    const cfg = { ...paidConfig('slowpaid'), paid_fallback_reserve_ms: 1_200 }
-    cfg.models.claude = { ...cfg.models.claude!, timeout_ms: 60_000 }
-    const llm = createLlmRouter(deps(() => new Date()), { fetch, config: cfg })
+  it('redacts the name from every text a model reads: system, messages, tool results, tool descriptions', async () => {
+    const { fetch, sent } = fakeFetch(() => geminiReply([{ text: 'Rows first, then the press.' }]))
+    const llm = createLlmRouter(deps(), { fetch, config: config('redact') })
 
-    const r = await llm.complete({ ...mealCall(), deadlineMs: 3_000 }) // Claude may use 1.8 s; 1.2 s stays for GLM
+    await llm.chat({
+      job: 'ask_ai',
+      system: "You are the coach at Aaron's gym.",
+      messages: [
+        { role: 'user', content: 'Aaron wants a pull day.' },
+        {
+          role: 'assistant',
+          content: "Checking Aaron's equipment.",
+          toolCalls: [{ id: 'fc_1', name: 'get_equipment', args: { area: 'racks' } }],
+        },
+        {
+          role: 'tool',
+          toolCallId: 'fc_1',
+          name: 'get_equipment',
+          content: JSON.stringify({ note: "not on Aaron's list; assumed with the racks" }),
+        },
+      ],
+      tools: [
+        {
+          name: 'get_equipment',
+          description: "The machines at Aaron's gym",
+          parameters: z.object({ area: z.string() }),
+        },
+      ],
+      priority: 'user',
+    })
+
+    const wire = JSON.stringify(sent[0]!.body)
+    expect(wire).not.toMatch(/aaron/i)
+    expect(wire).toContain("You are the coach at the user's gym.")
+    expect(wire).toContain('the user wants a pull day.')
+    expect(sent[0]!.body.contents[2].parts[0].functionResponse.response).toEqual({
+      note: "not on the user's list; assumed with the racks",
+    })
+    expect(sent[0]!.body.tools[0].functionDeclarations[0].description).toBe("The machines at the user's gym")
+    expect(sent[0]!.body.contents[1].parts[1].functionCall.args).toEqual({ area: 'racks' })
+  })
+
+  it('leaves time for a free model when a paid one hangs, the reserve capped at 40 % of the deadline', async () => {
+    const { fetch, sent } = slowClaude()
+    const cfg = { ...paidConfig('slowpaid'), paid_fallback_reserve_ms: 6_000 }
+    cfg.models.claude = { ...cfg.models.claude!, timeout_ms: 60_000 }
+    const llm = createLlmRouter(
+      deps(() => new Date()),
+      { fetch, config: cfg },
+    )
+
+    // 6 s of reserve would leave Claude nothing; capped at 40 % of 3 s, Claude may use 1.8 s and 1.2 s stays for GLM.
+    const r = await llm.complete({ ...mealCall(), deadlineMs: 3_000 })
 
     expect(r).toMatchObject({ data: lunch, provider: 'zai', model: 'glm-4.7-flash' })
     expect(sent).toEqual(['anthropic.test', 'zai.test'])
   })
 
-  it('skips a paid model whose key was refused, without a fetch, on the next call', async () => {
+  it('does not ask a paid model that timed out again, though the time would allow it', async () => {
+    const { fetch, sent } = slowClaude()
+    const cfg = { ...paidConfig('noretry'), paid_fallback_reserve_ms: 1_200 }
+    cfg.models.claude = { ...cfg.models.claude!, timeout_ms: 600 }
+    const llm = createLlmRouter(
+      deps(() => new Date()),
+      { fetch, config: cfg },
+    )
+
+    // Claude times out at 0.6 s with 3.2 s to spare beyond the reserve: a retry would fit, and must not happen.
+    const r = await llm.complete({ ...mealCall(), deadlineMs: 5_000 })
+
+    expect(r).toMatchObject({ data: lunch, provider: 'zai' })
+    expect(sent).toEqual(['anthropic.test', 'zai.test'])
+  })
+
+  it('gives a paid model the whole deadline when no model after it could answer', async () => {
+    const { fetch, sent } = slowClaude(2_500)
+    const cfg = { ...paidConfig('paidalone'), paid_fallback_reserve_ms: 1_200 }
+    const llm = createLlmRouter(
+      deps(() => new Date(), { ZAI_API_KEY: undefined }),
+      { fetch, config: cfg },
+    )
+
+    // GLM has no key, so nothing is held back for it: Claude may answer at 2.5 s of a 3 s deadline.
+    const r = await llm.complete({ ...mealCall(), deadlineMs: 3_000 })
+
+    expect(r).toMatchObject({ data: lunch, provider: 'anthropic' })
+    expect(sent).toEqual(['anthropic.test'])
+  })
+
+  it("lets a paid 429 fall through with its cooldown rather than sleep into the fallback's time", async () => {
     const { fetch, sent } = fakeFetch((s) =>
       s.host === 'anthropic.test'
-        ? Response.json({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }, { status: 401 })
+        ? Response.json(
+            { type: 'error', error: { type: 'rate_limit_error' } },
+            { status: 429, headers: { 'retry-after': '1' } },
+          )
         : glmReply(JSON.stringify(lunch)),
+    )
+    const cfg = {
+      ...paidConfig('paid429'),
+      paid_fallback_reserve_ms: 1_200,
+      retry: { max_retries: 1, base_ms: 1, max_wait_ms: 2_000 },
+    }
+    const llm = createLlmRouter(deps(), { fetch, config: cfg })
+
+    // The clock stands still at 3 s left: a 1 s wait fits, but not beside GLM's 1.2 s and one attempt's 1 s.
+    expect(await llm.complete({ ...mealCall(), deadlineMs: 3_000 })).toMatchObject({ provider: 'zai' })
+    expect(await llm.complete({ ...mealCall(), deadlineMs: 3_000 })).toMatchObject({ provider: 'zai' })
+
+    expect(sent.map((s) => s.host)).toEqual(['anthropic.test', 'zai.test', 'zai.test'])
+  })
+
+  it('skips a paid model with no time beside its fallback as deadline_reserved, no reason to wait', async () => {
+    const { fetch, sent } = fakeFetch(() =>
+      Response.json({ error: { type: 'insufficient_quota' } }, { status: 429 }),
+    )
+    const llm = createLlmRouter(deps(), { fetch, config: paidConfig('reserved') })
+
+    // 1.5 s: the reserve (40 % = 0.6 s, raised to one attempt's 1 s) leaves Claude 0.5 s, too little to start.
+    const err = await llm.complete({ ...mealCall(), deadlineMs: 1_500 }).catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(ProvidersExhaustedError)
+    expect(err).toMatchObject({
+      quotaOnly: false,
+      failures: [
+        { provider: 'anthropic', model: 'claude-opus-5-5', reason: 'deadline_reserved' },
+        { provider: 'zai', model: 'glm-4.7-flash', reason: 'quota', status: 429 },
+      ],
+    })
+    expect(sent.map((s) => s.host)).toEqual(['zai.test'])
+  })
+
+  it('skips a paid model whose key was refused, without a fetch, until a different key is set', async () => {
+    const { fetch, sent } = fakeFetch((s) =>
+      s.host !== 'anthropic.test'
+        ? glmReply(JSON.stringify(lunch))
+        : s.headers['x-api-key'] === 'fixed-anthropic-key'
+          ? claudeReply(JSON.stringify(lunch))
+          : Response.json(
+              { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } },
+              { status: 401 },
+            ),
     )
     const llm = createLlmRouter(deps(), { fetch, config: paidConfig('refusedkey') })
 
     expect(await llm.complete(mealCall())).toMatchObject({ provider: 'zai' })
     expect(await llm.complete(mealCall())).toMatchObject({ provider: 'zai' })
+    // A new key saved in Settings: the next router resolves it and Claude is asked again at once.
+    const fixed = createLlmRouter(deps(undefined, { ANTHROPIC_API_KEY: 'fixed-anthropic-key' }), {
+      fetch,
+      config: paidConfig('refusedkey'),
+    })
+    expect(await fixed.complete(mealCall())).toMatchObject({ provider: 'anthropic' })
 
-    expect(sent.map((x) => x.host)).toEqual(['anthropic.test', 'zai.test', 'zai.test'])
+    expect(sent.map((x) => x.host)).toEqual(['anthropic.test', 'zai.test', 'zai.test', 'anthropic.test'])
+  })
+
+  it('reports a skipped refused key as client, not a reason to wait, when no other model has a key', async () => {
+    const { fetch, sent } = fakeFetch(() =>
+      Response.json({ type: 'error', error: { type: 'billing_error' } }, { status: 402 }),
+    )
+    const llm = createLlmRouter(deps(undefined, { ZAI_API_KEY: undefined }), {
+      fetch,
+      config: paidConfig('refusedwait'),
+    })
+
+    await expect(llm.complete(mealCall())).rejects.toBeInstanceOf(ProvidersExhaustedError)
+    const err = await llm.complete(mealCall()).catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(ProvidersExhaustedError)
+    expect(err).toMatchObject({
+      quotaOnly: false,
+      failures: [
+        { provider: 'anthropic', reason: 'client' },
+        { provider: 'zai', reason: 'no_key' },
+      ],
+    })
+    expect(sent.map((s) => s.host)).toEqual(['anthropic.test'])
+  })
+
+  it('keeps asking a free model that answered 403 (a moderation block there, not a refused key)', async () => {
+    const { fetch, sent } = fakeFetch((s) =>
+      s.host === 'gemini.test'
+        ? Response.json({ error: { code: 403, status: 'PERMISSION_DENIED' } }, { status: 403 })
+        : glmReply(JSON.stringify(lunch)),
+    )
+    const llm = createLlmRouter(deps(), { fetch, config: config('free403') })
+
+    expect(await llm.complete(mealCall())).toMatchObject({ provider: 'zai' })
+    expect(await llm.complete(mealCall())).toMatchObject({ provider: 'zai' })
+
+    expect(sent.map((s) => s.host)).toEqual(['gemini.test', 'zai.test', 'gemini.test', 'zai.test'])
   })
 
   it('signals a requeue: DeadlineError past the deadline, BudgetError when the fetch budget is spent', async () => {
