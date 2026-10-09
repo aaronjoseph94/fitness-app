@@ -1,6 +1,7 @@
 // Owns: what each tap in the session logger does — change the working copy first (instant, offline), then ask the
 // sync chain to mirror it: type reps / kg / RPE, copy last session's set, tick a set done (greyed hints fill empty
-// fields, the rest timer starts), add or remove sets, add or remove exercises (with their history), exercise notes.
+// fields, the rest timer starts), add or remove sets, add, swap or remove exercises (with their history), exercise
+// notes.
 import { endpoints } from '@fitness/shared/api'
 import type { ExerciseHistory } from '@fitness/shared/schemas'
 import { call } from '../../../api'
@@ -10,6 +11,7 @@ import {
   nextSetIndex,
   previousSet,
   setHint,
+  swapExercise as swapInCopy,
   type LoggerExercise,
   type LoggerSession,
   type LoggerSet,
@@ -70,6 +72,11 @@ export interface LoggerActions {
   removeLastSet: (exerciseId: string) => void
   /** Add an exercise mid-session; false when it is already in the session. */
   addExercise: (exerciseId: string) => boolean
+  /**
+   * Swap an exercise for another (open sets move, done ones stay); false when the working copy's rule refuses it
+   * (`swapExercise` in logger-model: the new one is already in the session, or nothing is left to move).
+   */
+  swapExercise: (fromId: string, toId: string) => boolean
   removeExercise: (exerciseId: string) => void
   setNote: (exerciseId: string, note: string) => void
 }
@@ -87,6 +94,14 @@ export function loggerActions(sessionId: string): LoggerActions {
     }))
     for (const id of created) syncSet(sessionId, id)
   }
+
+  /** Last session's sets and the progression default of an exercise new to the session, when the Worker answers. */
+  const loadHistory = (exerciseId: string) =>
+    call(endpoints.training.exerciseHistory, { params: { id: exerciseId } }).then(
+      (history) =>
+        update((x) => mapExercise(x, exerciseId, (e) => ({ ...e, ...fromHistory(history, sessionId) }))),
+      () => undefined,
+    )
 
   return {
     setValues(setId, values) {
@@ -170,12 +185,20 @@ export function loggerActions(sessionId: string): LoggerActions {
       const s = current()
       if (!s || s.exercises.some((e) => e.exercise_id === exerciseId)) return false
       update((x) => ({ ...x, exercises: [...x.exercises, addedExercise(exerciseId)] }))
-      // Last session's sets and the progression default, when the Worker can be reached.
-      call(endpoints.training.exerciseHistory, { params: { id: exerciseId } }).then(
-        (history) =>
-          update((x) => mapExercise(x, exerciseId, (e) => ({ ...e, ...fromHistory(history, sessionId) }))),
-        () => undefined,
-      )
+      void loadHistory(exerciseId)
+      return true
+    },
+
+    swapExercise(fromId, toId) {
+      const s = current()
+      const swapped = s && swapInCopy(s, fromId, toId)
+      if (!swapped) return false
+      update(() => swapped.session)
+      removeSets(swapped.dropped)
+      // The exercise note rides on the first set: if that set was dropped, the first done set carries the note now.
+      const kept = swapped.session.exercises.find((e) => e.exercise_id === fromId)
+      if (kept?.note.trim() && kept.sets[0]) syncSet(sessionId, kept.sets[0].id)
+      void loadHistory(toId)
       return true
     },
 

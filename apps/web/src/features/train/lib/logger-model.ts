@@ -1,6 +1,7 @@
 // Owns: the session logger's working copy (SPEC §7 session logging) as plain data and the pure functions over it —
-// seed from a plan (template, week plan, blank), build from or merge in the Worker's session, the greyed hints per
-// set (last session, progression default), what a set sends to the Worker, and the progression hint text.
+// seed from a plan (template, week plan, blank), build from or merge in the Worker's session, swap an exercise
+// mid-session for another, the greyed hints per set (last session, progression default), what a set sends to the
+// Worker, and the progression hint text.
 // The working copy is the logger's source of truth while a session runs: every tap lands here first and is mirrored to
 // the Worker set by set (see sync.ts), so the logger works offline and survives a reload mid-session.
 import type {
@@ -324,6 +325,45 @@ export function mergeServer(
       : server.ended_at
         ? { ended_at: server.ended_at, summary: null, queued: false }
         : null,
+  }
+}
+
+// ── Swap ─────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Swap an exercise mid-session (a busy machine) for another, here on the phone only (the Worker's start plan stays):
+ *   null when `toId` is already in the session, `fromId` is not, or every set of `fromId` is done (nothing to move);
+ *   otherwise the done sets of `from` stay under it (its card stays with only those; with none done it goes), and its
+ *   n open sets become n fresh placeholders for `to` — new client UUIDs, set_index 1…n, `from`'s rep range and rest,
+ *   no load and no default load (`to`'s own history fills those in) — placed right after `from`, or in its place.
+ * `dropped` is the open sets taken off `from`, for the caller to mark removed (and DELETE where already created).
+ */
+export function swapExercise(
+  session: LoggerSession,
+  fromId: string,
+  toId: string,
+): { session: LoggerSession; dropped: LoggerSet[] } | null {
+  const at = session.exercises.findIndex((e) => e.exercise_id === fromId)
+  const from = session.exercises[at]
+  if (!from || session.exercises.some((e) => e.exercise_id === toId)) return null
+  const done = from.sets.filter((s) => s.done)
+  const dropped = from.sets.filter((s) => !s.done)
+  if (dropped.length === 0) return null
+  const to = plannedExercise({
+    exercise_id: toId,
+    sets: dropped.length,
+    rep_min: from.rep_min,
+    rep_max: from.rep_max,
+    target_load_kg: null,
+    rest_sec: from.rest_sec,
+  })
+  const kept = done.length ? [{ ...from, sets: done }] : []
+  return {
+    session: {
+      ...session,
+      exercises: [...session.exercises.slice(0, at), ...kept, to, ...session.exercises.slice(at + 1)],
+    },
+    dropped,
   }
 }
 

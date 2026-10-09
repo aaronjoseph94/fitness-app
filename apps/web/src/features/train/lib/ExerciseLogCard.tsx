@@ -1,16 +1,19 @@
 // Owns: one exercise in the session logger (2a) — a header (thumbnail and "1 · name", tap for the detail sheet; a Done /
 // Current / recovery chip; muscles · equipment · sets × reps · rest · last time), then, while expanded, the set table
 // under its column strip with last session greyed, a footer (add set, copy last session's set into the next open one,
-// remove the last set, the engine's progression hint) and the exercise note; the menu (note, about, collapse, remove
-// from this session). Collapsed it shows the header only, with "0 of 3 sets" and an expand button.
+// remove the last set, the engine's progression hint) and the exercise note; the menu (note, about, collapse, swap for
+// one with the same primary muscle while a set is still open, remove from this session). Collapsed it shows the header
+// only, with "0 of 3 sets" and an expand button.
 import AddRounded from '@mui/icons-material/AddRounded'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
 import RemoveRounded from '@mui/icons-material/RemoveRounded'
+import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import IconButton from '@mui/material/IconButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
@@ -32,6 +35,8 @@ export interface ExerciseLogCardProps {
   info: ExerciseSummary | undefined
   actions: LoggerActions
   onAbout: (exerciseId: string) => void
+  /** Swap this exercise for another with the same primary muscle (offered while a set is still open). */
+  onSwap: (exerciseId: string) => void
   /** The first exercise with a set still to tick: blue border and ring, and it opens when it becomes current. */
   current: boolean
   /** Expanded on mount (the logger folds exercises still to come once a session is under way). */
@@ -72,6 +77,7 @@ function ExerciseLogCardInner({
   info,
   actions,
   onAbout,
+  onSwap,
   current,
   defaultOpen,
   recoveryConflict,
@@ -345,6 +351,19 @@ function ExerciseLogCardInner({
         >
           Hide sets
         </MenuItem>
+        {doneCount < exercise.sets.length && (
+          <MenuItem
+            onClick={() => {
+              setMenu(null)
+              onSwap(id)
+            }}
+          >
+            <ListItemIcon>
+              <SwapHorizRounded fontSize="small" />
+            </ListItemIcon>
+            Swap (same muscle)
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             actions.removeExercise(id)

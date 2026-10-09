@@ -2,10 +2,10 @@
 // chips, the session's name as the page h1, a stat strip: running clock, sets ticked, volume, readiness), the start
 // notes banner (recovery conflicts, deload week, low readiness, planned exercises left out for being outside the
 // allowed set), one card per exercise (the one in hand highlighted; once a session is under way the exercises still to
-// come open folded), add an exercise mid-session (picker), finish with a confirm, "Delete session", the rail beside the
-// list from `lg` (progress ring and per-exercise bars, last time's sets and volume, the readiness chip with its
-// details), the floating rest
-// timer, the write-problem snackbar (at the top, clear of the rest timer), and the edit mode of a finished session (its
+// come open folded), one picker to add an exercise mid-session or swap one for another with the same primary muscle,
+// finish with a confirm, "Delete session", the rail beside the list from `lg` (progress ring and per-exercise bars,
+// last time's sets and volume, the readiness chip with its details), the floating rest timer, the snackbar (a write
+// problem, or a swap refused; at the top, clear of the rest timer), and the edit mode of a finished session (its
 // duration fixed, "Save changes" finishes it again with the same end time).
 import AddRounded from '@mui/icons-material/AddRounded'
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
@@ -82,7 +82,13 @@ function foldedAtStart(session: LoggerSession): Set<string> {
 export function SessionLogger({ session }: { session: LoggerSession }) {
   const index = useExerciseIndex()
   const actions = useMemo(() => loggerActions(session.id), [session.id])
-  const [picker, setPicker] = useState(false)
+  // The picker adds exercises, or swaps `swapFrom` for one with the same primary muscle. The mode is kept while the
+  // sheet closes, so its list doesn't change under the exit animation.
+  const [picker, setPicker] = useState<{ open: boolean; swapFrom: string | null }>({ open: false, swapFrom: null })
+  const openAdd = () => setPicker({ open: true, swapFrom: null })
+  const openSwap = useCallback((exerciseId: string) => setPicker({ open: true, swapFrom: exerciseId }), [])
+  /** A plain message for the snackbar (not a write problem). */
+  const [notice, setNotice] = useState<string | null>(null)
   const [about, setAbout] = useState<string | null>(null)
   const [confirm, setConfirm] = useState(false)
   const [finishing, setFinishing] = useState(false)
@@ -210,7 +216,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               <EmptyState
                 title="No exercises yet"
                 body="Add the exercises you're doing; each starts with three sets."
-                action={{ label: 'Add exercises', onClick: () => setPicker(true) }}
+                action={{ label: 'Add exercises', onClick: openAdd }}
               />
             ) : (
               session.exercises.map((e, i) => {
@@ -223,6 +229,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                       info={info}
                       actions={actions}
                       onAbout={setAbout}
+                      onSwap={openSwap}
                       current={e.exercise_id === currentId}
                       defaultOpen={!folded.has(e.exercise_id)}
                       recoveryConflict={!!info?.primary_muscles.some((m) => conflicts.includes(m))}
@@ -237,7 +244,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                 <Button
                   variant="outlined"
                   startIcon={<AddRounded />}
-                  onClick={() => setPicker(true)}
+                  onClick={openAdd}
                   data-testid="add-exercise"
                   sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
                 >
@@ -295,12 +302,16 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
       </Box>
 
       <ExercisePicker
-        open={picker}
-        onClose={() => setPicker(false)}
-        keepOpen
+        open={picker.open}
+        onClose={() => setPicker((p) => ({ ...p, open: false }))}
+        keepOpen={picker.swapFrom === null}
         pickedIds={picked}
-        onPick={(e) => actions.addExercise(e.id)}
-        title="Add to session"
+        sameMuscleAs={picker.swapFrom ?? undefined}
+        onPick={(e) => {
+          if (picker.swapFrom === null) actions.addExercise(e.id)
+          else if (!actions.swapExercise(picker.swapFrom, e.id)) setNotice('That exercise is already in this session.')
+        }}
+        title={picker.swapFrom === null ? 'Add to session' : undefined}
       />
       <ExerciseDetailSheet exerciseId={about} open={about !== null} onClose={() => setAbout(null)} />
 
@@ -329,10 +340,13 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
       <DeleteSessionDialog open={deleting} sessionId={session.id} setsDone={counts.done} onClose={() => setDeleting(false)} />
       {/* At the top, under the app bar or the desktop header (as the quick-log notice): the rest timer holds the bottom. */}
       <Snackbar
-        open={problem !== null}
+        open={notice !== null || problem !== null}
         autoHideDuration={6000}
-        onClose={() => setProblem(null)}
-        message={problem ? `Couldn't save: ${problem}` : ''}
+        onClose={() => {
+          setNotice(null)
+          setProblem(null)
+        }}
+        message={notice ?? (problem ? `Couldn't save: ${problem}` : '')}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{
           top: {
