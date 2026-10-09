@@ -45,6 +45,9 @@
 - **Exercise**: one entry in the library (free-exercise-db plus Aaron's own), with primary and secondary **muscles** (the 17-key enum).
 - **Allowed exercise set**: exercises not excluded by equipment status (`dont_have`, `cant_use`, `dislike`) or by **exclusions** (`body only`, floor exercises, hidden exercises). The AI only ever sees this set.
 - **Template**: a reusable workout: ordered exercises with sets, rep range, target load, rest.
+- **Split slot**: one training day of the upper/lower split, named by position (Mon–Thu: Upper A, Lower A, Upper B, Lower B); engine `splitSlots`.
+- **Template draft**: an AI-written workout for a split slot, waiting as a pending `workout` proposal; Keep turns it into that slot's template, Dismiss sets it aside for 28 days.
+- **Swap**: replacing an exercise with another that shares its primary muscle and is the same kind of lift (engine `swapCandidates`). In a session, sets already done stay logged under the old exercise; the open ones move.
 - **Session**: one gym visit, started from a template, the week plan, an AI suggestion or blank; holds **sets** (reps, load, RPE, done).
 - **Muscle score**: Σ over exercises of sets × (1.0 if primary, 0.5 if secondary), per muscle; drawn on the **muscle map** in four intensity steps.
 - **Double progression**: when every working set hits the top of the rep range at a load in two consecutive sessions, suggest +2.5 kg (upper body, dumbbells) or +5 kg (lower body, machines).

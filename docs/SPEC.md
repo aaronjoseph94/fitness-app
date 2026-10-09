@@ -293,10 +293,13 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 - Output: a session in the template format (exercise IDs only, sets, rep ranges, suggested loads from history, rest) plus a two-line rationale. The user sees it as a preview with the muscle map, can swap any exercise (suggestions filtered to the same primary muscle), then starts or saves it as a template.
 - Weekly structure default: upper / lower / upper / lower across Mon–Thu, adjustable; the AI respects it unless Aaron changes it.
 
+- Split drafts (2026-10-09): the AI drafts one reusable workout per training day of the upper/lower split (Upper A, Lower A, Upper B, Lower B for Mon–Thu) as `workout_template` jobs, one per cron tick, in the background. Each waits on Train as a draft: Keep makes it that day's template, Preview opens it with swap, Dismiss sets it aside for 28 days. A training day whose split template exists gets no nightly one-day draft; Train's today card offers the template instead.
+- Swap (2026-10-09): anywhere an exercise can be swapped (builder, AI preview, a session in progress), the choices share its primary muscle and are the same kind of lift, ranked by shared muscles, mechanic and equipment; equipment chips narrow the list.
+
 **Session logging (sets and reps)**
 
 - Start from a template, an AI suggestion, the week plan's session, or blank. Each exercise shows last session's sets (reps × kg) greyed in, so logging is tap-to-copy then edit.
-- Per set: reps, load kg, optional RPE 6–10, done toggle. Add or remove sets; add an exercise mid-session; rest timer with push notification when the rest ends; notes per exercise.
+- Per set: reps, load kg, optional RPE 6–10, done toggle. Add or remove sets; add an exercise mid-session, or swap one (a busy machine) for another with the same primary muscle; rest timer with push notification when the rest ends; notes per exercise.
 - Finish: duration, total volume (sets × reps × kg), volume per muscle group, PRs detected (best load at a rep count, best estimated 1RM by Epley), the muscle map of what was trained, and a one-tap "save as template".
 
 **Muscle map**
@@ -419,7 +422,8 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 | --- | --- | --- | --- |
 | `meal_analysis` | meal logged by text/photo/voice | `{ items: [{ name, grams, confidence, candidates: [{source, source_id}] }], notes }` | `meal_items` (after food matching) |
 | `day_adjustment` | meal confirmed; fast started | `{ remaining: {kcal, protein_g, carbs_g, fat_g}, status: ok/over/protein_short, suggestions: [{ favorite_id or description, grams, why }], note }` | `ai_events` (adjustment) |
-| `workout_generate` / `workout_fill` | user asks; nightly for next training day when no week plan covers it | `{ exercises: [{ exercise_id, sets, rep_min, rep_max, load_kg, rest_sec }], rationale, muscle_scores }` | `ai_events` (proposal) → template/session on accept |
+| `workout_generate` / `workout_fill` | user asks; nightly for next training day when no week plan or split template covers it | `{ exercises: [{ exercise_id, sets, rep_min, rep_max, load_kg, rest_sec }], rationale, muscle_scores }` | `ai_events` (proposal) → template/session on accept |
+| `workout_template` | cron, one at a time, for the first split day with no template, no pending draft and no draft dismissed in the last 28 days | `WorkoutDraft` with the day's `name` | `ai_events` (proposal, no date) → template on Keep |
 | `scan_extract` | scan uploaded | the seed-record shape with `confidence` per field and `units` | `scans.extracted` (pending confirm) |
 | `scan_analysis` | scan confirmed | `{ narrative, fat_vs_lean: {fat_kg, lean_kg, water_kg}, flags: [], milestone_updates: [], proposals: [] }` | `ai_events`, `milestones` |
 | `weekly_review` | Sunday 20:00, only if no Claude review ran that week | `{ narrative, highlights: [], concerns: [], proposals: [{ field, from, to, reason }], week_plan }` | `weekly_reviews`, `ai_events`, `week_plans` (proposed, author `gemini` = an AI draft) |
