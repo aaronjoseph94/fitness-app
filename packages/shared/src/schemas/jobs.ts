@@ -8,7 +8,7 @@ import { MilestoneKind } from './body'
 import { FoodSource, Nutrients, Remaining } from './nutrition'
 import { Forecast, PlanChange } from './plan'
 import { ScanExtractOutput, ScanFlag } from './scans'
-import { TemplateExerciseInput, WorkoutDraft } from './training'
+import { SplitSlot, TemplateExerciseInput, WorkoutDraft } from './training'
 import { WeekPlanContentInput } from './week-plan'
 
 export const JobType = z.enum([
@@ -16,6 +16,7 @@ export const JobType = z.enum([
   'day_adjustment',
   'workout_generate',
   'workout_fill',
+  'workout_template',
   'scan_extract',
   'scan_analysis',
   'weekly_review',
@@ -114,6 +115,8 @@ export const JobOutputs = {
   day_adjustment: DayAdjustmentOutput,
   workout_generate: WorkoutDraft,
   workout_fill: WorkoutDraft,
+  /** A split day's draft: carries the slot's `name`; its proposal has no date. */
+  workout_template: WorkoutDraft,
   scan_extract: ScanExtractOutput,
   scan_analysis: ScanAnalysisOutput,
   weekly_review: WeeklyReviewOutput,
@@ -124,7 +127,7 @@ export type JobOutput<T extends JobType> = z.infer<(typeof JobOutputs)[T]>
 
 // ── Payloads ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Payload schema per job type (`ai_jobs.payload`): ids and dates only; the job reads the rest at run time. */
+/** Payload schema per job type (`ai_jobs.payload`): ids, dates and small inputs; the job reads the rest at run time. */
 export const JobPayloads = {
   meal_analysis: z.object({ meal_id: Id }),
   day_adjustment: z.object({
@@ -136,6 +139,8 @@ export const JobPayloads = {
   }),
   workout_generate: z.object({ date: LocalDate, focus: z.string().max(200).nullable() }),
   workout_fill: z.object({ date: LocalDate, exercises: z.array(TemplateExerciseInput).min(1) }),
+  /** One day of the split, drafted as a reusable template (no date: a template is not a plan for one day). */
+  workout_template: z.object({ slot: SplitSlot }),
   scan_extract: z.object({ scan_id: Id }),
   scan_analysis: z.object({ scan_id: Id }),
   weekly_review: z.object({ week_start: LocalDate }),
@@ -171,6 +176,7 @@ export const AiJob = z.discriminatedUnion('type', [
   jobRow('day_adjustment'),
   jobRow('workout_generate'),
   jobRow('workout_fill'),
+  jobRow('workout_template'),
   jobRow('scan_extract'),
   jobRow('scan_analysis'),
   jobRow('weekly_review'),

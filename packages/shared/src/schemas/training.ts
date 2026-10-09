@@ -1,7 +1,8 @@
 // Owns: the exercise library, equipment profile and exclusions, templates, sessions and sets, muscle scores, PRs,
-// readiness, progression suggestions, and the workout_generate / workout_fill output (WorkoutDraft).
+// readiness, progression suggestions, the days of the upper/lower split (SplitSlot), and the workout_generate /
+// workout_fill / workout_template output (WorkoutDraft).
 import * as z from 'zod'
-import { Count, Id, Instant, Kg, LocalDate, Muscle, Row } from './common'
+import { Count, Id, Instant, Kg, LocalDate, Muscle, Row, Weekday } from './common'
 import { ImageType } from './files'
 
 // ── Library ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -262,10 +263,23 @@ export const TemplatePatch = z.object({
 export type TemplatePatch = z.infer<typeof TemplatePatch>
 
 /**
- * workout_generate / workout_fill output (LLM): a session in the template format plus a two-line rationale.
- * Muscle scores are not asked of the LLM; the engine computes them.
+ * One training day of the upper/lower split (engine splitSlots): its weekday, its name ("Upper A", "Lower A", …, a
+ * letter every two days) and its focus. The workout_template job's payload; its kept draft is that day's template.
+ */
+export const SplitSlot = z.object({
+  weekday: Weekday,
+  name: z.string().min(1).max(100),
+  focus: z.enum(['upper', 'lower']),
+})
+export type SplitSlot = z.infer<typeof SplitSlot>
+
+/**
+ * workout_generate / workout_fill / workout_template output (LLM): a session in the template format plus a two-line
+ * rationale. Muscle scores are not asked of the LLM; the engine computes them.
  */
 export const WorkoutDraft = z.object({
+  /** The split day it drafts, e.g. "Upper A" (set by the workout_template job); absent for a one-day draft. */
+  name: z.string().min(1).max(100).optional(),
   exercises: z.array(TemplateExerciseInput).min(1).max(20),
   rationale: z.string().max(400),
   /** Engine muscle scores of `exercises` (set by the job, never by the LLM). */
