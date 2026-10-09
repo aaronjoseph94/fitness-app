@@ -1,7 +1,9 @@
 // Owns: the AI workout page (/train/ai, SPEC §7 "AI workouts") — pick a focus (or none: the week's upper/lower split
 // decides), generate with the workout_generate job, then the preview: swap, start a session or save as a template
 // (opened in the builder); either accepts the job's pending workout proposal. `?focus=upper` prefills the focus;
-// `?auto=1` generates straight away; `?proposal=<id>` opens a pending draft (the nightly one) in the preview.
+// `?auto=1` generates straight away; `?proposal=<id>` opens a pending draft (the nightly one, or a split day's) in the
+// preview. A split day's draft carries its name ("Upper A"): the page and the template take it, and "Start session"
+// keeps it as a template first, then starts from that template, so the day isn't drafted again.
 // 2a: the page's h1 with "Start over" on the right once there is a draft, the focus form as one card; each state's
 // card rises in as it arrives (2a's entrance).
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
@@ -43,6 +45,8 @@ export function AiWorkoutPage() {
   const auto = useRef(params.get('auto') === '1')
   const pendingId = useRef(params.get('proposal'))
   const pending = usePendingWorkouts()
+  /** The template a draft was kept as on this page, so a retried Start or a later Save replaces it, never a second one. */
+  const kept = useRef<{ proposalId: string; templateId: string } | null>(null)
 
   const generate = () => ai.run({ mode: 'generate', date: today(Date.now()), focus: focus.trim() || undefined })
 
@@ -60,10 +64,21 @@ export function AiWorkoutPage() {
     ai.open(found.draft)
   }, [pending, ai.open])
 
-  const templateName = () => `AI · ${focus.trim() || 'workout'} · ${formatShortDate(today(Date.now()))}`.slice(0, 100)
+  const templateName = (draft: WorkoutDraft) => draft.name ?? `AI · ${focus.trim() || 'workout'} · ${formatShortDate(today(Date.now()))}`.slice(0, 100)
 
-  const saveDraft = (draft: WorkoutDraft) =>
-    writes.save({ name: templateName(), origin: 'ai', notes: draft.rationale || null, exercises: draft.exercises, proposal_id: draft.proposal_id })
+  const saveDraft = async (draft: WorkoutDraft) => {
+    const prior = draft.proposal_id && kept.current?.proposalId === draft.proposal_id ? kept.current.templateId : undefined
+    const outcome = await writes.save({
+      id: prior,
+      name: templateName(draft),
+      origin: 'ai',
+      notes: draft.rationale || null,
+      exercises: draft.exercises,
+      proposal_id: prior ? undefined : draft.proposal_id,
+    })
+    if (draft.proposal_id) kept.current = { proposalId: draft.proposal_id, templateId: outcome.templateId }
+    return outcome
+  }
 
   const onSave = async (draft: WorkoutDraft) => {
     try {
@@ -76,18 +91,30 @@ export function AiWorkoutPage() {
 
   const onStart = async (draft: WorkoutDraft) => {
     try {
-      await writes.startDraft(draft)
+      if (draft.name) {
+        // A split day's draft: keep it as that day's template (accepting the proposal), then log from the template.
+        const { templateId } = await saveDraft(draft)
+        await writes.start(templateId, 'ai')
+      } else {
+        await writes.startDraft(draft)
+      }
     } catch (e) {
       setNotice(problemText(e))
     }
   }
 
   const state = ai.state
+  const named = state.status === 'done' ? state.draft.name : undefined
   return (
     <Stack spacing={6} data-testid="ai-workout-page">
       <PageHeader
-        title="AI workout"
-        subtitle="Built from your allowed exercises, your last two weeks of sessions, readiness and the week’s split"
+        title={named ?? 'AI workout'}
+        pageName={named ? 'AI workout' : undefined}
+        subtitle={
+          named
+            ? 'The AI’s draft for this day of your split: save it as a template, swap what you like, or start it now'
+            : 'Built from your allowed exercises, your last two weeks of sessions, readiness and the week’s split'
+        }
         action={
           state.status === 'done' && (
             <Button variant="outlined" onClick={ai.reset}>

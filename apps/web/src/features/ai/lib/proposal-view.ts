@@ -1,6 +1,6 @@
 // Owns: how something Ask AI proposed reads on its card (pure) — title, source line, before → after rows with units,
-// the reason a plan change or a workout gives, the card status — for a plan change, a workout, a week plan, a reminder
-// time or an exercise swap.
+// the reason a plan change or a workout gives, the card status — for a plan change, a workout (a split day's draft by
+// its name, "Upper A draft"), a week plan, a reminder time or an exercise swap.
 import type { ChatProposal } from '@fitness/shared/schemas'
 import { formatShortDate, type ProposalChange, type ProposalStatus } from '../../../components'
 import { planChangeHeading, planChangeRows, REMINDER_LABEL } from '../../proposals'
@@ -40,7 +40,8 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
     case 'workout': {
       const sets = body.workout.exercises.reduce((n, e) => n + e.sets, 0)
       return {
-        title: body.date ? `Workout for ${formatShortDate(body.date)}` : 'Suggested workout',
+        // A split day's draft is named ("Upper A draft"); a one-day draft reads by its date.
+        title: body.workout.name ? `${body.workout.name} draft` : body.date ? `Workout for ${formatShortDate(body.date)}` : 'Suggested workout',
         summary: body.workout.rationale || p.summary,
         changes: [{ label: 'Exercises · sets', from: '—', to: `${body.workout.exercises.length} · ${sets}` }],
         why: body.workout.rationale || undefined,

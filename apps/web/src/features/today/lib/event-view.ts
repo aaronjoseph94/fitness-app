@@ -25,7 +25,8 @@ export function proposalView(p: Proposal): ProposalView {
       return { title: planChangeTitle(body.changes), source, changes: planChangeRows(body.changes), why: [...new Set(body.changes.map((c) => c.reason))] }
     case 'workout':
       return {
-        title: body.mode === 'generate' ? 'Suggested workout' : 'Workout filled in',
+        // A split day's draft is named ("Upper A draft"); a one-day draft reads by what made it.
+        title: body.workout.name ? `${body.workout.name} draft` : body.mode === 'generate' ? 'Suggested workout' : 'Workout filled in',
         source,
         changes: [{ label: body.date ? `Exercises for ${body.date}` : 'Exercises', from: '—', to: String(body.workout.exercises.length) }],
         why: body.workout.rationale ? [body.workout.rationale] : [],

@@ -1,7 +1,7 @@
 // Owns: the AI workout preview (SPEC §7) — the draft's rationale, its muscle map (engine scores → levels) with total
 // sets, what the guards dropped or repaired (guard_notes), each exercise with its prescription, swap (picker limited to
-// the same primary muscle) and about, then "Start
-// session" or "Save as template". Controlled: the caller holds the draft and applies swaps through `onSwap`.
+// the same primary muscle and kind of lift, never an exercise already in the draft) and about, then "Start session" or
+// "Save as template". Controlled: the caller holds the draft and applies swaps through `onSwap`.
 // 2a: a summary card in Train's today-card idiom (the AI's reasoning, guard notes and the set count | the muscle map on
 // an `ink.panel` panel), the exercises as a card of rows, and the sticky Save / Start bar. The two cards rise in on mount.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
@@ -53,10 +53,14 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
   const [info, setInfo] = useState<string | null>(null)
   const training = useMemo(() => draftMuscleLevels(draft.exercises, index.byId), [draft.exercises, index.byId])
   const swapping = swapAt !== null ? draft.exercises[swapAt] : undefined
-  const pickedIds = useMemo(() => new Set(draft.exercises.map((e) => e.exercise_id)), [draft.exercises])
+  // The draft's other exercises: the swap list leaves them out, since the logger keeps one card per exercise and would
+  // drop a duplicate silently.
+  const otherIds = useMemo(() => new Set(draft.exercises.filter((_, i) => i !== swapAt).map((e) => e.exercise_id)), [draft.exercises, swapAt])
 
   const swap = (to: ExerciseSummary) => {
     if (swapAt === null || !swapping) return
+    // Defensive: a pick already in the draft (or the same exercise) changes nothing.
+    if (to.id === swapping.exercise_id || otherIds.has(to.id)) return
     // Same prescription; the load was chosen for the old exercise, so it starts empty.
     const exercises = draft.exercises.map((e, i) => (i === swapAt ? { ...e, exercise_id: to.id, target_load_kg: null } : e))
     onSwap({ ...draft, exercises }, { index: swapAt, from: swapping.exercise_id, to })
@@ -168,7 +172,7 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
         onClose={() => setSwapAt(null)}
         onPick={swap}
         sameMuscleAs={swapping?.exercise_id}
-        pickedIds={pickedIds}
+        pickedIds={otherIds}
       />
       <ExerciseDetailSheet exerciseId={info} open={info !== null} onClose={() => setInfo(null)} />
     </Stack>
