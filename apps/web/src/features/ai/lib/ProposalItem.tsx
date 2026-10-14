@@ -1,6 +1,6 @@
-// Owns: one Ask AI proposal with its decision, in 2a's two forms — the compact card of the "Waiting for your tap" rail
-// (source and time, title, before → after rows, "Why:", Accept / Reject, a Plan history link) and the `ink.panel` strip
-// under the chat reply that made it. A proposal goes to POST /api/proposals/:id/accept|reject (the Worker decides per
+// Owns: one Ask AI proposal with its decision, in 2a's two forms — the compact card of the rail ("Waiting for your tap",
+// "Recent Train changes": source and time, title, before → after rows, "Why:", Accept / Reject, a Plan history link)
+// and the `ink.panel` strip under the chat reply that made it (with its "Why:" too). A proposal goes to POST /api/proposals/:id/accept|reject (the Worker decides per
 // kind and says what accepting made, so the card can link to it); a proposed week plan goes to POST
 // /api/week-plans/:id/apply|reject. The card shows the decision at once, rolls back if the server refuses, then the
 // whole app refreshes. An applied Train change, or a workout that replaced a template, also has Undo (POST
@@ -216,6 +216,10 @@ export function ProposalItem({ proposal, source = 'Proposal · Ask AI', when, va
           <Box sx={{ mt: '10px' }}>
             <BeforeAfterList changes={view.changes} background={tokens.ink.card} />
           </Box>
+        )}
+        {/* The reason, as on the rail card; a workout's rationale is already its summary line, so not twice. */}
+        {view.why && view.why !== view.summary && (
+          <Box sx={{ mt: '8px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>Why: {view.why}</Box>
         )}
         {after}
       </Box>

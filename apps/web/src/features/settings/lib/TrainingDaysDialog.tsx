@@ -30,7 +30,7 @@ export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: Tra
       <DialogTitle id="training-days-title">Training days</DialogTitle>
       <DialogContent>
         <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5, mb: 3 }}>
-          The days the plan puts a session on. The default split is upper / lower / upper / lower, Mon–Thu.
+          The split follows the days you pick (Mon, Tue, Thu → Upper A, Lower A, Full body).
         </Box>
         <ToggleButtonGroup
           value={picked}

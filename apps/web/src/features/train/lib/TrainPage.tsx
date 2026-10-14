@@ -92,6 +92,7 @@ export function TrainPage() {
     drafts,
     week: trainingWeek,
     markKept,
+    clearKept,
   } = useTrainData(date)
   const start = useStartSession()
   const index = useExerciseIndex()
@@ -165,7 +166,7 @@ export function TrainPage() {
         ) : trainingWeek.error && !trainingWeek.data ? (
           <LoadProblem what="This week" error={trainingWeek.error} onRetry={() => void trainingWeek.refetch()} />
         ) : trainingWeek.data ? (
-          <WeekSplitCard week={trainingWeek.data} date={date} templates={templates.data ?? []} onKept={markKept} />
+          <WeekSplitCard week={trainingWeek.data} date={date} templates={templates.data ?? []} onKept={markKept} onGenerate={clearKept} />
         ) : null}
       </Reveal>
 

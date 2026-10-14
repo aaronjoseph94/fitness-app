@@ -1,8 +1,8 @@
 // Owns: the Ask AI chat surface shared by the AI tab and the slide-up panel — the thread header (past chats, new
 // chat, deleting a chat for good), the turns, the empty thread's note and starter chips, send and delete errors, and
 // the composer. On a desktop page it is 2a's full-height three columns (chats rail from 1,280 px, the thread, the
-// rail of proposals waiting for a tap); on a phone the composer sticks above the bottom tabs; in the panel the turns
-// scroll inside the sheet.
+// rail of proposals waiting for a tap and recent Train changes to undo); on a phone those sit above the turns and the
+// composer sticks above the bottom tabs; in the panel the turns scroll inside the sheet.
 import AddCommentOutlined from '@mui/icons-material/AddCommentOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
@@ -30,7 +30,7 @@ import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, scrollBehavior, tokens } from '../../../theme'
 import { ChatsRail, shorten } from './ChatsRail'
 import { Composer } from './Composer'
-import { NothingWaiting, RailsCard } from './PendingProposals'
+import { NothingWaiting, RailsCard, RecentTrainChanges } from './PendingProposals'
 import { useThreadStore } from './thread-store'
 import { AiTile, TurnView } from './TurnView'
 import { useChat, useThreads, type Turn } from './useChat'
@@ -423,6 +423,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
           sx={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', p: '20px', borderLeft: `1px solid ${tokens.ink.border}`, minHeight: 0, overflowY: 'auto' }}
         >
           {aside ?? <NothingWaiting />}
+          <RecentTrainChanges />
           <Box sx={{ flex: 1 }} />
           <Reveal delay={300}>
             <RailsCard />
@@ -441,6 +442,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       <ThreadHeader title={title ? shorten(title, 80) : 'New chat'} meta={meta} reads={reads} onDelete={chat.remove} deleting={chat.deleting} />
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {aside}
+        <RecentTrainChanges />
         {turns}
       </Box>
       <Box

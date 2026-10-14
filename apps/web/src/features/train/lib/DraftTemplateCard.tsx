@@ -56,8 +56,8 @@ export interface DraftTemplateCardProps {
   replaces: string | null
   /** Set once this draft was kept from the Train tab (this card or Keep all). */
   kept: KeptDraft | null
-  /** Called with the Worker's answer when this card's Keep went through. */
-  onKept: (proposalId: string, decision: ProposalDecision) => void
+  /** Called with this card's draft and the Worker's answer when its Keep went through. */
+  onKept: (draft: PendingWorkout, decision: ProposalDecision) => void
 }
 
 /** Key the card by `draft.id` so a decision never carries over to the next draft. */
@@ -69,7 +69,7 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
     kept ? 'accepted' : 'pending',
     (decision) => call(decision === 'accepted' ? endpoints.plan.acceptProposal : endpoints.plan.rejectProposal, { params: { id: draft.id } }),
     (decision, result) => {
-      if (decision === 'accepted') onKept(draft.id, result)
+      if (decision === 'accepted') onKept(draft, result)
     },
   )
   const templateId = kept?.template_id ?? null

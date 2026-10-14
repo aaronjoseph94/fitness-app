@@ -1,6 +1,7 @@
 // Owns: AI workout drafts still waiting for a tap — the pending `workout` proposals in the live feed (the nightly draft
 // for the next training day, a generate or fill that finished after its page closed) as WorkoutDrafts carrying their
-// proposal_id, so the Train tab can offer one and the AI page can preview, start or save it (which accepts it).
+// proposal_id, so the Train tab can offer one and the AI page can preview, start or save it (which accepts it); and
+// the same draft read from any one workout proposal (the Worker's answer to an accept, say).
 import { endpoints } from '@fitness/shared/api'
 import type { LocalDate, Proposal, WorkoutDraft } from '@fitness/shared/schemas'
 import { useMemo } from 'react'
@@ -14,6 +15,13 @@ export interface PendingWorkout {
   draft: WorkoutDraft
 }
 
+/** The draft a workout proposal carries (whatever its status); null for any other kind. */
+export function pendingWorkoutOf(p: Proposal): PendingWorkout | null {
+  if (p.body.kind !== 'workout') return null
+  const { workout, date, muscle_scores } = p.body
+  return { id: p.id, date, draft: { ...workout, muscle_scores: workout.muscle_scores ?? muscle_scores, proposal_id: p.id } }
+}
+
 /** Pending workout drafts in the feed, newest first. */
 export function usePendingWorkouts(): PendingWorkout[] {
   const feed = useApiQuery(endpoints.day.events, { query: {} }, { staleTime: 30_000 })
@@ -23,11 +31,7 @@ export function usePendingWorkouts(): PendingWorkout[] {
       (events ?? [])
         .filter((e): e is Proposal => e.kind === 'proposal' && e.proposal_status === 'pending' && e.body.kind === 'workout')
         .sort((a, b) => b.created_at.localeCompare(a.created_at))
-        .flatMap((p) =>
-          p.body.kind === 'workout'
-            ? [{ id: p.id, date: p.body.date, draft: { ...p.body.workout, muscle_scores: p.body.workout.muscle_scores ?? p.body.muscle_scores, proposal_id: p.id } }]
-            : [],
-        ),
+        .flatMap((p) => pendingWorkoutOf(p) ?? []),
     [events],
   )
 }

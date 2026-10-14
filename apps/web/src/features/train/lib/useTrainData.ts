@@ -5,9 +5,10 @@
 // session in progress on this phone, today's split template (the template named for today's day of the split, when
 // the week plan leaves a training day open) and the split's AI drafts: those waiting for Keep (with the template each
 // would replace) and those kept from this page (by their card or Keep all), which stay on screen with their outcome so
-// a replacing Keep can be undone.
+// a replacing Keep can be undone, until the next Generate. A split day's template is the engine's splitTemplateFor
+// (the oldest one named like it), the Worker's rule too.
 import { endpoints } from '@fitness/shared/api'
-import { splitNameKey, splitSlot, splitSlots, weekdayOf } from '@fitness/shared/engine'
+import { splitNameKey, splitSlot, splitSlots, splitTemplateFor, weekdayOf } from '@fitness/shared/engine'
 import type { ProposalDecision, Readiness, SleepLog, Template } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -80,16 +81,17 @@ export function useTrainData(date: string) {
     seenDraftIds.current = draftIds
   }, [draftIds, queryClient])
 
-  /** Drafts kept from this page, by proposal id, with the draft as it was (it leaves the pending feed once kept). */
+  /**
+   * Drafts kept from this page, by proposal id, with the draft as it was. The caller hands the draft over (the card's
+   * own, or Keep all's from the Worker's answer), since it leaves the pending feed once kept and a lookup there could
+   * miss it and lose the Undo.
+   */
   const [kept, setKept] = useState<ReadonlyMap<string, { workout: PendingWorkout; outcome: KeptDraft }>>(() => new Map())
-  const markKept = useCallback(
-    (proposalId: string, decision: ProposalDecision) => {
-      const workout = pending.find((w) => w.id === proposalId)
-      if (!workout) return
-      setKept((m) => new Map(m).set(proposalId, { workout, outcome: keptOutcome(decision) }))
-    },
-    [pending],
-  )
+  const markKept = useCallback((workout: PendingWorkout, decision: ProposalDecision) => {
+    setKept((m) => new Map(m).set(workout.id, { workout, outcome: keptOutcome(decision) }))
+  }, [])
+  /** A new Generate starts the drafts over: the kept cards go (the AI tab keeps their Undo for 7 days). */
+  const clearKept = useCallback(() => setKept((m) => (m.size === 0 ? m : new Map())), [])
 
   /** The newest unfinished working copy of today (started here, maybe still queued). */
   const active: LoggerSession | null = useMemo(
@@ -121,19 +123,19 @@ export function useTrainData(date: string) {
   }, [active, day.data, days.data, sessions.data, date])
 
   /**
-   * Today's split template: today's slot = splitSlot(weekday, training_days), and the template named like it. None
-   * when today isn't one of the training days, the day's training flag says rest, or a week-plan session covers today.
+   * Today's split template: today's slot = splitSlot(weekday, training_days), and its template (splitTemplateFor).
+   * None when today isn't one of the training days, the day's training flag says rest, or a week-plan session covers today.
    */
   const splitTemplate: Template | null = useMemo(() => {
     const view = day.data
     if (!view || !trainingDays || view.planned_session || view.targets?.training_planned === false) return null
     const slot = splitSlot(weekdayOf(date), trainingDays)
-    return slot ? (templates.data?.find((t) => splitNameKey(t.name) === splitNameKey(slot.name)) ?? null) : null
+    return slot ? splitTemplateFor(templates.data ?? [], slot.name) : null
   }, [day.data, trainingDays, templates.data, date])
 
   /**
    * The split's AI drafts: pending workout proposals with a name, the newest per name, each with the template Keep
-   * would replace (the week's `replaces_template_id`, else the template of the same name), plus the drafts kept from
+   * would replace (the week's `replaces_template_id`, else splitTemplateFor its name), plus the drafts kept from
    * this page; in split order (Upper A, Lower A, …), any other name after them.
    */
   const drafts: SplitDraft[] = useMemo(() => {
@@ -154,8 +156,7 @@ export function useTrainData(date: string) {
     const replaces = (w: PendingWorkout): string | null => {
       const id = replacing.get(w.id)
       const byId = id ? list.find((t) => t.id === id) : undefined
-      const key = splitNameKey(w.draft.name ?? '')
-      return (byId ?? list.find((t) => splitNameKey(t.name) === key))?.name ?? null
+      return (byId ?? splitTemplateFor(list, w.draft.name ?? ''))?.name ?? null
     }
     const all: SplitDraft[] = [
       ...waiting.map((workout) => ({ workout, replaces: replaces(workout), kept: null })),
@@ -181,5 +182,6 @@ export function useTrainData(date: string) {
     drafts,
     week,
     markKept,
+    clearKept,
   }
 }

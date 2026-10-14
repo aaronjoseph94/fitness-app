@@ -2,9 +2,11 @@
 // over GET /api/ai/week — seven day chips (preset to his training days, today marked) with a live preview of the split
 // those days give (engine splitSlots: "Mon Upper A · Tue Lower A · Thu Full body"); Generate (POST /api/ai/week with the
 // chosen days, which become his training days and get one AI draft each; it asks first when a chosen day already has a
-// template, and says where to add a model key when none is set); each training day with its template, or "No workout
-// yet", and "Drafting…" / "Draft waiting"; Keep all (accepts the week's pending split drafts in turn, with progress and
-// any refusal); whether the week's templates cover every major muscle group; the week plan line; the combined map.
+// template, says where to add a model key when none is set, and re-reads everything even when it fails, since the
+// days may have been saved); each training day with its template, "No workout yet" or, when its last draft failed,
+// "Couldn't draft — Generate to retry", and "Drafting…" / "Draft waiting"; Keep all (accepts the week's pending split
+// drafts in turn, with progress and any refusal); whether the week's templates cover every major muscle group; the
+// week plan line; the combined map.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded'
 import DoneAllRounded from '@mui/icons-material/DoneAllRounded'
@@ -29,6 +31,7 @@ import { apiQueryKey, call, isApiError, problemText } from '../../../api'
 import { cardSurface, StatusChip } from '../../../components'
 import { MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
+import { pendingWorkoutOf, type PendingWorkout } from '../../builder'
 
 const DAYS: readonly { key: Weekday; short: string; long: string }[] = [
   { key: 'mon', short: 'Mon', long: 'Monday' },
@@ -71,11 +74,13 @@ export interface WeekSplitCardProps {
   date: LocalDate
   /** The templates: Generate asks first when a chosen day already has one. */
   templates: readonly Template[]
-  /** Called with the Worker's answer for each draft Keep all kept, so its card shows the outcome (and Undo). */
-  onKept: (proposalId: string, decision: ProposalDecision) => void
+  /** Called with each draft Keep all kept (read from the Worker's answer) and that answer, so its card shows the outcome (and Undo). */
+  onKept: (draft: PendingWorkout, decision: ProposalDecision) => void
+  /** Called as Generate starts: the drafts kept from the page make way for the new week's. */
+  onGenerate: () => void
 }
 
-export function WeekSplitCard({ week, date, templates, onKept }: WeekSplitCardProps) {
+export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: WeekSplitCardProps) {
   const queryClient = useQueryClient()
   // null = follow his saved training days; a pick previews a new split until Generate saves it.
   const [picked, setPicked] = useState<Weekday[] | null>(null)
@@ -103,6 +108,7 @@ export function WeekSplitCard({ week, date, templates, onKept }: WeekSplitCardPr
     setConfirming(false)
     setBusy('generate')
     setNote(null)
+    onGenerate()
     try {
       const result = await call(endpoints.ai.planWeek, { body: { training_days: chosen } })
       // The days may have moved (targets' training flags, today's split template) and every chosen day is drafting.
@@ -111,6 +117,8 @@ export function WeekSplitCard({ week, date, templates, onKept }: WeekSplitCardPr
       if (result.job_ids.length === 0 && result.skipped.length > 0)
         setNote({ tone: 'info', text: `Already drafting: ${result.skipped.join(', ')}.` })
     } catch (e) {
+      // The days may have been saved before the drafting failed: re-read them all the same.
+      void queryClient.invalidateQueries({ queryKey: apiQueryKey() })
       setNote({
         tone: 'error',
         text: isApiError(e) && e.code === 'no_model_key' ? NO_MODEL_KEY : `Couldn't generate the week: ${problemText(e)}`,
@@ -128,7 +136,10 @@ export function WeekSplitCard({ week, date, templates, onKept }: WeekSplitCardPr
     for (const [i, d] of drafts.entries()) {
       setNote({ tone: 'info', text: `Keeping ${i + 1} of ${drafts.length}…` })
       try {
-        onKept(d.id, await call(endpoints.plan.acceptProposal, { params: { id: d.id } }))
+        const decision = await call(endpoints.plan.acceptProposal, { params: { id: d.id } })
+        // The draft from the Worker's answer, not the feed: a kept draft leaves the pending feed, and its Undo with it.
+        const draft = pendingWorkoutOf(decision.proposal)
+        if (draft) onKept(draft, decision)
       } catch (e) {
         refused.push(`${d.name}: ${problemText(e)}`)
       }
@@ -320,9 +331,13 @@ export function WeekSplitCard({ week, date, templates, onKept }: WeekSplitCardPr
   )
 }
 
-/** One training day: the weekday, its slot name, its template's size or "No workout yet", and a drafting / draft chip. */
+/**
+ * One training day: the weekday, its slot name, its template's size, "No workout yet" or (its last draft failed)
+ * "Couldn't draft — Generate to retry" in the warning tone, and a drafting / draft chip.
+ */
 function DayRow({ slot }: { slot: TrainingWeekSlot }) {
   const status = slot.drafting ? 'Drafting…' : slot.draft ? 'Draft waiting' : null
+  const failed = !slot.template && !slot.drafting && slot.failed
   return (
     <Box
       component="li"
@@ -342,8 +357,20 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
         <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.body, overflowWrap: 'anywhere' }}>
           {slot.name}
         </Box>
-        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
-          {slot.template ? `${slot.template.exercise_count} exercises · ${slot.template.sets} sets` : 'No workout yet'}
+        <Box
+          data-testid={failed ? 'week-day-failed' : undefined}
+          sx={{
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: failed ? tokens.tone.warning.text : tokens.ink.muted,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {slot.template
+            ? `${slot.template.exercise_count} exercises · ${slot.template.sets} sets`
+            : failed
+              ? "Couldn't draft — Generate to retry"
+              : 'No workout yet'}
         </Box>
       </Box>
       {/* The chip column is always there, so a day starting or finishing its draft never moves the row. */}

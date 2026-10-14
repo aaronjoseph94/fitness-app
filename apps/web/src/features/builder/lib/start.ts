@@ -1,7 +1,9 @@
 // Owns: the builder's writes — save a template (create or replace, queued offline), start a session from a template,
 // and start an AI draft as it stands (POST /api/sessions with a client id and the draft's exercises, then open the
 // session logger at sessionPath). Sessions store their own plan, so a draft needs no template to be started. A draft's
-// `proposal_id` goes with the first create or start, which accepts that pending workout proposal on the Worker.
+// `proposal_id` goes with the first create or start, which accepts that pending workout proposal on the Worker. A save
+// answers with the template the Worker wrote, whose id is the one to open or start from: a split draft saved under its
+// day's name ("Upper A") goes into that day's existing template, not a new one with the id sent here.
 import { endpoints } from '@fitness/shared/api'
 import type { SessionOrigin, TemplateExerciseInput, TemplateOrigin, WorkoutDraft } from '@fitness/shared/schemas'
 import { useState } from 'react'
@@ -26,6 +28,7 @@ export interface TemplateInput {
 }
 
 export interface SaveOutcome {
+  /** The template the Worker wrote (it can differ from the id sent: a split draft replaces its day's template in place). */
   templateId: string
   queued: boolean
 }
@@ -50,7 +53,8 @@ export function useTemplateWrites() {
       const outcome = await create.mutateAsync({
         body: { id, name: t.name, origin: t.origin, notes: t.notes ?? undefined, exercises: t.exercises, proposal_id: t.proposal_id },
       })
-      return { templateId: id, queued: outcome.status === 'queued' }
+      // The Worker's answer names the template it wrote; queued offline there is none yet, so the id sent stands in.
+      return outcome.status === 'saved' ? { templateId: outcome.data.id, queued: false } : { templateId: id, queued: true }
     } catch (e) {
       setError(e)
       throw e

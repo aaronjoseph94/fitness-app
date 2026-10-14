@@ -1,9 +1,10 @@
 // Owns: how a change to Train reads on every card (pure) — the title and before → after rows of an AI template
-// created, edited or deleted, an equipment status moved, an exercise hidden, and of training days moved. The AI tab and
-// Today both read this, so a new op is one edit. The Worker stores `before` when it proposes a change (pending or
-// applied), so rows show real "from" values. A Train change is titled by the proposal's own summary when it fits
-// PROPOSAL_TITLE_MAX ("Rename Upper A → Push", "Hide Kettlebell Swing": the Worker names what the change holds only
-// ids for); otherwise by the title built here, where an exercise hidden stays neutral because the change has its id.
+// created, edited or deleted, an equipment status moved, an exercise hidden, and of training days moved, plus the AI's
+// reason for the card's "Why:" line. The AI tab and Today both read this, so a new op is one edit. The Worker stores
+// `before` when it proposes a change (pending or applied), so rows show real "from" values. A Train change is titled by
+// the proposal's own summary when it fits PROPOSAL_TITLE_MAX ("Rename Upper A → Push", "Hide Kettlebell Swing": the
+// Worker names what the change holds only ids for); otherwise by the title built here, where an exercise hidden stays
+// neutral because the change has its id.
 import { Weekday, type EquipmentStatus, type ProposalBody } from '@fitness/shared/schemas'
 import type { ProposalChange } from '../../../components'
 import { PROPOSAL_TITLE_MAX, shortDay } from './labels'
@@ -14,7 +15,7 @@ export type TrainBody = Extract<ProposalBody, { kind: 'train_change' | 'training
 export interface TrainBodyView {
   title: string
   changes: ProposalChange[]
-  /** The reason the AI gave (an exercise hidden), for the card's "Why:" line. */
+  /** The reason the AI gave (the body's `reason`, else an exercise hidden's own), for the card's "Why:" line. */
   why?: string
 }
 
@@ -41,10 +42,15 @@ export function dayNames(days: readonly Weekday[]): string {
   return names.length ? names.join(', ') : 'none'
 }
 
-/** A Train change takes the proposal's summary as its title when it is one short line (as a plan change does). */
+/**
+ * A Train change takes the proposal's summary as its title when it is one short line (as a plan change does). Its
+ * "Why:" is the reason the AI gave with the change (`body.reason`), else what an exercise hidden carries itself.
+ */
 export function trainBodyView(body: TrainBody, summary: string): TrainBodyView {
   const view = bodyView(body)
-  return body.kind === 'train_change' && summary.trim() !== '' && summary.length <= PROPOSAL_TITLE_MAX ? { ...view, title: summary } : view
+  const why = body.reason?.trim() || view.why
+  const titled = body.kind === 'train_change' && summary.trim() !== '' && summary.length <= PROPOSAL_TITLE_MAX ? { ...view, title: summary } : view
+  return why ? { ...titled, why } : titled
 }
 
 function bodyView(body: TrainBody): TrainBodyView {
