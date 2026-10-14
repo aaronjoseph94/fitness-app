@@ -40,6 +40,7 @@ export const SUGGESTIONS = [
   'What did I average for protein in September?',
   'Swap Thursday to a pull day',
   'Raise water to 3.5 L',
+  'Plan my week: Mon, Tue, Thu',
 ] as const
 
 /** Where the page has room for 2a's three columns (thread ≥ 440 px beside the 240 px sidebar and both rails). */

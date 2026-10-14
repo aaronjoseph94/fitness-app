@@ -1,11 +1,12 @@
 // Owns: how an AI event reads on Today (pure) — a proposal as the ProposalCard's title, before → after rows (with units;
-// one row per field and amount, its weekdays folded into "Protein · Mon–Thu") and its "why"; any other event (day
+// one row per field and amount, its weekdays folded into "Protein · Mon–Thu"; a Train change or new training days by
+// their own title, "Rename Upper A → Push") and its "why"; any other event (day
 // adjustment, review, note, change) as a source line, title, text and details; any event as a row of the recent
 // activity table (time, who, what, value).
 import { isoWeek } from '@fitness/shared/engine'
 import type { AiEvent, Proposal, ProposalStatus } from '@fitness/shared/schemas'
 import { formatNumber, formatRecentTime, formatSigned, type ProposalChange } from '../../../components'
-import { actorLabel, planChangeRows, planChangeTitle, REMINDER_LABEL } from '../../proposals'
+import { actorLabel, planChangeRows, planChangeTitle, REMINDER_LABEL, trainBodyView } from '../../proposals'
 
 export { actorLabel }
 
@@ -42,6 +43,11 @@ export function proposalView(p: Proposal): ProposalView {
         changes: [{ label: 'Exercise', from: body.from_name, to: body.to_name }],
         why: [],
       }
+    case 'train_change':
+    case 'training_days': {
+      const view = trainBodyView(body)
+      return { title: view.title, source, changes: view.changes, why: view.why ? [view.why] : [] }
+    }
   }
 }
 

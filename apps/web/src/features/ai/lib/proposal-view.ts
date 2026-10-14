@@ -1,9 +1,10 @@
 // Owns: how something Ask AI proposed reads on its card (pure) — title, source line, before → after rows with units,
-// the reason a plan change or a workout gives, the card status — for a plan change, a workout (a split day's draft by
-// its name, "Upper A draft"), a week plan, a reminder time or an exercise swap.
+// the reason a plan change or a workout gives, the card status, and whether it can be undone — for a plan change, a
+// workout (a split day's draft by its name, "Upper A draft"), a week plan, a reminder time, an exercise swap, a change
+// to Train ("Rename Upper A → Push") or new training days.
 import type { ChatProposal } from '@fitness/shared/schemas'
 import { formatShortDate, type ProposalChange, type ProposalStatus } from '../../../components'
-import { planChangeHeading, planChangeRows, REMINDER_LABEL } from '../../proposals'
+import { planChangeHeading, planChangeRows, REMINDER_LABEL, trainBodyView } from '../../proposals'
 
 export interface ChatProposalView {
   title: string
@@ -14,7 +15,13 @@ export interface ChatProposalView {
   status: ProposalStatus
   /** A superseded week plan (rejected, or replaced by a newer one): neither applied now nor waiting. */
   replaced: boolean
+  /** Applying it can be undone (POST /api/train-changes/:id/revert): a Train change, or a workout that replaced a template. */
+  revertible: boolean
+  /** Already undone: the body says when. */
+  undone: boolean
 }
+
+const NOT_REVERTIBLE = { revertible: false, undone: false } as const
 
 export function chatProposalView(p: ChatProposal): ChatProposalView {
   if (p.type === 'week_plan') {
@@ -24,6 +31,7 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
       changes: [],
       status: p.status === 'active' ? 'accepted' : 'pending',
       replaced: p.status === 'superseded',
+      ...NOT_REVERTIBLE,
     }
   }
   const body = p.body
@@ -36,6 +44,7 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
         why: [...new Set(body.changes.map((c) => c.reason))].join(' '),
         status: p.status,
         replaced: false,
+        ...NOT_REVERTIBLE,
       }
     case 'workout': {
       const sets = body.workout.exercises.reduce((n, e) => n + e.sets, 0)
@@ -47,10 +56,13 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
         why: body.workout.rationale || undefined,
         status: p.status,
         replaced: false,
+        // Accepting a split draft that replaced a template keeps the template as it was, so the draft can be undone.
+        revertible: body.replaced !== undefined,
+        undone: body.reverted_at !== undefined,
       }
     }
     case 'week_plan':
-      return { title: 'Plan for the week', summary: p.summary, changes: [], status: p.status, replaced: false }
+      return { title: 'Plan for the week', summary: p.summary, changes: [], status: p.status, replaced: false, ...NOT_REVERTIBLE }
     case 'reminder_time':
       return {
         title: `Move the ${REMINDER_LABEL[body.reminder].toLowerCase()} reminder`,
@@ -58,6 +70,7 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
         changes: [{ label: REMINDER_LABEL[body.reminder], from: '—', to: body.time }],
         status: p.status,
         replaced: false,
+        ...NOT_REVERTIBLE,
       }
     case 'template_swap':
       return {
@@ -66,6 +79,22 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
         changes: [{ label: 'Exercise', from: body.from_name, to: body.to_name }],
         status: p.status,
         replaced: false,
+        ...NOT_REVERTIBLE,
       }
+    case 'train_change':
+    case 'training_days': {
+      const view = trainBodyView(body)
+      return {
+        title: view.title,
+        summary: p.summary,
+        changes: view.changes,
+        why: view.why,
+        status: p.status,
+        replaced: false,
+        // The revert route takes a Train change; moved training days have none (change them again on Train).
+        revertible: body.kind === 'train_change',
+        undone: body.kind === 'train_change' && body.reverted_at !== undefined,
+      }
+    }
   }
 }

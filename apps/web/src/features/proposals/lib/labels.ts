@@ -62,7 +62,7 @@ export function planChangeHeading(summary: string, changes: readonly PlanChange[
 }
 
 /** "mon" → "Mon". */
-const shortDay = (d: Weekday) => d.charAt(0).toUpperCase() + d.slice(1)
+export const shortDay = (d: Weekday) => d.charAt(0).toUpperCase() + d.slice(1)
 
 /** "Mon–Thu" for three or more days in a row, else "Mon, Wed". */
 function dayList(days: readonly Weekday[]): string {
