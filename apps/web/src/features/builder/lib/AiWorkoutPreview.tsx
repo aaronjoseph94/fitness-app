@@ -47,22 +47,42 @@ export interface AiWorkoutPreviewProps {
   headingComponent?: 'h2' | 'h3'
 }
 
-export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false, saveLabel = 'Save as template', actionsBottom = '0px', headingComponent = 'h2' }: AiWorkoutPreviewProps) {
+/** On a phone, a sticky action bar sits above the fixed bottom nav (from `md` up there is none). */
+export const ABOVE_NAV = `calc(${tokens.layout.bottomNavHeight}px + env(safe-area-inset-bottom, 0px))`
+
+export function AiWorkoutPreview({
+  draft,
+  onStart,
+  onSave,
+  onSwap,
+  busy = false,
+  saveLabel = 'Save as template',
+  actionsBottom = '0px',
+  headingComponent = 'h2',
+}: AiWorkoutPreviewProps) {
   const index = useExerciseIndex()
   const [swapAt, setSwapAt] = useState<number | null>(null)
   const [info, setInfo] = useState<string | null>(null)
-  const training = useMemo(() => draftMuscleLevels(draft.exercises, index.byId), [draft.exercises, index.byId])
+  const training = useMemo(
+    () => draftMuscleLevels(draft.exercises, index.byId),
+    [draft.exercises, index.byId],
+  )
   const swapping = swapAt !== null ? draft.exercises[swapAt] : undefined
   // The draft's other exercises: the swap list leaves them out, since the logger keeps one card per exercise and would
   // drop a duplicate silently.
-  const otherIds = useMemo(() => new Set(draft.exercises.filter((_, i) => i !== swapAt).map((e) => e.exercise_id)), [draft.exercises, swapAt])
+  const otherIds = useMemo(
+    () => new Set(draft.exercises.filter((_, i) => i !== swapAt).map((e) => e.exercise_id)),
+    [draft.exercises, swapAt],
+  )
 
   const swap = (to: ExerciseSummary) => {
     if (swapAt === null || !swapping) return
     // Defensive: a pick already in the draft (or the same exercise) changes nothing.
     if (to.id === swapping.exercise_id || otherIds.has(to.id)) return
     // Same prescription; the load was chosen for the old exercise, so it starts empty.
-    const exercises = draft.exercises.map((e, i) => (i === swapAt ? { ...e, exercise_id: to.id, target_load_kg: null } : e))
+    const exercises = draft.exercises.map((e, i) =>
+      i === swapAt ? { ...e, exercise_id: to.id, target_load_kg: null } : e,
+    )
     onSwap({ ...draft, exercises }, { index: swapAt, from: swapping.exercise_id, to })
   }
 
@@ -70,42 +90,96 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
     <Stack spacing={4} data-testid="ai-workout-preview">
       {/* 2a's entrance: the summary card, then the exercises, a card's stagger apart. */}
       <Reveal>
-        <MapCard levels={training.levels} mapTitle="Muscles this workout trains" caption={training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ')}>
+        <MapCard
+          levels={training.levels}
+          mapTitle="Muscles this workout trains"
+          caption={training.top
+            .slice(0, 4)
+            .map((m) => MUSCLE_LABELS[m])
+            .join(', ')}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <AutoAwesomeRounded sx={{ fontSize: 18, color: tokens.accent.main }} aria-hidden />
-            <Box component={headingComponent} sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.label, color: tokens.ink.text }}>
+            <Box
+              component={headingComponent}
+              sx={{
+                m: 0,
+                fontSize: tokens.font.size.body,
+                fontWeight: tokens.font.weight.heading,
+                lineHeight: tokens.font.leading.label,
+                color: tokens.ink.text,
+              }}
+            >
               Why this session
             </Box>
           </Box>
-          <Box sx={{ mt: 2, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body }} data-testid="ai-rationale">
+          <Box
+            sx={{
+              mt: 2,
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.emphasis,
+              color: tokens.ink.body,
+            }}
+            data-testid="ai-rationale"
+          >
             {draft.rationale || 'A balanced session from your allowed exercises.'}
           </Box>
           {/* What the guards dropped or repaired: a change that fails a rail is reported, not hidden (SPEC §9). */}
           {draft.guard_notes && draft.guard_notes.length > 0 && (
-            <Box component="ul" sx={{ m: 0, mt: 2, pl: 4, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }} data-testid="ai-guard-notes">
+            <Box
+              component="ul"
+              sx={{
+                m: 0,
+                mt: 2,
+                pl: 4,
+                fontSize: tokens.font.size.caption,
+                color: tokens.ink.secondary,
+                lineHeight: tokens.font.leading.small,
+              }}
+              data-testid="ai-guard-notes"
+            >
               {draft.guard_notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}
             </Box>
           )}
           <Box sx={{ mt: 5, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '6px' }}>
-            <Box sx={{ ...statValue('standard'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}>
+            <Box
+              sx={{
+                ...statValue('standard'),
+                lineHeight: tokens.font.leading.number,
+                color: tokens.ink.text,
+              }}
+            >
               {training.totalSets}
             </Box>
-            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>sets · {draft.exercises.length} exercises</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
+              sets · {draft.exercises.length} exercises
+            </Box>
           </Box>
         </MapCard>
       </Reveal>
 
       <Reveal delay={staggerDelay(1, tokens.motion.stagger.card)}>
-        <Panel title="Exercises" description="Open one to see how it’s done; a swap keeps the same primary muscle" padding="none" headingComponent={headingComponent}>
+        <Panel
+          title="Exercises"
+          description="Open one to see how it’s done; a swap keeps the same primary muscle"
+          padding="none"
+          headingComponent={headingComponent}
+        >
           {draft.exercises.map((e, i) => {
             const exercise = index.byId.get(e.exercise_id)
             return (
               <Box
                 key={`${i}-${e.exercise_id}`}
                 data-testid="ai-exercise"
-                sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: '12px', borderTop: `1px solid ${tokens.ink.hairline}` }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  pr: '12px',
+                  borderTop: `1px solid ${tokens.ink.hairline}`,
+                }}
               >
                 <ButtonBase
                   onClick={() => setInfo(e.exercise_id)}
@@ -128,16 +202,44 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
                 >
                   <ExerciseThumb exercise={exercise} size={44} />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.label, color: tokens.ink.text }}>
+                    <Box
+                      sx={{
+                        fontSize: tokens.font.size.body,
+                        fontWeight: tokens.font.weight.label,
+                        lineHeight: tokens.font.leading.label,
+                        color: tokens.ink.text,
+                      }}
+                    >
                       {i + 1} · {exercise?.name ?? 'Unknown exercise'}
                     </Box>
-                    <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, mt: '2px', fontVariantNumeric: 'tabular-nums' }}>{prescription(e)}</Box>
+                    <Box
+                      sx={{
+                        fontSize: tokens.font.size.small,
+                        lineHeight: tokens.font.leading.small,
+                        color: tokens.ink.secondary,
+                        mt: '2px',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {prescription(e)}
+                    </Box>
                   </Box>
                 </ButtonBase>
-                <IconButton size="small" aria-label={`About ${exercise?.name ?? 'exercise'}`} onClick={() => setInfo(e.exercise_id)} sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                <IconButton
+                  size="small"
+                  aria-label={`About ${exercise?.name ?? 'exercise'}`}
+                  onClick={() => setInfo(e.exercise_id)}
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                >
                   <InfoOutlined sx={{ fontSize: 18 }} />
                 </IconButton>
-                <IconButton size="small" aria-label={`Swap ${exercise?.name ?? 'exercise'}`} onClick={() => setSwapAt(i)} data-testid="ai-swap" sx={{ ...outlinedIconButton, color: tokens.accent.main }}>
+                <IconButton
+                  size="small"
+                  aria-label={`Swap ${exercise?.name ?? 'exercise'}`}
+                  onClick={() => setSwapAt(i)}
+                  data-testid="ai-swap"
+                  sx={{ ...outlinedIconButton, color: tokens.accent.main }}
+                >
                   <SwapHorizRounded sx={{ fontSize: 18 }} />
                 </IconButton>
               </Box>
@@ -159,10 +261,23 @@ export function AiWorkoutPreview({ draft, onStart, onSave, onSwap, busy = false,
           borderTop: `1px solid ${tokens.ink.border}`,
         }}
       >
-        <Button variant="outlined" disabled={busy} onClick={() => onSave(draft)} sx={{ flex: { xs: 1, sm: 'none' } }} data-testid="ai-save">
+        <Button
+          variant="outlined"
+          disabled={busy}
+          onClick={() => onSave(draft)}
+          sx={{ flex: { xs: 1, sm: 'none' } }}
+          data-testid="ai-save"
+        >
           {saveLabel}
         </Button>
-        <Button variant="contained" disabled={busy} startIcon={<PlayArrowRounded />} onClick={() => onStart(draft)} sx={{ flex: { xs: 1, sm: 'none' } }} data-testid="ai-start">
+        <Button
+          variant="contained"
+          disabled={busy}
+          startIcon={<PlayArrowRounded />}
+          onClick={() => onStart(draft)}
+          sx={{ flex: { xs: 1, sm: 'none' } }}
+          data-testid="ai-start"
+        >
           Start session
         </Button>
       </Box>

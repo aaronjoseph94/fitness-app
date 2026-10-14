@@ -17,7 +17,7 @@ export {
   stepsDays,
   sleepNights,
   proteinAdherence,
-  loggingAdherence,
+  SLEEP_TARGET_H,
   fastEntries,
   waistPoints,
   VOLUME_GROUPS,
@@ -26,8 +26,5 @@ export {
   sessionVolumeWeeks,
   exercisesByUse,
   latestTargets,
-  rangeSummary,
   hasAny,
-  rangeDays,
-  type RangeSummary,
 } from './lib/series'

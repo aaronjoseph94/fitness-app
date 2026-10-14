@@ -10,9 +10,8 @@ import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentR
 import MonitorWeightRounded from '@mui/icons-material/MonitorWeightRounded'
 import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
-import type { DaySummary } from '@fitness/shared/schemas'
 import type { MetricKey } from '../../../theme'
-import { lastTrend } from '../../progress/series'
+import { lastTrend, SLEEP_TARGET_H } from '../../progress/series'
 import { goalProgress } from './GoalRail'
 import type { DashboardData } from './useDashboardData'
 
@@ -22,9 +21,6 @@ import type { DashboardData } from './useDashboardData'
  * in the same order the sections below use. The band lays the rows out in this order.
  */
 export type KpiGroup = 'weight' | 'intake' | 'body' | 'habits'
-
-/** SPEC §9 readiness compares sleep with 7.5 h. */
-const SLEEP_TARGET_H = 7.5
 
 export interface KpiDelta {
   value: number
@@ -78,15 +74,6 @@ function mean(values: readonly (number | null)[]): number | null {
   return present.length ? present.reduce((sum, v) => sum + v, 0) / present.length : null
 }
 
-/** The last value present, or null. */
-function last(values: readonly (number | null)[]): number | null {
-  for (let i = values.length - 1; i >= 0; i--) {
-    const v = values[i]
-    if (v !== null && v !== undefined && Number.isFinite(v)) return v
-  }
-  return null
-}
-
 /**
  * The window's six metrics, each tagged with the row of the band it belongs to (see `KpiGroup`); the band orders the
  * rows, so the file states what belongs together rather than where a card happens to land. Every series is one entry per
@@ -108,11 +95,19 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
 
   const trendNow = lastTrend(trendPoints)
   const trendStart = weightSeries.find((v) => v !== null) ?? null
-  const goalDone = goalProgress(data.profile?.start_weight_kg ?? null, trendNow?.kg ?? null, data.profile?.goal_weight_kg ?? null)
+  const goalDone = goalProgress(
+    data.profile?.start_weight_kg ?? null,
+    trendNow?.kg ?? null,
+    data.profile?.goal_weight_kg ?? null,
+  )
 
   // Intake and recovery: means over the days they actually have a value (fast days have no meals by design).
-  const kcalSeries = days.map((d) => (d.meals_logged > 0 && !d.is_fast_day ? Math.round(d.intake.kcal) : null))
-  const proteinSeries = days.map((d) => (d.meals_logged > 0 && !d.is_fast_day ? Math.round(d.intake.protein_g) : null))
+  const kcalSeries = days.map((d) =>
+    d.meals_logged > 0 && !d.is_fast_day ? Math.round(d.intake.kcal) : null,
+  )
+  const proteinSeries = days.map((d) =>
+    d.meals_logged > 0 && !d.is_fast_day ? Math.round(d.intake.protein_g) : null,
+  )
   const stepsSeries = days.map((d) => ((d.steps ?? 0) > 0 ? d.steps : null))
   const sleepSeries = days.map((d) => (d.sleep_min === null ? null : round(d.sleep_min / 60, 1)))
   const waterSeries = days.map((d) => (d.water_ml > 0 ? d.water_ml : null))
@@ -224,7 +219,12 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     reference: SLEEP_TARGET_H,
     delta:
       avgSleep !== null
-        ? { value: round(avgSleep - SLEEP_TARGET_H, 1), unit: '', period: `vs ${SLEEP_TARGET_H} h`, good: 'neutral' }
+        ? {
+            value: round(avgSleep - SLEEP_TARGET_H, 1),
+            unit: '',
+            period: `vs ${SLEEP_TARGET_H} h`,
+            good: 'neutral',
+          }
         : undefined,
     footnote: `Hours asleep · ${SLEEP_TARGET_H} h is the readiness target`,
   })
@@ -244,7 +244,9 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
       avgWater !== null && target
         ? { value: Math.round(avgWater - target.water_ml), unit: '', period: 'vs target', good: 'neutral' }
         : undefined,
-    footnote: target ? `Daily average · target ${target.water_ml.toLocaleString()} ml${waterHit ? ' · dark bars hit it' : ''}` : 'Daily average',
+    footnote: target
+      ? `Daily average · target ${target.water_ml.toLocaleString()} ml${waterHit ? ' · dark bars hit it' : ''}`
+      : 'Daily average',
   })
 
   return out
@@ -262,6 +264,7 @@ const DAYS_PER_BAR = 7
 export function barSeries(values: readonly (number | null)[]): (number | null)[] {
   if (values.length <= MAX_DAILY_BARS) return [...values]
   const bars: (number | null)[] = []
-  for (let end = values.length; end > 0; end -= DAYS_PER_BAR) bars.unshift(mean(values.slice(Math.max(0, end - DAYS_PER_BAR), end)))
+  for (let end = values.length; end > 0; end -= DAYS_PER_BAR)
+    bars.unshift(mean(values.slice(Math.max(0, end - DAYS_PER_BAR), end)))
   return bars
 }

@@ -1,28 +1,28 @@
-// Owns: the logging module (SPEC §6 quick-log row, every logging flow, and phase 2's AI on every log). Entry points:
+// Owns: the logging module (SPEC §6 quick-log row, every logging flow, and the AI on every log). Entry points:
 // - ./sheet, its own entry point so pages that only use the kit below never load the sheet's forms:
 //   - QuickLogSheet: the shell's bottom sheet (loaded on first open), opened by the quick-log button and by
 //     `useUiStore().openQuickLog(kind, { date?, slot? })`, logging to today unless a date is given.
 //   - LogSheet: the same sheet, controlled, for any date and meal slot (the Log tab uses it for earlier days).
-//   - FoodPicker: the food search the meal form uses.
 // - Meal capture (photo, barcode, voice, text, favourites, foods) inside the meal form, then MealReview: analysis
 //   progress, the editable item list (ItemsEditor) and Confirm, then the DayAdjustmentCard.
 // - The logging kit the Log tab builds on: writes that know what they make stale and show as pending until synced
-//   (useLogMutation, usePendingLogs), dictation (useDictation, also behind Ask AI's mic), the shared reads (day, settings, water, fasts, the day's meals polled while one
-//   is analysed), the food picker, food icons, the food maths and slots, Edmonton dates, and the logged notice. Error
-//   wording (problemText) lives in the api module; LoadProblem, NumberField and parseNumber in components.
+//   (useLogMutation, usePendingLogs), dictation (useDictation, also behind Ask AI's mic), the shared reads (day,
+//   settings, water, fasts, the day's meals polled while one is analysed), food icons, the food maths and slots,
+//   Edmonton dates, and the logged notice. Error wording (problemText) lives in the api module; LoadProblem,
+//   NumberField and parseNumber in components.
 export { useLogMutation, usePendingLogs, type PendingLog } from './lib/writes'
 export { useDay, useLogSettings, useWater, type LogSettings, type WaterDay } from './lib/reads'
 export { useFasts, useNow, fastsInMonth, type FastView, type FastStatusView } from './lib/fasts'
 export { WaterForm } from './lib/WaterForm'
-export { portion, scaled, sum, SLOT_LABEL, SLOT_TIME, visibleSlots, slotShare, type Per100g } from './lib/nutrition'
-export { todayLocal, dateOf, clockOf, shiftDate, instantAt, relativeDay, formatDuration, formatDateTime } from './lib/dates'
-export { noticeFor, type LogNotice } from './lib/ui'
+export { scaled, sum, SLOT_LABEL, visibleSlots, slotShare } from './lib/nutrition'
+export { todayLocal, dateOf, clockOf, shiftDate, instantAt, relativeDay, formatDateTime } from './lib/dates'
+export type { LogNotice } from './lib/ui'
 export { MealReview, type MealReviewProps } from './lib/review/MealReview'
 export { ItemsEditor } from './lib/review/ItemsEditor'
-export { draftTotals, fromMealItem, fromFood, toItemInputs, type DraftItem } from './lib/review/items'
-export { useDayMealsLive, analysisState, type AnalysisState } from './lib/review/meal-live'
+export { draftTotals, toItemInputs, type DraftItem } from './lib/review/items'
+export { useDayMealsLive } from './lib/review/meal-live'
 export { DayAdjustmentCard, type DayAdjustmentCardProps } from './lib/review/DayAdjustmentCard'
-export { latestAdjustment, useDayAdjustment, type AdjustmentEvent } from './lib/review/adjustment'
-export { FoodIcon, useFoodIcons } from './lib/review/food-icons'
+export { latestAdjustment, type AdjustmentEvent } from './lib/review/adjustment'
+export { useFoodIcons } from './lib/review/food-icons'
 export { useDictation, appendPhrase, type Dictation } from './lib/capture/voice'
 export { preparePhoto, releasePhoto, type PreparedPhoto } from './lib/capture/photos'

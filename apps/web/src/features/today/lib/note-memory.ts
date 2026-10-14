@@ -1,4 +1,4 @@
-// Owns: remembering the pinned coach note on this phone between launches, so Today paints it in its place before the
+// Owns: remembering the pinned coach note on this device between launches, so Today paints it in its place before the
 // day answers — the note sits at the top, and arriving late it would push every card below it down. The day's copy
 // always replaces it once it arrives (and is remembered in turn). A note past its `until` is never shown from memory.
 import { DashboardNote } from '@fitness/shared/schemas'

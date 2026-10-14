@@ -3,7 +3,14 @@
 // value already stored. Also what each editable profile field is, every one of them Aaron's to change, and the one-line
 // summary of the reminder preferences the Settings list shows.
 import { FAST_DAY_EXTRA_WATER_ML } from '@fitness/shared/engine'
-import { ProfilePatch, SettingsPatch, type Profile, type ReminderPrefs, type Settings, type Weekday } from '@fitness/shared/schemas'
+import {
+  ProfilePatch,
+  SettingsPatch,
+  type Profile,
+  type ReminderPrefs,
+  type Settings,
+  type Weekday,
+} from '@fitness/shared/schemas'
 import { formatClockTime, formatNumber } from '../../../components'
 
 export type NumberKey =
@@ -28,11 +35,35 @@ export interface NumberField {
 }
 
 export const RAIL_FIELDS: readonly NumberField[] = [
-  { key: 'calorie_floor', label: 'Calorie floor', unit: 'kcal', rail: true, help: 'The AI never proposes a day below this' },
-  { key: 'calorie_ceiling', label: 'Calorie ceiling for proposals', unit: 'kcal', rail: true, help: 'A proposed day never goes above this' },
-  { key: 'protein_min_g', label: 'Protein minimum', unit: 'g', rail: true, help: 'A proposed day never goes below this' },
+  {
+    key: 'calorie_floor',
+    label: 'Calorie floor',
+    unit: 'kcal',
+    rail: true,
+    help: 'The AI never proposes a day below this',
+  },
+  {
+    key: 'calorie_ceiling',
+    label: 'Calorie ceiling for proposals',
+    unit: 'kcal',
+    rail: true,
+    help: 'A proposed day never goes above this',
+  },
+  {
+    key: 'protein_min_g',
+    label: 'Protein minimum',
+    unit: 'g',
+    rail: true,
+    help: 'A proposed day never goes below this',
+  },
   { key: 'fat_min_g', label: 'Fat minimum', unit: 'g', rail: true },
-  { key: 'fasts_per_month', label: 'Fasts per month', unit: '', rail: true, help: 'Planned fasts the week plan may place' },
+  {
+    key: 'fasts_per_month',
+    label: 'Fasts per month',
+    unit: '',
+    rail: true,
+    help: 'Planned fasts the week plan may place',
+  },
   { key: 'fast_hours', label: 'Fast length', unit: 'h', rail: true, help: 'How long a planned fast lasts' },
 ]
 
@@ -77,8 +108,10 @@ export function checkValue(field: NumberField, value: number | null, current: Se
   const parsed = SettingsPatch.safeParse({ [field.key]: value })
   if (parsed.success) return null
   const issue = parsed.error.issues[0]
-  if (issue?.code === 'too_small') return `At least ${formatNumber(Number(issue.minimum))}${field.unit ? ` ${field.unit}` : ''}.`
-  if (issue?.code === 'too_big') return `At most ${formatNumber(Number(issue.maximum))}${field.unit ? ` ${field.unit}` : ''}.`
+  if (issue?.code === 'too_small')
+    return `At least ${formatNumber(Number(issue.minimum))}${field.unit ? ` ${field.unit}` : ''}.`
+  if (issue?.code === 'too_big')
+    return `At most ${formatNumber(Number(issue.maximum))}${field.unit ? ` ${field.unit}` : ''}.`
   return issue?.message ?? 'That value is not allowed.'
 }
 
@@ -92,7 +125,7 @@ export const WEEKDAYS: readonly { key: Weekday; short: string; long: string }[] 
   { key: 'sun', short: 'Sun', long: 'Sunday' },
 ]
 
-/** "Mon, Tue, Wed, Thu" in week order; "None" when empty. */
+/** "Mon, Tue, Thu" in week order; "None" when empty. */
 export function formatDays(days: readonly Weekday[]): string {
   const list = WEEKDAYS.filter((d) => days.includes(d.key)).map((d) => d.short)
   return list.length ? list.join(', ') : 'None'
@@ -101,8 +134,10 @@ export function formatDays(days: readonly Weekday[]): string {
 /** "Weigh-in 7:00 AM · workout 4:30 PM on training days · water when behind pace": the reminders that are on. */
 export function reminderSummary(reminders: ReminderPrefs): string {
   const parts: string[] = []
-  if (reminders.weigh_in.enabled && reminders.weigh_in.time) parts.push(`weigh-in ${formatClockTime(reminders.weigh_in.time)}`)
-  if (reminders.workout.enabled && reminders.workout.time) parts.push(`workout ${formatClockTime(reminders.workout.time)} on training days`)
+  if (reminders.weigh_in.enabled && reminders.weigh_in.time)
+    parts.push(`weigh-in ${formatClockTime(reminders.weigh_in.time)}`)
+  if (reminders.workout.enabled && reminders.workout.time)
+    parts.push(`workout ${formatClockTime(reminders.workout.time)} on training days`)
   if (reminders.water.enabled) parts.push('water when behind pace')
   const line = parts.length ? parts.join(' · ') : 'weigh-in, workout and water reminders are off'
   return line.charAt(0).toUpperCase() + line.slice(1)
@@ -139,10 +174,31 @@ export interface ProfileField {
  * everything else must hold a value.
  */
 export const PROFILE_FIELDS: readonly ProfileField[] = [
-  { key: 'goal_weight_kg', label: 'Goal weight', kind: 'number', unit: 'kg', precision: 1, min: 30, max: 400 },
+  {
+    key: 'goal_weight_kg',
+    label: 'Goal weight',
+    kind: 'number',
+    unit: 'kg',
+    precision: 1,
+    min: 30,
+    max: 400,
+  },
   { key: 'goal_date', label: 'Goal date', kind: 'date', help: 'The day the goal weight is due.' },
-  { key: 'start_weight_kg', label: 'Start weight', kind: 'number', unit: 'kg', precision: 1, min: 30, max: 400 },
-  { key: 'start_date', label: 'Start date', kind: 'date', help: 'The day the plan began, where progress is measured from.' },
+  {
+    key: 'start_weight_kg',
+    label: 'Start weight',
+    kind: 'number',
+    unit: 'kg',
+    precision: 1,
+    min: 30,
+    max: 400,
+  },
+  {
+    key: 'start_date',
+    label: 'Start date',
+    kind: 'date',
+    help: 'The day the plan began, where progress is measured from.',
+  },
   { key: 'height_cm', label: 'Height', kind: 'number', unit: 'cm', precision: 1, min: 50, max: 260 },
   {
     key: 'sex',
@@ -153,8 +209,19 @@ export const PROFILE_FIELDS: readonly ProfileField[] = [
       { value: 'female', label: 'Female' },
     ],
   },
-  { key: 'birth_date', label: 'Birth date', kind: 'date', nullable: true, help: 'Used for age, which sets the calorie estimates. Clear it to leave it out.' },
-  { key: 'timezone', label: 'Time zone', kind: 'text', help: 'IANA zone, e.g. America/Edmonton. A day is this zone\u2019s day.' },
+  {
+    key: 'birth_date',
+    label: 'Birth date',
+    kind: 'date',
+    nullable: true,
+    help: 'Used for age, which sets the calorie estimates. Clear it to leave it out.',
+  },
+  {
+    key: 'timezone',
+    label: 'Time zone',
+    kind: 'text',
+    help: 'IANA zone, e.g. America/Edmonton. A day is this zone\u2019s day.',
+  },
 ]
 
 /** A profile value as the row shows it. */
@@ -162,7 +229,8 @@ export function formatProfileValue(field: ProfileField, profile: Profile): strin
   const value = profile[field.key]
   if (value === null || value === undefined || value === '') return 'Not set'
   if (field.kind === 'choice') return field.options?.find((o) => o.value === value)?.label ?? String(value)
-  if (field.kind === 'number') return `${formatNumber(Number(value), field.precision ?? 0)}${field.unit ? ` ${field.unit}` : ''}`
+  if (field.kind === 'number')
+    return `${formatNumber(Number(value), field.precision ?? 0)}${field.unit ? ` ${field.unit}` : ''}`
   return String(value)
 }
 

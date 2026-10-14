@@ -1,4 +1,4 @@
-// Owns: the web build — React, the PWA (injectManifest so src/sw.ts owns caching and later push), the manifest and
+// Owns: the web build — React, the PWA (injectManifest so src/sw.ts owns caching and push), the manifest and
 // theme colour from the theme tokens, the font's CSS inlined and its latin file preloaded, static files that live
 // outside public/ (exercise step images and thumbnails, exercise GIFs, the barcode reader's WASM) served in dev and
 // copied into the build, and the dev/preview proxy to the local Worker.
@@ -46,9 +46,17 @@ interface StaticMount {
 
 const STATIC_MOUNTS: StaticMount[] = [
   /** Step images, fetched by `pnpm --filter @fitness/exercises fetch -- --images` (gitignored): /exercises/<id>/<n>.jpg. */
-  { url: '/exercises', source: fileURLToPath(new URL('../../packages/exercises/images', import.meta.url)), kind: 'dir' },
+  {
+    url: '/exercises',
+    source: fileURLToPath(new URL('../../packages/exercises/images', import.meta.url)),
+    kind: 'dir',
+  },
   /** Animated demos, fetched by the exercises media script (gitignored): /media/exercises/<exercise-id>.gif. */
-  { url: '/media/exercises', source: fileURLToPath(new URL('../../packages/exercises/media', import.meta.url)), kind: 'dir' },
+  {
+    url: '/media/exercises',
+    source: fileURLToPath(new URL('../../packages/exercises/media', import.meta.url)),
+    kind: 'dir',
+  },
   { url: '/wasm/zxing_reader.wasm', source: zxingReaderWasm(), kind: 'file' },
 ]
 
@@ -70,14 +78,23 @@ function staticMounts(mounts: readonly StaticMount[]): Plugin {
       for (const { url, source, kind } of mounts) {
         server.middlewares.use(url, (req, res) => {
           const rest = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/')
-          const file = !source ? '' : kind === 'dir' ? resolve(source, `.${rest}`) : rest === '/' ? source : ''
+          const file = !source
+            ? ''
+            : kind === 'dir'
+              ? resolve(source, `.${rest}`)
+              : rest === '/'
+                ? source
+                : ''
           const inside = !!source && (kind === 'dir' ? file.startsWith(source + sep) : file === source)
           if (!inside || !existsSync(file) || !statSync(file).isFile()) {
             res.statusCode = 404
             res.end()
             return
           }
-          res.setHeader('Content-Type', CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream')
+          res.setHeader(
+            'Content-Type',
+            CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream',
+          )
           createReadStream(file).pipe(res)
         })
       }
@@ -98,7 +115,9 @@ function staticMounts(mounts: readonly StaticMount[]): Plugin {
 function themeColorMeta(): Plugin {
   return {
     name: 'fitness:theme-color',
-    transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'theme-color', content: tokens.ink.page }, injectTo: 'head' }],
+    transformIndexHtml: () => [
+      { tag: 'meta', attrs: { name: 'theme-color', content: tokens.ink.page }, injectTo: 'head' },
+    ],
   }
 }
 
@@ -126,14 +145,19 @@ function inlineFontCss(): Plugin {
         let out = html
         for (const [fileName, output] of Object.entries(bundle)) {
           if (output.type !== 'asset' || !fileName.endsWith('.css')) continue
-          const css = typeof output.source === 'string' ? output.source : new TextDecoder().decode(output.source)
+          const css =
+            typeof output.source === 'string' ? output.source : new TextDecoder().decode(output.source)
           const link = new RegExp(`<link rel="stylesheet"[^>]*href="/${escapeRegExp(fileName)}"[^>]*>`)
           if (css.length > INLINE_CSS_MAX_BYTES || !link.test(out)) continue
           out = out.replace(link, () => `<style>${css}</style>`)
         }
         const latin = Object.keys(bundle).find((f) => /\/geist-latin-wght-normal-[^/]+\.woff2$/.test(f))
         if (latin) {
-          out = out.replace('<title>', () => `<link rel="preload" href="/${latin}" as="font" type="font/woff2" crossorigin />\n    <title>`)
+          out = out.replace(
+            '<title>',
+            () =>
+              `<link rel="preload" href="/${latin}" as="font" type="font/woff2" crossorigin />\n    <title>`,
+          )
         }
         return out
       },

@@ -1,6 +1,6 @@
 // Owns: turning a camera frame or a picked file into an upload-ready progress photo — drawn onto a canvas at most
 // 1,024 px on the long side and re-encoded as WebP (JPEG where the browser cannot encode WebP). Only pixels survive a
-// canvas, so EXIF and GPS never leave the phone; the Worker refuses any file that still carries EXIF.
+// canvas, so EXIF and GPS never leave the device; the Worker refuses any file that still carries EXIF.
 import { PHOTO_MAX_EDGE, type ImageType } from '@fitness/shared/schemas'
 
 const QUALITY = 0.85
@@ -20,7 +20,11 @@ export interface PreparedPhoto {
 }
 
 /** The size that fits `max` on the long side: scale = min(1, max / max(width, height)), rounded, never 0. */
-export function fitWithin(width: number, height: number, max = PHOTO_MAX_EDGE): { width: number; height: number } {
+export function fitWithin(
+  width: number,
+  height: number,
+  max = PHOTO_MAX_EDGE,
+): { width: number; height: number } {
   const scale = Math.min(1, max / Math.max(width, height))
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) }
 }

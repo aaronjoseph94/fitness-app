@@ -28,7 +28,13 @@ export function groupTurns(messages: readonly ChatMessage[]): Turn[] {
   for (const m of messages) {
     let turn = turns.at(-1)
     if (m.role === 'user' || !turn || turn.reply) {
-      turn = { key: m.id, question: m.role === 'user' ? m : { id: m.id, content: '', created_at: m.created_at }, tools: [], reply: null, waiting: false }
+      turn = {
+        key: m.id,
+        question: m.role === 'user' ? m : { id: m.id, content: '', created_at: m.created_at },
+        tools: [],
+        reply: null,
+        waiting: false,
+      }
       turns.push(turn)
       if (m.role === 'user') continue
     }
@@ -48,7 +54,11 @@ export function useChat() {
   const threadId = useThreadStore((s) => s.threadId)
   const fresh = useThreadStore((s) => s.fresh)
   const queryClient = useQueryClient()
-  const thread = useApiQuery(endpoints.ai.chatHistory, { query: { thread_id: threadId } }, { enabled: !fresh, staleTime: 60_000 })
+  const thread = useApiQuery(
+    endpoints.ai.chatHistory,
+    { query: { thread_id: threadId } },
+    { enabled: !fresh, staleTime: 60_000 },
+  )
   const [asking, setAsking] = useState<ChatSend | null>(null)
   const [error, setError] = useState<string | null>(null)
   const failed = useRef<ChatSend | null>(null)
@@ -66,11 +76,17 @@ export function useChat() {
       ])
       const store = useThreadStore.getState()
       if (store.threadId === body.thread_id && store.fresh) store.markStored()
-      void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.ai.chatHistory, { query: {} }), exact: true })
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKey(endpoints.ai.chatHistory, { query: {} }),
+        exact: true,
+      })
       // Logs and proposals change Today, Log, Train and Progress: refresh everything else that is on screen.
       if (turn.reply.tool_calls?.length) {
         const keep = hashKey(key)
-        void queryClient.invalidateQueries({ queryKey: ['api'], predicate: (q) => hashKey(q.queryKey) !== keep })
+        void queryClient.invalidateQueries({
+          queryKey: ['api'],
+          predicate: (q) => hashKey(q.queryKey) !== keep,
+        })
       }
       failed.current = null
     },
@@ -81,14 +97,17 @@ export function useChat() {
     onSettled: () => setAsking(null),
   })
 
-  // Deleting does not go through the offline queue (the endpoint is online-only), so a phone without a connection
+  // Deleting does not go through the offline queue (the endpoint is online-only), so a device without a connection
   // reports it next to the composer rather than pretending the chat is gone.
   const deletion = useApiMutation(endpoints.ai.chatDelete, {
     onSuccess: (_outcome, { query }) => {
       const gone = query.thread_id
       // The thread is gone on the server: its cached pages must not be served back from disk offline either.
       queryClient.removeQueries({ queryKey: threadKey(gone) })
-      void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.ai.chatHistory, { query: {} }), exact: true })
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKey(endpoints.ai.chatHistory, { query: {} }),
+        exact: true,
+      })
       // Deleting the chat that is open leaves nothing to show, so a fresh one takes its place.
       const store = useThreadStore.getState()
       if (store.threadId === gone) store.startNew()
@@ -124,7 +143,13 @@ export function useChat() {
   const messages = fresh ? [] : (thread.data ?? [])
   const turns = groupTurns(messages)
   if (asking && asking.thread_id === threadId && !messages.some((m) => m.id === asking.id))
-    turns.push({ key: asking.id, question: { id: asking.id, content: asking.content, created_at: new Date().toISOString() }, tools: [], reply: null, waiting: true })
+    turns.push({
+      key: asking.id,
+      question: { id: asking.id, content: asking.content, created_at: new Date().toISOString() },
+      tools: [],
+      reply: null,
+      waiting: true,
+    })
 
   return {
     threadId,

@@ -2,7 +2,7 @@
 // out planned exercises the cached library says are outside the allowed set by now, each with a note; issue
 // POST /api/sessions through the write chain, open the logger at once, online or not) and reading one (the working
 // copy, folded together with GET /api/sessions/:id whenever the Worker has it; read straight from the Worker when
-// this phone has no copy, e.g. a session from history).
+// this device has no copy, e.g. a session from history).
 import { endpoints } from '@fitness/shared/api'
 import { localDate } from '@fitness/shared/engine'
 import type { SessionCreate, SessionOrigin, Template, TemplateExerciseInput } from '@fitness/shared/schemas'
@@ -41,10 +41,13 @@ export function useStartSession(): (input: StartInput) => void {
       const left_out: string[] = []
       const exercises = input.exercises.filter((e) => {
         const x = index.byId.get(e.exercise_id)
-        if (x && !x.allowed) left_out.push(`${LEFT_OUT}${x.name}: ${x.excluded_reason ?? 'outside your allowed exercise set'}`)
+        if (x && !x.allowed)
+          left_out.push(`${LEFT_OUT}${x.name}: ${x.excluded_reason ?? 'outside your allowed exercise set'}`)
         return !x || x.allowed
       })
-      loggerState().put(seedSession({ id, date: localDate(started_at), started_at, ...input, exercises, left_out }))
+      loggerState().put(
+        seedSession({ id, date: localDate(started_at), started_at, ...input, exercises, left_out }),
+      )
       void syncStart(id)
       void navigate(sessionPath(id))
     },
@@ -74,7 +77,7 @@ export function useSession(id: string): SessionRead {
   useTrainingWriters()
   const local = useLoggerSession(id)
   const starts = usePendingWrites(endpoints.training.startSession)
-  // The Worker cannot answer for a session whose start is still queued on this phone.
+  // The Worker cannot answer for a session whose start is still queued on this device.
   const queuedStart = useMemo(
     () =>
       starts.find((w) => (w.body as SessionCreate | undefined)?.id === id)?.body as SessionCreate | undefined,

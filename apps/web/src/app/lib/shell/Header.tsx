@@ -1,9 +1,9 @@
 // Owns: the bar at the top of every in-app page. From `md` up it is 2a's 56 px header: the sidebar toggle, the
-// breadcrumb ("Aaron's Fitness Tracker › Train › Session"), the search field that opens the ⌘K command palette, "Ask AI" (the slide-up
-// panel; not on the AI tab, which is the chat), Reminders, and the avatar that opens Settings. On a phone it is the
-// slim top bar: a back arrow on a page below a tab (the brand tile on a tab), the page's name once the page's own title
-// has scrolled under it, the sync chip, Ask AI and Settings. Either one shows a thin progress line while a lazy page
-// loads.
+// breadcrumb ("Aaron's Fitness Tracker › Train › Session"), the search field that opens the ⌘K command palette, "Ask
+// AI" (the slide-up panel; not on the AI tab, which is the chat), Reminders, and the avatar that opens Settings. On a
+// phone it is the slim top bar: a back arrow on a page below a tab (the brand tile on a tab), the page's name once
+// the page's own title has scrolled under it, the sync chip, Ask AI and Settings. Either one shows a thin progress
+// line while a lazy page loads.
 //
 // Neither bar holds a heading: 2a gives every page its own 26 px `h1`, so the bar names the page only as a breadcrumb
 // (desktop) or a visual echo of the title (phone).

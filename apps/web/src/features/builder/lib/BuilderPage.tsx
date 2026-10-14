@@ -25,7 +25,15 @@ import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { endpoints } from '@fitness/shared/api'
 import { SESSION_SETS, today } from '@fitness/shared/engine'
@@ -34,21 +42,30 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router'
 import { apiQueryKey, problemText, useApiMutation, useApiQuery } from '../../../api'
-import { Banner, dashedSurface, EmptyState, formatShortDate, LoadProblem, PageHeader, Reveal, SectionHeader, staggerDelay, statValue, StatusChip } from '../../../components'
+import {
+  Banner,
+  dashedSurface,
+  EmptyState,
+  formatShortDate,
+  LoadProblem,
+  PageHeader,
+  Reveal,
+  SectionHeader,
+  staggerDelay,
+  statValue,
+  StatusChip,
+} from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, useExerciseIndex } from '../../library'
 import { AiWorking } from './AiWorking'
-import { AiWorkoutPreview } from './AiWorkoutPreview'
+import { ABOVE_NAV, AiWorkoutPreview } from './AiWorkoutPreview'
 import { ExerciseCard } from './ExerciseCard'
 import { MapCard } from './MapCard'
 import { defaultPrescription, draftMuscleLevels } from './scores'
 import { useTemplateWrites } from './start'
 import { fromTemplate, problems, toExercises, useBuilder } from './useBuilder'
 import { useAiWorkout } from './useAiWorkout'
-
-/** On a phone, sticky bars sit above the fixed bottom nav. */
-const ABOVE_NAV = `calc(${tokens.layout.bottomNavHeight}px + env(safe-area-inset-bottom, 0px))`
 
 export function BuilderPage() {
   const { templateId } = useParams()
@@ -70,7 +87,9 @@ export function BuilderPage() {
   const [showProblems, setShowProblems] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const queryClient = useQueryClient()
-  const remove = useApiMutation(endpoints.training.deleteTemplate, { invalidates: [endpoints.training.listTemplates] })
+  const remove = useApiMutation(endpoints.training.deleteTemplate, {
+    invalidates: [endpoints.training.listTemplates],
+  })
   /** The pending workout proposal of the AI fill now in the builder; sent with the next create or start, then cleared. */
   const [proposalId, setProposalId] = useState<string | null>(null)
   /** Set before a navigation the builder makes itself (after a save, into a session), so it is not blocked. */
@@ -101,7 +120,10 @@ export function BuilderPage() {
   const pickedIds = useMemo(() => new Set(state.items.map((i) => i.exercise_id)), [state.items])
   const issues = problems(state, index.byId)
 
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => builder.dirty && !leaving.current && currentLocation.pathname !== nextLocation.pathname)
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      builder.dirty && !leaving.current && currentLocation.pathname !== nextLocation.pathname,
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -167,7 +189,10 @@ export function BuilderPage() {
     if (!templateId) return
     try {
       await remove.mutateAsync({ params: { id: templateId } })
-      queryClient.setQueriesData<Template[]>({ queryKey: apiQueryKey(endpoints.training.listTemplates) }, (list) => list?.filter((t) => t.id !== templateId))
+      queryClient.setQueriesData<Template[]>(
+        { queryKey: apiQueryKey(endpoints.training.listTemplates) },
+        (list) => list?.filter((t) => t.id !== templateId),
+      )
       setConfirmDelete(false)
       leaving.current = true
       void navigate('/train', { replace: true })
@@ -203,7 +228,11 @@ export function BuilderPage() {
       ) : templates.error && !templates.data ? (
         <LoadProblem what="The template" error={templates.error} onRetry={() => void templates.refetch()} />
       ) : loaded.current !== sourceKey ? (
-        <EmptyState title="Template not found" body="It may not have synced yet." action={{ label: 'New template', onClick: () => navigate('/train/builder') }} />
+        <EmptyState
+          title="Template not found"
+          body="It may not have synced yet."
+          action={{ label: 'New template', onClick: () => navigate('/train/builder') }}
+        />
       ) : null
     ) : null
   if (gate)
@@ -221,7 +250,19 @@ export function BuilderPage() {
       onClick={() => setPicker({ mode: 'add' })}
       data-testid="builder-add"
       // The slot: 2a's dashed empty-slot frame across the list's width, under the last card.
-      sx={variant === 'slot' ? { ...dashedSurface, width: '100%', mt: 3, minHeight: 48, color: tokens.ink.label, boxShadow: 'none', '&:hover': { bgcolor: tokens.ink.fill } } : undefined}
+      sx={
+        variant === 'slot'
+          ? {
+              ...dashedSurface,
+              width: '100%',
+              mt: 3,
+              minHeight: 48,
+              color: tokens.ink.label,
+              boxShadow: 'none',
+              '&:hover': { bgcolor: tokens.ink.fill },
+            }
+          : undefined
+      }
     >
       Add exercise
     </Button>
@@ -235,10 +276,21 @@ export function BuilderPage() {
         action={
           templateId && (
             <>
-              <Button variant="outlined" startIcon={<ContentCopyRounded />} aria-label="Duplicate template" onClick={() => navigate(`/train/builder?from=${templateId}`)}>
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyRounded />}
+                aria-label="Duplicate template"
+                onClick={() => navigate(`/train/builder?from=${templateId}`)}
+              >
                 Duplicate
               </Button>
-              <Button color="error" startIcon={<DeleteOutlineRounded />} aria-label="Delete template" onClick={() => setConfirmDelete(true)} data-testid="builder-delete">
+              <Button
+                color="error"
+                startIcon={<DeleteOutlineRounded />}
+                aria-label="Delete template"
+                onClick={() => setConfirmDelete(true)}
+                data-testid="builder-delete"
+              >
                 Delete
               </Button>
             </>
@@ -251,7 +303,14 @@ export function BuilderPage() {
         <MapCard
           levels={training.levels}
           mapTitle="Muscles this template trains"
-          caption={training.top.length > 0 ? training.top.slice(0, 4).map((m) => MUSCLE_LABELS[m]).join(', ') : 'Muscles light up as you add exercises'}
+          caption={
+            training.top.length > 0
+              ? training.top
+                  .slice(0, 4)
+                  .map((m) => MUSCLE_LABELS[m])
+                  .join(', ')
+              : 'Muscles light up as you add exercises'
+          }
           testId="builder-map"
         >
           <TextField
@@ -278,7 +337,11 @@ export function BuilderPage() {
           <Box sx={{ mt: 5, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '6px' }}>
             <Box
               data-testid="builder-sets"
-              sx={{ ...statValue('standard'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}
+              sx={{
+                ...statValue('standard'),
+                lineHeight: tokens.font.leading.number,
+                color: tokens.ink.text,
+              }}
             >
               {training.totalSets}
             </Box>
@@ -300,15 +363,29 @@ export function BuilderPage() {
       <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
         <SectionHeader
           title="Exercises"
-          subtitle={state.items.length > 0 ? 'Drag to reorder · open one to set its sets, reps, load and rest' : undefined}
+          subtitle={
+            state.items.length > 0
+              ? 'Drag to reorder · open one to set its sets, reps, load and rest'
+              : undefined
+          }
           action={
-            <Button size="small" startIcon={<AutoAwesomeRounded />} onClick={fillWithAi} disabled={state.items.length === 0} data-testid="fill-with-ai">
+            <Button
+              size="small"
+              startIcon={<AutoAwesomeRounded />}
+              onClick={fillWithAi}
+              disabled={state.items.length === 0}
+              data-testid="fill-with-ai"
+            >
               Fill with AI
             </Button>
           }
         />
         {state.items.length === 0 ? (
-          <EmptyState title="No exercises yet" body="Add one or two exercises, then let the AI fill a balanced session." action={addButton('outlined')} />
+          <EmptyState
+            title="No exercises yet"
+            body="Add one or two exercises, then let the AI fill a balanced session."
+            action={addButton('outlined')}
+          />
         ) : (
           <>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -358,10 +435,23 @@ export function BuilderPage() {
           borderTop: `1px solid ${tokens.ink.border}`,
         }}
       >
-        <Button variant="outlined" startIcon={<PlayArrowRounded />} disabled={writes.busy || state.items.length === 0} onClick={() => void start()} sx={{ flex: { xs: 1, sm: 'none' }, minWidth: 120 }} data-testid="builder-start">
+        <Button
+          variant="outlined"
+          startIcon={<PlayArrowRounded />}
+          disabled={writes.busy || state.items.length === 0}
+          onClick={() => void start()}
+          sx={{ flex: { xs: 1, sm: 'none' }, minWidth: 120 }}
+          data-testid="builder-start"
+        >
           Start
         </Button>
-        <Button variant="contained" disabled={writes.busy || (!builder.dirty && !!templateId)} onClick={() => void save()} sx={{ flex: { xs: 1, sm: 'none' }, minWidth: 120 }} data-testid="builder-save">
+        <Button
+          variant="contained"
+          disabled={writes.busy || (!builder.dirty && !!templateId)}
+          onClick={() => void save()}
+          sx={{ flex: { xs: 1, sm: 'none' }, minWidth: 120 }}
+          data-testid="builder-save"
+        >
           {builder.dirty || !templateId ? 'Save' : 'Saved'}
         </Button>
       </Box>
@@ -371,18 +461,31 @@ export function BuilderPage() {
         onClose={() => setPicker(null)}
         keepOpen={picker?.mode === 'add'}
         pickedIds={pickedIds}
-        sameMuscleAs={picker?.mode === 'swap' ? state.items.find((i) => i.key === picker.key)?.exercise_id : undefined}
+        sameMuscleAs={
+          picker?.mode === 'swap' ? state.items.find((i) => i.key === picker.key)?.exercise_id : undefined
+        }
         onPick={(e) => {
           // One row per exercise: the session logger keeps one card per exercise, so a second row's sets would be lost.
           if (pickedIds.has(e.id)) setNotice(`${e.name} is already in this template`)
-          else if (picker?.mode === 'swap') builder.update(picker.key, { exercise_id: e.id, target_load_kg: null })
+          else if (picker?.mode === 'swap')
+            builder.update(picker.key, { exercise_id: e.id, target_load_kg: null })
           else setExpanded(builder.add(defaultPrescription(e)))
         }}
       />
       <ExerciseDetailSheet exerciseId={info} open={info !== null} onClose={() => setInfo(null)} />
 
       <Dialog open={aiOpen} onClose={() => setAiOpen(false)} fullScreen aria-labelledby="ai-fill-title">
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 4, pt: `calc(${tokens.space(2)}px + env(safe-area-inset-top, 0px))`, pb: 2, borderBottom: `1px solid ${tokens.ink.border}` }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            px: 4,
+            pt: `calc(${tokens.space(2)}px + env(safe-area-inset-top, 0px))`,
+            pb: 2,
+            borderBottom: `1px solid ${tokens.ink.border}`,
+          }}
+        >
           <IconButton aria-label="Close" onClick={() => (setAiOpen(false), ai.reset())}>
             <CloseRounded />
           </IconButton>
@@ -401,7 +504,9 @@ export function BuilderPage() {
                 actionsBottom="env(safe-area-inset-bottom, 0px)"
                 onSwap={(next) => ai.setDraft(next)}
                 onSave={(draft) => {
-                  builder.replaceAll(draft.exercises, { notes: state.notes.trim() ? state.notes : draft.rationale })
+                  builder.replaceAll(draft.exercises, {
+                    notes: state.notes.trim() ? state.notes : draft.rationale,
+                  })
                   setProposalId(draft.proposal_id ?? null)
                   setAiOpen(false)
                   ai.reset()
@@ -432,20 +537,35 @@ export function BuilderPage() {
         </Box>
       </Dialog>
 
-      <Dialog open={confirmDelete} onClose={() => !remove.isPending && setConfirmDelete(false)} aria-labelledby="delete-template-title">
+      <Dialog
+        open={confirmDelete}
+        onClose={() => !remove.isPending && setConfirmDelete(false)}
+        aria-labelledby="delete-template-title"
+      >
         <DialogTitle id="delete-template-title">Delete {state.name.trim() || 'this template'}?</DialogTitle>
-        <DialogContent sx={{ color: 'text.secondary' }}>Sessions you started from it keep their sets and history.</DialogContent>
+        <DialogContent sx={{ color: 'text.secondary' }}>
+          Sessions you started from it keep their sets and history.
+        </DialogContent>
         <DialogActions sx={{ px: 6, pb: 4 }}>
           <Button onClick={() => setConfirmDelete(false)} disabled={remove.isPending}>
             Keep it
           </Button>
-          <Button color="error" onClick={() => void deleteTemplate()} disabled={remove.isPending} data-testid="confirm-delete-template">
+          <Button
+            color="error"
+            onClick={() => void deleteTemplate()}
+            disabled={remove.isPending}
+            data-testid="confirm-delete-template"
+          >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={blocker.state === 'blocked'} onClose={() => blocker.reset?.()} aria-labelledby="discard-title">
+      <Dialog
+        open={blocker.state === 'blocked'}
+        onClose={() => blocker.reset?.()}
+        aria-labelledby="discard-title"
+      >
         <DialogTitle id="discard-title">Discard changes?</DialogTitle>
         <DialogContent sx={{ color: 'text.secondary' }}>This template has unsaved changes.</DialogContent>
         <DialogActions sx={{ px: 6, pb: 4 }}>
@@ -461,7 +581,12 @@ export function BuilderPage() {
         autoHideDuration={3500}
         onClose={() => setNotice(null)}
         message={notice ?? ''}
-        sx={{ bottom: { xs: `calc(${tokens.layout.bottomNavHeight + 84}px + env(safe-area-inset-bottom, 0px))`, md: '84px' } }}
+        sx={{
+          bottom: {
+            xs: `calc(${tokens.layout.bottomNavHeight + 84}px + env(safe-area-inset-bottom, 0px))`,
+            md: '84px',
+          },
+        }}
       />
     </Stack>
   )

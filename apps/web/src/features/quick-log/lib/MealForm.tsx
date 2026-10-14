@@ -39,7 +39,7 @@ import { useLogMutation } from './writes'
 
 type Mode = 'favourites' | 'foods' | 'describe' | 'photo' | 'barcode'
 
-/** A meal the AI is analysing: the sheet switches to its review. `previews` are thumbnails made on this phone. */
+/** A meal the AI is analysing: the sheet switches to its review. `previews` are thumbnails made on this device. */
 export interface CapturedMeal {
   mealId: string
   date: string
@@ -56,7 +56,9 @@ interface MealFormProps {
 
 export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: MealFormProps) {
   const isToday = date === todayLocal()
-  const [slot, setSlot] = useState<MealSlot>(initialSlot ?? (isToday ? defaultSlot(clockOf(Date.now())) : 'lunch'))
+  const [slot, setSlot] = useState<MealSlot>(
+    initialSlot ?? (isToday ? defaultSlot(clockOf(Date.now())) : 'lunch'),
+  )
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {})
   const recents = useRecentFoodsState(date)
   const hasQuick = (favourites.data?.length ?? 0) > 0 || recents.foods.length > 0
@@ -93,19 +95,37 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
   const logQuick = (meal: QuickMeal) => {
     const base = { id: crypto.randomUUID(), slot, eaten_at: eatenAt() }
     const message = `${SLOT_LABEL[slot]}: ${meal.label} · ${formatNumber(meal.nutrients.kcal)} kcal`
-    if (meal.kind === 'favourite') save({ ...base, input_method: 'favorite', favorite_id: meal.favouriteId, scale: meal.scale }, message)
-    else save({ ...base, input_method: 'manual', items: [{ id: crypto.randomUUID(), food_id: meal.foodId, grams: meal.grams, description: meal.label }] }, message)
+    if (meal.kind === 'favourite')
+      save({ ...base, input_method: 'favorite', favorite_id: meal.favouriteId, scale: meal.scale }, message)
+    else
+      save(
+        {
+          ...base,
+          input_method: 'manual',
+          items: [
+            { id: crypto.randomUUID(), food_id: meal.foodId, grams: meal.grams, description: meal.label },
+          ],
+        },
+        message,
+      )
   }
 
   const saveText = (raw: string) => {
     const id = crypto.randomUUID()
-    const body: MealCreate = { id, slot, eaten_at: eatenAt(), input_method: spoken ? 'voice' : 'text', raw_text: raw }
+    const body: MealCreate = {
+      id,
+      slot,
+      eaten_at: eatenAt(),
+      input_method: spoken ? 'voice' : 'text',
+      raw_text: raw,
+    }
     create.mutate(
       { body },
       {
         onSuccess: (outcome) => {
           // Queued offline: the analysis starts once it syncs; nothing to watch here.
-          if (outcome.status === 'queued') onLogged(noticeFor(outcome, `${SLOT_LABEL[slot]} saved; it's analysed when it syncs`))
+          if (outcome.status === 'queued')
+            onLogged(noticeFor(outcome, `${SLOT_LABEL[slot]} saved; it's analysed when it syncs`))
           else onCaptured({ mealId: id, date, previews: [] })
         },
       },
@@ -145,15 +165,43 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
             onClick={() => setSlot(s)}
             variant={slot === s ? 'filled' : 'outlined'}
             // The chosen slot is 2a's dark segment (the Log date switcher's selected day).
-            sx={slot === s ? { bgcolor: tokens.dark.bg, color: tokens.dark.text, '&.MuiChip-clickable:hover, &.MuiChip-clickable.Mui-focusVisible': { bgcolor: tokens.dark.hover } } : undefined}
+            sx={
+              slot === s
+                ? {
+                    bgcolor: tokens.dark.bg,
+                    color: tokens.dark.text,
+                    '&.MuiChip-clickable:hover, &.MuiChip-clickable.Mui-focusVisible': {
+                      bgcolor: tokens.dark.hover,
+                    },
+                  }
+                : undefined
+            }
           />
         ))}
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }} aria-label="Capture">
-        <CaptureTile Icon={PhotoCameraOutlined} label="Photo" active={shown === 'photo'} onClick={pickPhotos} testId="capture-photo" />
-        <CaptureTile Icon={QrCodeScannerRounded} label="Barcode" active={shown === 'barcode'} onClick={() => setMode('barcode')} testId="capture-barcode" />
-        <CaptureTile Icon={dictation.listening ? MicRounded : MicNoneRounded} label={dictation.listening ? 'Listening…' : 'Voice'} active={dictation.listening} onClick={speak} testId="capture-voice" />
+        <CaptureTile
+          Icon={PhotoCameraOutlined}
+          label="Photo"
+          active={shown === 'photo'}
+          onClick={pickPhotos}
+          testId="capture-photo"
+        />
+        <CaptureTile
+          Icon={QrCodeScannerRounded}
+          label="Barcode"
+          active={shown === 'barcode'}
+          onClick={() => setMode('barcode')}
+          testId="capture-barcode"
+        />
+        <CaptureTile
+          Icon={dictation.listening ? MicRounded : MicNoneRounded}
+          label={dictation.listening ? 'Listening…' : 'Voice'}
+          active={dictation.listening}
+          onClick={speak}
+          testId="capture-voice"
+        />
       </Box>
       {/* No `capture` attribute: iOS and Android then offer both the camera and the photo library. */}
       <input
@@ -210,7 +258,14 @@ export function MealForm({ date, slot: initialSlot, onLogged, onCaptured }: Meal
           onSave={saveText}
         />
       )}
-      {shown === 'photo' && <PhotoPane capture={photo} onPick={() => fileInput.current?.click()} onSend={(note) => void sendPhotos(note)} onDescribe={() => setMode('describe')} />}
+      {shown === 'photo' && (
+        <PhotoPane
+          capture={photo}
+          onPick={() => fileInput.current?.click()}
+          onSend={(note) => void sendPhotos(note)}
+          onDescribe={() => setMode('describe')}
+        />
+      )}
       {shown === 'barcode' && (
         <BarcodePane
           busy={create.isPending}
@@ -263,7 +318,10 @@ function CaptureTile({
         fontSize: tokens.font.size.label,
         fontWeight: tokens.font.weight.label,
         color: tokens.ink.text,
-        transition: transitionOf(['background-color', 'border-color', 'box-shadow'], tokens.motion.duration.fast),
+        transition: transitionOf(
+          ['background-color', 'border-color', 'box-shadow'],
+          tokens.motion.duration.fast,
+        ),
         '&:hover': { bgcolor: tokens.ink.fill },
       }}
     >
@@ -282,7 +340,15 @@ interface DraftItem {
 
 type ManualItem = { id: string; food_id: string; grams: number; description: string }
 
-function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave: (items: ManualItem[], kcal: number) => void }) {
+function FoodsPane({
+  date,
+  busy,
+  onSave,
+}: {
+  date: string
+  busy: boolean
+  onSave: (items: ManualItem[], kcal: number) => void
+}) {
   const [items, setItems] = useState<DraftItem[]>([])
   const recents = useRecentFoods(date)
   const lastGrams = new Map(recents.map((r) => [r.foodId, r.grams]))
@@ -299,24 +365,56 @@ function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }} data-testid="foods-pane">
       <FoodPicker onPick={add} autoFocus={items.length === 0} />
       {items.length > 0 && (
-        <Box component="ul" aria-label="Items" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
+        <Box
+          component="ul"
+          aria-label="Items"
+          sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}
+        >
           {parsed.map(({ item, grams }) => (
-            <Box component="li" key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}>
+            <Box
+              component="li"
+              key={item.id}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                py: 2,
+                '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+              }}
+            >
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.food.name}</Box>
+                <Box
+                  sx={{
+                    fontSize: tokens.font.size.body,
+                    fontWeight: tokens.font.weight.label,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {item.food.name}
+                </Box>
                 <Box sx={{ fontSize: tokens.font.size.caption, color: 'text.secondary', ...tabularNums }}>
-                  {grams !== null && grams > 0 ? `${formatNumber(portion(item.food.per100, grams).kcal)} kcal` : 'Enter grams'}
+                  {grams !== null && grams > 0
+                    ? `${formatNumber(portion(item.food.per100, grams).kcal)} kcal`
+                    : 'Enter grams'}
                 </Box>
               </Box>
               <NumberField
                 value={item.grams}
-                onChange={(v) => setItems((list) => list.map((i) => (i.id === item.id ? { ...i, grams: v } : i)))}
+                onChange={(v) =>
+                  setItems((list) => list.map((i) => (i.id === item.id ? { ...i, grams: v } : i)))
+                }
                 unit="g"
                 size="small"
                 sx={{ width: 104 }}
                 slotProps={{ htmlInput: { 'aria-label': `Grams of ${item.food.name}` } }}
               />
-              <IconButton aria-label={`Remove ${item.food.name}`} size="small" onClick={() => setItems((list) => list.filter((i) => i.id !== item.id))}>
+              <IconButton
+                aria-label={`Remove ${item.food.name}`}
+                size="small"
+                onClick={() => setItems((list) => list.filter((i) => i.id !== item.id))}
+              >
                 <CloseRounded fontSize="small" />
               </IconButton>
             </Box>
@@ -329,13 +427,22 @@ function FoodsPane({ date, busy, onSave }: { date: string; busy: boolean; onSave
         disabled={!valid || busy}
         onClick={() =>
           onSave(
-            parsed.map(({ item, grams }) => ({ id: item.id, food_id: item.food.id, grams: grams ?? 0, description: item.food.name })),
+            parsed.map(({ item, grams }) => ({
+              id: item.id,
+              food_id: item.food.id,
+              grams: grams ?? 0,
+              description: item.food.name,
+            })),
             total.kcal,
           )
         }
         data-testid="meal-save-items"
       >
-        {busy ? 'Saving…' : items.length === 0 ? 'Add foods to log' : `Log meal · ${formatNumber(total.kcal)} kcal · ${formatNumber(total.protein_g)} g protein`}
+        {busy
+          ? 'Saving…'
+          : items.length === 0
+            ? 'Add foods to log'
+            : `Log meal · ${formatNumber(total.kcal)} kcal · ${formatNumber(total.protein_g)} g protein`}
       </Button>
     </Box>
   )
@@ -353,7 +460,16 @@ interface DescribePaneProps {
   onSave: (text: string) => void
 }
 
-function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic, busy, onSave }: DescribePaneProps) {
+function DescribePane({
+  text,
+  onText,
+  textBox,
+  dictation,
+  keyboardMicHint,
+  onMic,
+  busy,
+  onSave,
+}: DescribePaneProps) {
   const trimmed = text.trim()
   return (
     <Box
@@ -394,7 +510,17 @@ function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic
         }}
       />
       {keyboardMicHint && !dictation.supported && (
-        <Box role="status" data-testid="keyboard-mic-hint" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text, display: 'flex', gap: 1.5, alignItems: 'center' }}>
+        <Box
+          role="status"
+          data-testid="keyboard-mic-hint"
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.text,
+            display: 'flex',
+            gap: 1.5,
+            alignItems: 'center',
+          }}
+        >
           <MicNoneRounded fontSize="small" sx={{ color: tokens.accent.main }} />
           Tap the mic on your keyboard to dictate.
         </Box>
@@ -409,10 +535,22 @@ function DescribePane({ text, onText, textBox, dictation, keyboardMicHint, onMic
           {dictation.error}
         </Box>
       )}
-      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: tokens.font.leading.small }}>
+      <Box
+        sx={{
+          fontSize: tokens.font.size.small,
+          color: 'text.secondary',
+          lineHeight: tokens.font.leading.small,
+        }}
+      >
         The AI turns it into items with grams and kcal for you to check before it counts.
       </Box>
-      <Button type="submit" variant="contained" size="large" disabled={!trimmed || busy || dictation.listening} data-testid="meal-save-text">
+      <Button
+        type="submit"
+        variant="contained"
+        size="large"
+        disabled={!trimmed || busy || dictation.listening}
+        data-testid="meal-save-text"
+      >
         {busy ? 'Saving…' : 'Analyse'}
       </Button>
     </Box>

@@ -1,7 +1,6 @@
 // Owns: the Reminders page (/settings/reminders, SPEC §8 "Reminders") — notifications on this device, then each
 // reminder kind on/off with its time, and the quiet hours. Needs a connection to change anything.
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
@@ -32,14 +31,18 @@ export function RemindersPage() {
   const onSave = (kind: ReminderKind, next: Reminder) => {
     const label = KINDS.find((k) => k.kind === kind)?.label ?? kind
     save(kind, next).then(
-      () => setNotice(next.enabled ? `${label}: on${next.time ? ` at ${next.time}` : ''}.` : `${label}: off.`),
+      () =>
+        setNotice(next.enabled ? `${label}: on${next.time ? ` at ${next.time}` : ''}.` : `${label}: off.`),
       (e: unknown) => setNotice(saveError(e)),
     )
   }
 
   return (
     <Stack spacing={`${tokens.rhythm.section}px`} data-testid="reminders-page">
-      <PageHeader title="Reminders" subtitle={`Edmonton time. Quiet from ${REMINDER_HOURS.to} to ${REMINDER_HOURS.from}: nothing is sent overnight.`} />
+      <PageHeader
+        title="Reminders"
+        subtitle={`Edmonton time. Quiet from ${REMINDER_HOURS.to} to ${REMINDER_HOURS.from}: nothing is sent overnight.`}
+      />
 
       {!online && (
         <Alert severity="info" data-testid="reminders-offline">
@@ -59,13 +62,21 @@ export function RemindersPage() {
           padding={prefs && fastHours !== undefined && scanIntervalDays !== undefined ? 'none' : 'standard'}
         >
           {prefs && fastHours !== undefined && scanIntervalDays !== undefined ? (
-            <ReminderList prefs={prefs} fastHours={fastHours} scanIntervalDays={scanIntervalDays} disabled={!online || saving} onSave={onSave} />
+            <ReminderList
+              prefs={prefs}
+              fastHours={fastHours}
+              scanIntervalDays={scanIntervalDays}
+              disabled={!online || saving}
+              onSave={onSave}
+            />
           ) : query.isPending && query.fetchStatus !== 'paused' ? (
             <Skeleton variant="rounded" height={420} />
           ) : (
             // 2a draws a failed read as the warning banner, and not having loaded while offline as the info one.
             <Alert
-              severity={query.fetchStatus === 'paused' || query.error?.kind === 'network' ? 'info' : 'warning'}
+              severity={
+                query.fetchStatus === 'paused' || query.error?.kind === 'network' ? 'info' : 'warning'
+              }
               data-testid="reminders-error"
               action={
                 query.error?.kind === 'auth-expired' ? (
@@ -87,7 +98,12 @@ export function RemindersPage() {
         </Panel>
       </Reveal>
 
-      <Snackbar open={notice !== null} autoHideDuration={3500} onClose={() => setNotice(null)} message={notice} />
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={3500}
+        onClose={() => setNotice(null)}
+        message={notice}
+      />
     </Stack>
   )
 }

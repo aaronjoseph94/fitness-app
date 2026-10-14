@@ -1,6 +1,6 @@
 // Owns: turning the picked Evolt sheet into pixels in the browser — an image drawn to a canvas, or page 1 of a PDF
 // rendered with pdfjs-dist (its worker bundled by Vite, loaded only when a PDF is picked) — and exporting the canvas
-// with the name box painted black, so the name never leaves the phone (SPEC §8, §9 privacy).
+// with the name box painted black, so the name never leaves the device (SPEC §8, §9 privacy).
 import type { ScanUploadQuery } from '@fitness/shared/schemas'
 
 /** Long side of the rendered sheet: enough for the vision model to read the small segmental table. */
@@ -81,11 +81,16 @@ export function renderSheet(file: File): Promise<HTMLCanvasElement> {
 }
 
 function toBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
-  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not export the sheet'))), type, quality))
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not export the sheet'))), type, quality),
+  )
 }
 
 /** A copy of the sheet with the box painted solid black, as PNG (JPEG when the PNG is large). */
-export async function maskedSheet(source: HTMLCanvasElement, box: MaskBox): Promise<{ blob: Blob; content_type: ScanUploadQuery['content_type'] }> {
+export async function maskedSheet(
+  source: HTMLCanvasElement,
+  box: MaskBox,
+): Promise<{ blob: Blob; content_type: ScanUploadQuery['content_type'] }> {
   const canvas = canvasOf(source.width, source.height)
   const ctx = canvas.getContext('2d')!
   ctx.drawImage(source, 0, 0)

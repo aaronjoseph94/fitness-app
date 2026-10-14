@@ -4,12 +4,5 @@
 // from the vendored react-muscle-map SVG (source/, public domain) by scripts/extract.mjs into lib/geometry.ts.
 export { MuscleMap, type MuscleMapProps } from './lib/MuscleMap'
 export { MuscleMapLegend, type MuscleMapLegendProps } from './lib/MuscleMapLegend'
-export {
-  LEVEL_LABELS,
-  MUSCLE_LABELS,
-  levelColor,
-  levelLabel,
-  type MuscleLevel,
-  type MuscleScale,
-} from './lib/levels'
+export { MUSCLE_LABELS, levelLabel, type MuscleLevel, type MuscleScale } from './lib/levels'
 export type { MuscleView } from './lib/geometry'

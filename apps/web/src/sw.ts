@@ -19,7 +19,9 @@ precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
 // Every in-app navigation gets the cached shell, so the app opens offline. API, MCP, Access, OAuth and PDF paths do not.
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: NETWORK_ONLY_NAVIGATIONS }))
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: NETWORK_ONLY_NAVIGATIONS }),
+)
 
 const DAY_SECONDS = 24 * 60 * 60
 
@@ -39,10 +41,14 @@ const isSameOrigin = (url: URL) => url.origin === self.location.origin
 
 // Exercise step images and demo GIFs: immutable once fetched, ~1,750 + ~400 files.
 registerRoute(
-  ({ url }) => isSameOrigin(url) && (url.pathname.startsWith('/exercises/') || url.pathname.startsWith('/media/')),
+  ({ url }) =>
+    isSameOrigin(url) && (url.pathname.startsWith('/exercises/') || url.pathname.startsWith('/media/')),
   new CacheFirst({
     cacheName: 'exercise-media',
-    plugins: [imagesOnly, new ExpirationPlugin({ maxEntries: 2000, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true })],
+    plugins: [
+      imagesOnly,
+      new ExpirationPlugin({ maxEntries: 2000, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true }),
+    ],
   }),
 )
 
@@ -51,7 +57,10 @@ registerRoute(
   ({ url }) => isSameOrigin(url) && url.pathname.startsWith('/food-icons/'),
   new StaleWhileRevalidate({
     cacheName: 'food-icons',
-    plugins: [only('image/', 'application/json'), new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true })],
+    plugins: [
+      only('image/', 'application/json'),
+      new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY_SECONDS, purgeOnQuotaError: true }),
+    ],
   }),
 )
 
@@ -70,11 +79,14 @@ registerRoute(
   ({ url }) => isSameOrigin(url) && /^\/assets\/pdf(\.worker\.min)?-[\w-]+\.m?js$/.test(url.pathname),
   new CacheFirst({
     cacheName: 'pdfjs',
-    plugins: [only('application/javascript', 'text/javascript'), new ExpirationPlugin({ maxEntries: 6, maxAgeSeconds: 90 * DAY_SECONDS, purgeOnQuotaError: true })],
+    plugins: [
+      only('application/javascript', 'text/javascript'),
+      new ExpirationPlugin({ maxEntries: 6, maxAgeSeconds: 90 * DAY_SECONDS, purgeOnQuotaError: true }),
+    ],
   }),
 )
 
-// ─── Phase 5: Web Push (SPEC §8 Reminders) ───────────────────────────────────────────────────────────────────────────
+// ─── Web Push (SPEC §8 Reminders) ─────────────────────────────────────────────────────────────────────────────────────
 // 'push' shows the notification from the JSON payload the Worker sends (PushNotification: title, body, url, tag);
 // every push must show one (Safari revokes a subscription whose pushes stay silent). 'notificationclick' focuses an
 // open window (navigating it to payload.url when it is elsewhere) or opens one. Subscribing is page-side
@@ -90,7 +102,12 @@ function readPush(data: PushMessageData | null): PushNotification {
   try {
     const p = data.json() as Partial<Record<keyof PushNotification, unknown>>
     const text = (v: unknown, or: string) => (typeof v === 'string' && v.length > 0 ? v : or)
-    return { title: text(p.title, fallback.title), body: text(p.body, ''), url: inAppPath(p.url), tag: text(p.tag, fallback.tag) }
+    return {
+      title: text(p.title, fallback.title),
+      body: text(p.body, ''),
+      url: inAppPath(p.url),
+      tag: text(p.tag, fallback.tag),
+    }
   } catch {
     return { ...fallback, body: data.text() }
   }
@@ -116,7 +133,10 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = new URL(inAppPath((event.notification.data as { url?: unknown } | null)?.url), self.location.origin)
+  const target = new URL(
+    inAppPath((event.notification.data as { url?: unknown } | null)?.url),
+    self.location.origin,
+  )
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

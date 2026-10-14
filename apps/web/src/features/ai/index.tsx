@@ -1,13 +1,11 @@
 // Owns: Ask AI (SPEC §8) on the web — the AI tab page (2a: chats, the thread, proposals waiting for a tap, recent Train
 // changes with Undo) and the slide-up panel the shell offers on every other tab; both show the same thread.
-// Reads/writes: GET/POST /api/ai/chat, GET /api/events, POST /api/proposals/:id/accept|reject, POST /api/templates,
-// POST /api/week-plans/:id/apply, POST /api/train-changes/:id/revert.
+// Reads/writes: GET/POST/DELETE /api/ai/chat, GET /api/events, POST /api/proposals/:id/accept|reject,
+// POST /api/week-plans/:id/apply|reject, POST /api/train-changes/:id/revert.
 import Drawer from '@mui/material/Drawer'
 import { tokens } from '../../theme'
 import { Chat } from './lib/Chat'
 import { PendingProposals, usePendingProposals } from './lib/PendingProposals'
-
-export { SUGGESTIONS } from './lib/Chat'
 
 export function AskAiPage() {
   const pending = usePendingProposals()

@@ -13,7 +13,7 @@ export interface DraftItem {
   /** As typed ("150", "92.5"). */
   grams: string
   foodId: string | null
-  /** Per-100 g values when known (a food picked on this phone). */
+  /** Per-100 g values when known (a food picked on this device). */
   per100: Per100g | null
   /** Nutrients at `grams` the server (or the AI estimate) gave, to rescale when per-100 g values are not known. */
   base: { grams: number; nutrients: Nutrients } | null
@@ -28,8 +28,16 @@ export const MAX_ITEMS = 50
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
-export function nutrientsOf(item: Pick<MealItem, 'kcal' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'>): Nutrients {
-  return { kcal: item.kcal, protein_g: item.protein_g, carbs_g: item.carbs_g, fat_g: item.fat_g, fibre_g: item.fibre_g }
+export function nutrientsOf(
+  item: Pick<MealItem, 'kcal' | 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'>,
+): Nutrients {
+  return {
+    kcal: item.kcal,
+    protein_g: item.protein_g,
+    carbs_g: item.carbs_g,
+    fat_g: item.fat_g,
+    fibre_g: item.fibre_g,
+  }
 }
 
 export function fromMealItem(item: MealItem): DraftItem {
@@ -62,7 +70,15 @@ export function fromFood(food: PickedFood, grams?: number): DraftItem {
 
 /** Swap the food behind an item: same id and grams, the new food's name and values. */
 export function swapFood(item: DraftItem, food: PickedFood): DraftItem {
-  return { ...item, description: food.name, foodId: food.id, per100: food.per100, base: null, confidence: null, estimated: false }
+  return {
+    ...item,
+    description: food.name,
+    foodId: food.id,
+    per100: food.per100,
+    base: null,
+    confidence: null,
+    estimated: false,
+  }
 }
 
 /** Grams as a number when valid (0 < g ≤ 5,000), else null. */
@@ -83,7 +99,10 @@ export function itemNutrients(item: DraftItem): Nutrients | null {
 /** Totals of the items whose nutrients are known, and whether every item counted. */
 export function draftTotals(items: readonly DraftItem[]): { totals: Nutrients; complete: boolean } {
   const known = items.map(itemNutrients)
-  return { totals: sum(known.filter((n): n is Nutrients => n !== null)), complete: known.every((n) => n !== null) }
+  return {
+    totals: sum(known.filter((n): n is Nutrients => n !== null)),
+    complete: known.every((n) => n !== null),
+  }
 }
 
 /**
@@ -93,7 +112,8 @@ export function draftTotals(items: readonly DraftItem[]): { totals: Nutrients; c
 export function stepGrams(grams: number, direction: 1 | -1): number {
   const size = (g: number) => (g < 50 ? 5 : g < 300 ? 10 : 25)
   const step = size(direction === 1 ? grams : Math.max(0, grams - 0.001))
-  const next = direction === 1 ? Math.floor(grams / step) * step + step : Math.ceil(grams / step) * step - step
+  const next =
+    direction === 1 ? Math.floor(grams / step) * step + step : Math.ceil(grams / step) * step - step
   return Math.min(MAX_ITEM_GRAMS, Math.max(5, next))
 }
 
@@ -109,7 +129,8 @@ export function confidenceLevel(confidence: number | null): ConfidenceLevel | nu
 export function toItemInput(item: DraftItem): MealItemInput | null {
   const grams = gramsOf(item)
   if (grams === null) return null
-  if (item.foodId) return { id: item.id, food_id: item.foodId, grams, description: item.description.slice(0, 200) }
+  if (item.foodId)
+    return { id: item.id, food_id: item.foodId, grams, description: item.description.slice(0, 200) }
   const n = itemNutrients(item)
   if (!n) return null
   return {

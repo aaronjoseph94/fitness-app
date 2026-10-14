@@ -54,7 +54,13 @@ const WEEK_HEIGHT = 303
 const ACTIVITY_HEIGHT = 260
 
 /** A bottom-row slot: its cards stacked 16 px apart; gone when it has nothing to show. */
-const SLOT = { display: 'grid', gap: 4, alignContent: 'start', minWidth: 0, '&:empty': { display: 'none' } } as const
+const SLOT = {
+  display: 'grid',
+  gap: 4,
+  alignContent: 'start',
+  minWidth: 0,
+  '&:empty': { display: 'none' },
+} as const
 
 /** 2a's entrance: the stat cards first, then the 2 : 1 row, then the bottom row, 90 ms apart per card. */
 const rowDelay = (row: number, i = 0) => staggerDelay(i, tokens.motion.stagger.section, row === 1 ? 300 : 450)
@@ -76,14 +82,25 @@ export function TodayPage() {
   const forecast = day.data?.forecast ?? null
   const lastPoint = trend.data?.points.findLast((p) => p.trend_kg !== null)
   const trendKg = day.data?.weight.trend_kg ?? lastPoint?.trend_kg ?? null
-  const fasting = pending.fast === 'started' || (pending.fast !== 'ended' && day.data?.fast.state === 'active')
+  const fasting =
+    pending.fast === 'started' || (pending.fast !== 'ended' && day.data?.fast.state === 'active')
   const weighIn = () => openQuickLog('weigh-in')
 
-  // "Wednesday, October 7 · Day 12 of the plan · Upper B — Pull at 4:30 PM", from what has arrived.
-  const planDay = profile?.start_date && profile.start_date <= date ? daysBetween(profile.start_date, date) + 1 : null
-  const session = day.data?.session ? null : (day.data?.planned_session ?? weekPlan?.plan.sessions[weekdayOf(date)] ?? null)
-  const at = workoutReminder?.enabled && workoutReminder.time ? ` at ${formatClockTime(workoutReminder.time)}` : ''
-  const subtitle = [formatLongDate(date), planDay && `Day ${planDay} of the plan`, session && `${session.name}${at}`].filter(Boolean).join(' · ')
+  // "Wednesday, October 7 · Day 12 of the plan · Upper A at 4:30 PM", from what has arrived.
+  const planDay =
+    profile?.start_date && profile.start_date <= date ? daysBetween(profile.start_date, date) + 1 : null
+  const session = day.data?.session
+    ? null
+    : (day.data?.planned_session ?? weekPlan?.plan.sessions[weekdayOf(date)] ?? null)
+  const at =
+    workoutReminder?.enabled && workoutReminder.time ? ` at ${formatClockTime(workoutReminder.time)}` : ''
+  const subtitle = [
+    formatLongDate(date),
+    planDay && `Day ${planDay} of the plan`,
+    session && `${session.name}${at}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <Stack spacing={{ xs: 4, md: 5 }} data-testid="today-page">
@@ -94,7 +111,10 @@ export function TodayPage() {
         subtitle={
           // The day of the plan and the session land after the date and wrap it onto a second line on a phone: that line
           // is held from the first paint, so the cards under the title never move.
-          <Box component="span" sx={{ display: 'block', minHeight: { xs: `${2 * tokens.font.leading.body}em`, sm: 0 } }}>
+          <Box
+            component="span"
+            sx={{ display: 'block', minHeight: { xs: `${2 * tokens.font.leading.body}em`, sm: 0 } }}
+          >
             {subtitle}
           </Box>
         }
@@ -149,7 +169,18 @@ export function TodayPage() {
           </Reveal>
         </Column>
         <Column>
-          <Box sx={{ display: 'grid', gap: 4, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'minmax(0, 1fr)' } }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 4,
+              alignItems: 'start',
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                lg: 'minmax(0, 1fr)',
+              },
+            }}
+          >
             {/* Until the day and the week answer, placeholders; if either fails, its banner: "Rest day" or an empty
                 week would be a claim. */}
             {isQueryLoading(day) || isQueryLoading(week) ? (
@@ -162,7 +193,13 @@ export function TodayPage() {
             ) : (
               <>
                 <Reveal delay={rowDelay(1, 1)}>
-                  <TodaySession date={date} day={day.data} plan={weekPlan} trainingDays={trainingDays} reminder={workoutReminder} />
+                  <TodaySession
+                    date={date}
+                    day={day.data}
+                    plan={weekPlan}
+                    trainingDays={trainingDays}
+                    reminder={workoutReminder}
+                  />
                 </Reveal>
                 <Reveal delay={rowDelay(1, 2)}>
                   <ThisWeekCard
@@ -184,16 +221,32 @@ export function TodayPage() {
       {/* Coach note (with today's day adjustment under it) : AI slot : recent activity at 1 : 1 : 1.3 from `lg`; the
           first two side by side over the table from `md`; one column on a phone. A slot with nothing to show takes no
           room. */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flexWrap: { md: 'wrap', lg: 'nowrap' }, alignItems: { md: 'flex-start' }, gap: 4 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          flexWrap: { md: 'wrap', lg: 'nowrap' },
+          alignItems: { md: 'flex-start' },
+          gap: 4,
+        }}
+      >
         <Reveal delay={rowDelay(2)} sx={{ ...SLOT, flex: { md: '1 1 0' } }}>
           {note && <CoachNote note={note} />}
           <TodayAdjustment events={feed.data?.events ?? []} />
         </Reveal>
         <Reveal delay={rowDelay(2, 1)} sx={{ ...SLOT, flex: { md: '1 1 0' } }}>
-          <AiCard latest={day.data?.proposals.latest ?? null} pendingCount={day.data?.proposals.pending_count ?? 0} events={feed.data?.events ?? []} />
+          <AiCard
+            latest={day.data?.proposals.latest ?? null}
+            pendingCount={day.data?.proposals.pending_count ?? 0}
+            events={feed.data?.events ?? []}
+          />
         </Reveal>
         <Reveal delay={rowDelay(2, 2)} sx={{ ...SLOT, flex: { md: '1 1 100%', lg: '1.3 1 0' } }}>
-          {feed.data ? <RecentActivity events={feed.data.events} /> : <QueryStateCard query={feed} what="recent activity" height={ACTIVITY_HEIGHT} />}
+          {feed.data ? (
+            <RecentActivity events={feed.data.events} />
+          ) : (
+            <QueryStateCard query={feed} what="recent activity" height={ACTIVITY_HEIGHT} />
+          )}
         </Reveal>
       </Box>
 
@@ -202,7 +255,11 @@ export function TodayPage() {
           open
           date={date}
           onClose={() => setHealthOpen(false)}
-          onDone={(status) => setNotice(status === 'queued' ? 'Saved on this device; it syncs when you’re back online.' : 'Saved.')}
+          onDone={(status) =>
+            setNotice(
+              status === 'queued' ? 'Saved on this device; it syncs when you’re back online.' : 'Saved.',
+            )
+          }
         />
       )}
       <Snackbar

@@ -40,7 +40,13 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
               component="img"
               src={photo.previewUrl}
               alt={`Photo ${i + 1}`}
-              sx={{ width: THUMB, height: THUMB, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}` }}
+              sx={{
+                width: THUMB,
+                height: THUMB,
+                objectFit: 'cover',
+                borderRadius: `${tokens.radius.control}px`,
+                border: `1px solid ${tokens.ink.border}`,
+              }}
             />
             {!created && (
               <IconButton
@@ -63,7 +69,17 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
           </Box>
         ))}
         {Array.from({ length: preparing }, (_, i) => (
-          <Box key={`preparing-${i}`} sx={{ width: THUMB, height: THUMB, display: 'grid', placeItems: 'center', borderRadius: `${tokens.radius.control}px`, bgcolor: tokens.ink.fill }}>
+          <Box
+            key={`preparing-${i}`}
+            sx={{
+              width: THUMB,
+              height: THUMB,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: `${tokens.radius.control}px`,
+              bgcolor: tokens.ink.fill,
+            }}
+          >
             <CircularProgress size={20} aria-label="Preparing photo" />
           </Box>
         ))}
@@ -104,14 +120,25 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
         slotProps={{ htmlInput: { maxLength: 500 } }}
       />
 
-      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: tokens.font.leading.small }}>
-        Photos are shrunk to 1,024 px and their location data is removed on this phone before they're sent.
+      <Box
+        sx={{
+          fontSize: tokens.font.size.small,
+          color: 'text.secondary',
+          lineHeight: tokens.font.leading.small,
+        }}
+      >
+        Photos are shrunk to 1,024 px and their location data is removed on this device before they're sent.
       </Box>
 
       {!online && (
         <Box role="status" sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
           You're offline. Photos need a connection to be analysed;{' '}
-          <Button variant="text" size="small" onClick={onDescribe} sx={{ minHeight: 0, p: 0, verticalAlign: 'baseline' }}>
+          <Button
+            variant="text"
+            size="small"
+            onClick={onDescribe}
+            sx={{ minHeight: 0, p: 0, verticalAlign: 'baseline' }}
+          >
             describe the meal
           </Button>{' '}
           instead and it's analysed when you're back.

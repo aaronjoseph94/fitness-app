@@ -1,7 +1,7 @@
 // Owns: the logging bottom sheet — handle, title, back to the kinds list, close — around the form for one kind
 // (weigh-in, meal, water, fast; photo hands over to the /photos/new capture screen), the review stage a
 // text/voice/photo meal moves to once it reaches the server (analysis, items to confirm, then the day adjustment),
-// and the snackbar that confirms a log ("saved on this phone" when it was queued offline). Controlled by its
+// and the snackbar that confirms a log ("saved on this device" when it was queued offline). Controlled by its
 // caller: the shell's quick-log or the Log tab.
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
@@ -69,7 +69,8 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
   const [notice, setNoticeState] = useState<(LogNotice & { seq: number }) | null>(null)
   /** Each notice gets its own sequence number, used as the snackbar's key: MUI only restarts the auto-hide timer when
    * `open` changes, so without a remount a notice shown while the previous one is still up would close on the old timer. */
-  const setNotice = (n: LogNotice | null) => setNoticeState((prev) => (n ? { ...n, seq: (prev?.seq ?? 0) + 1 } : null))
+  const setNotice = (n: LogNotice | null) =>
+    setNoticeState((prev) => (n ? { ...n, seq: (prev?.seq ?? 0) + 1 } : null))
   /** A captured meal under review; the sheet shows it instead of the form until closed. */
   const [review, setReview] = useState<CapturedMeal | null>(null)
   const day = date ?? todayLocal()
@@ -100,19 +101,32 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
         slotProps={{
           transition: { onExited },
           paper: {
-            'aria-label': review ? 'Review meal' : selected ? `Log ${selected.label.toLowerCase()}` : 'Quick log',
+            'aria-label': review
+              ? 'Review meal'
+              : selected
+                ? `Log ${selected.label.toLowerCase()}`
+                : 'Quick log',
             sx: {
               // 2a: an opaque white sheet (the legacy translucent material read grey over the scrim).
               bgcolor: tokens.ink.card,
               maxWidth: (theme) => theme.breakpoints.values.sm,
               mx: 'auto',
-              maxHeight: { xs: '92dvh', md: `calc(100dvh - ${tokens.layout.headerHeight + 2 * tokens.rhythm.section}px)` },
+              maxHeight: {
+                xs: '92dvh',
+                md: `calc(100dvh - ${tokens.layout.headerHeight + 2 * tokens.rhythm.section}px)`,
+              },
               // From `md` (no bottom tabs) the sheet floats as a 2a dialog card: lifted off the bottom edge, all four
               // corners rounded, the hairline border all round.
-              borderRadius: { xs: `${tokens.radius.card}px ${tokens.radius.card}px 0 0`, md: `${tokens.radius.card}px` },
+              borderRadius: {
+                xs: `${tokens.radius.card}px ${tokens.radius.card}px 0 0`,
+                md: `${tokens.radius.card}px`,
+              },
               border: { md: `1px solid ${tokens.ink.border}` },
               bottom: { md: `${tokens.rhythm.section}px` },
-              pb: { xs: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`, md: `${tokens.space(4)}px` },
+              pb: {
+                xs: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`,
+                md: `${tokens.space(4)}px`,
+              },
               // While the finger owns the sheet, nothing may smooth its moves: `!important` because MUI's own slide
               // writes a transition inline on this element, and a 225 ms curve under a 1:1 drag is lag.
               transition: drag.dragging ? 'none !important' : undefined,
@@ -131,9 +145,27 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
           {...drag.handleProps}
           sx={{ height: 28, pt: 0.5, display: 'grid', placeItems: 'center', flex: 'none', ...drag.handleSx }}
         >
-          <Box aria-hidden sx={{ width: 36, height: 5, borderRadius: tokens.radius.chip, bgcolor: withAlpha(tokens.ink.text, 0.2) }} />
+          <Box
+            aria-hidden
+            sx={{
+              width: 36,
+              height: 5,
+              borderRadius: tokens.radius.chip,
+              bgcolor: withAlpha(tokens.ink.text, 0.2),
+            }}
+          />
         </Box>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', pl: selected && onPickKind && !review ? 3 : 5, pr: 3, pb: 1, flex: 'none' }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: 'center',
+            pl: selected && onPickKind && !review ? 3 : 5,
+            pr: 3,
+            pb: 1,
+            flex: 'none',
+          }}
+        >
           {selected && onPickKind && !review && (
             <IconButton aria-label="All kinds" onClick={() => onPickKind(null)}>
               <ArrowBackRounded fontSize="small" />
@@ -169,10 +201,27 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
                 <ListItemButton
                   key={option}
                   onClick={() => onPickKind?.(option)}
-                  sx={{ minHeight: tokens.tapTarget + 8, px: 5, gap: 3, borderRadius: 0, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` }, '&:hover': { bgcolor: tokens.ink.panel } }}
+                  sx={{
+                    minHeight: tokens.tapTarget + 8,
+                    px: 5,
+                    gap: 3,
+                    borderRadius: 0,
+                    '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+                    '&:hover': { bgcolor: tokens.ink.panel },
+                  }}
                 >
                   <ListItemIcon sx={{ minWidth: 0 }}>
-                    <Box sx={{ width: 36, height: 36, borderRadius: `${tokens.radius.control}px`, bgcolor: withAlpha(color, 0.1), color, display: 'grid', placeItems: 'center' }}>
+                    <Box
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: `${tokens.radius.control}px`,
+                        bgcolor: withAlpha(color, 0.1),
+                        color,
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}
+                    >
                       <Icon sx={{ fontSize: 20 }} />
                     </Box>
                   </ListItemIcon>
@@ -180,7 +229,13 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
                     primary={label}
                     secondary={option === 'photo' ? 'Opens the camera' : undefined}
                     slotProps={{
-                      primary: { sx: { fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.text } },
+                      primary: {
+                        sx: {
+                          fontSize: tokens.font.size.body,
+                          fontWeight: tokens.font.weight.label,
+                          color: tokens.ink.text,
+                        },
+                      },
                       secondary: { sx: { fontSize: tokens.font.size.caption, color: tokens.ink.secondary } },
                     }}
                   />

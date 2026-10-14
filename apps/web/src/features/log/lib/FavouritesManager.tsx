@@ -20,7 +20,15 @@ import type { Favourite, Food, Meal } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo, useState } from 'react'
 import { apiQueryKey, problemText } from '../../../api'
-import { formatNumber, LoadProblem, NumberField, outlinedIconButton, parseNumber, PendingBadge, StatusChip } from '../../../components'
+import {
+  formatNumber,
+  LoadProblem,
+  NumberField,
+  outlinedIconButton,
+  parseNumber,
+  PendingBadge,
+  StatusChip,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { useLogMutation, usePendingLogs } from '../../quick-log'
 import { FoodGlyph } from './FoodGlyph'
@@ -36,11 +44,19 @@ function useFavouriteRows(favourites: readonly Favourite[]): FavouriteRow[] {
   const creates = usePendingLogs(endpoints.nutrition.createFavourite)
   const updates = usePendingLogs(endpoints.nutrition.updateFavourite)
   return useMemo(() => {
-    const rows = new Map<string, FavouriteRow>(favourites.map((f) => [f.id, { favourite: f, pending: false }]))
+    const rows = new Map<string, FavouriteRow>(
+      favourites.map((f) => [f.id, { favourite: f, pending: false }]),
+    )
     const now = new Date().toISOString()
     for (const p of creates) {
       if (rows.has(p.body.id)) continue
-      const base = { id: p.body.id, label: p.body.label, sort_order: p.body.sort_order ?? 0, created_at: now, updated_at: now }
+      const base = {
+        id: p.body.id,
+        label: p.body.label,
+        sort_order: p.body.sort_order ?? 0,
+        created_at: now,
+        updated_at: now,
+      }
       // Totals arrive from the server; zero until then.
       const totals = { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0 }
       const favourite: Favourite =
@@ -56,22 +72,40 @@ function useFavouriteRows(favourites: readonly Favourite[]): FavouriteRow[] {
       const f = row.favourite
       const patched: Favourite =
         f.kind === 'food'
-          ? { ...f, label: p.body.label ?? f.label, sort_order: p.body.sort_order ?? f.sort_order, default_grams: p.body.default_grams ?? f.default_grams }
-          : { ...f, label: p.body.label ?? f.label, sort_order: p.body.sort_order ?? f.sort_order, recipe: p.body.recipe ?? f.recipe }
+          ? {
+              ...f,
+              label: p.body.label ?? f.label,
+              sort_order: p.body.sort_order ?? f.sort_order,
+              default_grams: p.body.default_grams ?? f.default_grams,
+            }
+          : {
+              ...f,
+              label: p.body.label ?? f.label,
+              sort_order: p.body.sort_order ?? f.sort_order,
+              recipe: p.body.recipe ?? f.recipe,
+            }
       rows.set(f.id, { favourite: patched, pending: true })
     }
-    return [...rows.values()].sort((a, b) => a.favourite.sort_order - b.favourite.sort_order || a.favourite.label.localeCompare(b.favourite.label))
+    return [...rows.values()].sort(
+      (a, b) =>
+        a.favourite.sort_order - b.favourite.sort_order || a.favourite.label.localeCompare(b.favourite.label),
+    )
   }, [favourites, creates, updates])
 }
 
-/** Food names this phone has seen (meals and searches already loaded), for recipe lines. */
+/** Food names this device has seen (meals and searches already loaded), for recipe lines. */
 function useFoodNames(): Map<string, string> {
   const queryClient = useQueryClient()
   const names = new Map<string, string>()
-  for (const [, meals] of queryClient.getQueriesData<Meal[]>({ queryKey: apiQueryKey(endpoints.nutrition.listMeals) })) {
-    for (const meal of meals ?? []) for (const item of meal.items) if (item.food_id) names.set(item.food_id, item.description)
+  for (const [, meals] of queryClient.getQueriesData<Meal[]>({
+    queryKey: apiQueryKey(endpoints.nutrition.listMeals),
+  })) {
+    for (const meal of meals ?? [])
+      for (const item of meal.items) if (item.food_id) names.set(item.food_id, item.description)
   }
-  for (const [, foods] of queryClient.getQueriesData<Food[]>({ queryKey: apiQueryKey(endpoints.nutrition.searchFoods) })) {
+  for (const [, foods] of queryClient.getQueriesData<Food[]>({
+    queryKey: apiQueryKey(endpoints.nutrition.searchFoods),
+  })) {
     for (const food of foods ?? []) names.set(food.id, food.name)
   }
   return names
@@ -110,7 +144,14 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
       icon={StarRounded}
       meta={
         rows.length > 0 && (
-          <Button variant="text" size="tiny" aria-expanded={managing} aria-controls={listId} onClick={() => setManaging((m) => !m)} sx={{ my: '-6px', mr: '-10px' }}>
+          <Button
+            variant="text"
+            size="tiny"
+            aria-expanded={managing}
+            aria-controls={listId}
+            onClick={() => setManaging((m) => !m)}
+            sx={{ my: '-6px', mr: '-10px' }}
+          >
             {managing ? 'Done' : 'Manage'}
           </Button>
         )
@@ -123,36 +164,74 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
         <LoadProblem what="Favourites" error={error} onRetry={onRetry} />
       ) : rows.length === 0 ? (
         <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
-          None yet. On any logged meal, open its menu and choose “Save as favourite”; a meal with several foods becomes a recipe.
+          None yet. On any logged meal, open its menu and choose “Save as favourite”; a meal with several
+          foods becomes a recipe.
         </Box>
       ) : (
-        <Box component="ol" id={listId} aria-label="Favourites, in the order the meal form shows them" sx={{ listStyle: 'none', p: 0, m: 0, mt: '-6px' }}>
+        <Box
+          component="ol"
+          id={listId}
+          aria-label="Favourites, in the order the meal form shows them"
+          sx={{ listStyle: 'none', p: 0, m: 0, mt: '-6px' }}
+        >
           {rows.map(({ favourite: f, pending }, i) => (
             <Box
               component="li"
               key={f.id}
               data-testid="favourite-manager-row"
-              sx={{ display: 'flex', alignItems: 'center', gap: '10px', minHeight: 42, py: 1, fontSize: tokens.font.size.small, borderTop: `1px solid ${tokens.ink.hairline}` }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                minHeight: 42,
+                py: 1,
+                fontSize: tokens.font.size.small,
+                borderTop: `1px solid ${tokens.ink.hairline}`,
+              }}
             >
               <FoodGlyph name={f.label} size={20} />
               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <Box
+                  component="span"
+                  sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
                   {f.label}
                   {f.kind === 'food' && ` · ${formatNumber(f.default_grams)} g`}
                 </Box>
                 {f.kind === 'recipe' && <StatusChip tone="outline" size="small" label="Recipe" />}
                 {pending && <PendingBadge />}
               </Box>
-              {f.totals.kcal > 0 && <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{formatNumber(f.totals.kcal)} kcal</Box>}
+              {f.totals.kcal > 0 && (
+                <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+                  {formatNumber(f.totals.kcal)} kcal
+                </Box>
+              )}
               {managing && (
                 <Box sx={{ flex: 'none', display: 'flex', gap: 1 }}>
-                  <IconButton size="tiny" aria-label={`Move ${f.label} up`} disabled={i === 0} onClick={() => move(i, -1)} sx={outlinedIconButton}>
+                  <IconButton
+                    size="tiny"
+                    aria-label={`Move ${f.label} up`}
+                    disabled={i === 0}
+                    onClick={() => move(i, -1)}
+                    sx={outlinedIconButton}
+                  >
                     <ArrowUpwardRounded sx={{ fontSize: 16 }} />
                   </IconButton>
-                  <IconButton size="tiny" aria-label={`Move ${f.label} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)} sx={outlinedIconButton}>
+                  <IconButton
+                    size="tiny"
+                    aria-label={`Move ${f.label} down`}
+                    disabled={i === rows.length - 1}
+                    onClick={() => move(i, 1)}
+                    sx={outlinedIconButton}
+                  >
                     <ArrowDownwardRounded sx={{ fontSize: 16 }} />
                   </IconButton>
-                  <IconButton size="tiny" aria-label={`Edit ${f.label}`} onClick={() => setEditing(f)} sx={outlinedIconButton}>
+                  <IconButton
+                    size="tiny"
+                    aria-label={`Edit ${f.label}`}
+                    onClick={() => setEditing(f)}
+                    sx={outlinedIconButton}
+                  >
                     <EditOutlined sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Box>
@@ -176,7 +255,9 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
   const update = useLogMutation(endpoints.nutrition.updateFavourite)
   const [label, setLabel] = useState(favourite.label)
   const [grams, setGrams] = useState(favourite.kind === 'food' ? String(favourite.default_grams) : '')
-  const [recipe, setRecipe] = useState(favourite.kind === 'recipe' ? favourite.recipe.map((r) => ({ ...r, text: String(r.grams) })) : [])
+  const [recipe, setRecipe] = useState(
+    favourite.kind === 'recipe' ? favourite.recipe.map((r) => ({ ...r, text: String(r.grams) })) : [],
+  )
 
   const gramsN = parseNumber(grams)
   const recipeParsed = recipe.map((r) => ({ food_id: r.food_id, grams: parseNumber(r.text) }))
@@ -184,7 +265,8 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
     label.trim().length > 0 &&
     (favourite.kind === 'food'
       ? gramsN !== null && gramsN > 0 && gramsN <= 5000
-      : recipeParsed.length > 0 && recipeParsed.every((r) => r.grams !== null && r.grams > 0 && r.grams <= 5000))
+      : recipeParsed.length > 0 &&
+        recipeParsed.every((r) => r.grams !== null && r.grams > 0 && r.grams <= 5000))
 
   const save = () => {
     if (!valid) return
@@ -193,8 +275,14 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
         params: { id: favourite.id },
         body: {
           label: label.trim() === favourite.label ? undefined : label.trim(),
-          default_grams: favourite.kind === 'food' && gramsN !== null && gramsN !== favourite.default_grams ? gramsN : undefined,
-          recipe: favourite.kind === 'recipe' ? recipeParsed.map((r) => ({ food_id: r.food_id, grams: r.grams ?? 0 })) : undefined,
+          default_grams:
+            favourite.kind === 'food' && gramsN !== null && gramsN !== favourite.default_grams
+              ? gramsN
+              : undefined,
+          recipe:
+            favourite.kind === 'recipe'
+              ? recipeParsed.map((r) => ({ food_id: r.food_id, grams: r.grams ?? 0 }))
+              : undefined,
         },
       },
       { onSuccess: onClose },
@@ -205,14 +293,36 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
     <Dialog open onClose={onClose} aria-labelledby="edit-favourite-title" maxWidth="xs" fullWidth>
       <DialogTitle id="edit-favourite-title">Edit favourite</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 3, pt: '8px !important' }}>
-        <TextField label="Name" value={label} onChange={(e) => setLabel(e.target.value)} slotProps={{ htmlInput: { maxLength: 100 } }} />
+        <TextField
+          label="Name"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          slotProps={{ htmlInput: { maxLength: 100 } }}
+        />
         {favourite.kind === 'food' ? (
           <NumberField label="Default grams" value={grams} onChange={setGrams} unit="g" />
         ) : (
-          <Box component="ul" aria-label="Recipe" sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 2 }}>
+          <Box
+            component="ul"
+            aria-label="Recipe"
+            sx={{ listStyle: 'none', p: 0, m: 0, display: 'grid', gap: 2 }}
+          >
             {recipe.map((r, i) => (
-              <Box component="li" key={`${r.food_id}-${i}`} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.small, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <Box
+                component="li"
+                key={`${r.food_id}-${i}`}
+                sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
+              >
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: tokens.font.size.small,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {names.get(r.food_id) ?? `Food ${i + 1}`}
                 </Box>
                 <NumberField
@@ -221,9 +331,15 @@ function EditFavouriteDialog({ favourite, onClose }: { favourite: Favourite; onC
                   unit="g"
                   size="small"
                   sx={{ width: 104 }}
-                  slotProps={{ htmlInput: { 'aria-label': `Grams of ${names.get(r.food_id) ?? `food ${i + 1}`}` } }}
+                  slotProps={{
+                    htmlInput: { 'aria-label': `Grams of ${names.get(r.food_id) ?? `food ${i + 1}`}` },
+                  }}
                 />
-                <IconButton aria-label="Remove from recipe" disabled={recipe.length === 1} onClick={() => setRecipe((list) => list.filter((_, j) => j !== i))}>
+                <IconButton
+                  aria-label="Remove from recipe"
+                  disabled={recipe.length === 1}
+                  onClick={() => setRecipe((list) => list.filter((_, j) => j !== i))}
+                >
                   <CloseRounded />
                 </IconButton>
               </Box>

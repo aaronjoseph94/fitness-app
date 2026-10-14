@@ -7,7 +7,7 @@ import { useApiQuery } from '../../../api'
 import { dateOf, shiftDate } from './dates'
 import { usePendingLogs } from './writes'
 
-/** The day as GET /api/day/:date returns it (offline: the last copy on this phone). */
+/** The day as GET /api/day/:date returns it (offline: the last copy on this device). */
 export function useDay(date: string) {
   return useApiQuery(endpoints.day.get, { params: { date } })
 }
@@ -43,8 +43,14 @@ export interface LastWeight {
 }
 
 /** The latest weigh-in on or before `date` (90 days back), counting weigh-ins still waiting to sync. */
-export function useLastWeight(date: string): { last: LastWeight | null; onDate: LastWeight | null; isLoading: boolean } {
-  const { data, isLoading } = useApiQuery(endpoints.body.trend, { query: { from: shiftDate(date, -90), to: date } })
+export function useLastWeight(date: string): {
+  last: LastWeight | null
+  onDate: LastWeight | null
+  isLoading: boolean
+} {
+  const { data, isLoading } = useApiQuery(endpoints.body.trend, {
+    query: { from: shiftDate(date, -90), to: date },
+  })
   const pending = usePendingLogs(endpoints.body.createWeight)
   return useMemo(() => {
     let last: LastWeight | null = null
@@ -73,7 +79,13 @@ const RECENT_DAYS = 3
 const RECENT_MAX = 8
 
 function itemNutrients(item: MealItem): Nutrients {
-  return { kcal: item.kcal, protein_g: item.protein_g, carbs_g: item.carbs_g, fat_g: item.fat_g, fibre_g: item.fibre_g }
+  return {
+    kcal: item.kcal,
+    protein_g: item.protein_g,
+    carbs_g: item.carbs_g,
+    fat_g: item.fat_g,
+    fibre_g: item.fibre_g,
+  }
 }
 
 /**
@@ -91,7 +103,9 @@ export function useRecentFoodsState(date: string): { foods: RecentFood[]; isLoad
   const day2 = useApiQuery(endpoints.nutrition.listMeals, { query: { date: shiftDate(date, -2) } })
   const isLoading = day0.isLoading || day1.isLoading || day2.isLoading
   const foods = useMemo(() => {
-    const meals: Meal[] = [day0.data, day1.data, day2.data].slice(0, RECENT_DAYS).flatMap((list) => list ?? [])
+    const meals: Meal[] = [day0.data, day1.data, day2.data]
+      .slice(0, RECENT_DAYS)
+      .flatMap((list) => list ?? [])
     meals.sort((a, b) => b.eaten_at.localeCompare(a.eaten_at))
     const out = new Map<string, RecentFood>()
     for (const meal of meals) {
@@ -134,7 +148,12 @@ export function useWater(date: string): WaterDay {
     // An entry whose delete (Undo) is also waiting never counts; a synced entry's delete shows once the day refetches.
     const undone = new Set(pendingDeletes.map((p) => p.path.split('/').pop()))
     const pending = pendingLogs
-      .map((p) => ({ id: p.body.id, amountMl: p.body.amount_ml, loggedAt: p.body.logged_at ?? p.at, queued: p.queued }))
+      .map((p) => ({
+        id: p.body.id,
+        amountMl: p.body.amount_ml,
+        loggedAt: p.body.logged_at ?? p.at,
+        queued: p.queued,
+      }))
       .filter((p) => dateOf(p.loggedAt) === date && !undone.has(p.id))
     const serverMl = day.data?.water_ml ?? 0
     return {
@@ -146,5 +165,14 @@ export function useWater(date: string): WaterDay {
       error: day.error,
       refetch: () => void day.refetch(),
     }
-  }, [day.data, day.isLoading, day.error, day.refetch, settings.waterTargetMl, pendingLogs, pendingDeletes, date])
+  }, [
+    day.data,
+    day.isLoading,
+    day.error,
+    day.refetch,
+    settings.waterTargetMl,
+    pendingLogs,
+    pendingDeletes,
+    date,
+  ])
 }

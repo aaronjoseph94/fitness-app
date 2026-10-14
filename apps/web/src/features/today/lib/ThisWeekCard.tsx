@@ -1,10 +1,10 @@
 // Owns: Today's "This week" card (2a) — the week's dates and whose plan it is ("Oct 5 – 11 · Coach plan"), one 34 px
 // cell per day Monday to Sunday (a session done: green check; today: blue; a session planned: dashed; a fast: amber
 // timer; rest: plain; the scan day ringed beside its weekday), and the legend, with the fast day's hours and water
-// target and the plan's status. Under it the
-// plan's focus note, any proposed plan for this week or later (the week module's banner: Review → Accept), today's
-// carbs, fat and fibre targets (the stat cards carry the rest), and what the plan changed from last week. Days come
-// from the week view's actuals and plan; without a week plan, today's targets and the settings' training days.
+// target and the plan's status. Under it the plan's focus note, any proposed plan for this week or later (the week
+// module's banner: Review → Accept), today's carbs, fat and fibre targets (the stat cards carry the rest), and what
+// the plan changed from last week. Days come from the week view's actuals and plan; without a week plan, today's
+// targets and the settings' training days.
 import CheckRounded from '@mui/icons-material/CheckRounded'
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import TimerRounded from '@mui/icons-material/TimerRounded'
@@ -12,9 +12,24 @@ import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { addDays, eachDate, FAST_DAY_EXTRA_WATER_ML, weekdayOf, weekStart } from '@fitness/shared/engine'
-import type { DayView, LocalDate, Weekday, WeekPlan, WeekPlanAuthor, WeekPlanView } from '@fitness/shared/schemas'
+import type {
+  DayView,
+  LocalDate,
+  Weekday,
+  WeekPlan,
+  WeekPlanAuthor,
+  WeekPlanView,
+} from '@fitness/shared/schemas'
 import { useState } from 'react'
-import { formatDayRange, formatNumber, formatShortDate, formatWeekday, LegendChips, Panel, type LegendItem } from '../../../components'
+import {
+  formatDayRange,
+  formatNumber,
+  formatShortDate,
+  formatWeekday,
+  LegendChips,
+  Panel,
+  type LegendItem,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { PlanBadge, ProposedBanner } from '../../week'
 
@@ -36,14 +51,35 @@ const PROPOSED_SHOWN = 2
 
 type Mark = 'done' | 'fast' | 'planned' | 'missed' | 'rest'
 
-const PLAN_NAME: Record<WeekPlanAuthor, string> = { claude_mcp: 'Coach plan', gemini: 'AI plan', user: 'Your plan' }
+const PLAN_NAME: Record<WeekPlanAuthor, string> = {
+  claude_mcp: 'Coach plan',
+  gemini: 'AI plan',
+  user: 'Your plan',
+}
 
-const MARK_TEXT: Record<Mark, string> = { done: 'session done', fast: 'fast', planned: 'session planned', missed: 'session missed', rest: 'rest' }
+const MARK_TEXT: Record<Mark, string> = {
+  done: 'session done',
+  fast: 'fast',
+  planned: 'session planned',
+  missed: 'session missed',
+  rest: 'rest',
+}
 
-const GLYPH: Partial<Record<Mark, SvgIconComponent>> = { done: CheckRounded, fast: TimerRounded, planned: FitnessCenterRounded, missed: FitnessCenterRounded }
+const GLYPH: Partial<Record<Mark, SvgIconComponent>> = {
+  done: CheckRounded,
+  fast: TimerRounded,
+  planned: FitnessCenterRounded,
+  missed: FitnessCenterRounded,
+}
 
 /** What one day of the week shows. Today's own day view knows best (a fast day drops training). */
-function markOf(d: LocalDate, date: LocalDate, day: DayView | undefined, week: WeekPlanView | null, trainingDays: readonly Weekday[] | null): Mark {
+function markOf(
+  d: LocalDate,
+  date: LocalDate,
+  day: DayView | undefined,
+  week: WeekPlanView | null,
+  trainingDays: readonly Weekday[] | null,
+): Mark {
   const actual = week?.days.find((a) => a.date === d)
   const plan = week?.active ?? null
   const wd = weekdayOf(d)
@@ -57,7 +93,8 @@ function markOf(d: LocalDate, date: LocalDate, day: DayView | undefined, week: W
   const training =
     isToday && day?.targets
       ? day.targets.training_planned
-      : (actual?.training_planned ?? (plan ? plan.plan.sessions[wd] !== null : (trainingDays?.includes(wd) ?? false)))
+      : (actual?.training_planned ??
+        (plan ? plan.plan.sessions[wd] !== null : (trainingDays?.includes(wd) ?? false)))
   if (!training) return 'rest'
   return d < date ? 'missed' : 'planned'
 }
@@ -78,14 +115,20 @@ function cellSx(mark: Mark, isToday: boolean) {
 }
 
 /** The hairline section's small lines: 12 px muted. */
-const SMALL = { fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted } as const
+const SMALL = {
+  fontSize: tokens.font.size.caption,
+  lineHeight: tokens.font.leading.caption,
+  color: tokens.ink.muted,
+} as const
 
 /** "Changed from last week": the first CHANGES_SHOWN lines, then "and N more". */
 function Changes({ changes }: { changes: readonly string[] }) {
   const [all, setAll] = useState(false)
   return (
     <Box data-testid="week-changes">
-      <Box sx={{ ...SMALL, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>Changed from last week</Box>
+      <Box sx={{ ...SMALL, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>
+        Changed from last week
+      </Box>
       {changes.length === 0 ? (
         <Box sx={SMALL}>Same targets and sessions as last week.</Box>
       ) : (
@@ -106,11 +149,23 @@ function Changes({ changes }: { changes: readonly string[] }) {
   )
 }
 
-export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHours, waterTargetMl }: ThisWeekCardProps) {
+export function ThisWeekCard({
+  date,
+  day,
+  week,
+  proposed,
+  trainingDays,
+  fastHours,
+  waterTargetMl,
+}: ThisWeekCardProps) {
   const monday = weekStart(date)
   const sunday = addDays(monday, 6)
   const plan = week?.active ?? null
-  const days = eachDate(monday, sunday).map((d) => ({ date: d, mark: markOf(d, date, day, week, trainingDays), scan: plan?.plan.scan_date === d }))
+  const days = eachDate(monday, sunday).map((d) => ({
+    date: d,
+    mark: markOf(d, date, day, week, trainingDays),
+    scan: plan?.plan.scan_date === d,
+  }))
   const range = formatDayRange(monday, sunday)
   const fastWater = (plan?.plan.water_ml ?? waterTargetMl) + FAST_DAY_EXTRA_WATER_ML
   const legend: LegendItem[] = [
@@ -118,7 +173,10 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
     { label: 'Today', color: tokens.accent.main },
   ]
   if (days.some((d) => d.mark === 'fast'))
-    legend.push({ label: `${fastHours ? `${fastHours} h fast` : 'Fast'} · water ${formatNumber(fastWater / 1000, 1)} L`, color: tokens.tone.warning.text })
+    legend.push({
+      label: `${fastHours ? `${fastHours} h fast` : 'Fast'} · water ${formatNumber(fastWater / 1000, 1)} L`,
+      color: tokens.tone.warning.text,
+    })
   if (days.some((d) => d.scan)) legend.push({ label: 'Scan', color: tokens.metric.lean, mark: 'ring' })
   // Today's materialised targets know best; else the plan's for this weekday. Calories, protein, water and steps are on
   // the stat cards, so the card adds the other three.
@@ -130,7 +188,10 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
       title="This week"
       testId="this-week"
       actions={
-        <Box component="span" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, whiteSpace: 'nowrap' }}>
+        <Box
+          component="span"
+          sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, whiteSpace: 'nowrap' }}
+        >
           {range} · {plan ? PLAN_NAME[plan.author] : 'Daily targets'}
         </Box>
       }
@@ -138,7 +199,14 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
       <Box
         component="ol"
         aria-label="This week’s days"
-        sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}
+        sx={{
+          listStyle: 'none',
+          m: 0,
+          p: 0,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+          gap: '6px',
+        }}
       >
         {days.map(({ date: d, mark, scan }) => {
           const isToday = d === date
@@ -153,7 +221,13 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
             >
               <Box
                 aria-hidden
-                sx={{ height: 34, borderRadius: `${tokens.radius.segment}px`, display: 'grid', placeItems: 'center', ...cellSx(mark, isToday) }}
+                sx={{
+                  height: 34,
+                  borderRadius: `${tokens.radius.segment}px`,
+                  display: 'grid',
+                  placeItems: 'center',
+                  ...cellSx(mark, isToday),
+                }}
               >
                 {Glyph && <Glyph sx={{ fontSize: 16 }} />}
               </Box>
@@ -170,7 +244,14 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
                 {scan && (
                   <Box
                     component="span"
-                    sx={{ display: 'inline-block', ml: '3px', width: 6, height: 6, borderRadius: `${tokens.radius.pill}px`, border: `1.5px solid ${tokens.metric.lean}` }}
+                    sx={{
+                      display: 'inline-block',
+                      ml: '3px',
+                      width: 6,
+                      height: 6,
+                      borderRadius: `${tokens.radius.pill}px`,
+                      border: `1.5px solid ${tokens.metric.lean}`,
+                    }}
                   />
                 )}
               </Box>
@@ -189,7 +270,15 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
       </Box>
 
       {plan?.plan.focus_note && (
-        <Box data-testid="week-focus" sx={{ mt: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>
+        <Box
+          data-testid="week-focus"
+          sx={{
+            mt: '12px',
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.muted,
+          }}
+        >
           {plan.plan.focus_note}
         </Box>
       )}
@@ -200,7 +289,15 @@ export function ThisWeekCard({ date, day, week, proposed, trainingDays, fastHour
         </Box>
       ))}
 
-      <Box sx={{ mt: '14px', pt: '12px', borderTop: `1px solid ${tokens.ink.hairline}`, display: 'grid', gap: '10px' }}>
+      <Box
+        sx={{
+          mt: '14px',
+          pt: '12px',
+          borderTop: `1px solid ${tokens.ink.hairline}`,
+          display: 'grid',
+          gap: '10px',
+        }}
+      >
         <Box sx={SMALL}>
           <Box component="span" sx={{ fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>
             Today’s targets{fastToday ? ' · fast day' : ''}

@@ -23,14 +23,23 @@ import type { SvgIconComponent } from '@mui/icons-material'
 import { Link as RouterLink } from 'react-router'
 import { addDays, daysBetween, fastDay, weekdayOf, weekStart } from '@fitness/shared/engine'
 import type { DaySummary, LocalDate, TargetValues } from '@fitness/shared/schemas'
-import { cardSurface, formatDayRange, formatNumber, formatShortDate, formatWeekday, MetricRing, Panel, PanelRow, StatusChip, type StatusChipTone } from '../../../components'
+import {
+  cardSurface,
+  formatDayRange,
+  formatNumber,
+  formatShortDate,
+  formatWeekday,
+  MetricRing,
+  Panel,
+  PanelRow,
+  StatusChip,
+  type StatusChipTone,
+} from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
 import { confirmedScans } from '../../scans/charts'
-import { effectiveRate, lastTrend, milestoneTimelines } from '../../progress/series'
+import { effectiveRate, lastTrend, milestoneTimelines, SLEEP_TARGET_H } from '../../progress/series'
 import type { DashboardData } from './useDashboardData'
 
-/** SPEC §9 readiness compares sleep with 7.5 h; used only when the day carries no target. */
-const SLEEP_TARGET_H = 7.5
 /** SPEC §2: a planned fast lasts 24 h. */
 const DEFAULT_FAST_HOURS = 24
 /** SPEC §12 decided default: a scan every 4 weeks. Used only when settings have not loaded. */
@@ -62,14 +71,54 @@ export function goalRows(day: DaySummary | null, waterTargetMl: number): GoalRow
   const targets: TargetValues | null = day?.targets ?? null
   if (!day || !targets) return []
   const rows: GoalRow[] = [
-    { key: 'kcal', label: 'Calories', icon: LocalFireDepartmentRounded, metric: 'calories', value: Math.round(day.intake.kcal), target: targets.kcal, unit: 'kcal' },
-    { key: 'protein', label: 'Protein', icon: EggAltRounded, metric: 'protein', value: Math.round(day.intake.protein_g), target: targets.protein_g, unit: 'g' },
-    { key: 'water', label: 'Water', icon: WaterDropRounded, metric: 'water', value: day.water_ml, target: targets.water_ml || waterTargetMl, unit: 'ml' },
-    { key: 'steps', label: 'Steps', icon: DirectionsWalkRounded, metric: 'steps', value: day.steps ?? 0, target: targets.steps, unit: 'steps' },
+    {
+      key: 'kcal',
+      label: 'Calories',
+      icon: LocalFireDepartmentRounded,
+      metric: 'calories',
+      value: Math.round(day.intake.kcal),
+      target: targets.kcal,
+      unit: 'kcal',
+    },
+    {
+      key: 'protein',
+      label: 'Protein',
+      icon: EggAltRounded,
+      metric: 'protein',
+      value: Math.round(day.intake.protein_g),
+      target: targets.protein_g,
+      unit: 'g',
+    },
+    {
+      key: 'water',
+      label: 'Water',
+      icon: WaterDropRounded,
+      metric: 'water',
+      value: day.water_ml,
+      target: targets.water_ml || waterTargetMl,
+      unit: 'ml',
+    },
+    {
+      key: 'steps',
+      label: 'Steps',
+      icon: DirectionsWalkRounded,
+      metric: 'steps',
+      value: day.steps ?? 0,
+      target: targets.steps,
+      unit: 'steps',
+    },
   ]
   const sleepH = day.sleep_min === null ? null : day.sleep_min / 60
   if (sleepH !== null) {
-    rows.push({ key: 'sleep', label: 'Sleep', icon: BedtimeRounded, metric: 'sleep', value: sleepH, target: SLEEP_TARGET_H, unit: 'h' })
+    rows.push({
+      key: 'sleep',
+      label: 'Sleep',
+      icon: BedtimeRounded,
+      metric: 'sleep',
+      value: sleepH,
+      target: SLEEP_TARGET_H,
+      unit: 'h',
+    })
   }
   // A row with no target has nothing to sit against, so it is dropped rather than drawn as a full ring.
   return rows.filter((r) => r.target > 0)
@@ -80,7 +129,11 @@ export function goalRows(day: DaySummary | null, waterTargetMl: number): GoalRow
  * asks for. Null when the goal is not a loss, or when either anchor is missing — the rail then shows no ring rather
  * than a number that means nothing. Pure.
  */
-export function goalProgress(startKg: number | null, nowKg: number | null, goalKg: number | null): number | null {
+export function goalProgress(
+  startKg: number | null,
+  nowKg: number | null,
+  goalKg: number | null,
+): number | null {
   if (startKg === null || nowKg === null || goalKg === null) return null
   const total = startKg - goalKg
   if (total <= 0) return null
@@ -120,7 +173,11 @@ export function goalFacts(data: DashboardData): GoalFacts {
   const weeksLeft = goalDate ? daysBetween(data.to, goalDate) / 7 : 0
   const timelines =
     data.trend && goalKg !== null
-      ? milestoneTimelines(data.trend.milestones, last, last && forecast ? effectiveRate(last, forecast, goalKg) : null)
+      ? milestoneTimelines(
+          data.trend.milestones,
+          last,
+          last && forecast ? effectiveRate(last, forecast, goalKg) : null,
+        )
       : null
   const next = timelines?.weight.find((m) => !m.reachedOn) ?? null
   return {
@@ -132,7 +189,10 @@ export function goalFacts(data: DashboardData): GoalFacts {
     progress: goalProgress(startKg, nowKg, goalKg),
     doneKg: startKg !== null && nowKg !== null ? startKg - nowKg : null,
     totalKg: startKg !== null && goalKg !== null ? startKg - goalKg : null,
-    requiredRate: nowKg !== null && goalKg !== null && weeksLeft > 0 && nowKg > goalKg ? (nowKg - goalKg) / weeksLeft : null,
+    requiredRate:
+      nowKg !== null && goalKg !== null && weeksLeft > 0 && nowKg > goalKg
+        ? (nowKg - goalKg) / weeksLeft
+        : null,
     forecastRate: forecast && forecast.weekly_rate_kg > 0 ? forecast.weekly_rate_kg : null,
     finishDate: forecast?.finish_date ?? null,
     nextMilestone: next ? { label: next.label, date: next.expectedOn ?? null } : null,
@@ -141,7 +201,9 @@ export function goalFacts(data: DashboardData): GoalFacts {
 
 /** "Apr 9, 2027" for a date in another year, "Nov 12" in this one. */
 function shortDate(date: LocalDate, today: LocalDate): string {
-  return date.slice(0, 4) === today.slice(0, 4) ? formatShortDate(date) : `${formatShortDate(date)}, ${date.slice(0, 4)}`
+  return date.slice(0, 4) === today.slice(0, 4)
+    ? formatShortDate(date)
+    : `${formatShortDate(date)}, ${date.slice(0, 4)}`
 }
 
 /** "17 weeks early", "2 days late": the forecast finish against the goal date. */
@@ -212,7 +274,9 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
 
   const fastHours = data.settings?.fast_hours ?? DEFAULT_FAST_HOURS
   const monthStart = `${today.slice(0, 8)}01` as LocalDate
-  const fastsThisMonth = data.fasts.filter((f) => f.ended_at !== null && (fastDay(f, fastHours) ?? '') >= monthStart).length
+  const fastsThisMonth = data.fasts.filter(
+    (f) => f.ended_at !== null && (fastDay(f, fastHours) ?? '') >= monthStart,
+  ).length
   const nextFast = data.fasts
     .filter((f) => f.ended_at === null && Date.parse(f.started_at) > Date.now())
     .map((f) => fastDay(f, fastHours))
@@ -222,10 +286,15 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
   const logged = data.days.filter((d) => d.meals_logged > 0 || d.water_ml > 0).length
   const loggedShare = data.days.length ? logged / data.days.length : 0
   const lastScan = confirmedScans(data.scans).at(-1) ?? null
-  const nextScan = lastScan ? addDays(lastScan.date, data.settings?.scan_interval_days ?? DEFAULT_SCAN_INTERVAL_DAYS) : null
+  const nextScan = lastScan
+    ? addDays(lastScan.date, data.settings?.scan_interval_days ?? DEFAULT_SCAN_INTERVAL_DAYS)
+    : null
   const tdee = data.trend?.forecast?.tdee_est ?? null
 
-  const ahead = facts.forecastRate !== null && facts.requiredRate !== null ? facts.forecastRate >= facts.requiredRate : null
+  const ahead =
+    facts.forecastRate !== null && facts.requiredRate !== null
+      ? facts.forecastRate >= facts.requiredRate
+      : null
   const outlook =
     facts.finishDate && facts.goalDate
       ? `At this rate the goal lands ${shortDate(facts.finishDate, today)}, ${versusGoalDate(facts.finishDate, facts.goalDate)}.`
@@ -260,11 +329,25 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
           />
         )}
         <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, color: tokens.ink.text, fontVariantNumeric: 'tabular-nums' }}>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.body,
+              fontWeight: tokens.font.weight.heading,
+              color: tokens.ink.text,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
             {formatNumber(facts.doneKg, 1)} of {formatNumber(facts.totalKg, 1)} kg
           </Box>
           {/* What is still to go opens the outlook, where 2a says where he stands against the forecast line. */}
-          <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+          <Box
+            sx={{
+              mt: '2px',
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+            }}
+          >
             {facts.nowKg !== null && facts.goalKg !== null && (
               <>
                 <Box component="span" data-testid="goal-to-go" sx={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -288,13 +371,22 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
               rest={facts.requiredRate === null ? 'kg' : `/ −${formatNumber(facts.requiredRate, 2)} kg`}
             />
           }
-          trailing={ahead === null ? undefined : <Chip tone={ahead ? 'success' : 'warning'} label={ahead ? 'ahead' : 'behind'} />}
+          trailing={
+            ahead === null ? undefined : (
+              <Chip tone={ahead ? 'success' : 'warning'} label={ahead ? 'ahead' : 'behind'} />
+            )
+          }
         />
         <PanelRow
           hairline={tokens.ink.border}
           leading={<Glyph icon={FitnessCenterRounded} />}
           label="Sessions"
-          value={<Figure value={String(done)} rest={planned === null ? 'in this window' : `/ ${planned} planned`} />}
+          value={
+            <Figure
+              value={String(done)}
+              rest={planned === null ? 'in this window' : `/ ${planned} planned`}
+            />
+          }
           trailing={left > 0 ? <Chip tone="neutral" label={`${left} left`} /> : undefined}
         />
         <PanelRow
@@ -310,7 +402,14 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
           leading={<Glyph icon={TaskAltRounded} />}
           label="Days logged"
           value={<Figure value={String(logged)} rest={`/ ${data.days.length}`} />}
-          trailing={data.days.length ? <Chip tone={loggedShare >= LOGGED_GOOD_SHARE ? 'success' : 'warning'} label={`${Math.round(loggedShare * 100)}%`} /> : undefined}
+          trailing={
+            data.days.length ? (
+              <Chip
+                tone={loggedShare >= LOGGED_GOOD_SHARE ? 'success' : 'warning'}
+                label={`${Math.round(loggedShare * 100)}%`}
+              />
+            ) : undefined
+          }
         />
         <PanelRow
           hairline={tokens.ink.border}
@@ -318,7 +417,12 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
           label="Next milestone"
           value={
             facts.nextMilestone ? (
-              <Figure value={facts.nextMilestone.label} rest={facts.nextMilestone.date ? `· ${shortDate(facts.nextMilestone.date, today)}` : undefined} />
+              <Figure
+                value={facts.nextMilestone.label}
+                rest={
+                  facts.nextMilestone.date ? `· ${shortDate(facts.nextMilestone.date, today)}` : undefined
+                }
+              />
             ) : (
               <Figure value="—" />
             )
@@ -381,7 +485,11 @@ export function LatestDay({ data }: { data: DashboardData }) {
       sx={{
         ...cardSurface,
         display: 'grid',
-        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: `minmax(0, 0.9fr) repeat(${rows.length}, minmax(0, 1fr))` },
+        gridTemplateColumns: {
+          xs: 'repeat(2, minmax(0, 1fr))',
+          sm: 'repeat(3, minmax(0, 1fr))',
+          lg: `minmax(0, 0.9fr) repeat(${rows.length}, minmax(0, 1fr))`,
+        },
         alignItems: 'center',
         columnGap: 4,
         rowGap: 3,
@@ -390,7 +498,16 @@ export function LatestDay({ data }: { data: DashboardData }) {
       }}
     >
       <Box sx={{ gridColumn: { xs: '1 / -1', lg: 'auto' }, minWidth: 0 }}>
-        <Box component="h3" id="latest-day-title" sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+        <Box
+          component="h3"
+          id="latest-day-title"
+          sx={{
+            m: 0,
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.heading,
+            color: tokens.ink.text,
+          }}
+        >
           Latest day
         </Box>
         <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
@@ -400,7 +517,17 @@ export function LatestDay({ data }: { data: DashboardData }) {
       {rows.map((row) => {
         const ratio = row.value / row.target
         return (
-          <Box key={row.key} data-testid={`goal-row-${row.key}`} sx={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, containerType: 'inline-size' }}>
+          <Box
+            key={row.key}
+            data-testid={`goal-row-${row.key}`}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              minWidth: 0,
+              containerType: 'inline-size',
+            }}
+          >
             <MetricRing
               label={row.label}
               metric={row.metric}
@@ -410,15 +537,39 @@ export function LatestDay({ data }: { data: DashboardData }) {
               value={row.value}
               target={row.target}
               unit={row.unit}
-              centre={<Box component="span" sx={{ fontSize: tokens.font.size.micro }}>{`${Math.min(100, Math.round(ratio * 100))}%`}</Box>}
+              centre={
+                <Box
+                  component="span"
+                  sx={{ fontSize: tokens.font.size.micro }}
+                >{`${Math.min(100, Math.round(ratio * 100))}%`}</Box>
+              }
             />
             <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: tokens.ink.text, whiteSpace: 'nowrap' }}>{row.label}</Box>
-              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
-                {formatNumber(row.value, row.key === 'sleep' ? 1 : 0)} / {formatNumber(row.target, row.key === 'sleep' ? 1 : 0)}
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.small,
+                  fontWeight: tokens.font.weight.label,
+                  color: tokens.ink.text,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {row.label}
+              </Box>
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.caption,
+                  color: tokens.ink.secondary,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {formatNumber(row.value, row.key === 'sleep' ? 1 : 0)} /{' '}
+                {formatNumber(row.target, row.key === 'sleep' ? 1 : 0)}
                 {/* The label already says "Steps"; the unit would only crowd a phone's half-width cell. */}
                 {row.key !== 'steps' && (
-                  <Box component="span" sx={{ [`@container (max-width: ${CELL_UNIT_MIN}px)`]: { display: 'none' } }}>
+                  <Box
+                    component="span"
+                    sx={{ [`@container (max-width: ${CELL_UNIT_MIN}px)`]: { display: 'none' } }}
+                  >
                     {` ${row.unit}`}
                   </Box>
                 )}

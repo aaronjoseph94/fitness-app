@@ -1,9 +1,9 @@
-// Owns: the AI tab's "Waiting for your tap" list — every pending proposal in the live feed (from Ask AI, the nightly
-// workout draft or the weekly review) not already shown in the open thread, so Today's "more proposals wait in the
-// AI tab" has somewhere to land. Each card says who proposed it (the Coach, the AI clerk), as on Today. Also the rest
-// of 2a's right-hand rail: its quiet line when nothing waits, "Recent Train changes" (the last 7 days' applied Train
-// changes and split drafts kept over a template, not undone yet, each with its lasting one-tap Undo; hidden when there
-// are none) and the "Rails the AI works inside" card.
+// Owns: the AI tab's "Waiting for your tap" list — every pending proposal in the live feed (from Ask AI, a split
+// day's or the nightly workout draft, or the weekly review) not already shown in the open thread, so Today's "more
+// proposals wait in the AI tab" has somewhere to land. Each card says who proposed it (the Coach, the AI clerk), as
+// on Today. Also the rest of 2a's right-hand rail: its quiet line when nothing waits, "Recent Train changes" (the
+// last 7 days' applied Train changes and split drafts kept over a template, not undone yet, each with its lasting
+// one-tap Undo; hidden when there are none) and the "Rails the AI works inside" card.
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
@@ -17,16 +17,27 @@ import { useThreadStore } from './thread-store'
 
 const SHOWN = 5
 
-const asChatProposal = (p: Proposal): ChatProposal => ({ type: 'proposal', id: p.id, summary: p.summary, status: p.proposal_status, body: p.body })
+const asChatProposal = (p: Proposal): ChatProposal => ({
+  type: 'proposal',
+  id: p.id,
+  summary: p.summary,
+  status: p.proposal_status,
+  body: p.body,
+})
 
 /** The live feed the rail reads; one query (same key and options) however many parts of the rail read it. */
-const useFeed = () => useApiQuery(endpoints.day.events, { query: {} }, { staleTime: 30_000, refetchInterval: 60_000 })
+const useFeed = () =>
+  useApiQuery(endpoints.day.events, { query: {} }, { staleTime: 30_000, refetchInterval: 60_000 })
 
 /** The proposals the open thread already shows, under the replies that made them (with their own decision and Undo). */
 function useInThread(): ReadonlySet<string> {
   const threadId = useThreadStore((s) => s.threadId)
   const fresh = useThreadStore((s) => s.fresh)
-  const thread = useApiQuery(endpoints.ai.chatHistory, { query: { thread_id: threadId } }, { enabled: !fresh, staleTime: 60_000 })
+  const thread = useApiQuery(
+    endpoints.ai.chatHistory,
+    { query: { thread_id: threadId } },
+    { enabled: !fresh, staleTime: 60_000 },
+  )
   return new Set((thread.data ?? []).flatMap((m) => m.proposals.map((p) => p.id)))
 }
 
@@ -38,7 +49,9 @@ export function usePendingProposals(): Proposal[] {
   const feed = useFeed()
   const inThread = useInThread()
   return (feed.data?.events ?? [])
-    .filter((e): e is Proposal => e.kind === 'proposal' && e.proposal_status === 'pending' && !inThread.has(e.id))
+    .filter(
+      (e): e is Proposal => e.kind === 'proposal' && e.proposal_status === 'pending' && !inThread.has(e.id),
+    )
     .reverse()
 }
 
@@ -52,8 +65,17 @@ const RECENT_MS = 7 * 24 * 60 * 60 * 1000
 function undoable(e: AiEvent): e is Proposal {
   if (e.kind !== 'proposal') return false
   const b = e.body
-  if (b.kind === 'train_change') return (e.proposal_status === 'accepted' || e.proposal_status === 'auto_applied') && b.reverted_at === undefined
-  return b.kind === 'workout' && e.proposal_status === 'accepted' && b.replaced !== undefined && b.reverted_at === undefined
+  if (b.kind === 'train_change')
+    return (
+      (e.proposal_status === 'accepted' || e.proposal_status === 'auto_applied') &&
+      b.reverted_at === undefined
+    )
+  return (
+    b.kind === 'workout' &&
+    e.proposal_status === 'accepted' &&
+    b.replaced !== undefined &&
+    b.reverted_at === undefined
+  )
 }
 
 /** The last 7 days' undoable Train changes the open thread is not already showing, newest applied first. */
@@ -62,7 +84,9 @@ function useRecentTrainChanges(): Proposal[] {
   const inThread = useInThread()
   const now = Date.now()
   return (feed.data?.events ?? [])
-    .filter((e): e is Proposal => undoable(e) && now - Date.parse(e.updated_at) <= RECENT_MS && !inThread.has(e.id))
+    .filter(
+      (e): e is Proposal => undoable(e) && now - Date.parse(e.updated_at) <= RECENT_MS && !inThread.has(e.id),
+    )
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id.localeCompare(a.id))
 }
 
@@ -99,7 +123,8 @@ function RailTitle({ count }: { count: number }) {
         >
           {count}
           <Box component="span" sx={visuallyHidden}>
-            {' '}waiting
+            {' '}
+            waiting
           </Box>
         </Box>
       )}
@@ -111,15 +136,26 @@ export function PendingProposals() {
   const pending = usePendingProposals()
   if (pending.length === 0) return null
   return (
-    <Box component="section" aria-labelledby="ask-ai-pending-title" data-testid="ask-ai-pending" sx={{ display: 'grid', gap: '16px' }}>
+    <Box
+      component="section"
+      aria-labelledby="ask-ai-pending-title"
+      data-testid="ask-ai-pending"
+      sx={{ display: 'grid', gap: '16px' }}
+    >
       <RailTitle count={pending.length} />
       {pending.length > SHOWN && (
-        <Box sx={{ mt: '-10px', fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>{`The newest ${SHOWN} of ${pending.length}.`}</Box>
+        <Box
+          sx={{ mt: '-10px', fontSize: tokens.font.size.caption, color: tokens.ink.muted }}
+        >{`The newest ${SHOWN} of ${pending.length}.`}</Box>
       )}
       <Box sx={{ display: 'grid', gap: '12px' }}>
         {pending.slice(0, SHOWN).map((p, i) => (
           <Reveal key={p.id} delay={staggerDelay(i, tokens.motion.stagger.section, 150)}>
-            <ProposalItem proposal={asChatProposal(p)} source={`Proposal · ${actorLabel(p.actor)}`} when={p.created_at} />
+            <ProposalItem
+              proposal={asChatProposal(p)}
+              source={`Proposal · ${actorLabel(p.actor)}`}
+              when={p.created_at}
+            />
           </Reveal>
         ))}
       </Box>
@@ -136,19 +172,37 @@ export function RecentTrainChanges() {
   const recent = useRecentTrainChanges()
   if (recent.length === 0) return null
   return (
-    <Box component="section" aria-labelledby="ask-ai-recent-title" data-testid="recent-train-changes" sx={{ display: 'grid', gap: '16px' }}>
+    <Box
+      component="section"
+      aria-labelledby="ask-ai-recent-title"
+      data-testid="recent-train-changes"
+      sx={{ display: 'grid', gap: '16px' }}
+    >
       <Box>
         <Box component="h2" id="ask-ai-recent-title" sx={railTitleSx}>
           Recent Train changes
         </Box>
-        <Box sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>
-          {recent.length > SHOWN ? `The newest ${SHOWN} of ${recent.length} from the last 7 days.` : 'From the last 7 days. Undo puts it back as it was.'}
+        <Box
+          sx={{
+            mt: '2px',
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.muted,
+          }}
+        >
+          {recent.length > SHOWN
+            ? `The newest ${SHOWN} of ${recent.length} from the last 7 days.`
+            : 'From the last 7 days. Undo puts it back as it was.'}
         </Box>
       </Box>
       <Box sx={{ display: 'grid', gap: '12px' }}>
         {recent.slice(0, SHOWN).map((p, i) => (
           <Reveal key={p.id} delay={staggerDelay(i, tokens.motion.stagger.section, 150)}>
-            <ProposalItem proposal={asChatProposal(p)} source={`Proposal · ${actorLabel(p.actor)}`} when={p.updated_at} />
+            <ProposalItem
+              proposal={asChatProposal(p)}
+              source={`Proposal · ${actorLabel(p.actor)}`}
+              when={p.updated_at}
+            />
           </Reveal>
         ))}
       </Box>
@@ -167,7 +221,14 @@ export function NothingWaiting() {
   return (
     <Box component="section" aria-labelledby="ask-ai-pending-title">
       <RailTitle count={0} />
-      <Box sx={{ mt: '6px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>
+      <Box
+        sx={{
+          mt: '6px',
+          fontSize: tokens.font.size.caption,
+          lineHeight: tokens.font.leading.small,
+          color: tokens.ink.muted,
+        }}
+      >
         {isQueryLoading(feed) ? (
           <>
             <Skeleton width="90%" />
@@ -200,9 +261,11 @@ export function RailsCard() {
         color: tokens.ink.label,
       }}
     >
-      <Box sx={{ mb: '4px', fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>Rails the AI works inside</Box>
-      Calorie floor and proposal ceiling · protein and fat minimums · two 24 h fasts a month · machines and free weights
-      only. Only you change these, in Settings.
+      <Box sx={{ mb: '4px', fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+        Rails the AI works inside
+      </Box>
+      Calorie floor and proposal ceiling · protein and fat minimums · two 24 h fasts a month · machines and
+      free weights only. Only you change these, in Settings.
     </Box>
   )
 }

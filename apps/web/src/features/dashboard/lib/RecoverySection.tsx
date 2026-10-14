@@ -8,25 +8,44 @@ import { addDays, dayAdherence, fastDay } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useUiStore } from '../../../app/ui-store'
 import { fastLook, type FastEntry, type FastStatus } from '../../../charts'
-import { ChartCard, Column, Columns, formatLongDate, formatNumber, formatShortDate, formatWeekday, MiniBars } from '../../../components'
+import {
+  ChartCard,
+  Column,
+  Columns,
+  formatLongDate,
+  formatNumber,
+  formatShortDate,
+  formatWeekday,
+  MiniBars,
+} from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
-import { fastEntries, hasAny, latestTargets, sleepNights, stepsDays, waterDays } from '../../progress/series'
+import {
+  fastEntries,
+  hasAny,
+  latestTargets,
+  SLEEP_TARGET_H,
+  sleepNights,
+  stepsDays,
+  waterDays,
+} from '../../progress/series'
 import { DayStrip, type DayCell } from './DayStrip'
 import { barSeries } from './kpis'
 import { DashboardSection } from './Section'
 import type { DashboardData } from './useDashboardData'
 
-/** SPEC §9 readiness compares sleep with 7.5 h. */
-const SLEEP_TARGET_H = 7.5
 /** SPEC §2: a planned fast lasts 24 h. */
 const DEFAULT_FAST_HOURS = 24
 /** 2a's habit bars: 90 px tall. */
 const BAR_HEIGHT = 90
 
 /** The day holding the highest value, or null. */
-function best(series: readonly { date: string; value: number | null | undefined }[]): { date: string; value: number } | null {
+function best(
+  series: readonly { date: string; value: number | null | undefined }[],
+): { date: string; value: number } | null {
   let top: { date: string; value: number } | null = null
-  for (const d of series) if (typeof d.value === 'number' && (top === null || d.value > top.value)) top = { date: d.date, value: d.value }
+  for (const d of series)
+    if (typeof d.value === 'number' && (top === null || d.value > top.value))
+      top = { date: d.date, value: d.value }
   return top
 }
 
@@ -37,8 +56,29 @@ function hits(values: readonly (number | null | undefined)[], target: number | u
   return `Hit on ${present.filter((v) => v >= target).length} of ${present.length} ${present.length === 1 ? 'day' : 'days'}`
 }
 
-function Bars({ values, metric, target, label, testId }: { values: readonly (number | null | undefined)[]; metric: MetricKey; target?: number; label: string; testId: string }) {
-  return <MiniBars values={barSeries(values.map((v) => v ?? null))} metric={metric} target={target} height={BAR_HEIGHT} label={label} testId={testId} />
+function Bars({
+  values,
+  metric,
+  target,
+  label,
+  testId,
+}: {
+  values: readonly (number | null | undefined)[]
+  metric: MetricKey
+  target?: number
+  label: string
+  testId: string
+}) {
+  return (
+    <MiniBars
+      values={barSeries(values.map((v) => v ?? null))}
+      metric={metric}
+      target={target}
+      height={BAR_HEIGHT}
+      label={label}
+      testId={testId}
+    />
+  )
 }
 
 export function RecoverySection({ data }: { data: DashboardData }) {
@@ -54,7 +94,9 @@ export function RecoverySection({ data }: { data: DashboardData }) {
   // Friday 8 PM), as the goals rail and the Log tab date it; a fast too short to have one keeps its start date.
   const now = Date.now()
   const entries = data.fasts
-    .flatMap((f) => fastEntries([f], now, fastHours).map((e) => ({ ...e, date: fastDay(f, fastHours) ?? e.date })))
+    .flatMap((f) =>
+      fastEntries([f], now, fastHours).map((e) => ({ ...e, date: fastDay(f, fastHours) ?? e.date })),
+    )
     .sort((a, b) => (a.date < b.date ? -1 : 1))
 
   const waterValues = water.map((d) => (d.ml ? d.ml : null))
@@ -68,7 +110,11 @@ export function RecoverySection({ data }: { data: DashboardData }) {
   const avgWater = presentWater.length ? presentWater.reduce((s, v) => s + v, 0) / presentWater.length : null
 
   return (
-    <DashboardSection id="recovery" title="Recovery and habits" subtitle="Water, steps, sleep, fasting and logging">
+    <DashboardSection
+      id="recovery"
+      title="Recovery and habits"
+      subtitle="Water, steps, sleep, fasting and logging"
+    >
       {/* 2a draws four equal cards; with water as a card too, the three bar cards share a row and the two strips the
           next, so no card is narrower than its title and target line. */}
       <Columns xs={1} sm={2} md={6} lg={12} align="stretch">
@@ -78,15 +124,30 @@ export function RecoverySection({ data }: { data: DashboardData }) {
             fill
             title="Water"
             action={targets ? `target ${formatNumber(targets.water_ml)} ml` : undefined}
-            caption={[hits(waterValues, targets?.water_ml), avgWater !== null ? `average ${formatNumber(avgWater)} ml` : null].filter(Boolean).join(' · ')}
+            caption={[
+              hits(waterValues, targets?.water_ml),
+              avgWater !== null ? `average ${formatNumber(avgWater)} ml` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             testId="dashboard-water"
             empty={
               hasAny(water, (d) => d.ml)
                 ? null
-                : { title: 'No water logged in this window', body: 'Quick-add 250, 500 or 750 ml and the bars fill in.', action: { label: 'Log water', onClick: () => openQuickLog('water') } }
+                : {
+                    title: 'No water logged in this window',
+                    body: 'Quick-add 250, 500 or 750 ml and the bars fill in.',
+                    action: { label: 'Log water', onClick: () => openQuickLog('water') },
+                  }
             }
           >
-            <Bars values={waterValues} metric="water" target={targets?.water_ml} label={`Water per day in this window${targets ? `; target ${formatNumber(targets.water_ml)} ml` : ''}`} testId="chart-dashboard-water" />
+            <Bars
+              values={waterValues}
+              metric="water"
+              target={targets?.water_ml}
+              label={`Water per day in this window${targets ? `; target ${formatNumber(targets.water_ml)} ml` : ''}`}
+              testId="chart-dashboard-water"
+            />
           </ChartCard>
         </Column>
 
@@ -96,11 +157,31 @@ export function RecoverySection({ data }: { data: DashboardData }) {
             fill
             title="Steps"
             action={targets ? `target ${formatNumber(targets.steps)}` : undefined}
-            caption={[hits(stepsValues, targets?.steps), bestSteps ? `best ${formatNumber(bestSteps.value)} on ${formatShortDate(bestSteps.date)}` : null].filter(Boolean).join(' · ')}
+            caption={[
+              hits(stepsValues, targets?.steps),
+              bestSteps
+                ? `best ${formatNumber(bestSteps.value)} on ${formatShortDate(bestSteps.date)}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             testId="dashboard-steps"
-            empty={hasAny(steps, (d) => d.steps) ? null : { title: 'No steps in this window', body: 'Steps arrive from the Apple Watch Shortcut or the manual form.' }}
+            empty={
+              hasAny(steps, (d) => d.steps)
+                ? null
+                : {
+                    title: 'No steps in this window',
+                    body: 'Steps arrive from the Apple Watch Shortcut or the manual form.',
+                  }
+            }
           >
-            <Bars values={stepsValues} metric="steps" target={targets?.steps} label={`Steps per day in this window${targets ? `; target ${formatNumber(targets.steps)}` : ''}`} testId="chart-dashboard-steps" />
+            <Bars
+              values={stepsValues}
+              metric="steps"
+              target={targets?.steps}
+              label={`Steps per day in this window${targets ? `; target ${formatNumber(targets.steps)}` : ''}`}
+              testId="chart-dashboard-steps"
+            />
           </ChartCard>
         </Column>
 
@@ -112,7 +193,9 @@ export function RecoverySection({ data }: { data: DashboardData }) {
             action={`target ${SLEEP_TARGET_H} h`}
             caption={[
               avgSleep !== null ? `Average ${formatNumber(avgSleep, 1)} h` : null,
-              bestSleep ? `${formatNumber(bestSleep.value, 1)} h best on ${formatShortDate(bestSleep.date)}` : null,
+              bestSleep
+                ? `${formatNumber(bestSleep.value, 1)} h best on ${formatShortDate(bestSleep.date)}`
+                : null,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -120,15 +203,30 @@ export function RecoverySection({ data }: { data: DashboardData }) {
             empty={
               hasAny(sleep, (n) => n.hours)
                 ? null
-                : { title: 'No sleep in this window', body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.' }
+                : {
+                    title: 'No sleep in this window',
+                    body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.',
+                  }
             }
           >
-            <Bars values={sleepValues} metric="sleep" target={SLEEP_TARGET_H} label={`Hours asleep per night in this window; target ${SLEEP_TARGET_H} h`} testId="chart-dashboard-sleep" />
+            <Bars
+              values={sleepValues}
+              metric="sleep"
+              target={SLEEP_TARGET_H}
+              label={`Hours asleep per night in this window; target ${SLEEP_TARGET_H} h`}
+              testId="chart-dashboard-sleep"
+            />
           </ChartCard>
         </Column>
 
         <Column span={6} mdSpan={3}>
-          <FastingCard data={data} entries={entries} fastHours={fastHours} today={today} onStart={() => openQuickLog('fast')} />
+          <FastingCard
+            data={data}
+            entries={entries}
+            fastHours={fastHours}
+            today={today}
+            onStart={() => openQuickLog('fast')}
+          />
         </Column>
 
         <Column span={6} mdSpan={3} smSpan={2}>
@@ -162,7 +260,19 @@ const FAST_WORD: Record<FastStatus, string> = {
  * blue, the days ahead dashed, a fast by its status), then the window's count and the next fasts in words ("First 24 h
  * fast is Saturday, October 10 · second planned Oct 24").
  */
-function FastingCard({ data, entries, fastHours, today, onStart }: { data: DashboardData; entries: Entries; fastHours: number; today: LocalDate; onStart: () => void }) {
+function FastingCard({
+  data,
+  entries,
+  fastHours,
+  today,
+  onStart,
+}: {
+  data: DashboardData
+  entries: Entries
+  fastHours: number
+  today: LocalDate
+  onStart: () => void
+}) {
   const from: LocalDate = data.days[0]?.date ?? data.from
   // The strip runs to whichever is later: today or the last fast planned beyond it.
   const to = entries.reduce<LocalDate>((latest, f) => (f.date > latest ? f.date : latest), today)
@@ -198,7 +308,11 @@ function FastingCard({ data, entries, fastHours, today, onStart }: { data: Dashb
       empty={
         entries.length > 0
           ? null
-          : { title: 'No fasts in this window', body: 'A fast day is a known pattern, not a missed day. Start one from the quick-log button.', action: { label: 'Start a fast', onClick: onStart } }
+          : {
+              title: 'No fasts in this window',
+              body: 'A fast day is a known pattern, not a missed day. Start one from the quick-log button.',
+              action: { label: 'Start a fast', onClick: onStart },
+            }
       }
     >
       <DayStrip
@@ -223,9 +337,18 @@ function LoggingCard({ data, today }: { data: DashboardData; today: string }) {
   const cells: DayCell[] = scored.map(({ day, a }) => {
     const n = Math.round(a.score * 3)
     const when = `${formatWeekday(day.date)}, ${formatShortDate(day.date)}`
-    const fill =
-      a.adherent ? tokens.tone.success.solid : day.date === today ? tokens.tone.success.border : n > 0 ? tokens.tone.success.light : tokens.ink.fill
-    return { date: day.date, fill, description: `${when}: ${a.adherent ? 'all three logged' : `${n} of 3 logged`}${day.date === today && !a.adherent ? ', in progress' : ''}` }
+    const fill = a.adherent
+      ? tokens.tone.success.solid
+      : day.date === today
+        ? tokens.tone.success.border
+        : n > 0
+          ? tokens.tone.success.light
+          : tokens.ink.fill
+    return {
+      date: day.date,
+      fill,
+      description: `${when}: ${a.adherent ? 'all three logged' : `${n} of 3 logged`}${day.date === today && !a.adherent ? ', in progress' : ''}`,
+    }
   })
   const share = scored.length ? scored.reduce((s, x) => s + x.a.score, 0) / scored.length : 0
   const noWater = scored.filter((x) => !x.a.water && x.day.date !== today).length
@@ -244,7 +367,14 @@ function LoggingCard({ data, today }: { data: DashboardData; today: string }) {
       title="Logging"
       action="weigh-in · meals · water"
       caption={summary}
-      empty={days.length ? null : { title: 'Nothing logged in this window', body: 'Weigh-in, meals and water each day fill this strip.' }}
+      empty={
+        days.length
+          ? null
+          : {
+              title: 'Nothing logged in this window',
+              body: 'Weigh-in, meals and water each day fill this strip.',
+            }
+      }
       testId="dashboard-logging"
     >
       <DayStrip
@@ -257,4 +387,3 @@ function LoggingCard({ data, today }: { data: DashboardData; today: string }) {
     </ChartCard>
   )
 }
-

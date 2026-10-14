@@ -2,7 +2,7 @@
 // plan's forecast), the last eight weeks of trend for the hero chart, settings (start and goal weight), this week's
 // view (GET /api/week-plans/view: the active plan and the days so far), the week plans still proposed from this week on
 // (GET /api/week-plans?status=proposed), and pending logs (saving or queued) folded into the day. The pinned note
-// shows from this phone's memory (./note-memory) until the day answers.
+// shows from this device's memory (./note-memory) until the day answers.
 import { endpoints } from '@fitness/shared/api'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useEffect, useState } from 'react'
@@ -21,7 +21,7 @@ export function useTodayData(date: LocalDate) {
   // Plans waiting for Review → Accept, this week's or later.
   const proposed = useProposedWeekPlans(date)
   const pending = usePendingToday(date)
-  // The pinned note paints in its place from this phone's memory until the day answers (no shift when it arrives).
+  // The pinned note paints in its place from this device's memory until the day answers (no shift when it arrives).
   const [remembered] = useState(() => rememberedNote())
   const dayNote = day.data?.note
   useEffect(() => {

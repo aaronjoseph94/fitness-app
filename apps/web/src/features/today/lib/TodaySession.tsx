@@ -1,13 +1,22 @@
 // Owns: Today's session card (2a) — the session today's plan holds (name, exercises, sets, and the workout reminder's
 // time as its chip), the muscles it trains as a muscle map with the hardest-worked muscles listed beside it, and
-// "Start session" (the Train tab, where it starts) and "Edit" (aria "Edit template": its template in the builder); once a session is under
-// way or done, that session instead (resume or view it); otherwise "Training day" or "Rest day". Reads only what the
-// day and the week plan already carry: exercise names live in the library, which Today does not load.
+// "Start session" (the Train tab, where it starts) and "Edit" (aria "Edit template": its template in the builder);
+// once a session is under way or done, that session instead (resume or view it); otherwise "Training day" or "Rest
+// day". Reads only what the day and the week plan already carry: exercise names live in the library, which Today does
+// not load.
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { muscleLevels, weekdayOf } from '@fitness/shared/engine'
-import type { DayView, LocalDate, Muscle, MuscleScores, Reminder, Weekday, WeekPlan } from '@fitness/shared/schemas'
+import type {
+  DayView,
+  LocalDate,
+  Muscle,
+  MuscleScores,
+  Reminder,
+  Weekday,
+  WeekPlan,
+} from '@fitness/shared/schemas'
 import { Link as RouterLink } from 'react-router'
 import { formatClockTime, formatNumber, Panel, PanelRow, StatusChip } from '../../../components'
 import { levelLabel, MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
@@ -50,11 +59,20 @@ export function TodaySession({ date, day, plan, trainingDays, reminder }: TodayS
   const wd = weekdayOf(date)
   const session = day?.session ?? null
   const planned = day?.planned_session ?? plan?.plan.sessions[wd] ?? null
-  const training = day?.targets ? day.targets.training_planned : plan ? plan.plan.sessions[wd] !== null : (trainingDays?.includes(wd) ?? false)
-  const fastDay = day?.fast.is_fast_day === true || day?.targets?.is_fast_day === true || (plan?.plan.fast_dates.includes(date) ?? false)
+  const training = day?.targets
+    ? day.targets.training_planned
+    : plan
+      ? plan.plan.sessions[wd] !== null
+      : (trainingDays?.includes(wd) ?? false)
+  const fastDay =
+    day?.fast.is_fast_day === true ||
+    day?.targets?.is_fast_day === true ||
+    (plan?.plan.fast_dates.includes(date) ?? false)
   const time = reminder?.enabled && reminder.time ? formatClockTime(reminder.time) : null
   const fastNote = fastDay && (
-    <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, color: tokens.ink.muted }}>Fast day: keep any training light.</Box>
+    <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+      Fast day: keep any training light.
+    </Box>
   )
 
   if (session) {
@@ -71,7 +89,9 @@ export function TodaySession({ date, day, plan, trainingDays, reminder }: TodayS
             · {session.sets_done} sets · {formatNumber(session.volume_kg)} kg
           </>
         }
-        actions={<StatusChip tone={done ? 'success' : 'info'} dot={!done} label={done ? 'Done' : 'In progress'} />}
+        actions={
+          <StatusChip tone={done ? 'success' : 'info'} dot={!done} label={done ? 'Done' : 'In progress'} />
+        }
       >
         {session.muscle_scores && <Muscles scores={session.muscle_scores} title={`Muscles in ${name}`} />}
         <Button
@@ -104,13 +124,26 @@ export function TodaySession({ date, day, plan, trainingDays, reminder }: TodayS
         }
         actions={time && <StatusChip tone="outline" label={time} ariaLabel={`Workout reminder at ${time}`} />}
       >
-        {planned.muscle_scores && <Muscles scores={planned.muscle_scores} title={`Muscles in ${planned.name}`} />}
+        {planned.muscle_scores && (
+          <Muscles scores={planned.muscle_scores} title={`Muscles in ${planned.name}`} />
+        )}
         <Box sx={{ display: 'flex', gap: 2, mt: '14px' }}>
-          <Button component={RouterLink} to="/train" variant="contained" startIcon={<PlayArrowRounded />} sx={{ flex: 1 }}>
+          <Button
+            component={RouterLink}
+            to="/train"
+            variant="contained"
+            startIcon={<PlayArrowRounded />}
+            sx={{ flex: 1 }}
+          >
             Start session
           </Button>
           {planned.template_id && (
-            <Button component={RouterLink} to={`/train/builder/${planned.template_id}`} variant="outlined" aria-label="Edit template">
+            <Button
+              component={RouterLink}
+              to={`/train/builder/${planned.template_id}`}
+              variant="outlined"
+              aria-label="Edit template"
+            >
               Edit
             </Button>
           )}

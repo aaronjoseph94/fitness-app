@@ -1,4 +1,4 @@
-// Owns: the session finish screen (SPEC §7 "Finish"; 2a kit) — the title row ("Upper B — Pull done", the date, a
+// Owns: the session finish screen (SPEC §7 "Finish"; 2a kit) — the title row ("Upper A done", the date, a
 // pending badge while the finish is queued), duration, total volume, sets and PRs as stat cards, the muscle map of
 // what was trained (levels from the session's muscle scores), volume per muscle as a compact bar list, the PRs (best
 // load at a rep count, best e1RM), each exercise's ticked sets, one-tap "Save as template", "Edit sets" (back into the
@@ -36,7 +36,11 @@ import { SaveTemplateDialog } from './SaveTemplateDialog'
 import { liftText } from './SetRow'
 import { finishView } from './summary'
 
-const MUTED_SX = { fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted } as const
+const MUTED_SX = {
+  fontSize: tokens.font.size.small,
+  lineHeight: tokens.font.leading.small,
+  color: tokens.ink.muted,
+} as const
 
 function prText(pr: PersonalRecord): { title: string; detail: string } {
   const lift = `${formatNumber(pr.load_kg, pr.load_kg % 1 ? 1 : 0)} kg × ${pr.reps}`
@@ -79,9 +83,27 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         action={queued ? <PendingBadge label="Syncs when online" /> : undefined}
       />
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: 4 }}>
-        <StatCard label="Duration" icon={TimerOutlined} value={summary.duration_min} unit="min" testId="summary-duration" />
-        <StatCard label="Volume" icon={FitnessCenterRounded} value={summary.total_volume_kg} unit="kg" testId="summary-volume" />
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+          gap: 4,
+        }}
+      >
+        <StatCard
+          label="Duration"
+          icon={TimerOutlined}
+          value={summary.duration_min}
+          unit="min"
+          testId="summary-duration"
+        />
+        <StatCard
+          label="Volume"
+          icon={FitnessCenterRounded}
+          value={summary.total_volume_kg}
+          unit="kg"
+          testId="summary-volume"
+        />
         <StatCard label="Sets" icon={TaskAltRounded} value={view.sets_done} />
         <StatCard
           label="PRs"
@@ -91,7 +113,14 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         />
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }, gap: 4, alignItems: 'start' }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' },
+          gap: 4,
+          alignItems: 'start',
+        }}
+      >
         <Panel
           title="What you trained"
           description="Sets × 1.0 for main muscles, × 0.5 for helpers"
@@ -132,7 +161,9 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
                       color={tokens.accent.main}
                       label={`${MUSCLE_LABELS[muscle]} volume`}
                     />
-                    <Box sx={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: tokens.ink.label }}>
+                    <Box
+                      sx={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: tokens.ink.label }}
+                    >
                       {formatNumber(kg)} kg
                     </Box>
                   </Box>
@@ -151,12 +182,22 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
                 {summary.prs.map((pr) => {
                   const t = prText(pr)
                   return (
-                    <Box key={`${pr.exercise_id}-${pr.kind}-${pr.reps}`} sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
-                      <EmojiEventsRounded sx={{ fontSize: 18, color: tokens.tone.warning.text, mt: '1px' }} aria-hidden />
+                    <Box
+                      key={`${pr.exercise_id}-${pr.kind}-${pr.reps}`}
+                      sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}
+                    >
+                      <EmojiEventsRounded
+                        sx={{ fontSize: 18, color: tokens.tone.warning.text, mt: '1px' }}
+                        aria-hidden
+                      />
                       <Box sx={{ minWidth: 0 }}>
-                        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>{name(pr.exercise_id)}</Box>
+                        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading }}>
+                          {name(pr.exercise_id)}
+                        </Box>
                         <Box sx={{ fontSize: tokens.font.size.small }}>{t.title}</Box>
-                        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>{t.detail}</Box>
+                        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
+                          {t.detail}
+                        </Box>
                       </Box>
                     </Box>
                   )
@@ -172,14 +213,25 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
           {done.map(({ e, sets }) => (
             <Box
               key={e.exercise_id}
-              sx={{ py: '8px', '&:first-of-type': { pt: 0 }, '&:last-of-type': { pb: 0 }, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+              sx={{
+                py: '8px',
+                '&:first-of-type': { pt: 0 },
+                '&:last-of-type': { pb: 0 },
+                '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+              }}
             >
-              <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }}>{name(e.exercise_id)}</Box>
+              <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label }}>
+                {name(e.exercise_id)}
+              </Box>
               <Box sx={{ ...MUTED_SX, fontVariantNumeric: 'tabular-nums' }}>
                 {sets.map((s) => liftText(s)).join(' · ')}
               </Box>
               {e.note.trim() && (
-                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, fontStyle: 'italic' }}>{e.note.trim()}</Box>
+                <Box
+                  sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, fontStyle: 'italic' }}
+                >
+                  {e.note.trim()}
+                </Box>
               )}
             </Box>
           ))}
@@ -206,7 +258,11 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         >
           Edit sets
         </Button>
-        <Button variant="outlined" onClick={() => void navigate('/train')} sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}>
+        <Button
+          variant="outlined"
+          onClick={() => void navigate('/train')}
+          sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
+        >
           Back to Train
         </Button>
         <Button
@@ -218,7 +274,12 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
           Delete session
         </Button>
       </Box>
-      <DeleteSessionDialog open={deleting} sessionId={session.id} setsDone={view.sets_done} onClose={() => setDeleting(false)} />
+      <DeleteSessionDialog
+        open={deleting}
+        sessionId={session.id}
+        setsDone={view.sets_done}
+        onClose={() => setDeleting(false)}
+      />
 
       <SaveTemplateDialog
         open={saving}
@@ -234,7 +295,9 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         open={saved !== null}
         autoHideDuration={6000}
         onClose={() => setSaved(null)}
-        message={saved?.queued ? 'Template saved on this device; it syncs when online' : 'Saved as a template'}
+        message={
+          saved?.queued ? 'Template saved on this device; it syncs when online' : 'Saved as a template'
+        }
         action={
           saved ? (
             <Button color="inherit" onClick={() => void navigate(`/train/builder/${saved.templateId}`)}>

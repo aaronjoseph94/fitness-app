@@ -1,4 +1,4 @@
-// Owns: the Train tab's recent sessions — the last four weeks from the Worker plus sessions finished on this phone
+// Owns: the Train tab's recent sessions — the last four weeks from the Worker plus sessions finished on this device
 // that haven't synced, newest first: weekday and day, name, ticked sets, volume (Σ reps × kg) and duration, a PR chip;
 // tap for the summary or logger — and the "This week" panel under them (sessions finished, volume and ticked sets since
 // Monday). Also the one-line facts other cards quote: each template's newest finished session and this week's totals.
@@ -122,7 +122,14 @@ export function weekTotals(
 function WeekStat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div>
-      <Box component="dt" sx={{ fontSize: tokens.font.size.micro, lineHeight: tokens.font.leading.micro, color: tokens.ink.muted }}>
+      <Box
+        component="dt"
+        sx={{
+          fontSize: tokens.font.size.micro,
+          lineHeight: tokens.font.leading.micro,
+          color: tokens.ink.muted,
+        }}
+      >
         {label}
       </Box>
       <Box
@@ -137,7 +144,15 @@ function WeekStat({ label, value, unit }: { label: string; value: string; unit?:
       >
         {value}
         {unit && (
-          <Box component="span" sx={{ ml: '4px', fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.body, color: tokens.ink.muted }}>
+          <Box
+            component="span"
+            sx={{
+              ml: '4px',
+              fontSize: tokens.font.size.caption,
+              fontWeight: tokens.font.weight.body,
+              color: tokens.ink.muted,
+            }}
+          >
             {unit}
           </Box>
         )}
@@ -185,10 +200,20 @@ export function RecentSessions({ sessions, unsynced, templates, week }: RecentSe
             }}
           >
             <Box sx={{ width: 36, flex: 'none', textAlign: 'center', lineHeight: 1.1 }}>
-              <Box aria-hidden sx={{ fontSize: tokens.font.size.micro, color: tokens.ink.muted, textTransform: 'uppercase' }}>
+              <Box
+                aria-hidden
+                sx={{ fontSize: tokens.font.size.micro, color: tokens.ink.muted, textTransform: 'uppercase' }}
+              >
                 {formatWeekday(r.date)}
               </Box>
-              <Box aria-hidden sx={{ fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}>
+              <Box
+                aria-hidden
+                sx={{
+                  fontSize: tokens.font.size.itemTitle,
+                  fontWeight: tokens.font.weight.heading,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {Number(r.date.slice(8, 10))}
               </Box>
               <Box component="span" sx={visuallyHidden}>
@@ -218,15 +243,33 @@ export function RecentSessions({ sessions, unsynced, templates, week }: RecentSe
           </ButtonBase>
         ))}
       </Box>
-      <Box component="section" aria-labelledby="this-week-title" sx={{ ...panelSurface, mt: 4, px: '18px', py: 4 }}>
+      <Box
+        component="section"
+        aria-labelledby="this-week-title"
+        sx={{ ...panelSurface, mt: 4, px: '18px', py: 4 }}
+      >
         <Box
           component="h3"
           id="this-week-title"
-          sx={{ m: 0, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, lineHeight: 'normal' }}
+          sx={{
+            m: 0,
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.heading,
+            lineHeight: 'normal',
+          }}
         >
           This week
         </Box>
-        <Box component="dl" sx={{ m: 0, mt: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+        <Box
+          component="dl"
+          sx={{
+            m: 0,
+            mt: '10px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: '10px',
+          }}
+        >
           <WeekStat label="Sessions" value={String(week.sessions)} />
           <WeekStat label="Volume" value={formatNumber(week.volume_kg)} unit="kg" />
           <WeekStat label="Sets" value={String(week.sets)} />

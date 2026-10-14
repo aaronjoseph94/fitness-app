@@ -23,7 +23,16 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
 import { muscleLevels, splitNameKey, splitSlots, weekdayOf, type MuscleValues } from '@fitness/shared/engine'
-import type { LocalDate, Muscle, ProposalDecision, SplitSlot, Template, TrainingWeek, TrainingWeekSlot, Weekday } from '@fitness/shared/schemas'
+import type {
+  LocalDate,
+  Muscle,
+  ProposalDecision,
+  SplitSlot,
+  Template,
+  TrainingWeek,
+  TrainingWeekSlot,
+  Weekday,
+} from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
@@ -46,17 +55,23 @@ const DAYS: readonly { key: Weekday; short: string; long: string }[] = [
 const SHORT = Object.fromEntries(DAYS.map((d) => [d.key, d.short])) as Record<Weekday, string>
 
 /** The days in week order, each once. */
-const inWeekOrder = (days: readonly Weekday[]): Weekday[] => DAYS.filter((d) => days.includes(d.key)).map((d) => d.key)
+const inWeekOrder = (days: readonly Weekday[]): Weekday[] =>
+  DAYS.filter((d) => days.includes(d.key)).map((d) => d.key)
 
 /** "Mon Upper A · Tue Lower A · Thu Full body". */
-const splitLine = (slots: readonly SplitSlot[]) => slots.map((s) => `${SHORT[s.weekday]} ${s.name}`).join(' · ')
+const splitLine = (slots: readonly SplitSlot[]) =>
+  slots.map((s) => `${SHORT[s.weekday]} ${s.name}`).join(' · ')
 
 const hairline = `1px solid ${tokens.ink.hairline}`
 
 /** A line under the controls: what Generate or Keep all did, or why not. */
 type Note = { tone: 'info' | 'success' | 'error'; text: ReactNode }
 
-const NOTE_COLOUR = { info: tokens.ink.label, success: tokens.tone.success.text, error: tokens.status.flag } as const
+const NOTE_COLOUR = {
+  info: tokens.ink.label,
+  success: tokens.tone.success.text,
+  error: tokens.status.flag,
+} as const
 
 const NO_MODEL_KEY = (
   <>
@@ -74,7 +89,10 @@ export interface WeekSplitCardProps {
   date: LocalDate
   /** The templates: Generate asks first when a chosen day already has one. */
   templates: readonly Template[]
-  /** Called with each draft Keep all kept (read from the Worker's answer) and that answer, so its card shows the outcome (and Undo). */
+  /**
+   * Called with each draft Keep all kept (read from the Worker's answer) and that answer, so its card shows the outcome
+   * (and Undo).
+   */
   onKept: (draft: PendingWorkout, decision: ProposalDecision) => void
   /** Called as Generate starts: the drafts kept from the page make way for the new week's. */
   onGenerate: () => void
@@ -100,7 +118,8 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
   const levels = useMemo(() => {
     const summed: MuscleValues = {}
     for (const s of week.slots)
-      for (const [m, v] of Object.entries(s.template?.muscle_scores ?? {}) as [Muscle, number][]) summed[m] = (summed[m] ?? 0) + v
+      for (const [m, v] of Object.entries(s.template?.muscle_scores ?? {}) as [Muscle, number][])
+        summed[m] = (summed[m] ?? 0) + v
     return muscleLevels(summed)
   }, [week.slots])
 
@@ -121,7 +140,10 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
       void queryClient.invalidateQueries({ queryKey: apiQueryKey() })
       setNote({
         tone: 'error',
-        text: isApiError(e) && e.code === 'no_model_key' ? NO_MODEL_KEY : `Couldn't generate the week: ${problemText(e)}`,
+        text:
+          isApiError(e) && e.code === 'no_model_key'
+            ? NO_MODEL_KEY
+            : `Couldn't generate the week: ${problemText(e)}`,
       })
     } finally {
       setBusy(null)
@@ -130,11 +152,10 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
 
   /** Accept the week's pending split drafts one after another (each Keep replaces or makes a template). */
   const keepAll = async () => {
-    const drafts = waiting
     const refused: string[] = []
     setBusy('keep')
-    for (const [i, d] of drafts.entries()) {
-      setNote({ tone: 'info', text: `Keeping ${i + 1} of ${drafts.length}…` })
+    for (const [i, d] of waiting.entries()) {
+      setNote({ tone: 'info', text: `Keeping ${i + 1} of ${waiting.length}…` })
       try {
         const decision = await call(endpoints.plan.acceptProposal, { params: { id: d.id } })
         // The draft from the Worker's answer, not the feed: a kept draft leaves the pending feed, and its Undo with it.
@@ -145,11 +166,11 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
       }
     }
     await queryClient.invalidateQueries({ queryKey: apiQueryKey() })
-    const kept = drafts.length - refused.length
+    const kept = waiting.length - refused.length
     setNote(
       refused.length === 0
         ? { tone: 'success', text: `Kept ${kept} draft${kept === 1 ? '' : 's'}.` }
-        : { tone: 'error', text: `Kept ${kept} of ${drafts.length}. ${refused.join(' ')}` },
+        : { tone: 'error', text: `Kept ${kept} of ${waiting.length}. ${refused.join(' ')}` },
     )
     setBusy(null)
   }
@@ -173,12 +194,25 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
             <Box
               component="h2"
               id="week-split-title"
-              sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle }}
+              sx={{
+                m: 0,
+                fontSize: tokens.font.size.cardTitle,
+                fontWeight: tokens.font.weight.heading,
+                lineHeight: tokens.font.leading.cardTitle,
+              }}
             >
               This week
             </Box>
-            <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>
-              Pick the days you train and generate a workout for each. The days you pick become your training days.
+            <Box
+              sx={{
+                mt: '2px',
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: tokens.ink.muted,
+              }}
+            >
+              Pick the days you train and generate a workout for each. The days you pick become your training
+              days.
             </Box>
           </Box>
           {waiting.length > 0 && (
@@ -210,19 +244,37 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
               // Several days are on at once, so a picked day is dark (as in Settings' training days dialog).
               '& .MuiToggleButton-root': {
                 px: 0,
-                '&.Mui-selected, &.Mui-selected:hover': { bgcolor: tokens.dark.bg, color: tokens.dark.text, boxShadow: 'none' },
+                '&.Mui-selected, &.Mui-selected:hover': {
+                  bgcolor: tokens.dark.bg,
+                  color: tokens.dark.text,
+                  boxShadow: 'none',
+                },
               },
             }}
           >
             {DAYS.map((d) => (
-              <ToggleButton key={d.key} value={d.key} aria-label={d.key === todayKey ? `${d.long}, today` : d.long} data-testid="day-chip">
+              <ToggleButton
+                key={d.key}
+                value={d.key}
+                aria-label={d.key === todayKey ? `${d.long}, today` : d.long}
+                data-testid="day-chip"
+              >
                 {d.short}
                 {d.key === todayKey && (
                   // Today: a 4 px dot under the label, in the label's own colour (white on a picked day).
                   <Box
                     component="span"
                     aria-hidden
-                    sx={{ position: 'absolute', bottom: 3, left: '50%', width: 4, height: 4, ml: '-2px', borderRadius: `${tokens.radius.pill}px`, bgcolor: 'currentColor' }}
+                    sx={{
+                      position: 'absolute',
+                      bottom: 3,
+                      left: '50%',
+                      width: 4,
+                      height: 4,
+                      ml: '-2px',
+                      borderRadius: `${tokens.radius.pill}px`,
+                      bgcolor: 'currentColor',
+                    }}
                   />
                 )}
               </ToggleButton>
@@ -245,7 +297,12 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
           id="week-preview"
           aria-live="polite"
           data-testid="week-preview"
-          sx={{ mt: 2, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.label }}
+          sx={{
+            mt: 2,
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.label,
+          }}
         >
           {n > 0 ? splitLine(preview) : 'Pick at least one day.'}
         </Box>
@@ -253,17 +310,35 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
           <Box
             role={note.tone === 'error' ? 'alert' : 'status'}
             data-testid="week-note"
-            sx={{ mt: 2, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: NOTE_COLOUR[note.tone] }}
+            sx={{
+              mt: 2,
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: NOTE_COLOUR[note.tone],
+            }}
           >
             {note.text}
           </Box>
         )}
 
-        <Box component="ul" aria-label="Your training days" aria-live="polite" sx={{ listStyle: 'none', p: 0, m: 0, mt: 4, borderTop: hairline }}>
+        <Box
+          component="ul"
+          aria-label="Your training days"
+          aria-live="polite"
+          sx={{ listStyle: 'none', p: 0, m: 0, mt: 4, borderTop: hairline }}
+        >
           {week.slots.length > 0 ? (
             week.slots.map((slot) => <DayRow key={slot.weekday} slot={slot} />)
           ) : (
-            <Box component="li" sx={{ py: 3, fontSize: tokens.font.size.small, color: tokens.ink.muted, borderBottom: hairline }}>
+            <Box
+              component="li"
+              sx={{
+                py: 3,
+                fontSize: tokens.font.size.small,
+                color: tokens.ink.muted,
+                borderBottom: hairline,
+              }}
+            >
               No training days yet. Pick them above, then Generate.
             </Box>
           )}
@@ -273,7 +348,14 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
         {week.week_plan_sessions && (
           <Box
             data-testid="week-plan-line"
-            sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: '6px', fontSize: tokens.font.size.small, color: tokens.ink.label }}
+            sx={{
+              mt: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: tokens.font.size.small,
+              color: tokens.ink.label,
+            }}
           >
             <EventNoteOutlined aria-hidden sx={{ fontSize: 16, color: tokens.accent.main }} />
             This week follows your week plan
@@ -297,7 +379,14 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
         <Box data-testid="week-muscles">
           <MuscleMap levels={levels} size={200} title="Muscles your week's templates train" />
         </Box>
-        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted, textAlign: 'center' }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.muted,
+            textAlign: 'center',
+          }}
+        >
           {weekTemplates.length > 0
             ? `${weekTemplates.length} template${weekTemplates.length === 1 ? '' : 's'} combined`
             : 'No templates for these days yet'}
@@ -313,7 +402,9 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
         aria-describedby="redraft-body"
       >
         <DialogTitle id="redraft-title">
-          {n === 1 && preview[0] ? `Redraft ${SHORT[preview[0].weekday]} ${preview[0].name}?` : `Redraft all ${n} days?`}
+          {n === 1 && preview[0]
+            ? `Redraft ${SHORT[preview[0].weekday]} ${preview[0].name}?`
+            : `Redraft all ${n} days?`}
         </DialogTitle>
         <DialogContent id="redraft-body" sx={{ color: 'text.secondary' }}>
           Your templates stay until you keep the new drafts.
@@ -352,9 +443,24 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
         borderBottom: hairline,
       }}
     >
-      <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>{SHORT[slot.weekday]}</Box>
+      <Box
+        sx={{
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.label,
+          color: tokens.ink.label,
+        }}
+      >
+        {SHORT[slot.weekday]}
+      </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.body, overflowWrap: 'anywhere' }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.heading,
+            lineHeight: tokens.font.leading.body,
+            overflowWrap: 'anywhere',
+          }}
+        >
           {slot.name}
         </Box>
         <Box
@@ -375,7 +481,15 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
       </Box>
       {/* The chip column is always there, so a day starting or finishing its draft never moves the row. */}
       <Box sx={{ justifySelf: 'end' }}>
-        {status && <StatusChip tone={slot.drafting ? 'neutral' : 'info'} dot size="small" label={status} testId="week-day-status" />}
+        {status && (
+          <StatusChip
+            tone={slot.drafting ? 'neutral' : 'info'}
+            dot
+            size="small"
+            label={status}
+            testId="week-day-status"
+          />
+        )}
       </Box>
     </Box>
   )

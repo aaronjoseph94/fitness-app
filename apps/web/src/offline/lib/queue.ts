@@ -1,5 +1,5 @@
-// Owns: queue storage operations — add a write, read pending writes (all, by endpoint, or by path prefix), discard a pending
-// one (Aaron's choice, from the sync status), dismiss a refused one.
+// Owns: queue storage operations — add a write, filter pending writes (all, by endpoint, or by path prefix), discard a
+// pending one (Aaron's choice, from the sync status), dismiss a refused one.
 import type { Endpoint } from '@fitness/shared/api'
 import type * as z from 'zod'
 import { db, type QueuedWrite } from './db'
@@ -34,13 +34,6 @@ export async function addWrite(write: NewWrite): Promise<PendingWrite> {
 
 export async function hasPendingWrites(): Promise<boolean> {
   return (await db.queue.count()) > 0
-}
-
-export async function readPendingWrites(): Promise<PendingWrite[]>
-export async function readPendingWrites<E extends Endpoint>(endpoint: E): Promise<PendingWrite<BodyOf<E>>[]>
-export async function readPendingWrites(pathPrefix: string): Promise<PendingWrite[]>
-export async function readPendingWrites(filter?: PendingFilter): Promise<PendingWrite[]> {
-  return filterWrites(await db.queue.orderBy('seq').toArray(), filter)
 }
 
 export function filterWrites(writes: PendingWrite[], filter: PendingFilter): PendingWrite[] {

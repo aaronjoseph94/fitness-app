@@ -3,7 +3,13 @@
 // row, a plan change's rows (one per field and amount, its weekdays folded into "Protein · Mon–Thu"), and its title
 // (the summary when it is at most PROPOSAL_TITLE_MAX characters, else "Change the protein target"). Today, the AI tab
 // and the plan page all read these, so a new kind or field is one edit.
-import { Weekday, type Actor, type ClockReminder, type PlanChange, type TargetField } from '@fitness/shared/schemas'
+import {
+  Weekday,
+  type Actor,
+  type ClockReminder,
+  type PlanChange,
+  type TargetField,
+} from '@fitness/shared/schemas'
 import { formatNumber, type ProposalChange } from '../../../components'
 
 export const TARGET_FIELD: Record<TargetField, { label: string; unit: string }> = {
@@ -17,7 +23,7 @@ export const TARGET_FIELD: Record<TargetField, { label: string; unit: string }> 
 }
 
 /** A weekday override reads as "Calories, Saturdays". */
-export const WEEKDAY_LABEL: Record<Weekday, string> = {
+const WEEKDAY_LABEL: Record<Weekday, string> = {
   mon: 'Mondays',
   tue: 'Tuesdays',
   wed: 'Wednesdays',
@@ -27,7 +33,11 @@ export const WEEKDAY_LABEL: Record<Weekday, string> = {
   sun: 'Sundays',
 }
 
-export const REMINDER_LABEL: Record<ClockReminder, string> = { weigh_in: 'Weigh-in', workout: 'Workout', scan_due: 'Scan due' }
+export const REMINDER_LABEL: Record<ClockReminder, string> = {
+  weigh_in: 'Weigh-in',
+  workout: 'Workout',
+  scan_due: 'Scan due',
+}
 
 export function actorLabel(actor: Actor): string {
   return actor === 'mcp' ? 'Coach' : actor === 'ai' ? 'AI' : 'You'
@@ -44,13 +54,19 @@ export function targetLabel(field: TargetField, weekday: Weekday | null): string
 }
 
 function planChangeRow(c: PlanChange): ProposalChange {
-  return { label: targetLabel(c.field, c.weekday), from: targetAmount(c.field, c.from), to: targetAmount(c.field, c.to) }
+  return {
+    label: targetLabel(c.field, c.weekday),
+    from: targetAmount(c.field, c.from),
+    to: targetAmount(c.field, c.to),
+  }
 }
 
 /** "Change the calories target" when one field moves, else "Change daily targets". */
 export function planChangeTitle(changes: readonly PlanChange[]): string {
   const fields = [...new Set(changes.map((c) => c.field))]
-  return fields.length === 1 ? `Change the ${TARGET_FIELD[fields[0]!].label.toLowerCase()} target` : 'Change daily targets'
+  return fields.length === 1
+    ? `Change the ${TARGET_FIELD[fields[0]!].label.toLowerCase()} target`
+    : 'Change daily targets'
 }
 
 /** A proposal's summary longer than this reads as its plan change's title instead (the summary moves under it). */
@@ -69,7 +85,8 @@ function dayList(days: readonly Weekday[]): string {
   const at = [...new Set(days)].map((d) => Weekday.options.indexOf(d)).sort((a, b) => a - b)
   const first = at[0]!
   const last = at[at.length - 1]!
-  if (at.length >= 3 && last - first === at.length - 1) return `${shortDay(Weekday.options[first]!)}–${shortDay(Weekday.options[last]!)}`
+  if (at.length >= 3 && last - first === at.length - 1)
+    return `${shortDay(Weekday.options[first]!)}–${shortDay(Weekday.options[last]!)}`
   return at.map((i) => shortDay(Weekday.options[i]!)).join(', ')
 }
 

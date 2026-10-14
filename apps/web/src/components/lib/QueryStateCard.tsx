@@ -13,7 +13,7 @@ import { Banner } from './Banner'
 
 /**
  * Still loading (show the skeleton). A read without data that is paused (offline: TanStack holds the retry until the
- * phone is back online) is not loading: it shows the offline card instead of a skeleton forever.
+ * device is back online) is not loading: it shows the offline card instead of a skeleton forever.
  */
 export function isQueryLoading(query: Pick<UseQueryResult, 'isPending' | 'fetchStatus'>): boolean {
   return query.isPending && query.fetchStatus !== 'paused'
@@ -60,11 +60,20 @@ export function QueryStateCard({ query, what, height = 200, titleSize = 'section
       <Card
         data-testid="chart-skeleton"
         aria-busy="true"
-        sx={{ px: `${tokens.pad.card.x}px`, pt: `${card ? tokens.pad.card.y : tokens.pad.header.top}px`, pb: `${tokens.pad.card.y}px` }}
+        sx={{
+          px: `${tokens.pad.card.x}px`,
+          pt: `${card ? tokens.pad.card.y : tokens.pad.header.top}px`,
+          pb: `${tokens.pad.card.y}px`,
+        }}
       >
         {/* The same line boxes as ChartCard's title and description (Panel's, per title size), so the loaded card has the
             skeleton's height. */}
-        <Box sx={{ fontSize: card ? tokens.font.size.body : tokens.font.size.cardTitle, lineHeight: tokens.font.leading.cardTitle }}>
+        <Box
+          sx={{
+            fontSize: card ? tokens.font.size.body : tokens.font.size.cardTitle,
+            lineHeight: tokens.font.leading.cardTitle,
+          }}
+        >
           <Skeleton variant="text" width="40%" />
         </Box>
         <Box
@@ -76,7 +85,11 @@ export function QueryStateCard({ query, what, height = 200, titleSize = 'section
         >
           <Skeleton variant="text" width="65%" />
         </Box>
-        <Skeleton variant="rounded" height={height} sx={{ mt: '14px', borderRadius: `${tokens.radius.control}px` }} />
+        <Skeleton
+          variant="rounded"
+          height={height}
+          sx={{ mt: '14px', borderRadius: `${tokens.radius.control}px` }}
+        />
       </Card>
     )
   const offline = query.fetchStatus === 'paused'

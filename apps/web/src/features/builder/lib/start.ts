@@ -5,7 +5,12 @@
 // answers with the template the Worker wrote, whose id is the one to open or start from: a split draft saved under its
 // day's name ("Upper A") goes into that day's existing template, not a new one with the id sent here.
 import { endpoints } from '@fitness/shared/api'
-import type { SessionOrigin, TemplateExerciseInput, TemplateOrigin, WorkoutDraft } from '@fitness/shared/schemas'
+import type {
+  SessionOrigin,
+  TemplateExerciseInput,
+  TemplateOrigin,
+  WorkoutDraft,
+} from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApiMutation } from '../../../api'
@@ -35,9 +40,12 @@ export interface SaveOutcome {
 
 export function useTemplateWrites() {
   const navigate = useNavigate()
-  // Accepting a proposal changes Today's AI card and pending count.
-  const create = useApiMutation(endpoints.training.createTemplate, { invalidates: [endpoints.training.listTemplates, ...PROPOSAL_REFRESHES] })
-  const patch = useApiMutation(endpoints.training.updateTemplate, { invalidates: [endpoints.training.listTemplates] })
+  const create = useApiMutation(endpoints.training.createTemplate, {
+    invalidates: [endpoints.training.listTemplates, ...PROPOSAL_REFRESHES],
+  })
+  const patch = useApiMutation(endpoints.training.updateTemplate, {
+    invalidates: [endpoints.training.listTemplates],
+  })
   const session = useApiMutation(endpoints.training.startSession, { invalidates: PROPOSAL_REFRESHES })
   const [error, setError] = useState<unknown>(null)
 
@@ -46,22 +54,39 @@ export function useTemplateWrites() {
     setError(null)
     try {
       if (t.id) {
-        const outcome = await patch.mutateAsync({ params: { id: t.id }, body: { name: t.name, notes: t.notes, exercises: t.exercises } })
+        const outcome = await patch.mutateAsync({
+          params: { id: t.id },
+          body: { name: t.name, notes: t.notes, exercises: t.exercises },
+        })
         return { templateId: t.id, queued: outcome.status === 'queued' }
       }
       const id = crypto.randomUUID()
       const outcome = await create.mutateAsync({
-        body: { id, name: t.name, origin: t.origin, notes: t.notes ?? undefined, exercises: t.exercises, proposal_id: t.proposal_id },
+        body: {
+          id,
+          name: t.name,
+          origin: t.origin,
+          notes: t.notes ?? undefined,
+          exercises: t.exercises,
+          proposal_id: t.proposal_id,
+        },
       })
       // The Worker's answer names the template it wrote; queued offline there is none yet, so the id sent stands in.
-      return outcome.status === 'saved' ? { templateId: outcome.data.id, queued: false } : { templateId: id, queued: true }
+      return outcome.status === 'saved'
+        ? { templateId: outcome.data.id, queued: false }
+        : { templateId: id, queued: true }
     } catch (e) {
       setError(e)
       throw e
     }
   }
 
-  const open = async (body: { template_id: string | null; origin: SessionOrigin; exercises?: TemplateExerciseInput[]; proposal_id?: string }) => {
+  const open = async (body: {
+    template_id: string | null
+    origin: SessionOrigin
+    exercises?: TemplateExerciseInput[]
+    proposal_id?: string
+  }) => {
     setError(null)
     const id = crypto.randomUUID()
     try {

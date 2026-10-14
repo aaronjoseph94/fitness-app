@@ -30,7 +30,7 @@ export interface LoggerSet {
   load_kg: number | null
   rpe: number | null
   done: boolean
-  /** A create write was issued (saved, or queued on this phone). */
+  /** A create write was issued (saved, or queued on this device). */
   created: boolean
   /** The fields last sent, so an unchanged set is not patched again. */
   sent: string | null
@@ -331,7 +331,7 @@ export function mergeServer(
 // ── Swap ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Swap an exercise mid-session (a busy machine) for another, here on the phone only (the Worker's start plan stays):
+ * Swap an exercise mid-session (a busy machine) for another, here on this device only (the Worker's start plan stays):
  *   null when `toId` is already in the session, `fromId` is not, or every set of `fromId` is done (nothing to move);
  *   otherwise the done sets of `from` stay under it (its card stays with only those; with none done it goes), and its
  *   n open sets become n fresh placeholders for `to` — new client UUIDs, set_index 1…n, `from`'s rep range and rest,

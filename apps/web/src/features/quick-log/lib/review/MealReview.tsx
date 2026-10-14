@@ -27,7 +27,7 @@ import { problemText } from '../../../../api'
 export interface MealReviewProps {
   date: string
   mealId: string
-  /** Thumbnails prepared on this phone, shown until the meal's own photos arrive. */
+  /** Thumbnails prepared on this device, shown until the meal's own photos arrive. */
   localPreviews?: readonly string[]
   /** Leave the review (the meal stays as it is on the Log tab). */
   onClose: () => void
@@ -45,14 +45,19 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
   const recents = useRecentFoods(date)
   const lastGrams = useMemo(() => new Map(recents.map((r) => [r.foodId, r.grams])), [recents])
 
-  if (confirmed) return <ConfirmedView date={date} meal={meal} since={confirmed.since} onClose={onClose} onLogged={onLogged} />
+  if (confirmed)
+    return (
+      <ConfirmedView date={date} meal={meal} since={confirmed.since} onClose={onClose} onLogged={onLogged} />
+    )
 
   if (!meal) {
     if (isLoading) return <Skeleton variant="rounded" height={160} aria-label="Loading the meal" />
     return (
       <Box sx={{ display: 'grid', gap: 3 }}>
         <Alert severity="info">
-          {error ? `The meal didn't load. ${problemText(error)}` : "This meal isn't on the server yet. If you're offline it syncs, and its analysis starts, when you're back."}
+          {error
+            ? `The meal didn't load. ${problemText(error)}`
+            : "This meal isn't on the server yet. If you're offline it syncs, and its analysis starts, when you're back."}
         </Alert>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button variant="outlined" onClick={() => void refetch()}>
@@ -67,9 +72,18 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
   }
 
   const state = analysisState(meal)
-  if (state === 'confirmed') return <ConfirmedView date={date} meal={meal} since={null} onClose={onClose} onLogged={onLogged} />
+  if (state === 'confirmed')
+    return <ConfirmedView date={date} meal={meal} since={null} onClose={onClose} onLogged={onLogged} />
   if ((state === 'analysing' || state === 'slow') && !manual) {
-    return <AnalysingView meal={meal} slow={state === 'slow'} localPreviews={localPreviews} onManual={() => setManual(true)} onClose={onClose} />
+    return (
+      <AnalysingView
+        meal={meal}
+        slow={state === 'slow'}
+        localPreviews={localPreviews}
+        onManual={() => setManual(true)}
+        onClose={onClose}
+      />
+    )
   }
 
   const failed = state === 'failed' || (manual && meal.status === 'parsing')
@@ -83,7 +97,9 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
       { params: { id: meal.id }, body: { items: inputs, confirm: true } },
       {
         onSuccess: (outcome) => {
-          onLogged?.(noticeFor(outcome, `${SLOT_LABEL[meal.slot]} confirmed · ${formatNumber(totals.kcal)} kcal`))
+          onLogged?.(
+            noticeFor(outcome, `${SLOT_LABEL[meal.slot]} confirmed · ${formatNumber(totals.kcal)} kcal`),
+          )
           setConfirmed({ since: outcome.status === 'saved' ? outcome.data.updated_at : null })
         },
       },
@@ -99,12 +115,24 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
             : "The AI couldn't read this one just now. Add what you ate below; what you wrote is kept."}
         </Alert>
       ) : (
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.small,
+          }}
+        >
           Check the items and grams, then confirm. Tap a name's Swap to pick the right food.
         </Box>
       )}
       <MealSource meal={meal} localPreviews={localPreviews} />
-      <ItemsEditor items={items} onChange={setDraft} disabled={update.isPending} startAdding={failed} lastGrams={lastGrams} />
+      <ItemsEditor
+        items={items}
+        onChange={setDraft}
+        disabled={update.isPending}
+        startAdding={failed}
+        lastGrams={lastGrams}
+      />
 
       <Box
         sx={{
@@ -119,7 +147,10 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
           zIndex: 1,
         }}
       >
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }} data-testid="review-totals">
+        <Box
+          sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }}
+          data-testid="review-totals"
+        >
           {items.length === 0
             ? 'No items yet.'
             : `${formatNumber(totals.kcal)} kcal${complete ? '' : '+'} · ${formatNumber(totals.protein_g)} g protein · ${formatNumber(totals.carbs_g)} g carbs · ${formatNumber(totals.fat_g)} g fat`}
@@ -133,8 +164,18 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
           <Button variant="outlined" size="large" onClick={onClose} disabled={update.isPending}>
             Later
           </Button>
-          <Button variant="contained" size="large" onClick={confirm} disabled={!inputs || inputs.length === 0 || update.isPending} data-testid="review-confirm">
-            {update.isPending ? 'Saving…' : items.length === 0 ? 'Add an item to confirm' : `Confirm · ${formatNumber(totals.kcal)} kcal`}
+          <Button
+            variant="contained"
+            size="large"
+            onClick={confirm}
+            disabled={!inputs || inputs.length === 0 || update.isPending}
+            data-testid="review-confirm"
+          >
+            {update.isPending
+              ? 'Saving…'
+              : items.length === 0
+                ? 'Add an item to confirm'
+                : `Confirm · ${formatNumber(totals.kcal)} kcal`}
           </Button>
         </Box>
       </Box>
@@ -156,13 +197,31 @@ function MealSource({ meal, localPreviews }: { meal: Meal; localPreviews: readon
               component="img"
               src={src}
               alt=""
-              sx={{ width: 88, height: 88, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill, flex: 'none' }}
+              sx={{
+                width: 88,
+                height: 88,
+                objectFit: 'cover',
+                borderRadius: `${tokens.radius.control}px`,
+                border: `1px solid ${tokens.ink.border}`,
+                bgcolor: tokens.ink.fill,
+                flex: 'none',
+              }}
             />
           ))}
         </Box>
       )}
       {meal.raw_text && (
-        <Box sx={{ ...wellSurface, px: 3, py: '10px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }} data-testid="meal-raw-text">
+        <Box
+          sx={{
+            ...wellSurface,
+            px: 3,
+            py: '10px',
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.body,
+          }}
+          data-testid="meal-raw-text"
+        >
           “{meal.raw_text}”
         </Box>
       )}
@@ -185,16 +244,39 @@ function AnalysingView({
 }) {
   const now = useNow(1000)
   const seconds = Math.max(0, Math.round((now - Date.parse(meal.created_at)) / 1000))
-  const what = meal.input_method === 'photo' ? (meal.photos.length > 1 || localPreviews.length > 1 ? 'your photos' : 'your photo') : 'what you wrote'
+  const what =
+    meal.input_method === 'photo'
+      ? meal.photos.length > 1 || localPreviews.length > 1
+        ? 'your photos'
+        : 'your photo'
+      : 'what you wrote'
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-analysing" role="status" aria-live="polite">
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 3 }}>
-          <Box sx={{ flex: 1, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle }}>Analysing {what}…</Box>
-          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }}>{seconds} s</Box>
+          <Box
+            sx={{
+              flex: 1,
+              fontSize: tokens.font.size.cardTitle,
+              fontWeight: tokens.font.weight.heading,
+              lineHeight: tokens.font.leading.cardTitle,
+            }}
+          >
+            Analysing {what}…
+          </Box>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }}>
+            {seconds} s
+          </Box>
         </Box>
         <LinearProgress aria-label={`Analysing ${what}`} />
-        <Box sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
+        <Box
+          sx={{
+            mt: 2,
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.small,
+          }}
+        >
           {slow
             ? 'Taking longer than usual; the AI services may be busy. Keep waiting, or add the items yourself.'
             : 'Usually under 20 seconds. You can close this; the meal waits for you in the Log tab.'}
@@ -230,7 +312,14 @@ function ConfirmedView({
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-confirmed">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ flex: 1, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle }}>
+        <Box
+          sx={{
+            flex: 1,
+            fontSize: tokens.font.size.cardTitle,
+            fontWeight: tokens.font.weight.heading,
+            lineHeight: tokens.font.leading.cardTitle,
+          }}
+        >
           {meal ? `${SLOT_LABEL[meal.slot]} logged` : 'Meal logged'}
           {meal && meal.totals.kcal > 0 && (
             <Box component="span" sx={{ fontWeight: tokens.font.weight.body, color: tokens.ink.secondary }}>
@@ -242,7 +331,12 @@ function ConfirmedView({
         {since === null && meal?.status !== 'confirmed' && <PendingBadge label="Syncing" />}
       </Box>
       {/* An older adjustment's ideas would be about the day before this meal: show only this meal's (or the numbers). */}
-      <DayAdjustmentCard date={date} adjustment={fresh ? adjustment : null} waiting={waiting} onLogged={onLogged} />
+      <DayAdjustmentCard
+        date={date}
+        adjustment={fresh ? adjustment : null}
+        waiting={waiting}
+        onLogged={onLogged}
+      />
       <Button variant="contained" size="large" onClick={onClose} data-testid="review-done">
         Done
       </Button>

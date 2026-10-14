@@ -1,9 +1,10 @@
-// Owns: Today's AI slot (2a: the middle card of the bottom row) — the newest safety flag of the last 7 days (rapid loss,
-// plateau, protein low; shown, never applied) as a warning at the top of the slot; the latest pending proposal as a
-// ProposalCard titled with the proposer's own summary when it is one short line, else with the change's own title over
-// that summary (Accept / Reject / Why → POST /api/proposals/:id/accept|reject through the shared decision hook; Why
-// links to the plan history), or else the latest AI event (review, note, change) from the live feed. Also today's day adjustment card (remaining kcal and macros,
-// protein status, next-meal ideas) when the AI has made one today, which the page puts under the coach note.
+// Owns: Today's AI slot (2a: the middle card of the bottom row) — the newest safety flag of the last 7 days (rapid
+// loss, plateau, protein low; shown, never applied) as a warning at the top of the slot; the latest pending proposal
+// as a ProposalCard titled with the proposer's own summary when it is one short line, else with the change's own
+// title over that summary (Accept / Reject / Why → POST /api/proposals/:id/accept|reject through the shared decision
+// hook; Why links to the plan history), or else the latest AI event (review, note, change) from the live feed. Also
+// today's day adjustment card (remaining kcal and macros, protein status, next-meal ideas) when the AI has made one
+// today, which the page puts under the coach note.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
@@ -42,7 +43,8 @@ function latestFlag(events: readonly AiEvent[], now = Date.now()): NoteEvent | n
   const since = new Date(now - FLAG_DAYS * 86_400_000).toISOString()
   return (
     events.find(
-      (e): e is NoteEvent => e.kind === 'note' && e.created_at >= since && typeof (e.body as { flag?: unknown }).flag === 'string',
+      (e): e is NoteEvent =>
+        e.kind === 'note' && e.created_at >= since && typeof (e.body as { flag?: unknown }).flag === 'string',
     ) ?? null
   )
 }
@@ -70,13 +72,19 @@ export function AiCard({ latest, pendingCount, events }: AiCardProps) {
   const flag = latestFlag(events)
   // The flag shows above the slot, so the slot does not repeat it.
   const slotEvent = event && event.id === flag?.id ? null : event
-  const main = proposal ? <ProposalSlot key={proposal.id} proposal={proposal} pendingCount={pendingCount} /> : slotEvent ? <EventCard event={slotEvent} /> : null
+  const main = proposal ? (
+    <ProposalSlot key={proposal.id} proposal={proposal} pendingCount={pendingCount} />
+  ) : slotEvent ? (
+    <EventCard event={slotEvent} />
+  ) : null
   if (!flag) return main
   return (
     <Stack spacing={4}>
       {flag && (
         <Alert severity="warning" data-testid="today-flag">
-          <Box sx={{ fontWeight: tokens.font.weight.label }}>Safety flag · {formatRecentTime(flag.created_at)}</Box>
+          <Box sx={{ fontWeight: tokens.font.weight.label }}>
+            Safety flag · {formatRecentTime(flag.created_at)}
+          </Box>
           {flag.summary}
         </Alert>
       )}
@@ -91,7 +99,10 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
   const [showWhy, setShowWhy] = useState(false)
   const d = useProposalDecision(
     proposal.proposal_status,
-    (decision) => call(decision === 'accepted' ? endpoints.plan.acceptProposal : endpoints.plan.rejectProposal, { params: { id: proposal.id } }),
+    (decision) =>
+      call(decision === 'accepted' ? endpoints.plan.acceptProposal : endpoints.plan.rejectProposal, {
+        params: { id: proposal.id },
+      }),
     () => refresh(),
   )
   const view = proposalView(proposal)
@@ -116,12 +127,32 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
           <Box sx={{ display: 'grid', gap: 2 }}>
             {showWhy && (
               <Box>
-                <Box component="ul" data-testid="proposal-why" sx={{ m: 0, pl: 5, fontSize: tokens.font.size.small, color: tokens.ink.text, lineHeight: 1.5 }}>
+                <Box
+                  component="ul"
+                  data-testid="proposal-why"
+                  sx={{
+                    m: 0,
+                    pl: 5,
+                    fontSize: tokens.font.size.small,
+                    color: tokens.ink.text,
+                    lineHeight: 1.5,
+                  }}
+                >
                   {view.why.map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))}
                 </Box>
-                <Link component={RouterLink} to="/plan" sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}>
+                <Link
+                  component={RouterLink}
+                  to="/plan"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    minHeight: tokens.tapTarget,
+                    fontSize: tokens.font.size.small,
+                    fontWeight: tokens.font.weight.label,
+                  }}
+                >
                   Plan history and the rails it was checked against
                 </Link>
               </Box>
@@ -145,29 +176,78 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
 
 function EventCard({ event }: { event: AiEvent }) {
   const favouriteIds =
-    event.kind === 'adjustment' ? event.body.suggestions.flatMap((s) => (s.favorite_id ? [s.favorite_id] : [])) : []
-  const favourites = useApiQuery(endpoints.nutrition.listFavourites, {}, { enabled: favouriteIds.length > 0, staleTime: 5 * 60_000 })
+    event.kind === 'adjustment'
+      ? event.body.suggestions.flatMap((s) => (s.favorite_id ? [s.favorite_id] : []))
+      : []
+  const favourites = useApiQuery(
+    endpoints.nutrition.listFavourites,
+    {},
+    { enabled: favouriteIds.length > 0, staleTime: 5 * 60_000 },
+  )
   const view = eventView(event, (id) => favourites.data?.find((f) => f.id === id)?.label ?? null)
   return (
     <Box data-testid="today-event" data-kind={event.kind} sx={{ minWidth: 0 }}>
       <Panel padding="dense" component="article" ariaLabel={view.title}>
         <Box sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>{view.source}</Box>
-          <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatRecentTime(event.created_at)}</Box>
+          <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            {formatRecentTime(event.created_at)}
+          </Box>
         </Box>
-        <Box component="h2" sx={{ m: 0, mt: '8px', fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.itemTitle }}>
+        <Box
+          component="h2"
+          sx={{
+            m: 0,
+            mt: '8px',
+            fontSize: tokens.font.size.itemTitle,
+            fontWeight: tokens.font.weight.heading,
+            lineHeight: tokens.font.leading.itemTitle,
+          }}
+        >
           {view.title}
         </Box>
-        {view.text && <Box sx={{ mt: '4px', fontSize: tokens.font.size.small, color: tokens.ink.muted, lineHeight: tokens.font.leading.small }}>{view.text}</Box>}
+        {view.text && (
+          <Box
+            sx={{
+              mt: '4px',
+              fontSize: tokens.font.size.small,
+              color: tokens.ink.muted,
+              lineHeight: tokens.font.leading.small,
+            }}
+          >
+            {view.text}
+          </Box>
+        )}
         {view.details.length > 0 && (
-          <Box component="ul" sx={{ m: 0, mt: 2, pl: 5, fontSize: tokens.font.size.small, color: tokens.ink.body, lineHeight: tokens.font.leading.small }}>
+          <Box
+            component="ul"
+            sx={{
+              m: 0,
+              mt: 2,
+              pl: 5,
+              fontSize: tokens.font.size.small,
+              color: tokens.ink.body,
+              lineHeight: tokens.font.leading.small,
+            }}
+          >
             {view.details.map((d) => (
               <li key={d}>{d}</li>
             ))}
           </Box>
         )}
         {view.link && (
-          <Link component={RouterLink} to={view.link.to} sx={{ display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, mt: 1, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}>
+          <Link
+            component={RouterLink}
+            to={view.link.to}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: tokens.tapTarget,
+              mt: 1,
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.label,
+            }}
+          >
             {view.link.label}
           </Link>
         )}

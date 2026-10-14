@@ -1,7 +1,7 @@
 // Owns: reading the exercise library — one GET /api/exercises?scope=all per session (the list is ~880 rows without
-// instructions and rarely changes; filtering happens on the phone), shared by the picker, the library, the detail sheet
+// instructions and rarely changes; filtering happens on the device), shared by the picker, the library, the detail sheet
 // and the builder; an id index; whether the read is waiting for a connection with nothing cached (offline before the
-// library ever loaded on this phone); and what goes stale when the allowed set changes (equipment statuses, exclusions).
+// library ever loaded on this device); and what goes stale when the allowed set changes (equipment statuses, exclusions).
 import { endpoints } from '@fitness/shared/api'
 import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
@@ -11,7 +11,10 @@ import { ALL_EXERCISES, EXERCISES_STALE_MS } from '../queries'
 
 /** The whole library (allowed and not); each row carries `allowed`. Cached for 10 minutes, offline-capable. */
 export function useExercises() {
-  return useApiQuery(endpoints.training.listExercises, ALL_EXERCISES, { staleTime: EXERCISES_STALE_MS, gcTime: 60 * 60_000 })
+  return useApiQuery(endpoints.training.listExercises, ALL_EXERCISES, {
+    staleTime: EXERCISES_STALE_MS,
+    gcTime: 60 * 60_000,
+  })
 }
 
 export interface ExerciseIndex {
@@ -55,7 +58,8 @@ export function useRefreshLibrary(): (outcome: { status: 'saved' | 'queued' }) =
   const queryClient = useQueryClient()
   return useCallback(
     (outcome) => {
-      if (outcome.status === 'saved') void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.training.listExercises) })
+      if (outcome.status === 'saved')
+        void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoints.training.listExercises) })
     },
     [queryClient],
   )
@@ -66,8 +70,9 @@ export function useMarkHidden(): (exerciseId: string) => void {
   const queryClient = useQueryClient()
   return useCallback(
     (exerciseId: string) =>
-      queryClient.setQueryData<ExerciseSummary[]>(apiQueryKey(endpoints.training.listExercises, ALL_EXERCISES), (list) =>
-        list?.map((e) => (e.id === exerciseId ? { ...e, allowed: false } : e)),
+      queryClient.setQueryData<ExerciseSummary[]>(
+        apiQueryKey(endpoints.training.listExercises, ALL_EXERCISES),
+        (list) => list?.map((e) => (e.id === exerciseId ? { ...e, allowed: false } : e)),
       ),
     [queryClient],
   )

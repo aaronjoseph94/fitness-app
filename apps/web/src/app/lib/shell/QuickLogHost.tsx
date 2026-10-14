@@ -1,8 +1,8 @@
-// Owns: hosting the quick-log sheet over every page — its code (every logging flow, ~40 KB) starts loading right after
-// the first render (not at idle: the entrance count-ups keep the page busy for well over a second, and logging offline
-// must never depend on fetching code), so it is in memory before the network can drop. The sheet starts closed. Like AskAiHost: if the
-// code still can't be fetched (offline before it ever loaded), the sheet closes with a short note instead of the error
-// replacing the whole app, and the next open tries again.
+// Owns: hosting the quick-log sheet over every page — its code (every logging flow, ~40 KB) starts loading right
+// after the first render (not at idle: the entrance count-ups keep the page busy for well over a second, and logging
+// offline must never depend on fetching code), so it is in memory before the network can drop. The sheet starts
+// closed. Like AskAiHost: if the code still can't be fetched (offline before it ever loaded), the sheet closes with a
+// short note instead of the error replacing the whole app, and the next open tries again.
 import Snackbar from '@mui/material/Snackbar'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { LoadBoundary } from '../../../components'

@@ -1,5 +1,5 @@
 // Owns: the day's meals as the Log tab shows them — GET /api/meals for the date (re-read every few seconds while one is
-// being analysed), plus meals created, edited or deleted on this phone that have not synced yet (created ones appear
+// being analysed), plus meals created, edited or deleted on this device that have not synced yet (created ones appear
 // with what is known; deleted ones disappear; edited ones show the edit) — and turning a shown meal back into the items
 // a PATCH sends.
 import { endpoints } from '@fitness/shared/api'
@@ -38,7 +38,13 @@ export interface MealView {
 }
 
 function itemNutrients(item: Meal['items'][number]): Nutrients {
-  return { kcal: item.kcal, protein_g: item.protein_g, carbs_g: item.carbs_g, fat_g: item.fat_g, fibre_g: item.fibre_g }
+  return {
+    kcal: item.kcal,
+    protein_g: item.protein_g,
+    carbs_g: item.carbs_g,
+    fat_g: item.fat_g,
+    fibre_g: item.fibre_g,
+  }
 }
 
 function fromServer(meal: Meal): MealView {
@@ -66,11 +72,15 @@ function fromServer(meal: Meal): MealView {
 }
 
 /** Items of a create or patch body, using what is already known about each item id. */
-function itemsFromInput(inputs: readonly z.input<typeof MealItemInput>[], known: Map<string, ItemView>): ItemView[] {
+function itemsFromInput(
+  inputs: readonly z.input<typeof MealItemInput>[],
+  known: Map<string, ItemView>,
+): ItemView[] {
   return inputs.map((input) => {
     const before = known.get(input.id)
     if ('food_id' in input) {
-      const nutrients = before?.nutrients && before.grams > 0 ? scaled(before.nutrients, input.grams / before.grams) : null
+      const nutrients =
+        before?.nutrients && before.grams > 0 ? scaled(before.nutrients, input.grams / before.grams) : null
       return {
         id: input.id,
         foodId: input.food_id,
@@ -85,7 +95,13 @@ function itemsFromInput(inputs: readonly z.input<typeof MealItemInput>[], known:
       foodId: null,
       description: input.description,
       grams: input.grams,
-      nutrients: { kcal: input.kcal, protein_g: input.protein_g, carbs_g: input.carbs_g, fat_g: input.fat_g, fibre_g: input.fibre_g },
+      nutrients: {
+        kcal: input.kcal,
+        protein_g: input.protein_g,
+        carbs_g: input.carbs_g,
+        fat_g: input.fat_g,
+        fibre_g: input.fibre_g,
+      },
       estimated: input.estimated ?? false,
     }
   })
@@ -127,7 +143,16 @@ export function useDayMeals(date: string, favourites: readonly Favourite[]): Day
         const scale = body.scale ?? 1
         if (fav) {
           totals = scaled(fav.totals, scale)
-          items = [{ id: body.id, foodId: null, description: scale === 1 ? fav.label : `${fav.label} ×${scale}`, grams: 0, nutrients: totals, estimated: false }]
+          items = [
+            {
+              id: body.id,
+              foodId: null,
+              description: scale === 1 ? fav.label : `${fav.label} ×${scale}`,
+              grams: 0,
+              nutrients: totals,
+              estimated: false,
+            },
+          ]
         }
       } else {
         rawText = 'raw_text' in body ? (body.raw_text ?? null) : null
@@ -136,7 +161,10 @@ export function useDayMeals(date: string, favourites: readonly Favourite[]): Day
         id: body.id,
         slot: body.slot,
         eatenAt: body.eaten_at,
-        status: body.input_method === 'text' || body.input_method === 'voice' || body.input_method === 'photo' ? 'parsing' : 'confirmed',
+        status:
+          body.input_method === 'text' || body.input_method === 'voice' || body.input_method === 'photo'
+            ? 'parsing'
+            : 'confirmed',
         inputMethod: body.input_method,
         rawText,
         items,
@@ -152,7 +180,9 @@ export function useDayMeals(date: string, favourites: readonly Favourite[]): Day
       const id = p.path.split('/')[3]
       const view = id ? byId.get(id) : undefined
       if (!view) continue
-      const items = p.body.items ? itemsFromInput(p.body.items, new Map(view.items.map((i) => [i.id, i]))) : view.items
+      const items = p.body.items
+        ? itemsFromInput(p.body.items, new Map(view.items.map((i) => [i.id, i])))
+        : view.items
       byId.set(view.id, {
         ...view,
         slot: p.body.slot ?? view.slot,

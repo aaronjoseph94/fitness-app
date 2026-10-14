@@ -1,4 +1,4 @@
-// Owns: the AI workout page (/train/ai, SPEC §7 "AI workouts") — pick a focus (or none: the week's upper/lower split
+// Owns: the AI workout page (/train/ai, SPEC §7 "AI workouts") — pick a focus (or none: the day's place in the split
 // decides), generate with the workout_generate job, then the preview: swap, start a session or save as a template
 // (opened in the builder); either accepts the job's pending workout proposal. `?focus=upper` prefills the focus;
 // `?auto=1` generates straight away; `?proposal=<id>` opens a pending draft (the nightly one, or a split day's) in the
@@ -21,7 +21,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { problemText } from '../../../api'
 import { formatShortDate, PageHeader, Panel, Reveal, staggerDelay } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
-import { AiWorkoutPreview } from './AiWorkoutPreview'
+import { ABOVE_NAV, AiWorkoutPreview } from './AiWorkoutPreview'
 import { AiWorking } from './AiWorking'
 import { usePendingWorkouts } from './pending-workout'
 import { useTemplateWrites } from './start'
@@ -31,9 +31,6 @@ const FOCUSES = ['Upper body', 'Lower body', 'Push', 'Pull', 'Full body', 'Arms 
 
 /** A clickable focus chip is at least a 44 px square on touch ("Pull" is narrower than that). */
 const FOCUS_CHIP = { [COARSE_POINTER_QUERY]: { minWidth: tokens.tapTarget } } as const
-
-/** On a phone the sticky bar sits above the bottom nav (the preview drops it from `md` up). */
-const ABOVE_NAV = `calc(${tokens.layout.bottomNavHeight}px + env(safe-area-inset-bottom, 0px))`
 
 export function AiWorkoutPage() {
   const [params] = useSearchParams()
@@ -48,7 +45,8 @@ export function AiWorkoutPage() {
   /** The template a draft was kept as on this page, so a retried Start or a later Save replaces it, never a second one. */
   const kept = useRef<{ proposalId: string; templateId: string } | null>(null)
 
-  const generate = () => ai.run({ mode: 'generate', date: today(Date.now()), focus: focus.trim() || undefined })
+  const generate = () =>
+    ai.run({ mode: 'generate', date: today(Date.now()), focus: focus.trim() || undefined })
 
   useEffect(() => {
     if (!auto.current) return
@@ -64,10 +62,14 @@ export function AiWorkoutPage() {
     ai.open(found.draft)
   }, [pending, ai.open])
 
-  const templateName = (draft: WorkoutDraft) => draft.name ?? `AI · ${focus.trim() || 'workout'} · ${formatShortDate(today(Date.now()))}`.slice(0, 100)
+  const templateName = (draft: WorkoutDraft) =>
+    draft.name ?? `AI · ${focus.trim() || 'workout'} · ${formatShortDate(today(Date.now()))}`.slice(0, 100)
 
   const saveDraft = async (draft: WorkoutDraft) => {
-    const prior = draft.proposal_id && kept.current?.proposalId === draft.proposal_id ? kept.current.templateId : undefined
+    const prior =
+      draft.proposal_id && kept.current?.proposalId === draft.proposal_id
+        ? kept.current.templateId
+        : undefined
     const outcome = await writes.save({
       id: prior,
       name: templateName(draft),
@@ -139,10 +141,22 @@ export function AiWorkoutPage() {
                   />
                 ))}
               </Box>
-              <TextField label="Focus (optional)" value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="e.g. chest and back, go easy on the knees" slotProps={{ htmlInput: { maxLength: 200 } }} />
+              <TextField
+                label="Focus (optional)"
+                value={focus}
+                onChange={(e) => setFocus(e.target.value)}
+                placeholder="e.g. chest and back, go easy on the knees"
+                slotProps={{ htmlInput: { maxLength: 200 } }}
+              />
               {state.status === 'failed' && <Alert severity="warning">{state.message}</Alert>}
               <Box>
-                <Button variant="contained" startIcon={<AutoAwesomeRounded />} onClick={generate} sx={{ width: { xs: '100%', sm: 'auto' } }} data-testid="ai-generate">
+                <Button
+                  variant="contained"
+                  startIcon={<AutoAwesomeRounded />}
+                  onClick={generate}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  data-testid="ai-generate"
+                >
                   {state.status === 'failed' ? 'Try again' : 'Generate workout'}
                 </Button>
               </Box>
@@ -163,7 +177,12 @@ export function AiWorkoutPage() {
           onStart={(d) => void onStart(d)}
         />
       )}
-      <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice ?? ''} />
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={4000}
+        onClose={() => setNotice(null)}
+        message={notice ?? ''}
+      />
     </Stack>
   )
 }

@@ -12,7 +12,7 @@ export interface FinishView {
   /** Muscles by volume, highest first. */
   volume: { muscle: Muscle; kg: number }[]
   sets_done: number
-  /** The summary was computed on this phone; PRs arrive once the finish syncs. */
+  /** The summary was computed on this device; PRs arrive once the finish syncs. */
   prs_pending: boolean
 }
 

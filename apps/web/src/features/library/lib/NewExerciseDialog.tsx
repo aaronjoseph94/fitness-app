@@ -1,6 +1,6 @@
 // Owns: adding one of Aaron's own exercises (SPEC §7, e.g. a gym-specific machine) — name, equipment (library values
 // and his named machines), primary and secondary muscles by tap, level, and a photo (camera or gallery, downscaled and
-// re-encoded on the phone so no EXIF leaves it) — sent as POST /api/exercises, then POST /api/exercises/:id/photo.
+// re-encoded on the device so no EXIF leaves it) — sent as POST /api/exercises, then POST /api/exercises/:id/photo.
 // Both go through the shared client and its offline queue, which replays them in order.
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -61,7 +61,10 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
 
   // Tap cycles a muscle: off → primary → secondary → off.
   const cycle = (m: Muscle) =>
-    setRoles((r) => ({ ...r, [m]: r[m] === undefined ? 'primary' : r[m] === 'primary' ? 'secondary' : undefined }))
+    setRoles((r) => ({
+      ...r,
+      [m]: r[m] === undefined ? 'primary' : r[m] === 'primary' ? 'secondary' : undefined,
+    }))
 
   const pick = async (file: File | undefined) => {
     if (!file) return
@@ -92,10 +95,12 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
           if (photo) {
             // Queued behind the create when offline; the photo replays after the exercise exists.
             const body = await photo.blob.arrayBuffer()
-            const sent = await upload.mutateAsync({ params: { id }, query: { content_type: photo.contentType }, body }).then(
-              () => true,
-              () => false,
-            )
+            const sent = await upload
+              .mutateAsync({ params: { id }, query: { content_type: photo.contentType }, body })
+              .then(
+                () => true,
+                () => false,
+              )
             if (!sent) return // the error shows; the exercise is stored, so tapping again only retries the photo
           }
           refresh(outcome)
@@ -107,19 +112,42 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
   }
 
   return (
-    <Dialog open onClose={onClose} fullScreen={fullScreen} fullWidth maxWidth="sm" aria-labelledby="new-exercise-title">
+    <Dialog
+      open
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="new-exercise-title"
+    >
       <DialogTitle id="new-exercise-title">New exercise</DialogTitle>
       <DialogContent>
         <Stack spacing={4} sx={{ pt: 1 }}>
-          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Hammer Strength chest press" slotProps={{ htmlInput: { maxLength: 200 } }} />
-          <TextField select label="Equipment" value={equipment} onChange={(e) => setEquipment(e.target.value)}>
+          <TextField
+            label="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Hammer Strength chest press"
+            slotProps={{ htmlInput: { maxLength: 200 } }}
+          />
+          <TextField
+            select
+            label="Equipment"
+            value={equipment}
+            onChange={(e) => setEquipment(e.target.value)}
+          >
             {options.map((o) => (
               <MenuItem key={o} value={o} sx={{ minHeight: 44 }}>
                 {equipmentLabel(o)}
               </MenuItem>
             ))}
           </TextField>
-          <TextField select label="Level" value={level} onChange={(e) => setLevel(e.target.value as (typeof LEVELS)[number])}>
+          <TextField
+            select
+            label="Level"
+            value={level}
+            onChange={(e) => setLevel(e.target.value as (typeof LEVELS)[number])}
+          >
             {LEVELS.map((l) => (
               <MenuItem key={l} value={l} sx={{ minHeight: 44 }}>
                 {sentence(l)}
@@ -128,12 +156,18 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
           </TextField>
           <Box>
             <Box sx={{ fontSize: tokens.font.size.small, fontWeight: 500, mb: 1 }}>Muscles</Box>
-            <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mb: 2 }}>Tap once for primary, twice for secondary.</Box>
+            <Box sx={{ fontSize: tokens.font.size.label, color: 'text.secondary', mb: 2 }}>
+              Tap once for primary, twice for secondary.
+            </Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
               {Muscle.options.map((m) => (
                 <Chip
                   key={m}
-                  label={roles[m] ? `${MUSCLE_LABELS[m]} · ${roles[m] === 'primary' ? 'primary' : 'secondary'}` : MUSCLE_LABELS[m]}
+                  label={
+                    roles[m]
+                      ? `${MUSCLE_LABELS[m]} · ${roles[m] === 'primary' ? 'primary' : 'secondary'}`
+                      : MUSCLE_LABELS[m]
+                  }
                   color={roles[m] === 'primary' ? 'primary' : 'default'}
                   variant={roles[m] ? 'filled' : 'outlined'}
                   onClick={() => cycle(m)}
@@ -149,12 +183,29 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
                   component="img"
                   src={photo.previewUrl}
                   alt="The machine"
-                  sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}` }}
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    objectFit: 'cover',
+                    borderRadius: `${tokens.radius.control}px`,
+                    border: `1px solid ${tokens.ink.border}`,
+                  }}
                 />
               )}
-              <Button component="label" variant="outlined" startIcon={<AddAPhotoRounded />} data-testid="new-exercise-photo">
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<AddAPhotoRounded />}
+                data-testid="new-exercise-photo"
+              >
                 {photo ? 'Replace photo' : 'Add photo'}
-                <input hidden type="file" accept="image/*" capture="environment" onChange={(e) => void pick(e.target.files?.[0])} />
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => void pick(e.target.files?.[0])}
+                />
               </Button>
             </Box>
           </Box>
@@ -165,7 +216,11 @@ export function NewExerciseDialog({ onClose, onCreated }: NewExerciseDialogProps
       </DialogContent>
       <DialogActions sx={{ px: 6, pb: 4 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" disabled={!valid || create.isPending || upload.isPending} onClick={submit}>
+        <Button
+          variant="contained"
+          disabled={!valid || create.isPending || upload.isPending}
+          onClick={submit}
+        >
           Add exercise
         </Button>
       </DialogActions>

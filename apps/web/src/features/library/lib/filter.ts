@@ -77,7 +77,3 @@ export function equipmentValues(list: readonly ExerciseSummary[]): string[] {
   for (const e of list) if (e.equipment) counts.set(e.equipment, (counts.get(e.equipment) ?? 0) + 1)
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)
 }
-
-export function activeFilterCount(f: ExerciseFilter): number {
-  return [f.muscle, f.equipment, f.category, f.level].filter((v) => v !== undefined).length
-}

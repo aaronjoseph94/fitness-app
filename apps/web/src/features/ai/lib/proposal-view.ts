@@ -1,4 +1,4 @@
-// Owns: how something Ask AI proposed reads on its card (pure) — title, source line, before → after rows with units,
+// Owns: how something Ask AI proposed reads on its card (pure) — title, summary, before → after rows with units,
 // the reason a plan change or a workout gives, the card status, and whether it can be undone — for a plan change, a
 // workout (a split day's draft by its name, "Upper A draft"), a week plan, a reminder time, an exercise swap, a change
 // to Train ("Rename Upper A → Push") or new training days.
@@ -50,7 +50,11 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
       const sets = body.workout.exercises.reduce((n, e) => n + e.sets, 0)
       return {
         // A split day's draft is named ("Upper A draft"); a one-day draft reads by its date.
-        title: body.workout.name ? `${body.workout.name} draft` : body.date ? `Workout for ${formatShortDate(body.date)}` : 'Suggested workout',
+        title: body.workout.name
+          ? `${body.workout.name} draft`
+          : body.date
+            ? `Workout for ${formatShortDate(body.date)}`
+            : 'Suggested workout',
         summary: body.workout.rationale || p.summary,
         changes: [{ label: 'Exercises · sets', from: '—', to: `${body.workout.exercises.length} · ${sets}` }],
         why: body.workout.rationale || undefined,
@@ -62,7 +66,14 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
       }
     }
     case 'week_plan':
-      return { title: 'Plan for the week', summary: p.summary, changes: [], status: p.status, replaced: false, ...NOT_REVERTIBLE }
+      return {
+        title: 'Plan for the week',
+        summary: p.summary,
+        changes: [],
+        status: p.status,
+        replaced: false,
+        ...NOT_REVERTIBLE,
+      }
     case 'reminder_time':
       return {
         title: `Move the ${REMINDER_LABEL[body.reminder].toLowerCase()} reminder`,

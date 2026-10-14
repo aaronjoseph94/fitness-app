@@ -1,5 +1,5 @@
 // Owns: Today's live AI event feed — GET /api/events every 15 s while the app is visible and again on focus, passing
-// the previous `server_time` back as `since` (so the phone's clock never matters), merging new and updated events by
+// the previous `server_time` back as `since` (so the device's clock never matters), merging new and updated events by
 // id, and marking the day, plan, trend and note stale when something arrives (a proposal resolved, a note pinned).
 import { endpoints } from '@fitness/shared/api'
 import type { AiEvent } from '@fitness/shared/schemas'
@@ -7,7 +7,7 @@ import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-quer
 import { apiQueryKey, call, type ApiError } from '../../../api'
 
 const EVENT_POLL_MS = 15_000
-/** Events kept on the phone for the feed; Today shows the newest. */
+/** Events kept on the device for the feed; Today shows the newest. */
 const KEEP = 30
 
 export interface EventFeed {
@@ -27,7 +27,14 @@ function mergeEvents(previous: readonly AiEvent[], page: readonly AiEvent[]): Ai
 }
 
 function refreshDependents(queryClient: QueryClient): void {
-  for (const endpoint of [endpoints.day.get, endpoints.day.note, endpoints.plan.get, endpoints.body.trend, endpoints.weekPlans.list, endpoints.weekPlans.get]) {
+  for (const endpoint of [
+    endpoints.day.get,
+    endpoints.day.note,
+    endpoints.plan.get,
+    endpoints.body.trend,
+    endpoints.weekPlans.list,
+    endpoints.weekPlans.get,
+  ]) {
     void queryClient.invalidateQueries({ queryKey: apiQueryKey(endpoint) })
   }
 }
@@ -39,7 +46,11 @@ export function useEventFeed() {
     queryKey: FEED_KEY,
     queryFn: async ({ signal }): Promise<EventFeed> => {
       const previous = queryClient.getQueryData<EventFeed>(FEED_KEY)
-      const page = await call(endpoints.day.events, { query: previous ? { since: previous.server_time } : {} }, { signal })
+      const page = await call(
+        endpoints.day.events,
+        { query: previous ? { since: previous.server_time } : {} },
+        { signal },
+      )
       if (previous && page.events.length > 0) refreshDependents(queryClient)
       return { events: mergeEvents(previous?.events ?? [], page.events), server_time: page.server_time }
     },
@@ -55,7 +66,7 @@ export function useEventFeed() {
   })
 }
 
-/** Invalidate the feed's dependents after this phone resolved a proposal itself (the poll would catch it in ≤ 15 s). */
+/** Invalidate the feed's dependents after this device resolved a proposal itself (the poll would catch it in ≤ 15 s). */
 export function useRefreshAfterDecision(): () => void {
   const queryClient = useQueryClient()
   return () => {

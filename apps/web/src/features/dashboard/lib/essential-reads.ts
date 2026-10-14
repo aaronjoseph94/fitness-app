@@ -12,7 +12,7 @@ export type EssentialRead = Pick<UseQueryResult, 'isPending' | 'fetchStatus'>
 /**
  * Whether the Dashboard is still loading one of its essentials. `isQueryLoading` is the app's one definition of that
  * (components/lib/QueryStateCard): a read that has stopped with nothing to show — a failure, or a read the network
- * paused with nothing saved on this phone — is not loading, it is what the page's error card is for. Reading "has no
+ * paused with nothing saved on this device — is not loading, it is what the page's error card is for. Reading "has no
  * data" as "still loading" instead makes that card unreachable, which is how an offline first visit became an endless
  * skeleton with no way back on.
  */

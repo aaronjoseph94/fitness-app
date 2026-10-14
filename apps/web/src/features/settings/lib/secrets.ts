@@ -1,7 +1,7 @@
 // Owns: what each runtime secret is (pure) — its label, what it unlocks, where Aaron gets one, the prefix its provider
 // uses so a pasted value can be sanity-checked, and how a stored secret reads back. Two lists feed the AI page: the paid
 // models (Claude → ChatGPT → Gemini Pro; a set key puts that model first in every chain) and the free tiers in the
-// router's chain order (Groq → OpenRouter → Gemini last). Never a value: the API returns status only, so nothing here
+// router's chain order (Groq → OpenRouter → Z.ai → Gemini). Never a value: the API returns status only, so nothing here
 // can put a key on screen that the Worker would not have sent.
 import type { SecretName, SecretStatus } from '@fitness/shared/schemas'
 
@@ -105,11 +105,15 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
 }
 
 /**
- * The free provider keys the Models section offers, in the router's chain order (Groq → OpenRouter → Gemini last;
- * providers.json is the source of truth). Any paid key (PAID_SECRET_NAMES above) is tried ahead of all of these. The
- * food key used to be listed here and is retired: food matching is Canadian now.
+ * The free provider keys the Models section offers, in the router's chain order (Groq → OpenRouter → Z.ai → Gemini;
+ * providers.json is the source of truth). Any paid key (PAID_SECRET_NAMES above) is tried ahead of all of these.
  */
-export const MODEL_SECRET_NAMES: readonly SecretName[] = ['GROQ_API_KEY', 'OPENROUTER_API_KEY', 'ZAI_API_KEY', 'GEMINI_API_KEY']
+export const MODEL_SECRET_NAMES: readonly SecretName[] = [
+  'GROQ_API_KEY',
+  'OPENROUTER_API_KEY',
+  'ZAI_API_KEY',
+  'GEMINI_API_KEY',
+]
 
 /** "Set here · ends 4f2a" / "Set as a Worker secret" / "Not set" — never the value itself. */
 export function sourceLabel(status: SecretStatus): string {

@@ -36,7 +36,7 @@ import { AiTile, TurnView } from './TurnView'
 import { useChat, useThreads, type Turn } from './useChat'
 import { chatWhen } from './when'
 
-export const SUGGESTIONS = [
+const SUGGESTIONS = [
   'What did I average for protein in September?',
   'Swap Thursday to a pull day',
   'Raise water to 3.5 L',
@@ -56,7 +56,10 @@ const TIGHT_HEADER = '@media (max-width: 1439.95px)'
 const scrollRegion = { tabIndex: 0, role: 'region', 'aria-label': 'Conversation history' } as const
 const scrollRegionSx = {
   position: 'relative',
-  '&:focus-visible': { outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`, outlineOffset: `-${tokens.focusRing.width}px` },
+  '&:focus-visible': {
+    outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+    outlineOffset: `-${tokens.focusRing.width}px`,
+  },
 } as const
 
 const READ_TOOL = /^(?:get|list|search)_/
@@ -64,7 +67,13 @@ const READ_TOOL = /^(?:get|list|search)_/
 /** The thread header's "reads today, favourites, plan": what the thread's lookup tools read, the first three named. */
 function readsLine(turns: readonly Turn[]): string | null {
   const calls = turns.flatMap((t) => t.reply?.tool_calls ?? [])
-  const names = [...new Set(calls.filter((c) => READ_TOOL.test(c.name)).map((c) => c.name.replace(READ_TOOL, '').replaceAll('_', ' ')))]
+  const names = [
+    ...new Set(
+      calls
+        .filter((c) => READ_TOOL.test(c.name))
+        .map((c) => c.name.replace(READ_TOOL, '').replaceAll('_', ' ')),
+    ),
+  ]
   if (names.length === 0) return null
   return `reads ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` +${names.length - 3}` : ''}`
 }
@@ -102,7 +111,16 @@ function ThreadHeader({
   const [confirming, setConfirming] = useState<{ thread_id: string; label: string } | null>(null)
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: rail ? 'row' : 'column', alignItems: rail ? 'center' : 'stretch', gap: rail ? '10px' : '2px' }}>
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: rail ? 'row' : 'column',
+          alignItems: rail ? 'center' : 'stretch',
+          gap: rail ? '10px' : '2px',
+        }}
+      >
         <Box
           component="h2"
           sx={{
@@ -127,7 +145,12 @@ function ThreadHeader({
               lineHeight: tokens.font.leading.caption,
               color: tokens.ink.muted,
               flex: 'none',
-              ...(rail && { maxWidth: '50%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
+              ...(rail && {
+                maxWidth: '50%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }),
             }}
           >
             {meta}
@@ -139,7 +162,11 @@ function ThreadHeader({
           </Box>
         )}
       </Box>
-      <IconButton aria-label="Past chats" size={rail ? 'small' : 'medium'} onClick={(e) => setAnchor(e.currentTarget)}>
+      <IconButton
+        aria-label="Past chats"
+        size={rail ? 'small' : 'medium'}
+        onClick={(e) => setAnchor(e.currentTarget)}
+      >
         {rail ? <MoreHorizRounded sx={{ fontSize: 18 }} /> : <HistoryRounded fontSize="small" />}
       </IconButton>
       {!rail && (
@@ -176,7 +203,13 @@ function ThreadHeader({
             <ListItemText
               primary={shorten(m.content, 60)}
               secondary={chatWhen(m.created_at)}
-              slotProps={{ primary: { noWrap: true, sx: { fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label } }, secondary: { sx: { fontSize: tokens.font.size.caption } } }}
+              slotProps={{
+                primary: {
+                  noWrap: true,
+                  sx: { fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label },
+                },
+                secondary: { sx: { fontSize: tokens.font.size.caption } },
+              }}
             />
             {/*
              * The row itself is "open this chat"; delete is its own button inside the row, with the chat's opening
@@ -211,7 +244,9 @@ function ThreadHeader({
       >
         <DialogTitle id="delete-chat-title">Delete this chat?</DialogTitle>
         <DialogContent sx={{ color: 'text.secondary' }}>
-          {confirming ? `“${confirming.label}” and every message in it go for good. Logs you asked for are already saved.` : ''}
+          {confirming
+            ? `“${confirming.label}” and every message in it go for good. Logs you asked for are already saved.`
+            : ''}
         </DialogContent>
         <DialogActions>
           <Button variant="outlined" onClick={() => setConfirming(null)}>
@@ -240,9 +275,15 @@ function Intro() {
   return (
     <Box sx={{ display: 'flex', gap: '12px', maxWidth: 720 }}>
       <AiTile />
-      <Box sx={{ fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.text }}>
-        Ask about anything you have logged, or ask for a change. Logs you mention are saved; plan changes come back as a card you
-        accept with one tap.
+      <Box
+        sx={{
+          fontSize: tokens.font.size.body,
+          lineHeight: tokens.font.leading.emphasis,
+          color: tokens.ink.text,
+        }}
+      >
+        Ask about anything you have logged, or ask for a change. Logs you mention are saved; plan changes come
+        back as a card you accept with one tap.
       </Box>
     </Box>
   )
@@ -369,7 +410,14 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
     <>
       {/* A desktop page always offers the starters (2a); a phone and the panel only on an empty thread. */}
       {(empty || page) && <Starters onPick={send} disabled={!online || chat.sending} />}
-      <Composer value={text} onChange={setText} onSend={() => send(text)} sending={chat.sending} online={online} autoFocus={variant === 'panel'} />
+      <Composer
+        value={text}
+        onChange={setText}
+        onSend={() => send(text)}
+        sending={chat.sending}
+        online={online}
+        autoFocus={variant === 'panel'}
+      />
     </>
   )
   /** The turns, bottom-aligned in their scroll area as a chat reads (2a: 18 px apart). */
@@ -377,14 +425,46 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
 
   if (variant === 'panel')
     return (
-      <Box data-testid="ask-ai-chat" sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <Box
+        data-testid="ask-ai-chat"
+        sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
+      >
         <Box sx={{ px: 4, py: '12px', borderBottom: `1px solid ${tokens.ink.border}` }}>
-          <ThreadHeader title={title ? shorten(title, 80) : 'Ask AI'} meta={meta} reads={reads} onClose={onClose} onDelete={chat.remove} deleting={chat.deleting} />
+          <ThreadHeader
+            title={title ? shorten(title, 80) : 'Ask AI'}
+            meta={meta}
+            reads={reads}
+            onClose={onClose}
+            onDelete={chat.remove}
+            deleting={chat.deleting}
+          />
         </Box>
-        <Box {...scrollRegion} sx={{ ...scrollRegionSx, flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', px: 4, py: '20px', display: 'flex', flexDirection: 'column' }}>
+        <Box
+          {...scrollRegion}
+          sx={{
+            ...scrollRegionSx,
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            px: 4,
+            py: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           {turns}
         </Box>
-        <Box sx={{ px: 4, pt: '12px', pb: 'calc(12px + env(safe-area-inset-bottom, 0px))', borderTop: `1px solid ${tokens.ink.border}` }}>{composer}</Box>
+        <Box
+          sx={{
+            px: 4,
+            pt: '12px',
+            pb: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+            borderTop: `1px solid ${tokens.ink.border}`,
+          }}
+        >
+          {composer}
+        </Box>
       </Box>
     )
 
@@ -404,15 +484,42 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
           gridTemplateColumns: 'minmax(0, 1fr) 340px',
           [THREE_COLUMNS]: { gridTemplateColumns: '260px minmax(0, 1fr) 340px' },
           // Past 2a's 1,440 px the content column is centred with room either side: close the block's edges.
-          '@media (min-width: 1500px)': { borderLeft: `1px solid ${tokens.ink.border}`, borderRight: `1px solid ${tokens.ink.border}` },
+          '@media (min-width: 1500px)': {
+            borderLeft: `1px solid ${tokens.ink.border}`,
+            borderRight: `1px solid ${tokens.ink.border}`,
+          },
         }}
       >
         {wide && <ChatsRail />}
-        <Box component="section" aria-label="Thread" data-testid="ask-ai-chat" sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+        <Box
+          component="section"
+          aria-label="Thread"
+          data-testid="ask-ai-chat"
+          sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}
+        >
           <Box sx={{ px: '24px', py: '12px', borderBottom: `1px solid ${tokens.ink.border}` }}>
-            <ThreadHeader title={title ? shorten(title, 80) : 'New chat'} meta={meta} reads={reads} rail={wide} onDelete={chat.remove} deleting={chat.deleting} />
+            <ThreadHeader
+              title={title ? shorten(title, 80) : 'New chat'}
+              meta={meta}
+              reads={reads}
+              rail={wide}
+              onDelete={chat.remove}
+              deleting={chat.deleting}
+            />
           </Box>
-          <Box {...scrollRegion} sx={{ ...scrollRegionSx, flex: 1, minHeight: 0, overflowY: 'auto', px: '24px', py: '20px', display: 'flex', flexDirection: 'column' }}>
+          <Box
+            {...scrollRegion}
+            sx={{
+              ...scrollRegionSx,
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              px: '24px',
+              py: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             {turns}
           </Box>
           <Box sx={{ px: '24px', pb: '20px' }}>{composer}</Box>
@@ -420,7 +527,16 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
         <Box
           component="aside"
           aria-label="Proposals and rails"
-          sx={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '16px', p: '20px', borderLeft: `1px solid ${tokens.ink.border}`, minHeight: 0, overflowY: 'auto' }}
+          sx={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            p: '20px',
+            borderLeft: `1px solid ${tokens.ink.border}`,
+            minHeight: 0,
+            overflowY: 'auto',
+          }}
         >
           {aside ?? <NothingWaiting />}
           <RecentTrainChanges />
@@ -437,9 +553,23 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   return (
     <Box
       data-testid="ask-ai-chat"
-      sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100dvh - 200px)', width: '100%', maxWidth: 760, mx: 'auto' }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        minHeight: 'calc(100dvh - 200px)',
+        width: '100%',
+        maxWidth: 760,
+        mx: 'auto',
+      }}
     >
-      <ThreadHeader title={title ? shorten(title, 80) : 'New chat'} meta={meta} reads={reads} onDelete={chat.remove} deleting={chat.deleting} />
+      <ThreadHeader
+        title={title ? shorten(title, 80) : 'New chat'}
+        meta={meta}
+        reads={reads}
+        onDelete={chat.remove}
+        deleting={chat.deleting}
+      />
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {aside}
         <RecentTrainChanges />

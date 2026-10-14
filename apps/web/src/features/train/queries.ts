@@ -8,12 +8,14 @@ import { STEP_WINDOW_DAYS } from './lib/readiness'
 export const RECENT_DAYS = 28
 
 /** GET /api/sessions for the recent list: the RECENT_DAYS days ending on `date`. */
-export const recentSessionsInput = (date: LocalDate) => ({ query: { from: addDays(date, -(RECENT_DAYS - 1)), to: date } })
+export const recentSessionsInput = (date: LocalDate) => ({
+  query: { from: addDays(date, -(RECENT_DAYS - 1)), to: date },
+})
 
 /** GET /api/days for readiness: the steps window before `date` (not including it). */
 export const stepsWindowInput = (date: LocalDate) => ({
   query: { from: addDays(date, -(STEP_WINDOW_DAYS + 1)), to: addDays(date, -1) },
 })
 
-/** Templates change only from the builder (which marks them stale). */
+/** Templates change rarely, and this app's own template writes mark them stale. */
 export const TEMPLATES_STALE_MS = 5 * 60_000

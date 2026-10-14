@@ -1,4 +1,4 @@
-// Owns: the "About this data" card (2a) — where each kind of data is kept (D1 and R2 on Cloudflare, this phone's queue
+// Owns: the "About this data" card (2a) — where each kind of data is kept (D1 and R2 on Cloudflare, this device's queue
 // and cache, with what is waiting in it now) and what never reaches an LLM, in three short columns on the `ink.panel`
 // panel, then the time zone and the way to export everything.
 import Box from '@mui/material/Box'
@@ -42,17 +42,32 @@ export function AboutData({ timezone }: { timezone: string }) {
           {pending > 0 ? ` (${pending} waiting now${online ? '' : ', offline'}).` : '.'}
         </Item>
         <Item title="Never sent to an LLM">
-          Progress photos. Meal photos are downscaled to 1,024 px and the name on a scan sheet is masked first.
+          Progress photos. Meal photos are downscaled to 1,024 px and the name on a scan sheet is masked
+          first.
         </Item>
       </Box>
-      <Box sx={{ mt: 3, fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted }}>
+      <Box
+        sx={{
+          mt: 3,
+          fontSize: tokens.font.size.caption,
+          lineHeight: tokens.font.leading.caption,
+          color: tokens.ink.muted,
+        }}
+      >
         Time zone {timezone} ·{' '}
         <Link
           component={RouterLink}
           to="/settings/data"
           underline="hover"
           // A 44 px tap target on touch, still on the footer's line of text.
-          sx={{ color: tokens.accent.main, [COARSE_POINTER_QUERY]: { display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget } }}
+          sx={{
+            color: tokens.accent.main,
+            [COARSE_POINTER_QUERY]: {
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: tokens.tapTarget,
+            },
+          }}
         >
           Export everything
         </Link>

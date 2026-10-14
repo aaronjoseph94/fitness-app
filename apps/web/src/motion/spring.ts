@@ -1,5 +1,5 @@
-// Owns: the spring maths behind every animation in the app. Pure, dependency-free and DOM-free, so it can be unit
-// tested and so nothing here can create an import cycle with `theme.ts` (which builds its motion tokens from it).
+// Owns: the spring maths behind the sheet's drag-and-settle (`useSheetDrag`). Pure, dependency-free and DOM-free, so
+// it can be unit tested.
 //
 // Apple replaced the physics triplet (mass / stiffness / damping) with two designer-facing parameters, and this module
 // speaks those two and only those:
@@ -9,10 +9,10 @@
 //             rather than anyone prescribing it.
 //   damping   the damping ratio. `1` is critically damped (no overshoot); below `1` overshoots and oscillates.
 //
-// The motion the whole interface is built on needs both a *value* and a *velocity* at any instant: a value so an
-// interrupted animation can resume from what is actually on screen, and a velocity so a gesture can hand its own
-// momentum to the animation that follows. `springStep()` returns both, solved analytically — no per-frame integration,
-// no `requestAnimationFrame`, so a throttled or non-compositing window cannot leave an animation stuck half-way.
+// A gesture-driven animation needs both a *value* and a *velocity* at any instant: a value so an interrupted animation
+// can resume from what is actually on screen, and a velocity so a gesture can hand its own momentum to the animation
+// that follows. `springStep()` returns both, solved analytically — no per-frame integration, no
+// `requestAnimationFrame`, so a throttled or non-compositing window cannot leave an animation stuck half-way.
 
 /** A spring in Apple's terms. */
 export interface Spring {
@@ -23,8 +23,8 @@ export interface Spring {
 }
 
 /**
- * The house default: critically damped, response 0.35 s. Graceful and non-distracting, so it is right for anything
- * that appears without the user having thrown it — a page's hero, its card groups, a sheet materialising.
+ * The house default: critically damped, response 0.35 s. Graceful and non-distracting, so it is right for a sheet
+ * settling without a flick behind it.
  */
 export const SPRING_DEFAULT: Spring = { response: 0.35, damping: 1 }
 
@@ -97,8 +97,8 @@ export function springStep(
 const settleCache = new Map<string, number>()
 
 /**
- * How long this spring takes to settle, in seconds — the duration a CSS transition should be given so the curve is
- * not cut off part-way. Found by stepping the decay envelope (cheap, and it is memoised per spring) because the
+ * How long this spring takes to settle, in seconds — the duration an animation of it needs so the curve is not cut
+ * off part-way. Found by stepping the decay envelope (cheap, and it is memoised per spring) because the
  * closed-form answer differs between the damped cases and the envelope is what actually governs settling.
  */
 export function settleTime(spring: Spring): number {
@@ -119,23 +119,6 @@ export function settleTime(spring: Spring): number {
 }
 
 /**
- * The spring as a CSS `linear()` easing curve: `stops` evenly spaced samples of the unit step across its own settle
- * time, so the curve and the duration always agree. Values outside 0–1 are the overshoot, which is exactly what
- * `linear()` is for. Returns `null` where the browser cannot parse one, so a caller can fall back to a cubic-bézier.
- */
-export function springCurve(spring: Spring, stops = 24): string | null {
-  if (typeof CSS === 'undefined' || typeof CSS.supports !== 'function') return null
-  const settle = settleTime(spring)
-  const samples: number[] = []
-  for (let i = 0; i <= stops; i += 1) {
-    const { value } = springStep(spring, (settle * i) / stops, 0, 1)
-    samples.push(Math.round(value * 10000) / 10000)
-  }
-  const curve = `linear(${samples.join(', ')})`
-  return CSS.supports('transition-timing-function', curve) ? curve : null
-}
-
-/**
  * Apple's momentum projection: where a gesture released at `velocity` px/s is *going*, not where it was let go. The
  * exponential-decay form Apple ships (not the physics-textbook `v²/2a`), with the deceleration rate that gives normal
  * scroll feel. Used to choose a sheet's resting place from the flick rather than from the release point.
@@ -152,7 +135,6 @@ export function rubberband(overshoot: number, dimension: number, constant = 0.55
   return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot))
 }
 
-/** A frame of an animation, in the shape `Element.animate()` takes. */
 /**
  * One frame of an animation, in the shape `Element.animate()` takes — which is why it carries an index signature:
  * a `Keyframe` is `{ [property: string]: string | number | undefined | null }`, so a narrower object will not
@@ -177,7 +159,13 @@ export interface SpringKeyframes {
  * one; the last frame is exactly the target, which is what makes it safe to hand the element back to CSS. The
  * duration travels with the frames because a caller that chose its own could clip the tail or hold still at the end.
  */
-export function springFrames(spring: Spring, from: number, to: number, velocity = 0, stops = 60): SpringKeyframes {
+export function springFrames(
+  spring: Spring,
+  from: number,
+  to: number,
+  velocity = 0,
+  stops = 60,
+): SpringKeyframes {
   const seconds = settleTime(spring) * 1.2
   const frames: SpringFrame[] = []
   for (let i = 0; i <= stops; i += 1) {

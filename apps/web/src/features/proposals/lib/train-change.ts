@@ -32,12 +32,13 @@ const setsOf = (exercises: readonly { sets: number }[]) => exercises.reduce((n, 
 /** "6 · 20": exercises · sets, the format the workout card uses. */
 const size = (exercises: readonly { sets: number }[]) => `${exercises.length} · ${setsOf(exercises)}`
 /** "6 exercises, 20 sets". */
-const sizeWords = (exercises: readonly { sets: number }[]) => `${count(exercises.length, 'exercise')}, ${count(setsOf(exercises), 'set')}`
+const sizeWords = (exercises: readonly { sets: number }[]) =>
+  `${count(exercises.length, 'exercise')}, ${count(setsOf(exercises), 'set')}`
 /** "leg press" → "Leg press". */
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 /** The days in week order, unfolded: "Mon, Tue, Thu"; "none" for no days. */
-export function dayNames(days: readonly Weekday[]): string {
+function dayNames(days: readonly Weekday[]): string {
   const names = Weekday.options.filter((d) => days.includes(d)).map(shortDay)
   return names.length ? names.join(', ') : 'none'
 }
@@ -49,7 +50,10 @@ export function dayNames(days: readonly Weekday[]): string {
 export function trainBodyView(body: TrainBody, summary: string): TrainBodyView {
   const view = bodyView(body)
   const why = body.reason?.trim() || view.why
-  const titled = body.kind === 'train_change' && summary.trim() !== '' && summary.length <= PROPOSAL_TITLE_MAX ? { ...view, title: summary } : view
+  const titled =
+    body.kind === 'train_change' && summary.trim() !== '' && summary.length <= PROPOSAL_TITLE_MAX
+      ? { ...view, title: summary }
+      : view
   return why ? { ...titled, why } : titled
 }
 
@@ -63,22 +67,37 @@ function bodyView(body: TrainBody): TrainBodyView {
   const was = before && 'status' in before ? before.status : null
   switch (c.op) {
     case 'template_create':
-      return { title: `New template: ${c.name}`, changes: [{ label: 'Exercises · sets', from: '—', to: size(c.exercises) }] }
+      return {
+        title: `New template: ${c.name}`,
+        changes: [{ label: 'Exercises · sets', from: '—', to: size(c.exercises) }],
+      }
     case 'template_update': {
       const name = snapshot?.name ?? 'a template'
       const changes: ProposalChange[] = []
-      if (c.exercises) changes.push({ label: 'Exercises · sets', from: snapshot ? size(snapshot.exercises) : '—', to: size(c.exercises) })
+      if (c.exercises)
+        changes.push({
+          label: 'Exercises · sets',
+          from: snapshot ? size(snapshot.exercises) : '—',
+          to: size(c.exercises),
+        })
       if (c.notes !== undefined) {
-        changes.push({ label: 'Notes', from: snapshot ? (snapshot.notes ? 'Had notes' : 'No notes') : '—', to: c.notes ? 'Updated' : 'No notes' })
+        changes.push({
+          label: 'Notes',
+          from: snapshot ? (snapshot.notes ? 'Had notes' : 'No notes') : '—',
+          to: c.notes ? 'Updated' : 'No notes',
+        })
       }
-      if (c.name !== undefined && c.name !== snapshot?.name) return { title: `Rename ${name} → ${c.name}`, changes }
+      if (c.name !== undefined && c.name !== snapshot?.name)
+        return { title: `Rename ${name} → ${c.name}`, changes }
       if (c.exercises) return { title: `Edit ${name}: ${sizeWords(c.exercises)}`, changes }
       return { title: `Change notes on ${name}`, changes }
     }
     case 'template_delete':
       return {
         title: `Delete template${snapshot ? ` ${snapshot.name}` : ''}`,
-        changes: snapshot ? [{ label: 'Exercises · sets', from: size(snapshot.exercises), to: 'Deleted' }] : [],
+        changes: snapshot
+          ? [{ label: 'Exercises · sets', from: size(snapshot.exercises), to: 'Deleted' }]
+          : [],
       }
     case 'equipment_status':
       return {

@@ -1,8 +1,8 @@
-// Owns: mirroring the logger's working copy to the Worker — one serial write chain for every training write (so a
-// set never overtakes the session it belongs to), per-set reconcile (create when ticked or noted, patch only what
+// Owns: mirroring the logger's working copy to the Worker — one serial write chain for every training write (so a set
+// never overtakes the session it belongs to), per-set reconcile (create when ticked or noted, patch only what
 // changed, delete removed ones), debounced typing, the session start, finish (again after an edit), and deleting a
-// session. Every write goes through the
-// offline-aware mutations, so a write made offline is queued with its client id and replays in order.
+// session. Every write goes through the offline-aware mutations, so a write made offline is queued with its client id
+// and replays in order.
 import { endpoints } from '@fitness/shared/api'
 import type { SessionCreate, SetCreate, SetPatch, WorkoutSession } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
@@ -13,7 +13,7 @@ import { loggerState } from './logger-store'
 
 const t = endpoints.training
 
-/** The writes the chain makes: the offline-aware mutations (saved, or queued on this phone). */
+/** The writes the chain makes: the offline-aware mutations (saved, or queued on this device). */
 export interface TrainingWriters {
   start: (body: SessionCreate) => Promise<WriteOutcome<typeof t.startSession>>
   logSet: (sessionId: string, body: SetCreate) => Promise<unknown>
@@ -39,7 +39,9 @@ export function useTrainingWriters(): TrainingWriters {
   const updateSet = useApiMutation(t.updateSet)
   const deleteSet = useApiMutation(t.deleteSet)
   const finish = useApiMutation(t.finishSession, { invalidates: FINISH_REFRESHES })
-  const remove = useApiMutation(t.deleteSession, { invalidates: FINISH_REFRESHES.filter((e) => e !== t.getSession) })
+  const remove = useApiMutation(t.deleteSession, {
+    invalidates: FINISH_REFRESHES.filter((e) => e !== t.getSession),
+  })
   const queryClient = useQueryClient()
   const writers = useMemo<TrainingWriters>(
     () => ({
@@ -50,11 +52,21 @@ export function useTrainingWriters(): TrainingWriters {
       finish: (id, ended_at) => finish.mutateAsync({ params: { id }, body: { ended_at } }),
       deleteSession: (id) => {
         // Gone from the lists at once, even while the delete is queued offline.
-        queryClient.setQueriesData<WorkoutSession[]>({ queryKey: apiQueryKey(t.listSessions) }, (list) => list?.filter((s) => s.id !== id))
+        queryClient.setQueriesData<WorkoutSession[]>({ queryKey: apiQueryKey(t.listSessions) }, (list) =>
+          list?.filter((s) => s.id !== id),
+        )
         return remove.mutateAsync({ params: { id } })
       },
     }),
-    [start.mutateAsync, logSet.mutateAsync, updateSet.mutateAsync, deleteSet.mutateAsync, finish.mutateAsync, remove.mutateAsync, queryClient],
+    [
+      start.mutateAsync,
+      logSet.mutateAsync,
+      updateSet.mutateAsync,
+      deleteSet.mutateAsync,
+      finish.mutateAsync,
+      remove.mutateAsync,
+      queryClient,
+    ],
   )
   // The chain outlives a page; it always writes through the most recently mounted writers.
   useEffect(() => {

@@ -1,4 +1,4 @@
-// Owns: the "logged" notice the logging forms share (saved vs on this phone). Error wording lives in the api module
+// Owns: the "logged" notice the logging forms share (saved vs on this device). Error wording lives in the api module
 // (problemText); the number field and the "couldn't load" row live in components.
 
 /** What a form reports after a write, for the sheet's snackbar. */

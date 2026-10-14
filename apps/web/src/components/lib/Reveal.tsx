@@ -14,7 +14,7 @@ import { useEntrance } from './useEntrance'
 
 /**
  * The entrance delay of the `index`-th item in reading order: `start + index × step`. 2a staggers cards 60 ms apart
- * (`tokens.motion.stagger.card`), sections 90 ms (`.section`) and list rows 45 ms (`.row`).
+ * (`tokens.motion.stagger.card`) and sections 90 ms (`.section`).
  */
 export function staggerDelay(index: number, step: number = tokens.motion.stagger.card, start = 0): number {
   return start + Math.max(0, index) * step
@@ -35,9 +35,7 @@ export function Reveal({ delay = 0, children, sx }: RevealProps) {
       sx={{
         opacity: entered ? 1 : 0,
         transform: entered ? 'none' : `translateY(${tokens.motion.rise}px)`,
-        // A critically damped spring where the browser takes `linear()`, the equivalent cubic-bézier where it doesn't —
-        // and the settle time that spring derives for itself, because a spring curve given less time than it needs is
-        // cut off half-way through. Reduced motion keeps a cross-fade in place of the rise.
+        // 2a's expo-out over 700 ms. Reduced motion drops the transition for the cross-fade `animation` below.
         transition: reduced
           ? 'none'
           : `opacity ${enterDuration()}ms ${enterEasing()} ${delay}ms, transform ${enterDuration()}ms ${enterEasing()} ${delay}ms`,
