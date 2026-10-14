@@ -16,5 +16,8 @@ export default defineConfig({
     name: 'worker',
     include: ['test/**/*.test.ts', 'src/modules/*/tests/**/*.test.ts'],
     setupFiles: ['./test/apply-migrations.ts'],
+    // Vitest 5 turns its on-disk module cache on by default, and @cloudflare/vitest-plugin 1.4's workerd runner cannot
+    // read those files ("no such file or directory, readAll"), so every suite fails to load. Re-check on a plugin update.
+    fsModuleCache: false,
   },
 })
