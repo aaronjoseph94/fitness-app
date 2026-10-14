@@ -31,7 +31,7 @@ Everything below is seed data and hard rules. The AI reads them; it does not cha
 - Calories: 1,400 kcal/day, set with Aaron's doctor and dietitian. This is the floor. The AI may propose more (up to a configurable ceiling, default 1,700) in a weekly review; it never proposes less.
 - Fasting: two 24-hour fasts per month on dates Aaron picks. A fast day is a known pattern, not a missed day.
 - Meals: breakfast is normally skipped; lunch is the first meal. Default slots are Lunch, Dinner, Snack; Breakfast is hidden until toggled on. Meal plans use simple store-bought foods, few options.
-- Training: Anytime Fitness, 4 sessions a week (Mon–Thu by default), machines and free-weight lifting only. Bodyweight and floor exercises (lunges, mountain climbers, burpees, planks and the like) are excluded by default. Aim: lean, toned, good upper-body strength, modest muscle gain.
+- Training: Anytime Fitness, 3 sessions a week (Mon, Tue, Thu by default; Aaron picks the days on Train), machines and free-weight lifting only. Bodyweight and floor exercises (lunges, mountain climbers, burpees, planks and the like) are excluded by default. Aim: lean, toned, good upper-body strength, modest muscle gain.
 - Inputs from Apple Watch: steps and sleep, by manual entry, file import or Shortcut webhook (section 8).
 
 **Baseline: Evolt 360 scan, 2026-09-26 10:13** (sheet values in lb, converted at 0.4536 kg/lb; height 165 cm, age 31, male)
@@ -190,7 +190,7 @@ Cloudflare D1 (SQLite), one database, `id` text primary keys holding UUIDs, `cre
 | Table | Key columns | Notes |
 | --- | --- | --- |
 | `profile` | height_cm, birth_date, sex, timezone, goal_weight_kg, goal_date, start_weight_kg, start_date | One row. |
-| `settings` | calorie_floor (1400), calorie_ceiling (1700), protein_min_g, fat_min_g, fibre_target_g, water_target_ml, training_days (jsonb), breakfast_enabled, auto_apply_safe (bool), scan_interval_days | The rails. Changes are logged in `ai_events` with actor `user`. |
+| `settings` | calorie_floor (1400), calorie_ceiling (1700), protein_min_g, fat_min_g, fibre_target_g, water_target_ml, training_days (jsonb, default Mon, Tue, Thu), breakfast_enabled, auto_apply_safe (bool), scan_interval_days | The rails. Changes are logged in `ai_events` with actor `user`. |
 | `weight_logs` | date (unique), weight_kg, note | Daily weigh-in. Trend is computed, not stored. |
 | `measurements` | date, site (neck, chest, waist_navel, hips, left_arm, right_arm, left_thigh, right_thigh), value_cm | Weekly tape. |
 | `water_logs` | logged_at, amount_ml | Quick-add entries; day totals computed. |
@@ -289,11 +289,13 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **AI workouts**
 
-- `workout_generate` inputs: allowed exercises, the equipment profile as a floor (his machines by area, with each one's note, and the machines the club does not have), training days (Mon–Thu), templates and the last 14 days of sessions (volume per muscle, PRs), readiness (last night's sleep, yesterday's steps, days since the last session), fast-day flag, and the goal (fat loss with muscle retention, upper-body strength). The system prompt says to program only from that equipment.
+- `workout_generate` inputs: allowed exercises, the equipment profile as a floor (his machines by area, with each one's note, and the machines the club does not have), training days (Mon, Tue, Thu by default), templates and the last 14 days of sessions (volume per muscle, PRs), readiness (last night's sleep, yesterday's steps, days since the last session), fast-day flag, and the goal (fat loss with muscle retention, upper-body strength). The system prompt says to program only from that equipment.
 - Output: a session in the template format (exercise IDs only, sets, rep ranges, suggested loads from history, rest) plus a two-line rationale. The user sees it as a preview with the muscle map, can swap any exercise (suggestions filtered to the same primary muscle), then starts or saves it as a template.
-- Weekly structure default: upper / lower / upper / lower across Mon–Thu, adjustable; the AI respects it unless Aaron changes it.
+- Weekly structure (2026-10-14): Aaron picks his training days on Train (seven day chips, preset to his training days, with a live preview of the split: "Mon Upper A · Tue Lower A · Thu Full body") and taps Generate; that saves the days and the AI drafts one workout per training day. The split adapts to the chosen days (engine `splitSlots`) so no muscle is a primary target on consecutive days. 1 day: Full body. 2 days: back to back (Sun → Mon counts) Upper A and Lower A, otherwise Full body A and Full body B. 3 days: Full body on the day with the most rest around it (ties go to the latest day), then Upper A and Lower A on the other two in week order, so Mon, Tue, Thu gives Mon Upper A, Tue Lower A, Thu Full body and every major muscle is trained twice a week. 4 or more days: alternate Upper A, Lower A, Upper B, Lower B and so on. The default for a fresh database is Mon, Tue, Thu. The AI respects the days unless Aaron changes them.
+- The week is the recurring split (settings `training_days`), not a one-week `week_plans` row, so it never lapses; a coach week plan with sessions still takes over its own week. The "This week" card on Train shows each training day's template or draft and the body-group coverage.
 
-- Split drafts (2026-10-09): the AI drafts one reusable workout per training day of the upper/lower split (Upper A, Lower A, Upper B, Lower B for Mon–Thu) as `workout_template` jobs, one per cron tick, in the background. Each waits on Train as a draft: Keep makes it that day's template, Preview opens it with swap, Dismiss sets it aside for 28 days. A training day whose split template exists gets no nightly one-day draft; Train's today card offers the template instead.
+- Split drafts (2026-10-09): the AI drafts one reusable workout per training day of the split (Upper A, Lower A, Full body for Mon, Tue, Thu) as `workout_template` jobs in the background: one per cron tick on its own, or one per day at once when Aaron taps Generate on Train (or Ask AI plans the week). Each waits on Train as a draft: Keep makes it that day's template, Preview opens it with swap, Dismiss sets it aside for 28 days, Keep all accepts every draft. Keep on a draft named like an existing template replaces that template in place (same id, so Start, Edit and history links stay), and Undo restores the old version. A training day whose split template exists gets no nightly one-day draft; Train's today card offers the template instead.
+- Body groups (2026-10-14): chest; back (lats or middle back); shoulders; arms (biceps or triceps); quads; hamstrings; glutes; calves. Upper must hit chest, back, shoulders, arms; lower quads, hamstrings, glutes, calves; full chest, back, shoulders, quads, hamstrings, glutes. The draft prompt names the day's groups; when a reply misses one, the repair adds the best allowed exercise for it (3 sets, while the session stays at or under 28 sets). The week card on Train shows "Covers every major muscle group" or "Not covered yet: …".
 - Swap (2026-10-09): anywhere an exercise can be swapped (builder, AI preview, a session in progress), the choices share its primary muscle and are the same kind of lift, ranked by shared muscles, mechanic and equipment; equipment chips narrow the list.
 
 **Session logging (sets and reps)**
@@ -347,6 +349,8 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 - A chat panel on every tab. Function calling on the model chain against the tools layer (section 10): it can read any data and answer ("what did I average for protein in September?") or change things ("swap Thursday to a pull day", "raise water to 3.5 L"). Aaron can delete a chat from the past-chats list.
 - Writes are proposals that need a tap unless `auto_apply_safe` is on, in which case meal suggestions, workout swaps and reminder changes apply at once and target changes still wait.
+- Train (2026-10-14): it can plan the week (`plan_training_week`: saves the days he names, then drafts a workout for each), read the training week and the templates, create, rename, edit (sets, reps, rest, notes), reorder and delete templates, change the training days, mark equipment status, hide an exercise, and start a session. Each change is a proposal card he taps while `auto_apply_safe` is off (new proposal kinds `train_change` and `training_days`; with the setting on, only the safe list in section 9 applies at once); through MCP it applies at once. Starting a session applies at once, as logging does. Undo restores a Train change's stored "before" snapshot once (`POST /api/train-changes/:id/revert`, MCP tool `revert_train_change`); the AI cannot use it.
+- It still cannot un-hide an exercise, edit or delete logged sessions or sets, accept, reject or revert proposals, plan fasts or scans, or touch the calorie rails; it tells him where in the app to do those.
 - History kept in `chat_messages`; the panel shows which tools were called.
 
 **MCP connector**
@@ -362,7 +366,7 @@ Claude connected through the custom connector can read the whole app and change 
 - One-call read: `get_review_bundle(from, to)` returns one compact JSON (about 10–20 KB, aggregates only): profile and rails, active plan and forecast, weekly trend points, intake and macro averages, protein adherence, water, steps, sleep, fasts, sessions and volume per muscle, PRs, the latest scan deltas and the lean-loss guard, open proposals, upcoming fast and scan dates. Raw detail on demand through `query_metric`, `get_training_history`, `get_scan`.
 - One-unit write: `apply_review({ summary, narrative, changes[] })` applies a batch of changes as one plan version and one review event, so a whole Claude review can be reverted with one tap (`revert_review`). Changes may touch daily targets (within rails), the weekly split and templates, exercise swaps, equipment statuses, the water target, reminder times, milestones, planned fasts, the next scan date, and the dashboard note. Never the rails in `settings`.
 - Trust: Aaron is in the chat and approves with Claude before it applies, so `mcp` writes apply at once (no second tap in the app) but are versioned, logged with actor `mcp`, and bound by the same guardrails as every other write.
-- MCP prompts shipped by the server, so Claude knows the procedure without Aaron re-explaining it: `coach_review` (weekly: read the bundle, check rails, lean-loss guard, protein, volume per muscle vs the last block, sleep and steps against the trend, fasts and scan due; then propose and apply, and end with next week's plan), `scan_debrief` (after a confirmed scan), `program_design` (build or rebuild the Mon–Thu plan from the equipment profile and history), `plateau_check`.
+- MCP prompts shipped by the server, so Claude knows the procedure without Aaron re-explaining it: `coach_review` (weekly: read the bundle, check rails, lean-loss guard, protein, volume per muscle vs the last block, sleep and steps against the trend, fasts and scan due; then propose and apply, and end with next week's plan), `scan_debrief` (after a confirmed scan), `program_design` (build or rebuild the week's training split from the equipment profile and history, reading the days from `get_training_week`), `plateau_check`.
 - Dashboard: `set_dashboard_note(text, until?)` pins Claude's note to the top of Today; when a Claude review ran that week, its narrative replaces the AI draft's in `weekly_reviews`, so the printed summary carries Claude's words.
 - How it runs: in any Claude chat (web, desktop, mobile) with the connector on, "run my coach review" invokes the prompt; Claude reads, discusses, and applies on approval. Aaron may also schedule it from Claude if scheduled tasks on his plan can call the connector.
 - Available in-app since 2026-10-08 (it was the "later option"): setting an Anthropic key under Settings → AI routes Ask AI — and every other job — to Claude Opus 5.5 through the Claude API, ahead of the free router (the paid models in section 9); remove the key and the free router is back. The MCP connector stays the coach's seat either way.
@@ -371,7 +375,7 @@ Claude connected through the custom connector can read the whole app and change 
 
 Every week the app holds one `week_plans` row for the coming Monday to Sunday, and Claude through MCP is its intended author.
 
-- Contents: per-day calories and macros (within the rails), water target, the four training sessions as templates (exercise IDs, sets, rep ranges, suggested loads), a steps target, planned fasts, the scan date if one is due, and a short focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light").
+- Contents: per-day calories and macros (within the rails), water target, the week's training sessions as templates (exercise IDs, sets, rep ranges, suggested loads), a steps target, planned fasts, the scan date if one is due, and a short focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light").
 - Author: the `coach_review` prompt ends by calling `propose_week_plan(week_start, plan)`; Aaron approves in chat and Claude calls `apply_week_plan(id)`. If no Claude review has run by Sunday 20:00, the `weekly_review` job fills a draft whose author id is `gemini` — the stored id for "an AI wrote this, whichever model" — so the week never starts without a plan; a later Claude run supersedes it.
 - Effect: accepting a week plan is what sets the week. Each day's `daily_targets` and the Train tab's planned session come from the active week plan; mid-week edits (a swapped session, a moved fast) change the active row and are versioned like any plan change.
 - Where it shows: a "This week" card on Today (today's targets, today's session with its muscle map thumbnail, what changed from last week) and a full week view on the Progress tab, with last week's actuals beside it.
@@ -423,7 +427,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 | `meal_analysis` | meal logged by text/photo/voice | `{ items: [{ name, grams, confidence, candidates: [{source, source_id}] }], notes }` | `meal_items` (after food matching) |
 | `day_adjustment` | meal confirmed; fast started | `{ remaining: {kcal, protein_g, carbs_g, fat_g}, status: ok/over/protein_short, suggestions: [{ favorite_id or description, grams, why }], note }` | `ai_events` (adjustment) |
 | `workout_generate` / `workout_fill` | user asks; nightly for next training day when no week plan or split template covers it | `{ exercises: [{ exercise_id, sets, rep_min, rep_max, load_kg, rest_sec }], rationale, muscle_scores }` | `ai_events` (proposal) → template/session on accept |
-| `workout_template` | cron, one at a time, for the first split day with no template, no pending draft and no draft dismissed in the last 28 days | `WorkoutDraft` with the day's `name` | `ai_events` (proposal, no date) → template on Keep |
+| `workout_template` | cron, one at a time, for the first split day with no template, no pending draft and no draft dismissed in the last 28 days; or one per training day at once on Generate (Train) and plan-the-week (Ask AI) | `WorkoutDraft` with the day's `name` | `ai_events` (proposal, no date) → template on Keep |
 | `scan_extract` | scan uploaded | the seed-record shape with `confidence` per field and `units` | `scans.extracted` (pending confirm) |
 | `scan_analysis` | scan confirmed | `{ narrative, fat_vs_lean: {fat_kg, lean_kg, water_kg}, flags: [], milestone_updates: [], proposals: [] }` | `ai_events`, `milestones` |
 | `weekly_review` | Sunday 20:00, only if no Claude review ran that week | `{ narrative, highlights: [], concerns: [], proposals: [{ field, from, to, reason }], week_plan }` | `weekly_reviews`, `ai_events`, `week_plans` (proposed, author `gemini` = an AI draft) |
@@ -435,7 +439,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 - Proposed kcal never below `calorie_floor` or above `calorie_ceiling`; protein never below `protein_min_g`; fat never below `fat_min_g`.
 - Only exercise IDs in the allowed set; sets per session 12–28; no excluded category.
 - A single proposal may move daily kcal by at most 150; larger moves are split across weeks.
-- Auto-apply only for kinds in the safe list (meal suggestions, exercise swaps within the same primary muscle, reminder times); everything else waits for a tap. Every applied change creates a `plan_versions` row with the proposal as `reason` and a `diff`.
+- Auto-apply only for kinds in the safe list (meal suggestions, exercise swaps within the same primary muscle, reminder times); everything else waits for a tap. Every applied change creates a `plan_versions` row with the proposal as `reason` and a `diff`. Train changes (templates, equipment status, hidden exercises) are not calorie or macro targets, so they make no plan version: each applied one stores a "before" snapshot on its event, and Undo restores it once (refused for the AI).
 - The LLM never sees the name, photos of Aaron, or raw EXIF; meal photos are downscaled to 1,024 px and stripped before upload.
 
 **Engine (pure functions, unit-tested with fixtures)**
@@ -461,8 +465,8 @@ The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src
 | Nutrition | `POST /meals`, `PATCH /meals/:id` (items, confirm), `DELETE /meals/:id`, `POST /meals/:id/photos`, `GET /foods/search?q=&barcode=`, `POST /foods`, `GET/POST/PATCH /favorites` |
 | Water and fasting | `POST /water`, `POST /fasts/start`, `POST /fasts/:id/end`, `GET /fasts` |
 | Health inputs | `POST /sleep`, `POST /steps`, `POST /imports/health` (file + mapping), `POST /ingest/health` (webhook token) |
-| Training | `GET /exercises?muscle&equipment&q`, `POST /exercises`, `GET/PUT /equipment`, `POST /exclusions`, `GET/POST/PATCH /templates`, `POST /sessions`, `POST /sessions/:id/sets`, `PATCH /sets/:id`, `POST /sessions/:id/finish`, `GET /history/exercises/:id` |
-| Plan and AI | `GET /plan`, `GET /plan/versions`, `POST /plan/versions/:id/restore`, `POST /proposals/:id/accept`, `POST /proposals/:id/reject`, `GET/POST /week-plans`, `POST /week-plans/:id/apply`, `POST /ai/workout` (generate/fill), `POST /ai/chat`, `GET /jobs/:id` |
+| Training | `GET /exercises?muscle&equipment&q`, `POST /exercises`, `GET/PUT /equipment`, `POST /exclusions`, `GET/POST/PATCH /templates`, `POST /sessions`, `POST /sessions/:id/sets`, `PATCH /sets/:id`, `POST /sessions/:id/finish`, `GET /history/exercises/:id`, `POST /train-changes/:id/revert` (Undo) |
+| Plan and AI | `GET /plan`, `GET /plan/versions`, `POST /plan/versions/:id/restore`, `POST /proposals/:id/accept`, `POST /proposals/:id/reject`, `GET/POST /week-plans`, `POST /week-plans/:id/apply`, `POST /ai/workout` (generate/fill), `POST /ai/week` (plan the week: `{ training_days?, only? }`; 409 `no_model_key` when no model key is set), `GET /ai/week` (the training week: each slot's template, pending draft or drafting state, the week plan's sessions, the body groups not covered), `POST /ai/chat`, `GET /jobs/:id` |
 | Scans and photos | `POST /scans` (file), `PATCH /scans/:id` (confirm with edits), `GET /scans`, `POST /photos`, `GET /photos?pose&from&to` |
 | Reviews and export | `GET /reviews`, `GET /reviews/:week`, `POST /reviews/:week/pdf`, `GET /export.zip`, `POST /import` |
 | Settings and push | `GET/PATCH /settings`, `POST /push/subscribe` |
@@ -480,8 +484,15 @@ The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src
 | `log_meal(slot, items[] or text, date?)` · `confirm_meal(id, items[])` · `search_foods(q or barcode)` | Nutrition. |
 | `start_fast(at?)` · `end_fast(at?)` · `plan_fast(date)` | Fasting. |
 | `log_sleep(...)` · `log_steps(date, steps)` | Health inputs. |
-| `list_exercises(filters)` · `get_exercise(id)` · `get_equipment_profile()` · `update_equipment(items[])` | Library and equipment. |
-| `create_template(...)` · `generate_workout(options)` · `start_session(template_id?)` · `log_set(...)` · `finish_session(id)` · `get_training_history(from, to, exercise_id?)` | Training. |
+| `list_exercises(filters)` · `get_exercise(id)` · `get_equipment_profile()` · `update_equipment(items[])` | Library and equipment. `update_equipment` goes through train changes (a card for the AI, at once for MCP). |
+| `create_template(...)` · `generate_workout(options)` · `start_session(template_id?)` · `log_set(...)` · `finish_session(id)` · `get_training_history(from, to, exercise_id?)` | Training. `create_template` goes through train changes. |
+| `get_training_week()` | The split's days with each day's template, pending draft or drafting state, the week plan's sessions, and the body groups none of the templates train. |
+| `list_templates()` | Templates with id, name, notes, exercises (sets, reps, rest) and top muscles. |
+| `update_template(id, ...)` · `delete_template(id)` | Rename, edit sets/reps/rest, reorder, edit notes; or delete. Train changes. |
+| `hide_exercise(id, reason)` | Hide an exercise from the allowed set (a train change). Un-hiding stays in the app. |
+| `set_training_days(days[])` | Change the training days (a `training_days` proposal for the AI, at once for the user or MCP). |
+| `plan_training_week({ training_days?, only? })` | Saves the days when given, then drafts one workout per training day (409 `no_model_key` when no model key is set). |
+| `revert_train_change(id)` | MCP only: Undo a Train change from its stored "before" snapshot, once. Ask AI never gets it. |
 | `list_scans()` · `get_scan(id)` · `compare_scans(a, b)` | Scans. |
 | `get_weekly_review(week)` · `list_reviews()` | Reviews. |
 | `query_metric(metric, from, to, agg)` | Read-only time series for any stored metric (kcal, protein, water, steps, sleep, volume, trend). |
@@ -495,7 +506,7 @@ The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src
 | `revert_review(review_id)` | Restores the plan version from before that review. |
 | `set_dashboard_note(text, until?)` | Pins a coach note to the top of Today. |
 | `schedule_scan(date)` · `plan_fast(date)` | Sets the next scan and fast dates and their reminders. |
-| `create_template(...)` · `replace_week_plan(templates_by_weekday)` | Program design: set or rebuild the Mon–Thu plan. |
+| `create_template(...)` · `replace_week_plan(templates_by_weekday)` | Program design: set or rebuild the plan for the split's days (read them from `get_training_week`). |
 | `get_week_plan(week_start?)` | The active or proposed week plan with last week's actuals beside it. |
 | `propose_week_plan(week_start, plan)` | Validates the plan against the rails and the allowed exercise set; stores it as proposed. |
 | `apply_week_plan(id)` · `revert_week_plan(id)` | Activates a proposed plan (rebuilds `daily_targets` for those seven days, sets the Train tab's planned sessions) or restores the previous active one. |

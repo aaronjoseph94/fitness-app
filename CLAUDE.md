@@ -157,4 +157,4 @@ It documents TesterArmy's agentic `e2e` runner (`npx e2e`, `e2e.config.ts`, `tes
 - Scan interval: 4 weeks.
 - Apple Watch: manual entry and the Shortcut webhook both in phase 1.
 - Muscle map: an existing body graphic from the web (component or SVG), mapped to the 17 free-exercise-db muscle keys. Not drawn by us (Aaron, 2026-10-05).
-- Default weekly split: upper / lower / upper / lower, Mon–Thu.
+- Default weekly split: Aaron picks the days on Train (Mon, Tue, Thu → Upper A, Lower A, Full body); the split adapts to them (engine `splitSlots`).

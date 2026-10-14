@@ -14,8 +14,8 @@
 - **Guard**: a pure check in `packages/shared/engine/guards.ts` that accepts or rejects a proposed change against the rails. Every LLM or MCP write passes the guards; a change that fails is dropped and reported, the rest applies.
 - **Plan version**: an append-only snapshot of target defaults and per-weekday overrides, with `reason`, `diff`, `forecast` and `created_by`. Exactly one is **active**. **Revert** creates a new version copying an older one.
 - **Daily targets**: the materialised targets for one local date (kcal, macros, fibre, water, steps, fast day, training planned), rebuilt from the active plan version and the active week plan.
-- **Week plan**: the plan for one Monday–Sunday: per-day targets, the four sessions as template snapshots, water, steps, fast dates, scan date, focus note. Status `proposed → active → superseded`.
-- **Proposal**: a suggested change (from `ai` or `mcp`) awaiting a decision: `pending → accepted | rejected | auto_applied`. Accepting creates a plan version.
+- **Week plan**: the plan for one Monday–Sunday: per-day targets, the week's sessions as template snapshots, water, steps, fast dates, scan date, focus note. Status `proposed → active → superseded`.
+- **Proposal**: a suggested change (from `ai` or `mcp`) awaiting a decision: `pending → accepted | rejected | auto_applied`. Accepting a target change creates a plan version; a **Train change** keeps its own Undo instead.
 - **Review**: a weekly coaching pass (`weekly_reviews`). A Claude review supersedes the AI draft for that week. Applying a review is one plan version, revertible in one tap.
 
 ## Body and progress
@@ -45,8 +45,11 @@
 - **Exercise**: one entry in the library (free-exercise-db plus Aaron's own), with primary and secondary **muscles** (the 17-key enum).
 - **Allowed exercise set**: exercises not excluded by equipment status (`dont_have`, `cant_use`, `dislike`) or by **exclusions** (`body only`, floor exercises, hidden exercises). The AI only ever sees this set.
 - **Template**: a reusable workout: ordered exercises with sets, rep range, target load, rest.
-- **Split slot**: one training day of the upper/lower split, named by position (Mon–Thu: Upper A, Lower A, Upper B, Lower B); engine `splitSlots`.
+- **Split slot**: one training day of the split, named by position and adapted to the days Aaron picks: 1 day Full body; 2 days back to back (Sun → Mon counts) Upper A, Lower A, otherwise Full body A, Full body B; 3 days Full body on the most-rested day (ties go to the latest), the other two Upper A then Lower A in week order (Mon, Tue, Thu: Mon Upper A, Tue Lower A, Thu Full body); 4 or more alternate Upper A, Lower A, Upper B, Lower B; engine `splitSlots`.
+- **Training week**: the split's days with each day's template or draft, and the body groups none of them train. It repeats every week; a coach week plan with sessions takes over its own week. `GET /api/ai/week`, tool `get_training_week`.
 - **Template draft**: an AI-written workout for a split slot, waiting as a pending `workout` proposal; Keep turns it into that slot's template, Dismiss sets it aside for 28 days.
+- **Train change**: an AI or Claude change to Train — a template (create, edit, delete), an equipment status or a hidden exercise — applied on a tap (at once through MCP), with an **Undo** that restores the stored "before" snapshot once; refused for the AI. Proposal kind `train_change`.
+- **Body group**: one of the eight groups a split must cover: chest; back (lats, middle back); shoulders; arms (biceps, triceps); quads (quadriceps); hamstrings; glutes; calves. Upper must hit chest, back, shoulders, arms; lower quads, hamstrings, glutes, calves; full chest, back, shoulders, quads, hamstrings, glutes.
 - **Swap**: replacing an exercise with another that shares its primary muscle and is the same kind of lift (engine `swapCandidates`). In a session, sets already done stay logged under the old exercise; the open ones move.
 - **Session**: one gym visit, started from a template, the week plan, an AI suggestion or blank; holds **sets** (reps, load, RPE, done).
 - **Muscle score**: Σ over exercises of sets × (1.0 if primary, 0.5 if secondary), per muscle; drawn on the **muscle map** in four intensity steps.
