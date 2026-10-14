@@ -28,14 +28,14 @@ Yes, with no migration.
 ## Decisions ([A] = assumption made on Aaron's behalf)
 
 1. **[A] "Whole body over 3 days" = Upper / Lower / Full body.** For three training days, `splitSlots` gives slot 1 Upper A, slot 2 Lower A, slot 3 Full body (Mon/Tue/Thu → Mon Upper A, Tue Lower A, Thu Full body). Every muscle gets two sessions a week, and Mon → Tue never repeats a primary muscle, so the recovery rule holds unchanged. Three full-body days were rejected because Mon and Tue are back to back.
-2. **Split by day count:**
+2. **Split by day count** (refined by Amendment A2: two back-to-back days give Upper A / Lower A, and Full body goes on the most-rested of three days):
    - 1 day → Full body.
    - 2 days → Full body A, Full body B.
    - 3 days → Upper A, Lower A, Full body.
    - 4 or more → unchanged (Upper A, Lower A, Upper B, Lower B, …).
    - Names stay stable, so an existing "Upper A" / "Lower A" template still matches.
 3. **The week is the split, not a `week_plans` row.** It repeats every week until he changes it. A coach week plan with sessions still takes over its own week, as today.
-4. **Training days become Mon, Tue, Thu by his tap** (Settings, the new "Change days" on Train, or the AI's proposal). The seed default and CLAUDE.md's decided default change to Mon/Tue/Thu for fresh databases. No data migration writes his settings.
+4. **Training days become Mon, Tue, Thu by his tap**: the day chips and Generate on Train (Amendment A1), Settings, or the AI's proposal. The seed default and CLAUDE.md's decided default change to Mon/Tue/Thu for fresh databases. No data migration writes his settings.
 5. **"Plan my week" redrafts every training day now:** one `workout_template` job per slot at user priority, run at once while the request's fetch budget allows (8 per job), with the rest left for the next sweep. A slot with a job already queued or running is skipped.
 6. **Keep on a draft named like an existing template replaces that template in place** (same id, so Start, Edit and history links stay). The old version is stored on the proposal, and **Undo** restores it.
 7. **"Freely" means every Train action, still behind a tap.** `auto_apply_safe` is off for the first month (Aaron's decided default), so each AI change is a card with Apply/Dismiss. When he turns that setting on, only the SPEC §9 safe list applies at once, as today. MCP (Claude connector) applies at once, as today.
@@ -51,6 +51,31 @@ Yes, with no migration.
 10. **Undo for Train changes.** `plan_versions` rows hold calorie and macro targets, so Train changes can't be stored there. Instead, each applied `train_change` (and a replacing Keep) stores a `before` snapshot on its event, and `POST /api/train-changes/:id/revert` restores it. Undo is refused for the AI; it works once (409 the second time); it puts back exactly the stored version, even over a later edit. A deleted template comes back with the same id, but past sessions stay unlinked, as `deleteTemplate` leaves them.
 11. **Leftover drafts.** When the split changes, the cron dismisses pending split drafts whose names are no longer in the split. A name stays allowed while a pending `training_days` proposal includes it, so "Full body" survives while he hasn't yet tapped the days change.
 12. **Ask AI tool choice stays within 16 tools.** New areas `templates` and `equipment` split the crowded `training` area. "Week", "split", "days" and weekday names bring in the week tools.
+
+## Amendment (Aaron, 2026-10-14, during the build): "let me choose the days and hit generate"
+
+> "Actually, let me choose the days and hit generate. For the days I select, the AI should ensure that exercises are generated that ultimately deal with each part (upper, lower, etc.) on the different days."
+
+What changes:
+
+- **A1. Pick days, then Generate, on Train.** The This week card gets seven day chips, preset to his training days. As he toggles them, it previews the split those days give ("Mon Upper A · Tue Lower A · Thu Full body"). **Generate** sends the chosen days.
+  - `planTrainingWeek` saves the days first through settings `proposeTrainingDays`: applied at once for him or MCP, a proposal for Ask AI. Then it drafts every day.
+  - This replaces the separate "Change days" button and the separate days step in the AI flow (the `plan_training_week` tool just calls `planTrainingWeek`).
+- **A2. The split adapts to the chosen days so every part is covered without training a muscle two days running:**
+  - **2 days:** back to back (counting Sun → Mon) gives Upper A, Lower A; otherwise Full body A, Full body B.
+  - **3 days:** Full body goes on the day with the most rest around it (fewest consecutive neighbours; ties go to the latest day in the week); the other two take Upper A then Lower A in week order. Mon/Tue/Thu → Mon Upper A, Tue Lower A, Thu Full body.
+  - **1 day:** Full body. **4 or more:** unchanged.
+- **A3. "Each part" is checked, not hoped for.**
+  - **Body groups** (engine): chest = chest; back = lats or middle back; shoulders = shoulders; arms = biceps or triceps; quads = quadriceps; hamstrings = hamstrings; glutes = glutes; calves = calves.
+  - **Each focus has groups it must hit:** upper = chest, back, shoulders, arms; lower = quads, hamstrings, glutes, calves; full = chest, back, shoulders, quads, hamstrings, glutes.
+  - **Per draft:** the prompt names the day's groups. When the reply misses one, the repair adds the best allowed candidate for it (3 sets, while the session stays at or under 28 sets).
+  - **Per week:** `TrainingWeek.uncovered` lists the groups none of the week's templates train, and the card shows "Covers every major muscle group" or "Not covered yet: …".
+
+Contract changes (Task 1, fix round):
+- `BodyGroup = z.enum(['chest','back','shoulders','arms','quads','hamstrings','glutes','calves'])`
+- Engine: `focusGroups(focus) → BodyGroup[]`, `bodyGroupsOf(muscles: readonly Muscle[]) → BodyGroup[]`, and `missingGroups(required: readonly BodyGroup[], muscles: readonly Muscle[]) → BodyGroup[]`.
+- `TrainingWeek` gains `uncovered: BodyGroup[]`.
+- `PlanWeekResult` gains `training_days: { status: 'applied'|'proposed'|'unchanged', proposal_id: string|null }`.
 
 ## Global constraints
 
@@ -118,7 +143,7 @@ Yes, with no migration.
 - [ ] **Step 4:** Engine tests pass. Then `pnpm --filter @fitness/shared exec tsc --noEmit`, and `pnpm check`. Type errors in worker and web from `focus:'full'` are expected and belong to Wave 2; list them in the hand-back.
 - [ ] **Step 5:** Commit "Contracts: a 3-day split (Upper, Lower, Full body), Train changes and the training week".
 
-## Wave 2 — worker modules and web, in parallel (five agents, no shared files: Tasks 2–6)
+## Wave 2 — worker modules and web, in parallel (four agents, no shared files: Task 2; Tasks 3+4 in one agent, since 4 calls 3; Task 5; Task 6)
 
 ### Task 2: Train changes and Undo (training module)
 
@@ -171,56 +196,61 @@ Yes, with no migration.
 ### Task 4: Plan the week (workouts-ai)
 
 **Files:**
-- `apps/worker/src/modules/workouts-ai/index.ts`, `lib/split.ts`, `lib/plan.ts`; create `lib/week.ts`.
+- `apps/worker/src/modules/workouts-ai/index.ts`, `lib/split.ts`, `lib/plan.ts`, `lib/repair.ts`; create `lib/week.ts`.
 - `apps/worker/src/routes/ai.ts`.
 - Tests: `apps/worker/test/plan-week.test.ts`; extend `test/split-drafts.test.ts`.
 
 **Produces:**
 - `planTrainingWeek(deps, PlanWeekRequest) → PlanWeekResult`:
+  - When `training_days` is given, it first calls settings `proposeTrainingDays` (Task 3): applied for user or MCP, proposed for Ask AI. The result goes in `PlanWeekResult.training_days`.
   - Slots come from `splitSlots(training_days ?? settings)`, filtered by `only`.
   - A slot with a `workout_template` job queued or running for that name goes in `skipped`.
   - It enqueues at `USER_PRIORITY` with `replace` set when a template of that name exists.
   - It calls `runSoon` for as many as the request's fetch tally allows (8 each).
   - When no model has a key, it answers 409 `no_model_key` and queues nothing.
-- `trainingWeek(deps) → TrainingWeek`: slots with their template, pending draft (and `replaces_template_id`), `drafting`, and the active week plan's session names when that plan has sessions.
+- `trainingWeek(deps) → TrainingWeek`: slots with their template, pending draft (and `replaces_template_id`), `drafting`, the active week plan's session names when that plan has sessions, and `uncovered` = `missingGroups(all body groups, the primary muscles of every slot template's exercises)`.
 - `ensureSplitDrafts` also dismisses pending split drafts whose name is not in `splitSlots(settings) ∪ splitSlots(pending training_days proposal)` (decision 11).
 - `draftWorkout` for a `full` slot:
   - The prompt says "Full body: every major muscle group, 12–28 sets".
   - It lists every earlier slot's exercises, not only the same focus.
   - A `replace` draft lists his current version so the new one varies from it.
+  - The prompt names the slot's `focusGroups`. `repairDraft` adds, for each group the draft misses, the best allowed candidate (3 sets, rep range and rest as the draft's other picks, only while the total stays ≤ 28 sets; A3).
 - Routes: `POST /api/ai/week` → `planTrainingWeek`, `GET /api/ai/week` → `trainingWeek`.
 
 **Steps:**
 - [ ] **Step 1: Failing tests:**
-  - With settings Mon–Thu and an "Upper A" template, `planTrainingWeek({ training_days: ['mon','tue','thu'] })` → three queued `workout_template` jobs with slot names `['Upper A','Lower A','Full body']`; only the "Upper A" job has `replace: true`.
+  - As `ai`, with settings Mon–Thu and an "Upper A" template, `planTrainingWeek({ training_days: ['mon','tue','thu'] })` → `training_days.status 'proposed'` (settings still Mon–Thu), and three queued `workout_template` jobs with slot names `['Upper A','Lower A','Full body']`; only the "Upper A" job has `replace: true`.
+  - As `user`, the same call → `training_days.status 'applied'`, and settings read `['mon','tue','thu']`.
+  - A fake model reply for an "Upper A" slot with chest, back and shoulders picks but no biceps or triceps exercise → the stored draft gains one arms exercise with 3 sets.
   - Calling it again → `job_ids` empty, `skipped` holds all three.
   - With no model key → 409 `no_model_key`, and no job row.
   - With settings Mon–Thu, pending drafts "Upper B" and "Full body", and a pending `training_days` proposal `['mon','tue','thu']`: `ensureSplitDrafts` → "Upper B" rejected, "Full body" stays pending.
-  - `trainingWeek` with Mon/Tue/Thu, an "Upper A" template and a pending "Lower A" draft → three slots; Mon's template is set, Tue's `draft.replaces_template_id` is null, Thu's template and draft are null.
+  - `trainingWeek` with Mon/Tue/Thu, an "Upper A" template and a pending "Lower A" draft → three slots; Mon's template is set, Tue's `draft.replaces_template_id` is null, Thu's template and draft are null. Its `uncovered` holds every lower-body group (quads, hamstrings, glutes, calves), plus any upper group the Upper A fixture lacks.
 - [ ] **Steps 2–5:** Fail, implement, pass, typecheck. Commit "Workouts AI: plan the whole week, and a full-body day".
 
 ### Task 5: The week on Train (web)
 
 **Files:**
 - Create `apps/web/src/features/train/lib/WeekSplitCard.tsx`.
-- Modify `train/lib/TrainPage.tsx`, `train/lib/useTrainData.ts`, `train/lib/DraftTemplateCard.tsx`, and `apps/web/src/features/settings/index.ts` (export `TrainingDaysDialog`).
+- Modify `train/lib/TrainPage.tsx`, `train/lib/useTrainData.ts` and `train/lib/DraftTemplateCard.tsx`.
 
 **Produces:** a "This week" card on Train, from `GET /api/ai/week`:
-- Seven days, Mon to Sun, with today marked. Each training day shows its slot name and either its template, "Draft waiting", "Drafting…" or "No workout yet".
+- Seven day chips, Mon to Sun (preset to his training days; today marked). Toggling them previews the split for those days with the engine's `splitSlots` ("Mon Upper A · Tue Lower A · Thu Full body"). **Generate** → `POST /api/ai/week` with `{ training_days }`. Generate is disabled with no day chosen.
+- Each training day shows its slot name and either its template, "Draft waiting", "Drafting…" or "No workout yet".
+- One coverage line from `uncovered`: "Covers every major muscle group", or "Not covered yet: calves, arms".
 - A combined muscle map of the week's templates (`data-testid="week-muscles"`).
-- **Plan my week** → `POST /api/ai/week`. When templates exist it asks first: "Redraft all 3 days? Your templates stay until you keep the new drafts." A 409 `no_model_key` shows "Add a model key in Settings → AI first."
+- **Generate**, when templates exist, asks first: "Redraft all 3 days? Your templates stay until you keep the new drafts." (with the real number of days). A 409 `no_model_key` shows "Add a model key in Settings → AI first."
 - **Keep all** → accepts every pending split draft in turn.
-- **Change days** → `TrainingDaysDialog`.
 - When an active week plan has sessions: the line "This week follows your week plan".
 - Draft cards show "Replaces your <name>" when they do, and after Keep an **Undo** (`endpoints.training.revertChange`).
 - `useTrainData` no longer hides a draft whose name already has a template.
-- Test ids: `week-split`, `week-day`, `plan-week`, `keep-all`, `change-days`, `draft-undo`.
+- Test ids: `week-split`, `week-day`, `day-chip`, `generate-week`, `week-uncovered`, `keep-all`, `draft-undo`.
 
 **Steps:**
 - [ ] Build with frontend-ui-engineering and the 2a kit (tokens only from `theme.ts`, 44 px touch targets).
 - [ ] Typecheck the web package.
 - [ ] Look at it at 390 px and 1,280 px against a local Worker with drafts injected.
-- [ ] Commit "Train: this week's split, plan it with AI, keep all, change days".
+- [ ] Commit "Train: pick the days, generate the week, keep all".
 
 ### Task 6: AI cards for Train changes (web)
 
@@ -258,7 +288,7 @@ Yes, with no migration.
 | `update_equipment` | one `equipment_status` change per row |
 | `hide_exercise` | `exercise_hide` |
 | `set_training_days` | `proposeTrainingDays` |
-| `plan_training_week` | `{ training_days?, only? }`: when the days differ from settings, `proposeTrainingDays` first, then `planTrainingWeek`; returns both results |
+| `plan_training_week` | `{ training_days?, only? }` → `planTrainingWeek` (which proposes the days itself) |
 | `revert_train_change` | MCP only: Ask AI never gets it |
 
 **Policy and prompt:**
@@ -267,7 +297,7 @@ Yes, with no migration.
   - `start_session` → `log`.
 - **Selection:** "come up with exercises for the week" offers `plan_training_week` and `get_training_week`; "rename Upper A to Push" offers `update_template` and `list_templates`; "I don't have a leg press" offers `update_equipment`. Never more than `MAX_TOOLS` (16).
 - **Prompt:**
-  - Replace "cannot … change equipment, build or rename templates" with what it can now do (each a card he taps), and how to plan a week: days first with `set_training_days`, then `plan_training_week`, and use `propose_week_plan` only for a one-off week.
+  - Replace "cannot … change equipment, build or rename templates" with what it can now do (each a card he taps), and how to plan a week: `plan_training_week` with the days he names (it proposes the days and drafts every day so each body part is covered), and use `propose_week_plan` only for a one-off week.
   - Keep: it cannot accept, reject or revert proposals, un-hide exercises, edit logged sessions, plan fasts or scans, or touch the calorie rails.
 - **Procedures** (`program_design`, `coach_review`) and the `replace_week_plan` description: read the split from `get_training_week`, not "Mon–Thu upper/lower".
 
@@ -281,7 +311,7 @@ Yes, with no migration.
 ## Wave 4 — defaults, docs, e2e, verification (coordinator)
 
 - [ ] **Seed default:** `apps/worker/scripts/build-seed.ts` `TRAINING_DAYS` → `['mon','tue','thu']`. Fix any e2e flow that assumed Wednesday is a training day.
-- [ ] **E2e:** `e2e/train-week.spec.ts`. Train shows Mon Upper A, Tue Lower A, Thu Full body. **Change days** to Mon–Thu shows four slots, and changing back restores three. "Plan my week" with no model key (the e2e Worker has none) shows "Add a model key in Settings → AI first."
+- [ ] **E2e:** `e2e/train-week.spec.ts`. Train shows Mon Upper A, Tue Lower A, Thu Full body. Toggling Wed on previews four slots, and toggling it off restores three. **Generate** with no model key (the e2e Worker has none) shows "Add a model key in Settings → AI first."
 - [ ] **Docs:**
   - SPEC §2 (3 sessions, Mon/Tue/Thu), §7 (split rule, week = split, Undo), §8 (what Ask AI may do in Train), §10 (new tools).
   - GLOSSARY: Split slot, Week plan, plus new terms Training week and Train change.
