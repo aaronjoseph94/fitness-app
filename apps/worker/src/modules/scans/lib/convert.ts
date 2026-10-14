@@ -6,7 +6,7 @@ import { lbToKg, localDate, localTime } from '@fitness/shared/engine'
 import { ScanDraft, ScanSegment, type MassUnit, type ScanExtractOutput } from '@fitness/shared/schemas'
 
 /** Whole-body fields the sheet prints as a mass (their `_kg` names keep the seed-record shape). */
-export const MASS_FIELDS = [
+const MASS_FIELDS = [
   'weight_kg',
   'lean_body_mass_kg',
   'skeletal_muscle_mass_kg',
@@ -20,8 +20,11 @@ export const MASS_FIELDS = [
   'visceral_fat_kg',
 ] as const
 
-/** kg = lb × 0.4536 when the sheet printed lb (kg passes through), to 0.01 kg (finer than the sheet's 0.1 lb). null stays null. */
-export function massToKg(value: number | null, units: MassUnit): number | null {
+/**
+ * kg = lb × 0.4536 when the sheet printed lb (kg passes through), to 0.01 kg (finer than the sheet's 0.1 lb). null
+ * stays null.
+ */
+function massToKg(value: number | null, units: MassUnit): number | null {
   if (value === null) return null
   const kg = units === 'lb' ? lbToKg(value) : value
   return Math.round(kg * 100) / 100
@@ -31,7 +34,7 @@ export function massToKg(value: number | null, units: MassUnit): number | null {
  * The instant of an Edmonton wall-clock time the reader returned as printed with a "Z" suffix (2026-11-20T07:15:00Z →
  * 2026-11-20 07:15 local): the offset (−06:00, else −07:00) whose Edmonton date and time read back as printed.
  */
-export function printedToInstant(printed: string): string {
+function printedToInstant(printed: string): string {
   const date = printed.slice(0, 10)
   const time = printed.slice(11, 16)
   const seconds = printed.slice(16, 19) || ':00'
@@ -48,7 +51,10 @@ export function toDraft(out: ScanExtractOutput): ScanDraft {
   if (rest.scanned_at) rest.scanned_at = printedToInstant(rest.scanned_at)
   const masses = Object.fromEntries(MASS_FIELDS.map((f) => [f, massToKg(out[f], units)]))
   const segs = Object.fromEntries(
-    ScanSegment.options.map((s) => [s, { lean_kg: massToKg(segments[s].lean_kg, units), fat_kg: massToKg(segments[s].fat_kg, units) }]),
+    ScanSegment.options.map((s) => [
+      s,
+      { lean_kg: massToKg(segments[s].lean_kg, units), fat_kg: massToKg(segments[s].fat_kg, units) },
+    ]),
   )
   return ScanDraft.parse({ ...rest, ...masses, segments: segs, source_units: units })
 }

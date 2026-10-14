@@ -9,7 +9,7 @@ export type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 export type RemoteSource = 'off'
 
 /** Open Food Facts asks every client to identify itself; no contact address is sent (Aaron's choice to add one). */
-export const USER_AGENT = 'FitnessTracker/1.0 (personal, non-commercial)'
+const USER_AGENT = 'FitnessTracker/1.0 (personal, non-commercial)'
 
 /** A source could not answer (budget spent, rate-limited, down, timed out). Callers fall back; never shown raw. */
 export class SourceUnavailable extends Error {
@@ -37,7 +37,6 @@ export interface GateOptions {
   onCall?: (source: RemoteSource) => void
 }
 
-
 export interface Gate {
   /**
    * GET a JSON document, with extra request headers. Null on 404. Throws SourceUnavailable when the source cannot
@@ -54,9 +53,14 @@ export function createGate(opts: GateOptions): Gate {
 
   async function call(source: RemoteSource, url: string, headers: Record<string, string>): Promise<unknown> {
     if (down.has(source)) throw new SourceUnavailable(source, 'unavailable for this run')
-    if (calls >= opts.maxCalls || used[source] >= opts.perSource[source] || opts.shared?.some((b) => b.used >= b.limit))
+    if (
+      calls >= opts.maxCalls ||
+      used[source] >= opts.perSource[source] ||
+      opts.shared?.some((b) => b.used >= b.limit)
+    )
       throw new SourceUnavailable(source, 'subrequest budget spent')
-    if (opts.until !== undefined && (opts.now ?? Date.now)() >= opts.until) throw new SourceUnavailable(source, 'out of time')
+    if (opts.until !== undefined && (opts.now ?? Date.now)() >= opts.until)
+      throw new SourceUnavailable(source, 'out of time')
     calls++
     used[source]++
     for (const b of opts.shared ?? []) b.used++

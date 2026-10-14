@@ -14,13 +14,17 @@ interface PdfRenderer {
 }
 
 export type PdfOutcome =
-  | { ok: true; file: SignedFile }
-  | { ok: false; status: 404 | 501 | 502; error: string; message: string }
+  { ok: true; file: SignedFile } | { ok: false; status: 404 | 501 | 502; error: string; message: string }
 
-const UNAVAILABLE: PdfOutcome = { ok: false, status: 501, error: 'pdf_unavailable', message: 'PDF archive works on the deployed Worker; use Print' }
+const UNAVAILABLE: PdfOutcome = {
+  ok: false,
+  status: 501,
+  error: 'pdf_unavailable',
+  message: 'PDF archive works on the deployed Worker; use Print',
+}
 
 /** The report page sets this attribute once its data and charts are on the page. */
-export const REPORT_READY_SELECTOR = '[data-report-ready="true"]'
+const REPORT_READY_SELECTOR = '[data-report-ready="true"]'
 const MARGIN = '15mm'
 
 function renderer(deps: Deps): PdfRenderer | null {
@@ -28,8 +32,14 @@ function renderer(deps: Deps): PdfRenderer | null {
   return binding && typeof binding.quickAction === 'function' ? (binding as PdfRenderer) : null
 }
 
-export async function archivePdf(deps: Deps, input: { week: string; week_start: string }): Promise<PdfOutcome> {
-  const [row] = await deps.db.select({ id: weekly_reviews.id }).from(weekly_reviews).where(eq(weekly_reviews.week_start, input.week_start))
+export async function archivePdf(
+  deps: Deps,
+  input: { week: string; week_start: string },
+): Promise<PdfOutcome> {
+  const [row] = await deps.db
+    .select({ id: weekly_reviews.id })
+    .from(weekly_reviews)
+    .where(eq(weekly_reviews.week_start, input.week_start))
   if (!row) return { ok: false, status: 404, error: 'not_found', message: `No review for ${input.week} yet` }
   const browser = renderer(deps)
   if (!browser) return UNAVAILABLE
@@ -64,11 +74,24 @@ export async function archivePdf(deps: Deps, input: { week: string; week_start: 
   }
   if (!res.ok || !(res.headers.get('content-type') ?? '').includes('pdf')) {
     const detail = (await res.text().catch(() => '')).slice(0, 300)
-    return { ok: false, status: 502, error: 'pdf_failed', message: `Browser Rendering answered ${res.status}${detail ? `: ${detail}` : ''}` }
+    return {
+      ok: false,
+      status: 502,
+      error: 'pdf_failed',
+      message: `Browser Rendering answered ${res.status}${detail ? `: ${detail}` : ''}`,
+    }
   }
 
   const key = `reports/${input.week}.pdf`
-  await env.FILES.put(key, await res.arrayBuffer(), { httpMetadata: { contentType: 'application/pdf', contentDisposition: `inline; filename="weekly-report-${input.week}.pdf"` } })
-  await deps.db.update(weekly_reviews).set({ pdf_path: key, updated_at: deps.now().toISOString() }).where(eq(weekly_reviews.id, row.id))
+  await env.FILES.put(key, await res.arrayBuffer(), {
+    httpMetadata: {
+      contentType: 'application/pdf',
+      contentDisposition: `inline; filename="weekly-report-${input.week}.pdf"`,
+    },
+  })
+  await deps.db
+    .update(weekly_reviews)
+    .set({ pdf_path: key, updated_at: deps.now().toISOString() })
+    .where(eq(weekly_reviews.id, row.id))
   return { ok: true, file: await signFileUrl(env, key, undefined, deps.now()) }
 }

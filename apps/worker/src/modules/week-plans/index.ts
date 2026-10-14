@@ -10,10 +10,9 @@
 //        (default from deps.actor); any rejected issue stores nothing. Stored as proposed, superseding the week's
 //        earlier proposed plans (their pending proposals rejected) — except that a weekly-review AI draft
 //        (author 'gemini', the shared id for an AI-written plan) is not stored when the week already has an active
-//        plan or a proposed one by Claude, Aaron
-//        or Ask AI. Ask AI (actor 'ai', no author or review_id given) is always stored, with a pending 'week_plan'
-//        proposal event whose id is the plan's id; it never replaces the active plan until Aaron accepts. Replaying
-//        an id returns the stored plan.
+//        plan or a proposed one by Claude, Aaron or Ask AI. Ask AI (actor 'ai', no author or review_id given) is always
+//        stored, with a pending 'week_plan' proposal event whose id is the plan's id; it never replaces the active
+//        plan until Aaron accepts. Replaying an id returns the stored plan.
 //   applyWeekPlan(deps, id)           → WeekPlanApplied  guards re-run as the author (422 on a rejected issue); the
 //        previous active plan superseded, daily_targets of that week rebuilt from today on, one plan version, one
 //        'change' event and the plan's pending proposal accepted — ONE batch. Applying the active plan again returns
@@ -22,18 +21,17 @@
 //        active again (or the week follows the plan version), as one plan version. 403 for actor 'ai'
 //   rejectWeekPlan(deps, id)          → WeekPlan         a proposed plan is superseded and its proposal rejected (one
 //        batch); a superseded one is returned as is; 409 for the active plan (revert it instead). 403 for actor 'ai'
-// Registers the 'week_plan' proposal handler (plan.acceptProposal / rejectProposal → apply / reject), a template
-// swap listener (training.onTemplateSwap): planned sessions copied from a swapped template follow the swap, today on —
-// the active plan as one plan version, proposed plans in place (lib/swap) — and a fast listener (fasting.onFastsChanged):
-// a plan's fast_dates mirror the fast log's fast days, the same way (lib/fasts). fast_logs is the only source of fast
-// days; a plan's fast_dates never make one.
 //   replaceWeekPlan(deps, { week_start?, templates_by_weekday, focus_note? }) → WeekPlanReplaced   program design:
 //        the week's active plan (or one built from the plan version) with those weekdays' sessions set from
 //        templates (null = rest), proposed, then applied at once unless the actor is 'ai'
-//   todaysPlannedSession(deps, date)  → WeekPlanSession | null   the active plan's session for that date
+// Registers the 'week_plan' proposal handler (plan.acceptProposal / rejectProposal → apply / reject), a template
+// swap listener (training.onTemplateSwap): planned sessions copied from a swapped template follow the swap, today on —
+// the active plan as one plan version, proposed plans in place (lib/swap) — and a fast listener
+// (fasting.onFastsChanged): a plan's fast_dates mirror the fast log's fast days, the same way (lib/fasts). fast_logs
+// is the only source of fast days; a plan's fast_dates never make one.
 // MCP writes (actor 'mcp') apply immediately because Aaron approves them in the Claude chat; they are still guarded
 // and versioned. Nothing here touches the settings rails.
-import { today, weekdayOf, weekStart } from '@fitness/shared/engine'
+import { today, weekStart } from '@fitness/shared/engine'
 import type {
   TemplatesByWeekday,
   WeekPlan,
@@ -43,11 +41,10 @@ import type {
   WeekPlanProposal,
   WeekPlanQuery,
   WeekPlanReplaced,
-  WeekPlanSession,
   WeekPlanView,
   Weekday,
 } from '@fitness/shared/schemas'
-import { week_plans } from '../../db'
+import { runBatch, week_plans } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError } from '../../lib/http-error'
 import { eventInsert } from '../events'
@@ -58,11 +55,18 @@ import { applyPlan, assertMayActivate, assertWeekOpen, revertPlan, supersedeStat
 import { basePlan, templateSession } from './lib/base'
 import { checkWeekPlan } from './lib/check'
 import { syncFastDates } from './lib/fasts'
-import { ACTOR_OF, AUTHOR_LABEL, AUTHOR_OF, listPlans, requireWeekPlan, weekPlanById, weekState, weekTargets } from './lib/rows'
+import {
+  ACTOR_OF,
+  AUTHOR_LABEL,
+  AUTHOR_OF,
+  listPlans,
+  requireWeekPlan,
+  weekPlanById,
+  weekState,
+  weekTargets,
+} from './lib/rows'
 import { swapInWeekPlans } from './lib/swap'
 import { weekView } from './lib/view'
-
-export { weekChanges } from './lib/view'
 
 export function getWeekPlan(deps: Deps, date?: string): Promise<WeekPlanView> {
   return weekView(deps, weekStart(date ?? today(deps.now())))
@@ -92,7 +96,9 @@ export async function proposeWeekPlan(deps: Deps, input: ProposeInput): Promise<
     if (existing) return { week_plan: existing, rejected: [], adjusted: [], superseded: [], note: null }
   }
   if (weekStart(input.week_start) !== input.week_start)
-    throw badRequest(`week_start must be a Monday; the week holding ${input.week_start} starts on ${weekStart(input.week_start)}`)
+    throw badRequest(
+      `week_start must be a Monday; the week holding ${input.week_start} starts on ${weekStart(input.week_start)}`,
+    )
   assertWeekOpen(deps, input.week_start)
   const author = input.author ?? AUTHOR_OF[deps.actor]
   const { active, proposed } = await weekState(deps, input.week_start)
@@ -113,8 +119,19 @@ export async function proposeWeekPlan(deps: Deps, input: ProposeInput): Promise<
       }
   }
 
-  const checked = await checkWeekPlan(deps, { week_start: input.week_start, plan: input.plan, actor: ACTOR_OF[author] })
-  if (checked.rejected.length) return { week_plan: null, rejected: checked.rejected, adjusted: checked.adjusted, superseded: [], note: null }
+  const checked = await checkWeekPlan(deps, {
+    week_start: input.week_start,
+    plan: input.plan,
+    actor: ACTOR_OF[author],
+  })
+  if (checked.rejected.length)
+    return {
+      week_plan: null,
+      rejected: checked.rejected,
+      adjusted: checked.adjusted,
+      superseded: [],
+      note: null,
+    }
 
   const id = input.id ?? crypto.randomUUID()
   const now = deps.now().toISOString()
@@ -132,22 +149,59 @@ export async function proposeWeekPlan(deps: Deps, input: ProposeInput): Promise<
   })
   const text = `${AUTHOR_LABEL[author]} proposed a plan for the week of ${input.week_start}${checked.plan.focus_note ? `: ${checked.plan.focus_note}` : ''}`
   const event = askAi
-    ? [eventInsert(deps, { id, kind: 'proposal', summary: text.slice(0, 300), body: { kind: 'week_plan', week_plan_id: id }, proposal_status: 'pending' }).statement]
+    ? [
+        eventInsert(deps, {
+          id,
+          kind: 'proposal',
+          summary: text.slice(0, 300),
+          body: { kind: 'week_plan', week_plan_id: id },
+          proposal_status: 'pending',
+        }).statement,
+      ]
     : author === 'user'
       ? []
-      : [eventInsert(deps, { kind: 'note', summary: text.slice(0, 300), body: { text, week_plan_id: id }, date: today(deps.now()) }).statement]
+      : [
+          eventInsert(deps, {
+            kind: 'note',
+            summary: text.slice(0, 300),
+            body: { text, week_plan_id: id },
+            date: today(deps.now()),
+          }).statement,
+        ]
   await deps.db.batch([insert, ...supersedeStatements(deps, superseded), ...event])
-  return { week_plan: await requireWeekPlan(deps, id), rejected: [], adjusted: checked.adjusted, superseded, note: null }
+  return {
+    week_plan: await requireWeekPlan(deps, id),
+    rejected: [],
+    adjusted: checked.adjusted,
+    superseded,
+    note: null,
+  }
 }
 
 export async function applyWeekPlan(deps: Deps, id: string): Promise<WeekPlanApplied> {
   assertMayActivate(deps)
   const plan = await requireWeekPlan(deps, id)
   if (plan.status === 'active' && plan.plan_version_id)
-    return { active: plan, superseded: null, plan_version_id: plan.plan_version_id, targets: await weekTargets(deps, plan.week_start), adjusted: [] }
+    return {
+      active: plan,
+      superseded: null,
+      plan_version_id: plan.plan_version_id,
+      targets: await weekTargets(deps, plan.week_start),
+      adjusted: [],
+    }
   assertWeekOpen(deps, plan.week_start)
-  const checked = await checkWeekPlan(deps, { week_start: plan.week_start, plan: plan.plan, actor: ACTOR_OF[plan.author] })
-  if (checked.rejected.length) throw new HttpError(422, checked.rejected[0]!.rule, `This week plan now breaks a rail: ${issues(checked.rejected)}`, checked.rejected)
+  const checked = await checkWeekPlan(deps, {
+    week_start: plan.week_start,
+    plan: plan.plan,
+    actor: ACTOR_OF[plan.author],
+  })
+  if (checked.rejected.length)
+    throw new HttpError(
+      422,
+      checked.rejected[0]!.rule,
+      `This week plan now breaks a rail: ${issues(checked.rejected)}`,
+      checked.rejected,
+    )
   const { active } = await weekState(deps, plan.week_start)
   return applyPlan(deps, { plan, content: checked.plan, current: active, adjusted: checked.adjusted })
 }
@@ -156,7 +210,11 @@ export async function revertWeekPlan(deps: Deps, id: string): Promise<WeekPlanAp
   assertMayActivate(deps)
   const plan = await requireWeekPlan(deps, id)
   if (plan.status !== 'active')
-    throw new HttpError(409, 'not_active', `Only the week's active plan can be reverted; this one is ${plan.status}`)
+    throw new HttpError(
+      409,
+      'not_active',
+      `Only the week's active plan can be reverted; this one is ${plan.status}`,
+    )
   assertWeekOpen(deps, plan.week_start)
   return revertPlan(deps, plan)
 }
@@ -165,11 +223,12 @@ export async function rejectWeekPlan(deps: Deps, id: string): Promise<WeekPlan> 
   assertMayActivate(deps)
   const plan = await requireWeekPlan(deps, id)
   if (plan.status === 'active')
-    throw new HttpError(409, 'week_plan_active', 'This is the week\'s active plan; revert it instead of rejecting it')
-  if (plan.status === 'proposed') {
-    const [first, ...rest] = supersedeStatements(deps, [plan.id])
-    await deps.db.batch([first!, ...rest])
-  }
+    throw new HttpError(
+      409,
+      'week_plan_active',
+      "This is the week's active plan; revert it instead of rejecting it",
+    )
+  if (plan.status === 'proposed') await runBatch(deps.db, supersedeStatements(deps, [plan.id]))
   return requireWeekPlan(deps, id)
 }
 
@@ -182,25 +241,29 @@ export async function replaceWeekPlan(
   const { active } = await weekState(deps, week_start)
   const base = active?.plan ?? (await basePlan(deps, week_start))
   const sessions = { ...base.sessions }
-  for (const [weekday, template_id] of Object.entries(input.templates_by_weekday) as [Weekday, string | null | undefined][]) {
+  for (const [weekday, template_id] of Object.entries(input.templates_by_weekday) as [
+    Weekday,
+    string | null | undefined,
+  ][]) {
     if (template_id === undefined) continue
     sessions[weekday] = template_id === null ? null : await templateSession(deps, template_id)
   }
-  const proposal = await proposeWeekPlan(deps, { week_start, plan: { ...base, sessions, focus_note: input.focus_note ?? base.focus_note } })
+  const proposal = await proposeWeekPlan(deps, {
+    week_start,
+    plan: { ...base, sessions, focus_note: input.focus_note ?? base.focus_note },
+  })
   if (!proposal.week_plan || deps.actor === 'ai') return { proposal, applied: null }
   return { proposal, applied: await applyWeekPlan(deps, proposal.week_plan.id) }
-}
-
-export async function todaysPlannedSession(deps: Deps, date: string): Promise<WeekPlanSession | null> {
-  const [active] = await listPlans(deps, { week_start: weekStart(date), status: 'active' })
-  return active?.plan.sessions[weekdayOf(date)] ?? null
 }
 
 // plan.acceptProposal / rejectProposal of a 'week_plan' proposal (Ask AI's plans) apply or turn down the plan.
 registerProposalHandler('week_plan', {
   accept: async (deps, proposal) => {
     const applied = await applyWeekPlan(deps, proposal.body.week_plan_id)
-    return { plan_version_id: applied.plan_version_id, applied: { entity: 'week_plan', id: proposal.body.week_plan_id } }
+    return {
+      plan_version_id: applied.plan_version_id,
+      applied: { entity: 'week_plan', id: proposal.body.week_plan_id },
+    }
   },
   reject: async (deps, proposal) => {
     const plan = await weekPlanById(deps, proposal.body.week_plan_id)

@@ -6,7 +6,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { cron_runs } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 
-export const claimKind = (kind: ReminderKind) => `remind:${kind}`
+const claimKind = (kind: ReminderKind) => `remind:${kind}`
 
 /** True only for the one call that claims (kind, period_key). */
 export async function claim(deps: Deps, kind: ReminderKind, period_key: string): Promise<boolean> {
@@ -21,7 +21,9 @@ export async function claim(deps: Deps, kind: ReminderKind, period_key: string):
 
 /** Give a period back (its send failed everywhere), so the next tick inside the grace window retries it. */
 export async function release(deps: Deps, kind: ReminderKind, period_key: string): Promise<void> {
-  await deps.db.delete(cron_runs).where(and(eq(cron_runs.kind, claimKind(kind)), eq(cron_runs.period_key, period_key)))
+  await deps.db
+    .delete(cron_runs)
+    .where(and(eq(cron_runs.kind, claimKind(kind)), eq(cron_runs.period_key, period_key)))
 }
 
 /** SQL: "this period is not claimed yet", for reads that should stop matching once a reminder went out. */

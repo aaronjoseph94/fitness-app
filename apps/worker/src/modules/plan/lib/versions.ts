@@ -33,7 +33,14 @@ import type { Deps } from '../../../lib/deps'
 import { eventInsert } from '../../events'
 import { jobInsert } from '../../jobs'
 import type { PlanContext, PlanVersionRow } from './context'
-import { activeWeekPlans, computeTargetRows, targetHorizon, targetStatements, type StoredWeekPlan, type WeekOverride } from './targets'
+import {
+  activeWeekPlans,
+  computeTargetRows,
+  targetHorizon,
+  targetStatements,
+  type StoredWeekPlan,
+  type WeekOverride,
+} from './targets'
 import { kcalWindow } from './window'
 
 export type RejectedChange = RejectedPlanChange & { rule: GuardRule }
@@ -50,9 +57,23 @@ export interface GuardedChanges {
 
 type ReasonedTarget = TargetChange & { reason: string }
 
-const FIELDS: readonly TargetField[] = ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g', 'water_ml', 'steps']
+const FIELDS: readonly TargetField[] = [
+  'kcal',
+  'protein_g',
+  'carbs_g',
+  'fat_g',
+  'fibre_g',
+  'water_ml',
+  'steps',
+]
 
-const toPlanChange = (c: ReasonedTarget): PlanChange => ({ field: c.field, weekday: c.weekday, from: c.from, to: c.to, reason: c.reason })
+const toPlanChange = (c: ReasonedTarget): PlanChange => ({
+  field: c.field,
+  weekday: c.weekday,
+  from: c.from,
+  to: c.to,
+  reason: c.reason,
+})
 
 const label = (c: { field: string; weekday: string | null }) => `${c.weekday ?? 'daily'} ${c.field}`
 
@@ -72,9 +93,22 @@ export interface GuardOptions {
  * by ai/mcp, in ≤150 kcal steps) become pending proposals dated a week apart, all carrying one series_id: the caller's
  * (step 1 applied or proposed) or, when nothing applies now, the first scheduled step's own id.
  */
-export function guardChanges(deps: Deps, ctx: PlanContext, changes: readonly PlanChange[], actor: Actor, opts: GuardOptions = {}): GuardedChanges {
+export function guardChanges(
+  deps: Deps,
+  ctx: PlanContext,
+  changes: readonly PlanChange[],
+  actor: Actor,
+  opts: GuardOptions = {},
+): GuardedChanges {
   const result = applyGuards<ReasonedTarget>(
-    changes.map((c) => ({ kind: 'target', field: c.field, weekday: c.weekday, from: c.from, to: c.to, reason: c.reason })),
+    changes.map((c) => ({
+      kind: 'target',
+      field: c.field,
+      weekday: c.weekday,
+      from: c.from,
+      to: c.to,
+      reason: c.reason,
+    })),
     {
       actor,
       rails: ctx.settings,
@@ -110,7 +144,11 @@ export function guardChanges(deps: Deps, ctx: PlanContext, changes: readonly Pla
   })
   return {
     accepted: result.accepted.map((a) => toPlanChange(a.change)),
-    rejected: result.rejected.map((r) => ({ change: toPlanChange(r.change), rule: r.rule, reason: r.reason })),
+    rejected: result.rejected.map((r) => ({
+      change: toPlanChange(r.change),
+      rule: r.rule,
+      reason: r.reason,
+    })),
     scheduled,
     statements,
   }
@@ -127,10 +165,11 @@ export function applyChanges(targets: PlanTargets, changes: readonly PlanChange[
 }
 
 /** One diff line per default or weekday override that differs between a and b (null = absent). */
-export function diffTargets(a: PlanTargets, b: PlanTargets): PlanDiff {
+function diffTargets(a: PlanTargets, b: PlanTargets): PlanDiff {
   const diff: PlanDiff = []
   for (const field of FIELDS) {
-    if (a.defaults[field] !== b.defaults[field]) diff.push({ field, weekday: null, from: a.defaults[field], to: b.defaults[field] })
+    if (a.defaults[field] !== b.defaults[field])
+      diff.push({ field, weekday: null, from: a.defaults[field], to: b.defaults[field] })
   }
   for (const weekday of Weekday.options) {
     for (const field of FIELDS) {
@@ -149,7 +188,8 @@ const fieldChanges = (diff: PlanDiff): FieldChange[] =>
     to: d.to,
   }))
 
-export const describeDiff = (diff: PlanDiff) => diff.map((d) => `${label(d)} ${d.from ?? '—'} → ${d.to ?? '—'}`).join('; ')
+const describeDiff = (diff: PlanDiff) =>
+  diff.map((d) => `${label(d)} ${d.from ?? '—'} → ${d.to ?? '—'}`).join('; ')
 
 /**
  * The materialised moves of one week (from today on) when `week` replaces its stored week plan: one diff line per
@@ -161,7 +201,9 @@ function weekDiff(before: readonly NewTargetRow[], after: readonly NewTargetRow[
   for (const b of before) {
     const a = next.get(b.date)
     if (!a) continue
-    for (const field of FIELDS) if (b[field] !== a[field]) diff.push({ field, weekday: weekdayOf(b.date), from: b[field], to: a[field] })
+    for (const field of FIELDS)
+      if (b[field] !== a[field])
+        diff.push({ field, weekday: weekdayOf(b.date), from: b[field], to: a[field] })
   }
   return diff
 }
@@ -185,7 +227,10 @@ export async function kcalStepBase(deps: Deps, date: string): Promise<KcalStepBa
       .where(between(daily_targets.date, addDays(date, -7), addDays(date, -1))),
     kcalWindow(deps),
   ])
-  return { history: new Map(rows.filter((r) => !r.is_fast_day).map((r) => [r.date, r.kcal])), base: window.base }
+  return {
+    history: new Map(rows.filter((r) => !r.is_fast_day).map((r) => [r.date, r.kcal])),
+    base: window.base,
+  }
 }
 
 const MACROS = ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g'] as const
@@ -207,7 +252,7 @@ const LAST_DATE = '9999-12-31'
  *     day, else the new version's value at or above the floor).
  * Returns only the week plans that changed, and each day the rails cut (`clamped`: "2026-10-10 kcal 1850 → 1700").
  */
-export function carryIntoWeekPlans(
+function carryIntoWeekPlans(
   weeks: readonly StoredWeekPlan[],
   before: PlanTargets,
   after: PlanTargets,
@@ -219,8 +264,13 @@ export function carryIntoWeekPlans(
   const clamped: string[] = []
   for (const w of Weekday.options)
     for (const f of WEEK_WIDE)
-      if (targetValue(before, f, w) !== targetValue(after, f, w) && before.defaults[f] === after.defaults[f]) skipped.add(`${w} ${f}`)
-  const min: Partial<Record<TargetField, number>> = { kcal: rails.calorie_floor, protein_g: rails.protein_min_g, fat_g: rails.fat_min_g }
+      if (targetValue(before, f, w) !== targetValue(after, f, w) && before.defaults[f] === after.defaults[f])
+        skipped.add(`${w} ${f}`)
+  const min: Partial<Record<TargetField, number>> = {
+    kcal: rails.calorie_floor,
+    protein_g: rails.protein_min_g,
+    fat_g: rails.fat_min_g,
+  }
   const patched: StoredWeekPlan[] = []
   /** kcal of each non-fast day of the active week plans from `date` on, as this carry leaves it (weeks in date order). */
   const planned = new Map<string, number>()
@@ -253,7 +303,10 @@ export function carryIntoWeekPlans(
         if (step) {
           const old = plan.targets[w].kcal
           const b = lastWeek(day, w)
-          next.kcal = Math.min(Math.max(next.kcal, Math.min(old, b - KCAL_STEP)), Math.max(old, b + KCAL_STEP))
+          next.kcal = Math.min(
+            Math.max(next.kcal, Math.min(old, b - KCAL_STEP)),
+            Math.max(old, b + KCAL_STEP),
+          )
         }
         // The rails win over the step.
         next.kcal = Math.max(Math.min(next.kcal, rails.calorie_ceiling), rails.calorie_floor)
@@ -314,7 +367,13 @@ export async function versionStatements(
   const overrides: WeekOverride[] = input.week
     ? [input.week]
     : carried.patched.map((w) => ({ week_start: w.week_start, week_plan: w }))
-  const rows = await computeTargetRows(deps, ctx, { from: date, to: weekEnd && weekEnd > horizon ? weekEnd : horizon }, { id, targets: input.targets }, overrides)
+  const rows = await computeTargetRows(
+    deps,
+    ctx,
+    { from: date, to: weekEnd && weekEnd > horizon ? weekEnd : horizon },
+    { id, targets: input.targets },
+    overrides,
+  )
   let diff = diffTargets(ctx.active.targets, input.targets)
   if (input.week && weekEnd) {
     const from = input.week.week_start > date ? input.week.week_start : date
@@ -354,10 +413,15 @@ export async function versionStatements(
     job_id: job.id,
     rows,
     statements: [
-      deps.db.update(plan_versions).set({ active: false, updated_at: now }).where(eq(plan_versions.active, true)),
+      deps.db
+        .update(plan_versions)
+        .set({ active: false, updated_at: now })
+        .where(eq(plan_versions.active, true)),
       deps.db.insert(plan_versions).values(row),
       event.statement,
-      ...carried.patched.map((w) => deps.db.update(week_plans).set({ plan: w.plan, updated_at: now }).where(eq(week_plans.id, w.id))),
+      ...carried.patched.map((w) =>
+        deps.db.update(week_plans).set({ plan: w.plan, updated_at: now }).where(eq(week_plans.id, w.id)),
+      ),
       ...targetStatements(deps, rows, 'replace'),
       ...(input.also ?? []),
       job.statement,

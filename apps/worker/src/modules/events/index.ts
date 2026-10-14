@@ -1,5 +1,6 @@
-// Owns: AI events (`ai_events`: adjustment, proposal, review, note, change) — the since-poll the dashboard and MCP read,
-// pending proposals, and the one way any module writes an event (eventInsert inside its own db.batch, or recordEvent).
+// Owns: AI events (`ai_events`: adjustment, proposal, review, note, change) — the since-poll the dashboard and MCP
+// read, pending proposals, and the one way any module writes an event (eventInsert inside its own db.batch, or
+// recordEvent).
 // Interface:
 //   eventInsert(deps, input)            → { id, statement }   (put the statement in the caller's db.batch)
 //   recordEvent(deps, input)            → id                  (standalone write)
@@ -7,13 +8,19 @@
 //                                                              `since` overlapping 5 s; else the latest 50 plus every
 //                                                              pending proposal due by today)
 //   pendingProposals(deps, date)        → { pending_count, latest }  (proposals due on or before `date`)
-//   getProposalRow(deps, id) / toProposal(row) / toEvent(row)    (row ↔ contract mapping; bodies parsed with Zod)
+//   getProposalRow(deps, id) / toProposal(row)                   (row → Proposal; the body parsed with Zod)
 //   proposalDecisionUpdate(deps, id, …)  → statement resolving a pending proposal (accepted/rejected/auto_applied)
 //   seriesRejectUpdate(deps, series_id, after) → statement rejecting a kcal series' pending steps (due after `after`)
 //   releaseDueProposals(deps, date)     → touches proposals scheduled for `date` so the since-poll delivers them
 // A proposal with a future `date` is a scheduled one (a later ≤150 kcal step); it stays hidden until that date.
 import { today } from '@fitness/shared/engine'
-import { AiEvent, Proposal, type EventKind, type EventsResponse, type ProposalStatus } from '@fitness/shared/schemas'
+import {
+  AiEvent,
+  Proposal,
+  type EventKind,
+  type EventsResponse,
+  type ProposalStatus,
+} from '@fitness/shared/schemas'
 import { and, asc, count, desc, eq, gt, gte, isNull, lte, or, sql } from 'drizzle-orm'
 import { ai_events, type Row } from '../../db'
 import type { Deps } from '../../lib/deps'
@@ -66,7 +73,7 @@ export async function recordEvent(deps: Deps, input: EventInput): Promise<string
 }
 
 /** Row → contract event, or null when the stored body no longer matches its schema (skipped, logged). */
-export function toEvent(row: EventRow): AiEvent | null {
+function toEvent(row: EventRow): AiEvent | null {
   const parsed = AiEvent.safeParse({
     id: row.id,
     created_at: row.created_at,
@@ -106,8 +113,8 @@ const POLL_OVERLAP_MS = 5_000
 
 /**
  * GET /api/events?since=: events created or updated at or after `since`, oldest change first (a client dedupes by
- * id), or the latest 50 (plus the pending proposals due by today, however old) when `since` is absent. Scheduled proposals not yet due are left out. `server_time` is the next
- * `since`:
+ * id), or the latest 50 (plus the pending proposals due by today, however old) when `since` is absent. Scheduled
+ * proposals not yet due are left out. `server_time` is the next `since`:
  *   a full page (200)  → the last row's updated_at, so the rest arrive on the next poll (+1 ms when the whole page
  *                         shares one instant, so the poll always moves on)
  *   otherwise          → now − 5 s (an event stamped before this poll but committed after it still arrives)
@@ -127,7 +134,10 @@ export async function listEvents(deps: Deps, input: { since?: string }): Promise
     const first = rows[0]
     const last = rows.at(-1)
     if (rows.length === SINCE_PAGE && first && last)
-      server_time = first.updated_at === last.updated_at ? new Date(Date.parse(last.updated_at) + 1).toISOString() : last.updated_at
+      server_time =
+        first.updated_at === last.updated_at
+          ? new Date(Date.parse(last.updated_at) + 1).toISOString()
+          : last.updated_at
   } else {
     // The latest 50, plus every pending proposal due by today however old (a kcal step proposed a week ago): the AI tab
     // and the plan page list what waits for a tap from this page.
@@ -136,12 +146,20 @@ export async function listEvents(deps: Deps, input: { since?: string }): Promise
       deps.db
         .select()
         .from(ai_events)
-        .where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.proposal_status, 'pending'), or(isNull(ai_events.date), lte(ai_events.date, today(now)))))
+        .where(
+          and(
+            eq(ai_events.kind, 'proposal'),
+            eq(ai_events.proposal_status, 'pending'),
+            or(isNull(ai_events.date), lte(ai_events.date, today(now))),
+          ),
+        )
         .orderBy(desc(ai_events.created_at))
         .limit(PENDING_PAGE),
     ])
     const ids = new Set(latest.map((r) => r.id))
-    rows = [...latest, ...waiting.filter((r) => !ids.has(r.id))].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id))
+    rows = [...latest, ...waiting.filter((r) => !ids.has(r.id))].sort(
+      (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+    )
   }
   const due = today(now)
   const events = rows
@@ -152,7 +170,10 @@ export async function listEvents(deps: Deps, input: { since?: string }): Promise
 }
 
 /** Pending proposals due on or before `date`: how many, and the newest one. */
-export async function pendingProposals(deps: Deps, date: string): Promise<{ pending_count: number; latest: Proposal | null }> {
+export async function pendingProposals(
+  deps: Deps,
+  date: string,
+): Promise<{ pending_count: number; latest: Proposal | null }> {
   const due = and(
     eq(ai_events.kind, 'proposal'),
     eq(ai_events.proposal_status, 'pending'),
@@ -178,8 +199,15 @@ export function proposalDecisionUpdate(
   const now = deps.now().toISOString()
   return deps.db
     .update(ai_events)
-    .set({ proposal_status: decision.status, plan_version_id: decision.plan_version_id ?? null, read_at: now, updated_at: now })
-    .where(and(eq(ai_events.id, id), eq(ai_events.kind, 'proposal'), eq(ai_events.proposal_status, 'pending')))
+    .set({
+      proposal_status: decision.status,
+      plan_version_id: decision.plan_version_id ?? null,
+      read_at: now,
+      updated_at: now,
+    })
+    .where(
+      and(eq(ai_events.id, id), eq(ai_events.kind, 'proposal'), eq(ai_events.proposal_status, 'pending')),
+    )
 }
 
 /**
@@ -206,7 +234,9 @@ export async function releaseDueProposals(deps: Deps, date: string): Promise<num
   const released = await deps.db
     .update(ai_events)
     .set({ updated_at: deps.now().toISOString() })
-    .where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.proposal_status, 'pending'), eq(ai_events.date, date)))
+    .where(
+      and(eq(ai_events.kind, 'proposal'), eq(ai_events.proposal_status, 'pending'), eq(ai_events.date, date)),
+    )
     .returning({ id: ai_events.id })
   return released.length
 }

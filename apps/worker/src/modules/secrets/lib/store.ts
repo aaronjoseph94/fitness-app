@@ -27,7 +27,11 @@ export async function readStored(db: Db): Promise<StoredSecret[]> {
 
 /** One app-stored value, or undefined when the app has never stored this name. */
 export async function storedSecret(db: Db, name: SecretName): Promise<string | undefined> {
-  const [row] = await db.select({ value: app_secrets.value }).from(app_secrets).where(eq(app_secrets.name, name)).limit(1)
+  const [row] = await db
+    .select({ value: app_secrets.value })
+    .from(app_secrets)
+    .where(eq(app_secrets.name, name))
+    .limit(1)
   return row?.value
 }
 
@@ -50,7 +54,7 @@ export function envValue(env: Env, name: SecretName): string | undefined {
 }
 
 /** Last 4 characters of a stored value, or null when it is too short to hint from safely. */
-export function hintFor(value: string): string | null {
+function hintFor(value: string): string | null {
   return value.length >= HINT_MIN_LENGTH ? value.slice(-HINT_CHARS) : null
 }
 

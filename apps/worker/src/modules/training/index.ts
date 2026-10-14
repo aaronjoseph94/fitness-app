@@ -1,9 +1,13 @@
 // Owns: training (SPEC §7) — the exercise library and the allowed exercise set, the equipment profile and exclusions,
 // templates, sessions and sets, finishing a session, exercise history; and the planning context the AI workout jobs
 // read. Numbers come from the engine (muscle scores, readiness, progression, deload, recovery, session summary, PRs).
-// Interface (REST routes and, in phase 4, the tools layer call these; every write is idempotent on its client id):
+// Interface (the REST routes and the tools layer call these; every write is idempotent on its client id):
 //   listExercises(deps, query) / getExercise(deps, id) / createExercise(deps, body)        → Exercise(s) with `allowed`
 //   setExercisePhoto(deps, id, query, bytes)  → Exercise   a custom exercise's photo (R2 exercise-photos/, signed URL)
+//   loadLibrary(deps)                    → Library  every exercise with `allowed` / `excluded_reason`, by id, the
+//        excluded categories and the equipment profile
+//   exclusionReason(row, rules) / toRules(exclusions, equipment)  the equipment rules: why an exercise is outside the
+//        allowed set (the seed test runs them over seed/equipment/anytime-fitness.json and the pinned library)
 //   getEquipment(deps) / updateEquipment(deps, body)                                        → EquipmentItem[]
 //   createExclusion(deps, body) / deleteExclusion(deps, id: exclusion or exercise id)      → ExerciseExclusion / Ok
 //   listTemplates / getTemplate / createTemplate / updateTemplate / deleteTemplate          → Template
@@ -16,19 +20,21 @@
 //        again after editing a finished session's sets: the summary, PRs and muscle scores are recomputed
 //   deleteSession(deps, id)                                                                 → Ok   (idempotent)
 //   exerciseHistory(deps, id)                                                               → ExerciseHistory
-//   planningContext(deps, date)          → library, readiness, deload, neighbouring sessions, recent digest, templates
+//   planningContext(deps, date)          → PlanningContext  library, readiness, deload, neighbouring sessions, recent
+//        digest, templates
 //   progressionFor(deps, input)          → the engine's suggestion per planned exercise (default loads)
 //   guardContext(deps, library, actor?)  → GuardContext for workout checks (engine applyGuards)
+//   guardWorkout(ctx, exercises)         → GuardResult  one workout through the guards (allowed ids, 12–28 sets)
 //   swapTemplateExercise(deps, { template_id, from_exercise_id, to_exercise_id }) → SafeChangeResult<Template>
-//        safe list: same primary muscle and kind of lift, allowed set; applied now or proposed (plan.applySafeChange decides)
+//        safe list: same primary muscle and kind of lift, allowed set; applied now or proposed (plan.applySafeChange)
 //   onTemplateSwap(listener) / templateSwapped(deps, swap)  listeners run after any swap is written (week-plans
 //        registers one, so planned sessions copied from the template follow the swap)
-//   trainChange(deps, { change: TrainChange, reason }) → TrainChangeResult (shared schema) { status: 'applied'|'proposed',
-//        proposal_id, applied: { entity: 'template'|'equipment'|'exclusion', id } | null }  one AI change to Train
-//        (template create / update / delete, equipment status, exercise hide), checked (422: guards as its author,
-//        template / exercise exist); Ask AI → a pending 'train_change' proposal, nothing written; Aaron / MCP → applied
-//        now with an auto_applied train_change event carrying `before`; the event summary is the card title ("Rename
-//        Upper A → Push") and the body's `reason` the AI's why
+//   trainChange(deps, { change: TrainChange, reason }) → TrainChangeResult { status: 'applied'|'proposed', proposal_id,
+//        applied: { entity: 'template'|'equipment'|'exclusion', id } | null }  one AI change to Train (template
+//        create / update / delete, equipment status, exercise hide), checked (422: guards as its author, template /
+//        exercise exist); Ask AI → a pending 'train_change' proposal, nothing written; Aaron / MCP → applied now with
+//        an auto_applied train_change event carrying `before`; the event summary is the card title ("Rename Upper A →
+//        Push") and the body's `reason` the AI's why
 //   revertTrainChange(deps, id)          → Ok   Undo of an applied train_change, or of a kept split draft that replaced
 //        a template (`replaced`): exactly what was there comes back (same id); 403 for 'ai', 409 already_reverted
 // Template/session creation with `proposal_id` accepts that pending AI workout proposal in the same batch; a split draft
@@ -39,7 +45,13 @@
 // A session stores its readiness score in workout_sessions.readiness and its start plan (plan snapshot, recovery,
 // deload) in workout_sessions.plan.
 import { addDays, type Progression } from '@fitness/shared/engine'
-import type { DeloadStatus, Muscle, Readiness, Template, TemplateExerciseInput } from '@fitness/shared/schemas'
+import type {
+  DeloadStatus,
+  Muscle,
+  Readiness,
+  Template,
+  TemplateExerciseInput,
+} from '@fitness/shared/schemas'
 import type { Deps } from '../../lib/deps'
 import { registerProposalHandler } from '../plan'
 import { trainingDigest, topSetsSince, type TrainingDigest } from './lib/history'
@@ -52,31 +64,45 @@ import { acceptTrainChange } from './lib/changes'
 export {
   createExclusion,
   createExercise,
+  exclusionReason,
   getEquipment,
   getExercise,
   listExercises,
   loadLibrary,
   setExercisePhoto,
+  toRules,
   updateEquipment,
-  RAIL_EXCLUDED_EQUIPMENT,
+  type EquipmentRuleRow,
   type Library,
   type LibraryEntry,
+  type Rules,
 } from './lib/library'
-// The equipment rules themselves, on the module's surface: why an exercise is outside the allowed set. The seed test
-// runs them over seed/equipment/anytime-fitness.json and the pinned library.
-export { exclusionReason, toRules, type EquipmentRuleRow, type Rules } from './lib/library'
 export { deleteExclusion } from './lib/exclusions'
-export { onTemplateSwap, swapTemplateExercise, templateSwapped, type SwapInput, type SwapListener } from './lib/swap'
+export {
+  onTemplateSwap,
+  swapTemplateExercise,
+  templateSwapped,
+  type SwapInput,
+  type SwapListener,
+} from './lib/swap'
 export { revertTrainChange, trainChange } from './lib/changes'
 export { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate } from './lib/templates'
-export { deleteSession, deleteSet, finishSession, getSession, listSessions, logSet, startSession, updateSet } from './lib/sessions'
+export {
+  deleteSession,
+  deleteSet,
+  finishSession,
+  getSession,
+  listSessions,
+  logSet,
+  startSession,
+  updateSet,
+} from './lib/sessions'
 export { exerciseHistory, type SessionDigest, type TrainingDigest } from './lib/history'
 export { guardContext, guardWorkout } from './lib/guard'
-export { DEFAULT_REP_RANGE } from './lib/state'
 export type { ExerciseTags } from './lib/rows'
 
 /** Days of sessions the planning digest covers (SPEC §7: the last 14 days). */
-export const DIGEST_DAYS = 14
+const DIGEST_DAYS = 14
 
 export interface PlanningContext {
   date: string
@@ -97,7 +123,11 @@ export async function planningContext(deps: Deps, date: string): Promise<Plannin
     readinessOn(deps, date),
     deloadOn(deps, date),
     neighbourSessions(deps, date),
-    trainingDigest(deps, { from: addDays(date, -DIGEST_DAYS), to: addDays(date, -1), since: topSetsSince(date) }),
+    trainingDigest(deps, {
+      from: addDays(date, -DIGEST_DAYS),
+      to: addDays(date, -1),
+      since: topSetsSince(date),
+    }),
     listTemplates(deps),
   ])
   return { date, library, readiness, deload, neighbours, digest, templates }

@@ -12,11 +12,16 @@ export interface ConfirmedScan {
 
 /** Confirmed scans in scan order (scanned_at ascending). */
 export function inScanOrder<T extends ConfirmedScan>(scans: readonly T[]): T[] {
-  return [...scans].sort((a, b) => (a.record.scanned_at < b.record.scanned_at ? -1 : a.record.scanned_at > b.record.scanned_at ? 1 : 0))
+  return [...scans].sort((a, b) =>
+    a.record.scanned_at < b.record.scanned_at ? -1 : a.record.scanned_at > b.record.scanned_at ? 1 : 0,
+  )
 }
 
 /** The scan before `id` and the baseline (the first scan); null when `id` is itself the first (or not confirmed). */
-export function neighbours(ordered: readonly ConfirmedScan[], id: string): { previous: ConfirmedScan | null; baseline: ConfirmedScan | null } {
+export function neighbours(
+  ordered: readonly ConfirmedScan[],
+  id: string,
+): { previous: ConfirmedScan | null; baseline: ConfirmedScan | null } {
   const i = ordered.findIndex((s) => s.id === id)
   if (i <= 0) return { previous: null, baseline: null }
   return { previous: ordered[i - 1]!, baseline: ordered[0]! }
@@ -46,12 +51,13 @@ const signedKg = (v: number) => (Math.abs(v) < 0.05 ? kg(0) : `${v < 0 ? '−' :
 const pct = (share: number) => `${Math.round(share * 100)} %`
 
 /** Baseline conditions (SPEC §3): morning, fasted, no training the day before (≥ 24 h), normal hydration. */
-export function conditionDifferences(record: ScanRecord): string[] {
+function conditionDifferences(record: ScanRecord): string[] {
   const c = record.conditions
   const out: string[] = []
   if (c.time_of_day !== 'morning') out.push(`scanned in the ${c.time_of_day}`)
   if (c.fasted === false) out.push('not fasted')
-  if (c.hours_since_training !== null && c.hours_since_training < 24) out.push(`trained ${c.hours_since_training} h before`)
+  if (c.hours_since_training !== null && c.hours_since_training < 24)
+    out.push(`trained ${c.hours_since_training} h before`)
   if (c.matches_baseline === false && out.length === 0) out.push('conditions differ from the baseline')
   return out
 }
@@ -85,20 +91,31 @@ export function scanFlags(record: ScanRecord, vsPrevious: ScanChange | null): Sc
         code: 'visceral_up',
         message: `Visceral fat rose since ${vsPrevious.date}: level ${level > 0 ? '+' : ''}${level}, area ${area > 0 ? '+' : ''}${Math.round(area)} cm².`,
       })
-    if (f.fat_kg > 0) flags.push({ code: 'fat_gain', message: `Fat mass up ${kg(f.fat_kg)} since ${vsPrevious.date}.` })
+    if (f.fat_kg > 0)
+      flags.push({ code: 'fat_gain', message: `Fat mass up ${kg(f.fat_kg)} since ${vsPrevious.date}.` })
   }
   const diffs = conditionDifferences(record)
   if (diffs.length > 0)
     flags.push({
       code: 'conditions_mismatch',
-      message: `Not the baseline conditions (${diffs.join(', ')}): water and lean changes are less comparable.`.slice(0, 300),
+      message:
+        `Not the baseline conditions (${diffs.join(', ')}): water and lean changes are less comparable.`.slice(
+          0,
+          300,
+        ),
     })
   return flags
 }
 
 /** The engine-only debrief: a few plain sentences from the comparisons, for when no LLM answers. */
-export function plainNarrative(record: ScanRecord, vsPrevious: ScanChange | null, vsBaseline: ScanChange | null, flags: readonly ScanFlag[]): string {
-  if (!vsPrevious) return `Baseline scan on ${localDate(record.scanned_at)}: ${kg(record.weight_kg)}, ${record.body_fat_pct} % body fat, visceral level ${record.visceral_fat_level}.`
+export function plainNarrative(
+  record: ScanRecord,
+  vsPrevious: ScanChange | null,
+  vsBaseline: ScanChange | null,
+  flags: readonly ScanFlag[],
+): string {
+  if (!vsPrevious)
+    return `Baseline scan on ${localDate(record.scanned_at)}: ${kg(record.weight_kg)}, ${record.body_fat_pct} % body fat, visceral level ${record.visceral_fat_level}.`
   const f = vsPrevious.fat_vs_lean
   const parts = [
     `Since ${vsPrevious.date} (${vsPrevious.days} days): weight ${signedKg(f.weight_kg)}, fat ${signedKg(f.fat_kg)}, lean ${signedKg(f.lean_kg)}, body water ${signedKg(f.water_kg)}.`,
@@ -108,10 +125,15 @@ export function plainNarrative(record: ScanRecord, vsPrevious: ScanChange | null
     parts.push(`Lean mass was ${pct(Math.max(0, vsPrevious.lean_share_of_loss))} of the loss.`)
   const torso = vsPrevious.segments.torso
   const level = vsPrevious.deltas.visceral_fat_level
-  if (level !== undefined) parts.push(`Visceral fat level ${record.visceral_fat_level - level} → ${record.visceral_fat_level}${torso ? `; torso fat ${signedKg(torso.fat_kg)}` : ''}.`)
+  if (level !== undefined)
+    parts.push(
+      `Visceral fat level ${record.visceral_fat_level - level} → ${record.visceral_fat_level}${torso ? `; torso fat ${signedKg(torso.fat_kg)}` : ''}.`,
+    )
   if (vsBaseline && vsBaseline.scan_id !== vsPrevious.scan_id) {
     const b = vsBaseline.fat_vs_lean
-    parts.push(`Since the baseline (${vsBaseline.date}): fat ${signedKg(b.fat_kg)}, lean ${signedKg(b.lean_kg)}.`)
+    parts.push(
+      `Since the baseline (${vsBaseline.date}): fat ${signedKg(b.fat_kg)}, lean ${signedKg(b.lean_kg)}.`,
+    )
   }
   for (const flag of flags) parts.push(flag.message)
   return parts.join(' ').slice(0, 3000)

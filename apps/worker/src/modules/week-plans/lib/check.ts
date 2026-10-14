@@ -4,16 +4,26 @@
 //   targets   a fast date's stored kcal, protein and fat pass the same guards on their own (they go live if the fast is
 //             cancelled or moved); when they break a rail they become last week's, held to the rails (adjusted);
 //             each weekday that is not a fast date: calorie floor ≤ kcal ≤ calorie ceiling, protein ≥ protein_min_g,
-//             fat ≥ fat_min_g, protein × 4 + fat × 9 ≤ kcal (macro_energy); for ai/mcp a kcal move of more than 150 from last week's target for that weekday (last
-//             week's active plan, else the active plan version; a day already past: the kcal it had) is cut to the
-//             first 150 kcal step and reported
+//             fat ≥ fat_min_g, protein × 4 + fat × 9 ≤ kcal (macro_energy); for ai/mcp a kcal move of more than 150
+//             from last week's target for that weekday (last week's active plan, else the active plan version; a day
+//             already past: the kcal it had) is cut to the first 150 kcal step and reported
 //   sessions  every exercise in the allowed exercise set and in no excluded category; 12 ≤ Σ sets ≤ 28
 //   fasts     fast_logs is the only source of fast days (engine fastDay: one date per fast, e.g. a 19:00 → 19:00 fast
 //             makes the next day the fast day), so a fast date with no planned fast there is rejected (plan it with
 //             plan_fast first: planFast holds the monthly cap), and the week's planned fast days missing from the plan
 //             are added (adjusted); fast_dates then mirror the fast log
 // A rejected issue means the plan must not be stored or applied; adjusted issues describe the plan that is returned.
-import { addDays, applyGuards, holdMacros, KCAL_STEP, muscleScores, targetValue, today, type PlanTargetsLike, type TargetChange } from '@fitness/shared/engine'
+import {
+  addDays,
+  applyGuards,
+  holdMacros,
+  KCAL_STEP,
+  muscleScores,
+  targetValue,
+  today,
+  type PlanTargetsLike,
+  type TargetChange,
+} from '@fitness/shared/engine'
 import {
   Weekday,
   type Actor,
@@ -48,7 +58,11 @@ const issues = (xs: readonly { reason: string }[]) => xs.map((x) => x.reason).jo
  * (its stored daily_targets; with none, the rolling-window base), never a plan version made since — so a plan change
  * today and a week plan for this week are not two 150 kcal steps. The ±150 kcal step is measured from here.
  */
-async function lastWeekTargets(deps: Deps, week_start: string, plan: PlanTargetsLike): Promise<PlanTargetsLike> {
+async function lastWeekTargets(
+  deps: Deps,
+  week_start: string,
+  plan: PlanTargetsLike,
+): Promise<PlanTargetsLike> {
   const prev = addDays(week_start, -7)
   const now = today(deps.now())
   const [[last], history] = await Promise.all([
@@ -58,8 +72,13 @@ async function lastWeekTargets(deps: Deps, week_start: string, plan: PlanTargets
   const overrides: PlanTargetsLike['overrides'] = { ...plan.overrides }
   Weekday.options.forEach((w, i) => {
     const day = addDays(prev, i)
-    if (last && !last.plan.fast_dates.includes(day)) overrides[w] = { ...overrides[w], ...last.plan.targets[w] }
-    if (history && day < now) overrides[w] = { ...overrides[w], kcal: history.history.get(day) ?? targetValue(history.base, 'kcal', w) }
+    if (last && !last.plan.fast_dates.includes(day))
+      overrides[w] = { ...overrides[w], ...last.plan.targets[w] }
+    if (history && day < now)
+      overrides[w] = {
+        ...overrides[w],
+        kcal: history.history.get(day) ?? targetValue(history.base, 'kcal', w),
+      }
   })
   return { defaults: plan.defaults, overrides }
 }
@@ -76,13 +95,25 @@ export async function checkWeekPlan(
   const requested = [...new Set(input.plan.fast_dates)].sort()
 
   for (const d of requested)
-    if (!inWeek(d)) rejected.push({ where: 'fast_dates', rule: 'outside_week', reason: `Fast date ${d} is not in the week ${week_start} – ${end}` })
+    if (!inWeek(d))
+      rejected.push({
+        where: 'fast_dates',
+        rule: 'outside_week',
+        reason: `Fast date ${d} is not in the week ${week_start} – ${end}`,
+      })
   if (input.plan.scan_date && !inWeek(input.plan.scan_date))
-    rejected.push({ where: 'scan_date', rule: 'outside_week', reason: `Scan date ${input.plan.scan_date} is not in the week ${week_start} – ${end}` })
+    rejected.push({
+      where: 'scan_date',
+      rule: 'outside_week',
+      reason: `Scan date ${input.plan.scan_date} is not in the week ${week_start} – ${end}`,
+    })
 
   const hasSessions = Weekday.options.some((w) => input.plan.sessions[w] !== null)
   const library = hasSessions ? await loadLibrary(deps) : EMPTY_LIBRARY
-  const [ctx, fast_dates] = await Promise.all([guardContext(deps, library, actor), weekFastDates(deps, week_start)])
+  const [ctx, fast_dates] = await Promise.all([
+    guardContext(deps, library, actor),
+    weekFastDates(deps, week_start),
+  ])
   const baseline = await lastWeekTargets(deps, week_start, ctx.plan)
 
   // Fasts: the plan's fast_dates mirror the fast log's fast days in this week.
@@ -95,7 +126,11 @@ export async function checkWeekPlan(
     })
   const added = fast_dates.filter((d) => !requested.includes(d))
   if (added.length)
-    adjusted.push({ where: 'fast_dates', rule: 'fast_dates_mirror', reason: `Planned fasts make ${listed(added)} fast day(s) this week; added to the plan` })
+    adjusted.push({
+      where: 'fast_dates',
+      rule: 'fast_dates_mirror',
+      reason: `Planned fasts make ${listed(added)} fast day(s) this week; added to the plan`,
+    })
 
   // Targets: one guard batch over every weekday that is not a fast date. A fast date targets 0 kcal, but its stored
   // targets go live if the fast is cancelled or moved: they pass the same guards on their own, and when they break a
@@ -104,7 +139,14 @@ export async function checkWeekPlan(
   const changes: (TargetChange & { requested: number })[] = []
   const fastDays: Weekday[] = []
   const dayChanges = (weekday: Weekday) =>
-    GUARDED.map((field) => ({ kind: 'target' as const, field, weekday, from: 0, to: targets[weekday][field], requested: targets[weekday][field] }))
+    GUARDED.map((field) => ({
+      kind: 'target' as const,
+      field,
+      weekday,
+      from: 0,
+      to: targets[weekday][field],
+      requested: targets[weekday][field],
+    }))
   Weekday.options.forEach((weekday, i) => {
     if (fast_dates.includes(addDays(week_start, i))) fastDays.push(weekday)
     else changes.push(...dayChanges(weekday))
@@ -122,7 +164,8 @@ export async function checkWeekPlan(
     }
   }
   const guarded = applyGuards(changes, { ...ctx, plan: baseline, actor })
-  for (const r of guarded.rejected) rejected.push({ where: `${r.change.weekday}.${r.change.field}`, rule: r.rule, reason: r.reason })
+  for (const r of guarded.rejected)
+    rejected.push({ where: `${r.change.weekday}.${r.change.field}`, rule: r.rule, reason: r.reason })
   stepped(guarded.accepted)
   for (const weekday of fastDays) {
     const day = applyGuards(dayChanges(weekday), { ...ctx, plan: baseline, actor })
@@ -131,7 +174,10 @@ export async function checkWeekPlan(
       continue
     }
     const { rails } = ctx
-    const kcal = Math.min(Math.max(targetValue(baseline, 'kcal', weekday), rails.calorie_floor), rails.calorie_ceiling)
+    const kcal = Math.min(
+      Math.max(targetValue(baseline, 'kcal', weekday), rails.calorie_floor),
+      rails.calorie_ceiling,
+    )
     const protein_g = Math.max(targetValue(baseline, 'protein_g', weekday), rails.protein_min_g)
     const fat_g = Math.max(targetValue(baseline, 'fat_g', weekday), rails.fat_min_g)
     const safe = { kcal, ...holdMacros({ kcal, protein_g, fat_g }, rails) }
@@ -151,12 +197,20 @@ export async function checkWeekPlan(
       sessions[weekday] = null
       continue
     }
-    for (const r of guardWorkout(ctx, s.exercises).rejected) rejected.push({ where: `${weekday}.session`, rule: r.rule, reason: `${s.name}: ${r.reason}` })
+    for (const r of guardWorkout(ctx, s.exercises).rejected)
+      rejected.push({ where: `${weekday}.session`, rule: r.rule, reason: `${s.name}: ${r.reason}` })
     const tagged = s.exercises.flatMap((e) => {
       const tags = library.byId.get(e.exercise_id)
-      return tags ? [{ primary_muscles: tags.primary_muscles, secondary_muscles: tags.secondary_muscles, sets: e.sets }] : []
+      return tags
+        ? [{ primary_muscles: tags.primary_muscles, secondary_muscles: tags.secondary_muscles, sets: e.sets }]
+        : []
     })
-    sessions[weekday] = { template_id: s.template_id, name: s.name, exercises: s.exercises, muscle_scores: muscleScores(tagged) } satisfies WeekPlanSession
+    sessions[weekday] = {
+      template_id: s.template_id,
+      name: s.name,
+      exercises: s.exercises,
+      muscle_scores: muscleScores(tagged),
+    } satisfies WeekPlanSession
   }
 
   return { plan: { ...input.plan, targets, sessions, fast_dates }, rejected, adjusted }

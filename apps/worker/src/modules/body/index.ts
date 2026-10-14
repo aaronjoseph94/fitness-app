@@ -2,6 +2,11 @@
 // measurements (one per date and site; replaced likewise) and the trend series for a range. Creates are idempotent by
 // the client id: a replay returns the stored row untouched. A date after today (Edmonton) is refused: a weigh-in or tape
 // for a day that has not happened would move the trend, the forecast and milestones.
+// Interface:
+//   logWeighIn(deps, WeighInCreate)           → WeighIn
+//   updateWeighIn(deps, id, WeighInUpdate)    → WeighIn
+//   logMeasurements(deps, MeasurementsCreate) → Measurement[]
+//   getTrend(deps, { from, to })              → TrendSeries
 import type {
   DateRange,
   Measurement,
@@ -19,12 +24,13 @@ import { badRequest, notFound } from '../../lib/http-error'
 import { toMeasurement, toWeighIn } from './lib/rows'
 import { buildTrend } from './lib/trend'
 
-/** A phone clock a few minutes ahead of the Worker's at midnight still logs "today". */
+/** A device clock a few minutes ahead of the Worker's at midnight still logs "today". */
 const CLOCK_SKEW_MS = 5 * 60_000
 
 /** 400 when `date` is after today in Edmonton. */
 function assertPast(deps: Deps, date: string): void {
-  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS))) throw badRequest(`${date} has not happened yet; log today or an earlier day`)
+  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS)))
+    throw badRequest(`${date} has not happened yet; log today or an earlier day`)
 }
 
 /** POST /api/weights: store the weigh-in for its date, replacing any other weigh-in on that date. */
@@ -57,7 +63,13 @@ export async function updateWeighIn(deps: Deps, id: string, input: WeighInUpdate
     db.delete(weight_logs).where(and(eq(weight_logs.date, input.date), ne(weight_logs.id, id))),
     db
       .update(weight_logs)
-      .set({ date: input.date, weight_kg: input.weight_kg, note: input.note, actor: deps.actor, updated_at: deps.now().toISOString() })
+      .set({
+        date: input.date,
+        weight_kg: input.weight_kg,
+        note: input.note,
+        actor: deps.actor,
+        updated_at: deps.now().toISOString(),
+      })
       .where(eq(weight_logs.id, id)),
     db.select().from(weight_logs).where(eq(weight_logs.id, id)),
   ])
@@ -68,7 +80,10 @@ export async function updateWeighIn(deps: Deps, id: string, input: WeighInUpdate
 export async function logMeasurements(deps: Deps, input: MeasurementsCreate): Promise<Measurement[]> {
   const { db } = deps
   const ids = input.entries.map((e) => e.id)
-  const stored = await db.select({ id: measurements.id }).from(measurements).where(inArray(measurements.id, ids))
+  const stored = await db
+    .select({ id: measurements.id })
+    .from(measurements)
+    .where(inArray(measurements.id, ids))
   const replayed = new Set(stored.map((r) => r.id))
   const fresh = input.entries.filter((e) => !replayed.has(e.id))
   const select = db.select().from(measurements).where(inArray(measurements.id, ids))
@@ -78,7 +93,15 @@ export async function logMeasurements(deps: Deps, input: MeasurementsCreate): Pr
   const sites = fresh.map((e) => e.site)
   const [, , rows] = await db.batch([
     db.delete(measurements).where(and(eq(measurements.date, input.date), inArray(measurements.site, sites))),
-    db.insert(measurements).values(fresh.map((e) => ({ id: e.id, date: input.date, site: e.site, value_cm: e.value_cm, actor: deps.actor }))),
+    db.insert(measurements).values(
+      fresh.map((e) => ({
+        id: e.id,
+        date: input.date,
+        site: e.site,
+        value_cm: e.value_cm,
+        actor: deps.actor,
+      })),
+    ),
     select,
   ])
   const order = new Map(ids.map((id, i) => [id, i]))

@@ -4,7 +4,15 @@
 // whether its last draft failed, the active week plan's sessions, and the body groups no day's template reaches yet).
 // The week is the split over the settings' training days, not a week_plans row, so it repeats until the days change. A
 // split day's template is the oldest of its name (engine splitTemplateFor).
-import { BODY_GROUPS, missingGroups, splitNameKey, splitSlots, splitTemplateFor, today, weekStart } from '@fitness/shared/engine'
+import {
+  BODY_GROUPS,
+  missingGroups,
+  splitNameKey,
+  splitSlots,
+  splitTemplateFor,
+  today,
+  weekStart,
+} from '@fitness/shared/engine'
 import {
   Weekday,
   WeekPlanContent,
@@ -22,12 +30,10 @@ import { jobInsertUnless, runSoon } from '../../jobs'
 import { hasModelKey } from '../../llm'
 import { proposeTrainingDays } from '../../settings'
 import { LLM_FETCHES, USER_PRIORITY } from './plan'
-import { pendingSplitDrafts } from './split'
+import { DRAFT_WINDOW_DAYS, hoursAgo, pendingSplitDrafts } from './split'
 
-/** At most this many jobs start now (each runs up to LLM_FETCHES fetches in this invocation); the rest wait for the sweep. */
+/** At most this many jobs start now (each up to LLM_FETCHES fetches in this invocation); the rest wait for the sweep. */
 const RUN_NOW_MAX = 3
-/** A failed draft job counts for its day's `failed` for this long (the drafts' window, lib/split). */
-const FAILED_WINDOW_DAYS = 28
 
 /** The split days a workout_template job is queued or running for (payload slot name; ai_jobs status index). */
 const draftingJobs = (deps: Deps) =>
@@ -36,21 +42,29 @@ const draftingJobs = (deps: Deps) =>
     .from(ai_jobs)
     .where(and(inArray(ai_jobs.status, ['queued', 'running']), eq(ai_jobs.type, 'workout_template')))
 
-/** The workout_template jobs that ended (done or failed) within FAILED_WINDOW_DAYS, newest first (ai_jobs status index). */
+/**
+ * The workout_template jobs that ended (done or failed) within the drafts' window (lib/split DRAFT_WINDOW_DAYS), newest
+ * first (ai_jobs status index): a failed one counts for its day's `failed` that long.
+ */
 const endedDraftJobs = (deps: Deps) =>
   deps.db
-    .select({ name: sql<unknown>`json_extract(${ai_jobs.payload}, '$.slot.name')`, status: ai_jobs.status, created_at: ai_jobs.created_at })
+    .select({
+      name: sql<unknown>`json_extract(${ai_jobs.payload}, '$.slot.name')`,
+      status: ai_jobs.status,
+      created_at: ai_jobs.created_at,
+    })
     .from(ai_jobs)
     .where(
       and(
         inArray(ai_jobs.status, ['done', 'failed']),
         eq(ai_jobs.type, 'workout_template'),
-        gte(ai_jobs.created_at, new Date(deps.now().getTime() - FAILED_WINDOW_DAYS * 86_400_000).toISOString()),
+        gte(ai_jobs.created_at, hoursAgo(deps, DRAFT_WINDOW_DAYS * 24)),
       ),
     )
     .orderBy(desc(ai_jobs.created_at))
 
-const keysOf = (names: readonly unknown[]) => new Set(names.flatMap((n) => (typeof n === 'string' ? [splitNameKey(n)] : [])))
+const keysOf = (names: readonly unknown[]) =>
+  new Set(names.flatMap((n) => (typeof n === 'string' ? [splitNameKey(n)] : [])))
 const isKey = (name: unknown, key: string) => typeof name === 'string' && splitNameKey(name) === key
 
 /**
@@ -61,7 +75,8 @@ const isKey = (name: unknown, key: string) => typeof name === 'string' && splitN
 function draftJobInsert(deps: Deps, payload: JobPayload<'workout_template'>) {
   const drafting = sql`${ai_jobs.type} = 'workout_template' AND ${ai_jobs.status} IN ('queued', 'running')
     AND lower(trim(json_extract(${ai_jobs.payload}, '$.slot.name'))) = ${splitNameKey(payload.slot.name)}`
-  return jobInsertUnless(deps, { type: 'workout_template', payload, priority: USER_PRIORITY }, drafting).statement
+  return jobInsertUnless(deps, { type: 'workout_template', payload, priority: USER_PRIORITY }, drafting)
+    .statement
 }
 
 /**
@@ -80,7 +95,10 @@ function draftJobInsert(deps: Deps, payload: JobPayload<'workout_template'>) {
  * Each draft is the job's own (lib/split: it supersedes that day's older pending drafts), so pressing it twice leaves
  * one pending draft per day.
  */
-export async function planTrainingWeek(deps: Deps, input: PlanWeekRequest & { reason?: string }): Promise<PlanWeekResult> {
+export async function planTrainingWeek(
+  deps: Deps,
+  input: PlanWeekRequest & { reason?: string },
+): Promise<PlanWeekResult> {
   if (!(await hasModelKey(deps, 'workout_template')))
     throw new HttpError(409, 'no_model_key', 'No AI model has a key: add a model key in Settings → AI first')
   const { db } = deps
@@ -90,16 +108,22 @@ export async function planTrainingWeek(deps: Deps, input: PlanWeekRequest & { re
   ])
   if (!s) throw notFound('Settings (seed the database)')
   const slots = splitSlots(input.training_days ?? s.training_days)
-  const key = (name: string) => splitNameKey(name)
-  const only = input.only ? new Set(input.only.map(key)) : null
-  const unknown = input.only?.filter((name) => !slots.some((slot) => key(slot.name) === key(name))) ?? []
+  const only = input.only ? new Set(input.only.map((name) => splitNameKey(name))) : null
+  const unknown =
+    input.only?.filter((name) => !slots.some((slot) => splitNameKey(slot.name) === splitNameKey(name))) ?? []
   if (unknown.length)
-    throw badRequest(`Not a day of the split: ${unknown.join(', ')} (the split is ${slots.map((slot) => slot.name).join(', ') || 'empty'})`)
+    throw badRequest(
+      `Not a day of the split: ${unknown.join(', ')} (the split is ${slots.map((slot) => slot.name).join(', ') || 'empty'})`,
+    )
 
-  const days = input.training_days ? await proposeTrainingDays(deps, { training_days: input.training_days, reason: input.reason }) : null
+  const days = input.training_days
+    ? await proposeTrainingDays(deps, { training_days: input.training_days, reason: input.reason })
+    : null
   const templated = keysOf(templates.map((t) => t.name))
-  const wanted = slots.filter((slot) => !only || only.has(key(slot.name)))
-  const [first, ...rest] = wanted.map((slot) => draftJobInsert(deps, templated.has(key(slot.name)) ? { slot, replace: true } : { slot }))
+  const wanted = slots.filter((slot) => !only || only.has(splitNameKey(slot.name)))
+  const [first, ...rest] = wanted.map((slot) =>
+    draftJobInsert(deps, templated.has(splitNameKey(slot.name)) ? { slot, replace: true } : { slot }),
+  )
   const written = first ? await db.batch([first, ...rest]) : []
   const queued = wanted.flatMap((slot, i) => (written[i]?.[0] ? [{ slot, id: written[i][0].id }] : []))
 
@@ -151,11 +175,18 @@ export async function trainingWeek(deps: Deps): Promise<TrainingWeek> {
   ])
   if (!s) throw notFound('Settings (seed the database)')
   const busy = keysOf(drafting.map((j) => j.name))
-  const split = splitSlots(s.training_days).map((slot) => ({ slot, template: splitTemplateFor(templates, slot.name) }))
+  const split = splitSlots(s.training_days).map((slot) => ({
+    slot,
+    template: splitTemplateFor(templates, slot.name),
+  }))
   const ids = split.flatMap((d) => (d.template ? [d.template.id] : []))
   const items = ids.length
     ? await db
-        .select({ template_id: template_exercises.template_id, sets: template_exercises.sets, primary_muscles: exercises.primary_muscles })
+        .select({
+          template_id: template_exercises.template_id,
+          sets: template_exercises.sets,
+          primary_muscles: exercises.primary_muscles,
+        })
         .from(template_exercises)
         .innerJoin(exercises, eq(exercises.id, template_exercises.exercise_id))
         .where(inArray(template_exercises.template_id, ids))
@@ -171,7 +202,13 @@ export async function trainingWeek(deps: Deps): Promise<TrainingWeek> {
     return {
       ...slot,
       template: t
-        ? { id: t.id, name: t.name, exercise_count: own.length, sets: own.reduce((n, i) => n + i.sets, 0), muscle_scores: t.muscle_scores ?? {} }
+        ? {
+            id: t.id,
+            name: t.name,
+            exercise_count: own.length,
+            sets: own.reduce((n, i) => n + i.sets, 0),
+            muscle_scores: t.muscle_scores ?? {},
+          }
         : null,
       draft: d ? { proposal_id: d.id, replaces_template_id: t?.id ?? null } : null,
       drafting: busy.has(key),
@@ -184,5 +221,10 @@ export async function trainingWeek(deps: Deps): Promise<TrainingWeek> {
     sessions && Weekday.options.some((d) => sessions[d])
       ? Object.fromEntries(Weekday.options.map((d) => [d, sessions[d]?.name ?? null]))
       : null
-  return { training_days: s.training_days, slots, week_plan_sessions, uncovered: missingGroups(BODY_GROUPS, muscles) }
+  return {
+    training_days: s.training_days,
+    slots,
+    week_plan_sessions,
+    uncovered: missingGroups(BODY_GROUPS, muscles),
+  }
 }

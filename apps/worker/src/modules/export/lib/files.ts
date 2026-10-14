@@ -1,6 +1,6 @@
 // Owns: the stored files an export carries — every R2 key the tables reference (meal photos, progress photos, scan
-// sheets, custom exercise photos, report PDFs; never the monthly backups) — and writing one restored file back under its key with a content
-// type read from its extension (the zip keeps no metadata).
+// sheets, custom exercise photos, report PDFs; never the monthly backups) — and writing one restored file back under
+// its key with a content type read from its extension (the zip keeps no metadata).
 import { FileKey } from '@fitness/shared/schemas'
 import { sql } from 'drizzle-orm'
 import type { Db } from '../../../db'

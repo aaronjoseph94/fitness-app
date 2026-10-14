@@ -4,7 +4,7 @@
 import { RejectedPlanChange, ScheduledPlanChange, type PlanVersion } from '@fitness/shared/schemas'
 import { and, eq, inArray, max } from 'drizzle-orm'
 import * as z from 'zod'
-import { ai_events, plan_versions, profile, settings, type Row } from '../../../db'
+import { ai_events, chunk, plan_versions, profile, settings, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
 
@@ -27,7 +27,11 @@ export async function loadPlanContext(deps: Deps): Promise<PlanContext> {
     deps.db.select({ v: max(plan_versions.version) }).from(plan_versions),
   ])
   if (!s[0] || !a[0])
-    throw new HttpError(503, 'not_seeded', 'No settings or active plan version; seed the database (pnpm --filter @fitness/worker setup:local)')
+    throw new HttpError(
+      503,
+      'not_seeded',
+      'No settings or active plan version; seed the database (pnpm --filter @fitness/worker setup:local)',
+    )
   return { settings: s[0], profile: p[0] ?? null, active: a[0], max_version: m[0]?.v ?? a[0].version }
 }
 
@@ -43,14 +47,15 @@ const VersionEventBody = z.object({
 /** The guards' verdicts per version id, from the versions' own 'change' events (indexed by plan_version_id). */
 export async function loadVerdicts(deps: Deps, ids: readonly string[]): Promise<Map<string, Verdicts>> {
   const out = new Map<string, Verdicts>()
-  for (let i = 0; i < ids.length; i += 90) {
+  for (const part of chunk(ids, 90)) {
     const rows = await deps.db
       .select({ plan_version_id: ai_events.plan_version_id, body: ai_events.body })
       .from(ai_events)
-      .where(and(inArray(ai_events.plan_version_id, ids.slice(i, i + 90)), eq(ai_events.kind, 'change')))
+      .where(and(inArray(ai_events.plan_version_id, part), eq(ai_events.kind, 'change')))
     for (const r of rows) {
       const parsed = VersionEventBody.safeParse(r.body)
-      if (parsed.success && r.plan_version_id) out.set(r.plan_version_id, { rejected: parsed.data.rejected, scheduled: parsed.data.scheduled })
+      if (parsed.success && r.plan_version_id)
+        out.set(r.plan_version_id, { rejected: parsed.data.rejected, scheduled: parsed.data.scheduled })
     }
   }
   return out

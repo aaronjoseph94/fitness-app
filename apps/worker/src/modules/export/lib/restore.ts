@@ -93,7 +93,7 @@ export function checkRows(spec: TableSpec, rows: ExportRow[]): string[] {
 const field = (c: string) => `json_extract(value, ${`'$.${JSON.stringify(c)}'`})`
 
 /** The statements that write `rows` (JSON text `json`, bound as ?1) into `spec` with the given columns, in batch order. */
-export function upsertStatements(deps: Deps, spec: TableSpec, columns: string[], json: string): Statement[] {
+function upsertStatements(deps: Deps, spec: TableSpec, columns: string[], json: string): Statement[] {
   const table = ident(spec.name)
   const ids = `(SELECT ${field('id')} FROM json_each(?1))`
   const statements: Statement[] = [{ sql: 'PRAGMA defer_foreign_keys = on', params: [] }]

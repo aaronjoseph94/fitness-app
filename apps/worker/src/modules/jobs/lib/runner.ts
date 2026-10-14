@@ -9,15 +9,15 @@ import { BudgetError, DeadlineError as LlmDeadlineError, ProvidersExhaustedError
 import { handlerFor } from './registry'
 
 /** Per-attempt deadline (waitUntil allows 30 s). */
-export const DEADLINE_MS = 25_000
+const DEADLINE_MS = 25_000
 /** A running job's lease; the sweep requeues a job still `running` after it. */
-export const LEASE_MS = 30_000
+const LEASE_MS = 30_000
 /** Attempts before a job that keeps throwing ordinary errors is marked failed. */
 export const MAX_ATTEMPTS = 3
 /** Attempts before a job that keeps running out of time, budget or quota is marked failed. */
 export const MAX_REQUEUES = 6
 /** The outcome error of a runner that finished after its lease was taken back (its result is dropped). */
-export const LEASE_LOST = 'lease_lost'
+const LEASE_LOST = 'lease_lost'
 
 export type JobOutcome = { id: string; status: 'done' | 'queued' | 'failed' | 'skipped'; error?: string }
 
@@ -60,9 +60,11 @@ type Verdict = { kind: 'requeue'; afterMs: number; cap: number } | { kind: 'fail
  * A handler that should not wait for providers (meal_analysis: Aaron is looking at the meal) throws JobFailed itself.
  */
 function classify(e: unknown, attempts: number): Verdict {
-  if (e instanceof DeadlineError || e instanceof LlmDeadlineError) return { kind: 'requeue', afterMs: MINUTE_MS, cap: MAX_REQUEUES }
+  if (e instanceof DeadlineError || e instanceof LlmDeadlineError)
+    return { kind: 'requeue', afterMs: MINUTE_MS, cap: MAX_REQUEUES }
   if (e instanceof BudgetError) return { kind: 'requeue', afterMs: 0, cap: MAX_REQUEUES }
-  if (e instanceof ProvidersExhaustedError && e.quotaOnly) return { kind: 'requeue', afterMs: 60 * MINUTE_MS, cap: MAX_REQUEUES }
+  if (e instanceof ProvidersExhaustedError && e.quotaOnly)
+    return { kind: 'requeue', afterMs: 60 * MINUTE_MS, cap: MAX_REQUEUES }
   if (e instanceof RetryLater) return { kind: 'requeue', afterMs: e.afterMs, cap: MAX_REQUEUES }
   if (e instanceof JobFailed) return { kind: 'fail' }
   return { kind: 'requeue', afterMs: backoffMs(attempts), cap: MAX_ATTEMPTS }
@@ -136,7 +138,10 @@ export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
   try {
     const { output, meta } = await Promise.race([
       // A job's writes are the AI's, whoever queued it (Actor 'ai' on events and rows).
-      handler.run({ ...deps, actor: 'ai' }, { id, type, payload: payload.data, attempts, signal: controller.signal }),
+      handler.run(
+        { ...deps, actor: 'ai' },
+        { id, type, payload: payload.data, attempts, signal: controller.signal },
+      ),
       timeout.expired,
     ])
     const result = JobOutputs[type].parse(output)
@@ -158,7 +163,8 @@ export async function runJob(deps: Deps, id: string): Promise<JobOutcome> {
       if (!(await finish({ status: 'failed', error }))) return lost
       return { id, status: 'failed', error }
     }
-    if (!(await finish({ status: 'queued', error, run_after: iso(deps.now().getTime() + verdict.afterMs) }))) return lost
+    if (!(await finish({ status: 'queued', error, run_after: iso(deps.now().getTime() + verdict.afterMs) })))
+      return lost
     return { id, status: 'queued', error }
   } finally {
     timeout.clear()

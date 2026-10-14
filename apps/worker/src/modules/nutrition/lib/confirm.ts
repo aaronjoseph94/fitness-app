@@ -4,14 +4,14 @@
 import { addDays, today } from '@fitness/shared/engine'
 import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { meal_items, meals } from '../../../db'
+import { meal_items, meals, runBatch } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { jobInsertOnce, runSoon } from '../../jobs'
 
 /** Every item at or above this confidence (meal_items.confidence: min of the AI's and the food match's). */
-export const AUTO_CONFIRM_MIN_CONFIDENCE = 0.8
+const AUTO_CONFIRM_MIN_CONFIDENCE = 0.8
 /** Minutes a meal sits in review, untouched (updated_at), before auto-confirm. */
-export const AUTO_CONFIRM_AFTER_MS = 10 * 60_000
+const AUTO_CONFIRM_AFTER_MS = 10 * 60_000
 /** The card after a meal is user-facing: it runs before background work. */
 const DAY_ADJUSTMENT_PRIORITY = 8
 /** Review meals older than this many days are left for Aaron (a stale review is not "just logged"). */
@@ -60,13 +60,20 @@ export async function autoConfirmMeals(deps: Deps): Promise<number> {
     deps.db
       .update(meals)
       .set({ status: 'confirmed', updated_at: now.toISOString() })
-      .where(and(inArray(meals.id, ready.map((m) => m.id)), eq(meals.status, 'review'))),
+      .where(
+        and(
+          inArray(
+            meals.id,
+            ready.map((m) => m.id),
+          ),
+          eq(meals.status, 'review'),
+        ),
+      ),
   ]
   const todays = ready.find((m) => m.date === today(now))
   const job = todays ? await dayAdjustmentAfterConfirm(deps, todays) : null
   if (job) statements.push(job.statement)
-  const [first, ...rest] = statements
-  await deps.db.batch([first!, ...rest])
+  await runBatch(deps.db, statements)
   if (job) runSoon(deps, job.id)
   return ready.length
 }

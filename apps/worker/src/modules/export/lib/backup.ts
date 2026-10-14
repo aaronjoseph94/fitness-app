@@ -13,7 +13,7 @@ const KIND_PREFIX = 'backup:'
 /** Rows per SQLite read while dumping one table (halved automatically for long rows). */
 const BACKUP_READ_ROWS = 1000
 
-export const backupKey = (month: string, table: ExportTable) => `reports/backup/${month}/${table}.json`
+const backupKey = (month: string, table: ExportTable) => `reports/backup/${month}/${table}.json`
 
 export interface BackupStep {
   /** The table written on this tick, or null when the month's backup was already complete. */

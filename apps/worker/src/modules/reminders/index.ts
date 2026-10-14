@@ -11,7 +11,12 @@
 // is skipped without touching the database again. A send that reaches no device at all releases its claim, so the
 // next tick inside the 30-minute grace window retries; so does a clock reminder whose check throws after its claim.
 import { localTime, today } from '@fitness/shared/engine'
-import { DEFAULT_REMINDER_PREFS, type PushResult, type ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
+import {
+  DEFAULT_REMINDER_PREFS,
+  type PushResult,
+  type ReminderKind,
+  type ReminderPrefs,
+} from '@fitness/shared/schemas'
 import { settings } from '../../db'
 import { registerProposalHandler } from '../plan'
 import { reachableKinds, sendPush, type PushDeps } from '../push'
@@ -42,7 +47,10 @@ const RULES: [ReminderKind, (tick: Tick, now: Date) => Promise<Due[]>][] = [
   ['review_ready', reviewReady],
 ]
 
-/** One cron tick of reminders. `deps.now()` decides what is due, so tests pin the clock; deps.pushSender swaps the adapter. */
+/**
+ * One cron tick of reminders. `deps.now()` decides what is due, so tests pin the clock; deps.pushSender swaps the
+ * adapter.
+ */
 export async function dispatchReminders(deps: PushDeps): Promise<ReminderRun> {
   const now = deps.now()
   const time = localTime(now)
@@ -82,6 +90,7 @@ export async function dispatchReminders(deps: PushDeps): Promise<ReminderRun> {
   return { sent }
 }
 
-const log = (msg: string, extra: Record<string, unknown>) => console.error(JSON.stringify({ level: 'error', msg, ...extra }))
+const log = (msg: string, extra: Record<string, unknown>) =>
+  console.error(JSON.stringify({ level: 'error', msg, ...extra }))
 
 registerProposalHandler('reminder_time', { accept: acceptReminderTime })

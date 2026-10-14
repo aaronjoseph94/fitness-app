@@ -30,7 +30,10 @@ export const EXTRACT_PROMPT = `Read this Evolt 360 result sheet. Fields:
   { "left_arm": { "lean_kg": ..., "fat_kg": ... }, ... }.
 Ignore reference ranges, nutrition suggestions and the abdominal circumference.`
 
-/** What the Clerk returns for a debrief: a short narrative and at most three target changes. The numbers are the engine's. */
+/**
+ * What the Clerk returns for a debrief: a short narrative and at most three target changes. The numbers are the
+ * engine's.
+ */
 export const DebriefOutput = z.object({
   narrative: z.string().min(1).max(1200),
   proposals: z.array(PlanChange).max(3),

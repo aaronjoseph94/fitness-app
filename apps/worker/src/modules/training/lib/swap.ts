@@ -11,10 +11,10 @@ import type { ProposalApplied, ProposalBody, Template, TemplateExerciseInput } f
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { applySafeChange, type ProposalOf, type SafeChangeResult } from '../../plan'
-import { replaceWithDraft, templateNamed } from './changes'
+import { replaceWithDraft } from './changes'
 import { guardContext } from './guard'
 import { loadLibrary, type Library, type LibraryEntry } from './library'
-import { createTemplate, getTemplate, updateTemplate } from './templates'
+import { createTemplate, getTemplate, splitTemplate, updateTemplate } from './templates'
 
 export interface SwapInput {
   template_id: string
@@ -39,7 +39,14 @@ export async function templateSwapped(deps: Deps, swap: SwapInput): Promise<void
     try {
       await listener(deps, swap)
     } catch (err) {
-      console.error(JSON.stringify({ level: 'error', msg: 'template swap listener failed', template_id: swap.template_id, error: String(err) }))
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          msg: 'template swap listener failed',
+          template_id: swap.template_id,
+          error: String(err),
+        }),
+      )
     }
   }
 }
@@ -49,23 +56,46 @@ export async function templateSwapped(deps: Deps, swap: SwapInput): Promise<void
  * muscle, and the same kind of lift (engine sameLiftKind: strength / powerlifting / no category together, any other
  * category only with itself), so no path swaps Leg Press for a bike the picker would never offer.
  */
-function checkSwap(template: Template, library: Library, input: SwapInput): { from: LibraryEntry; to: LibraryEntry } {
+function checkSwap(
+  template: Template,
+  library: Library,
+  input: SwapInput,
+): { from: LibraryEntry; to: LibraryEntry } {
   const from = library.byId.get(input.from_exercise_id)
   const to = library.byId.get(input.to_exercise_id)
   if (!from || !template.exercises.some((e) => e.exercise_id === from.id))
-    throw new HttpError(422, 'not_in_template', `Exercise ${input.from_exercise_id} is not in the template "${template.name}"`)
+    throw new HttpError(
+      422,
+      'not_in_template',
+      `Exercise ${input.from_exercise_id} is not in the template "${template.name}"`,
+    )
   if (!to) throw notFound('Exercise')
   if (template.exercises.some((e) => e.exercise_id === to.id))
-    throw new HttpError(422, 'already_in_template', `${to.name} is already in the template "${template.name}"`)
+    throw new HttpError(
+      422,
+      'already_in_template',
+      `${to.name} is already in the template "${template.name}"`,
+    )
   if (!from.primary_muscles.some((m) => to.primary_muscles.includes(m)))
-    throw new HttpError(422, 'different_primary_muscle', `${to.name} does not share a primary muscle with ${from.name}; a swap stays within the same muscle`)
-  if (!sameLiftKind(from, to)) throw new HttpError(422, 'different_kind_of_lift', `${to.name} is not the same kind of lift as ${from.name}`)
+    throw new HttpError(
+      422,
+      'different_primary_muscle',
+      `${to.name} does not share a primary muscle with ${from.name}; a swap stays within the same muscle`,
+    )
+  if (!sameLiftKind(from, to))
+    throw new HttpError(
+      422,
+      'different_kind_of_lift',
+      `${to.name} is not the same kind of lift as ${from.name}`,
+    )
   return { from, to }
 }
 
 const swapped = (template: Template, input: SwapInput): TemplateExerciseInput[] =>
   template.exercises.map(({ id: _id, ...e }) =>
-    e.exercise_id === input.from_exercise_id ? { ...e, exercise_id: input.to_exercise_id, target_load_kg: null, note: null } : e,
+    e.exercise_id === input.from_exercise_id
+      ? { ...e, exercise_id: input.to_exercise_id, target_load_kg: null, note: null }
+      : e,
   )
 
 /**
@@ -75,8 +105,14 @@ const swapped = (template: Template, input: SwapInput): TemplateExerciseInput[] 
  * answers 422 instead of being written.
  */
 async function writeSwap(deps: Deps, template: Template, input: SwapInput): Promise<Template> {
-  const updated = await updateTemplate({ ...deps, actor: 'user' }, template.id, { exercises: swapped(template, input) })
-  await templateSwapped(deps, { template_id: template.id, from_exercise_id: input.from_exercise_id, to_exercise_id: input.to_exercise_id })
+  const updated = await updateTemplate({ ...deps, actor: 'user' }, template.id, {
+    exercises: swapped(template, input),
+  })
+  await templateSwapped(deps, {
+    template_id: template.id,
+    from_exercise_id: input.from_exercise_id,
+    to_exercise_id: input.to_exercise_id,
+  })
   return updated
 }
 
@@ -85,7 +121,10 @@ async function writeSwap(deps: Deps, template: Template, input: SwapInput): Prom
  * deps.actor — applied now (Aaron, Claude; Ask AI only with auto_apply_safe on) or stored as a pending 'template_swap'
  * proposal.
  */
-export async function swapTemplateExercise(deps: Deps, input: SwapInput): Promise<SafeChangeResult<Template>> {
+export async function swapTemplateExercise(
+  deps: Deps,
+  input: SwapInput,
+): Promise<SafeChangeResult<Template>> {
   const [template, library] = await Promise.all([getTemplate(deps, input.template_id), loadLibrary(deps)])
   const { from, to } = checkSwap(template, library, input)
   const body: SwapBody = {
@@ -107,13 +146,26 @@ export async function swapTemplateExercise(deps: Deps, input: SwapInput): Promis
   })
 }
 
-/** Accepting a template_swap proposal: the checks and the allowed set again (the library may have changed), then the write. */
-export async function acceptTemplateSwap(deps: Deps, proposal: ProposalOf<'template_swap'>): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
-  const [template, library] = await Promise.all([getTemplate(deps, proposal.body.template_id), loadLibrary(deps)])
+/**
+ * Accepting a template_swap proposal: the checks and the allowed set again (the library may have changed), then the
+ * write.
+ */
+export async function acceptTemplateSwap(
+  deps: Deps,
+  proposal: ProposalOf<'template_swap'>,
+): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
+  const [template, library] = await Promise.all([
+    getTemplate(deps, proposal.body.template_id),
+    loadLibrary(deps),
+  ])
   const { from, to } = checkSwap(template, library, proposal.body)
   const ctx = await guardContext(deps, library, proposal.actor)
-  const { rejected } = applyGuards<ExerciseSwapChange>([{ kind: 'exercise_swap', from_exercise_id: from.id, to_exercise_id: to.id }], ctx)
-  if (rejected.length) throw new HttpError(422, rejected[0]!.rule, rejected.map((r) => r.reason).join('; '), rejected)
+  const { rejected } = applyGuards<ExerciseSwapChange>(
+    [{ kind: 'exercise_swap', from_exercise_id: from.id, to_exercise_id: to.id }],
+    ctx,
+  )
+  if (rejected.length)
+    throw new HttpError(422, rejected[0]!.rule, rejected.map((r) => r.reason).join('; '), rejected)
   await writeSwap(deps, template, proposal.body)
   return { plan_version_id: null, applied: { entity: 'template', id: template.id } }
 }
@@ -125,9 +177,12 @@ export async function acceptTemplateSwap(deps: Deps, proposal: ProposalOf<'templ
  * template (splitNameKey) replaces that template in place instead, its old version kept on the proposal for Undo
  * (lib/changes).
  */
-export async function acceptWorkout(deps: Deps, proposal: ProposalOf<'workout'>): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
+export async function acceptWorkout(
+  deps: Deps,
+  proposal: ProposalOf<'workout'>,
+): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
   const { body } = proposal
-  const replacing = body.workout.name ? await templateNamed(deps, body.workout.name, proposal.id) : null
+  const replacing = body.workout.name ? await splitTemplate(deps, body.workout.name, [proposal.id]) : null
   if (replacing) return { plan_version_id: null, applied: await replaceWithDraft(deps, proposal, replacing) }
   const template = await createTemplate(
     { ...deps, actor: proposal.actor },

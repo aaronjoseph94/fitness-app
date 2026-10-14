@@ -1,4 +1,5 @@
-// Owns: typed Drizzle inserts → literal D1-safe seed SQL (no bound params, ≤ 50 rows and < 100 KB per statement), and deterministic seed ids.
+// Owns: typed Drizzle inserts → literal D1-safe seed SQL (no bound params, ≤ 50 rows and < 100 KB per statement), and
+// deterministic seed ids.
 // Seed ids are UUID v5 of a stable name, so re-running a seed hits the same rows and local and remote ids agree.
 import { createHash } from 'node:crypto'
 import { getTableColumns, sql, type SQL } from 'drizzle-orm'

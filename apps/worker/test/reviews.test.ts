@@ -53,10 +53,23 @@ const W40 = '2026-09-28'
 const W41 = '2026-10-05'
 const benchId = crypto.randomUUID()
 const pressId = crypto.randomUUID()
-const baseline = { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const baseline = {
+  kcal: 1400,
+  protein_g: 130,
+  carbs_g: 119,
+  fat_g: 45,
+  fibre_g: 30,
+  water_ml: 3000,
+  steps: 8000,
+}
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
-/** Two confirmed meals a day: [lunch kcal, lunch protein, dinner kcal, dinner protein]; each item 50 g carbs, 10 g fat, 5 g fibre. */
+/**
+ * Two confirmed meals a day: [lunch kcal, lunch protein, dinner kcal, dinner protein]; each item 50 g carbs, 10 g fat,
+ * 5 g fibre.
+ */
 const MEALS: Record<string, [number, number, number, number]> = {
   '2026-09-28': [600, 50, 800, 70], // 1,400 kcal, 120 g protein
   '2026-09-29': [700, 60, 700, 80], // 1,400 kcal, 140 g
@@ -86,16 +99,36 @@ function mealRows(date: string, [lk, lp, dk, dp]: [number, number, number, numbe
   })
 }
 
-const session = (date: string, start: string, end: string) => ({ id: crypto.randomUUID(), date, started_at: start, ended_at: end, origin: 'blank' as const })
+const session = (date: string, start: string, end: string) => ({
+  id: crypto.randomUUID(),
+  date,
+  started_at: start,
+  ended_at: end,
+  origin: 'blank' as const,
+})
 const mon = session(W40, '2026-09-28T23:00:00.000Z', '2026-09-29T00:00:00.000Z')
 const thu = session('2026-10-01', '2026-10-01T23:00:00.000Z', '2026-10-02T00:00:00.000Z')
 const sets = (session_id: string, exercise_id: string, reps: number, load_kg: number) =>
   [0, 1, 2].map((set_index) => ({ session_id, exercise_id, set_index, reps, load_kg, completed: true }))
 
 beforeAll(async () => {
-  const exercise = { category: 'strength' as const, level: 'beginner' as const, instructions: [], image_paths: [], source: 'user' as const, custom: true }
+  const exercise = {
+    category: 'strength' as const,
+    level: 'beginner' as const,
+    instructions: [],
+    image_paths: [],
+    source: 'user' as const,
+    custom: true,
+  }
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-26',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -113,7 +146,12 @@ beforeAll(async () => {
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
       targets: { defaults: baseline, overrides: {} },
-      forecast: { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      forecast: {
+        finish_date: '2027-06-17',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
     // Trend: 95.1 seeds it on 2026-09-26 and carries forward; 94.3 on Sunday → 95.1 + 0.25 × (94.3 − 95.1) = 94.9.
     db.insert(weight_logs).values([
@@ -129,7 +167,11 @@ beforeAll(async () => {
         ['2026-10-01', 2000],
         ['2026-10-03', 2500],
         ['2026-10-04', 3000],
-      ].map(([date, amount_ml]) => ({ date: date as string, logged_at: `${date}T18:00:00.000Z`, amount_ml: amount_ml as number })),
+      ].map(([date, amount_ml]) => ({
+        date: date as string,
+        logged_at: `${date}T18:00:00.000Z`,
+        amount_ml: amount_ml as number,
+      })),
     ),
     db.insert(step_logs).values([
       { date: '2026-09-28', steps: 8000 },
@@ -151,22 +193,50 @@ beforeAll(async () => {
       planned: true,
     }),
     db.insert(exercises).values([
-      { id: benchId, slug: 'test-bench', name: 'Dumbbell bench press', equipment: 'dumbbell', primary_muscles: ['chest'], secondary_muscles: ['triceps'], ...exercise },
-      { id: pressId, slug: 'test-leg-press', name: 'Leg press', equipment: 'machine', primary_muscles: ['quadriceps'], secondary_muscles: ['glutes'], ...exercise },
+      {
+        id: benchId,
+        slug: 'test-bench',
+        name: 'Dumbbell bench press',
+        equipment: 'dumbbell',
+        primary_muscles: ['chest'],
+        secondary_muscles: ['triceps'],
+        ...exercise,
+      },
+      {
+        id: pressId,
+        slug: 'test-leg-press',
+        name: 'Leg press',
+        equipment: 'machine',
+        primary_muscles: ['quadriceps'],
+        secondary_muscles: ['glutes'],
+        ...exercise,
+      },
     ]),
     db.insert(workout_sessions).values([
       mon,
       {
         ...thu,
-        prs: [{ exercise_id: benchId, kind: 'best_e1rm', reps: 10, load_kg: 52.5, e1rm_kg: 70, previous_best_kg: 66.67, date: '2026-10-01' }],
+        prs: [
+          {
+            exercise_id: benchId,
+            kind: 'best_e1rm',
+            reps: 10,
+            load_kg: 52.5,
+            e1rm_kg: 70,
+            previous_best_kg: 66.67,
+            date: '2026-10-01',
+          },
+        ],
       },
     ]),
-    db.insert(session_sets).values([
-      ...sets(mon.id, benchId, 10, 50),
-      ...sets(mon.id, pressId, 8, 100),
-      ...sets(thu.id, benchId, 10, 52.5),
-      { session_id: thu.id, exercise_id: pressId, set_index: 3, reps: 8, load_kg: 100, completed: false },
-    ]),
+    db
+      .insert(session_sets)
+      .values([
+        ...sets(mon.id, benchId, 10, 50),
+        ...sets(mon.id, pressId, 8, 100),
+        ...sets(thu.id, benchId, 10, 52.5),
+        { session_id: thu.id, exercise_id: pressId, set_index: 3, reps: 8, load_kg: 100, completed: false },
+      ]),
   ])
 })
 
@@ -181,7 +251,15 @@ function fakeRouter(output: WeeklyReviewOutput | null, fail?: Error): LlmRouter 
     async complete<T>() {
       router.calls++
       if (fail || !output) throw fail ?? new Error('no output')
-      return { data: output as T, provider: 'fake', model: 'fake-1', latency_ms: 1, tokens_in: 10, tokens_out: 10, attempts: 1 }
+      return {
+        data: output as T,
+        provider: 'fake',
+        model: 'fake-1',
+        latency_ms: 1,
+        tokens_in: 10,
+        tokens_out: 10,
+        attempts: 1,
+      }
     },
     async chat(): Promise<never> {
       throw new Error('chat is not used by the weekly review')
@@ -241,7 +319,9 @@ describe('draftWeeklyReview', () => {
       narrative: 'Trend down 0.2 kg on a 1,167 kcal average. Protein first next week.',
       highlights: ['Fast completed'],
       concerns: ['Protein under target on 2 of 5 eating days'],
-      proposals: [{ field: 'kcal', weekday: null, from: 1400, to: 1700, reason: 'Hunger and two missed days' }],
+      proposals: [
+        { field: 'kcal', weekday: null, from: 1400, to: 1700, reason: 'Hunger and two missed days' },
+      ],
       week_plan: weekPlan,
     })
 
@@ -249,7 +329,12 @@ describe('draftWeeklyReview', () => {
 
     expect(outcome).toMatchObject({ status: 'written', source: 'llm' })
     const review = outcome.review!
-    expect(review).toMatchObject({ week: '2026-W40', author: 'gemini', highlights: ['Fast completed'], pdf_url: null })
+    expect(review).toMatchObject({
+      week: '2026-W40',
+      author: 'gemini',
+      highlights: ['Fast completed'],
+      pdf_url: null,
+    })
     expect(review.metrics.intake_avg.kcal).toBe(1167)
     expect(review.proposals.map((p) => [p.field, p.from, p.to, p.status, p.note])).toEqual([
       ['kcal', 1400, 1550, 'pending', 'Step 1 of 2'],
@@ -258,8 +343,13 @@ describe('draftWeeklyReview', () => {
     for (const p of review.proposals) expect(Math.abs(p.to - p.from)).toBeLessThanOrEqual(150)
 
     const events = await db.select().from(ai_events).where(eq(ai_events.kind, 'review'))
-    expect(events).toEqual([expect.objectContaining({ actor: 'ai', body: { review_id: review.id, week_start: W40 } })])
-    const proposals = await db.select().from(ai_events).where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.actor, 'ai')))
+    expect(events).toEqual([
+      expect.objectContaining({ actor: 'ai', body: { review_id: review.id, week_start: W40 } }),
+    ])
+    const proposals = await db
+      .select()
+      .from(ai_events)
+      .where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.actor, 'ai')))
     expect(proposals.map((p) => p.proposal_status)).toEqual(['pending', 'pending'])
   })
 
@@ -287,14 +377,23 @@ describe('draftWeeklyReview', () => {
       concerns: [],
       proposals: [],
     })
-    const llm = fakeRouter({ narrative: 'Gemini', highlights: [], concerns: [], proposals: [], week_plan: weekPlan })
+    const llm = fakeRouter({
+      narrative: 'Gemini',
+      highlights: [],
+      concerns: [],
+      proposals: [],
+      week_plan: weekPlan,
+    })
 
     const outcome = await draftWeeklyReview(deps, llm, W41)
 
     expect(outcome.status).toBe('skipped')
     expect(llm.calls).toBe(0)
     const [row] = await db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, W41))
-    expect(row).toMatchObject({ author: 'claude_mcp', narrative: 'Claude: hold 1,400 kcal, add a set on leg press.' })
+    expect(row).toMatchObject({
+      author: 'claude_mcp',
+      narrative: 'Claude: hold 1,400 kcal, add a set on leg press.',
+    })
   })
 })
 
@@ -306,20 +405,38 @@ describe('requestWeeklyReview', () => {
     await expect(requestWeeklyReview(deps, '2026-W42')).rejects.toMatchObject({ status: 400 })
 
     expect(await jobs()).toBe(before)
-    expect(await db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, '2026-10-12'))).toEqual([])
+    expect(await db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, '2026-10-12'))).toEqual(
+      [],
+    )
   })
 })
 
 describe('draftWeeklyReview: proposals and next week', () => {
   const pendingByAi = async () =>
-    (await db.select().from(ai_events).where(and(eq(ai_events.kind, 'proposal'), eq(ai_events.actor, 'ai'), eq(ai_events.proposal_status, 'pending')))).length
+    (
+      await db
+        .select()
+        .from(ai_events)
+        .where(
+          and(
+            eq(ai_events.kind, 'proposal'),
+            eq(ai_events.actor, 'ai'),
+            eq(ai_events.proposal_status, 'pending'),
+          ),
+        )
+    ).length
   const raise = (to: number): WeeklyReviewOutput => ({
     narrative: 'More energy for training.',
     highlights: [],
     concerns: [],
     proposals: [{ field: 'kcal', weekday: null, from: 1400, to, reason: 'Hunger' }],
     // The model applied its own proposal to next week (the prompt used to ask for that).
-    week_plan: { ...weekPlan, targets: Object.fromEntries(Object.keys(weekPlan.targets).map((w) => [w, { ...day, kcal: to }])) as WeeklyReviewOutput['week_plan']['targets'] },
+    week_plan: {
+      ...weekPlan,
+      targets: Object.fromEntries(
+        Object.keys(weekPlan.targets).map((w) => [w, { ...day, kcal: to }]),
+      ) as WeeklyReviewOutput['week_plan']['targets'],
+    },
   })
 
   it('writes no proposal when the review write fails (a deadline mid-draft): they land together or not at all', async () => {
@@ -329,13 +446,16 @@ describe('draftWeeklyReview: proposals and next week', () => {
       get(target, key, receiver) {
         if (key !== 'batch') return Reflect.get(target, key, receiver)
         return (statements: { toSQL?: () => { sql: string } }[]) => {
-          if (statements.some((st) => st.toSQL?.().sql.includes('"weekly_reviews"'))) return Promise.reject(new Error('deadline'))
+          if (statements.some((st) => st.toSQL?.().sql.includes('"weekly_reviews"')))
+            return Promise.reject(new Error('deadline'))
           return target.batch(statements as unknown as Parameters<typeof target.batch>[0])
         }
       },
     })
 
-    await expect(draftWeeklyReview({ ...deps, db: failing }, fakeRouter(raise(1700)), W40)).rejects.toThrow('deadline')
+    await expect(draftWeeklyReview({ ...deps, db: failing }, fakeRouter(raise(1700)), W40)).rejects.toThrow(
+      'deadline',
+    )
 
     expect(await pendingByAi()).toBe(before)
   })
@@ -344,8 +464,13 @@ describe('draftWeeklyReview: proposals and next week', () => {
     const outcome = await draftWeeklyReview(deps, fakeRouter(raise(1550)), W40)
 
     expect(outcome.review!.proposals.map((p) => [p.from, p.to, p.status])).toEqual([[1400, 1550, 'pending']])
-    const [draft] = await db.select().from(week_plans).where(and(eq(week_plans.week_start, W41), eq(week_plans.status, 'proposed')))
-    expect(Object.values((draft!.plan as WeeklyReviewOutput['week_plan']).targets).map((t) => t.kcal)).toEqual(Array(7).fill(1400))
+    const [draft] = await db
+      .select()
+      .from(week_plans)
+      .where(and(eq(week_plans.week_start, W41), eq(week_plans.status, 'proposed')))
+    expect(
+      Object.values((draft!.plan as WeeklyReviewOutput['week_plan']).targets).map((t) => t.kcal),
+    ).toEqual(Array(7).fill(1400))
   })
 })
 
@@ -359,12 +484,16 @@ describe('POST /api/reviews/:week/pdf', () => {
   })
   mountReviewsRoutes(app)
   app.onError(handleError)
-  const post = (bindings: object) => app.request('http://localhost/api/reviews/2026-W40/pdf', { method: 'POST' }, bindings)
+  const post = (bindings: object) =>
+    app.request('http://localhost/api/reviews/2026-W40/pdf', { method: 'POST' }, bindings)
 
   it('answers 501 pdf_unavailable without the Browser Rendering binding (local dev)', async () => {
     const res = await post({ ...env, BROWSER: undefined })
     expect(res.status).toBe(501)
-    expect(await res.json()).toEqual({ error: 'pdf_unavailable', message: 'PDF archive works on the deployed Worker; use Print' })
+    expect(await res.json()).toEqual({
+      error: 'pdf_unavailable',
+      message: 'PDF archive works on the deployed Worker; use Print',
+    })
   })
 
   it('renders the print page through the binding into R2 reports/2026-W40.pdf and returns a signed link', async () => {
@@ -378,7 +507,10 @@ describe('POST /api/reviews/:week/pdf', () => {
     const res = await post({ ...env, BROWSER, ACCESS_CLIENT_ID: 'id.access', ACCESS_CLIENT_SECRET: 'secret' })
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ key: 'reports/2026-W40.pdf', url: expect.stringMatching(/^\/api\/files\/reports%2F2026-W40\.pdf\?exp=/) })
+    expect(await res.json()).toMatchObject({
+      key: 'reports/2026-W40.pdf',
+      url: expect.stringMatching(/^\/api\/files\/reports%2F2026-W40\.pdf\?exp=/),
+    })
     expect(calls[0]).toMatchObject({
       url: `${env.APP_ORIGIN}/reports/week/2026-W40?print=1`,
       setExtraHTTPHeaders: { 'CF-Access-Client-Id': 'id.access', 'CF-Access-Client-Secret': 'secret' },

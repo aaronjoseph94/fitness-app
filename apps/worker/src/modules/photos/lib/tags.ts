@@ -11,7 +11,7 @@ type PhotoRow = Row<typeof progress_photos>
 type ScanStub = PhotoScan & { scanned_at: string }
 
 /** Signed photo links are short-lived (30 min): long enough to look through the grid, short enough to go stale fast. */
-export const PHOTO_URL_TTL_SECONDS = 30 * 60
+const PHOTO_URL_TTL_SECONDS = 30 * 60
 
 const EXTENSION: Record<ImageType, string> = { 'image/jpeg': 'jpg', 'image/webp': 'webp' }
 
@@ -34,7 +34,13 @@ export async function loadTags(deps: Deps, dates: readonly LocalDate[]): Promise
   const [trend, confirmed] = await Promise.all([
     getTrend(deps, { from: sorted[0]!, to: sorted[sorted.length - 1]! }),
     deps.db
-      .select({ id: scans.id, scanned_at: scans.scanned_at, date: scans.date, body_fat_pct: scans.body_fat_pct, weight_kg: scans.weight_kg })
+      .select({
+        id: scans.id,
+        scanned_at: scans.scanned_at,
+        date: scans.date,
+        body_fat_pct: scans.body_fat_pct,
+        weight_kg: scans.weight_kg,
+      })
       .from(scans)
       .where(eq(scans.confirmed, true)),
   ])
@@ -43,7 +49,10 @@ export async function loadTags(deps: Deps, dates: readonly LocalDate[]): Promise
   return { trendKg, scans: confirmed }
 }
 
-/** The confirmed scan with the smallest |scanned_at − taken_at| (before or after the photo); a tie goes to the earlier scan. */
+/**
+ * The confirmed scan with the smallest |scanned_at − taken_at| (before or after the photo); a tie goes to the earlier
+ * scan.
+ */
 export function nearestScan(tags: Tags, takenAt: string): PhotoScan | null {
   const at = Date.parse(takenAt)
   let best: ScanStub | null = null

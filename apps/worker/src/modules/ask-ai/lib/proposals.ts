@@ -33,10 +33,7 @@ function idRef(id: unknown): ProposalRef[] {
 
 const READERS: Readonly<Record<string, (out: Out) => ProposalRef[]>> = {
   propose_plan_change: (out) => proposalRef(out?.proposal),
-  generate_workout: (out) => {
-    const id = str(obj(out?.draft)?.proposal_id)
-    return id ? [{ type: 'proposal', id }] : []
-  },
+  generate_workout: (out) => idRef(obj(out?.draft)?.proposal_id),
   propose_week_plan: (out) => weekPlanRef(out),
   replace_week_plan: (out) => weekPlanRef(obj(out?.proposal)),
   // Safe-list tools: a pending proposal when auto_apply_safe is off (an auto_applied record otherwise, shown as done).
@@ -47,7 +44,8 @@ const READERS: Readonly<Record<string, (out: Out) => ProposalRef[]>> = {
   update_template: (out) => idRef(out?.proposal_id),
   delete_template: (out) => idRef(out?.proposal_id),
   hide_exercise: (out) => idRef(out?.proposal_id),
-  update_equipment: (out) => (Array.isArray(out?.changes) ? out.changes.flatMap((c: unknown) => idRef(obj(c)?.proposal_id)) : []),
+  update_equipment: (out) =>
+    Array.isArray(out?.changes) ? out.changes.flatMap((c: unknown) => idRef(obj(c)?.proposal_id)) : [],
   // The days change (when proposed); the day drafts arrive later from their jobs, as cards in the AI tab and Train.
   set_training_days: (out) => idRef(out?.proposal_id),
   plan_training_week: (out) => idRef(obj(out?.training_days)?.proposal_id),
@@ -59,7 +57,10 @@ export function createdBy(tool: string, output: unknown): ProposalRef[] {
 }
 
 /** Refs → ChatProposals with their status now, in ref order; refs that no longer resolve are left out. */
-export async function resolveProposals(deps: Deps, refs: readonly ProposalRef[]): Promise<Map<string, ChatProposal>> {
+export async function resolveProposals(
+  deps: Deps,
+  refs: readonly ProposalRef[],
+): Promise<Map<string, ChatProposal>> {
   const out = new Map<string, ChatProposal>()
   const weeks = [...new Set(refs.flatMap((r) => (r.type === 'week_plan' ? [r.week_start] : [])))]
   const [events, plans] = await Promise.all([
@@ -68,7 +69,14 @@ export async function resolveProposals(deps: Deps, refs: readonly ProposalRef[])
   ])
   for (const row of events) {
     const p = row && toProposal(row)
-    if (p) out.set(p.id, { type: 'proposal', id: p.id, summary: p.summary, status: p.proposal_status, body: p.body })
+    if (p)
+      out.set(p.id, {
+        type: 'proposal',
+        id: p.id,
+        summary: p.summary,
+        status: p.proposal_status,
+        body: p.body,
+      })
   }
   for (const plan of plans.flat())
     out.set(plan.id, {

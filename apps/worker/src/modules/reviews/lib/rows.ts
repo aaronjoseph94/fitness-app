@@ -2,10 +2,15 @@
 // status refreshed from its ai_events row (it moves when Aaron accepts or rejects), and the PDF link signed on read.
 // Plus the ISO-week ↔ Monday conversion every entry point starts with.
 import { isoWeek, isoWeekRange } from '@fitness/shared/engine'
-import { ReviewProposal, WeeklyMetrics, type ProposalStatus, type WeeklyReview } from '@fitness/shared/schemas'
+import {
+  ReviewProposal,
+  WeeklyMetrics,
+  type ProposalStatus,
+  type WeeklyReview,
+} from '@fitness/shared/schemas'
 import { inArray } from 'drizzle-orm'
 import * as z from 'zod'
-import { ai_events, weekly_reviews, type Row } from '../../../db'
+import { ai_events, chunk, weekly_reviews, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { badRequest } from '../../../lib/http-error'
 import { signFileUrl } from '../../files'
@@ -27,14 +32,17 @@ export function weekStartOf(week: string): string {
 }
 
 /** Current proposal_status of each event id (missing ids are left out). */
-export async function proposalStatuses(deps: Deps, ids: readonly string[]): Promise<Map<string, ProposalStatus>> {
+export async function proposalStatuses(
+  deps: Deps,
+  ids: readonly string[],
+): Promise<Map<string, ProposalStatus>> {
   const out = new Map<string, ProposalStatus>()
   const unique = [...new Set(ids)]
-  for (let i = 0; i < unique.length; i += IN_CHUNK) {
+  for (const part of chunk(unique, IN_CHUNK)) {
     const rows = await deps.db
       .select({ id: ai_events.id, status: ai_events.proposal_status })
       .from(ai_events)
-      .where(inArray(ai_events.id, unique.slice(i, i + IN_CHUNK)))
+      .where(inArray(ai_events.id, part))
     for (const r of rows) if (r.status) out.set(r.id, r.status)
   }
   return out
@@ -43,12 +51,17 @@ export async function proposalStatuses(deps: Deps, ids: readonly string[]): Prom
 /** The stored proposals of a row (empty when the JSON no longer parses). */
 export function storedProposals(row: Pick<ReviewRow, 'id' | 'proposals'>): ReviewProposal[] {
   const parsed = StoredProposals.safeParse(row.proposals ?? [])
-  if (!parsed.success) console.warn(`weekly_reviews ${row.id}: stored proposals do not match their schema; shown as none`)
+  if (!parsed.success)
+    console.warn(`weekly_reviews ${row.id}: stored proposals do not match their schema; shown as none`)
   return parsed.success ? parsed.data : []
 }
 
 /** Row → contract, or null when its metrics no longer match the schema (skipped and logged). */
-export async function toReview(deps: Deps, row: ReviewRow, statuses: Map<string, ProposalStatus>): Promise<WeeklyReview | null> {
+export async function toReview(
+  deps: Deps,
+  row: ReviewRow,
+  statuses: Map<string, ProposalStatus>,
+): Promise<WeeklyReview | null> {
   const metrics = WeeklyMetrics.safeParse(row.metrics)
   if (!metrics.success) {
     console.warn(`weekly_reviews ${row.id} (${row.week_start}): metrics do not match the schema; skipped`)
@@ -69,7 +82,10 @@ export async function toReview(deps: Deps, row: ReviewRow, statuses: Map<string,
     narrative: row.narrative ?? '',
     highlights: strings(row.highlights),
     concerns: strings(row.concerns),
-    proposals: storedProposals(row).map((p) => ({ ...p, status: (p.event_id && statuses.get(p.event_id)) || p.status })),
+    proposals: storedProposals(row).map((p) => ({
+      ...p,
+      status: (p.event_id && statuses.get(p.event_id)) || p.status,
+    })),
     pdf_url: row.pdf_path ? await signedUrl(deps, row.pdf_path) : null,
   }
 }

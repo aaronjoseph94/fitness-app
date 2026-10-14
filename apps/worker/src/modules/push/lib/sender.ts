@@ -11,7 +11,10 @@ export interface PushTarget {
   keys: { p256dh: string; auth: string }
 }
 
-/** Delivery hints for the push service: time to live, urgency and a topic (a newer push with it replaces an undelivered one). */
+/**
+ * Delivery hints for the push service: time to live, urgency and a topic (a newer push with it replaces an undelivered
+ * one).
+ */
 export interface PushDelivery {
   ttl_s: number
   urgency: 'low' | 'normal' | 'high'
@@ -23,7 +26,11 @@ export interface PushDelivery {
  * Adapter: deliver one notification; resolves with the push service's HTTP status (201 = accepted, 404/410 = the
  * subscription is gone). Rejects only on a network failure or timeout.
  */
-export type PushSender = (target: PushTarget, notification: PushNotification, delivery: PushDelivery) => Promise<number>
+export type PushSender = (
+  target: PushTarget,
+  notification: PushNotification,
+  delivery: PushDelivery,
+) => Promise<number>
 
 /** One push service call may take this long before it counts as failed. */
 const SEND_TIMEOUT_MS = 10_000
@@ -47,7 +54,11 @@ export function webPushSender(vapid: VapidKeys): PushSender {
     const payload = await buildPushPayload(
       {
         data: notification,
-        options: { ttl: delivery.ttl_s, urgency: delivery.urgency, ...(delivery.topic ? { topic: delivery.topic } : {}) },
+        options: {
+          ttl: delivery.ttl_s,
+          urgency: delivery.urgency,
+          ...(delivery.topic ? { topic: delivery.topic } : {}),
+        },
       },
       { endpoint: target.endpoint, expirationTime: null, keys: target.keys },
       vapid,

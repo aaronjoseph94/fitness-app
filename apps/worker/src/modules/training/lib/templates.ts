@@ -7,10 +7,16 @@
 // named like one writes into it in place (same id) with its old version kept on the proposal as `replaced`, the same
 // batch Keep (lib/changes replaceWithDraft) writes, so a split day never gets a second template of its name.
 import { muscleScores, splitNameKey, splitTemplateFor } from '@fitness/shared/engine'
-import type { Template, TemplateCreate, TemplateExerciseInput, TemplatePatch, TemplateSnapshot } from '@fitness/shared/schemas'
+import type {
+  Template,
+  TemplateCreate,
+  TemplateExerciseInput,
+  TemplatePatch,
+  TemplateSnapshot,
+} from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { ai_events, template_exercises, workout_sessions, workout_templates } from '../../../db'
+import { ai_events, runBatch, template_exercises, workout_sessions, workout_templates } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import type { ProposalOf } from '../../plan'
@@ -24,9 +30,17 @@ const ROWS_PER_INSERT = 8
 export async function listTemplates(deps: Deps): Promise<Template[]> {
   const [rows, items] = await deps.db.batch([
     deps.db.select().from(workout_templates).orderBy(asc(workout_templates.name)),
-    deps.db.select().from(template_exercises).orderBy(asc(template_exercises.template_id), asc(template_exercises.sort_order)),
+    deps.db
+      .select()
+      .from(template_exercises)
+      .orderBy(asc(template_exercises.template_id), asc(template_exercises.sort_order)),
   ])
-  return rows.map((t) => toTemplate(t, items.filter((i) => i.template_id === t.id)))
+  return rows.map((t) =>
+    toTemplate(
+      t,
+      items.filter((i) => i.template_id === t.id),
+    ),
+  )
 }
 
 export async function getTemplate(deps: Deps, id: string): Promise<Template> {
@@ -38,18 +52,30 @@ export async function getTemplate(deps: Deps, id: string): Promise<Template> {
   return toTemplate(row, items)
 }
 
-/** A template's exercises as a plan snapshot, or null when there is no such template. */
-export async function templatePlan(deps: Deps, id: string): Promise<TemplateExerciseInput[] | null> {
-  const template = await getTemplate(deps, id).catch((e: unknown) => {
+/** getTemplate, or null when there is no such template. */
+export async function templateOrNull(deps: Deps, id: string): Promise<Template | null> {
+  return getTemplate(deps, id).catch((e: unknown) => {
     if (e instanceof HttpError && e.status === 404) return null
     throw e
   })
+}
+
+/** A template's exercises as a plan snapshot, or null when there is no such template. */
+export async function templatePlan(deps: Deps, id: string): Promise<TemplateExerciseInput[] | null> {
+  const template = await templateOrNull(deps, id)
   return template?.exercises.map(({ id: _id, ...e }) => e) ?? null
 }
 
 /** muscle score per muscle = Σ sets × (1.0 primary, 0.5 secondary) over the template's exercises (engine). */
-export function scoresOf(exercises: readonly TemplateExerciseInput[], tags: ReadonlyMap<string, ExerciseTags>) {
-  return muscleScores(exercises.flatMap((e) => (tags.has(e.exercise_id) ? [{ ...tags.get(e.exercise_id)!, sets: e.sets }] : [])))
+export function scoresOf(
+  exercises: readonly TemplateExerciseInput[],
+  tags: ReadonlyMap<string, ExerciseTags>,
+) {
+  return muscleScores(
+    exercises.flatMap((e) =>
+      tags.has(e.exercise_id) ? [{ ...tags.get(e.exercise_id)!, sets: e.sets }] : [],
+    ),
+  )
 }
 
 /**
@@ -57,12 +83,16 @@ export function scoresOf(exercises: readonly TemplateExerciseInput[], tags: Read
  * returns the tags. Templates check every list; sessions check the explicit lists of ai/mcp.
  */
 export async function checkExercises(deps: Deps, exercises: readonly TemplateExerciseInput[]) {
-  const tags = await requireExercises(deps, exercises.map((e) => e.exercise_id))
+  const tags = await requireExercises(
+    deps,
+    exercises.map((e) => e.exercise_id),
+  )
   const library = await loadLibrary(deps)
   const { rejected } = guardWorkout(await guardContext(deps, library), exercises)
   if (rejected.length) {
     // Name the exercise instead of its id: the builder shows this message as it is.
-    const named = (reason: string) => reason.replace(/Exercise ([0-9a-f-]{36})/g, (all, id: string) => library.byId.get(id)?.name ?? all)
+    const named = (reason: string) =>
+      reason.replace(/Exercise ([0-9a-f-]{36})/g, (all, id: string) => library.byId.get(id)?.name ?? all)
     throw new HttpError(422, rejected[0]!.rule, rejected.map((r) => named(r.reason)).join('; '), rejected)
   }
   return tags
@@ -71,7 +101,13 @@ export async function checkExercises(deps: Deps, exercises: readonly TemplateExe
 /** The writes saving a template (row upserted by id, exercise rows replaced), for the caller's db.batch. */
 export function writeStatements(
   deps: Deps,
-  t: { id: string; name: string; origin: Template['origin']; notes: string | null; exercises: readonly TemplateExerciseInput[] },
+  t: {
+    id: string
+    name: string
+    origin: Template['origin']
+    notes: string | null
+    exercises: readonly TemplateExerciseInput[]
+  },
   tags: ReadonlyMap<string, ExerciseTags>,
 ): BatchItem<'sqlite'>[] {
   const { db } = deps
@@ -94,7 +130,15 @@ export function writeStatements(
   return [
     db
       .insert(workout_templates)
-      .values({ id: t.id, name: t.name, origin: t.origin, notes: t.notes, muscle_scores, created_at: now, updated_at: now })
+      .values({
+        id: t.id,
+        name: t.name,
+        origin: t.origin,
+        notes: t.notes,
+        muscle_scores,
+        created_at: now,
+        updated_at: now,
+      })
       .onConflictDoUpdate({
         target: workout_templates.id,
         set: { name: t.name, origin: t.origin, notes: t.notes, muscle_scores, updated_at: now },
@@ -114,8 +158,15 @@ export const snapshotOf = (t: Template): TemplateSnapshot => ({
 })
 
 /** The template of the split day `name` (engine splitTemplateFor: the oldest of that name), other than `except`. */
-export async function splitTemplate(deps: Deps, name: string, except: readonly string[] = []): Promise<Template | null> {
-  return splitTemplateFor((await listTemplates(deps)).filter((t) => !except.includes(t.id)), name)
+export async function splitTemplate(
+  deps: Deps,
+  name: string,
+  except: readonly string[] = [],
+): Promise<Template | null> {
+  return splitTemplateFor(
+    (await listTemplates(deps)).filter((t) => !except.includes(t.id)),
+    name,
+  )
 }
 
 /**
@@ -131,8 +182,17 @@ export function replaceStatements(
   tags: ReadonlyMap<string, ExerciseTags>,
 ): BatchItem<'sqlite'>[] {
   return [
-    ...writeStatements(deps, { id: template.id, name: template.name, origin: template.origin, ...next }, tags),
-    proposalBodyUpdate(deps, proposal.id, { ...proposal.body, replaced: snapshotOf(template) }, eq(ai_events.proposal_status, 'pending')),
+    ...writeStatements(
+      deps,
+      { id: template.id, name: template.name, origin: template.origin, ...next },
+      tags,
+    ),
+    proposalBodyUpdate(
+      deps,
+      proposal.id,
+      { ...proposal.body, replaced: snapshotOf(template) },
+      eq(ai_events.proposal_status, 'pending'),
+    ),
     acceptStatement(deps, proposal.id),
   ]
 }
@@ -146,7 +206,11 @@ export function replaceStatements(
  *                               unless it was undone since
  * null otherwise (a plain create).
  */
-async function replacedBy(deps: Deps, proposal: ProposalOf<'workout'>, input: TemplateCreate): Promise<{ template: Template; first: boolean } | null> {
+async function replacedBy(
+  deps: Deps,
+  proposal: ProposalOf<'workout'>,
+  input: TemplateCreate,
+): Promise<{ template: Template; first: boolean } | null> {
   const { body } = proposal
   if (!body.workout.name || splitNameKey(body.workout.name) !== splitNameKey(input.name)) return null
   if (proposal.proposal_status === 'pending') {
@@ -154,10 +218,7 @@ async function replacedBy(deps: Deps, proposal: ProposalOf<'workout'>, input: Te
     return template && { template, first: true }
   }
   if (!body.replaced || body.reverted_at) return null
-  const template = await getTemplate(deps, body.replaced.id).catch((e: unknown) => {
-    if (e instanceof HttpError && e.status === 404) return null
-    throw e
-  })
+  const template = await templateOrNull(deps, body.replaced.id)
   return template && { template, first: false }
 }
 
@@ -174,15 +235,22 @@ export async function createTemplate(deps: Deps, input: TemplateCreate): Promise
     const next = { notes: input.notes ?? null, exercises: input.exercises }
     const statements = replacing.first
       ? replaceStatements(deps, proposal, replacing.template, next, tags)
-      : writeStatements(deps, { id: replacing.template.id, name: replacing.template.name, origin: replacing.template.origin, ...next }, tags)
-    const [first, ...rest] = statements
-    await deps.db.batch([first!, ...rest])
+      : writeStatements(
+          deps,
+          {
+            id: replacing.template.id,
+            name: replacing.template.name,
+            origin: replacing.template.origin,
+            ...next,
+          },
+          tags,
+        )
+    await runBatch(deps.db, statements)
     return getTemplate(deps, replacing.template.id)
   }
   const statements = writeStatements(deps, { ...input, notes: input.notes ?? null }, tags)
   if (input.proposal_id) statements.push(acceptStatement(deps, input.proposal_id))
-  const [first, ...rest] = statements
-  await deps.db.batch([first!, ...rest])
+  await runBatch(deps.db, statements)
   return getTemplate(deps, input.id)
 }
 
@@ -190,19 +258,15 @@ export async function createTemplate(deps: Deps, input: TemplateCreate): Promise
 export async function updateTemplate(deps: Deps, id: string, patch: TemplatePatch): Promise<Template> {
   const current = await getTemplate(deps, id)
   const exercises = patch.exercises ?? current.exercises.map(({ id: _id, ...e }) => e)
-  const tags = patch.exercises ? await checkExercises(deps, exercises) : await requireExercises(deps, exercises.map((e) => e.exercise_id))
-  const [first, ...rest] = writeStatements(
-    deps,
-    {
-      id,
-      name: patch.name ?? current.name,
-      origin: current.origin,
-      notes: patch.notes === undefined ? current.notes : patch.notes,
-      exercises,
-    },
-    tags,
-  )
-  await deps.db.batch([first!, ...rest])
+  const tags = patch.exercises
+    ? await checkExercises(deps, exercises)
+    : await requireExercises(
+        deps,
+        exercises.map((e) => e.exercise_id),
+      )
+  const notes = patch.notes === undefined ? current.notes : patch.notes
+  const t = { id, name: patch.name ?? current.name, origin: current.origin, notes, exercises }
+  await runBatch(deps.db, writeStatements(deps, t, tags))
   return getTemplate(deps, id)
 }
 
@@ -210,7 +274,10 @@ export async function updateTemplate(deps: Deps, id: string, patch: TemplatePatc
 export function deleteStatements(deps: Deps, id: string) {
   const { db } = deps
   return [
-    db.update(workout_sessions).set({ template_id: null, updated_at: deps.now().toISOString() }).where(eq(workout_sessions.template_id, id)),
+    db
+      .update(workout_sessions)
+      .set({ template_id: null, updated_at: deps.now().toISOString() })
+      .where(eq(workout_sessions.template_id, id)),
     db.delete(template_exercises).where(eq(template_exercises.template_id, id)),
     db.delete(workout_templates).where(eq(workout_templates.id, id)),
   ] as const

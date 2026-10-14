@@ -51,7 +51,7 @@ import { DEBRIEF_SYSTEM, DebriefOutput, EXTRACT_PROMPT, EXTRACT_SYSTEM } from '.
 import { loadStore, toViews } from './lib/read'
 import { recordColumns, segmentRows } from './lib/rows'
 
-export { noteScanDue, scanDateNote, scanSchedule, ScanScheduledNoteBody } from './lib/due'
+export { noteScanDue, scanDateNote, scanSchedule } from './lib/due'
 export { addMilestone, removeMilestone } from './lib/milestones'
 
 /** The scan jobs' deps: the usual bag plus the LLM router (tests pass a fake). */
@@ -65,7 +65,7 @@ const ANALYSIS_FETCHES = 6
 /** Router deadlines leave room inside the job's 25 s for the reads and writes around the call. */
 const EXTRACT_DEADLINE_MS = 20_000
 const DEBRIEF_DEADLINE_MS = 15_000
-/** A scan time this far past the Worker's clock is still "now" (phone clocks drift). */
+/** A scan time this far past the Worker's clock is still "now" (device clocks drift). */
 const CLOCK_SKEW_MS = 5 * 60_000
 /** At most this many proposals per analysis. */
 const MAX_PROPOSALS = 3
@@ -98,7 +98,11 @@ export async function getScan(deps: Deps, id: string): Promise<Scan> {
 }
 
 /** Queue a scan_extract job for `scanId` in one batch with `extra`, and start it after the response. */
-async function queueExtraction(deps: Deps, scanId: string, extra: BatchItem<'sqlite'>[] = []): Promise<string> {
+async function queueExtraction(
+  deps: Deps,
+  scanId: string,
+  extra: BatchItem<'sqlite'>[] = [],
+): Promise<string> {
   const job = jobInsert(deps, { type: 'scan_extract', payload: { scan_id: scanId }, priority: JOB_PRIORITY })
   await runBatch(deps.db, [...extra, job.statement])
   runSoon(deps, job.id)
@@ -109,7 +113,10 @@ async function queueExtraction(deps: Deps, scanId: string, extra: BatchItem<'sql
  * POST /api/scans: store the (masked) sheet at scan-sheets/<id>.<ext>, insert the unconfirmed scan and queue
  * scan_extract in one batch. A replayed id returns the stored scan and its latest extraction job.
  */
-export async function uploadScan(deps: Deps, input: { query: ScanUploadQuery; body: ArrayBuffer }): Promise<ScanUploaded> {
+export async function uploadScan(
+  deps: Deps,
+  input: { query: ScanUploadQuery; body: ArrayBuffer },
+): Promise<ScanUploaded> {
   const { id, content_type } = input.query
   const [existing] = await deps.db.select({ id: scans.id }).from(scans).where(eq(scans.id, id))
   if (existing) {
@@ -142,7 +149,8 @@ export async function uploadScan(deps: Deps, input: { query: ScanUploadQuery; bo
 export async function reextractScan(deps: Deps, id: string): Promise<ScanUploaded> {
   const row = await scanRow(deps, id)
   if (row.confirmed) throw new HttpError(409, 'scan_confirmed', 'This scan is already confirmed')
-  if (!row.storage_path) throw new HttpError(422, 'no_sheet', 'This scan has no stored sheet; enter the values instead')
+  if (!row.storage_path)
+    throw new HttpError(422, 'no_sheet', 'This scan has no stored sheet; enter the values instead')
   const job_id = await queueExtraction(deps, id)
   return { scan: await getScan(deps, id), job_id }
 }
@@ -156,12 +164,16 @@ export async function confirmScan(deps: Deps, id: string, patch: ScanPatch): Pro
   const { db } = deps
   // A scan taken later than now is a typo: it would become the latest scan and move the next scan due date.
   if (Date.parse(patch.record.scanned_at) > deps.now().getTime() + CLOCK_SKEW_MS)
-    throw badRequest(`A scan on ${localDate(patch.record.scanned_at)} has not happened yet; enter the date it was taken`)
+    throw badRequest(
+      `A scan on ${localDate(patch.record.scanned_at)} has not happened yet; enter the date it was taken`,
+    )
   const [existing] = await db.select({ id: scans.id }).from(scans).where(eq(scans.id, id))
   const columns = { ...recordColumns(patch.record), actor: deps.actor, updated_at: deps.now().toISOString() }
   const job = jobInsert(deps, { type: 'scan_analysis', payload: { scan_id: id }, priority: JOB_PRIORITY })
   await db.batch([
-    existing ? db.update(scans).set(columns).where(eq(scans.id, id)) : db.insert(scans).values({ ...columns, id, scanned_at: patch.record.scanned_at, date: columns.date! }),
+    existing
+      ? db.update(scans).set(columns).where(eq(scans.id, id))
+      : db.insert(scans).values({ ...columns, id, scanned_at: patch.record.scanned_at, date: columns.date! }),
     db.delete(scan_segments).where(eq(scan_segments.scan_id, id)),
     db.insert(scan_segments).values(segmentRows(id, patch.record)),
     job.statement,
@@ -182,11 +194,17 @@ export async function deleteScan(deps: Deps, id: string): Promise<Ok> {
   if (row.confirmed) {
     const store = await loadStore(deps)
     const [view] = await toViews(deps, store, [row])
-    const anchors = await reanchorMilestones(deps, store.confirmed.filter((s) => s.id !== id))
+    const anchors = await reanchorMilestones(
+      deps,
+      store.confirmed.filter((s) => s.id !== id),
+    )
     const proposals = view?.analysis?.proposal_ids ?? []
     const text = `Scan ${row.date} deleted: milestones re-anchored to the other scans${proposals.length ? `, ${proposals.length} pending proposal(s) from its debrief withdrawn` : ''}.`
     confirmedWrites.push(
-      db.update(milestones).set({ scan_id: null, actor: deps.actor, updated_at: deps.now().toISOString() }).where(eq(milestones.scan_id, id)),
+      db
+        .update(milestones)
+        .set({ scan_id: null, actor: deps.actor, updated_at: deps.now().toISOString() })
+        .where(eq(milestones.scan_id, id)),
       ...anchors.statements,
       ...proposals.map((p) => proposalDecisionUpdate(deps, p, { status: 'rejected' })),
       eventInsert(deps, { kind: 'note', summary: text, body: { text }, date: today(deps.now()) }).statement,
@@ -210,7 +228,9 @@ export async function compareScanIds(deps: Deps, a: string, b: string): Promise<
     if (!s) throw notFound(`Confirmed scan ${id}`)
     return s
   })
-  return first!.record.scanned_at <= second!.record.scanned_at ? scanChange(first!, second!) : scanChange(second!, first!)
+  return first!.record.scanned_at <= second!.record.scanned_at
+    ? scanChange(first!, second!)
+    : scanChange(second!, first!)
 }
 
 // ── Jobs ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -228,7 +248,10 @@ const metaOf = (r: { provider: string; model: string; tokens_in: number; tokens_
  * form offers manual entry meanwhile. When no provider has a key at all the job fails at once (JobFailed), naming
  * manual entry.
  */
-export async function extractScan(deps: ScanJobDeps, input: { scan_id: string }): Promise<{ output: ScanExtractOutput; meta: JobMeta }> {
+export async function extractScan(
+  deps: ScanJobDeps,
+  input: { scan_id: string },
+): Promise<{ output: ScanExtractOutput; meta: JobMeta }> {
   const row = await scanRow(deps, input.scan_id)
   // Confirmed (e.g. entered by hand) while this read waited for a retry: don't spend an LLM call on it.
   if (row.confirmed) throw new Error('The scan was confirmed before the sheet was read')
@@ -249,8 +272,14 @@ export async function extractScan(deps: ScanJobDeps, input: { scan_id: string })
     })
     .catch((e: unknown) => {
       // No provider has a key: no retry can read the sheet, so fail now and send Aaron to manual entry.
-      if (e instanceof ProvidersExhaustedError && e.failures.length > 0 && e.failures.every((f) => f.reason === 'no_key'))
-        throw new JobFailed(`No AI provider is set up to read sheets (no API key); enter the values by hand. ${e.message}`)
+      if (
+        e instanceof ProvidersExhaustedError &&
+        e.failures.length > 0 &&
+        e.failures.every((f) => f.reason === 'no_key')
+      )
+        throw new JobFailed(
+          `No AI provider is set up to read sheets (no API key); enter the values by hand. ${e.message}`,
+        )
       throw e
     })
   const draft = toDraft(result.data)
@@ -264,7 +293,14 @@ export async function extractScan(deps: ScanJobDeps, input: { scan_id: string })
 const round = (v: number, dp = 2) => Math.round(v * 10 ** dp) / 10 ** dp
 
 /** The compact engine summary the Clerk writes the debrief from (numbers rounded; no names, no photos). */
-function debriefInput(self: ConfirmedScan, vsPrevious: ScanChange, vsBaseline: ScanChange | null, flags: readonly { message: string }[], targets: PlanTargets, rails: { calorie_floor: number; calorie_ceiling: number; protein_min_g: number }) {
+function debriefInput(
+  self: ConfirmedScan,
+  vsPrevious: ScanChange,
+  vsBaseline: ScanChange | null,
+  flags: readonly { message: string }[],
+  targets: PlanTargets,
+  rails: { calorie_floor: number; calorie_ceiling: number; protein_min_g: number },
+) {
   const r = self.record
   const change = (c: ScanChange) => ({
     since: c.date,
@@ -276,7 +312,8 @@ function debriefInput(self: ConfirmedScan, vsPrevious: ScanChange, vsBaseline: S
     lean_share_of_loss: c.lean_share_of_loss === null ? null : round(c.lean_share_of_loss),
     lean_loss_guard: c.lean_loss,
     visceral_level: c.deltas.visceral_fat_level ?? null,
-    visceral_area_cm2: c.deltas.visceral_fat_area_cm2 === undefined ? null : round(c.deltas.visceral_fat_area_cm2, 0),
+    visceral_area_cm2:
+      c.deltas.visceral_fat_area_cm2 === undefined ? null : round(c.deltas.visceral_fat_area_cm2, 0),
     body_fat_pct: c.deltas.body_fat_pct === undefined ? null : round(c.deltas.body_fat_pct, 1),
     segment_fat_kg: Object.fromEntries(Object.entries(c.segments).map(([k, v]) => [k, round(v.fat_kg)])),
     milestones_reached: c.milestones_reached.map((m) => m.label),
@@ -296,7 +333,11 @@ function debriefInput(self: ConfirmedScan, vsPrevious: ScanChange, vsBaseline: S
     vs_previous: change(vsPrevious),
     vs_baseline: vsBaseline && vsBaseline.scan_id !== vsPrevious.scan_id ? change(vsBaseline) : null,
     flags: flags.map((f) => f.message),
-    current_targets: { kcal: targets.defaults.kcal, protein_g: targets.defaults.protein_g, steps: targets.defaults.steps },
+    current_targets: {
+      kcal: targets.defaults.kcal,
+      protein_g: targets.defaults.protein_g,
+      steps: targets.defaults.steps,
+    },
     rails,
   }
 }
@@ -307,7 +348,10 @@ function debriefInput(self: ConfirmedScan, vsPrevious: ScanChange, vsBaseline: S
  * guards apply; `from` is set from the active plan). If the router fails, the engine's plain debrief is stored instead
  * (plus protein + 10 g when the lean-loss guard fired). One batch writes the milestone updates and the debrief note.
  */
-export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; job_id?: string }): Promise<{ output: ScanAnalysisOutput; meta?: JobMeta }> {
+export async function analyseScan(
+  deps: ScanJobDeps,
+  input: { scan_id: string; job_id?: string },
+): Promise<{ output: ScanAnalysisOutput; meta?: JobMeta }> {
   const ai: Deps = { ...deps, actor: 'ai' }
   const store = await loadStore(deps)
   const self = store.confirmed.find((s) => s.id === input.scan_id)
@@ -318,7 +362,11 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
   const flags = scanFlags(self.record, vsPrevious)
   const anchors = await reanchorMilestones(ai, store.confirmed)
   const [plan, view] = await Promise.all([getActivePlan(deps), getSettings(deps)])
-  const rails = { calorie_floor: view.settings.calorie_floor, calorie_ceiling: view.settings.calorie_ceiling, protein_min_g: view.settings.protein_min_g }
+  const rails = {
+    calorie_floor: view.settings.calorie_floor,
+    calorie_ceiling: view.settings.calorie_ceiling,
+    protein_min_g: view.settings.protein_min_g,
+  }
 
   let narrative = plainNarrative(self.record, vsPrevious, vsBaseline, flags)
   let narrative_by: 'ai' | 'engine' = 'engine'
@@ -329,7 +377,12 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
       const result = await deps.router.complete({
         job: 'scan_analysis',
         system: DEBRIEF_SYSTEM,
-        messages: [{ role: 'user', content: JSON.stringify(debriefInput(self, vsPrevious, vsBaseline, flags, plan.targets, rails)) }],
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify(debriefInput(self, vsPrevious, vsBaseline, flags, plan.targets, rails)),
+          },
+        ],
         schema: DebriefOutput,
         priority: 'user',
         maxTokens: 1500,
@@ -340,10 +393,20 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
       changes = result.data.proposals
       meta = metaOf(result)
     } catch (e) {
-      console.warn(`scan_analysis ${self.id}: no LLM debrief, storing the engine's (${e instanceof Error ? e.message : String(e)})`)
+      console.warn(
+        `scan_analysis ${self.id}: no LLM debrief, storing the engine's (${e instanceof Error ? e.message : String(e)})`,
+      )
       if (vsPrevious.lean_loss === 'lean_loss') {
         const from = plan.targets.defaults.protein_g
-        changes = [{ field: 'protein_g', weekday: null, from, to: from + GUARD_PROTEIN_STEP_G, reason: 'Lean-loss guard: lean mass was over 25 % of the weight lost since the last scan' }]
+        changes = [
+          {
+            field: 'protein_g',
+            weekday: null,
+            from,
+            to: from + GUARD_PROTEIN_STEP_G,
+            reason: 'Lean-loss guard: lean mass was over 25 % of the weight lost since the last scan',
+          },
+        ]
       }
     }
   }
@@ -354,7 +417,10 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
   for (const change of changes.slice(0, MAX_PROPOSALS)) {
     const from = targetValue(plan.targets, change.field, change.weekday)
     if (from === change.to) continue
-    const result = await propose(ai, { changes: [{ ...change, from }], reason: `Scan ${date}: ${change.reason}`.slice(0, 500) })
+    const result = await propose(ai, {
+      changes: [{ ...change, from }],
+      reason: `Scan ${date}: ${change.reason}`.slice(0, 500),
+    })
     if (result.proposal) {
       proposal_ids.push(result.proposal.id)
       proposed.push({ ...change, from })
@@ -368,7 +434,13 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
   const note = eventInsert(ai, {
     kind: 'note',
     summary,
-    body: { text: narrative, scan_id: self.id, narrative_by, proposal_ids, milestone_updates: anchors.updates },
+    body: {
+      text: narrative,
+      scan_id: self.id,
+      narrative_by,
+      proposal_ids,
+      milestone_updates: anchors.updates,
+    },
     date,
     job_id: input.job_id ?? null,
   })
@@ -379,14 +451,19 @@ export async function analyseScan(deps: ScanJobDeps, input: { scan_id: string; j
       narrative,
       fat_vs_lean: { fat_kg: f?.fat_kg ?? 0, lean_kg: f?.lean_kg ?? 0, water_kg: f?.water_kg ?? 0 },
       flags,
-      milestone_updates: anchors.updates.flatMap((u) => (u.reached_on ? [{ milestone_id: u.milestone_id, kind: u.kind, reached_on: u.reached_on }] : [])),
+      milestone_updates: anchors.updates.flatMap((u) =>
+        u.reached_on ? [{ milestone_id: u.milestone_id, kind: u.kind, reached_on: u.reached_on }] : [],
+      ),
       proposals: proposed,
     },
     meta,
   }
 }
 
-const withRouter = (deps: Deps, limit: number): ScanJobDeps => ({ ...deps, router: createLlmRouter(deps, { budget: { limit, used: 0 } }) })
+const withRouter = (deps: Deps, limit: number): ScanJobDeps => ({
+  ...deps,
+  router: createLlmRouter(deps, { budget: { limit, used: 0 } }),
+})
 
 registerJobHandler('scan_extract', {
   fetches: EXTRACT_FETCHES,

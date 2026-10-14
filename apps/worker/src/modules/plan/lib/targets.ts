@@ -1,10 +1,28 @@
 // Owns: materialising `daily_targets` — the engine's materialiseTargets fed with the active plan version, the rails,
 // planned/actual fast dates and active week plans, written as chunked upserts (≤ 100 bound params per statement).
-import { addDays, daysBetween, eachDate, fastDay, materialiseTargets as computeTargets, today, type WeekPlanLike } from '@fitness/shared/engine'
+import {
+  addDays,
+  daysBetween,
+  eachDate,
+  fastDay,
+  materialiseTargets as computeTargets,
+  today,
+  type WeekPlanLike,
+} from '@fitness/shared/engine'
 import { WeekPlanContent, type DailyTargets, type PlanTargets } from '@fitness/shared/schemas'
 import { and, between, count, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { chunk, daily_targets, fast_logs, plan_versions, profile, runBatch, week_plans, type NewRow, type Row } from '../../../db'
+import {
+  chunk,
+  daily_targets,
+  fast_logs,
+  plan_versions,
+  profile,
+  runBatch,
+  week_plans,
+  type NewRow,
+  type Row,
+} from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { loadPlanContext, type PlanContext } from './context'
 
@@ -32,7 +50,13 @@ export interface PendingInputs {
  * not yet begun count (they are the plan). `pending` fasts replace the stored rows with their id; removed ones are
  * left out. fast_logs is the only source of fast days (a week plan's fast_dates mirror it).
  */
-async function fastDates(deps: Deps, from: string, to: string, fastHours: number, pending: PendingInputs = {}): Promise<string[]> {
+async function fastDates(
+  deps: Deps,
+  from: string,
+  to: string,
+  fastHours: number,
+  pending: PendingInputs = {},
+): Promise<string[]> {
   const stored = await deps.db
     .select({ id: fast_logs.id, started_at: fast_logs.started_at, ended_at: fast_logs.ended_at })
     .from(fast_logs)
@@ -50,7 +74,7 @@ async function fastDates(deps: Deps, from: string, to: string, fastHours: number
 /** An active week plan as stored (structurally a WeekPlanLike, with every field of its plan). */
 export type StoredWeekPlan = { id: string; week_start: string; plan: WeekPlanContent }
 
-/** Active week plans whose week overlaps from..to (phase 4 writes them); rows whose plan fails its schema are skipped. */
+/** Active week plans whose week overlaps from..to; rows whose plan fails its schema are skipped. */
 export async function activeWeekPlans(deps: Deps, from: string, to: string): Promise<StoredWeekPlan[]> {
   const rows = await deps.db
     .select({ id: week_plans.id, week_start: week_plans.week_start, plan: week_plans.plan })
@@ -96,11 +120,20 @@ export async function computeTargetRows(
     training_days: ctx.settings.training_days,
     fast_dates: fasts,
     week_plans: weeks,
-  }).map(({ training_load: _load, ...t }) => ({ ...t, id: crypto.randomUUID(), created_at: now, updated_at: now }))
+  }).map(({ training_load: _load, ...t }) => ({
+    ...t,
+    id: crypto.randomUUID(),
+    created_at: now,
+    updated_at: now,
+  }))
 }
 
 /** Upserts by date: 'replace' overwrites a date's targets, 'fill' only inserts dates that have none. */
-export function targetStatements(deps: Deps, rows: NewRow<typeof daily_targets>[], mode: 'replace' | 'fill'): BatchItem<'sqlite'>[] {
+export function targetStatements(
+  deps: Deps,
+  rows: NewRow<typeof daily_targets>[],
+  mode: 'replace' | 'fill',
+): BatchItem<'sqlite'>[] {
   return chunk(rows, ROWS_PER_STATEMENT).map((part) => {
     const insert = deps.db.insert(daily_targets).values(part)
     if (mode === 'fill') return insert.onConflictDoNothing({ target: daily_targets.date })
@@ -150,9 +183,12 @@ export async function pendingTargetStatements(
     const ids = [...new Set(built.flatMap((r) => (r.plan_version_id ? [r.plan_version_id] : [])))]
     const versions = new Map(
       ids.length
-        ? (await deps.db.select({ id: plan_versions.id, targets: plan_versions.targets }).from(plan_versions).where(inArray(plan_versions.id, ids))).map(
-            (v) => [v.id, v],
-          )
+        ? (
+            await deps.db
+              .select({ id: plan_versions.id, targets: plan_versions.targets })
+              .from(plan_versions)
+              .where(inArray(plan_versions.id, ids))
+          ).map((v) => [v.id, v])
         : [],
     )
     for (const date of eachDate(range.from, pastTo)) {
@@ -174,11 +210,13 @@ export async function targetHorizon(deps: Deps): Promise<string> {
 
 /** The last date that has targets (null when none). */
 export async function lastTargetDate(deps: Deps): Promise<string | null> {
-  const [row] = await deps.db.select({ last: sql<string | null>`max(${daily_targets.date})` }).from(daily_targets)
+  const [row] = await deps.db
+    .select({ last: sql<string | null>`max(${daily_targets.date})` })
+    .from(daily_targets)
   return row?.last ?? null
 }
 
-export function toDailyTargets(row: DailyTargetsRow): DailyTargets {
+function toDailyTargets(row: DailyTargetsRow): DailyTargets {
   return {
     date: row.date,
     plan_version_id: row.plan_version_id,
@@ -237,24 +275,32 @@ export async function ensureThrough(deps: Deps, date: string): Promise<number> {
     deps.db
       .select({ n: count() })
       .from(daily_targets)
-      .where(and(lte(daily_targets.date, date), gte(daily_targets.date, sql`coalesce((select start_date from profile limit 1), ${date})`))),
+      .where(
+        and(
+          lte(daily_targets.date, date),
+          gte(daily_targets.date, sql`coalesce((select start_date from profile limit 1), ${date})`),
+        ),
+      ),
   ])
   const start = p[0]?.start ?? date
   if (start > date) return 0
   if ((c[0]?.n ?? 0) >= daysBetween(start, date) + 1) return 0
 
   const have = new Set(
-    (await deps.db.select({ date: daily_targets.date }).from(daily_targets).where(between(daily_targets.date, start, date))).map(
-      (r) => r.date,
-    ),
+    (
+      await deps.db
+        .select({ date: daily_targets.date })
+        .from(daily_targets)
+        .where(between(daily_targets.date, start, date))
+    ).map((r) => r.date),
   )
   const missing: string[] = []
   for (let d = start; d <= date; d = addDays(d, 1)) if (!have.has(d)) missing.push(d)
   if (missing.length === 0) return 0
   const ctx = await loadPlanContext(deps)
-  const rows = (await computeTargetRows(deps, ctx, { from: missing[0]!, to: missing[missing.length - 1]! })).filter(
-    (r) => !have.has(r.date),
-  )
+  const rows = (
+    await computeTargetRows(deps, ctx, { from: missing[0]!, to: missing[missing.length - 1]! })
+  ).filter((r) => !have.has(r.date))
   await runBatch(deps.db, targetStatements(deps, rows, 'fill'))
   return rows.length
 }

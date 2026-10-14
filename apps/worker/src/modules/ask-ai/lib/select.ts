@@ -1,6 +1,6 @@
-// Owns: picking the tools one Ask AI turn offers the model (≈15, so the free models read fewer schemas): the core reads
-// always, then the writes and reads of every area the message (and the previous question, for "yes, do that") talks
-// about, in that order, capped at MAX_TOOLS. The broad training area comes after the specific ones (templates,
+// Owns: picking the tools one Ask AI turn offers the model (at most MAX_TOOLS, so the free models read fewer schemas):
+// the core reads always, then the writes and reads of every area the message (and the previous question, for "yes, do
+// that") talks about, in that order. The broad training area comes after the specific ones (templates,
 // equipment, the week), so a Train question keeps its own tools inside the cap. Only tools the policy allows are ever
 // picked. Also: whether the user's own words ask to log something in an area (asksToLog), which a logging call needs
 // before it applies.
@@ -36,7 +36,10 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
     /\b(eat|ate|eaten|eating|meals?|food\w*|breakfast|lunch|dinner|snacks?|protein|carbs?|fat|fibre|fiber|kcal|calor\w*|macros?|had|log\w*)\b/,
     ['nutrition'],
   ],
-  [/\b(water|drank|drink\w*|hydrat\w*|ml|litres?|liters?|glass(es)?|bottles?)\b|\d\s?l\b/, ['nutrition', 'plan']],
+  [
+    /\b(water|drank|drink\w*|hydrat\w*|ml|litres?|liters?|glass(es)?|bottles?)\b|\d\s?l\b/,
+    ['nutrition', 'plan'],
+  ],
   [/\bfast(s|ed|ing)?\b/, ['fasting']],
   [/\b(sleep\w*|slept|bed|woke|wake|nap|steps?|walk\w*)\b/, ['health']],
   [
@@ -60,7 +63,10 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
   [/\b(scans?|evolt|body fat|lean|visceral|muscle mass|segment\w*|composition)\b/, ['scans']],
   [/\b(remind\w*|notif\w*|alerts?|alarms?|push)\b/, ['reminders']],
   [/\b(review\w*|report\w*|summary|recap|progress|how am i doing|overall)\b/, ['reviews', 'coach']],
-  [/\b(average\w*|avg|mean|total|history|month\w*|january|february|march|april|may|june|july|august|september|october|november|december)\b/, ['metrics']],
+  [
+    /\b(average\w*|avg|mean|total|history|month\w*|january|february|march|april|may|june|july|august|september|october|november|december)\b/,
+    ['metrics'],
+  ],
 ]
 
 /**
@@ -80,7 +86,10 @@ const SHORT_REPLY = 80
  * text from a food database or a note cannot trigger a write by itself.
  */
 export function asksToLog(area: ToolArea, message: string, previousQuestion: string | null): boolean {
-  const own = previousQuestion && message.length <= SHORT_REPLY && AFFIRMATION.test(message) ? `${message}\n${previousQuestion}` : message
+  const own =
+    previousQuestion && message.length <= SHORT_REPLY && AFFIRMATION.test(message)
+      ? `${message}\n${previousQuestion}`
+      : message
   return areasOf([own]).has(area) && LOG_INTENT.test(own.toLowerCase())
 }
 
@@ -90,7 +99,7 @@ export interface OfferedTool {
 }
 
 /** The areas `texts` talk about. */
-export function areasOf(texts: readonly string[]): Set<ToolArea> {
+function areasOf(texts: readonly string[]): Set<ToolArea> {
   const areas = new Set<ToolArea>()
   for (const text of texts) {
     const t = text.toLowerCase()

@@ -17,6 +17,11 @@
 // When the budget is spent, matching continues from the cache only and unmatched items fall back to the LLM estimate.
 // A job passes the router's FetchBudget as `budget` so both draw on one subrequest limit, and `until` to stop asking
 // the remote source before its deadline; every call also counts in the invocation's tally (deps.budget).
+//
+// Interface:
+//   createFoodSources(deps, FoodSourcesOptions?) → FoodSources { byBarcode(code), search(q, opts?), matchItem(item),
+//        nutritionFor(food, grams) }
+//   nutritionFor(food, grams) → Nutrients   per-100 g × grams / 100
 import type { FoodSource, Nutrients } from '@fitness/shared/schemas'
 import type { Deps, FetchBudget } from '../../lib/deps'
 import { HttpError } from '../../lib/http-error'
@@ -38,7 +43,10 @@ export interface FoodSourcesOptions {
    * external call counts against it too, so a job's LLM call and its food lookups stay inside one subrequest limit.
    */
   budget?: FetchBudget
-  /** No external call starts after this instant (epoch ms); matching continues from the cache. Keeps a job in its deadline. */
+  /**
+   * No external call starts after this instant (epoch ms); matching continues from the cache. Keeps a job in its
+   * deadline.
+   */
   until?: number
 }
 
@@ -124,7 +132,15 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
 
   /** The same foods as rows, in order: drafts are upserted into the cache (one batch), rows pass through. */
   async function store(list: (FoodRow | FoodDraft)[]): Promise<FoodRow[]> {
-    const saved = new Map((await remember(deps.db, list.filter((f): f is FoodDraft => !isRow(f)), deps.now())).map((r) => [keyOf(r), r]))
+    const saved = new Map(
+      (
+        await remember(
+          deps.db,
+          list.filter((f): f is FoodDraft => !isRow(f)),
+          deps.now(),
+        )
+      ).map((r) => [keyOf(r), r]),
+    )
     return list.map((f) => (isRow(f) ? f : saved.get(keyOf(f))!))
   }
 
@@ -138,7 +154,11 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
       return draft ? ((await store([draft]))[0] ?? null) : null
     } catch (e) {
       if (e instanceof SourceUnavailable)
-        throw new HttpError(503, 'food_source_unavailable', 'Open Food Facts is not answering; try again shortly')
+        throw new HttpError(
+          503,
+          'food_source_unavailable',
+          'Open Food Facts is not answering; try again shortly',
+        )
       throw e
     }
   }
@@ -179,12 +199,20 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     // Nutrient File does not carry is left unmatched (the LLM estimate stands) rather than fetched from a database
     // outside Canada.
     if (!top || top.score < STRONG) {
-      pool = merge(pool, (await tryRemote(() => remote.offSearch(query.join(' '), REMOTE_PAGE), [])).map((food) => ({ food })))
+      pool = merge(
+        pool,
+        (await tryRemote(() => remote.offSearch(query.join(' '), REMOTE_PAGE), [])).map((food) => ({ food })),
+      )
       top = rank(query, pool)[0]
     }
     if (!top || top.score < ACCEPT) return null
     const [food] = await store([top.food])
-    return { food: food!, confidence: top.score, estimated: false, nutrients: nutritionFor(food!, item.grams) }
+    return {
+      food: food!,
+      confidence: top.score,
+      estimated: false,
+      nutrients: nutritionFor(food!, item.grams),
+    }
   }
 
   async function search(text: string, o: FoodSearchOptions = {}): Promise<FoodRow[]> {
@@ -194,7 +222,10 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
     let pool = await localEntries(text)
     if (o.remote !== false && rank(query, pool).filter((r) => r.score >= ACCEPT).length < limit) {
       const off = await tryRemote(() => remote.offSearch(query.join(' '), Math.min(limit, 10)), [])
-      pool = merge(pool, off.map((food) => ({ food })))
+      pool = merge(
+        pool,
+        off.map((food) => ({ food })),
+      )
     }
     // Only the foods actually returned are cached, so every result has an id.
     return store(

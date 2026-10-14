@@ -1,7 +1,7 @@
 // Owns: foods as the API returns them (row → Food), looking foods up by id in ≤ 99-id chunks, and Aaron's own foods.
 import { Barcode, type Food, type FoodCreate } from '@fitness/shared/schemas'
 import { eq, inArray } from 'drizzle-orm'
-import { foods, type Row } from '../../../db'
+import { chunk, foods, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { badRequest } from '../../../lib/http-error'
 
@@ -36,14 +36,15 @@ export function toFood(row: FoodRow): Food {
 export const foodLabel = (f: Pick<FoodRow, 'name' | 'brand'>) => (f.brand ? `${f.name} (${f.brand})` : f.name)
 
 /** Foods by id; with `require`, an unknown id is a 400. */
-export async function foodsByIds(deps: Deps, ids: readonly string[], opts: { require?: boolean } = {}): Promise<Map<string, FoodRow>> {
+export async function foodsByIds(
+  deps: Deps,
+  ids: readonly string[],
+  opts: { require?: boolean } = {},
+): Promise<Map<string, FoodRow>> {
   const unique = [...new Set(ids)]
   const out = new Map<string, FoodRow>()
-  for (let i = 0; i < unique.length; i += IDS_PER_QUERY) {
-    const rows = await deps.db
-      .select()
-      .from(foods)
-      .where(inArray(foods.id, unique.slice(i, i + IDS_PER_QUERY)))
+  for (const part of chunk(unique, IDS_PER_QUERY)) {
+    const rows = await deps.db.select().from(foods).where(inArray(foods.id, part))
     for (const r of rows) out.set(r.id, r)
   }
   if (opts.require) {

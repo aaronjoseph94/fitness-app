@@ -42,7 +42,10 @@ const ModelSpec = z.object({
   quota: z.string(),
   vision: z.boolean(),
   tools: z.boolean(),
-  /** native: Gemini responseJsonSchema; json_schema / json_object: OpenAI response_format; prompt: schema in the system prompt only. */
+  /**
+   * native: Gemini responseJsonSchema; json_schema / json_object: OpenAI response_format; prompt: schema in the system
+   * prompt only.
+   */
   json: z.enum(['native', 'json_schema', 'json_object', 'prompt']),
   /** Provider-specific request params merged into generationConfig (Gemini) or the body (OpenAI-compatible, Anthropic). */
   params: z.record(z.string(), z.json()).optional(),

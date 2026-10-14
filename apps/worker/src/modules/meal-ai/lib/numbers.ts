@@ -3,11 +3,11 @@
 import type { DayAdjustmentOutput, DayView, Favourite, Remaining } from '@fitness/shared/schemas'
 
 /** Protein is "short" when eating what is left of it would take more than this share of the kcal left. */
-export const PROTEIN_SHARE_LIMIT = 0.5
+const PROTEIN_SHARE_LIMIT = 0.5
 /** kcal per gram of protein (Atwater). */
 const KCAL_PER_G_PROTEIN = 4
 /** At most this many suggestions on a card (SPEC §6: two or three). */
-export const MAX_SUGGESTIONS = 3
+const MAX_SUGGESTIONS = 3
 
 export type DayStatus = DayAdjustmentOutput['status']
 
@@ -25,7 +25,11 @@ export function remainingOf(day: Pick<DayView, 'remaining'>): Remaining {
  */
 export function dayStatus(remaining: Remaining): DayStatus {
   if (remaining.kcal < 0) return 'over'
-  if (remaining.protein_g > 0 && KCAL_PER_G_PROTEIN * remaining.protein_g > PROTEIN_SHARE_LIMIT * remaining.kcal) return 'protein_short'
+  if (
+    remaining.protein_g > 0 &&
+    KCAL_PER_G_PROTEIN * remaining.protein_g > PROTEIN_SHARE_LIMIT * remaining.kcal
+  )
+    return 'protein_short'
   return 'ok'
 }
 
@@ -43,11 +47,19 @@ export interface SuggestionPick {
  * (protein_g / kcal, highest first; protein is the rail that is easiest to miss), then larger portions first; at most 3.
  * None when the day is over.
  */
-export function pickSuggestions(favourites: readonly Favourite[], remaining: Remaining, status: DayStatus): SuggestionPick[] {
+export function pickSuggestions(
+  favourites: readonly Favourite[],
+  remaining: Remaining,
+  status: DayStatus,
+): SuggestionPick[] {
   if (status === 'over') return []
   return favourites
     .filter((f) => f.totals.kcal > 0 && f.totals.kcal <= remaining.kcal)
-    .sort((a, b) => b.totals.protein_g / b.totals.kcal - a.totals.protein_g / a.totals.kcal || b.totals.kcal - a.totals.kcal)
+    .sort(
+      (a, b) =>
+        b.totals.protein_g / b.totals.kcal - a.totals.protein_g / a.totals.kcal ||
+        b.totals.kcal - a.totals.kcal,
+    )
     .slice(0, MAX_SUGGESTIONS)
     .map((f) => ({
       favourite_id: f.id,
@@ -80,8 +92,10 @@ export function fallbackNote(
     return fast.fast_day_tomorrow
       ? 'Fasting now: keep drinking water. Tomorrow is the fast day: 0 kcal, more water and a light session.'
       : 'Fasting now: keep drinking water, and end the fast in the app when you eat.'
-  if (status === 'over') return `${r0(-remaining.kcal)} kcal over today. One day is fine; the weekly trend is what counts.`
-  if (status === 'protein_short') return `${r0(remaining.protein_g)} g protein still to go in ${r0(remaining.kcal)} kcal: pick protein-dense food.`
+  if (status === 'over')
+    return `${r0(-remaining.kcal)} kcal over today. One day is fine; the weekly trend is what counts.`
+  if (status === 'protein_short')
+    return `${r0(remaining.protein_g)} g protein still to go in ${r0(remaining.kcal)} kcal: pick protein-dense food.`
   return `${r0(remaining.kcal)} kcal and ${r0(Math.max(0, remaining.protein_g))} g protein left today.`
 }
 
@@ -92,8 +106,10 @@ export function adjustmentSummary(
   fast: { fast_day: boolean; fasting?: boolean; fast_day_tomorrow?: boolean },
 ): string {
   if (fast.fast_day) return 'Fast day: water and a light session'
-  if (fast.fasting) return fast.fast_day_tomorrow ? 'Fasting now: water; tomorrow is the fast day' : 'Fasting now: water'
+  if (fast.fasting)
+    return fast.fast_day_tomorrow ? 'Fasting now: water; tomorrow is the fast day' : 'Fasting now: water'
   if (status === 'over') return `${r0(-remaining.kcal)} kcal over today`
-  if (status === 'protein_short') return `${r0(remaining.kcal)} kcal left, protein short by ${r0(remaining.protein_g)} g`
+  if (status === 'protein_short')
+    return `${r0(remaining.kcal)} kcal left, protein short by ${r0(remaining.protein_g)} g`
   return `${r0(remaining.kcal)} kcal left today`
 }

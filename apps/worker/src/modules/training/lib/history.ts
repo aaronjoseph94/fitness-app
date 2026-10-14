@@ -10,11 +10,13 @@ import { notFound } from '../../../lib/http-error'
 import { round, startPlan, toSessionSet, type SetRow } from './rows'
 import { DEFAULT_REP_RANGE, deloadOn, suggestionFor, topLoad, type PastSession } from './state'
 
-/** Sessions shown per exercise (the strength chart's whole history for a year of four sessions a week). */
+/** Sessions shown per exercise (the strength chart's whole history: over a year even at four sessions a week). */
 const HISTORY_SESSIONS = 250
 
 const bestE1rm = (sets: readonly SetRow[]) => {
-  const values = sets.filter((s) => s.reps !== null && s.reps > 0 && s.load_kg !== null && s.load_kg > 0).map((s) => e1rm(s.load_kg!, s.reps!))
+  const values = sets
+    .filter((s) => s.reps !== null && s.reps > 0 && s.load_kg !== null && s.load_kg > 0)
+    .map((s) => e1rm(s.load_kg!, s.reps!))
   return values.length ? round(Math.max(...values), 2) : null
 }
 
@@ -26,7 +28,14 @@ const bestE1rm = (sets: readonly SetRow[]) => {
 export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseHistory> {
   const { db } = deps
   const [[exercise], rows, prRows, [template]] = await db.batch([
-    db.select({ id: exercises.id, primary_muscles: exercises.primary_muscles, equipment: exercises.equipment }).from(exercises).where(eq(exercises.id, id)),
+    db
+      .select({
+        id: exercises.id,
+        primary_muscles: exercises.primary_muscles,
+        equipment: exercises.equipment,
+      })
+      .from(exercises)
+      .where(eq(exercises.id, id)),
     db
       .select({
         set: session_sets,
@@ -44,7 +53,11 @@ export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseH
       .from(workout_sessions)
       .where(sql`${workout_sessions.prs} is not null and instr(${workout_sessions.prs}, ${id}) > 0`),
     db
-      .select({ sets: template_exercises.sets, rep_min: template_exercises.rep_min, rep_max: template_exercises.rep_max })
+      .select({
+        sets: template_exercises.sets,
+        rep_min: template_exercises.rep_min,
+        rep_max: template_exercises.rep_max,
+      })
       .from(template_exercises)
       .where(eq(template_exercises.exercise_id, id))
       .orderBy(desc(template_exercises.updated_at))
@@ -57,7 +70,14 @@ export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseH
     let s = sessions.at(-1)
     if (s?.session_id !== r.set.session_id) {
       if (sessions.length >= HISTORY_SESSIONS) break
-      s = { session_id: r.set.session_id, date: r.date, started_at: r.started_at, plan: r.plan, readiness: r.readiness, sets: [] }
+      s = {
+        session_id: r.set.session_id,
+        date: r.date,
+        started_at: r.started_at,
+        plan: r.plan,
+        readiness: r.readiness,
+        sets: [],
+      }
       sessions.push(s)
     }
     s.sets.push(r.set)
@@ -71,7 +91,9 @@ export async function exerciseHistory(deps: Deps, id: string): Promise<ExerciseH
     .filter((p) => p.exercise_id === id)
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
-  const planned = sessions.map((s) => startPlan(s)?.exercises.find((p) => p.exercise_id === id)).find((p) => p !== undefined)
+  const planned = sessions
+    .map((s) => startPlan(s)?.exercises.find((p) => p.exercise_id === id))
+    .find((p) => p !== undefined)
   const range = planned ?? template ?? DEFAULT_REP_RANGE
   const deload = await deloadOn(deps, today(deps.now()))
   const next = sessions.length ? suggestionFor(exercise, range, sessions, deload.active) : null
@@ -109,10 +131,17 @@ export interface TrainingDigest {
 }
 
 /** Sessions on [from, to] and the latest top set per exercise since `since` (for the AI prompt; compact). */
-export async function trainingDigest(deps: Deps, range: { from: string; to: string; since: string }): Promise<TrainingDigest> {
+export async function trainingDigest(
+  deps: Deps,
+  range: { from: string; to: string; since: string },
+): Promise<TrainingDigest> {
   const { db } = deps
   const [rows, sets, tops] = await db.batch([
-    db.select().from(workout_sessions).where(between(workout_sessions.date, range.from, range.to)).orderBy(asc(workout_sessions.started_at)),
+    db
+      .select()
+      .from(workout_sessions)
+      .where(between(workout_sessions.date, range.from, range.to))
+      .orderBy(asc(workout_sessions.started_at)),
     db
       .select({
         session_id: session_sets.session_id,
@@ -124,7 +153,12 @@ export async function trainingDigest(deps: Deps, range: { from: string; to: stri
       .where(and(between(workout_sessions.date, range.from, range.to), eq(session_sets.completed, true)))
       .groupBy(session_sets.session_id),
     db
-      .select({ exercise_id: session_sets.exercise_id, date: workout_sessions.date, load_kg: session_sets.load_kg, reps: session_sets.reps })
+      .select({
+        exercise_id: session_sets.exercise_id,
+        date: workout_sessions.date,
+        load_kg: session_sets.load_kg,
+        reps: session_sets.reps,
+      })
       .from(session_sets)
       .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
       .where(and(gte(workout_sessions.date, range.since), eq(session_sets.completed, true)))
@@ -146,7 +180,14 @@ export async function trainingDigest(deps: Deps, range: { from: string; to: stri
         sets_done: Number(agg?.n ?? 0),
         volume_kg: round(Number(agg?.volume ?? 0), 1),
         muscle_scores: r.muscle_scores ?? null,
-        prs: prs.success ? prs.data.map((p) => ({ exercise_id: p.exercise_id, kind: p.kind, reps: p.reps, load_kg: p.load_kg })) : [],
+        prs: prs.success
+          ? prs.data.map((p) => ({
+              exercise_id: p.exercise_id,
+              kind: p.kind,
+              reps: p.reps,
+              load_kg: p.load_kg,
+            }))
+          : [],
       }
     }),
     last_top_sets,
@@ -155,4 +196,3 @@ export async function trainingDigest(deps: Deps, range: { from: string; to: stri
 
 /** The default "since" for top sets: eight weeks before `date`. */
 export const topSetsSince = (date: string) => addDays(date, -56)
-

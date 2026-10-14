@@ -3,14 +3,15 @@
 // chunked insert of one turn. tool_calls holds: assistant → every call of the turn; tool → the one call it answers.
 import type { ChatMessage, ChatRole, ToolCall } from '@fitness/shared/schemas'
 import { and, desc, eq, max, min, sql } from 'drizzle-orm'
-import { chat_messages, type Row } from '../../../db'
+import { chat_messages, chunk, runBatch, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import type { Msg } from '../../llm'
 
 export type ChatRow = Row<typeof chat_messages>
 
 /** Something a call created that waits for a tap (resolved to a ChatProposal with its status on read). */
-export type ProposalRef = { type: 'proposal'; id: string } | { type: 'week_plan'; id: string; week_start: string }
+export type ProposalRef =
+  { type: 'proposal'; id: string } | { type: 'week_plan'; id: string; week_start: string }
 
 export type StoredCall = ToolCall & { created?: ProposalRef[] }
 
@@ -69,7 +70,10 @@ export async function threadRows(deps: Deps, thread_id: string): Promise<ChatRow
 }
 
 /** The recent questions and answers of a thread as model history, oldest first, and the last question asked. */
-export async function history(deps: Deps, thread_id: string): Promise<{ messages: Msg[]; lastQuestion: string | null }> {
+export async function history(
+  deps: Deps,
+  thread_id: string,
+): Promise<{ messages: Msg[]; lastQuestion: string | null }> {
   const rows = await deps.db
     .select({ role: chat_messages.role, content: chat_messages.content })
     .from(chat_messages)
@@ -84,7 +88,10 @@ export async function history(deps: Deps, thread_id: string): Promise<{ messages
   for (const r of turns) {
     const last = messages.at(-1)
     if (last && last.role === r.role) last.content = `${last.content}\n\n${r.content}`
-    else messages.push(r.role === 'user' ? { role: 'user', content: r.content } : { role: 'assistant', content: r.content })
+    else
+      messages.push(
+        r.role === 'user' ? { role: 'user', content: r.content } : { role: 'assistant', content: r.content },
+      )
   }
   const lastQuestion = [...turns].reverse().find((r) => r.role === 'user')?.content ?? null
   return { messages, lastQuestion }
@@ -106,7 +113,10 @@ export async function threadOpenings(deps: Deps): Promise<ChatRow[]> {
   const rows = await deps.db
     .select({ row: chat_messages })
     .from(chat_messages)
-    .innerJoin(threads, and(eq(chat_messages.thread_id, threads.thread_id), eq(chat_messages.created_at, threads.first_at)))
+    .innerJoin(
+      threads,
+      and(eq(chat_messages.thread_id, threads.thread_id), eq(chat_messages.created_at, threads.first_at)),
+    )
     .orderBy(desc(threads.last_at))
   const seen = new Set<string>()
   return rows.map((r) => r.row).filter((r) => !seen.has(r.thread_id) && !!seen.add(r.thread_id))
@@ -114,9 +124,10 @@ export async function threadOpenings(deps: Deps): Promise<ChatRow[]> {
 
 /** Insert one turn's rows (already ordered by created_at) as chunked statements in one db.batch. */
 export async function insertTurn(deps: Deps, rows: readonly ChatRow[]): Promise<void> {
-  const statements = []
-  for (let i = 0; i < rows.length; i += ROWS_PER_INSERT)
-    statements.push(deps.db.insert(chat_messages).values(rows.slice(i, i + ROWS_PER_INSERT)).onConflictDoNothing())
-  const [first, ...rest] = statements
-  if (first) await deps.db.batch([first, ...rest])
+  await runBatch(
+    deps.db,
+    chunk(rows, ROWS_PER_INSERT).map((part) =>
+      deps.db.insert(chat_messages).values(part).onConflictDoNothing(),
+    ),
+  )
 }

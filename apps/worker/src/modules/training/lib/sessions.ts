@@ -1,8 +1,15 @@
 // Owns: workout sessions — start (from a template, a week-plan snapshot, an AI draft, or blank) with readiness, and
-// the plan snapshot, the recovery rule and the deload check stored as the start plan (workout_sessions.plan); the session view with each planned exercise's last
-// sets and progression default; set logging with client ids; finish (engine sessionSummary + an ai_events note), which
+// the plan snapshot, the recovery rule and the deload check stored as the start plan (workout_sessions.plan); the
+// session view with each planned exercise's last sets and progression default; set logging with client ids; finish (engine sessionSummary + an ai_events note), which
 // re-runs after an edit; and delete (the session, its sets and that note).
-import { DELOAD_SETS_FACTOR, localDate, sessionSummary, weekdayOf, weekStart, type SessionTotals } from '@fitness/shared/engine'
+import {
+  DELOAD_SETS_FACTOR,
+  localDate,
+  sessionSummary,
+  weekdayOf,
+  weekStart,
+  type SessionTotals,
+} from '@fitness/shared/engine'
 import {
   WeekPlanContent,
   type DeloadStatus,
@@ -25,8 +32,29 @@ import { badRequest, HttpError, notFound } from '../../../lib/http-error'
 import { eventInsert } from '../../events'
 import { acceptStatement, loadWorkoutProposal } from './guard'
 import { exclusionReason, exerciseTags, loadRules, requireExercises } from './library'
-import { bySetOrder, chunk, round, startPlan, startReadiness, toSessionSet, toWorkoutSession, unique, type ExerciseTags, type SessionRow, type StartPlan } from './rows'
-import { DEFAULT_REP_RANGE, deloadOn, neighbourSessions, pastSessions, readinessOn, recoveryFor, suggestionFor, topLoad } from './state'
+import {
+  bySetOrder,
+  chunk,
+  round,
+  startPlan,
+  startReadiness,
+  toSessionSet,
+  toWorkoutSession,
+  unique,
+  type ExerciseTags,
+  type SessionRow,
+  type StartPlan,
+} from './rows'
+import {
+  DEFAULT_REP_RANGE,
+  deloadOn,
+  neighbourSessions,
+  pastSessions,
+  readinessOn,
+  recoveryFor,
+  suggestionFor,
+  topLoad,
+} from './state'
 import { checkExercises, scoresOf, templatePlan } from './templates'
 
 /** Start of the recovery note for a planned exercise left out of a session (the logger shows these notes). */
@@ -38,7 +66,10 @@ async function sessionRow(deps: Deps, id: string): Promise<SessionRow | null> {
 }
 
 /** The active week plan's session for `date`'s weekday, as a plan snapshot (null when none). */
-async function weekPlanSession(deps: Deps, date: string): Promise<{ template_id: string | null; exercises: TemplateExerciseInput[] } | null> {
+async function weekPlanSession(
+  deps: Deps,
+  date: string,
+): Promise<{ template_id: string | null; exercises: TemplateExerciseInput[] } | null> {
   const [row] = await deps.db
     .select({ plan: week_plans.plan })
     .from(week_plans)
@@ -70,14 +101,27 @@ export async function startSession(deps: Deps, input: SessionCreate): Promise<Wo
   else if (!template_id && input.origin === 'week_plan') {
     const planned = await weekPlanSession(deps, date)
     plan = planned?.exercises ?? []
-    if (planned?.template_id && (await deps.db.select({ id: workout_templates.id }).from(workout_templates).where(eq(workout_templates.id, planned.template_id))).length)
+    if (
+      planned?.template_id &&
+      (
+        await deps.db
+          .select({ id: workout_templates.id })
+          .from(workout_templates)
+          .where(eq(workout_templates.id, planned.template_id))
+      ).length
+    )
       template_id = planned.template_id
   }
   // An explicit list from ai/mcp passes the workout guards (allowed set, 12–28 sets), as a template would. Any other
   // plan (Aaron's list, a template, a draft, the week plan) is never refused, since the session is his log: exercises
   // outside the allowed set now (equipment marked since, hidden since) are left out of it, each with a note.
   const guarded = !!input.exercises && deps.actor !== 'user'
-  const tags = guarded ? await checkExercises(deps, plan) : await requireExercises(deps, plan.map((p) => p.exercise_id))
+  const tags = guarded
+    ? await checkExercises(deps, plan)
+    : await requireExercises(
+        deps,
+        plan.map((p) => p.exercise_id),
+      )
   const leftOut: string[] = []
   if (!guarded && plan.length) {
     const rules = await loadRules(deps)
@@ -88,10 +132,18 @@ export async function startSession(deps: Deps, input: SessionCreate): Promise<Wo
     })
   }
 
-  const [readiness, deload, neighbours] = await Promise.all([readinessOn(deps, date), deloadOn(deps, date), neighbourSessions(deps, date)])
+  const [readiness, deload, neighbours] = await Promise.all([
+    readinessOn(deps, date),
+    deloadOn(deps, date),
+    neighbourSessions(deps, date),
+  ])
   const primaries = unique(plan.flatMap((p) => tags.get(p.exercise_id)?.primary_muscles ?? []))
   const recovery = recoveryFor(date, primaries, neighbours, readiness)
-  const start: StartPlan = { exercises: plan, recovery: { ...recovery, notes: [...recovery.notes, ...leftOut] }, deload }
+  const start: StartPlan = {
+    exercises: plan,
+    recovery: { ...recovery, notes: [...recovery.notes, ...leftOut] },
+    deload,
+  }
   const now = deps.now().toISOString()
   const statements: BatchItem<'sqlite'>[] = [
     deps.db
@@ -128,7 +180,9 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
   if (!row) throw notFound('Session')
   const start = startPlan(row)
   const planned = start?.exercises ?? []
-  const extra = unique([...sets].sort(bySetOrder).map((s) => s.exercise_id)).filter((x) => !planned.some((p) => p.exercise_id === x))
+  const extra = unique([...sets].sort(bySetOrder).map((s) => s.exercise_id)).filter(
+    (x) => !planned.some((p) => p.exercise_id === x),
+  )
   const entries: TemplateExerciseInput[] = [
     ...planned,
     ...extra.map((exercise_id) => ({
@@ -143,7 +197,13 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
   ]
   const ids = entries.map((e) => e.exercise_id)
   const [tags, past] = await Promise.all([exerciseTags(deps, ids), pastSessions(deps, ids, row.started_at)])
-  const deload: DeloadStatus = start?.deload ?? { due: false, reason: null, weeks_since: 0, sets_factor: DELOAD_SETS_FACTOR, active: false }
+  const deload: DeloadStatus = start?.deload ?? {
+    due: false,
+    reason: null,
+    weeks_since: 0,
+    sets_factor: DELOAD_SETS_FACTOR,
+    active: false,
+  }
   const plan = entries.flatMap((e): SessionPlanExercise[] => {
     const t = tags.get(e.exercise_id)
     if (!t) return []
@@ -155,7 +215,16 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
         ...e,
         default_load_kg: suggestion.load_kg ?? e.target_load_kg ?? (last ? topLoad(last.sets) : null),
         last: last
-          ? { session_id: last.session_id, date: last.date, sets: last.sets.map((s) => ({ set_index: s.set_index, reps: s.reps, load_kg: s.load_kg, rpe: s.rpe })) }
+          ? {
+              session_id: last.session_id,
+              date: last.date,
+              sets: last.sets.map((s) => ({
+                set_index: s.set_index,
+                reps: s.reps,
+                load_kg: s.load_kg,
+                rpe: s.rpe,
+              })),
+            }
           : null,
         suggestion,
       },
@@ -164,15 +233,26 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
   return {
     ...toWorkoutSession(row, sets),
     plan,
-    recovery: start?.recovery ?? { conflicts: [], reduced_volume: startReadiness(row)?.reduced_volume ?? false, notes: [] },
+    recovery: start?.recovery ?? {
+      conflicts: [],
+      reduced_volume: startReadiness(row)?.reduced_volume ?? false,
+      notes: [],
+    },
     deload,
   }
 }
 
 /** GET /api/sessions?from&to: sessions on those local dates, newest first, with their sets (no plan). */
-export async function listSessions(deps: Deps, range: { from: string; to: string }): Promise<WorkoutSession[]> {
+export async function listSessions(
+  deps: Deps,
+  range: { from: string; to: string },
+): Promise<WorkoutSession[]> {
   const [rows, sets] = await deps.db.batch([
-    deps.db.select().from(workout_sessions).where(between(workout_sessions.date, range.from, range.to)).orderBy(desc(workout_sessions.started_at)),
+    deps.db
+      .select()
+      .from(workout_sessions)
+      .where(between(workout_sessions.date, range.from, range.to))
+      .orderBy(desc(workout_sessions.started_at)),
     deps.db
       .select({ set: session_sets })
       .from(session_sets)
@@ -231,7 +311,8 @@ export async function logSet(deps: Deps, session_id: string, input: SetCreate): 
     })
     .onConflictDoNothing()
   const row = await setById(deps, input.id)
-  if (!row || row.session_id !== session_id) throw new HttpError(409, 'set_conflict', 'This set id belongs to another session')
+  if (!row || row.session_id !== session_id)
+    throw new HttpError(409, 'set_conflict', 'This set id belongs to another session')
   return toSessionSet(row)
 }
 
@@ -266,7 +347,9 @@ function finishText(summary: SessionTotals, names: ReadonlyMap<string, ExerciseT
 }
 
 const roundScores = (s: Partial<Record<Muscle, number>>) =>
-  Object.fromEntries(Object.entries(s).map(([m, v]) => [m, round(v ?? 0, 2)])) as Partial<Record<Muscle, number>>
+  Object.fromEntries(Object.entries(s).map(([m, v]) => [m, round(v ?? 0, 2)])) as Partial<
+    Record<Muscle, number>
+  >
 
 /**
  * POST /api/sessions/:id/finish: engine sessionSummary over the completed sets against every earlier session's
@@ -275,7 +358,11 @@ const roundScores = (s: Partial<Record<Muscle, number>>) =>
  * Finishing again (after editing a finished session's sets, with the same ended_at) recomputes all of it and rewrites
  * the note.
  */
-export async function finishSession(deps: Deps, id: string, input: SessionFinish): Promise<SessionFinishResult> {
+export async function finishSession(
+  deps: Deps,
+  id: string,
+  input: SessionFinish,
+): Promise<SessionFinishResult> {
   const [[row], sets] = await deps.db.batch([
     deps.db.select().from(workout_sessions).where(eq(workout_sessions.id, id)),
     deps.db.select().from(session_sets).where(eq(session_sets.session_id, id)),
@@ -297,7 +384,11 @@ export async function finishSession(deps: Deps, id: string, input: SessionFinish
     total_volume_kg: round(totals.total_volume_kg, 2),
     volume_by_muscle: roundScores(totals.volume_by_muscle),
     muscle_scores: roundScores(totals.muscle_scores),
-    prs: totals.prs.map((p) => ({ ...p, e1rm_kg: round(p.e1rm_kg, 2), previous_best_kg: p.previous_best_kg === null ? null : round(p.previous_best_kg, 2) })),
+    prs: totals.prs.map((p) => ({
+      ...p,
+      e1rm_kg: round(p.e1rm_kg, 2),
+      previous_best_kg: p.previous_best_kg === null ? null : round(p.previous_best_kg, 2),
+    })),
   }
   const now = deps.now().toISOString()
   const text = finishText(summary, tags)
@@ -315,7 +406,10 @@ export async function finishSession(deps: Deps, id: string, input: SessionFinish
       })
       .where(eq(workout_sessions.id, id)),
     // A re-finish (after editing the sets) rewrites the note's numbers; a replay writes the same ones.
-    note.statement.onConflictDoUpdate({ target: ai_events.id, set: { summary: text, body, updated_at: now } }),
+    note.statement.onConflictDoUpdate({
+      target: ai_events.id,
+      set: { summary: text, body, updated_at: now },
+    }),
   ])
   return { session: await getSession(deps, id), summary }
 }
@@ -329,7 +423,11 @@ async function historySets(deps: Deps, ids: readonly string[], before: string) {
   const out: { exercise_id: string; reps: number | null; load_kg: number | null; completed: boolean }[] = []
   for (const part of chunk(ids, 90)) {
     const rows = await deps.db
-      .select({ exercise_id: session_sets.exercise_id, reps: session_sets.reps, load_kg: max(session_sets.load_kg) })
+      .select({
+        exercise_id: session_sets.exercise_id,
+        reps: session_sets.reps,
+        load_kg: max(session_sets.load_kg),
+      })
       .from(session_sets)
       .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
       .where(

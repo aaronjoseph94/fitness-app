@@ -9,7 +9,7 @@
 import { splitNameKey, splitSlots, splitTemplateFor } from '@fitness/shared/engine'
 import { ProposalBody, type SplitSlot, type Template, type Weekday } from '@fitness/shared/schemas'
 import { and, desc, eq, gte, inArray, ne, or, sql } from 'drizzle-orm'
-import { ai_events, ai_jobs, settings, workout_templates } from '../../../db'
+import { ai_events, ai_jobs, chunk, runBatch, settings, workout_templates } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { enqueue } from '../../jobs'
 import { BACKGROUND_PRIORITY } from './plan'
@@ -24,9 +24,10 @@ const DISMISSED_DAYS = 28
  * dismissal needs. An older draft no longer counts, so a draft left pending this long is drafted afresh (and the new
  * one supersedes it: supersedeDraftsUpdate).
  */
-const DRAFT_WINDOW_DAYS = DISMISSED_DAYS
+export const DRAFT_WINDOW_DAYS = DISMISSED_DAYS
 
-const hoursAgo = (deps: Deps, hours: number) => new Date(deps.now().getTime() - hours * HOUR_MS).toISOString()
+export const hoursAgo = (deps: Deps, hours: number) =>
+  new Date(deps.now().getTime() - hours * HOUR_MS).toISOString()
 
 /** Workout proposals that carry a name (the split's drafts), created within the draft window. */
 const splitDraftRows = (deps: Deps) =>
@@ -40,7 +41,11 @@ const splitDraftRows = (deps: Deps) =>
 /** The pending split drafts (draft window), newest first: id, the split day's name and when it was written. */
 export const pendingSplitDrafts = (deps: Deps) =>
   deps.db
-    .select({ id: ai_events.id, name: sql<unknown>`json_extract(${ai_events.body}, '$.workout.name')`, created_at: ai_events.created_at })
+    .select({
+      id: ai_events.id,
+      name: sql<unknown>`json_extract(${ai_events.body}, '$.workout.name')`,
+      created_at: ai_events.created_at,
+    })
     .from(ai_events)
     .where(and(splitDraftRows(deps), eq(ai_events.proposal_status, 'pending')))
     .orderBy(desc(ai_events.created_at))
@@ -74,16 +79,13 @@ const IDS_PER_UPDATE = 90
 /** Reject these pending drafts (decided as events.proposalDecisionUpdate decides), in one db.batch. */
 async function dismissDrafts(deps: Deps, ids: readonly string[]): Promise<void> {
   const now = deps.now().toISOString()
-  const updates = []
-  for (let i = 0; i < ids.length; i += IDS_PER_UPDATE)
-    updates.push(
-      deps.db
-        .update(ai_events)
-        .set({ proposal_status: 'rejected', read_at: now, updated_at: now })
-        .where(and(inArray(ai_events.id, ids.slice(i, i + IDS_PER_UPDATE)), eq(ai_events.proposal_status, 'pending'))),
-    )
-  const [first, ...rest] = updates
-  if (first) await deps.db.batch([first, ...rest])
+  const updates = chunk(ids, IDS_PER_UPDATE).map((part) =>
+    deps.db
+      .update(ai_events)
+      .set({ proposal_status: 'rejected', read_at: now, updated_at: now })
+      .where(and(inArray(ai_events.id, part), eq(ai_events.proposal_status, 'pending'))),
+  )
+  await runBatch(deps.db, updates)
 }
 
 /**
@@ -146,16 +148,28 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
     db
       .select({ id: ai_jobs.id })
       .from(ai_jobs)
-      .where(and(eq(ai_jobs.status, 'failed'), isDraftJob, gte(ai_jobs.updated_at, hoursAgo(deps, FAILED_WAIT_HOURS))))
+      .where(
+        and(
+          eq(ai_jobs.status, 'failed'),
+          isDraftJob,
+          gte(ai_jobs.updated_at, hoursAgo(deps, FAILED_WAIT_HOURS)),
+        ),
+      )
       .limit(1),
     pendingSplitDrafts(deps),
     proposedDaysRows(deps),
   ])
   const slots = splitSlots(s?.training_days ?? [])
-  const allowed = new Set([slots, ...parseDays(proposed).map(splitSlots)].flatMap((split) => split.map((slot) => splitNameKey(slot.name))))
+  const allowed = new Set(
+    [slots, ...parseDays(proposed).map(splitSlots)].flatMap((split) =>
+      split.map((slot) => splitNameKey(slot.name)),
+    ),
+  )
   await dismissDrafts(
     deps,
-    pendingDrafts.flatMap((d) => (typeof d.name === 'string' && !allowed.has(splitNameKey(d.name)) ? [d.id] : [])),
+    pendingDrafts.flatMap((d) =>
+      typeof d.name === 'string' && !allowed.has(splitNameKey(d.name)) ? [d.id] : [],
+    ),
   )
 
   const stop = (reason: string): SplitDraftResult => ({ slot: null, job_id: null, reason })
@@ -175,14 +189,21 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
         or(
           eq(ai_events.proposal_status, 'pending'),
           // A proposal's updated_at is when it was decided (events.proposalDecisionUpdate).
-          and(eq(ai_events.proposal_status, 'rejected'), gte(ai_events.updated_at, hoursAgo(deps, DISMISSED_DAYS * 24))),
+          and(
+            eq(ai_events.proposal_status, 'rejected'),
+            gte(ai_events.updated_at, hoursAgo(deps, DISMISSED_DAYS * 24)),
+          ),
         ),
       ),
     )
   const drafted = new Set(drafts.flatMap((d) => (typeof d.name === 'string' ? [splitNameKey(d.name)] : [])))
   const next = open.find((slot) => !drafted.has(splitNameKey(slot.name)))
   if (!next) return stop('every split day has a template or a draft')
-  const job = await enqueue(deps, { type: 'workout_template', payload: { slot: next }, priority: BACKGROUND_PRIORITY })
+  const job = await enqueue(deps, {
+    type: 'workout_template',
+    payload: { slot: next },
+    priority: BACKGROUND_PRIORITY,
+  })
   return { slot: next.name, job_id: job.id, reason: 'queued' }
 }
 
@@ -190,11 +211,19 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
  * The split that holds `slot` (its name): the settings' days when their split has it, else the newest pending
  * training_days proposal whose split has it (the AI drafts the days it proposed before he taps them), else the settings'.
  */
-export async function splitOf(deps: Deps, slot: SplitSlot, training_days: readonly Weekday[]): Promise<SplitSlot[]> {
+export async function splitOf(
+  deps: Deps,
+  slot: SplitSlot,
+  training_days: readonly Weekday[],
+): Promise<SplitSlot[]> {
   const holds = (split: SplitSlot[]) => split.some((s) => splitNameKey(s.name) === splitNameKey(slot.name))
   const own = splitSlots(training_days)
   if (holds(own)) return own
-  return parseDays(await proposedDaysRows(deps)).map(splitSlots).find(holds) ?? own
+  return (
+    parseDays(await proposedDaysRows(deps))
+      .map(splitSlots)
+      .find(holds) ?? own
+  )
 }
 
 /**
@@ -215,12 +244,18 @@ export async function earlierDays(
 ): Promise<{ name: string; slugs: string[] }[]> {
   const { slots } = input
   const at = slots.findIndex((s) => splitNameKey(s.name) === splitNameKey(input.slot.name))
-  const earlier = slots.slice(0, Math.max(at, 0)).filter((s) => input.slot.focus === 'full' || s.focus === input.slot.focus)
+  const earlier = slots
+    .slice(0, Math.max(at, 0))
+    .filter((s) => input.slot.focus === 'full' || s.focus === input.slot.focus)
   if (!earlier.length) return []
   const held = new Map<string, string[]>()
   for (const s of earlier) {
     const t = splitTemplateFor(input.templates, s.name)
-    if (t) held.set(splitNameKey(s.name), t.exercises.map((e) => e.exercise_id))
+    if (t)
+      held.set(
+        splitNameKey(s.name),
+        t.exercises.map((e) => e.exercise_id),
+      )
   }
   if (earlier.some((s) => !held.has(splitNameKey(s.name)))) {
     const rows = await deps.db
@@ -232,7 +267,11 @@ export async function earlierDays(
       const body = ProposalBody.safeParse(row.body)
       if (!body.success || body.data.kind !== 'workout' || !body.data.workout.name) continue
       const key = splitNameKey(body.data.workout.name)
-      if (!held.has(key)) held.set(key, body.data.workout.exercises.map((e) => e.exercise_id))
+      if (!held.has(key))
+        held.set(
+          key,
+          body.data.workout.exercises.map((e) => e.exercise_id),
+        )
     }
   }
   return earlier.flatMap((s) => {

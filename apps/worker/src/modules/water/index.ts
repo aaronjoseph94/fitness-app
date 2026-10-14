@@ -2,6 +2,10 @@
 // (day totals are computed by v_day): log one (idempotent by the client id, so a replayed offline write returns the
 // first row), list a date's entries, delete one (a replayed delete is a no-op). Water drunk on a later local date than
 // today is refused (a replay of a stored entry still returns it).
+// Interface:
+//   logWater(deps, WaterLogCreate) → WaterLog
+//   listWater(deps, date)          → WaterLog[]   oldest first
+//   deleteWater(deps, id)          → Ok
 import { localDate, today } from '@fitness/shared/engine'
 import type { Ok, WaterLog, WaterLogCreate } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
@@ -9,7 +13,7 @@ import { water_logs, type Row } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest } from '../../lib/http-error'
 
-/** A phone clock a few minutes ahead of the Worker's at midnight still logs "today". */
+/** A device clock a few minutes ahead of the Worker's at midnight still logs "today". */
 const CLOCK_SKEW_MS = 5 * 60_000
 
 /** Log one entry; `logged_at` defaults to now and `date` = its Edmonton local date. */
@@ -33,7 +37,11 @@ export async function logWater(deps: Deps, input: WaterLogCreate): Promise<Water
 
 /** GET /api/water?date=: the date's entries, oldest first. */
 export async function listWater(deps: Deps, date: string): Promise<WaterLog[]> {
-  const rows = await deps.db.select().from(water_logs).where(eq(water_logs.date, date)).orderBy(asc(water_logs.logged_at))
+  const rows = await deps.db
+    .select()
+    .from(water_logs)
+    .where(eq(water_logs.date, date))
+    .orderBy(asc(water_logs.logged_at))
   return rows.map(toWaterLog)
 }
 
@@ -43,7 +51,7 @@ export async function deleteWater(deps: Deps, id: string): Promise<Ok> {
   return { ok: true }
 }
 
-export const toWaterLog = (r: Row<typeof water_logs>): WaterLog => ({
+const toWaterLog = (r: Row<typeof water_logs>): WaterLog => ({
   id: r.id,
   date: r.date,
   logged_at: r.logged_at,

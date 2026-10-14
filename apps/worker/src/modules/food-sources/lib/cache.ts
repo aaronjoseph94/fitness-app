@@ -2,7 +2,7 @@
 // upsert by (source, source_id) that stores what a source returned. LLM estimates (source 'llm') never count as matches.
 // Also counts external calls per source and UTC day in `provider_usage` (key 'openfoodfacts').
 import { and, desc, eq, getTableColumns, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
-import { foods, provider_usage, type Db, type Row } from '../../../db'
+import { chunk, foods, provider_usage, type Db, type Row } from '../../../db'
 import type { RemoteSource } from './gate'
 import type { FoodDraft } from './normalise'
 
@@ -15,7 +15,7 @@ const ROWS_PER_STATEMENT = 6
 const SEARCH_ROWS = 40
 
 /** Barcode variants that name one product: UPC-A (12) and its EAN-13 form with a leading 0. */
-export function barcodeVariants(code: string): string[] {
+function barcodeVariants(code: string): string[] {
   if (code.length === 12) return [code, `0${code}`]
   if (code.length === 13 && code.startsWith('0')) return [code, code.slice(1)]
   return [code]
@@ -67,35 +67,30 @@ const excluded = (col: string): SQL => sql.raw(`excluded."${col}"`)
 export async function remember(db: Db, drafts: FoodDraft[], now: Date): Promise<FoodRow[]> {
   const unique = [...new Map(drafts.map((d) => [`${d.source}:${d.source_id}`, d])).values()]
   if (unique.length === 0) return []
-  const statements = []
-  for (let i = 0; i < unique.length; i += ROWS_PER_STATEMENT) {
-    const chunk = unique.slice(i, i + ROWS_PER_STATEMENT)
-    statements.push(
-      db
-        .insert(foods)
-        .values(chunk.map((d) => ({ ...d, id: crypto.randomUUID() })))
-        .onConflictDoUpdate({
-          target: [foods.source, foods.source_id],
-          set: {
-            barcode: excluded('barcode'),
-            name: excluded('name'),
-            brand: excluded('brand'),
-            serving_g: excluded('serving_g'),
-            kcal_per_100g: excluded('kcal_per_100g'),
-            protein_g: excluded('protein_g'),
-            carbs_g: excluded('carbs_g'),
-            fat_g: excluded('fat_g'),
-            fibre_g: excluded('fibre_g'),
-            sugar_g: excluded('sugar_g'),
-            sodium_mg: excluded('sodium_mg'),
-            raw: excluded('raw'),
-            updated_at: now.toISOString(),
-          },
-        })
-        .returning(),
-    )
-  }
-  const [first, ...rest] = statements
+  const [first, ...rest] = chunk(unique, ROWS_PER_STATEMENT).map((part) =>
+    db
+      .insert(foods)
+      .values(part.map((d) => ({ ...d, id: crypto.randomUUID() })))
+      .onConflictDoUpdate({
+        target: [foods.source, foods.source_id],
+        set: {
+          barcode: excluded('barcode'),
+          name: excluded('name'),
+          brand: excluded('brand'),
+          serving_g: excluded('serving_g'),
+          kcal_per_100g: excluded('kcal_per_100g'),
+          protein_g: excluded('protein_g'),
+          carbs_g: excluded('carbs_g'),
+          fat_g: excluded('fat_g'),
+          fibre_g: excluded('fibre_g'),
+          sugar_g: excluded('sugar_g'),
+          sodium_mg: excluded('sodium_mg'),
+          raw: excluded('raw'),
+          updated_at: now.toISOString(),
+        },
+      })
+      .returning(),
+  )
   const results = await db.batch([first!, ...rest])
   return results.flat()
 }

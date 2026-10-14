@@ -9,10 +9,17 @@ import type { ChatSend, ChatSent, ChatTurnError } from '@fitness/shared/schemas'
 import { chat_messages } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
-import { ProvidersExhaustedError, type LlmRouter, type ToolCall as ModelCall, type Msg, type ToolDef } from '../../llm'
+import { redactName } from '../../../lib/redact'
+import {
+  ProvidersExhaustedError,
+  type LlmRouter,
+  type ToolCall as ModelCall,
+  type Msg,
+  type ToolDef,
+} from '../../llm'
 import { getSettings } from '../../settings'
 import { callTool, toolJsonSchemas, type ToolDefinition } from '../../tools'
-import { redact, systemPrompt } from './prompt'
+import { systemPrompt } from './prompt'
 import { withProposals } from './history'
 import { createdBy } from './proposals'
 import { asksToLog, selectTools, type OfferedTool } from './select'
@@ -30,7 +37,7 @@ import {
 } from './store'
 
 /** Model calls per turn (each may ask for several tools). */
-export const MAX_ROUNDS = 5
+const MAX_ROUNDS = 5
 /** Wall time for the whole turn; each model call gets what is left, up to the router's 25 s. */
 const TURN_BUDGET_MS = 55_000
 const CALL_DEADLINE_MS = 25_000
@@ -47,7 +54,11 @@ const toolDefs = new Map<string, ToolDef>()
 function toolDef(tool: ToolDefinition): ToolDef {
   let def = toolDefs.get(tool.name)
   if (!def) {
-    def = { name: tool.name, description: redact(tool.description), parameters: toolJsonSchemas(tool).input }
+    def = {
+      name: tool.name,
+      description: redactName(tool.description),
+      parameters: toolJsonSchemas(tool).input,
+    }
     toolDefs.set(tool.name, def)
   }
   return def
@@ -73,17 +84,24 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
   const userRow = row(input.id, input.thread_id, 'user', input.content, null, started)
   const [{ settings }, past] = await Promise.all([getSettings(deps), history(deps, input.thread_id)])
   // Claim the id first: a retried send (double tap, flaky network) replays instead of logging twice.
-  const claimed = await deps.db.insert(chat_messages).values(userRow).onConflictDoNothing().returning({ id: chat_messages.id })
+  const claimed = await deps.db
+    .insert(chat_messages)
+    .values(userRow)
+    .onConflictDoNothing()
+    .returning({ id: chat_messages.id })
   if (claimed.length === 0) return replayTurn(deps, input.id)
 
-  const offered = selectTools([input.content, ...(past.lastQuestion ? [past.lastQuestion] : [])], settings.auto_apply_safe)
+  const offered = selectTools(
+    [input.content, ...(past.lastQuestion ? [past.lastQuestion] : [])],
+    settings.auto_apply_safe,
+  )
   const tools = offered.map(({ tool }) => toolDef(tool))
   const allowed = new Map(offered.map((o) => [o.tool.name, o]))
   const asked: Asked = { message: input.content, previousQuestion: past.lastQuestion }
   const system = systemPrompt(started, settings)
   const messages: Msg[] = [
-    ...past.messages.map((m) => ({ ...m, content: redact(m.content) })),
-    { role: 'user', content: redact(input.content) },
+    ...past.messages.map((m) => ({ ...m, content: redactName(m.content) })),
+    { role: 'user', content: redactName(input.content) },
   ]
   const ai: Deps = { ...deps, actor: 'ai' }
   const runs: ToolRun[] = []
@@ -119,9 +137,14 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
         messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: run.forModel })
       }
     } catch (e) {
-      console.warn(JSON.stringify({ at: 'ask_ai', event: 'llm_failed', error: e instanceof Error ? e.name : 'unknown' }))
+      console.warn(
+        JSON.stringify({ at: 'ask_ai', event: 'llm_failed', error: e instanceof Error ? e.name : 'unknown' }),
+      )
       error = 'ai_unavailable'
-      notSetUp = e instanceof ProvidersExhaustedError && e.failures.length > 0 && e.failures.every((f) => f.reason === 'no_key')
+      notSetUp =
+        e instanceof ProvidersExhaustedError &&
+        e.failures.length > 0 &&
+        e.failures.every((f) => f.reason === 'no_key')
     }
   }
   if (reply === null && error === null) error = 'too_many_steps'
@@ -166,7 +189,7 @@ async function runCall(
   const args = JSON.parse(JSON.stringify(call.args ?? {})) as StoredCall['args']
   const done = (ok: boolean, output: unknown, created: ProposalRef[] = []): ToolRun => {
     // Tool results carry free text (meal notes, the coach's dashboard note and narrative): the name never goes back.
-    const content = redact(cap(JSON.stringify(output) ?? 'null'))
+    const content = redactName(cap(JSON.stringify(output) ?? 'null'))
     return {
       call: { id, name: call.name, args, ok, ...(created.length ? { created } : {}) },
       content,
@@ -190,7 +213,14 @@ async function runCall(
     return done(true, output, createdBy(call.name, output))
   } catch (e) {
     if (e instanceof HttpError) return done(false, { error: e.code, message: e.message })
-    console.warn(JSON.stringify({ at: 'ask_ai', event: 'tool_failed', tool: call.name, error: e instanceof Error ? e.name : 'unknown' }))
+    console.warn(
+      JSON.stringify({
+        at: 'ask_ai',
+        event: 'tool_failed',
+        tool: call.name,
+        error: e instanceof Error ? e.name : 'unknown',
+      }),
+    )
     return done(false, { error: 'failed', message: `${call.name} failed unexpectedly` })
   }
 }
@@ -230,13 +260,16 @@ async function replayTurn(deps: Deps, messageId: string): Promise<ChatSent> {
   const fallback =
     assistant?.content === NOT_SET_UP
       ? 'ai_unavailable'
-      : (Object.entries(FALLBACK).find(([, text]) => text === assistant?.content)?.[0] as ChatTurnError | undefined)
+      : (Object.entries(FALLBACK).find(([, text]) => text === assistant?.content)?.[0] as
+          ChatTurnError | undefined)
   return {
     message: toChatMessage(first),
     tool_messages: tools.map((r) => toChatMessage(r)),
     reply: assistant
       ? await withProposals(deps, assistant)
-      : toChatMessage(row(crypto.randomUUID(), first.thread_id, 'assistant', FALLBACK.ai_unavailable, null, deps.now())),
+      : toChatMessage(
+          row(crypto.randomUUID(), first.thread_id, 'assistant', FALLBACK.ai_unavailable, null, deps.now()),
+        ),
     error: assistant ? (fallback ?? null) : 'ai_unavailable',
   }
 }

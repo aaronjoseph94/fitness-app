@@ -16,8 +16,11 @@ export function weekOrder(days: readonly Weekday[]): Weekday[] {
   return Weekday.options.filter((d) => days.includes(d))
 }
 
-const sameDays = (a: readonly Weekday[], b: readonly Weekday[]) => a.length === b.length && a.every((d, i) => d === b[i])
-const label = (days: readonly Weekday[]) => (days.length ? days.map((d) => d[0]!.toUpperCase() + d.slice(1)).join(', ') : 'none')
+/** The same days in the same order. */
+export const sameDays = (a: readonly Weekday[], b: readonly Weekday[]) =>
+  a.length === b.length && a.every((d, i) => d === b[i])
+const label = (days: readonly Weekday[]) =>
+  days.length ? days.map((d) => d[0]!.toUpperCase() + d.slice(1)).join(', ') : 'none'
 
 const pendingDays = and(
   eq(ai_events.kind, 'proposal'),
@@ -34,11 +37,21 @@ const REASON_MAX = 300
  * proposes these days, else a new one written in one db.batch with the rejection of every other pending training_days
  * proposal (decided as events.proposalDecisionUpdate decides).
  */
-export async function proposeDays(deps: Deps, input: { training_days: Weekday[]; before: Weekday[]; reason?: string }): Promise<string> {
-  const waiting = await deps.db.select({ id: ai_events.id, body: ai_events.body }).from(ai_events).where(pendingDays)
+export async function proposeDays(
+  deps: Deps,
+  input: { training_days: Weekday[]; before: Weekday[]; reason?: string },
+): Promise<string> {
+  const waiting = await deps.db
+    .select({ id: ai_events.id, body: ai_events.body })
+    .from(ai_events)
+    .where(pendingDays)
   const same = waiting.find((w) => {
     const body = ProposalBody.safeParse(w.body)
-    return body.success && body.data.kind === 'training_days' && sameDays(weekOrder(body.data.training_days), input.training_days)
+    return (
+      body.success &&
+      body.data.kind === 'training_days' &&
+      sameDays(weekOrder(body.data.training_days), input.training_days)
+    )
   })
   if (same) return same.id
 
@@ -47,7 +60,12 @@ export async function proposeDays(deps: Deps, input: { training_days: Weekday[];
   const insert = eventInsert(deps, {
     kind: 'proposal',
     summary: `Training days: ${label(input.training_days)} (now ${label(input.before)})`,
-    body: { kind: 'training_days', training_days: input.training_days, before: input.before, ...(reason ? { reason } : {}) },
+    body: {
+      kind: 'training_days',
+      training_days: input.training_days,
+      before: input.before,
+      ...(reason ? { reason } : {}),
+    },
     proposal_status: 'pending',
   })
   await deps.db.batch([

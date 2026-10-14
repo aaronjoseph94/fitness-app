@@ -1,15 +1,23 @@
 // Owns: proposals of kinds other than plan_change — the small registry of handlers that apply (accept) or withdraw
-// (reject) them, registered by the module that owns the kind when it loads (training: workout, template_swap;
-// week-plans: week_plan; reminders: reminder_time), like registerJobHandler, so the plan module never imports them —
+// (reject) them, registered by the module that owns the kind when it loads (training: workout, template_swap,
+// train_change; week-plans: week_plan; reminders: reminder_time; settings: training_days), like registerJobHandler, so
+// the plan module never imports them —
 // and safe-list changes (SPEC §9 auto_apply_safe): guarded, then applied at once or stored as a pending proposal.
-import { applyGuards, type ExerciseInfo, type ExerciseSwapChange, type OpenChange } from '@fitness/shared/engine'
+import {
+  applyGuards,
+  type ExerciseInfo,
+  type ExerciseSwapChange,
+  type OpenChange,
+} from '@fitness/shared/engine'
 import type { Proposal, ProposalApplied, ProposalBody, SafeChangeStatus } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 import { eventInsert, getProposalRow, toProposal } from '../../events'
 import type { PlanContext } from './context'
 
 export type HandledKind = Exclude<ProposalBody['kind'], 'plan_change'>
-export type ProposalOf<K extends ProposalBody['kind']> = Proposal & { body: Extract<ProposalBody, { kind: K }> }
+export type ProposalOf<K extends ProposalBody['kind']> = Proposal & {
+  body: Extract<ProposalBody, { kind: K }>
+}
 
 export interface ProposalOutcome {
   /** The plan version accepting created (a week plan), else null. */
@@ -72,7 +80,11 @@ export interface SafeChangeResult<T> {
  * `apply` runs now, and an ai change is recorded as an auto_applied proposal; otherwise it is stored as a pending
  * proposal that waits for Aaron's tap.
  */
-export async function safeChange<T>(deps: Deps, ctx: PlanContext, input: SafeChangeInput<T>): Promise<SafeChangeResult<T>> {
+export async function safeChange<T>(
+  deps: Deps,
+  ctx: PlanContext,
+  input: SafeChangeInput<T>,
+): Promise<SafeChangeResult<T>> {
   const verdict = applyGuards<SafeGuardChange>([input.change], {
     actor: deps.actor,
     rails: ctx.settings,
@@ -87,7 +99,8 @@ export async function safeChange<T>(deps: Deps, ctx: PlanContext, input: SafeCha
   if (!accepted) return { status: 'rejected', applied: null, proposal: null, rejected }
 
   const applied = accepted.auto_apply ? await input.apply() : null
-  if (accepted.auto_apply && deps.actor !== 'ai') return { status: 'applied', applied, proposal: null, rejected }
+  if (accepted.auto_apply && deps.actor !== 'ai')
+    return { status: 'applied', applied, proposal: null, rejected }
   const p = eventInsert(deps, {
     kind: 'proposal',
     summary: input.summary,
@@ -96,5 +109,10 @@ export async function safeChange<T>(deps: Deps, ctx: PlanContext, input: SafeCha
   })
   await p.statement
   const row = await getProposalRow(deps, p.id)
-  return { status: accepted.auto_apply ? 'applied' : 'proposed', applied, proposal: row && toProposal(row), rejected }
+  return {
+    status: accepted.auto_apply ? 'applied' : 'proposed',
+    applied,
+    proposal: row && toProposal(row),
+    rejected,
+  }
 }

@@ -6,7 +6,16 @@
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { createDb, fast_logs, meal_items, meals, plan_versions, profile, settings, weight_logs } from '../src/db'
+import {
+  createDb,
+  fast_logs,
+  meal_items,
+  meals,
+  plan_versions,
+  profile,
+  settings,
+  weight_logs,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { getTrend } from '../src/modules/body'
 import { getDay } from '../src/modules/day'
@@ -14,20 +23,47 @@ import { ensureTargetsThrough, getActivePlan, reforecast } from '../src/modules/
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
-/** Monday 2026-10-05 09:00 MDT: the estimate reads Mon 2026-09-21 … Sun 2026-10-04 (in the past: v_day reads fasts by the real clock). */
+/**
+ * Monday 2026-10-05 09:00 MDT: the estimate reads Mon 2026-09-21 … Sun 2026-10-04 (in the past: v_day reads fasts by
+ * the real clock).
+ */
 const NOW = '2026-10-05T15:00:00.000Z'
-const deps: Deps = { db, env, now: () => new Date(NOW), actor: 'ai', waitUntil: (p) => void pending.push(p.catch(() => undefined)) }
+const deps: Deps = {
+  db,
+  env,
+  now: () => new Date(NOW),
+  actor: 'ai',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+}
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 /** Eight eating days at 1,400 kcal; nothing logged on Sat 09-26 and Sun 09-27 around the fast. */
-const EATING = ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-28', '2026-09-29', '2026-09-30']
+const EATING = [
+  '2026-09-21',
+  '2026-09-22',
+  '2026-09-23',
+  '2026-09-24',
+  '2026-09-25',
+  '2026-09-28',
+  '2026-09-29',
+  '2026-09-30',
+]
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-15' }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-15',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -44,8 +80,24 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
-      forecast: { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
+      forecast: {
+        finish_date: '2027-06-17',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
     db.insert(weight_logs).values([
       { date: '2026-09-20', weight_kg: 95.1 },
@@ -63,7 +115,16 @@ beforeAll(async () => {
       const id = crypto.randomUUID()
       return [
         db.insert(meals).values({ id, date, slot: 'dinner', input_method: 'manual', status: 'confirmed' }),
-        db.insert(meal_items).values({ meal_id: id, description: 'dinner', grams: 500, kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }),
+        db.insert(meal_items).values({
+          meal_id: id,
+          description: 'dinner',
+          grams: 500,
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+        }),
       ]
     }),
   ])
@@ -85,7 +146,16 @@ describe('reforecast run twice for the same night', () => {
       const id = crypto.randomUUID()
       await db.batch([
         db.insert(meals).values({ id, date, slot: 'dinner', input_method: 'manual', status: 'confirmed' }),
-        db.insert(meal_items).values({ meal_id: id, description: 'dinner', grams: 500, kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }),
+        db.insert(meal_items).values({
+          meal_id: id,
+          description: 'dinner',
+          grams: 500,
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+        }),
       ])
     }
 
@@ -104,6 +174,8 @@ describe('the stored forecast as the contract shows it', () => {
 
     expect(Object.keys((await getActivePlan(deps)).forecast ?? {}).sort()).toEqual(keys)
     expect(Object.keys((await getDay(deps, '2026-10-05')).forecast ?? {}).sort()).toEqual(keys)
-    expect(Object.keys((await getTrend(deps, { from: '2026-09-21', to: '2026-10-05' })).forecast ?? {}).sort()).toEqual(keys)
+    expect(
+      Object.keys((await getTrend(deps, { from: '2026-09-21', to: '2026-10-05' })).forecast ?? {}).sort(),
+    ).toEqual(keys)
   })
 })

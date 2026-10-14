@@ -16,8 +16,12 @@ import { ScanDueNoteBody } from './note'
 const REPEAT_DAYS = 7
 
 /** Body of the note that sets (or, with null, clears) the next scan date (the coach's schedule_scan writes it). */
-export const ScanScheduledNoteBody = z.object({ text: z.string(), flag: z.literal('scan_scheduled'), scan_date: LocalDate.nullable() })
-export type ScanScheduledNoteBody = z.infer<typeof ScanScheduledNoteBody>
+const ScanScheduledNoteBody = z.object({
+  text: z.string(),
+  flag: z.literal('scan_scheduled'),
+  scan_date: LocalDate.nullable(),
+})
+type ScanScheduledNoteBody = z.infer<typeof ScanScheduledNoteBody>
 
 /**
  * The note that sets the next scan date (or, with null, clears it back to the interval), dated today, as a statement
@@ -54,15 +58,28 @@ export async function scanSchedule(deps: Deps): Promise<ScanSchedule> {
   const { db } = deps
   const [[s], [last], [waiting], [note]] = await db.batch([
     db.select({ interval: settings.scan_interval_days }).from(settings).limit(1),
-    db.select({ date: scans.date }).from(scans).where(eq(scans.confirmed, true)).orderBy(desc(scans.scanned_at)).limit(1),
-    db.select({ date: scans.date }).from(scans).where(eq(scans.confirmed, false)).orderBy(desc(scans.scanned_at)).limit(1),
+    db
+      .select({ date: scans.date })
+      .from(scans)
+      .where(eq(scans.confirmed, true))
+      .orderBy(desc(scans.scanned_at))
+      .limit(1),
+    db
+      .select({ date: scans.date })
+      .from(scans)
+      .where(eq(scans.confirmed, false))
+      .orderBy(desc(scans.scanned_at))
+      .limit(1),
     scheduleNotes(deps),
   ])
   const interval_days = s?.interval ?? 28
   const last_scan_date = last?.date ?? null
   const interval_due = last_scan_date ? addDays(last_scan_date, interval_days) : null
   const set = ScanScheduledNoteBody.safeParse(note?.body)
-  const scheduled = set.success && set.data.scan_date && (!last_scan_date || set.data.scan_date > last_scan_date) ? set.data.scan_date : null
+  const scheduled =
+    set.success && set.data.scan_date && (!last_scan_date || set.data.scan_date > last_scan_date)
+      ? set.data.scan_date
+      : null
   return {
     last_scan_date,
     interval_days,
@@ -70,7 +87,8 @@ export async function scanSchedule(deps: Deps): Promise<ScanSchedule> {
     scheduled,
     due: scheduled ?? interval_due,
     source: scheduled ? 'scheduled' : interval_due ? 'interval' : 'none',
-    awaiting_confirmation: waiting && (!last_scan_date || waiting.date >= last_scan_date) ? waiting.date : null,
+    awaiting_confirmation:
+      waiting && (!last_scan_date || waiting.date >= last_scan_date) ? waiting.date : null,
   }
 }
 
@@ -78,7 +96,10 @@ export async function scanSchedule(deps: Deps): Promise<ScanSchedule> {
  * Nightly: record a "scan due" note (actor ai, date = `date`) when due ≤ date, unless one was noted in the last 7 days
  * (or since the due date) or a sheet uploaded on/after the due date is waiting to be confirmed. Idempotent per day.
  */
-export async function noteScanDue(deps: Deps, date: LocalDate): Promise<{ due: LocalDate | null; noted: boolean }> {
+export async function noteScanDue(
+  deps: Deps,
+  date: LocalDate,
+): Promise<{ due: LocalDate | null; noted: boolean }> {
   const schedule = await scanSchedule(deps)
   const { due } = schedule
   if (!due || due > date) return { due, noted: false }
@@ -89,7 +110,10 @@ export async function noteScanDue(deps: Deps, date: LocalDate): Promise<{ due: L
     .from(ai_events)
     .where(and(eq(ai_events.kind, 'note'), gte(ai_events.date, since)))
   if (recent.some((r) => ScanDueNoteBody.safeParse(r.body).success)) return { due, noted: false }
-  const why = schedule.source === 'scheduled' ? `planned; last ${schedule.last_scan_date ?? 'none'}` : `last ${schedule.last_scan_date}, every ${schedule.interval_days} days`
+  const why =
+    schedule.source === 'scheduled'
+      ? `planned; last ${schedule.last_scan_date ?? 'none'}`
+      : `last ${schedule.last_scan_date}, every ${schedule.interval_days} days`
   const text =
     due === date
       ? `Evolt scan due today (${why}). Same conditions: morning, fasted, no training the day before.`

@@ -20,13 +20,20 @@
 //      exercise with the most sets (ties: the later one), never below MIN_SETS_TRIMMED, if that many sets can be freed
 //      at all; a group with no candidate or no room gets a note
 //   9. the whole workout through the engine guards (12–28 sets, allowed ids) — must pass, else RepairError
-import { applyGuards, bodyGroupsOf, missingGroups, type ExerciseSwapChange, type GuardContext, type WorkoutChange } from '@fitness/shared/engine'
+import {
+  applyGuards,
+  bodyGroupsOf,
+  missingGroups,
+  type ExerciseSwapChange,
+  type GuardContext,
+  type WorkoutChange,
+} from '@fitness/shared/engine'
 import type { BodyGroup, Muscle, TemplateExerciseInput } from '@fitness/shared/schemas'
 import type { LibraryEntry } from '../../training'
 import type { LlmWorkout } from './plan'
 
 /** The draft could not be repaired into a valid workout (the job retries with a fresh LLM call). */
-export class RepairError extends Error {}
+class RepairError extends Error {}
 
 const MAX_EXERCISES = 10
 const MAX_SETS_PER_PICK = 6
@@ -66,7 +73,12 @@ export function repairDraft(input: RepairInput): RepairResult {
 
   // 1–3. resolve and dedupe
   const items: Item[] = []
-  const add = (raw: string, plan: Omit<TemplateExerciseInput, 'exercise_id'>, kept: boolean, raw_sets: number) => {
+  const add = (
+    raw: string,
+    plan: Omit<TemplateExerciseInput, 'exercise_id'>,
+    kept: boolean,
+    raw_sets: number,
+  ) => {
     const entry = input.byId.get(raw) ?? input.bySlug.get(raw) ?? input.bySlug.get(raw.toLowerCase())
     if (!entry) return drop(`"${raw}"`, 'not in the exercise library')
     const twin = items.find((i) => i.entry.id === entry.id)
@@ -100,7 +112,12 @@ export function repairDraft(input: RepairInput): RepairResult {
   const rejected = new Map(checked.rejected.map((r) => [r.change.to_exercise_id, r]))
   let kept = items.filter((i) => {
     const r = rejected.get(i.entry.id)
-    if (r) drop(i.entry.name, i.entry.excluded_reason ?? (r.rule === 'excluded_category' ? 'in an excluded category' : 'not in the allowed exercise set'))
+    if (r)
+      drop(
+        i.entry.name,
+        i.entry.excluded_reason ??
+          (r.rule === 'excluded_category' ? 'in an excluded category' : 'not in the allowed exercise set'),
+      )
     return !r
   })
 
@@ -109,10 +126,15 @@ export function repairDraft(input: RepairInput): RepairResult {
     const hit = i.entry.primary_muscles.filter((m) => input.avoid.includes(m))
     if (!hit.length) return true
     if (i.kept) {
-      notes.push(`Kept ${i.entry.name}, though ${hit.join(', ')} ${hit.length > 1 ? 'are' : 'is'} a primary target on a neighbouring day`)
+      notes.push(
+        `Kept ${i.entry.name}, though ${hit.join(', ')} ${hit.length > 1 ? 'are' : 'is'} a primary target on a neighbouring day`,
+      )
       return true
     }
-    drop(i.entry.name, `${hit.join(', ')} ${hit.length > 1 ? 'were' : 'was'} a primary target on a neighbouring day (recovery)`)
+    drop(
+      i.entry.name,
+      `${hit.join(', ')} ${hit.length > 1 ? 'were' : 'was'} a primary target on a neighbouring day (recovery)`,
+    )
     return false
   })
 
@@ -145,19 +167,31 @@ export function repairDraft(input: RepairInput): RepairResult {
     if (at < 0) throw new RepairError(`${plans.length} exercises cannot reach ${input.sets.min} sets`)
     plans[at]!.sets++
   }
-  if (total() !== before) notes.push(`Sets ${total() < before ? 'trimmed' : 'raised'} from ${before} to ${total()} (limit ${input.sets.min}–${input.sets.max})`)
+  if (total() !== before)
+    notes.push(
+      `Sets ${total() < before ? 'trimmed' : 'raised'} from ${before} to ${total()} (limit ${input.sets.min}–${input.sets.max})`,
+    )
 
   // 8b. every required body group reached
   const entries = kept.map((i) => i.entry)
   const primary = () => entries.flatMap((e) => e.primary_muscles)
-  const like = { rep_min: lowerMedian(plans.map((p) => p.rep_min)), rep_max: lowerMedian(plans.map((p) => p.rep_max)), rest_sec: lowerMedian(plans.map((p) => p.rest_sec)) }
+  const like = {
+    rep_min: lowerMedian(plans.map((p) => p.rep_min)),
+    rep_max: lowerMedian(plans.map((p) => p.rep_max)),
+    rest_sec: lowerMedian(plans.map((p) => p.rest_sec)),
+  }
   const allowed = (e: LibraryEntry) =>
     !entries.some((k) => k.id === e.id) &&
     !e.primary_muscles.some((m) => input.avoid.includes(m)) &&
-    applyGuards<ExerciseSwapChange>([{ kind: 'exercise_swap', from_exercise_id: e.id, to_exercise_id: e.id }], input.guard).rejected.length === 0
+    applyGuards<ExerciseSwapChange>(
+      [{ kind: 'exercise_swap', from_exercise_id: e.id, to_exercise_id: e.id }],
+      input.guard,
+    ).rejected.length === 0
   for (const group of input.required ?? []) {
     if (!missingGroups([group], primary()).length) continue
-    const pick = (input.candidates ?? []).find((e) => bodyGroupsOf(e.primary_muscles).includes(group) && allowed(e))
+    const pick = (input.candidates ?? []).find(
+      (e) => bodyGroupsOf(e.primary_muscles).includes(group) && allowed(e),
+    )
     if (!pick) {
       notes.push(`Nothing in the allowed list trains ${group}`)
       continue
@@ -177,7 +211,9 @@ export function repairDraft(input: RepairInput): RepairResult {
     }
     entries.push(pick)
     plans.push({ exercise_id: pick.id, sets: COVER_SETS, ...like, target_load_kg: null, note: null })
-    notes.push(`Added ${pick.name} (${COVER_SETS} sets): the draft had nothing for ${group}${over > 0 ? ` (${over} sets taken from the biggest exercises to stay within ${input.sets.max})` : ''}`)
+    notes.push(
+      `Added ${pick.name} (${COVER_SETS} sets): the draft had nothing for ${group}${over > 0 ? ` (${over} sets taken from the biggest exercises to stay within ${input.sets.max})` : ''}`,
+    )
   }
 
   // 9. the whole workout through the guards

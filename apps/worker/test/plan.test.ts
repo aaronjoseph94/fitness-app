@@ -22,9 +22,22 @@ const at = (iso: string, actor: Deps['actor'] = 'user'): Deps => ({
   waitUntil: (p) => void pending.push(p.catch(() => undefined)),
 })
 
-/** Plan v1 (SPEC §6): 1,400 kcal floor, 130 g protein, 45 g fat, 30 g fibre, carbs the remainder (119 g, as the engine writes it). */
-const baseline = { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+/**
+ * Plan v1 (SPEC §6): 1,400 kcal floor, 130 g protein, 45 g fat, 30 g fibre, carbs the remainder (119 g, as the engine
+ * writes it).
+ */
+const baseline = {
+  kcal: 1400,
+  protein_g: 130,
+  carbs_g: 119,
+  fat_g: 45,
+  fibre_g: 30,
+  water_ml: 3000,
+  steps: 8000,
+}
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 beforeAll(async () => {
   await db.batch([
@@ -53,7 +66,12 @@ beforeAll(async () => {
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
       targets: { defaults: baseline, overrides: {} },
-      forecast: { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      forecast: {
+        finish_date: '2027-06-17',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
     db.insert(weight_logs).values({ date: '2026-09-26', weight_kg: 95.1 }),
   ])
@@ -122,12 +140,21 @@ describe('plan version verdicts', () => {
     })
 
     expect(result.plan_version?.targets.defaults.kcal).toBe(1550)
-    const scheduled = [expect.objectContaining({ week_offset: 1, due: '2026-10-12', change: expect.objectContaining({ from: 1550, to: 1600 }) })]
+    const scheduled = [
+      expect.objectContaining({
+        week_offset: 1,
+        due: '2026-10-12',
+        change: expect.objectContaining({ from: 1550, to: 1600 }),
+      }),
+    ]
     const rejected = [expect.objectContaining({ rule: 'protein_min' })]
     expect(result.plan_version).toMatchObject({ scheduled, rejected })
     const [newest] = await listVersions(deps)
     expect(newest).toMatchObject({ id: result.plan_version!.id, scheduled, rejected })
     // The later step waits for its week: accepting it now would be a 200 kcal move in minutes.
-    await expect(acceptProposal(deps, result.scheduled[0]!.proposal_id)).rejects.toMatchObject({ status: 409, code: 'not_due' })
+    await expect(acceptProposal(deps, result.scheduled[0]!.proposal_id)).rejects.toMatchObject({
+      status: 409,
+      code: 'not_due',
+    })
   })
 })

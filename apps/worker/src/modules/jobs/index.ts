@@ -15,9 +15,9 @@
 //                                                 run the sweep steps, then due jobs within the subrequest budget
 //   getJob(deps, id)       → AiJob                GET /api/jobs/:id
 // Handler errors: the router's DeadlineError / BudgetError and quota-only ProvidersExhaustedError requeue the job for
-// later (up to 6 attempts); RetryLater(afterMs) requeues it; JobFailed fails it at once; anything else retries with
-// backoff and fails after 3 attempts (lib/runner.ts `classify`). Every handler runs with actor 'ai'.
-// A job type with no registered handler is left queued untouched (its handler may arrive in a later phase).
+// later (up to MAX_REQUEUES = 6 attempts); RetryLater(afterMs) requeues it; JobFailed fails it at once; anything else
+// retries with backoff and fails after MAX_ATTEMPTS = 3 attempts (lib/runner.ts `classify`). Every handler runs with
+// actor 'ai'. A job type with no registered handler is left queued untouched.
 import { AiJob, type JobPayload, type JobType } from '@fitness/shared/schemas'
 import { and, asc, desc, eq, getTableColumns, gte, inArray, is, lt, lte, SQL, sql } from 'drizzle-orm'
 import { ai_jobs, type Row } from '../../db'
@@ -34,7 +34,7 @@ export {
   type JobMeta,
   type SweepStep,
 } from './lib/registry'
-export { runJob, DEADLINE_MS, JobFailed, LEASE_LOST, MAX_ATTEMPTS, MAX_REQUEUES, RetryLater, type JobOutcome } from './lib/runner'
+export { runJob, JobFailed, MAX_ATTEMPTS, MAX_REQUEUES, RetryLater, type JobOutcome } from './lib/runner'
 
 export type JobRow = Row<typeof ai_jobs>
 
@@ -49,7 +49,7 @@ export interface EnqueueInput<T extends JobType> {
 }
 
 /** Default external-fetch budget per sweep: the free plan allows 50 subrequests per invocation; keep headroom. */
-export const SWEEP_FETCH_BUDGET = 40
+const SWEEP_FETCH_BUDGET = 40
 
 /** An insert for one queued job, to run inside the caller's db.batch. */
 export function jobInsert<T extends JobType>(deps: Deps, input: EnqueueInput<T>) {
@@ -95,7 +95,9 @@ export function jobInsertUnless<T extends JobType>(deps: Deps, input: EnqueueInp
   })
   const statement = deps.db
     .insert(ai_jobs)
-    .select(sql`SELECT ${sql.join(values, sql`, `)} WHERE NOT EXISTS (SELECT 1 FROM ${ai_jobs} WHERE ${exists})`)
+    .select(
+      sql`SELECT ${sql.join(values, sql`, `)} WHERE NOT EXISTS (SELECT 1 FROM ${ai_jobs} WHERE ${exists})`,
+    )
     .returning({ id: ai_jobs.id })
   return { id, statement }
 }
@@ -104,7 +106,11 @@ export function jobInsertUnless<T extends JobType>(deps: Deps, input: EnqueueInp
  * jobInsert, unless a queued job of the same type already has these payload values (`match`): then null, because that
  * job reads its inputs when it runs and will cover this change too.
  */
-export async function jobInsertOnce<T extends JobType>(deps: Deps, input: EnqueueInput<T>, match: Record<string, string>) {
+export async function jobInsertOnce<T extends JobType>(
+  deps: Deps,
+  input: EnqueueInput<T>,
+  match: Record<string, string>,
+) {
   return (await queuedJobId(deps, input.type, match)) ? null : jobInsert(deps, input)
 }
 
@@ -120,7 +126,11 @@ export async function enqueue<T extends JobType>(deps: Deps, input: EnqueueInput
  * The id of a queued (not yet running) job of `type` whose payload has every key = value in `match`, or null. Used to
  * avoid queueing the same work twice (a queued job reads its inputs when it runs). Reads queued rows only (indexed).
  */
-export async function queuedJobId(deps: Deps, type: JobType, match: Record<string, string>): Promise<string | null> {
+export async function queuedJobId(
+  deps: Deps,
+  type: JobType,
+  match: Record<string, string>,
+): Promise<string | null> {
   const [row] = await deps.db
     .select({ id: ai_jobs.id })
     .from(ai_jobs)
@@ -144,10 +154,15 @@ export function runSoon(deps: Deps, id: string): void {
   )
 }
 
-export type SweepResult = { requeued: number; steps: Record<string, number>; ran: JobOutcome[]; deferred: number }
+export type SweepResult = {
+  requeued: number
+  steps: Record<string, number>
+  ran: JobOutcome[]
+  deferred: number
+}
 
 /** The error a job gets when its lease expired on its last allowed attempt (its isolate keeps dying). */
-export const LEASE_EXPIRED_MAX_ATTEMPTS = 'lease_expired_max_attempts'
+const LEASE_EXPIRED_MAX_ATTEMPTS = 'lease_expired_max_attempts'
 
 /**
  * The 5-minute sweep:
@@ -157,9 +172,15 @@ export const LEASE_EXPIRED_MAX_ATTEMPTS = 'lease_expired_max_attempts'
  *   3. up to `max` queued jobs with run_after ≤ now and a registered handler, priority DESC then run_after ASC,
  *      run one after another while Σ handler.fetches ≤ fetch_budget; the rest wait for the next sweep.
  */
-export async function sweep(deps: Deps, opts: { max?: number; fetch_budget?: number } = {}): Promise<SweepResult> {
+export async function sweep(
+  deps: Deps,
+  opts: { max?: number; fetch_budget?: number } = {},
+): Promise<SweepResult> {
   const max = opts.max ?? 5
-  let budget = Math.min(opts.fetch_budget ?? SWEEP_FETCH_BUDGET, deps.budget ? deps.budget.limit - deps.budget.used : Infinity)
+  let budget = Math.min(
+    opts.fetch_budget ?? SWEEP_FETCH_BUDGET,
+    deps.budget ? deps.budget.limit - deps.budget.used : Infinity,
+  )
   const now = deps.now().toISOString()
 
   const expired = and(eq(ai_jobs.status, 'running'), lt(ai_jobs.lease_until, now))
@@ -181,7 +202,9 @@ export async function sweep(deps: Deps, opts: { max?: number; fetch_budget?: num
       steps[name] = await step(deps)
     } catch (e) {
       steps[name] = -1
-      console.error(JSON.stringify({ level: 'error', msg: 'sweep step failed', step: name, error: String(e) }))
+      console.error(
+        JSON.stringify({ level: 'error', msg: 'sweep step failed', step: name, error: String(e) }),
+      )
     }
   }
 

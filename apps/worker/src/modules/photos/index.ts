@@ -1,5 +1,7 @@
 // Owns: the photos module's interface — progress photos (front/side/back, SPEC §8) stored privately in R2 under
-// progress-photos/<id>.<ext> with their pixel size, each tagged with that day's trend weight and the nearest confirmed scan.
+// progress-photos/<id>.<ext> with their pixel size, each tagged with that day's trend weight and the nearest
+// confirmed scan.
+// Interface:
 //   uploadPhoto(deps, upload)  → ProgressPhoto    idempotent by the client id (a replay returns the stored photo)
 //   listPhotos(deps, query)    → ProgressPhoto[]  newest first, short-lived signed URLs, tags read live
 //   removePhoto(deps, id)      → Ok               row now, R2 object after the response; replaying is a no-op
@@ -18,7 +20,6 @@ import type { Deps } from '../../lib/deps'
 import { checkPhotoBytes } from './lib/image'
 import { loadTags, nearestScan, photoKey, toPhoto } from './lib/tags'
 
-export { PHOTO_URL_TTL_SECONDS } from './lib/tags'
 export { checkPhotoBytes, type CheckedImageType } from './lib/image'
 
 /** POST /api/photos: the query's metadata plus the image bytes (already downscaled and re-encoded by the browser). */
@@ -40,7 +41,12 @@ export async function uploadPhoto(deps: Deps, input: PhotoUpload): Promise<Progr
     loadTags(deps, [date]),
     deps.env.FILES.put(key, input.image, {
       httpMetadata: { contentType: input.content_type },
-      customMetadata: { pose: input.pose, taken_at: input.taken_at, width: String(input.width), height: String(input.height) },
+      customMetadata: {
+        pose: input.pose,
+        taken_at: input.taken_at,
+        width: String(input.width),
+        height: String(input.height),
+      },
     }),
   ])
   const [, [row]] = await db.batch([
@@ -84,7 +90,10 @@ export async function listPhotos(deps: Deps, query: PhotoListQuery): Promise<Pro
 
 /** DELETE /api/photos/:id: drop the row; the R2 object goes after the response. An unknown id is already gone. */
 export async function removePhoto(deps: Deps, id: string): Promise<Ok> {
-  const [row] = await deps.db.select({ key: progress_photos.storage_path }).from(progress_photos).where(eq(progress_photos.id, id))
+  const [row] = await deps.db
+    .select({ key: progress_photos.storage_path })
+    .from(progress_photos)
+    .where(eq(progress_photos.id, id))
   if (!row) return { ok: true }
   await deps.db.delete(progress_photos).where(eq(progress_photos.id, id))
   deps.waitUntil(deps.env.FILES.delete(row.key).catch(() => undefined))

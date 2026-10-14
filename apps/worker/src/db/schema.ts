@@ -3,7 +3,8 @@
 // Conventions (CLAUDE.md "Engineering rules"):
 // - Keys are the SQL column names (snake_case), so a row has the same shape in SQL, TypeScript, the SPEC and the API JSON.
 // - `id` is UUID text. `created_at`/`updated_at` are UTC instants 'YYYY-MM-DDTHH:MM:SS.sssZ'.
-// - Instants are UTC text; a row that belongs to a day also stores its Edmonton local `date` ('YYYY-MM-DD'), computed in code.
+// - Instants are UTC text; a row that belongs to a day also stores its Edmonton local `date` ('YYYY-MM-DD'), computed
+//   in code.
 // - Enums are TypeScript-only (`text({ enum })` emits no CHECK). JSON columns are `text({ mode: 'json' }).$type<T>()`.
 //   LLM- or MCP-fed JSON is typed `unknown`: parse it with its Zod schema on read.
 // - No ON DELETE CASCADE: delete child rows explicitly in the same db.batch().
@@ -41,10 +42,10 @@ import {
 } from '@fitness/shared/schemas'
 
 // ---------------------------------------------------------------------------
-// Stand-ins for shared schemas that exist but are not yet re-exported from @fitness/shared/schemas (plan.ts,
-// week-plan.ts, body.ts, chat.ts), or that no shared schema defines. Values and shapes match the shared files.
-// TODO(schemas): import WeekPlanAuthor, WeekPlanStatus, MilestoneKind, ProposalStatus, ChatRole, PlanTargets,
-// Forecast and PlanDiff once the schemas index re-exports them, and delete these.
+// Stand-ins for shared schemas (plan.ts, week-plan.ts, body.ts, chat.ts), and values no shared schema defines.
+// Values and shapes match the shared files.
+// TODO(schemas): the schemas index re-exports WeekPlanAuthor, WeekPlanStatus, MilestoneKind, ProposalStatus, ChatRole,
+// PlanTargets, Forecast and PlanDiff now: import them (values(...) for the enums) and delete these.
 // ---------------------------------------------------------------------------
 const WEEK_PLAN_AUTHOR = ['claude_mcp', 'gemini', 'user'] as const
 const WEEK_PLAN_STATUS = ['proposed', 'active', 'superseded'] as const
@@ -70,7 +71,10 @@ type TargetValues = {
 }
 /** plan_versions.targets (shared PlanTargets): defaults plus per-weekday overrides. */
 type PlanTargets = { defaults: TargetValues; overrides: Partial<Record<Weekday, Partial<TargetValues>>> }
-/** plan_versions.forecast (shared Forecast): weekly_rate_kg = (tdee_est − target_kcal) × 7 / 7,700; band = rate × (1 ∓ 0.20). */
+/**
+ * plan_versions.forecast (shared Forecast): weekly_rate_kg = (tdee_est − target_kcal) × 7 / 7,700; band = rate × (1 ∓
+ * 0.20).
+ */
 type Forecast = {
   finish_date: string | null
   weekly_rate_kg: number
@@ -309,7 +313,10 @@ export const meals = sqliteTable(
     status: text({ enum: values(MealStatus) })
       .notNull()
       .default('parsing'),
-    /** The newest meal_analysis job queued for this meal (its status is the meal's analysis state); null = never analysed. */
+    /**
+     * The newest meal_analysis job queued for this meal (its status is the meal's analysis state); null = never
+     * analysed.
+     */
     analysis_job_id: text(),
     actor: actor(),
     ...timestamps(),
@@ -359,7 +366,10 @@ export const meal_photos = sqliteTable(
 // ---------------------------------------------------------------------------
 // Plans and targets
 // ---------------------------------------------------------------------------
-/** Append-only. Exactly one row has active = true (partial unique index): deactivate the old row before activating the new one in the same batch. */
+/**
+ * Append-only. Exactly one row has active = true (partial unique index): deactivate the old row before activating the
+ * new one in the same batch.
+ */
 export const plan_versions = sqliteTable(
   'plan_versions',
   {
@@ -446,7 +456,10 @@ export const daily_targets = sqliteTable(
 // ---------------------------------------------------------------------------
 // Scans and milestones
 // ---------------------------------------------------------------------------
-/** One Evolt scan. Metric columns mirror the seed record (seed/scans/2026-09-26.json), in kg/cm/kcal; null until confirmed. */
+/**
+ * One Evolt scan. Metric columns mirror the seed record (seed/scans/2026-09-26.json), in kg/cm/kcal; null until
+ * confirmed.
+ */
 export const scans = sqliteTable(
   'scans',
   {
@@ -507,7 +520,10 @@ export const scan_segments = sqliteTable(
   (t) => [uniqueIndex('scan_segments_scan_segment_uq').on(t.scan_id, t.segment)],
 )
 
-/** A target value reached at or below `target_value` (all SPEC §3 milestones point down). `segment` is set when kind = 'segment' (torso fat). */
+/**
+ * A target value reached at or below `target_value` (all SPEC §3 milestones point down). `segment` is set when kind =
+ * 'segment' (torso fat).
+ */
 export const milestones = sqliteTable(
   'milestones',
   {
@@ -695,7 +711,10 @@ export const session_sets = sqliteTable(
 // ---------------------------------------------------------------------------
 // AI, events and system
 // ---------------------------------------------------------------------------
-/** The job queue and audit trail. Sweep: status='queued' AND run_after <= now ORDER BY priority DESC; requeue 'running' rows past lease_until. */
+/**
+ * The job queue and audit trail. Sweep: status='queued' AND run_after <= now ORDER BY priority DESC; requeue 'running'
+ * rows past lease_until.
+ */
 export const ai_jobs = sqliteTable(
   'ai_jobs',
   {
@@ -783,7 +802,10 @@ export const push_subscriptions = sqliteTable(
   (t) => [uniqueIndex('push_subscriptions_endpoint_uq').on(t.endpoint)],
 )
 
-/** Idempotency for the 5-minute cron's nightly/weekly/monthly work: one row per (kind, Edmonton-local period_key, e.g. '2026-10-05', '2026-W41', '2026-10'). */
+/**
+ * Idempotency for the 5-minute cron's nightly/weekly/monthly work: one row per (kind, Edmonton-local period_key, e.g.
+ * '2026-10-05', '2026-W41', '2026-10').
+ */
 export const cron_runs = sqliteTable(
   'cron_runs',
   {

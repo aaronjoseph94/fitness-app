@@ -1,5 +1,7 @@
 // Owns: the notes module's interface — the dashboard note showing now (the newest `app_notes` row whose `until` is
 // null or still in the future). Today's DayView and GET /api/notes both read it from here.
+// Interface:
+//   activeNote(deps) → DashboardNote | null
 import type { DashboardNote } from '@fitness/shared/schemas'
 import { desc, gt, isNull, or } from 'drizzle-orm'
 import { app_notes } from '../../db'
@@ -15,6 +17,13 @@ export async function activeNote(deps: Deps): Promise<DashboardNote | null> {
     .orderBy(desc(app_notes.created_at))
     .limit(1)
   return row
-    ? { id: row.id, text: row.text, until: row.until, actor: row.actor, created_at: row.created_at, updated_at: row.updated_at }
+    ? {
+        id: row.id,
+        text: row.text,
+        until: row.until,
+        actor: row.actor,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      }
     : null
 }

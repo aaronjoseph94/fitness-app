@@ -51,8 +51,7 @@ export const MetricName = z.enum([
 ])
 export type MetricName = z.infer<typeof MetricName>
 
-export const MetricAgg = z.enum(['day', 'week'])
-export type MetricAgg = z.infer<typeof MetricAgg>
+const MetricAgg = z.enum(['day', 'week'])
 
 /** At most 400 days (the day series' limit). */
 export const MetricQuery = z
@@ -140,7 +139,10 @@ export type ScanScheduled = z.infer<typeof ScanScheduled>
 
 // ── apply_review changes ───────────────────────────────────────────────────────────────────────────────────────
 
-/** Every change kind apply_review understands. Settings rails (floor, ceiling, protein/fat minimums, fasting pattern) are not among them. */
+/**
+ * Every change kind apply_review understands. Settings rails (floor, ceiling, protein/fat minimums, fasting pattern)
+ * are not among them.
+ */
 export const ReviewChange = z.discriminatedUnion('kind', [
   z
     .object({
@@ -248,7 +250,6 @@ export const ReviewChange = z.discriminatedUnion('kind', [
     .describe('Pin a coach note to the top of Today (until the given date, inclusive).'),
 ])
 export type ReviewChange = z.infer<typeof ReviewChange>
-export type ReviewChangeKind = ReviewChange['kind']
 
 export const ApplyReviewInput = z.object({
   summary: z.string().trim().min(1).max(300).describe('One line: what this review changes and why'),
@@ -283,13 +284,16 @@ export type AppliedChange = z.infer<typeof AppliedChange>
 export const DroppedChange = z.object({
   index: Count,
   kind: z.string(),
-  /** The rail or check it failed (calorie_floor, protein_min, exercise_not_allowed, session_sets, fasting_pattern, not_found, …). */
+  /**
+   * The rail or check it failed (calorie_floor, protein_min, exercise_not_allowed, session_sets, fasting_pattern,
+   * not_found, …).
+   */
   rule: z.string(),
   reason: z.string(),
 })
 export type DroppedChange = z.infer<typeof DroppedChange>
 
-export const ScheduledStep = z.object({ change: PlanChange, due: LocalDate, proposal_id: Id })
+const ScheduledStep = z.object({ change: PlanChange, due: LocalDate, proposal_id: Id })
 
 export const ApplyReviewResult = z.object({
   review_id: Id,

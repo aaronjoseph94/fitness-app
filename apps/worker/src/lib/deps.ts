@@ -13,7 +13,7 @@ export interface FetchBudget {
 }
 
 /** Free plan: 50 external subrequests per invocation; two are left for fetches no adapter counts (Access JWKS, push). */
-export const INVOCATION_FETCHES = 48
+const INVOCATION_FETCHES = 48
 
 export interface Deps {
   db: Db

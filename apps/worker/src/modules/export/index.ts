@@ -28,9 +28,8 @@ import { importPage, restoreGate, runBatch } from './lib/restore'
 import { ident, RESTORE_TABLES, tableSpec } from './lib/tables'
 
 export type { BackupStep } from './lib/backup'
-export { backupKey } from './lib/backup'
 
-/** Signed links in a manifest outlive a slow export over a phone connection. */
+/** Signed links in a manifest outlive a slow export over a slow connection. */
 const EXPORT_FILE_URL_TTL_SECONDS = 6 * 3600
 
 /** One row, one column per table (scalar subqueries: D1 caps a compound SELECT at a handful of terms). */

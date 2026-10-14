@@ -7,20 +7,20 @@ import { REMINDER_HOURS } from '@fitness/shared/schemas'
 export const GRACE_MIN = 30
 
 /** Water checks run from 09:00 to 21:00 inclusive. */
-export const WATER_WINDOW = { from: '09:00', to: '21:00' } as const
+const WATER_WINDOW = { from: '09:00', to: '21:00' } as const
 /** Minutes between water checks: 120 normally, 90 on a fast day (SPEC §8; the fast-day target is higher). */
-export const WATER_EVERY_MIN = { normal: 120, fast: 90 } as const
+const WATER_EVERY_MIN = { normal: 120, fast: 90 } as const
 /** Behind pace means at least this far below the expected amount (one glass), so a sip short never nags. */
-export const WATER_SLACK_ML = 250
+const WATER_SLACK_ML = 250
 
 /** "HH:MM" → minutes since midnight. */
-export function minutesOf(time: string): number {
+function minutesOf(time: string): number {
   const [h, m] = time.split(':')
   return Number(h) * 60 + Number(m)
 }
 
 /** Minutes since midnight → "HH:MM". */
-export function timeOf(minutes: number): string {
+function timeOf(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
 
@@ -37,7 +37,7 @@ export function slotDue(time: string, slot: string): boolean {
 }
 
 /** Water check slots for a day: 09:00, then every 120 min (90 on a fast day), the last at or before 21:00. */
-export function waterSlots(fastDay: boolean): string[] {
+function waterSlots(fastDay: boolean): string[] {
   const step = fastDay ? WATER_EVERY_MIN.fast : WATER_EVERY_MIN.normal
   const out: string[] = []
   for (let m = minutesOf(WATER_WINDOW.from); m <= minutesOf(WATER_WINDOW.to); m += step) out.push(timeOf(m))

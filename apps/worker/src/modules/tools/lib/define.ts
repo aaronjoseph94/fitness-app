@@ -1,6 +1,6 @@
 // Owns: the shape of one tool in the shared tools layer (SPEC §10) and the defineTool helper.
 // A tool is defined once — Zod input/output, MCP annotations, and a run() over Deps — and exposed to both
-// Ask AI (Gemini function calling) and the MCP server. Writes record deps.actor and go through the guards
+// Ask AI (function calling through the LLM router) and the MCP server. Writes record deps.actor and go through the guards
 // inside the modules they call; no tool can change the settings rails.
 import { Proposal, SafeChangeStatus } from '@fitness/shared/schemas'
 import * as z from 'zod'
@@ -47,7 +47,9 @@ export interface ToolDefinition<I extends z.ZodType = z.ZodType, O extends z.Zod
   run: (deps: Deps, input: z.output<I>) => Promise<z.input<O>>
 }
 
-export function defineTool<I extends z.ZodType, O extends z.ZodType>(tool: ToolDefinition<I, O>): ToolDefinition<I, O> {
+export function defineTool<I extends z.ZodType, O extends z.ZodType>(
+  tool: ToolDefinition<I, O>,
+): ToolDefinition<I, O> {
   return tool
 }
 

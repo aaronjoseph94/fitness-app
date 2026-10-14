@@ -2,19 +2,21 @@
 // tools layer, answered inside the request, history in chat_messages.
 // Interface:
 //   chatTurn(deps, llm, ChatSend)          → ChatSent       POST /api/ai/chat. Replaying a message id returns the stored
-//        turn (no second run). Offers ≈15 tools picked by intent; runs calls as actor 'ai' for ≤ 5 model calls.
-//        Logging tools apply at once (Aaron asked); targets, workouts, week plans and every Train change (templates,
-//        equipment statuses, hidden exercises, training days; plan_training_week's days) become proposals that wait
-//        for a tap (the modules' guards decide; auto_apply_safe only ever covers safe-list kinds, never targets); Undo
-//        (revert_train_change) and coach-only tools are never offered. Stores user, one tool row per call, and the assistant reply; the reply's tool_calls
-//        are the calls made and its proposals what waits for a tap. A router failure is a calm stored reply with
-//        error 'ai_unavailable' (or 'too_many_steps'), not an HTTP error. The model never sees the user's name.
+//        turn (no second run). Offers at most MAX_TOOLS tools picked by intent; runs calls as actor 'ai' for ≤ 5 model
+//        calls. Logging tools apply at once (Aaron asked); targets, workouts, week plans and every Train change
+//        (templates, equipment statuses, hidden exercises, training days; plan_training_week's days) become proposals
+//        that wait for a tap (the modules' guards decide; auto_apply_safe only ever covers safe-list kinds, never
+//        targets); Undo (revert_train_change) and coach-only tools are never offered. Stores user, one tool row per
+//        call, and the assistant reply; the reply's tool_calls are the calls made and its proposals what waits for a
+//        tap. A router failure is a calm stored reply with error 'ai_unavailable' (or 'too_many_steps'), not an HTTP
+//        error. The model never sees the user's name.
 //   chatHistory(deps, { thread_id? })      → ChatMessage[]  GET /api/ai/chat: a thread oldest first, proposals at their
 //        status now; without thread_id, each thread's opening question, most recently active first
 //   chatDelete(deps, { thread_id })        → Ok             DELETE /api/ai/chat: forget one chat — every chat_messages
 //        row of that thread; an id that was never stored is a no-op
 //   selectTools(texts, autoApplySafe)      → OfferedTool[]  the tools a turn would offer (for tests and tuning)
-export { chatDelete, deleteThread } from './lib/forget'
+//   MAX_TOOLS                              the most tools one turn offers (16)
+export { chatDelete } from './lib/forget'
 export { chatHistory } from './lib/history'
 export { MAX_TOOLS, selectTools, type OfferedTool } from './lib/select'
-export { chatTurn, MAX_ROUNDS } from './lib/turn'
+export { chatTurn } from './lib/turn'

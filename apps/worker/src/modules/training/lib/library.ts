@@ -26,15 +26,27 @@ import {
   type ExerciseSummary,
 } from '@fitness/shared/schemas'
 import { and, asc, eq, getTableColumns, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm'
-import { equipment_profile, exercise_exclusions, exercises, type Row } from '../../../db'
+import { equipment_profile, exercise_exclusions, exercises, runBatch, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { storeExercisePhoto, withPhotoUrls } from './photo'
-import { chunk, toExercise, toSlug, unique, videoSearchUrl, type ExerciseRow, type ExerciseTags } from './rows'
+import {
+  chunk,
+  toExercise,
+  toSlug,
+  unique,
+  videoSearchUrl,
+  type ExerciseRow,
+  type ExerciseTags,
+} from './rows'
 
 /** Equipment the rails exclude whatever the profile says; also passed to the guards as an excluded category. */
-export const RAIL_EXCLUDED_EQUIPMENT = ['body only'] as const
-const BLOCKING: Partial<Record<EquipmentStatus, string>> = { dont_have: "don't have", cant_use: "can't use", dislike: 'dislike' }
+const RAIL_EXCLUDED_EQUIPMENT = ['body only'] as const
+const BLOCKING: Partial<Record<EquipmentStatus, string>> = {
+  dont_have: "don't have",
+  cant_use: "can't use",
+  dislike: 'dislike',
+}
 const LIBRARY_VALUES: ReadonlySet<string> = new Set(LibraryEquipment.options)
 
 type ExclusionRow = Row<typeof exercise_exclusions>
@@ -73,7 +85,9 @@ export function toRules(exclusions: readonly ExclusionRow[], equipment: readonly
     byExercise,
     byCategory,
     equipment: new Map(equipment.map((e) => [e.equipment.toLowerCase(), e])),
-    blockedMachines: equipment.filter((e) => e.kind === 'machine' && BLOCKING[e.status]).map((row) => ({ name: row.equipment.toLowerCase(), row })),
+    blockedMachines: equipment
+      .filter((e) => e.kind === 'machine' && BLOCKING[e.status])
+      .map((row) => ({ name: row.equipment.toLowerCase(), row })),
     excluded_categories: unique([...byCategory.keys(), ...RAIL_EXCLUDED_EQUIPMENT]),
   }
 }
@@ -90,7 +104,10 @@ export async function loadRules(deps: Deps): Promise<Rules & { equipmentRows: Eq
 }
 
 /** Why `row` is outside the allowed exercise set (rules 1–5 in the file header), or null when it is allowed. */
-export function exclusionReason(row: Pick<ExerciseRow, 'id' | 'name' | 'category' | 'equipment'>, rules: Rules): string | null {
+export function exclusionReason(
+  row: Pick<ExerciseRow, 'id' | 'name' | 'category' | 'equipment'>,
+  rules: Rules,
+): string | null {
   const own = rules.byExercise.get(row.id)
   if (own) return own
   for (const c of [row.category, row.equipment]) {
@@ -105,7 +122,8 @@ export function exclusionReason(row: Pick<ExerciseRow, 'id' | 'name' | 'category
   const named = rules.blockedMachines.find((m) => row.name.toLowerCase().includes(m.name))?.row
   const status = generic && BLOCKING[generic.status] ? generic : (named ?? generic)
   const blocked = status ? BLOCKING[status.status] : undefined
-  if (status && blocked) return `Equipment ${status.equipment}: ${blocked}${status.note ? ` (${status.note})` : ''}`
+  if (status && blocked)
+    return `Equipment ${status.equipment}: ${blocked}${status.note ? ` (${status.note})` : ''}`
   return null
 }
 
@@ -133,7 +151,10 @@ const tagColumns = {
 
 /** The whole library as tags + allowed flags, the excluded categories and the equipment profile (AI, guards). */
 export async function loadLibrary(deps: Deps): Promise<Library> {
-  const [rows, x, e] = await deps.db.batch([deps.db.select(tagColumns).from(exercises).orderBy(asc(exercises.name)), ...rulesQueries(deps)])
+  const [rows, x, e] = await deps.db.batch([
+    deps.db.select(tagColumns).from(exercises).orderBy(asc(exercises.name)),
+    ...rulesQueries(deps),
+  ])
   const rules = toRules(x, e)
   const entries = rows.map((r) => {
     const excluded_reason = exclusionReason(r, rules)
@@ -158,10 +179,14 @@ export async function exerciseTags(deps: Deps, ids: readonly string[]): Promise<
 }
 
 /** 400 unless every id is in the library; returns the tags. */
-export async function requireExercises(deps: Deps, ids: readonly string[]): Promise<Map<string, ExerciseTags>> {
+export async function requireExercises(
+  deps: Deps,
+  ids: readonly string[],
+): Promise<Map<string, ExerciseTags>> {
   const tags = await exerciseTags(deps, ids)
   const missing = unique(ids).filter((id) => !tags.has(id))
-  if (missing.length) throw new HttpError(400, 'unknown_exercise', `Not in the exercise library: ${missing.join(', ')}`)
+  if (missing.length)
+    throw new HttpError(400, 'unknown_exercise', `Not in the exercise library: ${missing.join(', ')}`)
   return tags
 }
 
@@ -206,14 +231,22 @@ export async function listExercises(deps: Deps, query: ExerciseQuery): Promise<E
 }
 
 export async function getExercise(deps: Deps, id: string): Promise<Exercise> {
-  const [[row], x, e] = await deps.db.batch([deps.db.select().from(exercises).where(eq(exercises.id, id)), ...rulesQueries(deps)])
+  const [[row], x, e] = await deps.db.batch([
+    deps.db.select().from(exercises).where(eq(exercises.id, id)),
+    ...rulesQueries(deps),
+  ])
   if (!row) throw notFound('Exercise')
   const [exercise] = await withPhotoUrls(deps, [toExercise(row, exclusionReason(row, toRules(x, e)))])
   return exercise!
 }
 
 /** POST /api/exercises/:id/photo: a photo for one of Aaron's own exercises (lib/photo); returns the exercise. */
-export async function setExercisePhoto(deps: Deps, id: string, query: ExercisePhotoUploadQuery, body: ArrayBuffer): Promise<Exercise> {
+export async function setExercisePhoto(
+  deps: Deps,
+  id: string,
+  query: ExercisePhotoUploadQuery,
+  body: ArrayBuffer,
+): Promise<Exercise> {
   await storeExercisePhoto(deps, id, query, body)
   return getExercise(deps, id)
 }
@@ -221,7 +254,10 @@ export async function setExercisePhoto(deps: Deps, id: string, query: ExercisePh
 /** The spelling an equipment name already has in the profile (case-insensitive), else the library value, else as typed. */
 export function canonicalEquipment(name: string, profile: readonly EquipmentRow[]): string {
   const lower = name.trim().toLowerCase()
-  return profile.find((p) => p.equipment.toLowerCase() === lower)?.equipment ?? (LIBRARY_VALUES.has(lower) ? lower : name.trim())
+  return (
+    profile.find((p) => p.equipment.toLowerCase() === lower)?.equipment ??
+    (LIBRARY_VALUES.has(lower) ? lower : name.trim())
+  )
 }
 
 const kindOf = (equipment: string) => (LIBRARY_VALUES.has(equipment.toLowerCase()) ? 'library' : 'machine')
@@ -261,7 +297,15 @@ export async function createExercise(deps: Deps, input: ExerciseCreate): Promise
       .onConflictDoNothing(),
     db
       .insert(equipment_profile)
-      .values({ equipment, kind: kindOf(equipment), status: 'have', note: null, actor: deps.actor, created_at: now, updated_at: now })
+      .values({
+        equipment,
+        kind: kindOf(equipment),
+        status: 'have',
+        note: null,
+        actor: deps.actor,
+        created_at: now,
+        updated_at: now,
+      })
       .onConflictDoNothing(),
   ])
   return getExercise(deps, input.id)
@@ -284,7 +328,10 @@ function toEquipmentItem(row: EquipmentRow): EquipmentItem {
 
 /** GET /api/equipment: library values first, then named machines, each A–Z. */
 export async function getEquipment(deps: Deps): Promise<EquipmentItem[]> {
-  const rows = await deps.db.select().from(equipment_profile).orderBy(asc(equipment_profile.kind), asc(equipment_profile.equipment))
+  const rows = await deps.db
+    .select()
+    .from(equipment_profile)
+    .orderBy(asc(equipment_profile.kind), asc(equipment_profile.equipment))
   return rows.map(toEquipmentItem)
 }
 
@@ -292,7 +339,12 @@ export async function getEquipment(deps: Deps): Promise<EquipmentItem[]> {
  * The upsert of one equipment status by name (case-insensitive, `profile` gives the stored spelling), for the caller's
  * db.batch; an omitted note or area keeps the stored one. `id` is the new row's (an existing row keeps its own).
  */
-export function equipmentStatement(deps: Deps, item: EquipmentUpdate['items'][number], profile: readonly EquipmentRow[], id: string = crypto.randomUUID()) {
+export function equipmentStatement(
+  deps: Deps,
+  item: EquipmentUpdate['items'][number],
+  profile: readonly EquipmentRow[],
+  id: string = crypto.randomUUID(),
+) {
   const now = deps.now().toISOString()
   const equipment = canonicalEquipment(item.equipment, profile)
   const note = item.note === undefined ? {} : { note: item.note }
@@ -310,15 +362,20 @@ export function equipmentStatement(deps: Deps, item: EquipmentUpdate['items'][nu
       created_at: now,
       updated_at: now,
     })
-    .onConflictDoUpdate({ target: equipment_profile.equipment, set: { status: item.status, ...note, ...area, actor: deps.actor, updated_at: now } })
+    .onConflictDoUpdate({
+      target: equipment_profile.equipment,
+      set: { status: item.status, ...note, ...area, actor: deps.actor, updated_at: now },
+    })
 }
 
 /** PUT /api/equipment: upsert each status by name (case-insensitive); an omitted note or area keeps the stored one. */
 export async function updateEquipment(deps: Deps, input: EquipmentUpdate): Promise<EquipmentItem[]> {
   const { db } = deps
   const profile = await db.select().from(equipment_profile)
-  const [first, ...rest] = input.items.map((item) => equipmentStatement(deps, item, profile))
-  if (first) await db.batch([first, ...rest])
+  await runBatch(
+    db,
+    input.items.map((item) => equipmentStatement(deps, item, profile)),
+  )
   return getEquipment(deps)
 }
 
@@ -336,7 +393,9 @@ function toExclusion(row: ExclusionRow): ExerciseExclusion {
 }
 
 const exclusionMatch = (input: Pick<ExclusionCreate, 'exercise_id' | 'category'>) =>
-  input.exercise_id ? eq(exercise_exclusions.exercise_id, input.exercise_id) : eq(exercise_exclusions.category, input.category!)
+  input.exercise_id
+    ? eq(exercise_exclusions.exercise_id, input.exercise_id)
+    : eq(exercise_exclusions.category, input.category!)
 
 /** The writes hiding an exercise or category (re-hiding a soft-deleted row, else inserting `input.id`), for a db.batch. */
 export function exclusionStatements(deps: Deps, input: ExclusionCreate) {
@@ -370,7 +429,10 @@ export function exclusionStatements(deps: Deps, input: ExclusionCreate) {
 export async function createExclusion(deps: Deps, input: ExclusionCreate): Promise<ExerciseExclusion> {
   const { db } = deps
   if (input.exercise_id) {
-    const [row] = await db.select({ id: exercises.id }).from(exercises).where(eq(exercises.id, input.exercise_id))
+    const [row] = await db
+      .select({ id: exercises.id })
+      .from(exercises)
+      .where(eq(exercises.id, input.exercise_id))
     if (!row) throw notFound('Exercise')
   }
   const match = exclusionMatch(input)

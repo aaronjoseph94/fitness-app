@@ -2,6 +2,11 @@
 // steps (one row per date) from the manual form, the iOS Shortcut webhook and file imports. Everything upserts by date;
 // manual creates are also idempotent by their client id (a replay returns the stored row). A date after today (Edmonton)
 // is refused: steps and sleep are what happened.
+// Interface:
+//   logSleep(deps, SleepLogCreate)      → SleepLog
+//   logSteps(deps, StepLogCreate)       → StepLog
+//   ingestHealth(deps, HealthIngest)    → HealthIngestResult   the iOS Shortcut webhook (POST /api/ingest/health)
+//   importHealth(deps, HealthImport)    → HealthImportResult   a file import
 import { localDate, today } from '@fitness/shared/engine'
 import type {
   HealthImport,
@@ -20,12 +25,13 @@ import { badRequest } from '../../lib/http-error'
 import { upsertImport } from './lib/import'
 import { minutesInBed, toSleepLog, toStepLog } from './lib/rows'
 
-/** A phone clock a few minutes ahead of the Worker's at midnight still logs "today". */
+/** A device clock a few minutes ahead of the Worker's at midnight still logs "today". */
 const CLOCK_SKEW_MS = 5 * 60_000
 
 /** 400 when `date` is after today in Edmonton. */
 function assertPast(deps: Deps, date: string): void {
-  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS))) throw badRequest(`${date} has not happened yet; log today or an earlier day`)
+  if (date > today(new Date(deps.now().getTime() + CLOCK_SKEW_MS)))
+    throw badRequest(`${date} has not happened yet; log today or an earlier day`)
 }
 
 /** POST /api/sleep: last night's sleep for its wake date, replacing any other entry for that date. */

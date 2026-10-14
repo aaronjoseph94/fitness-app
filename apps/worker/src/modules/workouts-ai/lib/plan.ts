@@ -24,12 +24,29 @@ export const LLM_FETCHES = 8
 
 export type Focus = 'upper' | 'lower' | 'full'
 
-const UPPER: readonly Muscle[] = ['chest', 'shoulders', 'triceps', 'biceps', 'lats', 'middle back', 'traps', 'forearms']
-const LOWER: readonly Muscle[] = ['quadriceps', 'hamstrings', 'glutes', 'calves', 'adductors', 'abductors', 'lower back']
+const UPPER: readonly Muscle[] = [
+  'chest',
+  'shoulders',
+  'triceps',
+  'biceps',
+  'lats',
+  'middle back',
+  'traps',
+  'forearms',
+]
+const LOWER: readonly Muscle[] = [
+  'quadriceps',
+  'hamstrings',
+  'glutes',
+  'calves',
+  'adductors',
+  'abductors',
+  'lower back',
+]
 /** Trained on either day. */
 const CORE: readonly Muscle[] = ['abdominals']
 
-export const FOCUS_MUSCLES: Record<Focus, readonly Muscle[]> = {
+const FOCUS_MUSCLES: Record<Focus, readonly Muscle[]> = {
   upper: [...UPPER, ...CORE],
   lower: [...LOWER, ...CORE],
   full: [...UPPER, ...LOWER, ...CORE],
@@ -40,7 +57,11 @@ export const FOCUS_MUSCLES: Record<Focus, readonly Muscle[]> = {
  *   fill with a partial list → upper when its primary muscles are all upper (or core), lower when all lower, else full
  *   otherwise → the focus of the weekday's split slot (engine splitSlot); not a training day → full
  */
-export function dayFocus(weekday: Weekday, training_days: readonly Weekday[], partial_primary: readonly Muscle[]): Focus {
+export function dayFocus(
+  weekday: Weekday,
+  training_days: readonly Weekday[],
+  partial_primary: readonly Muscle[],
+): Focus {
   const own = partial_primary.filter((m) => !CORE.includes(m))
   if (own.length) {
     if (own.every((m) => UPPER.includes(m))) return 'upper'
@@ -82,7 +103,10 @@ export function selectCandidates(
   const muscles = FOCUS_MUSCLES[focus]
   const rank = (e: LibraryEntry) => (known.logged.has(e.id) ? 0 : known.templated.has(e.id) ? 1 : 2)
   const pool = library
-    .filter((e) => e.allowed && SESSION_CATEGORIES.has(e.category) && e.primary_muscles.some((m) => muscles.includes(m)))
+    .filter(
+      (e) =>
+        e.allowed && SESSION_CATEGORIES.has(e.category) && e.primary_muscles.some((m) => muscles.includes(m)),
+    )
     .sort(
       (a, b) =>
         rank(a) - rank(b) ||
@@ -135,7 +159,7 @@ export const SYSTEM_PROMPT = [
   'Reply with JSON only.',
 ].join('\n')
 
-/** The equipment his gym has, as the prompt shows it: the machines grouped by area, the bars and plates, and the rows not to use. */
+/** The equipment his gym has, as the prompt shows it: machines grouped by area, everything else, and what not to use. */
 export interface GymFloor {
   areas: readonly { area: string; machines: readonly string[] }[]
   /** Library equipment values and anything else without an area (barbell, dumbbell, cable, …). */
@@ -162,7 +186,8 @@ export function gymFloor(equipment: readonly EquipmentItem[]): GymFloor {
   const blocked: string[] = []
   const detail = (e: EquipmentItem) => (e.note ? `${e.equipment} (${e.note})` : e.equipment)
   for (const e of equipment) {
-    if (e.status !== 'have') blocked.push(`${e.equipment}: ${STATUS_WORD[e.status]}${e.note ? ` (${e.note})` : ''}`)
+    if (e.status !== 'have')
+      blocked.push(`${e.equipment}: ${STATUS_WORD[e.status]}${e.note ? ` (${e.note})` : ''}`)
     else if (e.equipment === 'body only') continue
     else if (e.area) grouped.set(e.area, [...(grouped.get(e.area) ?? []), detail(e)])
     else also.push(detail(e))
@@ -217,12 +242,18 @@ const topMuscles = (scores: Partial<Record<Muscle, number>> | null, n = 5) =>
     .join(', ')
 
 function digestLine(s: SessionDigest, slugOf: PromptInput['slugOf']): string {
-  const prs = s.prs.filter((p) => p.kind === 'best_e1rm').map((p) => `${slugOf(p.exercise_id) ?? 'exercise'} ${p.load_kg}x${p.reps}`)
+  const prs = s.prs
+    .filter((p) => p.kind === 'best_e1rm')
+    .map((p) => `${slugOf(p.exercise_id) ?? 'exercise'} ${p.load_kg}x${p.reps}`)
   return `${s.date}: ${s.sets_done} sets, ${Math.round(s.volume_kg)} kg; ${topMuscles(s.muscle_scores) || 'muscles n/a'}${prs.length ? `; PRs ${prs.join(', ')}` : ''}`
 }
 
 /** What a body group means in muscles (engine bodyGroupsOf), where the name alone is not a library muscle. */
-const GROUP_MUSCLES: Partial<Record<BodyGroup, string>> = { back: 'lats or middle back', arms: 'biceps or triceps', quads: 'quadriceps' }
+const GROUP_MUSCLES: Partial<Record<BodyGroup, string>> = {
+  back: 'lats or middle back',
+  arms: 'biceps or triceps',
+  quads: 'quadriceps',
+}
 
 /**
  * The day's lines: for a day's session its date, Aaron's note, readiness, fast day and the muscles to avoid; for a split
@@ -236,13 +267,22 @@ function dayLines(p: PromptInput): string[] {
     const meaning = groups.flatMap((g) => (GROUP_MUSCLES[g] ? [`${g} = ${GROUP_MUSCLES[g]}`] : []))
     return [
       `Template: "${p.template.name}". Focus: ${focus}. A reusable session for this day of the weekly split, not a plan for one date.`,
-      ...(p.focus === 'full' ? [`Full body: every major muscle group, ${p.sets.min}–${p.sets.max} sets.`] : []),
-      ...(groups.length
-        ? [`Train each of: ${groups.join(', ')} (at least one exercise with a primary muscle in each${meaning.length ? `; ${meaning.join(', ')}` : ''}).`]
+      ...(p.focus === 'full'
+        ? [`Full body: every major muscle group, ${p.sets.min}–${p.sets.max} sets.`]
         : []),
-      ...p.template.earlier.map((e) => `Already in ${e.name}: ${e.slugs.join(', ')}. Vary from it: other exercises for the same muscles where the list allows.`),
+      ...(groups.length
+        ? [
+            `Train each of: ${groups.join(', ')} (at least one exercise with a primary muscle in each${meaning.length ? `; ${meaning.join(', ')}` : ''}).`,
+          ]
+        : []),
+      ...p.template.earlier.map(
+        (e) =>
+          `Already in ${e.name}: ${e.slugs.join(', ')}. Vary from it: other exercises for the same muscles where the list allows.`,
+      ),
       ...(p.template.current?.length
-        ? [`The current ${p.template.name}: ${p.template.current.join(', ')}. This is a new version of it: vary from it where the list allows.`]
+        ? [
+            `The current ${p.template.name}: ${p.template.current.join(', ')}. This is a new version of it: vary from it where the list allows.`,
+          ]
         : []),
     ]
   }
@@ -267,24 +307,37 @@ export function buildPrompt(p: PromptInput): string {
     ...(p.digest.sessions.length ? p.digest.sessions.map((s) => digestLine(s, p.slugOf)) : ['none logged']),
     '',
     'Saved templates (name: top muscles):',
-    ...(p.templates.length ? p.templates.slice(0, 8).map((t) => `${t.name}: ${topMuscles(t.muscle_scores)}`) : ['none']),
+    ...(p.templates.length
+      ? p.templates.slice(0, 8).map((t) => `${t.name}: ${topMuscles(t.muscle_scores)}`)
+      : ['none']),
     '',
     'Your gym (program only from this):',
     ...p.gym.areas.map((a) => `${a.area}: ${a.machines.join(', ')}`),
     ...(p.gym.also.length ? [`Also available: ${p.gym.also.join(', ')}`] : []),
-    ...(p.gym.blocked.length ? [`Do not use (don't have, can't use or dislike): ${p.gym.blocked.join('; ')}`] : []),
+    ...(p.gym.blocked.length
+      ? [`Do not use (don't have, can't use or dislike): ${p.gym.blocked.join('; ')}`]
+      : []),
     ...(p.mode === 'fill'
       ? [
           '',
           'Keep these exercises first, unchanged, and add exercises to complete a balanced session:',
-          ...p.partial.map((e) => `${p.slugOf(e.exercise_id) ?? e.exercise_id} ${e.sets}x${e.rep_min}-${e.rep_max}`),
+          ...p.partial.map(
+            (e) => `${p.slugOf(e.exercise_id) ?? e.exercise_id} ${e.sets}x${e.rep_min}-${e.rep_max}`,
+          ),
         ]
       : []),
     '',
     'Allowed exercises (id | primary | secondary | equipment | mechanic | last top set):',
     ...p.candidates.map((e) => {
       const last = p.digest.last_top_sets.get(e.id)
-      return [e.slug, e.primary_muscles.join(','), e.secondary_muscles.join(',') || '-', e.equipment ?? '-', e.mechanic ?? '-', last ? `last=${last.load_kg}x${last.reps}` : '']
+      return [
+        e.slug,
+        e.primary_muscles.join(','),
+        e.secondary_muscles.join(',') || '-',
+        e.equipment ?? '-',
+        e.mechanic ?? '-',
+        last ? `last=${last.load_kg}x${last.reps}` : '',
+      ]
         .join(' | ')
         .replace(/ \| $/, '')
     }),

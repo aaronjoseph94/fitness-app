@@ -6,7 +6,7 @@ export interface Env {
   DB: D1Database
   FILES: R2Bucket
   ASSETS: Fetcher
-  /** Browser Rendering (quickAction('pdf') archives the weekly report). wrangler dev's local binding has no quickAction. */
+  /** Browser Rendering: quickAction('pdf') archives the weekly report (wrangler dev's local binding lacks it). */
   BROWSER?: BrowserRun
   /** MCP OAuth 2.1 (@cloudflare/workers-oauth-provider): registered clients, grants and tokens (hashed / encrypted). */
   OAUTH_KV: KVNamespace
@@ -26,10 +26,11 @@ export interface Env {
   ZAI_API_KEY?: string
   OPENROUTER_API_KEY?: string
   GROQ_API_KEY?: string
-  /** Paid models (SPEC §9): Claude through the Anthropic API, ChatGPT through the OpenAI API, Gemini Pro (a Google key with billing on). */
+  /** Paid models (SPEC §9): Claude (Anthropic API), ChatGPT (OpenAI API), Gemini Pro (a Google key with billing on). */
   ANTHROPIC_API_KEY?: string
   OPENAI_API_KEY?: string
   GEMINI_PAID_API_KEY?: string
+  /** Legacy: USDA is no longer queried; still listed among the secrets. */
   USDA_FDC_API_KEY?: string
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string

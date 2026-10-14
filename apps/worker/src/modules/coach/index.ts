@@ -16,11 +16,11 @@
 //   nextScan(deps)                           → NextScan           the scheduled date, else last scan + interval
 //   queryMetric(deps, MetricQuery)           → MetricSeries       read-only day/week series of one metric
 //   localInstant(date, time?)                → UTC instant of an Edmonton wall-clock time (tools reuse it)
-//   reviewWeekStart(now)                     → Monday of the week a review run now covers (Sat/Sun this week, else last)
+//   DEFAULT_FAST_TIME                        '19:00', the start of a planned fast given no time
 //   assertCoach(deps, what)                  → throws 403 needs_approval for actor 'ai' (Ask AI proposes instead)
-// Schemas (Zod, reused as tool input/output): BundleQuery, ReviewBundle, ReviewChange, ApplyReviewInput,
-// ApplyReviewResult, RevertReviewResult, DashboardNoteInput, ScanDateInput, NextScan, ScanScheduled, MetricQuery,
-// MetricSeries, MetricName.
+// Schemas (Zod, reused as tool input/output): BundleQuery, ReviewBundle, ApplyReviewInput, ApplyReviewResult,
+// RevertReviewResult, DashboardNote, DashboardNoteInput, ScanDateInput, NextScan, ScanScheduled, MetricQuery,
+// MetricSeries.
 export { applyReview, assertCoach, DEFAULT_FAST_TIME } from './lib/apply'
 export { reviewBundle } from './lib/bundle'
 export { queryMetric } from './lib/metrics'
@@ -33,14 +33,12 @@ export {
   BundleQuery,
   DashboardNote,
   DashboardNoteInput,
-  MetricName,
   MetricQuery,
   MetricSeries,
   NextScan,
   RevertReviewResult,
   ReviewBundle,
-  ReviewChange,
   ScanDateInput,
   ScanScheduled,
 } from './lib/schemas'
-export { localInstant, reviewWeekStart } from './lib/time'
+export { localInstant } from './lib/time'

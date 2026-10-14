@@ -1,8 +1,10 @@
 // Owns: making drizzle-kit's SQLite migrations safe for D1. Runs after every `drizzle-kit generate` (pnpm db:generate).
 //
-// 1. PRAGMA foreign_keys=OFF/ON → PRAGMA defer_foreign_keys=on/off (D1 ignores foreign_keys inside its implicit transaction).
+// 1. PRAGMA foreign_keys=OFF/ON → PRAGMA defer_foreign_keys=on/off (D1 ignores foreign_keys inside its implicit
+//    transaction).
 // 2. A comment-only custom migration named *_v_day.sql is filled from src/db/v_day.sql (the single source of the view).
-//    To change the view: edit src/db/v_day.sql, then `drizzle-kit generate --custom --name v_day && tsx scripts/postprocess-migrations.ts`.
+//    To change the view: edit src/db/v_day.sql, then `pnpm --filter @fitness/worker db:view` (drizzle-kit generate
+//    --custom --name v_day, then this script).
 // 3. A table rebuild ("__new_") makes SQLite re-parse views and fail on v_day, so the migration is wrapped with
 //    DROP VIEW v_day … <current v_day.sql>, and a loud warning asks for hand review.
 // 4. Fails if any .sql migration has no statements, or if the newest v_day migration differs from src/db/v_day.sql.

@@ -9,28 +9,35 @@
 // requiredGroups over its split: its focus's groups, and for a full-body day the groups no other day requires; the
 // prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3).
 // Interface:
-//   requestWorkout(deps, body)            → JobRef     POST /api/ai/workout: enqueue (user priority) + run soon
-//   planTrainingWeek(deps, body)          → PlanWeekResult  POST /api/ai/week, Ask AI's plan_training_week: move the
-//                                           training days (settings proposeTrainingDays: applied, or proposed for ai),
-//                                           then a user-priority workout_template job per split day not already
-//                                           drafting (replace: a template holds its name), run now while the fetch tally
-//                                           allows; 409 no_model_key (nothing written) when no model has a key
-//   trainingWeek(deps)                    → TrainingWeek  GET /api/ai/week: each split day's template, pending draft and
-//                                           job, the active week plan's sessions, the body groups not covered yet
-//   draftWorkout(deps, llm, input)        → WorkoutDraft (with muscle_scores, guard_notes, proposal_id; name for a split
-//                                           draft)  the job body
-//   planNextTrainingDay(deps, today)      → { date, job_id, reason }  nightly (after 00:30): queue workout_generate
-//                                           (background) for today when it is a training day with no session, week-plan
-//                                           session, split template (by its slot's name), pending workout proposal or
-//                                           queued job (yesterday's steps and session are known by then)
-//   ensureSplitDrafts(deps)               → { slot, job_id, reason }  cron, every tick: dismiss pending split drafts
-//                                           whose day is in neither the split nor a pending training_days proposal's,
-//                                           then queue at most one background workout_template job for the first split
-//                                           day with no template or draft
+//   requestWorkout(deps, body)         → JobRef  POST /api/ai/workout: enqueue (user priority) + run soon
+//   planTrainingWeek(deps, PlanWeekRequest & { reason? }) → PlanWeekResult  POST /api/ai/week, plan_training_week:
+//        move the training days (settings proposeTrainingDays: applied, or proposed for ai), then a user-priority
+//        workout_template job per split day not already drafting (replace: a template holds its name), run now while
+//        the fetch tally allows; 409 no_model_key (nothing written) when no model has a key
+//   trainingWeek(deps)                 → TrainingWeek  GET /api/ai/week: each split day's template, pending draft and
+//        job, the active week plan's sessions, the body groups not covered yet
+//   draftWorkout(deps, llm, DraftInput) → WorkoutDraft (with muscle_scores, guard_notes, proposal_id; name for a split
+//        draft)  the job body
+//   planNextTrainingDay(deps, date)    → { date, job_id, reason }  nightly (after 00:30): queue workout_generate
+//        (background) for today when it is a training day with no session, week-plan session, split template (by its
+//        slot's name), pending workout proposal or queued job (yesterday's steps and session are known by then)
+//   ensureSplitDrafts(deps)            → SplitDraftResult { slot, job_id, reason }  cron, every tick: dismiss pending
+//        split drafts whose day is in neither the split nor a pending training_days proposal's, then queue at most one
+//        background workout_template job for the first split day with no template or draft
+//   USER_PRIORITY / BACKGROUND_PRIORITY  ai_jobs.priority of Aaron's requests (10) and of background drafts (0)
 // Registers the 'workout_generate', 'workout_fill' and 'workout_template' job handlers (≤ 8 external fetches each). A
 // job no provider could answer fails at once when Aaron asked for it or no provider has a key (JobFailed); otherwise
 // the runner retries it.
-import { muscleScores, requiredGroups, splitNameKey, splitSlot, splitTemplateFor, today, weekdayOf, weekStart } from '@fitness/shared/engine'
+import {
+  muscleScores,
+  requiredGroups,
+  splitNameKey,
+  splitSlot,
+  splitTemplateFor,
+  today,
+  weekdayOf,
+  weekStart,
+} from '@fitness/shared/engine'
 import {
   WeekPlanContent,
   type AiWorkoutRequest,
@@ -40,7 +47,15 @@ import {
   type WorkoutDraft,
 } from '@fitness/shared/schemas'
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import { ai_events, ai_jobs, daily_targets, settings, week_plans, workout_sessions, workout_templates } from '../../db'
+import {
+  ai_events,
+  ai_jobs,
+  daily_targets,
+  settings,
+  week_plans,
+  workout_sessions,
+  workout_templates,
+} from '../../db'
 import type { Deps } from '../../lib/deps'
 import { notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
@@ -63,7 +78,6 @@ import {
 import { repairDraft } from './lib/repair'
 import { earlierDays, splitOf, supersedeDraftsUpdate } from './lib/split'
 
-export { RepairError } from './lib/repair'
 export { BACKGROUND_PRIORITY, USER_PRIORITY } from './lib/plan'
 export { ensureSplitDrafts, type SplitDraftResult } from './lib/split'
 export { planTrainingWeek, trainingWeek } from './lib/week'
@@ -91,15 +105,24 @@ interface DraftOptions {
 }
 
 /** A draft is for one day (`date`), or for one day of the split (`slot`: a reusable template, so no date). */
-export type DraftInput = DraftOptions & ({ date: string; slot?: undefined } | { slot: SplitSlot; date?: undefined })
+export type DraftInput = DraftOptions &
+  ({ date: string; slot?: undefined } | { slot: SplitSlot; date?: undefined })
 
 /** POST /api/ai/workout: queue the job at user priority and start it after the response. */
 export async function requestWorkout(deps: Deps, body: AiWorkoutRequest): Promise<JobRef> {
   const date = body.date ?? today(deps.now())
   const job =
     body.mode === 'fill'
-      ? await enqueue(deps, { type: 'workout_fill', payload: { date, exercises: body.exercises }, priority: USER_PRIORITY })
-      : await enqueue(deps, { type: 'workout_generate', payload: { date, focus: body.focus ?? null }, priority: USER_PRIORITY })
+      ? await enqueue(deps, {
+          type: 'workout_fill',
+          payload: { date, exercises: body.exercises },
+          priority: USER_PRIORITY,
+        })
+      : await enqueue(deps, {
+          type: 'workout_generate',
+          payload: { date, focus: body.focus ?? null },
+          priority: USER_PRIORITY,
+        })
   runSoon(deps, job.id)
   return { job_id: job.id }
 }
@@ -125,7 +148,11 @@ const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower 
  * = the slot's name, and the same batch rejects any older pending draft of that name (lower(trim(name)) =
  * splitNameKey(slot.name)).
  */
-export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>, input: DraftInput): Promise<WorkoutDraft> {
+export async function draftWorkout(
+  deps: Deps,
+  llm: Pick<LlmRouter, 'complete'>,
+  input: DraftInput,
+): Promise<WorkoutDraft> {
   const ai: Deps = { ...deps, actor: 'ai' }
   const slot = input.slot ?? null
   const date = input.date ?? today(deps.now())
@@ -133,7 +160,11 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
     planningContext(deps, date),
     deps.db.batch([
       deps.db.select({ training_days: settings.training_days }).from(settings).limit(1),
-      deps.db.select({ is_fast_day: daily_targets.is_fast_day }).from(daily_targets).where(eq(daily_targets.date, date)).limit(1),
+      deps.db
+        .select({ is_fast_day: daily_targets.is_fast_day })
+        .from(daily_targets)
+        .where(eq(daily_targets.date, date))
+        .limit(1),
     ]),
   ])
   if (!s) throw notFound('Settings (seed the database)')
@@ -143,7 +174,11 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   const keepPrimary = keep.flatMap((k) => library.byId.get(k.exercise_id)?.primary_muscles ?? [])
   const weekday = weekdayOf(date)
   const note = input.mode === 'generate' ? input.note?.trim() : undefined
-  const focus: Focus = slot ? slot.focus : note ? focusFromNote(note) : dayFocus(weekday, s.training_days, keepPrimary)
+  const focus: Focus = slot
+    ? slot.focus
+    : note
+      ? focusFromNote(note)
+      : dayFocus(weekday, s.training_days, keepPrimary)
   const avoid = slot ? [] : [...new Set(ctx.neighbours.flatMap((n) => n.primary_muscles))]
   const fast_day = !slot && (targets?.is_fast_day ?? false)
   const reduced = !slot && (ctx.readiness.reduced_volume || fast_day)
@@ -193,12 +228,28 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   })
 
   const guard = await guardContext(ai, library, 'ai')
-  const repaired = repairDraft({ picks: reply.data.exercises, keep, byId: library.byId, bySlug, guard, avoid, sets, required: groups, candidates })
-  const suggestions = await progressionFor(deps, { before: deps.now().toISOString(), exercises: repaired.exercises, deload_week: !slot && ctx.deload.active })
+  const repaired = repairDraft({
+    picks: reply.data.exercises,
+    keep,
+    byId: library.byId,
+    bySlug,
+    guard,
+    avoid,
+    sets,
+    required: groups,
+    candidates,
+  })
+  const suggestions = await progressionFor(deps, {
+    before: deps.now().toISOString(),
+    exercises: repaired.exercises,
+    deload_week: !slot && ctx.deload.active,
+  })
   const keptIds = new Set(keep.map((k) => k.exercise_id))
   const exercises = repaired.exercises.map((e) => {
     const load = suggestions.get(e.exercise_id)?.load_kg ?? null
-    return keptIds.has(e.exercise_id) && e.target_load_kg !== null ? e : { ...e, target_load_kg: load ?? e.target_load_kg }
+    return keptIds.has(e.exercise_id) && e.target_load_kg !== null
+      ? e
+      : { ...e, target_load_kg: load ?? e.target_load_kg }
   })
   const muscle_scores = muscleScores(
     exercises.flatMap((e) => {
@@ -219,12 +270,21 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
     summary: slot
       ? `Draft for ${slot.name} (${FOCUS_LABEL[focus].toLowerCase()}): ${size}`
       : `${FOCUS_LABEL[focus]} workout for ${weekday[0]!.toUpperCase()}${weekday.slice(1)} ${date}: ${size}`,
-    body: { kind: 'workout', mode: input.mode, date: slot ? null : date, workout, muscle_scores, provider: reply.provider, model: reply.model },
+    body: {
+      kind: 'workout',
+      mode: input.mode,
+      date: slot ? null : date,
+      workout,
+      muscle_scores,
+      provider: reply.provider,
+      model: reply.model,
+    },
     proposal_status: 'pending',
     job_id: input.job_id ?? null,
   }).statement
   // A split draft supersedes the day's older pending drafts in the same batch: at most one pending draft per split day.
-  if (slot) await deps.db.batch([supersedeDraftsUpdate(ai, { name: slot.name, keep_id: proposal_id }), insert])
+  if (slot)
+    await deps.db.batch([supersedeDraftsUpdate(ai, { name: slot.name, keep_id: proposal_id }), insert])
   else await insert
   return { ...workout, muscle_scores, proposal_id }
 }
@@ -239,12 +299,20 @@ function unanswered(e: unknown, priority: Priority): JobFailed | null {
   const noKeys = e.failures.length > 0 && e.failures.every((f) => f.reason === 'no_key')
   if (!noKeys && priority !== 'user') return null
   const why = noKeys ? 'no AI provider is set up (no API key)' : 'no AI provider could answer right now'
-  return new JobFailed(`${why}. Build the session in the workout builder or start a template instead. ${e.message}`)
+  return new JobFailed(
+    `${why}. Build the session in the workout builder or start a template instead. ${e.message}`,
+  )
 }
 
 /** One run of a workout job: priority from the job row, a router capped at LLM_FETCHES, the draft as the output. */
-async function runWorkoutJob(deps: Deps, job: JobContext<'workout_generate'> | JobContext<'workout_fill'> | JobContext<'workout_template'>) {
-  const [row] = await deps.db.select({ priority: ai_jobs.priority }).from(ai_jobs).where(eq(ai_jobs.id, job.id))
+async function runWorkoutJob(
+  deps: Deps,
+  job: JobContext<'workout_generate'> | JobContext<'workout_fill'> | JobContext<'workout_template'>,
+) {
+  const [row] = await deps.db
+    .select({ priority: ai_jobs.priority })
+    .from(ai_jobs)
+    .where(eq(ai_jobs.id, job.id))
   const priority: Priority = (row?.priority ?? 0) > BACKGROUND_PRIORITY ? 'user' : 'background'
   const llm = createLlmRouter(deps, { budget: { limit: LLM_FETCHES, used: 0 }, deadlineMs: LLM_DEADLINE_MS })
   let provider: { provider?: string; model?: string } = {}
@@ -259,10 +327,25 @@ async function runWorkoutJob(deps: Deps, job: JobContext<'workout_generate'> | J
   try {
     const output =
       job.type === 'workout_fill'
-        ? await draftWorkout(deps, tracked, { mode: 'fill', date: job.payload.date, exercises: job.payload.exercises, ...attempt })
+        ? await draftWorkout(deps, tracked, {
+            mode: 'fill',
+            date: job.payload.date,
+            exercises: job.payload.exercises,
+            ...attempt,
+          })
         : job.type === 'workout_template'
-          ? await draftWorkout(deps, tracked, { mode: 'generate', slot: job.payload.slot, replace: job.payload.replace, ...attempt })
-          : await draftWorkout(deps, tracked, { mode: 'generate', date: job.payload.date, note: job.payload.focus, ...attempt })
+          ? await draftWorkout(deps, tracked, {
+              mode: 'generate',
+              slot: job.payload.slot,
+              replace: job.payload.replace,
+              ...attempt,
+            })
+          : await draftWorkout(deps, tracked, {
+              mode: 'generate',
+              date: job.payload.date,
+              note: job.payload.focus,
+              ...attempt,
+            })
     return { output, meta: provider }
   } catch (e) {
     throw unanswered(e, priority) ?? e
@@ -281,13 +364,22 @@ registerJobHandler('workout_template', { fetches: LLM_FETCHES, run: runWorkoutJo
  * plan), no pending workout proposal and no queued/running job. Today, not tomorrow, so the draft's readiness sees
  * yesterday's steps and session.
  */
-export async function planNextTrainingDay(deps: Deps, todayDate: string): Promise<{ date: string; job_id: string | null; reason: string }> {
+export async function planNextTrainingDay(
+  deps: Deps,
+  date: string,
+): Promise<{ date: string; job_id: string | null; reason: string }> {
   const { db } = deps
-  const date = todayDate
   const [[s], [targets], sessions, plans, templates, proposals, jobs] = await db.batch([
     db.select({ training_days: settings.training_days }).from(settings).limit(1),
-    db.select({ training_planned: daily_targets.training_planned }).from(daily_targets).where(eq(daily_targets.date, date)),
-    db.select({ id: workout_sessions.id }).from(workout_sessions).where(eq(workout_sessions.date, date)).limit(1),
+    db
+      .select({ training_planned: daily_targets.training_planned })
+      .from(daily_targets)
+      .where(eq(daily_targets.date, date)),
+    db
+      .select({ id: workout_sessions.id })
+      .from(workout_sessions)
+      .where(eq(workout_sessions.date, date))
+      .limit(1),
     db
       .select({ plan: week_plans.plan })
       .from(week_plans)
@@ -309,7 +401,11 @@ export async function planNextTrainingDay(deps: Deps, todayDate: string): Promis
       .select({ id: ai_jobs.id })
       .from(ai_jobs)
       .where(
-        and(eq(ai_jobs.type, 'workout_generate'), inArray(ai_jobs.status, ['queued', 'running']), sql`json_extract(${ai_jobs.payload}, '$.date') = ${date}`),
+        and(
+          eq(ai_jobs.type, 'workout_generate'),
+          inArray(ai_jobs.status, ['queued', 'running']),
+          sql`json_extract(${ai_jobs.payload}, '$.date') = ${date}`,
+        ),
       )
       .limit(1),
   ])
@@ -320,9 +416,14 @@ export async function planNextTrainingDay(deps: Deps, todayDate: string): Promis
   const weekPlan = plans.map((p) => WeekPlanContent.safeParse(p.plan)).find((p) => p.success)
   if (weekPlan?.data?.sessions[weekdayOf(date)]) return skip('the active week plan has a session')
   const slot = s ? splitSlot(weekdayOf(date), s.training_days) : null
-  if (slot && templates.some((t) => splitNameKey(t.name) === splitNameKey(slot.name))) return skip("today's split template is ready")
+  if (slot && templates.some((t) => splitNameKey(t.name) === splitNameKey(slot.name)))
+    return skip("today's split template is ready")
   if (proposals.length) return skip('a workout proposal is already pending')
   if (jobs.length) return skip('a workout job is already queued')
-  const job = await enqueue(deps, { type: 'workout_generate', payload: { date, focus: null }, priority: BACKGROUND_PRIORITY })
+  const job = await enqueue(deps, {
+    type: 'workout_generate',
+    payload: { date, focus: null },
+    priority: BACKGROUND_PRIORITY,
+  })
   return { date, job_id: job.id, reason: 'queued' }
 }

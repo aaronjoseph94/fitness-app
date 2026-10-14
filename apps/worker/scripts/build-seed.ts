@@ -1,4 +1,6 @@
-// Owns: building apps/worker/seed.generated.sql (gitignored) — Aaron's baseline: profile, rails, baseline scan, milestones, equipment, exercise library + exclusions, plan v1, daily targets, first weigh-in, Canadian Nutrient File foods.
+// Owns: building apps/worker/seed.generated.sql (gitignored) — Aaron's baseline: profile, rails, baseline scan,
+// milestones, equipment, exercise library + exclusions, plan v1, daily targets, first weigh-in, Canadian Nutrient File
+// foods.
 // Run: pnpm --filter @fitness/worker seed:local (builds, then `wrangler d1 execute DB --local --file seed.generated.sql`).
 // Idempotent: deterministic ids + INSERT OR IGNORE (Aaron's later edits win: an exclusion he un-hid is a soft-deleted row
 // the re-seed leaves alone); library exercises upsert by slug so a new pinned commit syncs.
@@ -46,7 +48,8 @@ const START_KG = 95.1
 const GOAL_KG = 65.0
 const GOAL_DATE = '2027-08-04'
 const TARGETS_THROUGH = '2026-12-31'
-const TRAINING_DAYS: Weekday[] = ['mon', 'tue', 'thu'] // Aaron's default for a fresh database: Mon Upper A · Tue Lower A · Thu Full body
+/** Aaron's default for a fresh database: Mon Upper A · Tue Lower A · Thu Full body. */
+const TRAINING_DAYS: Weekday[] = ['mon', 'tue', 'thu']
 const RAILS = {
   floor: 1400,
   ceiling: 1700,
@@ -80,7 +83,13 @@ const planTargets: NewRow<typeof plan_versions>['targets'] = { defaults: baselin
  * The nightly plan_reforecast replaces this once weigh-ins and intake accumulate.
  */
 function baselineForecast(): NonNullable<NewRow<typeof plan_versions>['forecast']> {
-  const f = forecast({ as_of: START_DATE, tdee_est: scan.tee_kcal, intake_kcal: baselineTargets.kcal, trend_kg: START_KG, goal_kg: GOAL_KG })
+  const f = forecast({
+    as_of: START_DATE,
+    tdee_est: scan.tee_kcal,
+    intake_kcal: baselineTargets.kcal,
+    trend_kg: START_KG,
+    goal_kg: GOAL_KG,
+  })
   return {
     finish_date: f.finish_date,
     weekly_rate_kg: round3(f.weekly_rate_kg),
@@ -236,7 +245,9 @@ const CnfSeed = z.object({
     z.literal('sodium_mg'),
     z.literal('serving_g'),
   ]),
-  foods: z.array(z.tuple([z.number().int(), z.string().min(1), z.number().int(), z.number(), n, n, n, n, n, n, n])),
+  foods: z.array(
+    z.tuple([z.number().int(), z.string().min(1), z.number().int(), z.number(), n, n, n, n, n, n, n]),
+  ),
 })
 const cnf = CnfSeed.parse(readJson('foods/cnf.json'))
 const cnfRows: NewRow<typeof foods>[] = cnf.foods.map(

@@ -1,7 +1,7 @@
 // Owns: what the model is told before an Ask AI turn — the date and time in Edmonton, units, the rails from settings,
 // that every number comes from a tool, and the write rules (logs apply, changes are proposals that wait for a tap;
 // what it may do in Train and how it plans a week; what it never does and where in the app he does it).
-// Privacy: the user is never named here, and his name is stripped from what he types (photos never reach a tool).
+// Privacy: the user is never named here (turn.ts strips his name from what he types; photos never reach a tool).
 import { localTime, today, weekdayOf } from '@fitness/shared/engine'
 import type { Settings } from '@fitness/shared/schemas'
 
@@ -15,23 +15,21 @@ const WEEKDAY_NAME = {
   sun: 'Sunday',
 } as const
 
-/** The one user's first name, kept out of every prompt (SPEC §9 privacy). */
-const NAME = /\baaron('s)?\b/gi
-
-/** Text as the model may read it: the user's name replaced. */
-export function redact(text: string): string {
-  return text.replace(NAME, (_m, possessive: string | undefined) => (possessive ? "the user's" : 'the user'))
-}
-
 type Rails = Pick<
   Settings,
-  'calorie_floor' | 'calorie_ceiling' | 'protein_min_g' | 'fat_min_g' | 'fasts_per_month' | 'fast_hours' | 'auto_apply_safe'
+  | 'calorie_floor'
+  | 'calorie_ceiling'
+  | 'protein_min_g'
+  | 'fat_min_g'
+  | 'fasts_per_month'
+  | 'fast_hours'
+  | 'auto_apply_safe'
 >
 
 export function systemPrompt(now: Date, rails: Rails): string {
   const date = today(now)
   const safe = rails.auto_apply_safe
-    ? 'Safe-list changes (set_reminder_time, swap_template_exercise) apply at once; every other change waits for a tap. A tool result\'s status says applied or proposed.'
+    ? "Safe-list changes (set_reminder_time, swap_template_exercise) apply at once; every other change waits for a tap. A tool result's status says applied or proposed."
     : 'Every change waits for a tap: nothing you propose applies on its own, safe-list tools included.'
   return `You are the in-app assistant of a personal fitness tracker with one user. He is losing fat toward a goal of 65 kg on a plan set with his doctor and dietitian. Talk to him as "you".
 

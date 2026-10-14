@@ -16,7 +16,7 @@
 // A run that throws releases its claim, so the next tick retries it.
 import { addDays, eachDate, isoWeek, localTime, safetyFlags, today, weekdayOf } from '@fitness/shared/engine'
 import { and, eq, gte, lt, max } from 'drizzle-orm'
-import { ai_events, cron_runs } from './db'
+import { ai_events, cron_runs, runBatch } from './db'
 import type { Deps } from './lib/deps'
 import { days } from './modules/day'
 import { eventInsert, releaseDueProposals } from './modules/events'
@@ -70,10 +70,12 @@ export async function runCron(deps: Deps): Promise<CronResult> {
   const time = localTime(now)
   const due: [CronKind, string, () => Promise<void>][] = []
   if (time >= NIGHTLY_AFTER) due.push(['nightly', date, () => nightly(deps, date)])
-  if (weekdayOf(date) === 'sun' && time >= WEEKLY_AFTER) due.push(['weekly', isoWeek(date), () => weekly(deps, isoWeek(date))])
+  if (weekdayOf(date) === 'sun' && time >= WEEKLY_AFTER)
+    due.push(['weekly', isoWeek(date), () => weekly(deps, isoWeek(date))])
   // Catch-up: the claim is per ISO week, so a Sunday tick that ran makes this a no-op.
   const lastWeek = isoWeek(addDays(date, -1))
-  if (weekdayOf(date) === 'mon' && time < WEEKLY_CATCH_UP_BEFORE) due.push(['weekly', lastWeek, () => weekly(deps, lastWeek)])
+  if (weekdayOf(date) === 'mon' && time < WEEKLY_CATCH_UP_BEFORE)
+    due.push(['weekly', lastWeek, () => weekly(deps, lastWeek)])
 
   for (const [kind, period_key, run] of due) {
     if (!(await claim(deps, kind, period_key))) continue
@@ -82,14 +84,26 @@ export async function runCron(deps: Deps): Promise<CronResult> {
       result.ran.push(kind)
     } catch (e) {
       result.failed.push(kind)
-      log('error', `cron ${kind} failed; released for retry`, { period_key, error: e instanceof Error ? e.message : String(e) })
+      log('error', `cron ${kind} failed; released for retry`, {
+        period_key,
+        error: e instanceof Error ? e.message : String(e),
+      })
       await release(deps, kind, period_key)
     }
   }
-  await startedFasts(deps).catch((e: unknown) => log('error', 'fast start cards failed; retried next tick', { error: String(e) }))
-  if (time >= MONTHLY_AFTER) await monthlyBackupStep(deps, date.slice(0, 7)).catch((e: unknown) => log('error', 'monthly backup step failed; retried next tick', { error: String(e) }))
-  await dispatchReminders(deps).catch((e: unknown) => log('error', 'reminders failed; due ones retry next tick', { error: String(e) }))
-  await ensureSplitDrafts(deps).catch((e: unknown) => log('error', 'split drafts failed; retried next tick', { error: String(e) }))
+  await startedFasts(deps).catch((e: unknown) =>
+    log('error', 'fast start cards failed; retried next tick', { error: String(e) }),
+  )
+  if (time >= MONTHLY_AFTER)
+    await monthlyBackupStep(deps, date.slice(0, 7)).catch((e: unknown) =>
+      log('error', 'monthly backup step failed; retried next tick', { error: String(e) }),
+    )
+  await dispatchReminders(deps).catch((e: unknown) =>
+    log('error', 'reminders failed; due ones retry next tick', { error: String(e) }),
+  )
+  await ensureSplitDrafts(deps).catch((e: unknown) =>
+    log('error', 'split drafts failed; retried next tick', { error: String(e) }),
+  )
   return result
 }
 
@@ -150,10 +164,18 @@ async function noteNewFlags(deps: Deps, as_of: string): Promise<void> {
     .where(and(eq(ai_events.kind, 'note'), gte(ai_events.created_at, since)))
   const noted = new Set(recent.map((r) => (r.body as { flag?: string } | null)?.flag))
   const fresh = flags.filter((f) => !noted.has(f.kind))
-  const [first, ...rest] = fresh.map(
-    (f) => eventInsert(deps, { kind: 'note', summary: f.message, body: { text: f.message, flag: f.kind, detail: f }, date: as_of }).statement,
+  await runBatch(
+    deps.db,
+    fresh.map(
+      (f) =>
+        eventInsert(deps, {
+          kind: 'note',
+          summary: f.message,
+          body: { text: f.message, flag: f.kind, detail: f },
+          date: as_of,
+        }).statement,
+    ),
   )
-  if (first) await deps.db.batch([first, ...rest])
 }
 
 /** The weekly review job for the week ending this Sunday (skipped when a Claude review ran that week). */

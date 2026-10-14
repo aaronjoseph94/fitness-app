@@ -7,7 +7,10 @@ import { ai_events } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { listSecrets } from '../../secrets'
 
-/** GET /api/settings/connection. `origin` is the origin this request arrived on (workers.dev, a custom domain or wrangler dev). */
+/**
+ * GET /api/settings/connection. `origin` is the origin this request arrived on (workers.dev, a custom domain or
+ * wrangler dev).
+ */
 export async function getMcpConnection(deps: Deps, origin: string): Promise<McpConnectionView> {
   const [secrets, writes] = await Promise.all([
     listSecrets(deps),

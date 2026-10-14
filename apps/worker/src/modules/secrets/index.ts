@@ -5,11 +5,16 @@
 // Who reads the values:
 //   - the LLM router (the provider keys, app value first then the Worker secret) — modules/llm/lib/keys.ts
 //   - the MCP auth middleware (`MCP_BEARER_TOKEN`) — middleware/mcp-auth.ts
-//   - the food sources adapter (`USDA_FDC_API_KEY`) — modules/food-sources
+// `USDA_FDC_API_KEY` is a legacy name nothing reads (USDA is no longer queried).
 // `wrangler secret put` keeps working: a Worker secret is used whenever the app has not stored that name, and a stored
 // value takes precedence over one that is.
 //
 // Setting or clearing a secret is logged as one `change` event carrying the NAME and the action only, never the value.
+// Interface:
+//   listSecrets(deps)                  → SecretsView   every secret's status, never a value
+//   setSecret(deps, name, value) / clearSecret(deps, name) → SecretsView   403 for anything but Aaron
+//   loadSecretValues(deps)             → Map<name, value>   every app-stored secret (the LLM router's key resolver)
+//   resolveSecret(db, env, name)       → value | undefined  app-stored first, else the Worker secret
 import { today } from '@fitness/shared/engine'
 import { SecretName, type SecretsView } from '@fitness/shared/schemas'
 import type { Db } from '../../db'
@@ -17,7 +22,15 @@ import type { Env } from '../../env'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError } from '../../lib/http-error'
 import { recordEvent } from '../events'
-import { deleteSecret, envValue, readStored, statusFor, storedSecret, upsertSecret, type StoredSecret } from './lib/store'
+import {
+  deleteSecret,
+  envValue,
+  readStored,
+  statusFor,
+  storedSecret,
+  upsertSecret,
+  type StoredSecret,
+} from './lib/store'
 
 /** Shortest value worth storing; a provider key or a token is far longer. */
 const MIN_LENGTH = 8
@@ -46,7 +59,8 @@ export async function resolveSecret(db: Db, env: Env, name: SecretName): Promise
 export async function setSecret(deps: Deps, name: SecretName, value: string): Promise<SecretsView> {
   assertUser(deps)
   const trimmed = value.trim()
-  if (trimmed.length < MIN_LENGTH) throw badRequest(`${name} is too short to be a key (at least ${MIN_LENGTH} characters)`)
+  if (trimmed.length < MIN_LENGTH)
+    throw badRequest(`${name} is too short to be a key (at least ${MIN_LENGTH} characters)`)
   const now = deps.now().toISOString()
   await upsertSecret(deps.db, name, trimmed, now)
   await logChange(deps, name, 'set')
@@ -69,7 +83,11 @@ function view(env: Env, stored: Map<string, StoredSecret>): SecretsView {
 /** Secrets reach the AI, so no actor but Aaron may change one — the same rail that guards the settings themselves. */
 function assertUser(deps: Deps): void {
   if (deps.actor !== 'user')
-    throw new HttpError(403, 'user_only', 'Only Aaron changes secrets: they are read by the AI router and the MCP connector')
+    throw new HttpError(
+      403,
+      'user_only',
+      'Only Aaron changes secrets: they are read by the AI router and the MCP connector',
+    )
 }
 
 /** One `change` event per edit: the name and the action, so the dashboard shows what moved without storing a value. */
@@ -78,6 +96,9 @@ async function logChange(deps: Deps, name: SecretName, action: 'set' | 'cleared'
     kind: 'change',
     date: today(deps.now()),
     summary: `Secret ${name} ${action}`,
-    body: { entity: 'secret', changes: [{ path: name, from: action === 'set' ? null : 'set', to: action === 'set' ? 'set' : null }] },
+    body: {
+      entity: 'secret',
+      changes: [{ path: name, from: action === 'set' ? null : 'set', to: action === 'set' ? 'set' : null }],
+    },
   })
 }

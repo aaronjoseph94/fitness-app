@@ -2,16 +2,51 @@
 // and the match score (0–1) that becomes meal_items.confidence. Pure; no I/O.
 import type { FoodSource } from '@fitness/shared/schemas'
 
-/** A score at or above this is a match; below it the item stays unmatched and the LLM estimate is used (estimated = true). */
+/**
+ * A score at or above this is a match; below it the item stays unmatched and the LLM estimate is used (estimated =
+ * true).
+ */
 export const ACCEPT = 0.55
 /** A score at or above this is good enough to stop asking further sources. */
 export const STRONG = 0.75
 
 /** Words that say nothing about which food it is (articles, portion words, units). */
 const STOP = new Set([
-  'a', 'an', 'the', 'of', 'with', 'and', 'or', 'in', 'on', 'to', 'for', 'from', 'some', 'my',
-  'g', 'gram', 'kg', 'ml', 'oz', 'lb', 'cup', 'tbsp', 'tsp', 'slice', 'piece', 'serving', 'portion', 'bowl', 'glass',
-  'large', 'medium', 'small', 'fresh', 'approx', 'about',
+  'a',
+  'an',
+  'the',
+  'of',
+  'with',
+  'and',
+  'or',
+  'in',
+  'on',
+  'to',
+  'for',
+  'from',
+  'some',
+  'my',
+  'g',
+  'gram',
+  'kg',
+  'ml',
+  'oz',
+  'lb',
+  'cup',
+  'tbsp',
+  'tsp',
+  'slice',
+  'piece',
+  'serving',
+  'portion',
+  'bowl',
+  'glass',
+  'large',
+  'medium',
+  'small',
+  'fresh',
+  'approx',
+  'about',
 ])
 /**
  * Singular-ish stem, applied to both sides so "eggs"/"Egg", "berries"/"berry", "tomatoes"/"tomato" and
@@ -26,7 +61,12 @@ function stem(t: string): string {
 }
 
 /** Stems that name the same thing: some sources say "prepared" where others say "cooked", "boiled" for steamed. */
-const SYNONYM: Record<string, string> = { prepar: 'cook', steam: 'boil', yogourt: 'yogurt', flavor: 'flavour' }
+const SYNONYM: Record<string, string> = {
+  prepar: 'cook',
+  steam: 'boil',
+  yogourt: 'yogurt',
+  flavor: 'flavour',
+}
 const canon = (t: string) => SYNONYM[t] ?? t
 
 /** Default forms: when the item does not say otherwise, "egg" means a whole egg and "banana" a raw one. */
@@ -34,8 +74,24 @@ const DEFAULT_FORM = new Set(['whole', 'raw', 'plain', 'regular'].map((w) => can
 /** Processed or partial forms that are rarely what a plain item name means ("egg" is not dried egg or yolk). */
 const UNLIKELY_FORM = new Set(
   [
-    'dehydrated', 'powder', 'powdered', 'mix', 'concentrate', 'instant', 'flakes', 'flour', 'yolk', 'substitute',
-    'imitation', 'meatless', 'babyfood', 'unprepared', 'dry', 'evaporated', 'condensed', 'undiluted',
+    'dehydrated',
+    'powder',
+    'powdered',
+    'mix',
+    'concentrate',
+    'instant',
+    'flakes',
+    'flour',
+    'yolk',
+    'substitute',
+    'imitation',
+    'meatless',
+    'babyfood',
+    'unprepared',
+    'dry',
+    'evaporated',
+    'condensed',
+    'undiluted',
   ].map((w) => canon(stem(w))),
 )
 /**
@@ -45,11 +101,58 @@ const UNLIKELY_FORM = new Set(
  */
 const QUALIFIER = new Set(
   [
-    'chocolate', 'cocoa', 'cookie', 'butter', 'buttermilk', 'flavour', 'flavor', 'cake', 'pie', 'bar', 'candy', 'candies',
-    'sauce', 'soup', 'syrup', 'milkshake', 'shake', 'pudding', 'dessert', 'pastry', 'muffin', 'cracker', 'granola',
-    'paste', 'spread', 'oil', 'meal', 'beverage', 'drink', 'smoothie', 'juice', 'nectar', 'jam', 'jelly', 'sweetened',
-    'honey', 'salt', 'vanilla', 'strawberry', 'latte', 'whitener', 'creamer', 'peel', 'producer', 'goat', 'sheep',
-    'human', 'buffalo', 'duck', 'goose', 'quail', 'turkey',
+    'chocolate',
+    'cocoa',
+    'cookie',
+    'butter',
+    'buttermilk',
+    'flavour',
+    'flavor',
+    'cake',
+    'pie',
+    'bar',
+    'candy',
+    'candies',
+    'sauce',
+    'soup',
+    'syrup',
+    'milkshake',
+    'shake',
+    'pudding',
+    'dessert',
+    'pastry',
+    'muffin',
+    'cracker',
+    'granola',
+    'paste',
+    'spread',
+    'oil',
+    'meal',
+    'beverage',
+    'drink',
+    'smoothie',
+    'juice',
+    'nectar',
+    'jam',
+    'jelly',
+    'sweetened',
+    'honey',
+    'salt',
+    'vanilla',
+    'strawberry',
+    'latte',
+    'whitener',
+    'creamer',
+    'peel',
+    'producer',
+    'goat',
+    'sheep',
+    'human',
+    'buffalo',
+    'duck',
+    'goose',
+    'quail',
+    'turkey',
   ].map((w) => canon(stem(w))),
 )
 
@@ -73,11 +176,17 @@ function words(text: string): string[] {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/(\d+(?:\.\d+)?)\s*%/g, (_, n: string) => ` ${n.replace('.', 'p')}pct `)
-  return s.split(/[^a-z0-9]+/).filter((w) => w.length >= 2 && !STOP.has(w) && !/^\d+(\.\d+)?(g|kg|ml|l|oz|lb)?$/.test(w))
+  return s
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 2 && !STOP.has(w) && !/^\d+(\.\d+)?(g|kg|ml|l|oz|lb)?$/.test(w))
 }
 
 /** Words searched with their synonyms (the FTS index holds the words as written). */
-const FTS_ALSO: Record<string, string[]> = { cook: ['cooked', 'prepared'], boil: ['boiled', 'steamed'], yogurt: ['yogourt'] }
+const FTS_ALSO: Record<string, string[]> = {
+  cook: ['cooked', 'prepared'],
+  boil: ['boiled', 'steamed'],
+  yogurt: ['yogourt'],
+}
 
 /**
  * The FTS5 MATCH expression for the local cache (foods_fts uses the porter tokenizer, so "almonds", "cooked" and
@@ -103,8 +212,21 @@ export interface Scorable {
   source: FoodSource
 }
 
-/** Canadian Nutrient File names that open with a category ("Fish, tuna, …", "Nuts, almonds, …"): the next word is the lead noun. */
-const CATEGORY_LEAD = new Set(['fish', 'nut', 'grain', 'cereal', 'crustacean', 'mollusk', 'vegetable', 'beverage', 'spice'])
+/**
+ * Canadian Nutrient File names that open with a category ("Fish, tuna, …", "Nuts, almonds, …"): the next word is the
+ * lead noun.
+ */
+const CATEGORY_LEAD = new Set([
+  'fish',
+  'nut',
+  'grain',
+  'cereal',
+  'crustacean',
+  'mollusk',
+  'vegetable',
+  'beverage',
+  'spice',
+])
 /** The food's lead noun: its first name token, or the second when the first is a category. */
 const leadOf = (name: string[]) => (CATEGORY_LEAD.has(name[0]!) && name[1] ? name[1] : name[0]!)
 
