@@ -2,7 +2,8 @@
 // muscle and, by the engine rule the swap picker uses, the same kind of lift; allowed exercise set only) — the checks,
 // the guarded apply-or-propose through the plan module, and the write: the new exercise takes the old one's place,
 // sets, rep range and rest (target load cleared: another lift).
-// Also what accepting the AI proposals training owns does: a workout becomes a template; a template swap applies.
+// Also what accepting the AI proposals training owns does: a workout becomes a template (or replaces the template of
+// its split day's name); a template swap applies.
 // After a swap is written, the swap listeners run (week-plans registers one: planned sessions copied from the template
 // follow it), so training never imports week-plans.
 import { applyGuards, sameLiftKind, type ExerciseSwapChange } from '@fitness/shared/engine'
@@ -10,6 +11,7 @@ import type { ProposalApplied, ProposalBody, Template, TemplateExerciseInput } f
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { applySafeChange, type ProposalOf, type SafeChangeResult } from '../../plan'
+import { replaceWithDraft, templateNamed } from './changes'
 import { guardContext } from './guard'
 import { loadLibrary, type Library, type LibraryEntry } from './library'
 import { createTemplate, getTemplate, updateTemplate } from './templates'
@@ -119,10 +121,14 @@ export async function acceptTemplateSwap(deps: Deps, proposal: ProposalOf<'templ
 /**
  * Accepting a workout proposal from the plan module: the draft becomes an AI template (guarded as its author), named
  * after its split day when it is one ("Upper A"), else "AI · <date>". The template takes the proposal's id, so a
- * double-tapped or replayed accept rewrites the same template, never a second.
+ * double-tapped or replayed accept rewrites the same template, never a second. A split draft named like an existing
+ * template (splitNameKey) replaces that template in place instead, its old version kept on the proposal for Undo
+ * (lib/changes).
  */
 export async function acceptWorkout(deps: Deps, proposal: ProposalOf<'workout'>): Promise<{ plan_version_id: null; applied: ProposalApplied }> {
   const { body } = proposal
+  const replacing = body.workout.name ? await templateNamed(deps, body.workout.name, proposal.id) : null
+  if (replacing) return { plan_version_id: null, applied: await replaceWithDraft(deps, proposal, replacing) }
   const template = await createTemplate(
     { ...deps, actor: proposal.actor },
     {

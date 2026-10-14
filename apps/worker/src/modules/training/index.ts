@@ -23,8 +23,16 @@
 //        safe list: same primary muscle and kind of lift, allowed set; applied now or proposed (plan.applySafeChange decides)
 //   onTemplateSwap(listener) / templateSwapped(deps, swap)  listeners run after any swap is written (week-plans
 //        registers one, so planned sessions copied from the template follow the swap)
+//   trainChange(deps, { change: TrainChange, reason }) → TrainChangeResult { status: 'applied'|'proposed', proposal_id,
+//        applied: { entity: 'template'|'equipment'|'exclusion', id } | null }  one AI change to Train (template create /
+//        update / delete, equipment status, exercise hide), checked (422: guards as its author, template / exercise
+//        exist); Ask AI → a pending 'train_change' proposal, nothing written; Aaron / MCP → applied now with an
+//        auto_applied train_change event carrying `before`; the event summary is the card title ("Rename Upper A → Push")
+//   revertTrainChange(deps, id)          → Ok   Undo of an applied train_change, or of a kept split draft that replaced
+//        a template (`replaced`): exactly what was there comes back (same id); 403 for 'ai', 409 already_reverted
 // Template/session creation with `proposal_id` accepts that pending AI workout proposal in the same batch.
-// Registers the 'workout' (→ an AI template) and 'template_swap' proposal handlers for plan.acceptProposal.
+// Registers the 'workout' (→ an AI template, or in place over the template of its split day's name), 'template_swap'
+// and 'train_change' (checked again, then applied with its `before`) proposal handlers for plan.acceptProposal.
 // A session stores its readiness score in workout_sessions.readiness and its start plan (plan snapshot, recovery,
 // deload) in workout_sessions.plan.
 import { addDays, type Progression } from '@fitness/shared/engine'
@@ -36,6 +44,7 @@ import { exerciseTags, loadLibrary, type Library } from './lib/library'
 import { listTemplates } from './lib/templates'
 import { deloadOn, neighbourSessions, pastSessions, readinessOn, suggestionFor } from './lib/state'
 import { acceptTemplateSwap, acceptWorkout } from './lib/swap'
+import { acceptTrainChange } from './lib/changes'
 
 export {
   createExclusion,
@@ -55,6 +64,7 @@ export {
 export { exclusionReason, toRules, type EquipmentRuleRow, type Rules } from './lib/library'
 export { deleteExclusion } from './lib/exclusions'
 export { onTemplateSwap, swapTemplateExercise, templateSwapped, type SwapInput, type SwapListener } from './lib/swap'
+export { revertTrainChange, trainChange, type TrainChangeResult } from './lib/changes'
 export { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate } from './lib/templates'
 export { deleteSession, deleteSet, finishSession, getSession, listSessions, logSet, startSession, updateSet } from './lib/sessions'
 export { exerciseHistory, type SessionDigest, type TrainingDigest } from './lib/history'
@@ -108,6 +118,8 @@ export async function progressionFor(
   return out
 }
 
-// plan.acceptProposal of the proposals training owns: an AI workout becomes a template; a template swap applies.
+// plan.acceptProposal of the proposals training owns: an AI workout becomes a template; a template swap applies; a
+// Train change applies.
 registerProposalHandler('workout', { accept: acceptWorkout })
 registerProposalHandler('template_swap', { accept: acceptTemplateSwap })
+registerProposalHandler('train_change', { accept: acceptTrainChange })

@@ -14,10 +14,18 @@ import { HttpError } from '../../../lib/http-error'
  */
 export async function deleteExclusion(deps: Deps, id: string): Promise<Ok> {
   if (deps.actor !== 'user') throw new HttpError(403, 'user_only', 'Only Aaron changes which exercises are hidden')
+  await unhideStatement(deps, id)
+  return { ok: true }
+}
+
+/**
+ * The soft delete (removed_at = now) of the live exclusion with this id or of the exercise with this id, for the
+ * caller's db.batch; no actor check (Undo of an AI hide uses it: it only takes back what that change hid).
+ */
+export function unhideStatement(deps: Deps, id: string) {
   const now = deps.now().toISOString()
-  await deps.db
+  return deps.db
     .update(exercise_exclusions)
     .set({ removed_at: now, actor: deps.actor, updated_at: now })
     .where(and(or(eq(exercise_exclusions.id, id), eq(exercise_exclusions.exercise_id, id)), isNull(exercise_exclusions.removed_at)))
-  return { ok: true }
 }

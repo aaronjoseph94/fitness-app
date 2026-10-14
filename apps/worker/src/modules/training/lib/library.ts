@@ -219,7 +219,7 @@ export async function setExercisePhoto(deps: Deps, id: string, query: ExercisePh
 }
 
 /** The spelling an equipment name already has in the profile (case-insensitive), else the library value, else as typed. */
-function canonicalEquipment(name: string, profile: readonly EquipmentRow[]): string {
+export function canonicalEquipment(name: string, profile: readonly EquipmentRow[]): string {
   const lower = name.trim().toLowerCase()
   return profile.find((p) => p.equipment.toLowerCase() === lower)?.equipment ?? (LIBRARY_VALUES.has(lower) ? lower : name.trim())
 }
@@ -288,30 +288,36 @@ export async function getEquipment(deps: Deps): Promise<EquipmentItem[]> {
   return rows.map(toEquipmentItem)
 }
 
+/**
+ * The upsert of one equipment status by name (case-insensitive, `profile` gives the stored spelling), for the caller's
+ * db.batch; an omitted note or area keeps the stored one. `id` is the new row's (an existing row keeps its own).
+ */
+export function equipmentStatement(deps: Deps, item: EquipmentUpdate['items'][number], profile: readonly EquipmentRow[], id: string = crypto.randomUUID()) {
+  const now = deps.now().toISOString()
+  const equipment = canonicalEquipment(item.equipment, profile)
+  const note = item.note === undefined ? {} : { note: item.note }
+  const area = item.area === undefined ? {} : { area: item.area }
+  return deps.db
+    .insert(equipment_profile)
+    .values({
+      id,
+      equipment,
+      kind: kindOf(equipment),
+      status: item.status,
+      note: item.note ?? null,
+      area: item.area ?? null,
+      actor: deps.actor,
+      created_at: now,
+      updated_at: now,
+    })
+    .onConflictDoUpdate({ target: equipment_profile.equipment, set: { status: item.status, ...note, ...area, actor: deps.actor, updated_at: now } })
+}
+
 /** PUT /api/equipment: upsert each status by name (case-insensitive); an omitted note or area keeps the stored one. */
 export async function updateEquipment(deps: Deps, input: EquipmentUpdate): Promise<EquipmentItem[]> {
   const { db } = deps
   const profile = await db.select().from(equipment_profile)
-  const now = deps.now().toISOString()
-  const statements = input.items.map((item) => {
-    const equipment = canonicalEquipment(item.equipment, profile)
-    const note = item.note === undefined ? {} : { note: item.note }
-    const area = item.area === undefined ? {} : { area: item.area }
-    return db
-      .insert(equipment_profile)
-      .values({
-        equipment,
-        kind: kindOf(equipment),
-        status: item.status,
-        note: item.note ?? null,
-        area: item.area ?? null,
-        actor: deps.actor,
-        created_at: now,
-        updated_at: now,
-      })
-      .onConflictDoUpdate({ target: equipment_profile.equipment, set: { status: item.status, ...note, ...area, actor: deps.actor, updated_at: now } })
-  })
-  const [first, ...rest] = statements
+  const [first, ...rest] = input.items.map((item) => equipmentStatement(deps, item, profile))
   if (first) await db.batch([first, ...rest])
   return getEquipment(deps)
 }
@@ -329,24 +335,19 @@ function toExclusion(row: ExclusionRow): ExerciseExclusion {
   }
 }
 
-/**
- * POST /api/exclusions: hide one exercise forever, or a whole category. Idempotent: a replay, or an exercise/category
- * that is already excluded, returns the stored exclusion (its first reason is kept).
- */
-export async function createExclusion(deps: Deps, input: ExclusionCreate): Promise<ExerciseExclusion> {
+const exclusionMatch = (input: Pick<ExclusionCreate, 'exercise_id' | 'category'>) =>
+  input.exercise_id ? eq(exercise_exclusions.exercise_id, input.exercise_id) : eq(exercise_exclusions.category, input.category!)
+
+/** The writes hiding an exercise or category (re-hiding a soft-deleted row, else inserting `input.id`), for a db.batch. */
+export function exclusionStatements(deps: Deps, input: ExclusionCreate) {
   const { db } = deps
-  if (input.exercise_id) {
-    const [row] = await db.select({ id: exercises.id }).from(exercises).where(eq(exercises.id, input.exercise_id))
-    if (!row) throw notFound('Exercise')
-  }
   const now = deps.now().toISOString()
-  const match = input.exercise_id ? eq(exercise_exclusions.exercise_id, input.exercise_id) : eq(exercise_exclusions.category, input.category!)
-  await db.batch([
+  return [
     // An exercise or category un-hidden before (soft-deleted row) is hidden again with the new reason.
     db
       .update(exercise_exclusions)
       .set({ removed_at: null, reason: input.reason, actor: deps.actor, updated_at: now })
-      .where(and(match, isNotNull(exercise_exclusions.removed_at))),
+      .where(and(exclusionMatch(input), isNotNull(exercise_exclusions.removed_at))),
     db
       .insert(exercise_exclusions)
       .values({
@@ -359,7 +360,21 @@ export async function createExclusion(deps: Deps, input: ExclusionCreate): Promi
         updated_at: now,
       })
       .onConflictDoNothing(),
-  ])
+  ] as const
+}
+
+/**
+ * POST /api/exclusions: hide one exercise forever, or a whole category. Idempotent: a replay, or an exercise/category
+ * that is already excluded, returns the stored exclusion (its first reason is kept).
+ */
+export async function createExclusion(deps: Deps, input: ExclusionCreate): Promise<ExerciseExclusion> {
+  const { db } = deps
+  if (input.exercise_id) {
+    const [row] = await db.select({ id: exercises.id }).from(exercises).where(eq(exercises.id, input.exercise_id))
+    if (!row) throw notFound('Exercise')
+  }
+  const match = exclusionMatch(input)
+  await db.batch(exclusionStatements(deps, input))
   const [byId] = await db.select().from(exercise_exclusions).where(eq(exercise_exclusions.id, input.id))
   const [row] = byId ? [byId] : await db.select().from(exercise_exclusions).where(match)
   if (!row) throw new HttpError(409, 'exclusion_conflict', 'The exclusion could not be stored')

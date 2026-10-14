@@ -1,7 +1,9 @@
 // Owns: workout templates — ordered exercises (sets, rep range, target load, rest, note) with the engine's muscle-score
 // snapshot, written as one db.batch (template row + replaced exercise rows [+ the accepted proposal]).
 // Every exercise list a template is given passes the workout guards, Aaron's own too (CLAUDE.md rails: the allowed
-// exercise set, 12–28 sets per session); a patch that keeps the list (rename, notes) does not re-check it.
+// exercise set, 12–28 sets per session); a patch that keeps the list (rename, notes) does not re-check it, nor does
+// Undo (lib/changes), which puts back a version saved before. lib/changes builds its batches from the same write and
+// delete statements.
 import { muscleScores } from '@fitness/shared/engine'
 import type { Template, TemplateCreate, TemplateExerciseInput, TemplatePatch } from '@fitness/shared/schemas'
 import { asc, eq } from 'drizzle-orm'
@@ -63,7 +65,8 @@ export async function checkExercises(deps: Deps, exercises: readonly TemplateExe
   return tags
 }
 
-function writeStatements(
+/** The writes saving a template (row upserted by id, exercise rows replaced), for the caller's db.batch. */
+export function writeStatements(
   deps: Deps,
   t: { id: string; name: string; origin: Template['origin']; notes: string | null; exercises: readonly TemplateExerciseInput[] },
   tags: ReadonlyMap<string, ExerciseTags>,
@@ -129,13 +132,18 @@ export async function updateTemplate(deps: Deps, id: string, patch: TemplatePatc
   return getTemplate(deps, id)
 }
 
-/** DELETE /api/templates/:id: sessions started from it keep their sets and plan snapshot but lose the link. */
-export async function deleteTemplate(deps: Deps, id: string): Promise<{ ok: true }> {
+/** The writes deleting a template (sessions unlinked, exercise rows, the row), for the caller's db.batch. */
+export function deleteStatements(deps: Deps, id: string) {
   const { db } = deps
-  await db.batch([
+  return [
     db.update(workout_sessions).set({ template_id: null, updated_at: deps.now().toISOString() }).where(eq(workout_sessions.template_id, id)),
     db.delete(template_exercises).where(eq(template_exercises.template_id, id)),
     db.delete(workout_templates).where(eq(workout_templates.id, id)),
-  ])
+  ] as const
+}
+
+/** DELETE /api/templates/:id: sessions started from it keep their sets and plan snapshot but lose the link. */
+export async function deleteTemplate(deps: Deps, id: string): Promise<{ ok: true }> {
+  await deps.db.batch(deleteStatements(deps, id))
   return { ok: true }
 }

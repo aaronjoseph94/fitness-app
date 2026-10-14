@@ -19,6 +19,7 @@ import {
   listSessions,
   listTemplates,
   logSet,
+  revertTrainChange,
   setExercisePhoto,
   startSession,
   updateEquipment,
@@ -49,4 +50,5 @@ export function mountTrainingRoutes(app: App): void {
   route(app, t.deleteSet, ({ params }, deps) => deleteSet(deps, params.id))
   route(app, t.finishSession, ({ params, body }, deps) => finishSession(deps, params.id, body))
   route(app, t.exerciseHistory, ({ params }, deps) => exerciseHistory(deps, params.id))
+  route(app, t.revertChange, ({ params }, deps) => revertTrainChange(deps, params.id))
 }
