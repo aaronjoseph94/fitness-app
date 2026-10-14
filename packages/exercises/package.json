@@ -1,7 +1,7 @@
 {
   "name": "@fitness/exercises",
   "private": true,
-  "description": "Exercise library: free-exercise-db seed (pinned), muscle-group mapping, images served as static assets, plus extra media sources.",
+  "description": "Exercise library: free-exercise-db (pinned) normalised into typed exercises, with step images and matched ExerciseDB GIF demos served as static assets.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

@@ -121,8 +121,13 @@ export type EquipmentKind = z.infer<typeof EquipmentKind>
  * The order the areas of the gym read in (the Equipment screen and the AI prompt): his list of the machines at
  * Anytime Fitness Lacombe, in the order he gave them. A row's `area` is free text, so an unknown one sorts last.
  */
-export const EQUIPMENT_AREAS = ['Life Fitness', 'Hammer Strength', 'Racks & rigs', 'Free weights', 'Cardio'] as const
-export type EquipmentArea = (typeof EQUIPMENT_AREAS)[number]
+export const EQUIPMENT_AREAS = [
+  'Life Fitness',
+  'Hammer Strength',
+  'Racks & rigs',
+  'Free weights',
+  'Cardio',
+] as const
 
 export const EquipmentItem = Row.extend({
   equipment: EquipmentName,
@@ -197,7 +202,7 @@ export const Readiness = z.object({
   sleep_h: z.number().nonnegative().nullable(),
   steps_vs_median: z.number().nonnegative().nullable(),
   days_since_last_session: Count.nullable(),
-  /** score < 40. */
+  /** score < 40, or under 5 h of sleep last night. */
   reduced_volume: z.boolean(),
 })
 export type Readiness = z.infer<typeof Readiness>
@@ -214,15 +219,17 @@ export type ProgressionSuggestion = z.infer<typeof ProgressionSuggestion>
 // ── Templates and workout drafts ───────────────────────────────────────────────────────────────────────────────
 
 /** One exercise of a template, week-plan session or workout draft. Order is the array position. */
-export const TemplateExerciseInput = z.object({
-  exercise_id: Id,
-  sets: z.number().int().min(1).max(10),
-  rep_min: z.number().int().min(1).max(50),
-  rep_max: z.number().int().min(1).max(50),
-  target_load_kg: Kg.nullable(),
-  rest_sec: z.number().int().min(0).max(600),
-  note: z.string().max(200).nullable(),
-}).refine((e) => e.rep_min <= e.rep_max, { message: 'rep_min must not exceed rep_max', path: ['rep_max'] })
+export const TemplateExerciseInput = z
+  .object({
+    exercise_id: Id,
+    sets: z.number().int().min(1).max(10),
+    rep_min: z.number().int().min(1).max(50),
+    rep_max: z.number().int().min(1).max(50),
+    target_load_kg: Kg.nullable(),
+    rest_sec: z.number().int().min(0).max(600),
+    note: z.string().max(200).nullable(),
+  })
+  .refine((e) => e.rep_min <= e.rep_max, { message: 'rep_min must not exceed rep_max', path: ['rep_max'] })
 export type TemplateExerciseInput = z.infer<typeof TemplateExerciseInput>
 
 export const TemplateExercise = TemplateExerciseInput.extend({ id: Id })
@@ -269,8 +276,9 @@ export type TemplatePatch = z.infer<typeof TemplatePatch>
 
 /**
  * One training day of the weekly split (engine splitSlots): its weekday, its name ("Upper A", "Lower A", "Upper B", …,
- * "Full body", "Full body A") and its focus: 'upper' / 'lower', or 'full' (a whole-body session: a 3-day week's third
- * day, and every day of a 1- or 2-day week). The workout_template job's payload; its kept draft is that day's template.
+ * "Full body", "Full body A") and its focus: 'upper' / 'lower', or 'full' (a whole-body session: a 1-day week's day, a
+ * 3-day week's most-rested day, and both days of a 2-day week that are not back to back). The workout_template job's
+ * payload; its kept draft is that day's template.
  */
 export const SplitSlot = z.object({
   weekday: Weekday,
@@ -343,7 +351,16 @@ export type TrainChangeResult = z.infer<typeof TrainChangeResult>
  * The eight body groups a week of training must cover (engine bodyGroupsOf maps muscles onto them): chest, back (lats,
  * middle back), shoulders, arms (biceps, triceps), quads, hamstrings, glutes, calves.
  */
-export const BodyGroup = z.enum(['chest', 'back', 'shoulders', 'arms', 'quads', 'hamstrings', 'glutes', 'calves'])
+export const BodyGroup = z.enum([
+  'chest',
+  'back',
+  'shoulders',
+  'arms',
+  'quads',
+  'hamstrings',
+  'glutes',
+  'calves',
+])
 export type BodyGroup = z.infer<typeof BodyGroup>
 
 /**
@@ -384,8 +401,9 @@ export const TrainingWeek = z.object({
 export type TrainingWeek = z.infer<typeof TrainingWeek>
 
 /**
- * Body of POST /api/ai/week: plan a whole-body week. `training_days` (1–7 weekdays, no repeats) is a proposal to change
- * the settings' days first; absent = the current days. `only`: draft just the slots with these names (e.g. "Full body").
+ * Body of POST /api/ai/week: plan the training week (a workout_template job per split day). `training_days` (1–7
+ * weekdays, no repeats) is a proposal to change the settings' days first; absent = the current days. `only`: draft
+ * just the slots with these names (e.g. "Full body").
  */
 export const PlanWeekRequest = z.object({
   training_days: z
@@ -409,7 +427,10 @@ export const PlanWeekResult = z.object({
   job_ids: z.array(Id),
   /** Names of slots no job was queued for (not in `only`, or already drafting). */
   skipped: z.array(z.string()),
-  training_days: z.object({ status: z.enum(['applied', 'proposed', 'unchanged']), proposal_id: Id.nullable() }),
+  training_days: z.object({
+    status: z.enum(['applied', 'proposed', 'unchanged']),
+    proposal_id: Id.nullable(),
+  }),
 })
 export type PlanWeekResult = z.infer<typeof PlanWeekResult>
 
@@ -433,8 +454,16 @@ export type WorkoutDraft = z.infer<typeof WorkoutDraft>
 
 /** Body of POST /api/ai/workout: generate a session, or fill a partial list into a balanced one. */
 export const AiWorkoutRequest = z.discriminatedUnion('mode', [
-  z.object({ mode: z.literal('generate'), date: LocalDate.optional(), focus: z.string().max(200).optional() }),
-  z.object({ mode: z.literal('fill'), date: LocalDate.optional(), exercises: z.array(TemplateExerciseInput).min(1).max(20) }),
+  z.object({
+    mode: z.literal('generate'),
+    date: LocalDate.optional(),
+    focus: z.string().max(200).optional(),
+  }),
+  z.object({
+    mode: z.literal('fill'),
+    date: LocalDate.optional(),
+    exercises: z.array(TemplateExerciseInput).min(1).max(20),
+  }),
 ])
 export type AiWorkoutRequest = z.infer<typeof AiWorkoutRequest>
 
@@ -460,7 +489,12 @@ export const SessionSet = z.object({
 export type SessionSet = z.infer<typeof SessionSet>
 
 /** One logged set as the greyed default of the next session (reps × kg). */
-const PastSet = z.object({ set_index: Count, reps: Count.nullable(), load_kg: Kg.nullable(), rpe: Rpe.nullable() })
+const PastSet = z.object({
+  set_index: Count,
+  reps: Count.nullable(),
+  load_kg: Kg.nullable(),
+  rpe: Rpe.nullable(),
+})
 
 /**
  * One exercise of a session's plan (the template / week-plan / AI snapshot it started from, plus exercises added

@@ -45,12 +45,16 @@ export function focusGroups(focus: SplitSlot['focus']): BodyGroup[] {
  * What one split day must reach, given every day of its split (`slots`, the day itself among them; a day is known by
  * its name, engine splitNameKey):
  *   required(slot) = focusGroups(slot.focus) ∪ (slot.focus = 'full' ? { g ∈ BODY_GROUPS : no other slot's focusGroups ∋ g } : ∅)
- * in BODY_GROUPS order. So a full-body day of an all-full-body week (1 or 2 days) also takes arms and calves, while
- * Full body beside Upper A and Lower A keeps its six.
+ * in BODY_GROUPS order. So a full-body day of an all-full-body week (one day, or two that are not back to back) also
+ * takes arms and calves, while Full body beside Upper A and Lower A keeps its six.
  */
 export function requiredGroups(slot: SplitSlot, slots: readonly SplitSlot[]): BodyGroup[] {
   const own = new Set(focusGroups(slot.focus))
-  const others = new Set(slots.filter((s) => splitNameKey(s.name) !== splitNameKey(slot.name)).flatMap((s) => focusGroups(s.focus)))
+  const others = new Set(
+    slots
+      .filter((s) => splitNameKey(s.name) !== splitNameKey(slot.name))
+      .flatMap((s) => focusGroups(s.focus)),
+  )
   return BODY_GROUPS.filter((g) => own.has(g) || (slot.focus === 'full' && !others.has(g)))
 }
 

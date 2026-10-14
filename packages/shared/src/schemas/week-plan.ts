@@ -7,6 +7,7 @@ import { Nutrients } from './nutrition'
 import { DailyTargets } from './plan'
 import { MuscleScores, TemplateExerciseInput } from './training'
 
+/** Who wrote a plan: Claude through MCP, the in-app AI draft ('gemini' is the stored id for any provider), or Aaron. */
 export const WeekPlanAuthor = z.enum(['claude_mcp', 'gemini', 'user'])
 export type WeekPlanAuthor = z.infer<typeof WeekPlanAuthor>
 
@@ -15,7 +16,9 @@ export type WeekPlanStatus = z.infer<typeof WeekPlanStatus>
 
 /** A planned session as a proposer writes it: a template snapshot (template_id null when built for this week only). */
 export const WeekPlanSessionInput = z.object({
-  template_id: Id.nullable().describe('The template this session copies, or null for a session built for this week only'),
+  template_id: Id.nullable().describe(
+    'The template this session copies, or null for a session built for this week only',
+  ),
   name: z.string().min(1).max(100).describe('Short name, e.g. "Upper A"'),
   exercises: z
     .array(TemplateExerciseInput)
@@ -38,7 +41,10 @@ function weekPlanContent<S extends z.ZodType>(session: S) {
     sessions: byWeekday(session.nullable()).describe('The training session per weekday; null = rest day'),
     water_ml: Ml.describe('Daily water target in ml (a fast day adds 500 ml)'),
     steps: Count.describe('Daily steps target'),
-    fast_dates: z.array(LocalDate).max(7).describe('Planned 24 h fasts inside this week (the fasting pattern allows two a month)'),
+    fast_dates: z
+      .array(LocalDate)
+      .max(7)
+      .describe('Planned 24 h fasts inside this week (the fasting pattern allows two a month)'),
     scan_date: LocalDate.nullable().describe('The Evolt scan date when one falls in this week, else null'),
     focus_note: z.string().max(500).describe('One or two sentences on what matters this week'),
   })
@@ -91,7 +97,7 @@ export const WeekPlanProposal = z.object({
   adjusted: z.array(WeekPlanIssue),
   /** Earlier proposed plans for the same week this one replaced. */
   superseded: z.array(Id),
-  /** Why nothing was stored when nothing was rejected (a Gemini draft never replaces a plan by Claude or Aaron). */
+  /** Why nothing was stored when nothing was rejected (an AI draft never replaces a plan by Claude or Aaron). */
   note: z.string().nullable(),
 })
 export type WeekPlanProposal = z.infer<typeof WeekPlanProposal>

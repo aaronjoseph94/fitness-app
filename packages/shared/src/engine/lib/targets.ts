@@ -1,13 +1,11 @@
 // Owns: daily targets (SPEC §5, §6) — materialised per local date from the active plan version (defaults + weekday
 // overrides) or the active week plan, held to the rails, with fast days and training days applied.
 import type { LocalDate, Weekday } from '../../schemas/common'
-import { addDays, eachDate, localDate, localMidnight, weekdayOf, weekStart } from './dates'
+import { addDays, eachDate, HOUR_MS, localDate, localMidnight, weekdayOf, weekStart } from './dates'
 import type { NutrientsLike, PlanTargetsLike, TargetValuesLike } from './types'
 
 /** Extra water on a fast day (ml). */
 export const FAST_DAY_EXTRA_WATER_ML = 500
-
-const HOUR_MS = 3_600_000
 
 /** A fast as stored (structurally a subset of `Fast`); a planned or running fast has no end. */
 export type FastWindowLike = { started_at: string; ended_at: string | null }
@@ -34,7 +32,7 @@ export function fastDay(fast: FastWindowLike, fastHours: number): LocalDate | nu
 
 /**
  * An active week plan (structurally a subset of `WeekPlan`); a null session means a rest day. A plan with no session
- * on any day (the Gemini carry-forward draft) leaves training to settings.training_days.
+ * on any day (the weekly review's AI draft, which carries targets forward) leaves training to settings.training_days.
  */
 export type WeekPlanLike = {
   id: string
@@ -109,16 +107,33 @@ export function materialiseTargets(input: TargetsInput): DayTargets[] {
           steps: override?.steps ?? defaults.steps,
         }
     const is_fast_day = fasts.has(date)
-    const training_planned = wp && hasSessions(wp) ? wp.plan.sessions[weekday] != null : input.training_days.includes(weekday)
-    const ids = { date, plan_version_id: input.plan_version.id, week_plan_id: wp?.id ?? null, is_fast_day, training_planned }
+    const training_planned =
+      wp && hasSessions(wp) ? wp.plan.sessions[weekday] != null : input.training_days.includes(weekday)
+    const ids = {
+      date,
+      plan_version_id: input.plan_version.id,
+      week_plan_id: wp?.id ?? null,
+      is_fast_day,
+      training_planned,
+    }
 
     if (is_fast_day) {
       const zero = Object.fromEntries(MACRO_FIELDS.map((f) => [f, 0])) as NutrientsLike
-      return { ...ids, ...zero, water_ml: base.water_ml + FAST_DAY_EXTRA_WATER_ML, steps: base.steps, training_load: training_planned ? 'light' : 'rest' }
+      return {
+        ...ids,
+        ...zero,
+        water_ml: base.water_ml + FAST_DAY_EXTRA_WATER_ML,
+        steps: base.steps,
+        training_load: training_planned ? 'light' : 'rest',
+      }
     }
     const kcal = Math.max(base.kcal, rails.calorie_floor)
     const { protein_g, fat_g } = holdMacros(
-      { kcal, protein_g: Math.max(base.protein_g, rails.protein_min_g), fat_g: Math.max(base.fat_g, rails.fat_min_g) },
+      {
+        kcal,
+        protein_g: Math.max(base.protein_g, rails.protein_min_g),
+        fat_g: Math.max(base.fat_g, rails.fat_min_g),
+      },
       rails,
     )
     const carbs_g = Math.max(0, Math.round((kcal - protein_g * 4 - fat_g * 9) / 4))
@@ -148,8 +163,10 @@ export function holdMacros(
   rails: { protein_min_g: number; fat_min_g: number },
 ): { protein_g: number; fat_g: number } {
   let { protein_g, fat_g } = day
-  if (protein_g * 4 + fat_g * 9 > day.kcal) fat_g = Math.max(rails.fat_min_g, Math.floor((day.kcal - protein_g * 4) / 9))
-  if (protein_g * 4 + fat_g * 9 > day.kcal) protein_g = Math.max(rails.protein_min_g, Math.floor((day.kcal - fat_g * 9) / 4))
+  if (protein_g * 4 + fat_g * 9 > day.kcal)
+    fat_g = Math.max(rails.fat_min_g, Math.floor((day.kcal - protein_g * 4) / 9))
+  if (protein_g * 4 + fat_g * 9 > day.kcal)
+    protein_g = Math.max(rails.protein_min_g, Math.floor((day.kcal - fat_g * 9) / 4))
   return { protein_g, fat_g }
 }
 

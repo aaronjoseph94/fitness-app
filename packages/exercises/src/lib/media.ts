@@ -25,7 +25,7 @@ type MediaMapRow = { source: string; source_id: string; url: string; score: numb
 const rows: Readonly<Record<string, MediaMapRow>> = mediaMap
 
 /** Static asset path of the animated demo for a free-exercise-db id. */
-export const gifPath = (sourceId: string) => `/media/exercises/${sourceId}.gif`
+const gifPath = (sourceId: string) => `/media/exercises/${sourceId}.gif`
 
 /** gif_url (null when unmatched) and media list for a free-exercise-db id. */
 export function mediaFor(sourceId: string): { gif_url: string | null; media: LibraryMedia[] } {

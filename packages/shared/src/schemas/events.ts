@@ -28,7 +28,10 @@ export const Proposal = EventFields.extend({
 export type Proposal = z.infer<typeof Proposal>
 
 export const AiEvent = z.discriminatedUnion('kind', [
-  EventFields.extend({ kind: z.literal('adjustment'), body: DayAdjustmentOutput.extend({ date: LocalDate }) }),
+  EventFields.extend({
+    kind: z.literal('adjustment'),
+    body: DayAdjustmentOutput.extend({ date: LocalDate }),
+  }),
   Proposal,
   EventFields.extend({ kind: z.literal('review'), body: z.object({ review_id: Id, week_start: LocalDate }) }),
   /** A plan change the guards dropped entirely carries their verdicts (`rejected`, any `scheduled` later steps). */
@@ -41,7 +44,10 @@ export const AiEvent = z.discriminatedUnion('kind', [
     }),
   }),
   /** A change applied without a proposal: settings edits by Aaron, MCP writes. */
-  EventFields.extend({ kind: z.literal('change'), body: z.object({ entity: z.string().min(1), changes: z.array(FieldChange) }) }),
+  EventFields.extend({
+    kind: z.literal('change'),
+    body: z.object({ entity: z.string().min(1), changes: z.array(FieldChange) }),
+  }),
 ])
 export type AiEvent = z.infer<typeof AiEvent>
 
@@ -53,8 +59,10 @@ export type EventsQuery = z.infer<typeof EventsQuery>
 export const EventsResponse = z.object({ events: z.array(AiEvent), server_time: Instant })
 export type EventsResponse = z.infer<typeof EventsResponse>
 
-/** What accepting a proposal changed besides the plan: the template a workout became or was edited, the week plan
- * made active, the settings (a reminder time). */
+/**
+ * What accepting a proposal changed besides the plan: the template a workout became or was edited, the week plan made
+ * active, the settings (a reminder time).
+ */
 export const ProposalApplied = z.object({ entity: z.enum(['template', 'week_plan', 'settings']), id: Id })
 export type ProposalApplied = z.infer<typeof ProposalApplied>
 
@@ -62,5 +70,9 @@ export type ProposalApplied = z.infer<typeof ProposalApplied>
  * Response of POST /api/proposals/:id/accept|reject: the resolved proposal, the plan version accepting created (plan
  * changes, week plans), and what else it changed (null for a rejection or a plan change).
  */
-export const ProposalDecision = z.object({ proposal: Proposal, plan_version: PlanVersion.nullable(), applied: ProposalApplied.nullable().default(null) })
+export const ProposalDecision = z.object({
+  proposal: Proposal,
+  plan_version: PlanVersion.nullable(),
+  applied: ProposalApplied.nullable().default(null),
+})
 export type ProposalDecision = z.infer<typeof ProposalDecision>

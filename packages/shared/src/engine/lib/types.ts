@@ -8,9 +8,6 @@ import type { PlanTargets, TargetValues } from '../../schemas/plan'
 /** One day's target values (`TargetValues` in schemas/plan). */
 export type TargetValuesLike = TargetValues
 
-/** A target a change can move. */
-export type TargetField = keyof TargetValuesLike
-
 /** `plan_versions.targets`: defaults for every day plus per-weekday overrides (`PlanTargets`). */
 export type PlanTargetsLike = PlanTargets
 
@@ -36,5 +33,14 @@ export type NutrientsLike = Nutrients
  */
 export type DayRow = Pick<
   DaySummary,
-  'date' | 'weight_kg' | 'trend_kg' | 'intake' | 'meals_logged' | 'water_ml' | 'steps' | 'sleep_min' | 'is_fast_day' | 'sessions_done'
+  | 'date'
+  | 'weight_kg'
+  | 'trend_kg'
+  | 'intake'
+  | 'meals_logged'
+  | 'water_ml'
+  | 'steps'
+  | 'sleep_min'
+  | 'is_fast_day'
+  | 'sessions_done'
 > & { targets: Pick<TargetValues, 'protein_g' | 'steps'> | null }

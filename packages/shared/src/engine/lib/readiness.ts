@@ -3,11 +3,11 @@
 import { clamp, median, round } from './math'
 
 /** Sleep that scores full marks (SPEC §9). */
-export const SLEEP_GOAL_H = 7.5
+const SLEEP_GOAL_H = 7.5
 /** Readiness below this suggests reduced volume (SPEC §9). */
-export const READINESS_REDUCED_BELOW = 40
+const READINESS_REDUCED_BELOW = 40
 /** A night under this many hours suggests reduced volume whatever the score (SPEC §7 recovery rule). */
-export const SHORT_SLEEP_H = 5
+const SHORT_SLEEP_H = 5
 
 /** Structurally a `Readiness`. */
 export type ReadinessScore = {
@@ -38,12 +38,14 @@ export function readiness(input: {
 }): ReadinessScore {
   const sleep_h = input.sleep_min === null ? null : input.sleep_min / 60
   const med = median(input.steps_prior_14d)
-  const steps_vs_median = input.steps_yesterday === null || med === null || med <= 0 ? null : input.steps_yesterday / med
+  const steps_vs_median =
+    input.steps_yesterday === null || med === null || med <= 0 ? null : input.steps_yesterday / med
 
   const parts: [weight: number, value: number][] = []
   if (sleep_h !== null) parts.push([0.5, clamp((sleep_h - 3.5) / (SLEEP_GOAL_H - 3.5), 0, 1)])
   if (steps_vs_median !== null) parts.push([0.2, clamp(1 - (steps_vs_median - 1.25), 0, 1)])
-  if (input.days_since_last_session !== null) parts.push([0.3, clamp(0.4 + 0.3 * input.days_since_last_session, 0, 1)])
+  if (input.days_since_last_session !== null)
+    parts.push([0.3, clamp(0.4 + 0.3 * input.days_since_last_session, 0, 1)])
 
   const weights = parts.reduce((s, [w]) => s + w, 0)
   const score = weights === 0 ? 100 : Math.round((100 * parts.reduce((s, [w, v]) => s + w * v, 0)) / weights)

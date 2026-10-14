@@ -14,19 +14,22 @@ const DATA_FILE = path.join(ROOT, 'data', 'free-exercise-db.json')
 const IMAGES_DIR = path.join(ROOT, 'images')
 const CONCURRENCY = 8
 
+/** The fields of a free-exercise-db record this script reads: `images` are '<id>/<n>.jpg'. */
+type SourceRecord = { images: string[] }
+
 /** First step image of each record ('<id>/0.jpg'): the thumbnail's source. */
-const firstImages = (records: readonly { images: string[] }[]) => records.flatMap((r) => r.images.slice(0, 1))
+const firstImages = (records: readonly SourceRecord[]) => records.flatMap((r) => r.images.slice(0, 1))
 
 async function main(): Promise<void> {
   if (process.argv.includes('--thumbs')) {
-    const records = JSON.parse(await readFile(DATA_FILE, 'utf8')) as { id: string; images: string[] }[]
+    const records = JSON.parse(await readFile(DATA_FILE, 'utf8')) as SourceRecord[]
     if (!(await writeThumbnails(IMAGES_DIR, firstImages(records)))) process.exitCode = 1
     return
   }
   const withImages = process.argv.includes('--images')
 
   const json = await download(`${RAW}/dist/exercises.json`)
-  const records = JSON.parse(new TextDecoder().decode(json)) as { id: string; images: string[] }[]
+  const records = JSON.parse(new TextDecoder().decode(json)) as SourceRecord[]
   await mkdir(path.dirname(DATA_FILE), { recursive: true })
   await writeFile(DATA_FILE, json)
   console.log(

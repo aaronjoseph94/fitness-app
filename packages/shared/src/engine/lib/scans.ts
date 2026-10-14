@@ -8,7 +8,7 @@ import { compositionMilestonesMet, type CompositionScan } from './milestones'
 /** Lean mass above this share of the weight lost between two scans raises the lean-loss guard (SPEC §3). */
 export const LEAN_LOSS_SHARE = 0.25
 /** A lean drop is hydration when the water drop is at least this share of it (dry lean — protein + mineral — held). */
-export const HYDRATION_MATCH = 0.9
+const HYDRATION_MATCH = 0.9
 
 /** Whole-body metrics compared between scans (the numeric fields of the seed record, SPEC §2). */
 const SCAN_METRICS = ScanMetricField.options
@@ -77,7 +77,12 @@ export function compareScans(previous: ScanLike, next: ScanLike): ScanComparison
   const leanLost = -grams(fat_vs_lean.lean_kg)
   const waterLost = -grams(fat_vs_lean.water_kg)
   const share = weightLost > 0 ? leanLost / weightLost : null
-  const lean_loss = share !== null && share > LEAN_LOSS_SHARE ? (waterLost >= HYDRATION_MATCH * leanLost ? 'hydration' : 'lean_loss') : 'ok'
+  const lean_loss =
+    share !== null && share > LEAN_LOSS_SHARE
+      ? waterLost >= HYDRATION_MATCH * leanLost
+        ? 'hydration'
+        : 'lean_loss'
+      : 'ok'
 
   const before = new Set(compositionMilestonesMet(previous).map((m) => m.label))
   const milestones_reached = compositionMilestonesMet(next)

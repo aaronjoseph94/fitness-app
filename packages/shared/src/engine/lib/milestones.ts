@@ -1,6 +1,6 @@
 // Owns: milestones (SPEC §3) — when each stored milestone was reached: a weight milestone from the trend (with the
 // nearest scan), a composition milestone (visceral level, body fat %, waist-to-hip ratio, a segment's fat) from the
-// first scan meeting it. The SPEC §3 list is kept as seed data and for a scan's "milestones reached" call-out.
+// first scan meeting it, and the composition milestones a scan newly reaches (its "milestones reached" call-out).
 import type { MilestoneKind } from '../../schemas/body'
 import type { LocalDate } from '../../schemas/common'
 import type { ScanSegment } from '../../schemas/scans'
@@ -32,20 +32,20 @@ export type MilestoneStatus = {
   scan_id: string | null
 }
 
-/** Scale milestones (SPEC §3, seed data): reached when trend weight ≤ target. */
-export const WEIGHT_MILESTONES_KG = [90, 85, 80, 75, 70, 65] as const
-
 /** The segment a 'segment' milestone reads when it names none (SPEC §3: torso fat). */
 const DEFAULT_SEGMENT: ScanSegment = 'torso'
 
-const below = (v: number | null | undefined, t: number) => v !== null && v !== undefined && v < t
+const below = (v: number | null | undefined, t: number) => v != null && v < t
 
 /**
  * Whether a scan meets a composition milestone with target T:
  *   visceral_level: visceral_fat_level ≤ T;   body_fat_pct: body_fat_pct < T;   whr: waist_hip_ratio < T;
  *   segment:        segments[segment ?? torso].fat_kg < T;                       weight: never (the trend decides)
  */
-function meets(def: Pick<MilestoneDefinition, 'kind' | 'target_value' | 'segment'>, scan: CompositionScan): boolean {
+function meets(
+  def: Pick<MilestoneDefinition, 'kind' | 'target_value' | 'segment'>,
+  scan: CompositionScan,
+): boolean {
   const t = def.target_value
   switch (def.kind) {
     case 'visceral_level':
@@ -61,10 +61,15 @@ function meets(def: Pick<MilestoneDefinition, 'kind' | 'target_value' | 'segment
   }
 }
 
-type CompositionMilestone = { kind: MilestoneKind; label: string; target_value: number; segment?: ScanSegment }
+type CompositionMilestone = {
+  kind: MilestoneKind
+  label: string
+  target_value: number
+  segment?: ScanSegment
+}
 
-/** Composition milestones (SPEC §3, seed data): visceral level ≤ 9; body fat < 30 / 25 / 20 %; WHR < 0.90; torso fat < 10.4 kg. */
-export const COMPOSITION_MILESTONES: readonly CompositionMilestone[] = [
+/** Composition milestones (SPEC §3): visceral level ≤ 9; body fat < 30 / 25 / 20 %; WHR < 0.90; torso fat < 10.4 kg. */
+const COMPOSITION_MILESTONES: readonly CompositionMilestone[] = [
   { kind: 'visceral_level', label: 'Visceral fat level ≤ 9', target_value: 9 },
   { kind: 'body_fat_pct', label: 'Body fat < 30 %', target_value: 30 },
   { kind: 'body_fat_pct', label: 'Body fat < 25 %', target_value: 25 },
@@ -105,7 +110,13 @@ export function milestones(input: {
     const { id, kind, target_value } = def
     if (kind === 'weight') {
       const hit = trend.find((p) => p.trend_kg! <= target_value)
-      return { id, kind, target_value, reached_on: hit?.date ?? null, scan_id: hit ? nearestScan(hit.date) : null }
+      return {
+        id,
+        kind,
+        target_value,
+        reached_on: hit?.date ?? null,
+        scan_id: hit ? nearestScan(hit.date) : null,
+      }
     }
     const hit = scans.find((s) => meets(def, s))
     return { id, kind, target_value, reached_on: hit?.date ?? null, scan_id: hit?.id ?? null }

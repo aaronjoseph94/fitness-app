@@ -2,20 +2,46 @@
 // create/patch bodies for every input method (text, voice, photo, barcode, manual items, favourite).
 // Wire names follow SPEC spelling ("favorite"); schema names follow GLOSSARY ("Favourite").
 import * as z from 'zod'
-import { Count, Fraction, Grams, Id, Instant, JobStatus, Kcal, LocalDate, MealSlot, QueryInt, Row } from './common'
+import {
+  Count,
+  Fraction,
+  Grams,
+  Id,
+  Instant,
+  JobStatus,
+  Kcal,
+  LocalDate,
+  MealSlot,
+  QueryInt,
+  Row,
+} from './common'
 import { FileUrl, ImageType } from './files'
 
 /** Energy and macros of a portion, a day's intake or a day's targets. */
-export const Nutrients = z.object({ kcal: Kcal, protein_g: Grams, carbs_g: Grams, fat_g: Grams, fibre_g: Grams })
+export const Nutrients = z.object({
+  kcal: Kcal,
+  protein_g: Grams,
+  carbs_g: Grams,
+  fat_g: Grams,
+  fibre_g: Grams,
+})
 export type Nutrients = z.infer<typeof Nutrients>
 
 /** What is left of a day's targets (target − intake); negative when over. */
-export const Remaining = z.object({ kcal: z.number(), protein_g: z.number(), carbs_g: z.number(), fat_g: z.number() })
+export const Remaining = z.object({
+  kcal: z.number(),
+  protein_g: z.number(),
+  carbs_g: z.number(),
+  fat_g: z.number(),
+})
 export type Remaining = z.infer<typeof Remaining>
 
 // ── Foods ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Open Food Facts, Canadian Nutrient File, USDA FoodData Central, an LLM estimate, or Aaron. */
+/**
+ * Open Food Facts, Canadian Nutrient File, an LLM estimate, or Aaron. `usda` only tags rows cached while USDA FoodData
+ * Central was a live source; it is no longer queried.
+ */
 export const FoodSource = z.enum(['off', 'cnf', 'usda', 'llm', 'user'])
 export type FoodSource = z.infer<typeof FoodSource>
 
@@ -110,7 +136,11 @@ export const Favourite = z.discriminatedUnion('kind', [
 ])
 export type Favourite = z.infer<typeof Favourite>
 
-const FavouriteCreateFields = z.object({ id: Id, label: z.string().trim().min(1).max(100), sort_order: z.number().int().optional() })
+const FavouriteCreateFields = z.object({
+  id: Id,
+  label: z.string().trim().min(1).max(100),
+  sort_order: z.number().int().optional(),
+})
 
 /** Body of POST /api/favorites. */
 export const FavouriteCreate = z.discriminatedUnion('kind', [
@@ -159,7 +189,6 @@ export const MealPhoto = z.object({
 })
 export type MealPhoto = z.infer<typeof MealPhoto>
 
-/** A meal as the API returns it, with items, computed totals and photos. `date` is eaten_at's Edmonton day. */
 /**
  * The meal's newest meal_analysis job (GET /api/jobs/:id has the rest). queued/running = still analysing (a retry after
  * a provider hiccup is queued again while the meal already sits in review); failed = no provider answered, add items
@@ -168,6 +197,7 @@ export type MealPhoto = z.infer<typeof MealPhoto>
 export const MealAnalysis = z.object({ job_id: Id, status: JobStatus })
 export type MealAnalysis = z.infer<typeof MealAnalysis>
 
+/** A meal as the API returns it, with items, computed totals and photos. `date` is eaten_at's Edmonton day. */
 export const Meal = Row.extend({
   date: LocalDate,
   slot: MealSlot,
@@ -215,8 +245,15 @@ const MealText = z.string().trim().min(1).max(2000)
 export const MealCreate = z.discriminatedUnion('input_method', [
   MealCreateFields.extend({ input_method: z.enum(['text', 'voice']), raw_text: MealText }),
   MealCreateFields.extend({ input_method: z.literal('photo'), raw_text: MealText.optional() }),
-  MealCreateFields.extend({ input_method: z.enum(['manual', 'barcode']), items: z.array(MealItemInput).min(1).max(50) }),
-  MealCreateFields.extend({ input_method: z.literal('favorite'), favorite_id: Id, scale: z.number().positive().max(10).default(1) }),
+  MealCreateFields.extend({
+    input_method: z.enum(['manual', 'barcode']),
+    items: z.array(MealItemInput).min(1).max(50),
+  }),
+  MealCreateFields.extend({
+    input_method: z.literal('favorite'),
+    favorite_id: Id,
+    scale: z.number().positive().max(10).default(1),
+  }),
 ])
 export type MealCreate = z.infer<typeof MealCreate>
 

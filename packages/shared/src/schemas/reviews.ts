@@ -8,6 +8,7 @@ import { Forecast, PlanChange, ProposalStatus } from './plan'
 import { ScanSegment } from './scans'
 import { MuscleScores, PersonalRecord, VolumeKg } from './training'
 
+/** Who wrote a review: Claude through MCP, or the in-app AI draft ('gemini' is the stored id for any provider's draft). */
 export const ReviewAuthor = z.enum(['claude_mcp', 'gemini'])
 export type ReviewAuthor = z.infer<typeof ReviewAuthor>
 
@@ -42,7 +43,12 @@ export const ReviewScanDelta = z.object({
   previous_date: LocalDate,
   days: Count,
   /** Signed kg changes (this scan − previous). */
-  fat_vs_lean: z.object({ weight_kg: z.number(), fat_kg: z.number(), lean_kg: z.number(), water_kg: z.number() }),
+  fat_vs_lean: z.object({
+    weight_kg: z.number(),
+    fat_kg: z.number(),
+    lean_kg: z.number(),
+    water_kg: z.number(),
+  }),
   body_fat_pct: FromTo.nullable(),
   visceral_fat_level: FromTo.nullable(),
   /** lean lost / weight lost (null when no weight was lost). */
@@ -63,7 +69,7 @@ export const WeeklyMetrics = z.object({
   trend_start_kg: Kg.nullable(),
   trend_end_kg: Kg.nullable(),
   trend_change_kg: z.number().nullable(),
-  /** Mean over days with logged intake (fast days count as 0 kcal). */
+  /** Mean over days with logged intake: a meal or a fast (a fast day counts at what was eaten, 0 kcal when nothing). */
   intake_avg: Nutrients,
   /** Mean daily kcal and protein targets over the week's non-fast days (null without targets). */
   target_kcal_avg: Kcal.nullable(),
@@ -97,10 +103,14 @@ export type WeeklyMetrics = z.infer<typeof WeeklyMetrics>
  * A review's proposal with where it ended up: `pending`/`accepted`/… from its ai_events row (event_id), or `rejected`
  * with event_id null when a guard dropped it. `note` says why it was dropped, or which step of a split move it is.
  */
-export const ReviewProposal = PlanChange.extend({ status: ProposalStatus, event_id: Id.nullable(), note: z.string().nullable() })
+export const ReviewProposal = PlanChange.extend({
+  status: ProposalStatus,
+  event_id: Id.nullable(),
+  note: z.string().nullable(),
+})
 export type ReviewProposal = z.infer<typeof ReviewProposal>
 
-/** One week's review. A Claude review supersedes the Gemini draft for the same week (one row per week_start). */
+/** One week's review. A Claude review supersedes the AI draft (author 'gemini') for the same week (one row per week_start). */
 export const WeeklyReview = Row.extend({
   week: IsoWeek,
   week_start: LocalDate,

@@ -5,7 +5,14 @@ import * as z from 'zod'
 import { Actor, byWeekday, Count, Id, Instant, Kcal, LocalDate, LocalTime, Ml, Row, Weekday } from './common'
 import { Nutrients } from './nutrition'
 import { ClockReminder } from './push'
-import { EquipmentName, EquipmentStatus, MuscleScores, TemplateSnapshot, TrainChange, WorkoutDraft } from './training'
+import {
+  EquipmentName,
+  EquipmentStatus,
+  MuscleScores,
+  TemplateSnapshot,
+  TrainChange,
+  WorkoutDraft,
+} from './training'
 
 /** One day's targets: energy and macros, water and steps. */
 export const TargetValues = Nutrients.extend({ water_ml: Ml, steps: Count })
@@ -162,14 +169,16 @@ export const ProposalBody = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('train_change'),
     change: TrainChange,
-    before: z.union([TemplateSnapshot, z.object({ equipment: EquipmentName, status: EquipmentStatus })]).nullable(),
+    before: z
+      .union([TemplateSnapshot, z.object({ equipment: EquipmentName, status: EquipmentStatus })])
+      .nullable(),
     /** The AI's why, shown on the card ("Why: …"); absent on older records and on Aaron's own changes. */
     reason: z.string().max(300).optional(),
     reverted_at: Instant.optional(),
   }),
   /**
    * Aaron's training days as Ask AI proposes them (pending until he taps it). `before`: the days when it was proposed,
-   * for display ("now Mon, Tue, Wed, Thu"); there is no Undo for days — change them back with set_training_days.
+   * for display ("now Mon, Tue, Thu"); there is no Undo for days — change them back with set_training_days.
    */
   z.object({
     kind: z.literal('training_days'),

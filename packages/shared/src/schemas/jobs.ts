@@ -30,8 +30,9 @@ export type JobType = z.infer<typeof JobType>
 /**
  * meal_analysis: the foods in a text/photo meal. `name` carries the cooking state ("white rice, cooked") and a brand as
  * printed ("Oikos Pro greek yogurt"); `grams` is the edible weight as eaten; `confidence` covers the food and the grams;
- * `candidates` are database foods the model is sure of (USDA fdcId, OFF barcode); `estimate` is nutrition PER 100 g,
- * used only when no database food matches (the item is then `estimated`).
+ * `candidates` are database foods the model is sure of (a source and its id: an OFF barcode; a `usda` fdcId is only
+ * looked up in the cache, USDA is no longer queried); `estimate` is nutrition PER 100 g, used only when no database
+ * food matches (the item is then `estimated`).
  */
 export const MealAnalysisOutput = z.object({
   items: z
@@ -93,7 +94,7 @@ export const ScanAnalysisOutput = z.object({
 export type ScanAnalysisOutput = z.infer<typeof ScanAnalysisOutput>
 
 /**
- * weekly_review (Gemini draft when no Claude review ran): narrative, highlights, concerns, proposals, next week's plan.
+ * weekly_review (the AI draft, written when no Claude review ran): narrative, highlights, concerns, proposals, next week's plan.
  * The plan is the proposer's shape (WeekPlanContentInput): muscle scores are the engine's, never asked of the LLM.
  */
 export const WeeklyReviewOutput = z.object({
@@ -170,7 +171,11 @@ const JobFields = Row.extend({
 
 function jobRow<T extends JobType>(type: T) {
   // z.nullable(…) rather than .nullable() keeps the result schema indexed by T, so `type` narrows `result`.
-  return JobFields.extend({ type: z.literal(type), payload: JobPayloads[type], result: z.nullable(JobOutputs[type]) })
+  return JobFields.extend({
+    type: z.literal(type),
+    payload: JobPayloads[type],
+    result: z.nullable(JobOutputs[type]),
+  })
 }
 
 /** An `ai_jobs` row (the queue and the audit trail), typed by job type. GET /api/jobs/:id returns it. */

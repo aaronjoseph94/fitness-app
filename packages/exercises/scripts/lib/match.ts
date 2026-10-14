@@ -35,7 +35,7 @@ export type MatchableExercise = {
 }
 
 /** One row of data/media-map.json, keyed by free-exercise-db id. */
-export type MediaMatch = {
+type MediaMatch = {
   source: 'exercisedb'
   source_id: string
   /** The ExerciseDB name that matched (for reviewing the committed map). */

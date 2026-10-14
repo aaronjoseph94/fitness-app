@@ -6,11 +6,29 @@ import { addDays, daysBetween } from './dates'
 /** Share of sets kept in a deload week (SPEC §7). */
 export const DELOAD_SETS_FACTOR = 0.6
 /** A deload is proposed this many weeks after the last one (SPEC §7: every 6–8 weeks). */
-export const DELOAD_EVERY_WEEKS = 6
+const DELOAD_EVERY_WEEKS = 6
 
-const LOWER_BODY: ReadonlySet<Muscle> = new Set(['quadriceps', 'hamstrings', 'glutes', 'calves', 'adductors', 'abductors'])
+const LOWER_BODY: ReadonlySet<Muscle> = new Set([
+  'quadriceps',
+  'hamstrings',
+  'glutes',
+  'calves',
+  'adductors',
+  'abductors',
+])
 /** Library equipment loaded by hand, not by a stack. Anything else (machine, cable, a named machine) is a stack. */
-const FREE_WEIGHT: ReadonlySet<string> = new Set(['barbell', 'dumbbell', 'e-z curl bar', 'kettlebells', 'medicine ball', 'bands', 'exercise ball', 'foam roll', 'body only', 'other'])
+const FREE_WEIGHT: ReadonlySet<string> = new Set([
+  'barbell',
+  'dumbbell',
+  'e-z curl bar',
+  'kettlebells',
+  'medicine ball',
+  'bands',
+  'exercise ball',
+  'foam roll',
+  'body only',
+  'other',
+])
 
 /** One logged set (structurally a subset of `SessionSet`). */
 export type LoggedSet = { reps: number | null; load_kg: number | null; completed: boolean }
@@ -31,7 +49,12 @@ export type ProgressionInput = {
 }
 
 /** Structurally a `ProgressionSuggestion`: the greyed default for the next session. */
-export type Progression = { kind: 'increase' | 'hold' | 'deload'; load_kg: number | null; sets: number | null; reason: string }
+export type Progression = {
+  kind: 'increase' | 'hold' | 'deload'
+  load_kg: number | null
+  sets: number | null
+  reason: string
+}
 
 /**
  * Load increment: dumbbells +2.5 kg; lower body (a primary muscle in quadriceps, hamstrings, glutes, calves,
@@ -47,7 +70,9 @@ function increment(exercise: ProgressionInput['exercise']): number {
 
 /** A session's working sets: completed, with reps and load logged. */
 function working(sets: readonly LoggedSet[]): { reps: number; load_kg: number }[] {
-  return sets.flatMap((s) => (s.completed && s.reps !== null && s.load_kg !== null ? [{ reps: s.reps, load_kg: s.load_kg }] : []))
+  return sets.flatMap((s) =>
+    s.completed && s.reps !== null && s.load_kg !== null ? [{ reps: s.reps, load_kg: s.load_kg }] : [],
+  )
 }
 
 /**
@@ -61,7 +86,13 @@ function working(sets: readonly LoggedSet[]): { reps: number; load_kg: number }[
  */
 export function nextProgression(input: ProgressionInput): Progression {
   const order = (a: { date: string; started_at?: string }, b: { date: string; started_at?: string }) =>
-    a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.started_at && b.started_at ? a.started_at.localeCompare(b.started_at) : 0
+    a.date !== b.date
+      ? a.date < b.date
+        ? -1
+        : 1
+      : a.started_at && b.started_at
+        ? a.started_at.localeCompare(b.started_at)
+        : 0
   const sessions = [...input.history]
     .sort(order)
     .map((s) => working(s.sets))
@@ -71,12 +102,20 @@ export function nextProgression(input: ProgressionInput): Progression {
 
   if (input.deload_week) {
     const sets = Math.max(1, Math.round(input.sets * DELOAD_SETS_FACTOR))
-    return { kind: 'deload', load_kg: load, sets, reason: `Deload week: ${sets} of ${input.sets} sets at the same load` }
+    return {
+      kind: 'deload',
+      load_kg: load,
+      sets,
+      reason: `Deload week: ${sets} of ${input.sets} sets at the same load`,
+    }
   }
-  if (!last || load === null) return { kind: 'hold', load_kg: null, sets: input.sets, reason: 'No logged sets yet' }
+  if (!last || load === null)
+    return { kind: 'hold', load_kg: null, sets: input.sets, reason: 'No logged sets yet' }
 
   const topsOut = (w: { reps: number; load_kg: number }[], at: number) =>
-    w.length >= input.sets && w.every((s) => s.reps >= input.rep_max) && Math.abs(Math.min(...w.map((s) => s.load_kg)) - at) < 0.01
+    w.length >= input.sets &&
+    w.every((s) => s.reps >= input.rep_max) &&
+    Math.abs(Math.min(...w.map((s) => s.load_kg)) - at) < 0.01
   const previous = sessions.at(-2)
   if (previous && topsOut(previous, load) && topsOut(last, load)) {
     const next = load + increment(input.exercise)
@@ -87,7 +126,12 @@ export function nextProgression(input: ProgressionInput): Progression {
       reason: `Every set reached ${input.rep_max} reps at ${load} kg in two sessions running: try ${next} kg`,
     }
   }
-  return { kind: 'hold', load_kg: load, sets: input.sets, reason: `Stay at ${load} kg until every set reaches ${input.rep_max} reps twice` }
+  return {
+    kind: 'hold',
+    load_kg: load,
+    sets: input.sets,
+    reason: `Stay at ${load} kg until every set reaches ${input.rep_max} reps twice`,
+  }
 }
 
 export type DeloadInput = {
@@ -97,10 +141,18 @@ export type DeloadInput = {
   /** When the current training block began (counts as the last deload when there has been none). */
   training_started_on: LocalDate
   /** Recent sessions, each set with the rep minimum of its exercise. */
-  recent_sessions: readonly { date: LocalDate; sets: readonly { reps: number | null; rep_min: number; completed: boolean }[] }[]
+  recent_sessions: readonly {
+    date: LocalDate
+    sets: readonly { reps: number | null; rep_min: number; completed: boolean }[]
+  }[]
 }
 
-export type DeloadCheck = { due: boolean; reason: 'scheduled' | 'missed_reps' | null; weeks_since: number; sets_factor: number }
+export type DeloadCheck = {
+  due: boolean
+  reason: 'scheduled' | 'missed_reps' | null
+  weeks_since: number
+  sets_factor: number
+}
 
 /**
  * Deload proposal (SPEC §7): one week at 60 % of sets when
@@ -119,7 +171,12 @@ export function deloadCheck(input: DeloadInput): DeloadCheck {
     const done = sets.filter((s) => s.completed && s.reps !== null)
     return done.length > 0 && done.filter((s) => s.reps! < s.rep_min).length * 2 > done.length
   }
-  const reason = weeks >= DELOAD_EVERY_WEEKS ? 'scheduled' : recent.length === 2 && recent.every((s) => missesMost(s.sets)) ? 'missed_reps' : null
+  const reason =
+    weeks >= DELOAD_EVERY_WEEKS
+      ? 'scheduled'
+      : recent.length === 2 && recent.every((s) => missesMost(s.sets))
+        ? 'missed_reps'
+        : null
   return { due: reason !== null, reason, weeks_since: weeks, sets_factor: DELOAD_SETS_FACTOR }
 }
 

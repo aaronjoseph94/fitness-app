@@ -137,17 +137,47 @@ const SecretNameParams = z.object({ name: SecretName })
 /** Week plans (SPEC §8 "Next-week plan"): the plans of a week, the week view, propose, apply, revert, reject. */
 const weekPlans = {
   /** Newest week first; filter by week (its Monday) and status. */
-  list: defineEndpoint({ method: 'GET', path: '/api/week-plans', query: WeekPlanQuery, response: z.array(WeekPlan) }),
+  list: defineEndpoint({
+    method: 'GET',
+    path: '/api/week-plans',
+    query: WeekPlanQuery,
+    response: z.array(WeekPlan),
+  }),
   /** A week's active and proposed plans with this week's and last week's actuals and what changed (default: this week). */
-  get: defineEndpoint({ method: 'GET', path: '/api/week-plans/view', query: WeekPlanViewQuery, response: WeekPlanView }),
+  get: defineEndpoint({
+    method: 'GET',
+    path: '/api/week-plans/view',
+    query: WeekPlanViewQuery,
+    response: WeekPlanView,
+  }),
   /** Aaron's own plan for a week, stored as proposed after the guards (replaying an id returns the stored plan). */
-  propose: defineEndpoint({ method: 'POST', path: '/api/week-plans', body: WeekPlanCreate, response: WeekPlanProposal }),
+  propose: defineEndpoint({
+    method: 'POST',
+    path: '/api/week-plans',
+    body: WeekPlanCreate,
+    response: WeekPlanProposal,
+  }),
   /** Make a plan the week's active one: rebuilds that week's daily targets as one plan version. */
-  apply: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/apply', params: IdParams, response: WeekPlanApplied }),
+  apply: defineEndpoint({
+    method: 'POST',
+    path: '/api/week-plans/:id/apply',
+    params: IdParams,
+    response: WeekPlanApplied,
+  }),
   /** Undo applying the active plan: the week's previous active plan comes back (or the plan version's targets). */
-  revert: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/revert', params: IdParams, response: WeekPlanApplied }),
+  revert: defineEndpoint({
+    method: 'POST',
+    path: '/api/week-plans/:id/revert',
+    params: IdParams,
+    response: WeekPlanApplied,
+  }),
   /** Turn down a proposed plan: it is superseded (the week keeps its active plan) and its proposal is rejected. */
-  reject: defineEndpoint({ method: 'POST', path: '/api/week-plans/:id/reject', params: IdParams, response: WeekPlan }),
+  reject: defineEndpoint({
+    method: 'POST',
+    path: '/api/week-plans/:id/reject',
+    params: IdParams,
+    response: WeekPlan,
+  }),
 }
 
 export const endpoints = {
@@ -161,13 +191,29 @@ export const endpoints = {
 
   day: {
     get: defineEndpoint({ method: 'GET', path: '/api/day/:date', params: DateParams, response: DayView }),
-    range: defineEndpoint({ method: 'GET', path: '/api/days', query: DaysQuery, response: z.array(DaySummary) }),
-    events: defineEndpoint({ method: 'GET', path: '/api/events', query: EventsQuery, response: EventsResponse }),
+    range: defineEndpoint({
+      method: 'GET',
+      path: '/api/days',
+      query: DaysQuery,
+      response: z.array(DaySummary),
+    }),
+    events: defineEndpoint({
+      method: 'GET',
+      path: '/api/events',
+      query: EventsQuery,
+      response: EventsResponse,
+    }),
     note: defineEndpoint({ method: 'GET', path: '/api/notes', response: NoteResponse }),
   },
 
   body: {
-    createWeight: defineEndpoint({ method: 'POST', path: '/api/weights', body: WeighInCreate, response: WeighIn, offline: 'queue' }),
+    createWeight: defineEndpoint({
+      method: 'POST',
+      path: '/api/weights',
+      body: WeighInCreate,
+      response: WeighIn,
+      offline: 'queue',
+    }),
     updateWeight: defineEndpoint({
       method: 'PUT',
       path: '/api/weights/:id',
@@ -188,10 +234,21 @@ export const endpoints = {
   },
 
   nutrition: {
-    listMeals: defineEndpoint({ method: 'GET', path: '/api/meals', query: MealListQuery, response: z.array(Meal) }),
+    listMeals: defineEndpoint({
+      method: 'GET',
+      path: '/api/meals',
+      query: MealListQuery,
+      response: z.array(Meal),
+    }),
     /** One meal with its items, photos and analysis state (poll it while `analysis.status` is queued or running). */
     getMeal: defineEndpoint({ method: 'GET', path: '/api/meals/:id', params: IdParams, response: Meal }),
-    createMeal: defineEndpoint({ method: 'POST', path: '/api/meals', body: MealCreate, response: Meal, offline: 'queue' }),
+    createMeal: defineEndpoint({
+      method: 'POST',
+      path: '/api/meals',
+      body: MealCreate,
+      response: Meal,
+      offline: 'queue',
+    }),
     updateMeal: defineEndpoint({
       method: 'PATCH',
       path: '/api/meals/:id',
@@ -200,7 +257,13 @@ export const endpoints = {
       response: Meal,
       offline: 'queue',
     }),
-    deleteMeal: defineEndpoint({ method: 'DELETE', path: '/api/meals/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    deleteMeal: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/meals/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
     addMealPhoto: defineEndpoint({
       method: 'POST',
       path: '/api/meals/:id/photos',
@@ -210,8 +273,19 @@ export const endpoints = {
       response: MealPhoto,
       offline: 'queue',
     }),
-    searchFoods: defineEndpoint({ method: 'GET', path: '/api/foods/search', query: FoodSearchQuery, response: z.array(Food) }),
-    createFood: defineEndpoint({ method: 'POST', path: '/api/foods', body: FoodCreate, response: Food, offline: 'queue' }),
+    searchFoods: defineEndpoint({
+      method: 'GET',
+      path: '/api/foods/search',
+      query: FoodSearchQuery,
+      response: z.array(Food),
+    }),
+    createFood: defineEndpoint({
+      method: 'POST',
+      path: '/api/foods',
+      body: FoodCreate,
+      response: Food,
+      offline: 'queue',
+    }),
     listFavourites: defineEndpoint({ method: 'GET', path: '/api/favorites', response: z.array(Favourite) }),
     createFavourite: defineEndpoint({
       method: 'POST',
@@ -228,19 +302,53 @@ export const endpoints = {
       response: Favourite,
       offline: 'queue',
     }),
-    deleteFavourite: defineEndpoint({ method: 'DELETE', path: '/api/favorites/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    deleteFavourite: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/favorites/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
     /** Foods of confirmed meals in the last 30 days, most used first, with the grams last used. */
-    recentFoods: defineEndpoint({ method: 'GET', path: '/api/foods/recent', query: RecentFoodsQuery, response: z.array(RecentFood) }),
+    recentFoods: defineEndpoint({
+      method: 'GET',
+      path: '/api/foods/recent',
+      query: RecentFoodsQuery,
+      response: z.array(RecentFood),
+    }),
   },
 
   water: {
-    create: defineEndpoint({ method: 'POST', path: '/api/water', body: WaterLogCreate, response: WaterLog, offline: 'queue' }),
-    list: defineEndpoint({ method: 'GET', path: '/api/water', query: WaterListQuery, response: z.array(WaterLog) }),
-    delete: defineEndpoint({ method: 'DELETE', path: '/api/water/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    create: defineEndpoint({
+      method: 'POST',
+      path: '/api/water',
+      body: WaterLogCreate,
+      response: WaterLog,
+      offline: 'queue',
+    }),
+    list: defineEndpoint({
+      method: 'GET',
+      path: '/api/water',
+      query: WaterListQuery,
+      response: z.array(WaterLog),
+    }),
+    delete: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/water/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
   },
 
   fasting: {
-    start: defineEndpoint({ method: 'POST', path: '/api/fasts/start', body: FastStart, response: Fast, offline: 'queue' }),
+    start: defineEndpoint({
+      method: 'POST',
+      path: '/api/fasts/start',
+      body: FastStart,
+      response: Fast,
+      offline: 'queue',
+    }),
     end: defineEndpoint({
       method: 'POST',
       path: '/api/fasts/:id/end',
@@ -249,8 +357,19 @@ export const endpoints = {
       response: Fast,
       offline: 'queue',
     }),
-    plan: defineEndpoint({ method: 'POST', path: '/api/fasts/plan', body: FastPlan, response: Fast, offline: 'queue' }),
-    list: defineEndpoint({ method: 'GET', path: '/api/fasts', query: FastListQuery, response: z.array(Fast) }),
+    plan: defineEndpoint({
+      method: 'POST',
+      path: '/api/fasts/plan',
+      body: FastPlan,
+      response: Fast,
+      offline: 'queue',
+    }),
+    list: defineEndpoint({
+      method: 'GET',
+      path: '/api/fasts',
+      query: FastListQuery,
+      response: z.array(Fast),
+    }),
     /** Move a planned fast that has not started (409 fast_started once it has). */
     move: defineEndpoint({
       method: 'PATCH',
@@ -264,12 +383,30 @@ export const endpoints = {
      * Remove a fast that did not happen: a planned fast not yet begun, a planned fast begun but never ended (skipped),
      * or one ended within an hour of its start (a mis-tap). 409 fast_started otherwise (end it instead).
      */
-    cancel: defineEndpoint({ method: 'DELETE', path: '/api/fasts/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    cancel: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/fasts/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
   },
 
   health: {
-    createSleep: defineEndpoint({ method: 'POST', path: '/api/sleep', body: SleepLogCreate, response: SleepLog, offline: 'queue' }),
-    createSteps: defineEndpoint({ method: 'POST', path: '/api/steps', body: StepLogCreate, response: StepLog, offline: 'queue' }),
+    createSleep: defineEndpoint({
+      method: 'POST',
+      path: '/api/sleep',
+      body: SleepLogCreate,
+      response: SleepLog,
+      offline: 'queue',
+    }),
+    createSteps: defineEndpoint({
+      method: 'POST',
+      path: '/api/steps',
+      body: StepLogCreate,
+      response: StepLog,
+      offline: 'queue',
+    }),
     importHealth: defineEndpoint({
       method: 'POST',
       path: '/api/imports/health',
@@ -289,8 +426,18 @@ export const endpoints = {
 
   training: {
     /** Every row without instructions (ExerciseSummary); getExercise returns one in full. */
-    listExercises: defineEndpoint({ method: 'GET', path: '/api/exercises', query: ExerciseQuery, response: z.array(ExerciseSummary) }),
-    getExercise: defineEndpoint({ method: 'GET', path: '/api/exercises/:id', params: IdParams, response: Exercise }),
+    listExercises: defineEndpoint({
+      method: 'GET',
+      path: '/api/exercises',
+      query: ExerciseQuery,
+      response: z.array(ExerciseSummary),
+    }),
+    getExercise: defineEndpoint({
+      method: 'GET',
+      path: '/api/exercises/:id',
+      params: IdParams,
+      response: Exercise,
+    }),
     createExercise: defineEndpoint({
       method: 'POST',
       path: '/api/exercises',
@@ -327,9 +474,20 @@ export const endpoints = {
      * Un-hide: remove an exclusion (idempotent). :id is the exclusion's or the exercise's id. The body-only rail is not
      * an exclusion and stays.
      */
-    deleteExclusion: defineEndpoint({ method: 'DELETE', path: '/api/exclusions/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    deleteExclusion: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/exclusions/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
     listTemplates: defineEndpoint({ method: 'GET', path: '/api/templates', response: z.array(Template) }),
-    getTemplate: defineEndpoint({ method: 'GET', path: '/api/templates/:id', params: IdParams, response: Template }),
+    getTemplate: defineEndpoint({
+      method: 'GET',
+      path: '/api/templates/:id',
+      params: IdParams,
+      response: Template,
+    }),
     createTemplate: defineEndpoint({
       method: 'POST',
       path: '/api/templates',
@@ -345,9 +503,20 @@ export const endpoints = {
       response: Template,
       offline: 'queue',
     }),
-    deleteTemplate: defineEndpoint({ method: 'DELETE', path: '/api/templates/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    deleteTemplate: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/templates/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
     /** Sessions started on local dates from…to (newest first), with their sets; no plan. */
-    listSessions: defineEndpoint({ method: 'GET', path: '/api/sessions', query: DateRange, response: z.array(WorkoutSession) }),
+    listSessions: defineEndpoint({
+      method: 'GET',
+      path: '/api/sessions',
+      query: DateRange,
+      response: z.array(WorkoutSession),
+    }),
     startSession: defineEndpoint({
       method: 'POST',
       path: '/api/sessions',
@@ -355,9 +524,20 @@ export const endpoints = {
       response: WorkoutSession,
       offline: 'queue',
     }),
-    getSession: defineEndpoint({ method: 'GET', path: '/api/sessions/:id', params: IdParams, response: WorkoutSession }),
+    getSession: defineEndpoint({
+      method: 'GET',
+      path: '/api/sessions/:id',
+      params: IdParams,
+      response: WorkoutSession,
+    }),
     /** A session with its sets and its finish note (a mistaken or duplicate session); an unknown id is a no-op. */
-    deleteSession: defineEndpoint({ method: 'DELETE', path: '/api/sessions/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    deleteSession: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/sessions/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
     logSet: defineEndpoint({
       method: 'POST',
       path: '/api/sessions/:id/sets',
@@ -374,7 +554,13 @@ export const endpoints = {
       response: SessionSet,
       offline: 'queue',
     }),
-    deleteSet: defineEndpoint({ method: 'DELETE', path: '/api/sets/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    deleteSet: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/sets/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
     finishSession: defineEndpoint({
       method: 'POST',
       path: '/api/sessions/:id/finish',
@@ -394,7 +580,12 @@ export const endpoints = {
      * kept split draft that replaced a template (a `workout` proposal with `replaced`): the template's old version comes
      * back. 409 if already reverted or never applied.
      */
-    revertChange: defineEndpoint({ method: 'POST', path: '/api/train-changes/:id/revert', params: IdParams, response: Ok }),
+    revertChange: defineEndpoint({
+      method: 'POST',
+      path: '/api/train-changes/:id/revert',
+      params: IdParams,
+      response: Ok,
+    }),
   },
 
   plan: {
@@ -423,29 +614,66 @@ export const endpoints = {
   weekPlans,
 
   ai: {
-    workout: defineEndpoint({ method: 'POST', path: '/api/ai/workout', body: AiWorkoutRequest, response: JobRef }),
+    workout: defineEndpoint({
+      method: 'POST',
+      path: '/api/ai/workout',
+      body: AiWorkoutRequest,
+      response: JobRef,
+    }),
     /** Plan the training week: queue a workout_template job per split day (optionally moving the training days first). */
-    planWeek: defineEndpoint({ method: 'POST', path: '/api/ai/week', body: PlanWeekRequest, response: PlanWeekResult }),
+    planWeek: defineEndpoint({
+      method: 'POST',
+      path: '/api/ai/week',
+      body: PlanWeekRequest,
+      response: PlanWeekResult,
+    }),
     /** The training week as it stands: the split, each day's template and draft, and the active week plan's sessions. */
     week: defineEndpoint({ method: 'GET', path: '/api/ai/week', response: TrainingWeek }),
     chat: defineEndpoint({ method: 'POST', path: '/api/ai/chat', body: ChatSend, response: ChatSent }),
-    chatHistory: defineEndpoint({ method: 'GET', path: '/api/ai/chat', query: ChatHistoryQuery, response: z.array(ChatMessage) }),
+    chatHistory: defineEndpoint({
+      method: 'GET',
+      path: '/api/ai/chat',
+      query: ChatHistoryQuery,
+      response: z.array(ChatMessage),
+    }),
     /** Forget one chat: its messages and tool rows go. Deleting an unknown thread is a no-op (still Ok). */
-    chatDelete: defineEndpoint({ method: 'DELETE', path: '/api/ai/chat', query: ChatThreadQuery, response: Ok }),
+    chatDelete: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/ai/chat',
+      query: ChatThreadQuery,
+      response: Ok,
+    }),
     job: defineEndpoint({ method: 'GET', path: '/api/jobs/:id', params: IdParams, response: AiJob }),
   },
 
   scans: {
-    upload: defineEndpoint({ method: 'POST', path: '/api/scans', query: ScanUploadQuery, body: Upload, response: ScanUploaded }),
+    upload: defineEndpoint({
+      method: 'POST',
+      path: '/api/scans',
+      query: ScanUploadQuery,
+      body: Upload,
+      response: ScanUploaded,
+    }),
     /** Confirm (or re-confirm) with every value as edited; an id with no scan yet is manual entry without a sheet. */
-    confirm: defineEndpoint({ method: 'PATCH', path: '/api/scans/:id', params: IdParams, body: ScanPatch, response: Scan }),
+    confirm: defineEndpoint({
+      method: 'PATCH',
+      path: '/api/scans/:id',
+      params: IdParams,
+      body: ScanPatch,
+      response: Scan,
+    }),
     /** Newest first. */
     list: defineEndpoint({ method: 'GET', path: '/api/scans', response: z.array(Scan) }),
     /** When the next scan is due: the scheduled date (coach or week plan), else the interval after the last scan. */
     schedule: defineEndpoint({ method: 'GET', path: '/api/scans/schedule', response: ScanSchedule }),
     get: defineEndpoint({ method: 'GET', path: '/api/scans/:id', params: IdParams, response: Scan }),
     /** Read the stored sheet again (a new scan_extract job) for an unconfirmed scan. */
-    extract: defineEndpoint({ method: 'POST', path: '/api/scans/:id/extract', params: IdParams, response: ScanUploaded }),
+    extract: defineEndpoint({
+      method: 'POST',
+      path: '/api/scans/:id/extract',
+      params: IdParams,
+      response: ScanUploaded,
+    }),
     /** Delete a scan and its sheet; a confirmed one also re-anchors the milestones and withdraws its pending proposals. */
     remove: defineEndpoint({ method: 'DELETE', path: '/api/scans/:id', params: IdParams, response: Ok }),
   },
@@ -459,30 +687,72 @@ export const endpoints = {
       response: ProgressPhoto,
       offline: 'queue',
     }),
-    list: defineEndpoint({ method: 'GET', path: '/api/photos', query: PhotoListQuery, response: z.array(ProgressPhoto) }),
-    remove: defineEndpoint({ method: 'DELETE', path: '/api/photos/:id', params: IdParams, response: Ok, offline: 'queue' }),
+    list: defineEndpoint({
+      method: 'GET',
+      path: '/api/photos',
+      query: PhotoListQuery,
+      response: z.array(ProgressPhoto),
+    }),
+    remove: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/photos/:id',
+      params: IdParams,
+      response: Ok,
+      offline: 'queue',
+    }),
   },
 
   reviews: {
     /** Newest week first. */
     list: defineEndpoint({ method: 'GET', path: '/api/reviews', response: z.array(WeeklyReview) }),
     /** 404 not_found when the week has no review yet. */
-    get: defineEndpoint({ method: 'GET', path: '/api/reviews/:week', params: WeekParams, response: WeeklyReview }),
+    get: defineEndpoint({
+      method: 'GET',
+      path: '/api/reviews/:week',
+      params: WeekParams,
+      response: WeeklyReview,
+    }),
     /** The engine's live aggregate of the week (the report page shows it while a week has no review). */
-    metrics: defineEndpoint({ method: 'GET', path: '/api/reviews/:week/metrics', params: WeekParams, response: WeeklyMetrics }),
-    /** Queue the weekly_review job for the week now (Gemini draft; replaces an earlier Gemini draft). 409 when a Claude review exists. */
-    draft: defineEndpoint({ method: 'POST', path: '/api/reviews/:week/draft', params: WeekParams, response: JobRef }),
+    metrics: defineEndpoint({
+      method: 'GET',
+      path: '/api/reviews/:week/metrics',
+      params: WeekParams,
+      response: WeeklyMetrics,
+    }),
+    /** Queue the weekly_review job for the week now (an AI draft; replaces an earlier AI draft). 409 when a Claude review exists. */
+    draft: defineEndpoint({
+      method: 'POST',
+      path: '/api/reviews/:week/draft',
+      params: WeekParams,
+      response: JobRef,
+    }),
     /** Render /reports/week/:week with Browser Rendering into R2 reports/<week>.pdf. 501 pdf_unavailable without the binding (local dev). */
-    pdf: defineEndpoint({ method: 'POST', path: '/api/reviews/:week/pdf', params: WeekParams, response: SignedFile }),
+    pdf: defineEndpoint({
+      method: 'POST',
+      path: '/api/reviews/:week/pdf',
+      params: WeekParams,
+      response: SignedFile,
+    }),
   },
 
   export: {
     /** Tables (restore order, row counts) and signed URLs for every stored file; the browser builds the zip. */
     manifest: defineEndpoint({ method: 'GET', path: '/api/export', response: ExportManifest }),
     /** One page of one table in id order (≤ 500 rows); follow next_cursor until null. */
-    table: defineEndpoint({ method: 'GET', path: '/api/export/tables', query: ExportTableQuery, response: ExportPage }),
+    table: defineEndpoint({
+      method: 'GET',
+      path: '/api/export/tables',
+      query: ExportTableQuery,
+      response: ExportPage,
+    }),
     /** Restore one page of rows (upsert by id). 409 not_fresh on a used instance without overwrite; 403 rails_locked for settings unless actor user. */
-    importTable: defineEndpoint({ method: 'POST', path: '/api/import', body: ImportPage, response: ImportResult, offline: 'never' }),
+    importTable: defineEndpoint({
+      method: 'POST',
+      path: '/api/import',
+      body: ImportPage,
+      response: ImportResult,
+      offline: 'never',
+    }),
     /** Restore one stored file under its key (same gate as importTable). */
     importFile: defineEndpoint({
       method: 'POST',
@@ -496,7 +766,12 @@ export const endpoints = {
 
   settings: {
     get: defineEndpoint({ method: 'GET', path: '/api/settings', response: SettingsView }),
-    update: defineEndpoint({ method: 'PATCH', path: '/api/settings', body: SettingsUpdate, response: SettingsView }),
+    update: defineEndpoint({
+      method: 'PATCH',
+      path: '/api/settings',
+      body: SettingsUpdate,
+      response: SettingsView,
+    }),
     /** Every runtime secret with its status; never a value (write-only). */
     secrets: defineEndpoint({ method: 'GET', path: '/api/settings/secrets', response: SecretsView }),
     /** Store a secret in the app (actor 'user' only). The stored value wins over a Worker secret of the same name. */
@@ -517,16 +792,30 @@ export const endpoints = {
       offline: 'never',
     }),
     /** How Claude connects (SPEC §8): the connector URL, the discovery URLs and the bearer token's status. */
-    connection: defineEndpoint({ method: 'GET', path: '/api/settings/connection', response: McpConnectionView }),
+    connection: defineEndpoint({
+      method: 'GET',
+      path: '/api/settings/connection',
+      response: McpConnectionView,
+    }),
   },
 
   push: {
     /** The VAPID public key the page subscribes with (public_key null when the Worker has no VAPID keys). */
     key: defineEndpoint({ method: 'GET', path: '/api/push/key', response: PushKey }),
     /** Upsert this device's subscription by endpoint. */
-    subscribe: defineEndpoint({ method: 'POST', path: '/api/push/subscribe', body: PushSubscribe, response: PushSubscription }),
+    subscribe: defineEndpoint({
+      method: 'POST',
+      path: '/api/push/subscribe',
+      body: PushSubscribe,
+      response: PushSubscription,
+    }),
     /** Forget this device's subscription (Ok when it was never stored). */
-    unsubscribe: defineEndpoint({ method: 'DELETE', path: '/api/push/subscribe', body: PushUnsubscribe, response: Ok }),
+    unsubscribe: defineEndpoint({
+      method: 'DELETE',
+      path: '/api/push/subscribe',
+      body: PushUnsubscribe,
+      response: Ok,
+    }),
     /** Send a test notification to one device (endpoint) or all; drops subscriptions the push service says are gone. */
     test: defineEndpoint({ method: 'POST', path: '/api/push/test', body: PushTest, response: PushResult }),
   },

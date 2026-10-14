@@ -8,24 +8,30 @@ import { trendOn } from './trend'
 import type { DayRow } from './types'
 
 /** Rapid loss: trend loss above this % of bodyweight per week … */
-export const RAPID_LOSS_PCT_PER_WEEK = 1
+const RAPID_LOSS_PCT_PER_WEEK = 1
 /** … for this many consecutive weeks. */
-export const RAPID_LOSS_WEEKS = 3
+const RAPID_LOSS_WEEKS = 3
 /** Plateau: trend loss under this (kg) across PLATEAU_DAYS with adherence ≥ PLATEAU_MIN_ADHERENCE. */
-export const PLATEAU_KG = 0.2
-export const PLATEAU_DAYS = 21
-export const PLATEAU_MIN_ADHERENCE = 0.8
+const PLATEAU_KG = 0.2
+const PLATEAU_DAYS = 21
+const PLATEAU_MIN_ADHERENCE = 0.8
 /** Low steps: the week's mean below this share of the steps target (or below LOW_STEPS_FLOOR with no target) … */
-export const LOW_STEPS_SHARE = 0.6
-export const LOW_STEPS_FLOOR = 5000
+const LOW_STEPS_SHARE = 0.6
+const LOW_STEPS_FLOOR = 5000
 /** … while the trend lost less than this (kg) over the same 7 days. */
-export const STALLED_KG = 0.1
+const STALLED_KG = 0.1
 
 export type SafetyFlag =
   | { kind: 'rapid_loss'; message: string; weekly_loss_pct: number[] }
   | { kind: 'plateau'; message: string; trend_loss_kg: number; adherence: number }
   | { kind: 'protein_low'; message: string; avg_protein_g: number; target_protein_g: number }
-  | { kind: 'low_steps_stalled'; message: string; avg_steps: number; steps_threshold: number; trend_loss_kg: number }
+  | {
+      kind: 'low_steps_stalled'
+      message: string
+      avg_steps: number
+      steps_threshold: number
+      trend_loss_kg: number
+    }
 
 const fmt = (x: number, dp = 1) => x.toFixed(dp)
 

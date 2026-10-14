@@ -1,9 +1,9 @@
 // Owns: the guardrails (SPEC §9) — every change an LLM or MCP proposes passes applyGuards before it touches the
 // database. A change that breaks a rail is dropped and reported with its rule; the rest of the batch applies.
-import type { Actor, LocalDate, Weekday } from '../schemas/common'
-import { TargetValues } from '../schemas/plan'
+import { Weekday, type Actor, type LocalDate } from '../schemas/common'
+import { TargetValues, type TargetField } from '../schemas/plan'
 import { Rails, type Settings } from '../schemas/profile-settings'
-import type { ExerciseInfo, PlanTargetsLike, TargetField } from './lib/types'
+import type { ExerciseInfo, PlanTargetsLike } from './lib/types'
 
 /** Largest move of daily kcal one proposal may make (SPEC §9); larger moves are split across weeks. */
 export const KCAL_STEP = 150
@@ -22,7 +22,13 @@ export const LOCKED_SETTINGS: readonly string[] = [
 // ── Changes the guards understand ──────────────────────────────────────────────────────────────────────────────
 
 /** Move one target for every day (`weekday: null`) or one weekday's override. Structurally a `PlanChange` + kind. */
-export type TargetChange = { kind: 'target'; field: TargetField; weekday: Weekday | null; from: number; to: number }
+export type TargetChange = {
+  kind: 'target'
+  field: TargetField
+  weekday: Weekday | null
+  from: number
+  to: number
+}
 
 /** A template, week-plan session or workout draft: the exercises and their set counts. */
 export type WorkoutChange = { kind: 'workout'; exercises: readonly { exercise_id: string; sets: number }[] }
@@ -95,7 +101,9 @@ export type GuardResult<C extends GuardChange> = {
 
 type Rejection = { ok: false; rule: GuardRule; reason: string }
 /** `change` null: nothing applies now (a kcal move whose first step waits for the rolling window). */
-type Verdict<C> = { ok: true; change: C | null; later?: C[]; rest?: { change: C; rule: GuardRule; reason: string } } | Rejection
+type Verdict<C> =
+  | { ok: true; change: C | null; later?: C[]; rest?: { change: C; rule: GuardRule; reason: string } }
+  | Rejection
 
 /**
  * Check a batch against the rails, change by change in batch order:
@@ -140,7 +148,8 @@ export function applyGuards<C extends GuardChange>(batch: readonly C[], ctx: Gua
       result.rejected.push({ change, rule: verdict.rule, reason: verdict.reason })
       continue
     }
-    if (verdict.change) result.accepted.push({ change: verdict.change, auto_apply: mayAutoApply(change, ctx, state) })
+    if (verdict.change)
+      result.accepted.push({ change: verdict.change, auto_apply: mayAutoApply(change, ctx, state) })
     verdict.later?.forEach((step, i) => result.scheduled.push({ change: step, week_offset: i + 1 }))
     if (verdict.rest) result.rejected.push(verdict.rest)
   }
@@ -170,7 +179,11 @@ function check<C extends GuardChange>(change: C, ctx: GuardContext, state: Batch
         if (bad) return bad
       }
       const odd = workout.exercises.find((e) => !Number.isInteger(e.sets) || e.sets < 1)
-      if (odd) return reject('session_sets', `Exercise ${odd.exercise_id} has ${String(odd.sets)} sets; a set count is a whole number of at least 1`)
+      if (odd)
+        return reject(
+          'session_sets',
+          `Exercise ${odd.exercise_id} has ${String(odd.sets)} sets; a set count is a whole number of at least 1`,
+        )
       const sets = workout.exercises.reduce((n, e) => n + e.sets, 0)
       if (sets < SESSION_SETS.min || sets > SESSION_SETS.max)
         return reject('session_sets', `${sets} sets; a session has ${SESSION_SETS.min}–${SESSION_SETS.max}`)
@@ -183,7 +196,10 @@ function check<C extends GuardChange>(change: C, ctx: GuardContext, state: Batch
       const month = date.slice(0, 7)
       const inMonth = [...state.fasts].filter((d) => d.slice(0, 7) === month && d !== date).length + 1
       if (inMonth > ctx.rails.fasts_per_month)
-        return reject('fasting_pattern', `${month} would have ${inMonth} planned fasts; the pattern is ${ctx.rails.fasts_per_month} a month`)
+        return reject(
+          'fasting_pattern',
+          `${month} would have ${inMonth} planned fasts; the pattern is ${ctx.rails.fasts_per_month} a month`,
+        )
       state.fasts.add(date)
       return { ok: true, change }
     }
@@ -195,9 +211,12 @@ function check<C extends GuardChange>(change: C, ctx: GuardContext, state: Batch
 function checkExercise(id: string, state: BatchState): Rejection | null {
   const exercise = state.exercises.get(id)
   if (!exercise) return reject('exercise_not_allowed', `Exercise ${id} is not in the library`)
-  const category = [exercise.category, exercise.equipment].find((c) => c !== null && state.excluded.has(c.toLowerCase()))
+  const category = [exercise.category, exercise.equipment].find(
+    (c) => c !== null && state.excluded.has(c.toLowerCase()),
+  )
   if (category) return reject('excluded_category', `Exercise ${id} is in the excluded category "${category}"`)
-  if (!exercise.allowed) return reject('exercise_not_allowed', `Exercise ${id} is not in the allowed exercise set`)
+  if (!exercise.allowed)
+    return reject('exercise_not_allowed', `Exercise ${id} is not in the allowed exercise set`)
   return null
 }
 
@@ -211,21 +230,38 @@ function mayAutoApply(change: GuardChange, ctx: GuardContext, state: BatchState)
   return from.some((m) => to.includes(m))
 }
 
-function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: GuardContext, state: BatchState): Verdict<C> {
+function checkTarget<C extends GuardChange>(
+  change: C & TargetChange,
+  ctx: GuardContext,
+  state: BatchState,
+): Verdict<C> {
   const { field, weekday, to } = change
   const { rails } = ctx
   const key = `${field}:${weekday ?? 'all'}`
-  if (state.targets.has(key)) return reject('duplicate_target', `${label(change)} is already changed in this batch`)
+  if (state.targets.has(key))
+    return reject('duplicate_target', `${label(change)} is already changed in this batch`)
   if (field === 'carbs_g')
-    return reject('carbs_remainder', 'Carbs are the remainder of kcal after protein and fat; move kcal, protein_g or fat_g instead')
+    return reject(
+      'carbs_remainder',
+      'Carbs are the remainder of kcal after protein and fat; move kcal, protein_g or fat_g instead',
+    )
   if (!TargetValues.shape[field].safeParse(to).success)
     return reject('target_range', `${label(change)} ${to} is not a valid ${field}`)
   if (field === 'kcal' && to < rails.calorie_floor)
-    return reject('calorie_floor', `${label(change)} ${to} kcal is below the ${rails.calorie_floor} kcal floor`)
+    return reject(
+      'calorie_floor',
+      `${label(change)} ${to} kcal is below the ${rails.calorie_floor} kcal floor`,
+    )
   if (field === 'kcal' && to > rails.calorie_ceiling)
-    return reject('calorie_ceiling', `${label(change)} ${to} kcal is above the ${rails.calorie_ceiling} kcal ceiling`)
+    return reject(
+      'calorie_ceiling',
+      `${label(change)} ${to} kcal is above the ${rails.calorie_ceiling} kcal ceiling`,
+    )
   if (field === 'protein_g' && to < rails.protein_min_g)
-    return reject('protein_min', `${label(change)} ${to} g is below the ${rails.protein_min_g} g protein minimum`)
+    return reject(
+      'protein_min',
+      `${label(change)} ${to} g is below the ${rails.protein_min_g} g protein minimum`,
+    )
   if (field === 'fat_g' && to < rails.fat_min_g)
     return reject('fat_min', `${label(change)} ${to} g is below the ${rails.fat_min_g} g fat minimum`)
 
@@ -237,19 +273,17 @@ function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: Guard
   const moves = now !== from || to === from
   if (moves) {
     const over = macroOverflow(state.plan, { field, weekday, to: now }, rails)
-    if (over) return reject('macro_energy', `${label(change)} ${now}: ${over}; carbs, the remainder, would go negative`)
+    if (over)
+      return reject(
+        'macro_energy',
+        `${label(change)} ${now}: ${over}; carbs, the remainder, would go negative`,
+      )
   }
   state.targets.add(key)
   if (moves) setTarget(state.plan, field, weekday, now)
   const accepted = moves ? { ...change, from, to: now } : null
   if (now === to) return { ok: true, change: accepted }
 
-  const steps: C[] = []
-  for (let s = now; s !== to; ) {
-    const next = to > s ? Math.min(to, s + KCAL_STEP) : Math.max(to, s - KCAL_STEP)
-    steps.push({ ...change, from: s, to: next })
-    s = next
-  }
   if (ctx.schedule_steps === false)
     return {
       ok: true,
@@ -260,7 +294,13 @@ function checkTarget<C extends GuardChange>(change: C & TargetChange, ctx: Guard
         reason: `${label(change)} ${now} → ${to} moves more than ${KCAL_STEP} kcal within 7 days; it can follow once the week has passed`,
       },
     }
-  return { ok: true, change: accepted, later: steps }
+  const later: C[] = []
+  for (let s = now; s !== to;) {
+    const next = to > s ? Math.min(to, s + KCAL_STEP) : Math.max(to, s - KCAL_STEP)
+    later.push({ ...change, from: s, to: next })
+    s = next
+  }
+  return { ok: true, change: accepted, later }
 }
 
 /**
@@ -291,7 +331,9 @@ function macroOverflow(
   if (change.field !== 'kcal' && change.field !== 'protein_g' && change.field !== 'fat_g') return null
   const next: PlanTargetsLike = { defaults: plan.defaults, overrides: plan.overrides }
   setTarget(next, change.field, change.weekday, change.to)
-  const days = change.weekday ? [change.weekday] : WEEKDAYS.filter((w) => plan.overrides[w]?.[change.field] === undefined)
+  const days = change.weekday
+    ? [change.weekday]
+    : Weekday.options.filter((w) => plan.overrides[w]?.[change.field] === undefined)
   for (const w of days) {
     const kcal = Math.max(targetValue(next, 'kcal', w), rails.calorie_floor)
     const protein = Math.max(targetValue(next, 'protein_g', w), rails.protein_min_g)
@@ -303,8 +345,6 @@ function macroOverflow(
   }
   return null
 }
-
-const WEEKDAYS: readonly Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 /**
  * The value a target has in a plan: value(f, w) = overrides[w]?.[f] ?? defaults[f]  (w = null → defaults[f]).

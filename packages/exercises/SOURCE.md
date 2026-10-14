@@ -16,6 +16,8 @@ pnpm --filter @fitness/exercises run fetch:images   # JSON + step images (skips 
 
 To move to a newer commit: change `FREE_EXERCISE_DB_SHA`, run `fetch:images`, then `pnpm --filter @fitness/worker seed:local` (library rows upsert by slug; `gif_url`, `media` and custom exercises are left alone).
 
+`fetch:images` also writes `images/<exercise-id>/thumb.webp` for each exercise: its first step image cropped square to 112 px, WebP, ~3 KB (**gitignored**, served at `/exercises/<id>/thumb.webp`). It needs `sharp`, which resolves from the workspace through wrangler → miniflare; without it the step is skipped and the app keeps showing the step JPEGs. `pnpm --filter @fitness/exercises exec tsx scripts/fetch.ts --thumbs` rebuilds them from the images on disk, offline.
+
 **Normalisation** (`src/lib/library.ts`): slug = kebab-case of the source id; `equipment: null` (stretches and bodyweight drills) becomes `body only`; image paths become `/exercises/<id>/<n>.jpg` (the web build serves `images/` at `/exercises/`); `video_search_url` is a YouTube search for "<name> form". Three kettlebell records ship without images.
 
 ## Animated demos (ExerciseDB GIFs)

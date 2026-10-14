@@ -8,8 +8,8 @@ import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import { pool } from './download'
 
-export const THUMB_PX = 112
-export const THUMB_FILE = 'thumb.webp'
+const THUMB_PX = 112
+const THUMB_FILE = 'thumb.webp'
 const QUALITY = 70
 const CONCURRENCY = 8
 
@@ -52,7 +52,9 @@ async function mtime(file: string): Promise<number | null> {
 export async function writeThumbnails(imagesDir: string, firstImages: readonly string[]): Promise<boolean> {
   const sharp = await loadSharp()
   if (!sharp) {
-    console.warn('thumbnails: sharp not found (neither a dependency here nor through wrangler → miniflare); skipped')
+    console.warn(
+      'thumbnails: sharp not found (neither a dependency here nor through wrangler → miniflare); skipped',
+    )
     return false
   }
   let written = 0
@@ -69,13 +71,18 @@ export async function writeThumbnails(imagesDir: string, firstImages: readonly s
       return
     }
     try {
-      await sharp(source).resize(THUMB_PX, THUMB_PX, { fit: 'cover', position: 'centre' }).webp({ quality: QUALITY }).toFile(target)
+      await sharp(source)
+        .resize(THUMB_PX, THUMB_PX, { fit: 'cover', position: 'centre' })
+        .webp({ quality: QUALITY })
+        .toFile(target)
       written++
     } catch (error) {
       failed.push(`${rel}: ${String(error)}`)
     }
   })
-  console.log(`thumbnails: ${written} written, ${current} up to date, ${failed.length} failed (${THUMB_PX} px WebP)`)
+  console.log(
+    `thumbnails: ${written} written, ${current} up to date, ${failed.length} failed (${THUMB_PX} px WebP)`,
+  )
   if (failed.length > 0) console.error(failed.join('\n'))
   return failed.length === 0
 }

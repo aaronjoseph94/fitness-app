@@ -4,7 +4,8 @@ import { Weekday, type IsoWeek, type LocalDate } from '../../schemas/common'
 
 export const TIMEZONE = 'America/Edmonton'
 
-const DAY_MS = 86_400_000
+export const HOUR_MS = 3_600_000
+const DAY_MS = 24 * HOUR_MS
 const LOCAL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const ISO_WEEK = /^(\d{4})-W(\d{2})$/
 
@@ -63,11 +64,11 @@ function fromUtcMs(ms: number): LocalDate {
 export function localMidnight(date: LocalDate): number {
   const utc = toUtcMs(date)
   for (const hours of [6, 7]) {
-    const at = utc + hours * 3_600_000
+    const at = utc + hours * HOUR_MS
     const wall = wallClock(at)
     if (wall.date === date && wall.time === '00:00') return at
   }
-  return utc + 7 * 3_600_000
+  return utc + 7 * HOUR_MS
 }
 
 /** addDays(d, n) = the calendar date n days after d (n may be negative). */
