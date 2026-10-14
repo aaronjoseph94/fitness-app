@@ -1,10 +1,12 @@
 // Owns: how a change to Train reads on every card (pure) — the title and before → after rows of an AI template
 // created, edited or deleted, an equipment status moved, an exercise hidden, and of training days moved. The AI tab and
-// Today both read this, so a new op is one edit. A pending change has no `before` yet (the Worker writes it when the
-// change is applied), so a name it would come from falls back to neutral copy and the proposal's own summary says the rest.
+// Today both read this, so a new op is one edit. The Worker stores `before` when it proposes a change (pending or
+// applied), so rows show real "from" values. A Train change is titled by the proposal's own summary when it fits
+// PROPOSAL_TITLE_MAX ("Rename Upper A → Push", "Hide Kettlebell Swing": the Worker names what the change holds only
+// ids for); otherwise by the title built here, where an exercise hidden stays neutral because the change has its id.
 import { Weekday, type EquipmentStatus, type ProposalBody } from '@fitness/shared/schemas'
 import type { ProposalChange } from '../../../components'
-import { shortDay } from './labels'
+import { PROPOSAL_TITLE_MAX, shortDay } from './labels'
 
 /** The two proposal bodies that change Train (or the days it trains on). */
 export type TrainBody = Extract<ProposalBody, { kind: 'train_change' | 'training_days' }>
@@ -39,31 +41,37 @@ export function dayNames(days: readonly Weekday[]): string {
   return names.length ? names.join(', ') : 'none'
 }
 
-export function trainBodyView(body: TrainBody): TrainBodyView {
+/** A Train change takes the proposal's summary as its title when it is one short line (as a plan change does). */
+export function trainBodyView(body: TrainBody, summary: string): TrainBodyView {
+  const view = bodyView(body)
+  return body.kind === 'train_change' && summary.trim() !== '' && summary.length <= PROPOSAL_TITLE_MAX ? { ...view, title: summary } : view
+}
+
+function bodyView(body: TrainBody): TrainBodyView {
   if (body.kind === 'training_days') {
     return { title: `Training days: ${dayNames(body.before)} → ${dayNames(body.training_days)}`, changes: [] }
   }
   const { change: c, before } = body
-  // The template as it was (update, delete) or the equipment status as it was (equipment_status); null while pending.
+  // The template as it was (update, delete) or the equipment status as it was (equipment_status).
   const snapshot = before && 'exercises' in before ? before : null
   const was = before && 'status' in before ? before.status : null
   switch (c.op) {
     case 'template_create':
       return { title: `New template: ${c.name}`, changes: [{ label: 'Exercises · sets', from: '—', to: size(c.exercises) }] }
     case 'template_update': {
-      const old = snapshot?.name
+      const name = snapshot?.name ?? 'a template'
       const changes: ProposalChange[] = []
       if (c.exercises) changes.push({ label: 'Exercises · sets', from: snapshot ? size(snapshot.exercises) : '—', to: size(c.exercises) })
       if (c.notes !== undefined) {
         changes.push({ label: 'Notes', from: snapshot ? (snapshot.notes ? 'Had notes' : 'No notes') : '—', to: c.notes ? 'Updated' : 'No notes' })
       }
-      if (c.name !== undefined && c.name !== old) return { title: `Rename ${old ?? 'a template'} → ${c.name}`, changes }
-      if (c.exercises) return { title: `${old ?? 'A template'}: ${sizeWords(c.exercises)}`, changes }
-      return { title: old ? `Change notes on ${old}` : 'Change a template’s notes', changes }
+      if (c.name !== undefined && c.name !== snapshot?.name) return { title: `Rename ${name} → ${c.name}`, changes }
+      if (c.exercises) return { title: `Edit ${name}: ${sizeWords(c.exercises)}`, changes }
+      return { title: `Change notes on ${name}`, changes }
     }
     case 'template_delete':
       return {
-        title: snapshot ? `Delete template ${snapshot.name}` : 'Delete a template',
+        title: `Delete template${snapshot ? ` ${snapshot.name}` : ''}`,
         changes: snapshot ? [{ label: 'Exercises · sets', from: size(snapshot.exercises), to: 'Deleted' }] : [],
       }
     case 'equipment_status':
@@ -71,7 +79,7 @@ export function trainBodyView(body: TrainBody): TrainBodyView {
         title: `${sentence(c.equipment)} → ${STATUS_WORD[c.status]}`,
         changes: was ? [{ label: 'Status', from: STATUS_WORD[was], to: STATUS_WORD[c.status] }] : [],
       }
-    // The change carries the exercise's id, not its name: the title stays neutral and the summary names it.
+    // The change carries the exercise's id, not its name: this title is neutral, and the summary (which names it) replaces it.
     case 'exercise_hide':
       return { title: 'Hide an exercise', changes: [], why: c.reason }
   }

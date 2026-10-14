@@ -77,7 +77,7 @@ interface UndoNote {
 
 /**
  * Undo for an applied change: "Undone" shows at once, rolls back with the reason if the server refuses (an already
- * undone change, 409, is just "Undone"), and the whole app refreshes. Waits for a connection like a decision does.
+ * undone change, 409 already_reverted, stays "Undone"), and the whole app refreshes. Waits for a connection like a decision does.
  */
 function useUndo(id: string, alreadyUndone: boolean) {
   const online = useOnline()
@@ -90,7 +90,8 @@ function useUndo(id: string, alreadyUndone: boolean) {
     mutationFn: () => call(endpoints.training.revertChange, { params: { id } }),
     onSuccess: refresh,
     onError: (e) => {
-      if (isApiError(e) && e.status === 409) {
+      // Only an already-reverted change is "Undone"; any other refusal (409 not_applied too) rolls back with its reason.
+      if (isApiError(e) && e.code === 'already_reverted') {
         setNote({ text: 'Already undone', severity: 'info' })
         refresh()
         return
@@ -139,7 +140,8 @@ export function ProposalItem({ proposal, source = 'Proposal · Ask AI', when, va
   const u = useUndo(proposal.id, view.undone)
   const status = view.replaced ? 'rejected' : d.status
   const decided = u.undone ? UNDONE_TEXT : status === 'pending' ? null : STATUS_TEXT[status]
-  const canUndo = view.revertible && !u.undone && (status === 'accepted' || status === 'auto_applied')
+  // Not while the accept is still in flight: the change may yet be refused and rolled back.
+  const canUndo = view.revertible && !u.undone && !d.busy && (status === 'accepted' || status === 'auto_applied')
   const strip = variant === 'strip'
 
   const decision = decided ? (
@@ -148,7 +150,7 @@ export function ProposalItem({ proposal, source = 'Proposal · Ask AI', when, va
         {view.replaced ? 'Rejected or replaced by a newer plan' : decided.text}
       </Box>
       {canUndo && (
-        <Button variant="outlined" size="tiny" onClick={u.onUndo} disabled={u.busy || !u.onUndo}>
+        <Button variant="outlined" size="tiny" aria-label={`Undo: ${view.title}`} onClick={u.onUndo} disabled={d.busy || u.busy || !u.onUndo}>
           Undo
         </Button>
       )}
@@ -247,7 +249,10 @@ export function ProposalItem({ proposal, source = 'Proposal · Ask AI', when, va
           <BeforeAfterList size="small" changes={view.changes} />
         </Box>
       ) : (
-        <Box sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>{view.summary}</Box>
+        // A short summary is already the title; don't say it twice.
+        view.summary !== view.title && (
+          <Box sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>{view.summary}</Box>
+        )
       )}
       {view.why && (
         <Box sx={{ mt: '8px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>Why: {view.why}</Box>

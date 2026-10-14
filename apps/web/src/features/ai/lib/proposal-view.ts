@@ -83,7 +83,7 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
       }
     case 'train_change':
     case 'training_days': {
-      const view = trainBodyView(body)
+      const view = trainBodyView(body, p.summary)
       return {
         title: view.title,
         summary: p.summary,

@@ -45,7 +45,7 @@ export function proposalView(p: Proposal): ProposalView {
       }
     case 'train_change':
     case 'training_days': {
-      const view = trainBodyView(body)
+      const view = trainBodyView(body, p.summary)
       return { title: view.title, source, changes: view.changes, why: view.why ? [view.why] : [] }
     }
   }
@@ -113,7 +113,8 @@ export function eventView(e: AiEvent, favourite: (id: string) => string | null):
       }
     case 'proposal': {
       const v = proposalView(e)
-      return { source: v.source, title: v.title, text: e.summary, details: v.changes.map((c) => `${c.label}: ${c.from} → ${c.to}`), link: null }
+      // A summary that is the title (a Train change's) is not said twice.
+      return { source: v.source, title: v.title, text: e.summary === v.title ? null : e.summary, details: v.changes.map((c) => `${c.label}: ${c.from} → ${c.to}`), link: null }
     }
   }
 }
