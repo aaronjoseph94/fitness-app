@@ -1,10 +1,11 @@
 // Owns: the Train tab (SPEC §7, §11; 2a "Train") — the title row (the date as the page's h1, the kind of day and
 // sessions done this week, the readiness chip and "Blank session"), the today card (the session in progress, today's
 // finished session, the planned one — the week plan's or today's split template — or the way to generate) across the
-// full width, then templates (2 × 2 cards with mini muscle maps and Start, followed in the same grid by the split's AI
-// drafts waiting for Keep) beside recent sessions and this week's totals (above them below lg), and a row of four tool
-// cards into the library, the equipment profile, the builder and AI workouts. On a phone everything is one column in
-// this order.
+// full width, then the "This week" card (pick the training days, generate the week's drafts, Keep all) across the full
+// width, then templates (2 × 2 cards with mini muscle maps and Start, followed in the same grid by the split's AI
+// drafts: waiting for Keep, or kept here with their outcome and Undo) beside recent sessions and this week's totals
+// (above them below lg), and a row of four tool cards into the library, the equipment profile, the builder and AI
+// workouts. On a phone everything is one column in this order.
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import EditNoteRounded from '@mui/icons-material/EditNoteRounded'
@@ -42,6 +43,7 @@ import { useStartSession } from './session'
 import { TemplateCard } from './TemplateCard'
 import { GENERATE_PATH, TodayCard } from './TodayCard'
 import { useTrainData } from './useTrainData'
+import { WeekSplitCard } from './WeekSplitCard'
 
 /** The four ways out of this tab, as a row of tool cards. */
 const TOOLS: { to: string; label: string; help?: string; Icon: SvgIconComponent; testId: string }[] = [
@@ -78,7 +80,19 @@ export function TrainPage() {
   // Edmonton's date, re-read every minute (the app stays open across midnight).
   const date = today(useNow(60_000))
   const navigate = useNavigate()
-  const { day, sessions, templates, active, activeCounts, unsynced, readiness, splitTemplate, drafts } = useTrainData(date)
+  const {
+    day,
+    sessions,
+    templates,
+    active,
+    activeCounts,
+    unsynced,
+    readiness,
+    splitTemplate,
+    drafts,
+    week: trainingWeek,
+    markKept,
+  } = useTrainData(date)
   const start = useStartSession()
   const index = useExerciseIndex()
 
@@ -146,6 +160,16 @@ export function TrainPage() {
       </Reveal>
 
       <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
+        {trainingWeek.isLoading ? (
+          <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 680, md: 440 } }} />
+        ) : trainingWeek.error && !trainingWeek.data ? (
+          <LoadProblem what="This week" error={trainingWeek.error} onRetry={() => void trainingWeek.refetch()} />
+        ) : trainingWeek.data ? (
+          <WeekSplitCard week={trainingWeek.data} date={date} templates={templates.data ?? []} onKept={markKept} />
+        ) : null}
+      </Reveal>
+
+      <Reveal delay={staggerDelay(3, tokens.motion.stagger.section)}>
         {/* 2 : 1 from lg; below that each takes the full width, so the templates keep two cards a row. */}
         <Columns md={1} lg={3}>
           <Column span={2}>
@@ -153,7 +177,7 @@ export function TrainPage() {
               <SectionHeader
                 id="templates"
                 title="Templates"
-                subtitle={drafts.length > 0 ? 'AI drafts for your split: keep the ones you like' : undefined}
+                subtitle={drafts.some((d) => !d.kept) ? 'AI drafts for your split: keep the ones you like' : undefined}
                 action={
                   <Button component={Link} to="/train/builder" size="small" startIcon={<AddRounded />} sx={headerLink}>
                     New template
@@ -183,7 +207,13 @@ export function TrainPage() {
                     />
                   ))}
                   {drafts.map((d) => (
-                    <DraftTemplateCard key={d.id} draft={d} />
+                    <DraftTemplateCard
+                      key={d.workout.id}
+                      draft={d.workout}
+                      replaces={d.replaces}
+                      kept={d.kept}
+                      onKept={markKept}
+                    />
                   ))}
                 </Box>
               ) : (
@@ -217,7 +247,7 @@ export function TrainPage() {
         </Columns>
       </Reveal>
 
-      <Reveal delay={staggerDelay(3, tokens.motion.stagger.section)}>
+      <Reveal delay={staggerDelay(4, tokens.motion.stagger.section)}>
         <Box
           component="nav"
           aria-label="Training tools"
