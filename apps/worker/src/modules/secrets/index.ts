@@ -5,13 +5,14 @@
 // Who reads the values:
 //   - the LLM router (the provider keys, app value first then the Worker secret) — modules/llm/lib/keys.ts
 //   - the MCP auth middleware (`MCP_BEARER_TOKEN`) — middleware/mcp-auth.ts
-// `USDA_FDC_API_KEY` is a legacy name nothing reads (USDA is no longer queried).
+// `USDA_FDC_API_KEY` is a legacy name nothing reads (food data is Canadian; USDA is no longer queried): it is left off
+// the list, but a stored value stays valid and can still be set or cleared by name.
 // `wrangler secret put` keeps working: a Worker secret is used whenever the app has not stored that name, and a stored
 // value takes precedence over one that is.
 //
 // Setting or clearing a secret is logged as one `change` event carrying the NAME and the action only, never the value.
 // Interface:
-//   listSecrets(deps)                  → SecretsView   every secret's status, never a value
+//   listSecrets(deps)                  → SecretsView   every secret's status (bar the legacy USDA key), never a value
 //   setSecret(deps, name, value) / clearSecret(deps, name) → SecretsView   403 for anything but Aaron
 //   loadSecretValues(deps)             → Map<name, value>   every app-stored secret (the LLM router's key resolver)
 //   resolveSecret(db, env, name)       → value | undefined  app-stored first, else the Worker secret
@@ -34,6 +35,8 @@ import {
 
 /** Shortest value worth storing; a provider key or a token is far longer. */
 const MIN_LENGTH = 8
+/** Names still accepted but no longer listed: nothing reads them. */
+const UNLISTED: ReadonlySet<SecretName> = new Set<SecretName>(['USDA_FDC_API_KEY'])
 
 /** Every secret with its status (GET /api/settings/secrets). */
 export async function listSecrets(deps: Deps): Promise<SecretsView> {
@@ -76,8 +79,12 @@ export async function clearSecret(deps: Deps, name: SecretName): Promise<Secrets
 }
 
 function view(env: Env, stored: Map<string, StoredSecret>): SecretsView {
-  // SecretName.options, not the stored rows: every secret is listed, whether or not it is set.
-  return { secrets: SecretName.options.map((name) => statusFor(name, stored, env)) }
+  // SecretName.options, not the stored rows: every secret is listed, whether or not it is set (bar the unlisted ones).
+  return {
+    secrets: SecretName.options
+      .filter((name) => !UNLISTED.has(name))
+      .map((name) => statusFor(name, stored, env)),
+  }
 }
 
 /** Secrets reach the AI, so no actor but Aaron may change one — the same rail that guards the settings themselves. */

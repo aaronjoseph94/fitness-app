@@ -266,6 +266,25 @@ describe('meal_analysis', () => {
     })
   })
 
+  it('asks for Canadian food: matched against the Canadian Nutrient File and Open Food Facts, never USDA', async () => {
+    // Unsure (0.5), so the auto-confirm sweep below leaves this meal alone.
+    reply = () => ({ items: [item('chicken breast, grilled', 150, 0.5)], notes: '' })
+    await createMeal(at(T0), {
+      id: crypto.randomUUID(),
+      slot: 'dinner',
+      eaten_at: T0,
+      input_method: 'text',
+      raw_text: 'some grilled chicken breast',
+    })
+    await settle()
+
+    expect(routerCalls).toHaveLength(1)
+    const system = routerCalls[0]!.system
+    expect(system).toContain('Canadian Nutrient File')
+    expect(system).toContain('Open Food Facts')
+    expect(system).not.toMatch(/USDA|FoodData Central|fdcId/i)
+  })
+
   it('leaves the meal in review with its raw text when no provider answers: failed, or requeued for a quota', async () => {
     reply = () => {
       throw new ProvidersExhaustedError([

@@ -8,8 +8,11 @@ import type { SecretName, SecretStatus } from '@fitness/shared/schemas'
 /** The paid keys in the router's order (Claude → ChatGPT → Gemini Pro); the shared schema owns the list. */
 export { PAID_SECRET_NAMES } from '@fitness/shared/schemas'
 
+/** The secrets this page offers: every name but the legacy USDA key, which nothing reads (food data is Canadian). */
+export type ListedSecretName = Exclude<SecretName, 'USDA_FDC_API_KEY'>
+
 export interface SecretField {
-  name: SecretName
+  name: ListedSecretName
   label: string
   /** What this key turns on in the app, in plain words. */
   help: string
@@ -22,7 +25,7 @@ export interface SecretField {
   generated?: boolean
 }
 
-export const SECRET_FIELDS: Record<SecretName, SecretField> = {
+export const SECRET_FIELDS: Record<ListedSecretName, SecretField> = {
   ANTHROPIC_API_KEY: {
     name: 'ANTHROPIC_API_KEY',
     label: 'Claude (Anthropic)',
@@ -78,14 +81,6 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
     url: 'https://aistudio.google.com/apikey',
     prefix: 'AIza',
   },
-  USDA_FDC_API_KEY: {
-    name: 'USDA_FDC_API_KEY',
-    label: 'USDA FoodData Central',
-    // Food matching is Canadian (CNF) and Open Food Facts only; the field stays so the name set is complete.
-    help: 'No longer used: food matching reads the Canadian Nutrient File and Open Food Facts.',
-    where: 'api.data.gov → sign up (free, instant)',
-    url: 'https://api.data.gov/signup',
-  },
   MCP_BEARER_TOKEN: {
     name: 'MCP_BEARER_TOKEN',
     label: 'Claude connector token',
@@ -108,7 +103,7 @@ export const SECRET_FIELDS: Record<SecretName, SecretField> = {
  * The free provider keys the Models section offers, in the router's chain order (Groq → OpenRouter → Z.ai → Gemini;
  * providers.json is the source of truth). Any paid key (PAID_SECRET_NAMES above) is tried ahead of all of these.
  */
-export const MODEL_SECRET_NAMES: readonly SecretName[] = [
+export const MODEL_SECRET_NAMES: readonly ListedSecretName[] = [
   'GROQ_API_KEY',
   'OPENROUTER_API_KEY',
   'ZAI_API_KEY',

@@ -9,7 +9,6 @@ import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
-import type { SecretName } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { problemText, signInAgain } from '../../api'
 import { PageHeader, Panel } from '../../components'
@@ -25,6 +24,7 @@ import {
   PAID_SECRET_NAMES,
   SECRET_FIELDS,
   sourceLabel,
+  type ListedSecretName,
 } from './lib/secrets'
 import { useConnection, useSecretMutations, useSecrets } from './lib/useSecrets'
 
@@ -47,11 +47,11 @@ export function AiSettingsPage() {
   const connection = useConnection()
   const update = useSecretMutations()
   const online = useOnline()
-  const [editing, setEditing] = useState<SecretName | null>(null)
+  const [editing, setEditing] = useState<ListedSecretName | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   /** A value just saved, kept on screen until it is hidden: the API will never return it again. */
-  const [revealed, setRevealed] = useState<{ name: SecretName; value: string } | null>(null)
+  const [revealed, setRevealed] = useState<{ name: ListedSecretName; value: string } | null>(null)
   /** What "Copy" last put on the clipboard, so the button can say so. */
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -114,7 +114,7 @@ export function AiSettingsPage() {
     setNotice(ok ? 'Copied.' : 'Copying was blocked — select the text and copy it by hand.')
   }
 
-  const save = async (name: SecretName, value: string) => {
+  const save = async (name: ListedSecretName, value: string) => {
     setError(null)
     try {
       await update.save(name, value)
@@ -126,7 +126,7 @@ export function AiSettingsPage() {
     }
   }
 
-  const remove = async (name: SecretName) => {
+  const remove = async (name: ListedSecretName) => {
     setError(null)
     try {
       await update.remove(name)
@@ -138,7 +138,7 @@ export function AiSettingsPage() {
     }
   }
 
-  const secretRow = (name: SecretName) => {
+  const secretRow = (name: ListedSecretName) => {
     const field = SECRET_FIELDS[name]
     const status = statuses.get(name)
     return (

@@ -1,7 +1,7 @@
-// Owns: tests at the secrets seam (modules/secrets) — status without values, the user-only rule, an app-stored value
-// beating a Worker secret (and env taking over again once it is cleared), and the two readers that depend on it: the
-// LLM router runs a model call on the key the app stored when env has none, and /mcp authenticates a token set in the
-// app (the Worker secret token stops matching meanwhile).
+// Owns: tests at the secrets seam (modules/secrets) — status without values, the user-only rule, the legacy USDA key
+// left off the list, an app-stored value beating a Worker secret (and env taking over again once it is cleared), and the
+// two readers that depend on it: the LLM router runs a model call on the key the app stored when env has none, and /mcp
+// authenticates a token set in the app (the Worker secret token stops matching meanwhile).
 // Each test owns one secret name, so no test depends on another's leftovers.
 import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
@@ -59,7 +59,7 @@ describe('secrets', () => {
     const fromWorker = { ...env, ZAI_API_KEY: 'zai-from-a-worker-secret' }
 
     // Not set anywhere.
-    expect(await statusOf('USDA_FDC_API_KEY')).toMatchObject({
+    expect(await statusOf('OPENAI_API_KEY', { ...env, OPENAI_API_KEY: undefined })).toMatchObject({
       source: 'none',
       hint: null,
       env_set: false,
@@ -72,6 +72,14 @@ describe('secrets', () => {
       hint: null,
       env_set: true,
     })
+  })
+
+  it('no longer lists the legacy USDA key, yet still accepts a stored one', async () => {
+    // Food matching reads the Canadian Nutrient File and Open Food Facts: nothing reads this key, so the app stops
+    // offering it, but a value stored before stays valid and can still be set or cleared.
+    const view = await setSecret(deps(), 'USDA_FDC_API_KEY', 'legacy-usda-key-abcd')
+    expect(view.secrets.map((s) => s.name)).not.toContain('USDA_FDC_API_KEY')
+    expect(await resolveSecret(db, env, 'USDA_FDC_API_KEY')).toBe('legacy-usda-key-abcd')
   })
 
   it('stores a key, hints its last four characters, and never returns it', async () => {

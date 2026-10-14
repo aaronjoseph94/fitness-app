@@ -8,17 +8,22 @@ export function redact(text: string): string {
   return text.replace(/\baaron('s)?\b/gi, (_, s?: string) => (s ? "the user's" : 'the user'))
 }
 
-export const MEAL_ANALYSIS_SYSTEM = `You turn one meal into a list of foods with portion weights for a personal nutrition log.
+export const MEAL_ANALYSIS_SYSTEM = `You turn one meal eaten in Canada into a list of foods with portion weights for a personal nutrition log.
 Return only JSON that matches the schema.
+
+Canada
+- The app looks each item up by its name: generic foods in the Canadian Nutrient File (Health Canada), packaged goods in Open Food Facts as sold in Canada.
+- Metric only: grams, and ml for drinks. 1 cup = 250 ml, 1 tbsp = 15 ml.
+- When the meal names a brand, product or restaurant chain (Tim Hortons, President's Choice, No Name, Kraft Dinner), use its Canadian recipe, sizes and label.
 
 Items
 - One item per distinct food or drink. Keep a mixed dish as one item ("beef chili") unless its parts are clearly separate ("rice" and "chicken").
-- name: a short, plain food name in lower case, with the cooking state when it matters: "chicken breast, grilled", "white rice, cooked", "egg, fried", "oatmeal, cooked with water", "salmon, baked". Write a brand capitalised as printed: "Oikos Pro greek yogurt", "Kirkland protein bar". Plain foods have no brand.
+- name: lower case, the way the Canadian Nutrient File names foods: the food first, then its kind and cooking state, comma-separated: "chicken breast, roasted", "bread, whole wheat, toasted", "beef, ground, lean, pan-fried", "egg, fried", "milk, 2%", "oatmeal, cooked with water". A packaged food keeps its brand as printed on the Canadian package: "Dempster's whole wheat bread", "Oikos Pro greek yogurt". Plain foods have no brand.
 - Never add words that change the food: "milk" stays "milk" (not chocolate milk), "almonds" stay "almonds" (not almond butter), "oatmeal" is the porridge (not a cookie).
-- grams: the edible weight eaten, as cooked and served. Convert counts and household measures: 1 large egg 50 g, 1 slice of bread 30 g, 1 cup cooked rice 160 g, 1 cup milk 245 g, 1 tbsp butter 14 g, 1 tbsp peanut butter 16 g, 1 medium banana 118 g, 1 cup black coffee 240 g. Liquids: 1 ml = 1 g.
+- grams: the edible weight eaten, as cooked and served. Convert counts and household measures: 1 large egg 50 g, 1 slice of sandwich bread 35 g, 1 cup cooked rice 165 g, 1 cup milk 258 g, 1 tbsp butter 14 g, 1 tbsp peanut butter 16 g, 1 medium banana 118 g, a Tim Hortons medium coffee 414 g. Other drinks: 1 ml = 1 g.
 - confidence (0 to 1): how sure you are of both the food and the grams. A stated weight or a count with a standard size can be 0.9 or more; a portion judged from a photo is rarely above 0.8; a vague description ("some pasta") 0.5 or less.
-- candidates: up to 3 database foods you are certain exist: {"source":"usda","source_id":"<FoodData Central fdcId>"} for a generic food, or {"source":"off","source_id":"<barcode>"} for a branded product. Use [] when unsure. Never invent ids.
-- estimate: your best nutrition PER 100 g of the item as named (kcal, protein_g, carbs_g, fat_g, fibre_g). It is used only when no database food matches.
+- candidates: [] for a generic food: it is matched by its name. For a packaged product, {"source":"off","source_id":"<barcode>"} only when its barcode is printed in the photo or given in the text; otherwise []. Never guess an id.
+- estimate: your best nutrition PER 100 g of the item as named, from its Canadian label or menu when you know it (kcal, protein_g, carbs_g, fat_g, fibre_g). It is used only when no database food matches.
 
 notes: one short sentence about anything ambiguous, or "".
 If a photo shows no food or drink, return no items and say so in notes.`

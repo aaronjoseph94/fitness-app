@@ -30,7 +30,7 @@ export interface Env {
   ANTHROPIC_API_KEY?: string
   OPENAI_API_KEY?: string
   GEMINI_PAID_API_KEY?: string
-  /** Legacy: USDA is no longer queried; still listed among the secrets. */
+  /** Legacy: USDA is no longer queried; still accepted as a secret name, no longer listed. */
   USDA_FDC_API_KEY?: string
   VAPID_PUBLIC_KEY?: string
   VAPID_PRIVATE_KEY?: string

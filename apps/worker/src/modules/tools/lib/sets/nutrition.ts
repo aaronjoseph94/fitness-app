@@ -95,7 +95,7 @@ export const NUTRITION_TOOLS: readonly ToolDefinition[] = [
     title: 'Search foods',
     area: 'nutrition',
     description:
-      'Find foods by name or barcode in the local cache (Canadian Nutrient File and everything fetched before), then Open Food Facts and USDA FoodData Central. Nutrient values are per 100 g. Use the ids as log_meal items. Read-only apart from caching new foods.',
+      'Find foods by name or barcode in the local cache (the Canadian Nutrient File and everything fetched before), then Open Food Facts for packaged goods. Nutrient values are per 100 g. Use the ids as log_meal items. Read-only apart from caching new foods.',
     input: z.object({
       q: z.string().trim().min(2).max(200).optional().describe('Food name, e.g. "greek yogurt plain"'),
       barcode: Barcode.optional(),
