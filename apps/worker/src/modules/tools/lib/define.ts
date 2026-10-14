@@ -6,6 +6,11 @@ import { Proposal, SafeChangeStatus } from '@fitness/shared/schemas'
 import * as z from 'zod'
 import type { Deps } from '../../../lib/deps'
 
+/**
+ * Which part of the app a tool belongs to; Ask AI offers the tools of the areas a message talks about. Train is split
+ * so one question doesn't bring in every Train tool: 'training' (exercises, workouts, sessions), 'templates' (saved
+ * templates), 'equipment' (the equipment profile and hidden exercises) and 'week_plans' (the training week and week plans).
+ */
 export type ToolArea =
   | 'day'
   | 'body'
@@ -14,6 +19,8 @@ export type ToolArea =
   | 'fasting'
   | 'health'
   | 'training'
+  | 'templates'
+  | 'equipment'
   | 'scans'
   | 'reviews'
   | 'week_plans'

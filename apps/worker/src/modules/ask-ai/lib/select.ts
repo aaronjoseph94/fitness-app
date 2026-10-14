@@ -1,7 +1,9 @@
 // Owns: picking the tools one Ask AI turn offers the model (≈15, so the free models read fewer schemas): the core reads
 // always, then the writes and reads of every area the message (and the previous question, for "yes, do that") talks
-// about, in that order, capped at MAX_TOOLS. Only tools the policy allows are ever picked. Also: whether the user's own
-// words ask to log something in an area (asksToLog), which a logging call needs before it applies.
+// about, in that order, capped at MAX_TOOLS. The broad training area comes after the specific ones (templates,
+// equipment, the week), so a Train question keeps its own tools inside the cap. Only tools the policy allows are ever
+// picked. Also: whether the user's own words ask to log something in an area (asksToLog), which a logging call needs
+// before it applies.
 import { allTools, type ToolArea, type ToolDefinition } from '../../tools'
 import { accessOf, type Access } from './policy'
 
@@ -12,6 +14,15 @@ const CORE = ['get_today', 'query_metric', 'get_plan', 'get_week_plan']
 
 /** When nothing specific is asked ("how am I doing?"): the trend and the latest weekly review too. */
 const GENERAL = ['get_trend', 'get_weekly_review']
+
+/** Any gym word brings this area in, so its tools come after the specific areas' tools (writes, then reads). */
+const BROAD: ToolArea = 'training'
+
+/** Reads another area's writes need, added right after the writes: templates and hidden exercises take exercise ids. */
+const COMPANIONS: Partial<Record<ToolArea, readonly string[]>> = {
+  templates: ['list_exercises'],
+  equipment: ['list_exercises'],
+}
 
 /** Words that bring an area's tools in. Matched case-insensitively against the message. */
 const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
@@ -29,11 +40,17 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
   [/\bfast(s|ed|ing)?\b/, ['fasting']],
   [/\b(sleep\w*|slept|bed|woke|wake|nap|steps?|walk\w*)\b/, ['health']],
   [
-    /\b(work ?outs?|sessions?|gym|exercis\w*|sets?|reps?|lift\w*|bench|squat\w*|deadlift\w*|press|pull\w*|push\w*|legs?|upper|lower|back|shoulders?|biceps?|triceps?|glutes?|template\w*|muscles?|equipment|machines?|dumbbells?|barbells?|cables?|train\w*|swap\w*|deload|prs?|e?1rm|volume)\b/,
+    /\b(work ?outs?|sessions?|gym|exercis\w*|sets?|reps?|lift\w*|bench|squat\w*|deadlift\w*|press|pull\w*|push\w*|legs?|upper|lower|back|shoulders?|biceps?|triceps?|glutes?|muscles?|dumbbells?|barbells?|cables?|train\w*|swap\w*|deload|prs?|e?1rm|volume)\b/,
     ['training'],
   ],
+  [/\b(templates?|routines?|renam\w*|re-?order\w*|delet\w*|remov\w*|upper [ab]|lower [ab]|full body( [ab])?)\b/, ['templates']],
+  // Not "un-hide": only Aaron un-hides an exercise, so asking for it brings no hide tool in.
   [
-    /\b(weeks?|weekly|split|schedule|swap\w*|mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(rs(day)?)?|fri(day)?|sat(urday)?|sun(day)?)\b/,
+    /\b(equipment|machines?|kettlebells?|(don['’]?t|do not|doesn['’]?t|no longer|never) (have|has|use)|have no|haven['’]?t got|broken|out of order|missing|unavailable|avoid\w*|can['’]?t (use|do)|dislik\w*|hate|(?<!un-)hid(e|es|den|ing)|exclud\w*)\b/,
+    ['equipment'],
+  ],
+  [
+    /\b(weeks?|weekly|split|schedule|days|program\w*|swap\w*|mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(rs(day)?)?|fri(day)?|sat(urday)?|sun(day)?)\b/,
     ['week_plans'],
   ],
   [/\b(scans?|evolt|body fat|lean|visceral|muscle mass|segment\w*|composition)\b/, ['scans']],
@@ -94,8 +111,10 @@ export function selectTools(texts: readonly string[], autoApplySafe: boolean): O
 
   for (const name of CORE) add(byName.get(name))
   if (areas.size === 0 || areas.has('reviews')) for (const name of GENERAL) add(byName.get(name))
-  const inArea = allowed.filter((o) => areas.has(o.tool.area))
+  const inArea = allowed.filter((o) => areas.has(o.tool.area) && o.tool.area !== BROAD)
+  if (areas.has(BROAD)) inArea.push(...allowed.filter((o) => o.tool.area === BROAD))
   for (const o of inArea) if (o.access !== 'read') add(o)
+  for (const area of areas) for (const name of COMPANIONS[area] ?? []) add(byName.get(name))
   for (const o of inArea) if (o.access === 'read') add(o)
   return [...picked.values()]
 }

@@ -55,6 +55,7 @@ ${RAILS}
 ## 3. What may change — apply_review changes[]
 - target: kcal (within the rails, ≤ 150 per review), protein_g, fat_g, fibre_g, water_ml (the water target), steps — for every day (weekday null) or one weekday. Carbs are the remainder of kcal after protein and fat; they are not a target of their own.
 - template (create or rewrite), exercise_swap (allowed exercises only), week_split (training days), equipment (statuses), reminder_time, milestone, fast / fast_cancel, scan_date, dashboard_note.
+- Train outside a review: create_template / update_template / delete_template, update_equipment, hide_exercise, set_training_days, plan_training_week (a fresh AI draft of every training day); revert_train_change undoes one.
 - Never: the rails, auto_apply_safe, anything medical. Prefer one or two meaningful changes over many small ones.
 
 ${PRESENT}
@@ -63,7 +64,7 @@ ${PRESENT}
 apply_review({ summary, narrative, changes, highlights, concerns }). The narrative is what the printed weekly report shows: second person, plain words, under ~250 words, no medical advice, the numbers that matter. Tell Aaron that revert_review(review_id) undoes the whole review in one call (the app also offers a one-tap revert on the plan version).
 
 ## 5. End with next week's plan
-Build the coming Monday–Sunday: per-day targets within the rails (fast days 0 kcal), the four sessions as template snapshots (Mon–Thu by default; light or rest on a fast day; no muscle trained as a primary target on consecutive days; 12–28 sets each; allowed exercises only; loads from history), water, steps, fast_dates = the fast_day of each fast already planned that week (upcoming.fasts; plan a new one with plan_fast or apply_review fast first), the scan date if due, and a one-line focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light"). Call propose_week_plan(week_start, plan), show Aaron the summary, and after he approves call apply_week_plan(id). Optionally pin the focus with set_dashboard_note.`
+Build the coming Monday–Sunday: per-day targets within the rails (fast days 0 kcal), a session on each training day as template snapshots (the days and the split over them from get_training_week, never an assumed Mon–Thu; light or rest on a fast day; no muscle trained as a primary target on consecutive days; 12–28 sets each; allowed exercises only; loads from history), water, steps, fast_dates = the fast_day of each fast already planned that week (upcoming.fasts; plan a new one with plan_fast or apply_review fast first), the scan date if due, and a one-line focus note ("protein first; add a third set on leg press; Thursday is a fast day, keep it light"). Call propose_week_plan(week_start, plan), show Aaron the summary, and after he approves call apply_week_plan(id). Optionally pin the focus with set_dashboard_note.`
 
 const SCAN_DEBRIEF = `# scan_debrief — after a confirmed Evolt scan
 
@@ -91,17 +92,20 @@ ${PRESENT}
 ## 4. Apply
 apply_review with record_review: false and a narrative that reads as the scan debrief (the week's coach review and its Sunday draft stay as they are); schedule the next scan (scan_date change or schedule_scan).`
 
-const PROGRAM_DESIGN = `# program_design — build or rebuild the Mon–Thu training plan
+const PROGRAM_DESIGN = `# program_design — build or rebuild the weekly training split
 
 ${RAILS}
 
 ## 1. Read
+- get_training_week() — the training days, the split over them (each day's slot name such as "Upper A", "Lower A" or "Full body", its focus and its template), drafts waiting, and the body groups no template covers yet. The split comes from here, never from an assumed Mon–Thu.
+- list_templates() for the saved templates (ids, exercises, sets, reps, rest).
 - get_equipment_profile() (statuses and notes such as "left shoulder"), list_exercises({ muscle?, equipment? }) (allowed set only), get_exercise(id) for details.
 - get_review_bundle() for templates, sessions done, volume per muscle vs the previous block and PRs; get_training_history(last 4–8 weeks) for loads and what Aaron actually does.
 - get_week_plan() for the current week.
 
 ## 2. Principles
-- Mon–Thu, upper / lower / upper / lower by default (week_split only if Aaron asks).
+- The split follows Aaron's training days as get_training_week shows them (change them with set_training_days only if he asks). Name each day's template as its slot ("Upper A", "Lower A", "Full body", …) so it is that day's workout.
+- Each day covers its focus's body groups: upper = chest, back, shoulders, arms; lower = quads, hamstrings, glutes, calves; full = chest, back, shoulders, quads, hamstrings, glutes. Over the week every group is covered (get_training_week → uncovered is empty).
 - Machines and free weights only; allowed exercises only; respect dislike / cant_use / dont_have and their notes.
 - 12–28 working sets per session (aim 16–22; a fast day, poor sleep or a deload week → 12–16); 4–7 exercises; compounds first.
 - Rep ranges: 6–10 on compounds, 10–15 on isolation; rest 90–150 s compounds, 60–90 s isolation.
@@ -109,7 +113,7 @@ ${RAILS}
 - Loads: leave target_load_kg null when there is no history — the engine's double progression sets the default load.
 
 ## 3. What may change
-Templates (apply_review kind "template" with record_review: false, or create_template), exercise swaps, equipment statuses Aaron mentions, the week's sessions (propose_week_plan → apply_week_plan). Only the weekly coach_review records the week's review.
+Templates (create_template / update_template / delete_template, or apply_review kind "template" with record_review: false), exercise swaps, equipment statuses Aaron mentions (update_equipment), exercises he never wants (hide_exercise), training days (set_training_days), or a fresh AI draft of every training day (plan_training_week). Every Train change applies at once; revert_train_change(proposal_id) undoes one. A one-off week that differs from the split: propose_week_plan → apply_week_plan. Only the weekly coach_review records the week's review.
 
 ${PRESENT}
 Also show each session as exercise · sets × reps, and the weekly sets per muscle against the last block.`
@@ -154,7 +158,7 @@ export const PROCEDURES: Readonly<Record<ProcedureName, Procedure>> = {
     name: 'program_design',
     title: 'Program design',
     description:
-      'Build or rebuild the Mon–Thu training plan from the equipment profile, the allowed exercises and training history.',
+      'Build or rebuild the weekly training split (the training days in get_training_week) from the equipment profile, the allowed exercises and training history.',
     text: PROGRAM_DESIGN,
   },
   plateau_check: {

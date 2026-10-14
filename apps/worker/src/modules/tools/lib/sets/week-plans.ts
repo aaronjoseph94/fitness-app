@@ -92,7 +92,9 @@ export const WEEK_PLAN_TOOLS: readonly ToolDefinition[] = [
     name: 'replace_week_plan',
     title: 'Replace the week\'s sessions',
     description:
-      'Program design: set the training sessions of one week from saved templates, e.g. the Mon–Thu upper/lower split. ' +
+      'Program design: set the training sessions of one week from saved templates, e.g. each split day\'s template on the ' +
+      'training days get_training_week lists, or a one-off week that differs from the split (his usual week is the split ' +
+      'itself and needs no week plan). ' +
       'Starts from the week\'s active plan (or the everyday targets when there is none), sets each weekday you give to ' +
       'that template (null = rest day; weekdays you leave out keep their session, and are rest days when the week had ' +
       'no plan), checks the sessions against the allowed exercise set and 12–28 sets, then proposes the result and ' +

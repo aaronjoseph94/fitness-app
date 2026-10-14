@@ -30,7 +30,7 @@ export const COACH_TOOLS: readonly ToolDefinition[] = [
     title: 'Get a coach procedure',
     area: 'coach',
     description:
-      "The step-by-step procedure for a coaching task: coach_review (the weekly review, ending with next week's plan), scan_debrief (after a confirmed Evolt scan), program_design (build or rebuild the Mon–Thu training plan), plateau_check (is the trend really stuck). Call it before starting one of those tasks and follow it: what to read, what to check, what may change, how to present before applying. Read-only.",
+      "The step-by-step procedure for a coaching task: coach_review (the weekly review, ending with next week's plan), scan_debrief (after a confirmed Evolt scan), program_design (build or rebuild the weekly training split), plateau_check (is the trend really stuck). Call it before starting one of those tasks and follow it: what to read, what to check, what may change, how to present before applying. Read-only.",
     input: z.object({ name: z.enum(PROCEDURE_NAMES) }),
     output: z.object({
       name: z.enum(PROCEDURE_NAMES),

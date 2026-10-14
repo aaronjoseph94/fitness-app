@@ -1,12 +1,14 @@
 // Owns: what Ask AI may do with each tool (SPEC §8 "Writes are proposals that need a tap", §9 safe list). Reads are
 // open (they cannot write); a write is offered only when it is listed here, so a new write tool stays out of Ask AI
 // until someone decides its rule (fail closed):
-//   log      — Aaron's own logging (he asked for it in the message): applies at once
-//   propose  — stores a proposal that waits for his tap (targets, workouts, week plans)
+//   log      — Aaron's own logging (he asked for it in the message): applies at once; starting a session he asked for
+//   propose  — stores a proposal that waits for his tap (targets, workouts, week plans, and every Train change:
+//              templates, equipment, hidden exercises, training days, planning the week)
 //   safe     — a safe-list kind (exercise swaps within the same primary muscle, reminder times): the guards apply it
 //              at once only when settings.auto_apply_safe is on; otherwise the tool stores a proposal for his tap
-// Everything else (apply/reject/revert, reviews, equipment, templates, planned fasts, scan dates, the dashboard note,
-// the coach procedures) is the coach's or Aaron's, never Ask AI's. Target changes always wait for a tap.
+// Everything else (apply/reject/revert, undoing a Train change, reviews, planned fasts, scan dates, the dashboard
+// note, the coach procedures) is the coach's or Aaron's, never Ask AI's. No tool un-hides an exercise or edits a logged
+// session. Target changes always wait for a tap.
 import type { ToolDefinition } from '../../tools'
 
 export type Access = 'read' | 'log' | 'propose' | 'safe'
@@ -21,12 +23,21 @@ const WRITES: Readonly<Record<string, Exclude<Access, 'read'>>> = {
   log_steps: 'log',
   start_fast: 'log',
   end_fast: 'log',
+  start_session: 'log',
   log_set: 'log',
   finish_session: 'log',
   propose_plan_change: 'propose',
   generate_workout: 'propose',
   propose_week_plan: 'propose',
   replace_week_plan: 'propose',
+  // Train (trainChange and proposeTrainingDays make Ask AI's call a pending proposal; revert_train_change is not here).
+  create_template: 'propose',
+  update_template: 'propose',
+  delete_template: 'propose',
+  update_equipment: 'propose',
+  hide_exercise: 'propose',
+  set_training_days: 'propose',
+  plan_training_week: 'propose',
   set_reminder_time: 'safe',
   swap_template_exercise: 'safe',
 }

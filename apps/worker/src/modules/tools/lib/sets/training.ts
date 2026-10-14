@@ -1,11 +1,17 @@
-// Owns: the training tools — list_exercises, get_exercise, get_equipment_profile, update_equipment, create_template,
-// swap_template_exercise (safe list: applied or proposed), generate_workout, start_session, log_set, finish_session, get_training_history (the training and workouts-ai
-// modules). Templates and workouts written by ai/mcp pass the training guards: allowed exercise set only (machines
-// and free weights; no "body only" or floor work), 12–28 sets per session.
+// Owns: the training tools (the training, settings and workouts-ai modules):
+// - exercises and sessions ('training'): list_exercises, get_exercise, swap_template_exercise (safe list: applied or
+//   proposed), generate_workout, start_session, log_set, finish_session, get_training_history;
+// - equipment ('equipment'): get_equipment_profile, update_equipment, hide_exercise;
+// - templates ('templates'): list_templates, create_template, update_template, delete_template, revert_train_change;
+// - the training week ('week_plans'): get_training_week, set_training_days, plan_training_week.
+// Every Train change (templates, equipment, hidden exercises) goes through the training module's trainChange: from Ask AI
+// it waits as a train_change proposal for a tap, from Claude (MCP) it applies at once and revert_train_change undoes
+// it (Claude only). Training days go through settings proposeTrainingDays, the same way. Templates and workouts written
+// by ai/mcp pass the training guards: allowed exercise set only (machines and free weights; no "body only" or floor
+// work), 12–28 sets per session. Nothing here un-hides an exercise or edits a logged session.
 import {
   Count,
   EquipmentItem,
-  EquipmentUpdate,
   Exercise,
   ExerciseHistory,
   ExerciseQuery,
@@ -13,20 +19,28 @@ import {
   Instant,
   Kg,
   LocalDate,
+  Muscle,
   MuscleScores,
+  Ok,
   PersonalRecord,
+  PlanWeekRequest,
+  PlanWeekResult,
   SessionFinishResult,
   SessionOrigin,
   SessionSet,
   Template,
   TemplateExerciseInput,
+  TrainChange,
+  TrainingWeek,
+  Weekday,
   WorkoutDraft,
   WorkoutSession,
 } from '@fitness/shared/schemas'
 import * as z from 'zod'
+import { HttpError } from '../../../../lib/http-error'
 import { getJob } from '../../../jobs'
+import { proposeTrainingDays } from '../../../settings'
 import {
-  createTemplate,
   exerciseHistory,
   finishSession,
   getEquipment,
@@ -34,13 +48,15 @@ import {
   getSession,
   listExercises,
   listSessions,
+  listTemplates,
   loadLibrary,
   logSet,
+  revertTrainChange,
   startSession,
   swapTemplateExercise,
-  updateEquipment,
+  trainChange,
 } from '../../../training'
-import { requestWorkout } from '../../../workouts-ai'
+import { planTrainingWeek, requestWorkout, trainingWeek } from '../../../workouts-ai'
 import { defineTool, safeChangeOutput, type ToolDefinition } from '../define'
 
 /** generate_workout waits this long for the job (it runs after the call starts), polling once a second. */
@@ -77,6 +93,58 @@ const HistorySession = z.object({
   /** Completed sets per exercise as "reps×kg" (with "@RPE" when logged). */
   exercises: z.array(z.object({ exercise_id: Id, name: z.string(), sets: z.array(z.string()) })),
 })
+
+/** Train changes said once: what Ask AI's call leaves (a card) and what Claude's does (applied, undoable). */
+const BEHIND_A_TAP =
+  'From the in-app assistant it waits as a proposal card for a tap (status "proposed"; nothing changes until then); ' +
+  'from Claude it applies at once (status "applied") and revert_train_change(proposal_id) undoes it.'
+
+const Reason = z.string().trim().min(1).max(300).describe('Why, in one short sentence (e.g. "You asked to rename it")')
+
+/** What one Train change did (training module trainChange). */
+const TrainChangeOutput = z.object({
+  status: z.enum(['applied', 'proposed']),
+  proposal_id: Id.describe('The change\'s record: the card waiting for a tap, or (applied) what revert_train_change takes'),
+  applied: z.object({ entity: z.enum(['template', 'equipment', 'exclusion']), id: z.string() }).nullable(),
+})
+
+// The tool inputs reuse the Train change fields (shared TrainChange), so the rules live in one place.
+const [CreateChange, UpdateChange, DeleteChange, EquipmentChange, HideChange] = TrainChange.options
+const { op: _create, ...createFields } = CreateChange.shape
+const { op: _update, ...updateFields } = UpdateChange.shape
+
+/** 1–7 weekdays, each once (the same rule as POST /api/ai/week). */
+const TrainingDays = PlanWeekRequest.shape.training_days.unwrap()
+
+/** A template as list_templates shows it: compact (results are capped at 12,000 characters), in update_template's shape. */
+const { exercise_id, sets, rep_min, rep_max, rest_sec } = TemplateExerciseInput.shape
+const TemplateBrief = z.object({
+  id: Id,
+  name: z.string(),
+  notes: z.string().nullable(),
+  top_muscles: z.array(Muscle).describe('Up to three, highest muscle score first'),
+  exercises: z.array(
+    z.object({
+      exercise_id,
+      name: z.string(),
+      sets,
+      rep_min,
+      rep_max,
+      rest_sec,
+      target_load_kg: Kg.optional(),
+      note: z.string().optional(),
+    }),
+  ),
+})
+
+/** The three muscles a template trains most: muscle score = Σ sets × (1.0 primary, 0.5 secondary), highest first. */
+function topMuscles(scores: MuscleScores): Muscle[] {
+  return (Object.entries(scores) as [Muscle, number][])
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([muscle]) => muscle)
+}
 
 export const TRAINING_TOOLS: readonly ToolDefinition[] = [
   defineTool({
@@ -122,7 +190,7 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
   defineTool({
     name: 'get_equipment_profile',
     title: 'Get the equipment profile',
-    area: 'training',
+    area: 'equipment',
     description:
       "Aaron's equipment at Anytime Fitness: every library equipment value and named machine with its status (have, dont_have, dislike, cant_use) and note (e.g. \"left shoulder\"). Anything not 'have' takes its exercises out of the allowed set. Read-only.",
     input: z.object({}),
@@ -133,35 +201,140 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
   defineTool({
     name: 'update_equipment',
     title: 'Update equipment statuses',
-    area: 'training',
+    area: 'equipment',
     description:
-      'Set the status (have, dont_have, dislike, cant_use) and optional note of equipment or named machines (matched by name, case-insensitive; a new name is added as a machine). This changes the allowed exercise set for every future workout. Only when Aaron tells you what he has or avoids.',
-    input: EquipmentUpdate,
-    output: z.object({ items: z.array(EquipmentItem) }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-    run: async (deps, input) => ({ items: await updateEquipment(deps, input) }),
+      'Set the status of equipment or named machines (have, dont_have, dislike, cant_use; names as get_equipment_profile ' +
+      'lists them, matched case-insensitively; a new name is added as a machine). Anything not "have" takes its ' +
+      'exercises out of the allowed set for every future workout. Only when Aaron tells you what he has, lacks or ' +
+      'avoids; notes are edited on the Equipment page. ' +
+      `One Train change per item. ${BEHIND_A_TAP} An item a check refused is in \`rejected\` with the reason.`,
+    input: z.object({
+      items: z
+        .array(z.object({ equipment: EquipmentChange.shape.equipment, status: EquipmentChange.shape.status }))
+        .min(1)
+        .max(20),
+      reason: Reason,
+    }),
+    output: z.object({
+      changes: z.array(TrainChangeOutput.extend({ equipment: z.string() })),
+      rejected: z.array(z.object({ equipment: z.string(), error: z.string(), message: z.string() })),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: async (deps, { items, reason }) => {
+      const changes: Array<z.input<typeof TrainChangeOutput> & { equipment: string }> = []
+      const rejected: Array<{ equipment: string; error: string; message: string }> = []
+      for (const { equipment, status } of items) {
+        try {
+          changes.push({ equipment, ...(await trainChange(deps, { change: { op: 'equipment_status', equipment, status }, reason })) })
+        } catch (e) {
+          // A refused item (422, 404) doesn't undo the others: each is its own change with its own card.
+          if (!(e instanceof HttpError) || e.status >= 500) throw e
+          rejected.push({ equipment, error: e.code, message: e.message })
+        }
+      }
+      return { changes, rejected }
+    },
+  }),
+  defineTool({
+    name: 'hide_exercise',
+    title: 'Hide an exercise',
+    area: 'equipment',
+    description:
+      'Hide one exercise from the allowed set (id from list_exercises) when Aaron never wants it again: no workout, ' +
+      'template or draft uses it afterwards. Only Aaron can un-hide it (Train → Exercise library). ' +
+      BEHIND_A_TAP,
+    input: z.object({
+      exercise_id: HideChange.shape.exercise_id.describe('The exercise to hide (list_exercises)'),
+      reason: HideChange.shape.reason.describe('Why, in a few words (shown in the library as why it is hidden)'),
+    }),
+    output: TrainChangeOutput,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: (deps, { exercise_id, reason }) => trainChange(deps, { change: { op: 'exercise_hide', exercise_id, reason }, reason }),
+  }),
+  defineTool({
+    name: 'list_templates',
+    title: 'List workout templates',
+    area: 'templates',
+    description:
+      'Every saved workout template: id, name, notes, top muscles, and its exercises in order (exercise_id, name, sets, ' +
+      'rep range, rest seconds; target_load_kg and note only when set). The ids update_template, delete_template, ' +
+      'swap_template_exercise and start_session take. To change sets, reps, rest or order, send update_template the ' +
+      'whole new list in this shape (target_load_kg and note null when not listed). Read-only.',
+    input: z.object({}),
+    output: z.object({ templates: z.array(TemplateBrief) }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    run: async (deps) => {
+      const [templates, library] = await Promise.all([listTemplates(deps), loadLibrary(deps)])
+      return {
+        templates: templates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          notes: t.notes,
+          top_muscles: topMuscles(t.muscle_scores),
+          exercises: t.exercises.map((e) => ({
+            exercise_id: e.exercise_id,
+            name: library.byId.get(e.exercise_id)?.name ?? 'Exercise',
+            sets: e.sets,
+            rep_min: e.rep_min,
+            rep_max: e.rep_max,
+            rest_sec: e.rest_sec,
+            ...(e.target_load_kg === null ? {} : { target_load_kg: e.target_load_kg }),
+            ...(e.note ? { note: e.note } : {}),
+          })),
+        })),
+      }
+    },
   }),
   defineTool({
     name: 'create_template',
     title: 'Create a workout template',
-    area: 'training',
+    area: 'templates',
     description:
-      'Save a reusable workout template: ordered exercises (ids from list_exercises, allowed set only) with sets, rep range, target load kg (null = let progression pick), rest seconds and a note. Guarded: allowed exercises only and 12–28 sets in total, else it fails with the rule. Returns the template with its muscle scores.',
-    input: z.object({
-      name: z.string().trim().min(1).max(100),
-      notes: z.string().max(1000).optional(),
-      exercises: z.array(TemplateExerciseInput).min(1).max(20),
-    }),
-    output: Template,
+      'Save a new reusable workout template: a name (a split day\'s name such as "Upper A" or "Full body" makes it that ' +
+      "day's workout), optional notes, and ordered exercises (ids from list_exercises, allowed set only) with sets, rep " +
+      'range, target load kg (null = let progression pick), rest seconds and a note. Checked first: allowed exercises ' +
+      `only and 12–28 sets in total, else it fails with the rule. ${BEHIND_A_TAP}`,
+    input: z.object({ ...createFields, reason: Reason }),
+    output: TrainChangeOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    run: (deps, i) =>
-      createTemplate(deps, {
-        id: crypto.randomUUID(),
-        name: i.name,
-        origin: 'ai',
-        notes: i.notes,
-        exercises: i.exercises,
+    run: (deps, { reason, ...fields }) => trainChange(deps, { change: { op: 'template_create', ...fields }, reason }),
+  }),
+  defineTool({
+    name: 'update_template',
+    title: 'Edit a workout template',
+    area: 'templates',
+    description:
+      'Edit a saved template (id from list_templates or get_training_week): rename it, change its notes (null clears ' +
+      'them), or replace its whole exercise list (to change sets, reps, rest or order, send every exercise in the new ' +
+      'order; checked against the allowed set and 12–28 sets). Give at least one of name, notes, exercises. ' +
+      BEHIND_A_TAP,
+    input: z
+      .object({
+        ...updateFields,
+        template_id: updateFields.template_id.describe('The template (list_templates or get_training_week)'),
+        reason: Reason,
+      })
+      .refine((c) => c.name !== undefined || c.notes !== undefined || c.exercises !== undefined, {
+        message: 'Change at least one of name, notes or exercises',
       }),
+    output: TrainChangeOutput,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: (deps, { reason, ...fields }) => trainChange(deps, { change: { op: 'template_update', ...fields }, reason }),
+  }),
+  defineTool({
+    name: 'delete_template',
+    title: 'Delete a workout template',
+    area: 'templates',
+    description:
+      'Delete a saved template (id from list_templates or get_training_week). Past sessions stay, unlinked from it; a ' +
+      `split day left without a template gets a fresh draft. ${BEHIND_A_TAP}`,
+    input: z.object({
+      template_id: DeleteChange.shape.template_id.describe('The template (list_templates or get_training_week)'),
+      reason: Reason,
+    }),
+    output: TrainChangeOutput,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: (deps, { template_id, reason }) => trainChange(deps, { change: { op: 'template_delete', template_id }, reason }),
   }),
   defineTool({
     name: 'swap_template_exercise',
@@ -176,13 +349,78 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'once only when auto-apply of safe changes is on in Settings, otherwise it waits as a proposal for a tap. ' +
       '`status` says which (applied, proposed or rejected with the rule).',
     input: z.object({
-      template_id: Id.describe('The template id (a get_week_plan session\'s template_id, or get_review_bundle templates)'),
+      template_id: Id.describe('The template id (list_templates, a get_week_plan session\'s template_id, or get_review_bundle templates)'),
       from_exercise_id: Id.describe('The exercise in the template to replace'),
       to_exercise_id: Id.describe('The allowed exercise to put in its place (same primary muscle, same kind of lift)'),
     }),
     output: safeChangeOutput(Template),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     run: (deps, input) => swapTemplateExercise(deps, input),
+  }),
+  defineTool({
+    name: 'revert_train_change',
+    title: 'Undo a Train change',
+    area: 'templates',
+    description:
+      'Undo one applied Train change by its proposal_id (create_template, update_template, delete_template, ' +
+      'update_equipment, hide_exercise), or a kept split draft that replaced a template: exactly the stored earlier ' +
+      'version comes back (a deleted template with its id; a created one is removed), even over a later edit. Works ' +
+      'once (409 already_reverted the second time). Training days are changed back with set_training_days.',
+    input: z.object({ id: Id.describe('The proposal_id the change returned') }),
+    output: Ok,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: (deps, { id }) => revertTrainChange(deps, id),
+  }),
+  defineTool({
+    name: 'get_training_week',
+    title: 'Get the training week',
+    area: 'week_plans',
+    description:
+      "The training week as Train shows it: Aaron's training days, the split over them (each day's slot name such as " +
+      '"Upper A", "Lower A" or "Full body", its focus upper / lower / full, the template of that name with exercise ' +
+      'count, sets and muscle scores, a draft waiting for a tap, and whether one is being drafted), the active week ' +
+      "plan's session names when a week plan overrides this week, and the body groups no template covers yet. Read it " +
+      'before planning or changing the week. Read-only.',
+    input: z.object({}),
+    output: TrainingWeek,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    run: (deps) => trainingWeek(deps),
+  }),
+  defineTool({
+    name: 'set_training_days',
+    title: 'Set the training days',
+    area: 'week_plans',
+    description:
+      'Change which weekdays are training days (the split follows them: 3 days give Upper A, Lower A and Full body). ' +
+      'Daily targets mark the new days as training days from today on; no workout is drafted (plan_training_week does ' +
+      'both). From the in-app assistant it waits as a proposal for a tap (status "proposed"); from Claude it applies ' +
+      'at once (status "applied"); "unchanged" when the days are already these.',
+    input: z.object({ training_days: TrainingDays.describe('Every training day, e.g. ["mon","tue","thu"]') }),
+    output: PlanWeekResult.shape.training_days.extend({ training_days: z.array(Weekday) }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    run: (deps, input) => proposeTrainingDays(deps, input),
+  }),
+  defineTool({
+    name: 'plan_training_week',
+    title: 'Plan the training week',
+    area: 'week_plans',
+    description:
+      'Plan a whole-body week: with training_days, first sets those days (from the in-app assistant a proposal for a ' +
+      'tap, from Claude at once: `training_days.status`), then drafts every day of the split over them in the ' +
+      'background, one AI workout draft per day, so that together they cover every body group (2 days in a row: Upper ' +
+      'A, Lower A; 3 days: Upper A, Lower A, Full body). Each draft arrives as a card within a minute or two; keeping ' +
+      'one saves it as that day\'s template (replacing the template of that name). `only` redrafts just those days ' +
+      '(slot names). A day already being drafted is in `skipped`. Fails with no_model_key when no AI model key is set ' +
+      '(Settings → AI).',
+    input: z.object({
+      training_days: PlanWeekRequest.shape.training_days.describe(
+        'The training days to plan, e.g. ["mon","tue","thu"]; leave out to keep the current days',
+      ),
+      only: PlanWeekRequest.shape.only.describe('Slot names to redraft, e.g. ["Full body"]; leave out for every day'),
+    }),
+    output: PlanWeekResult,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    run: (deps, input) => planTrainingWeek(deps, input),
   }),
   defineTool({
     name: 'generate_workout',
@@ -240,7 +478,7 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     title: 'Start a gym session',
     area: 'training',
     description:
-      "Start a session now (or at started_at): from a template (template_id), from a pending AI workout proposal (proposal_id, which accepts it), from today's week-plan session (use_week_plan), from an explicit exercise list, or blank. Returns the session with its plan: last session's sets per exercise, the progression default load, recovery notes and deload status. Then log_set and finish_session.",
+      "Start a session now (or at started_at): from a template (template_id, from list_templates or get_training_week), from a pending AI workout proposal (proposal_id, which accepts it; Claude only — in the app Aaron starts a draft from its card), from today's week-plan session (use_week_plan), from an explicit exercise list, or blank. Only when Aaron asks to start one. Returns the session with its plan: last session's sets per exercise, the progression default load, recovery notes and deload status. Then log_set and finish_session.",
     input: z.object({
       template_id: Id.optional(),
       proposal_id: Id.optional(),
@@ -251,6 +489,9 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     output: WorkoutSession,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     run: (deps, i) => {
+      // Starting from a proposal accepts it, and accepting proposals is Aaron's (his tap), never Ask AI's.
+      if (i.proposal_id && deps.actor === 'ai')
+        throw new HttpError(403, 'needs_approval', 'Starting from a draft accepts it: the user starts it from its card in the app')
       const origin = i.proposal_id
         ? 'ai'
         : i.template_id
