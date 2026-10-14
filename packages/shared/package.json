@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --project engine"
+    "test": "vitest run --root ../.. --project engine"
   },
   "dependencies": {
     "zod": "catalog:"
