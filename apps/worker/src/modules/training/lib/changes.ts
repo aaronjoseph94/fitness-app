@@ -4,11 +4,13 @@
 // sets; the template or exercise exists; 422 otherwise), then Ask AI's waits as a pending `train_change` proposal
 // (nothing written) while Aaron's or MCP's applies now, with an `auto_applied` train_change event carrying `before`.
 // Accepting the proposal checks again (409 when the template went or the exercise got hidden meanwhile) and applies it
-// with the `before` of that moment. Keep on a split draft named like a template (engine splitNameKey) replaces that
-// template in place (same id) and keeps its old version on the proposal as `replaced`. Undo puts back exactly the
-// stored version, once (409 already_reverted), and never for Ask AI (403). Every apply and undo is ONE db.batch.
-// A created template takes the change's event id, so its Undo knows what to delete.
-import { splitNameKey } from '@fitness/shared/engine'
+// with the `before` of that moment. Keep on a split draft named like a template (the split day's template: engine
+// splitTemplateFor, the oldest of that name) replaces that template in place (same id) and keeps its old version on the
+// proposal as `replaced`. Undo puts back exactly the stored version, once (409 already_reverted), and never for Ask AI
+// (403). Every apply and undo is ONE db.batch. A created template takes the change's event id, so its Undo knows what
+// to delete. Invariant: every Undo restore is idempotent on its own (an upsert of the stored version by id, a delete by
+// id, an equipment upsert or delete by name, an un-hide), so only the `reverted_at` body update is guarded; two Undo
+// taps racing write the same rows twice and record one revert.
 import {
   TrainChange,
   type Actor,
@@ -19,30 +21,22 @@ import {
   type Template,
   type TemplateExerciseInput,
   type TemplateSnapshot,
+  type TrainChangeResult,
 } from '@fitness/shared/schemas'
-import { and, eq, sql, type SQL } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { ai_events, equipment_profile, exercise_exclusions, exercises, runBatch, workout_templates } from '../../../db'
+import { ai_events, equipment_profile, exercise_exclusions, exercises, runBatch } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { eventInsert, getProposalRow, toProposal } from '../../events'
 import type { ProposalOf, ProposalOutcome } from '../../plan'
 import { unhideStatement } from './exclusions'
-import { acceptStatement } from './guard'
+import { acceptStatement, proposalBodyUpdate } from './guard'
 import { canonicalEquipment, equipmentStatement, exclusionStatements, requireExercises } from './library'
-import { checkExercises, deleteStatements, getTemplate, listTemplates, writeStatements } from './templates'
+import { checkExercises, deleteStatements, getTemplate, replaceStatements, snapshotOf, splitTemplate, writeStatements } from './templates'
 
 type TrainChangeBody = Extract<ProposalBody, { kind: 'train_change' }>
 type Before = TrainChangeBody['before']
-
-export interface TrainChangeResult {
-  /** applied: written now (Aaron, MCP); proposed: a pending train_change proposal waits for Aaron's tap (Ask AI). */
-  status: 'applied' | 'proposed'
-  /** The train_change event: the pending proposal, or the auto_applied record that Undo reverts. */
-  proposal_id: string
-  /** What it wrote (status applied). */
-  applied: { entity: 'template' | 'equipment' | 'exclusion'; id: string } | null
-}
 
 /** A checked change: its card title, what it will overwrite, what it writes, and the statements (not yet run). */
 interface Prepared {
@@ -57,18 +51,15 @@ interface Prepared {
 type Stage = 'propose' | 'accept'
 const invalid = (stage: Stage, code: string, message: string) => new HttpError(stage === 'propose' ? 422 : 409, code, message)
 
-const snapshotOf = (t: Template): TemplateSnapshot => ({
-  id: t.id,
-  name: t.name,
-  notes: t.notes,
-  exercises: t.exercises.map(({ id: _id, ...e }): TemplateExerciseInput => e),
-})
-
 const isSnapshot = (before: Before): before is TemplateSnapshot => before !== null && 'exercises' in before
 
 const STATUS_LABEL: Record<EquipmentStatus, string> = { have: 'Have', dont_have: "Don't have", dislike: 'Dislike', cant_use: "Can't use" }
 const TITLE_MAX = 80
+/** The body's `reason` (shared ProposalBody: ≤ 300 chars). */
+const REASON_MAX = 300
 const titled = (text: string) => (text.length > TITLE_MAX ? `${text.slice(0, TITLE_MAX - 1)}…` : text)
+/** "leg press" → "Leg press": a card title starts with a capital. */
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 const sizeOf = (list: readonly TemplateExerciseInput[]) => `${list.length} exercises, ${list.reduce((n, e) => n + e.sets, 0)} sets`
 
 async function templateOrNull(deps: Deps, id: string): Promise<Template | null> {
@@ -116,7 +107,11 @@ async function prepare(deps: Deps, change: TrainChange, input: { id: string; aut
       const notes = change.notes === undefined ? current.notes : change.notes
       const t = { id: current.id, name: change.name ?? current.name, origin: current.origin, notes, exercises: list }
       const renamed = change.name !== undefined && change.name !== current.name
-      const title = renamed ? `Rename ${current.name} → ${t.name}` : `Edit ${current.name}: ${sizeOf(list)}`
+      const title = renamed
+        ? `Rename ${current.name} → ${t.name}`
+        : change.exercises === undefined
+          ? `Change notes on ${current.name}`
+          : `Edit ${current.name}: ${sizeOf(list)}`
       return { title: titled(title), before, target, statements: writeStatements(as, t, tags) }
     }
     case 'equipment_status': {
@@ -125,7 +120,7 @@ async function prepare(deps: Deps, change: TrainChange, input: { id: string; aut
       const existing = profile.find((p) => p.equipment === name)
       const id = existing?.id ?? crypto.randomUUID()
       return {
-        title: titled(`${name} → ${STATUS_LABEL[change.status]}`),
+        title: titled(`${sentence(name)} → ${STATUS_LABEL[change.status]}`),
         before: existing ? { equipment: existing.equipment, status: existing.status } : null,
         target: { entity: 'equipment', id },
         statements: [equipmentStatement(as, { equipment: change.equipment, status: change.status }, profile, id)],
@@ -150,20 +145,11 @@ async function prepare(deps: Deps, change: TrainChange, input: { id: string; aut
   }
 }
 
-/** Rewrite a proposal's body (and touch it for the since-poll) when `when` holds, for the caller's db.batch. */
-function bodyUpdate(deps: Deps, id: string, body: ProposalBody, when: SQL) {
-  const now = deps.now().toISOString()
-  return deps.db
-    .update(ai_events)
-    .set({ body, updated_at: now })
-    .where(and(eq(ai_events.id, id), eq(ai_events.kind, 'proposal'), when))
-}
-
 /**
  * One Train change as deps.actor: checked (422), then Ask AI's stored as a pending train_change proposal (nothing else
  * written), Aaron's or MCP's applied now with its auto_applied train_change event (`before` on it) in the same batch.
- * The event's summary is the card title ("Rename Upper A → Push"); `reason` (the caller's why) is not stored — the AI
- * gives it in its own reply.
+ * The event's summary is the card title ("Rename Upper A → Push"); `reason` (the caller's why, trimmed to 300 chars)
+ * goes on the body, so the card shows it as "Why: …".
  */
 export async function trainChange(deps: Deps, input: { change: TrainChange; reason: string }): Promise<TrainChangeResult> {
   const parsed = TrainChange.safeParse(input.change)
@@ -171,7 +157,8 @@ export async function trainChange(deps: Deps, input: { change: TrainChange; reas
   const change = parsed.data
   const id = crypto.randomUUID()
   const prepared = await prepare(deps, change, { id, author: deps.actor, stage: 'propose' })
-  const body: TrainChangeBody = { kind: 'train_change', change, before: prepared.before }
+  const reason = input.reason.trim().slice(0, REASON_MAX)
+  const body: TrainChangeBody = { kind: 'train_change', change, before: prepared.before, ...(reason ? { reason } : {}) }
   const summary = prepared.title
   if (deps.actor === 'ai') {
     await eventInsert(deps, { id, kind: 'proposal', summary, body, proposal_status: 'pending' }).statement
@@ -190,7 +177,7 @@ export async function acceptTrainChange(deps: Deps, proposal: ProposalOf<'train_
   const prepared = await prepare(deps, change, { id: proposal.id, author: proposal.actor, stage: 'accept' })
   await runBatch(deps.db, [
     ...prepared.statements,
-    bodyUpdate(deps, proposal.id, { ...proposal.body, before: prepared.before }, eq(ai_events.proposal_status, 'pending')),
+    proposalBodyUpdate(deps, proposal.id, { ...proposal.body, before: prepared.before }, eq(ai_events.proposal_status, 'pending')),
     acceptStatement(deps, proposal.id),
   ])
   // ProposalApplied names a template (the app opens it); a deleted one, an equipment row or a hidden exercise: nothing to open.
@@ -198,39 +185,35 @@ export async function acceptTrainChange(deps: Deps, proposal: ProposalOf<'train_
   return { plan_version_id: null, applied }
 }
 
-/** A template whose name matches `name` (engine splitNameKey: trimmed, case-insensitive), other than `except`. */
+/** The split day `name`'s template (engine splitTemplateFor: the oldest of that name), other than `except`. */
 export async function templateNamed(deps: Deps, name: string, except: string): Promise<Template | null> {
-  return (await listTemplates(deps)).find((t) => t.id !== except && splitNameKey(t.name) === splitNameKey(name)) ?? null
+  return splitTemplate(deps, name, [except])
 }
 
 /**
  * Keep on a split draft named like `template`: the draft's exercises (guarded as the draft's author) and rationale go
  * into that template in place (same id, name and origin), and the proposal is accepted with the old version as
- * `replaced`, in one batch.
+ * `replaced`, in one batch (templates replaceStatements, as a save of the draft under its day's name).
  */
 export async function replaceWithDraft(deps: Deps, proposal: ProposalOf<'workout'>, template: Template): Promise<ProposalApplied> {
   const { body } = proposal
   const author: Deps = { ...deps, actor: proposal.actor }
   const tags = await checkExercises(author, body.workout.exercises)
-  const t = { id: template.id, name: template.name, origin: template.origin, notes: body.workout.rationale || null, exercises: body.workout.exercises }
-  await runBatch(deps.db, [
-    ...writeStatements(author, t, tags),
-    bodyUpdate(deps, proposal.id, { ...body, replaced: snapshotOf(template) }, eq(ai_events.proposal_status, 'pending')),
-    acceptStatement(deps, proposal.id),
-  ])
+  await runBatch(deps.db, replaceStatements(author, proposal, template, { notes: body.workout.rationale || null, exercises: body.workout.exercises }, tags))
   return { entity: 'template', id: template.id }
 }
 
 /**
- * A template put back exactly as `snapshot` (same id; created again if it was deleted, as 'custom' then: a snapshot has
- * no origin). Not re-guarded: Undo restores a version that was saved before.
+ * A template put back exactly as `snapshot` (same id and origin; created again if it was deleted). A snapshot stored
+ * before origins were kept comes back as the template's current origin, else 'custom'. Not re-guarded: Undo restores a
+ * version that was saved before.
  */
 async function restoreStatements(deps: Deps, snapshot: TemplateSnapshot): Promise<BatchItem<'sqlite'>[]> {
-  const [[row], tags] = await Promise.all([
-    deps.db.select({ origin: workout_templates.origin }).from(workout_templates).where(eq(workout_templates.id, snapshot.id)),
+  const [current, tags] = await Promise.all([
+    snapshot.origin ? null : templateOrNull(deps, snapshot.id),
     requireExercises(deps, snapshot.exercises.map((e) => e.exercise_id)),
   ])
-  return writeStatements(deps, { ...snapshot, origin: row?.origin ?? 'custom' }, tags)
+  return writeStatements(deps, { ...snapshot, origin: snapshot.origin ?? current?.origin ?? 'custom' }, tags)
 }
 
 /** The writes undoing an applied train_change (event `id`). */
@@ -265,14 +248,16 @@ export async function revertTrainChange(deps: Deps, id: string): Promise<Ok> {
   const proposal = row && toProposal(row)
   if (!proposal) throw notFound('Train change')
   const { body } = proposal
-  if (body.kind !== 'train_change' && !(body.kind === 'workout' && body.replaced))
-    throw new HttpError(422, 'not_revertible', 'Only a Train change, or a kept draft that replaced a template, can be undone here')
+  let undo: () => Promise<BatchItem<'sqlite'>[]>
+  if (body.kind === 'train_change') undo = () => undoStatements(deps, id, body)
+  else if (body.kind === 'workout' && body.replaced) {
+    const { replaced } = body
+    undo = () => restoreStatements(deps, replaced)
+  } else throw new HttpError(422, 'not_revertible', 'Only a Train change, or a kept draft that replaced a template, can be undone here')
   if (proposal.proposal_status !== 'accepted' && proposal.proposal_status !== 'auto_applied')
     throw new HttpError(409, 'not_applied', 'This change was never applied')
   if (body.reverted_at) throw new HttpError(409, 'already_reverted', 'This change was already undone')
-  const statements =
-    body.kind === 'train_change' ? await undoStatements(deps, id, body) : body.kind === 'workout' && body.replaced ? await restoreStatements(deps, body.replaced) : []
   const reverted = { ...body, reverted_at: deps.now().toISOString() }
-  await runBatch(deps.db, [...statements, bodyUpdate(deps, id, reverted, sql`json_extract(${ai_events.body}, '$.reverted_at') IS NULL`)])
+  await runBatch(deps.db, [...(await undo()), proposalBodyUpdate(deps, id, reverted, sql`json_extract(${ai_events.body}, '$.reverted_at') IS NULL`)])
   return { ok: true }
 }

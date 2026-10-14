@@ -31,6 +31,7 @@ import {
   Template,
   TemplateExerciseInput,
   TrainChange,
+  TrainChangeResult,
   TrainingWeek,
   Weekday,
   WorkoutDraft,
@@ -97,16 +98,20 @@ const HistorySession = z.object({
 /** Train changes said once: what Ask AI's call leaves (a card) and what Claude's does (applied, undoable). */
 const BEHIND_A_TAP =
   'From the in-app assistant it waits as a proposal card for a tap (status "proposed"; nothing changes until then); ' +
-  'from Claude it applies at once (status "applied") and revert_train_change(proposal_id) undoes it.'
+  'from Claude it applies at once (status "applied") and revert_train_change({ id: proposal_id }) undoes it.'
 
 const Reason = z.string().trim().min(1).max(300).describe('Why, in one short sentence (e.g. "You asked to rename it")')
 
-/** What one Train change did (training module trainChange). */
-const TrainChangeOutput = z.object({
-  status: z.enum(['applied', 'proposed']),
-  proposal_id: Id.describe('The change\'s record: the card waiting for a tap, or (applied) what revert_train_change takes'),
-  applied: z.object({ entity: z.enum(['template', 'equipment', 'exclusion']), id: z.string() }).nullable(),
+/** What one Train change did (shared TrainChangeResult, the training module's trainChange), described for the model. */
+const TrainChangeOutput = TrainChangeResult.extend({
+  proposal_id: TrainChangeResult.shape.proposal_id.describe(
+    "The change's record: the card waiting for a tap, or (applied) the id revert_train_change takes",
+  ),
+  applied: TrainChangeResult.shape.applied.describe('What it wrote (status applied; null while proposed): a new template\'s id is applied.id'),
 })
+
+/** list_templates shows at most this many (newest first); `more` counts the rest. */
+const TEMPLATES_SHOWN = 20
 
 // The tool inputs reuse the Train change fields (shared TrainChange), so the rules live in one place.
 const [CreateChange, UpdateChange, DeleteChange, EquipmentChange, HideChange] = TrainChange.options
@@ -206,13 +211,14 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'Set the status of equipment or named machines (have, dont_have, dislike, cant_use; names as get_equipment_profile ' +
       'lists them, matched case-insensitively; a new name is added as a machine). Anything not "have" takes its ' +
       'exercises out of the allowed set for every future workout. Only when Aaron tells you what he has, lacks or ' +
-      'avoids; notes are edited on the Equipment page. ' +
+      'avoids. No notes here: a note (e.g. "left shoulder") goes with apply_review\'s equipment change (the coach ' +
+      'review, Claude), or Aaron edits it on the Equipment page. ' +
       `One Train change per item. ${BEHIND_A_TAP} An item a check refused is in \`rejected\` with the reason.`,
     input: z.object({
       items: z
         .array(z.object({ equipment: EquipmentChange.shape.equipment, status: EquipmentChange.shape.status }))
         .min(1)
-        .max(20),
+        .max(10),
       reason: Reason,
     }),
     output: z.object({
@@ -256,16 +262,20 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     title: 'List workout templates',
     area: 'templates',
     description:
-      'Every saved workout template: id, name, notes, top muscles, and its exercises in order (exercise_id, name, sets, ' +
-      'rep range, rest seconds; target_load_kg and note only when set). The ids update_template, delete_template, ' +
-      'swap_template_exercise and start_session take. To change sets, reps, rest or order, send update_template the ' +
-      'whole new list in this shape (target_load_kg and note null when not listed). Read-only.',
+      `The saved workout templates, newest first (at most ${TEMPLATES_SHOWN}; \`more\` counts the older ones left out): ` +
+      'id, name, notes, top muscles, and its exercises in order (exercise_id, name, sets, rep range, rest seconds; ' +
+      'target_load_kg and note only when set). The ids update_template, delete_template, swap_template_exercise and ' +
+      "start_session take (get_training_week names each split day's template). To change sets, reps, rest or order, " +
+      'send update_template the whole new list in this shape (target_load_kg and note null when not listed). Read-only.',
     input: z.object({}),
-    output: z.object({ templates: z.array(TemplateBrief) }),
+    output: z.object({ templates: z.array(TemplateBrief), more: Count.describe('Older templates not listed') }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     run: async (deps) => {
-      const [templates, library] = await Promise.all([listTemplates(deps), loadLibrary(deps)])
+      const [all, library] = await Promise.all([listTemplates(deps), loadLibrary(deps)])
+      const newest = [...all].sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
+      const templates = newest.slice(0, TEMPLATES_SHOWN)
       return {
+        more: newest.length - templates.length,
         templates: templates.map((t) => ({
           id: t.id,
           name: t.name,
@@ -293,7 +303,8 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'Save a new reusable workout template: a name (a split day\'s name such as "Upper A" or "Full body" makes it that ' +
       "day's workout), optional notes, and ordered exercises (ids from list_exercises, allowed set only) with sets, rep " +
       'range, target load kg (null = let progression pick), rest seconds and a note. Checked first: allowed exercises ' +
-      `only and 12–28 sets in total, else it fails with the rule. ${BEHIND_A_TAP}`,
+      `only and 12–28 sets in total, else it fails with the rule. ${BEHIND_A_TAP} Once applied, the new template's id ` +
+      'is `applied.id`.',
     input: z.object({ ...createFields, reason: Reason }),
     output: TrainChangeOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
@@ -362,7 +373,7 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     title: 'Undo a Train change',
     area: 'templates',
     description:
-      'Undo one applied Train change by its proposal_id (create_template, update_template, delete_template, ' +
+      'Undo one applied Train change: `id` = the proposal_id it returned (create_template, update_template, delete_template, ' +
       'update_equipment, hide_exercise), or a kept split draft that replaced a template: exactly the stored earlier ' +
       'version comes back (a deleted template with its id; a created one is removed), even over a later edit. Works ' +
       'once (409 already_reverted the second time). Training days are changed back with set_training_days.',
@@ -395,7 +406,10 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'Daily targets mark the new days as training days from today on; no workout is drafted (plan_training_week does ' +
       'both). From the in-app assistant it waits as a proposal for a tap (status "proposed"); from Claude it applies ' +
       'at once (status "applied"); "unchanged" when the days are already these.',
-    input: z.object({ training_days: TrainingDays.describe('Every training day, e.g. ["mon","tue","thu"]') }),
+    input: z.object({
+      training_days: TrainingDays.describe('Every training day, e.g. ["mon","tue","thu"]'),
+      reason: Reason.optional(),
+    }),
     output: PlanWeekResult.shape.training_days.extend({ training_days: z.array(Weekday) }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     run: (deps, input) => proposeTrainingDays(deps, input),
@@ -417,6 +431,7 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
         'The training days to plan, e.g. ["mon","tue","thu"]; leave out to keep the current days',
       ),
       only: PlanWeekRequest.shape.only.describe('Slot names to redraft, e.g. ["Full body"]; leave out for every day'),
+      reason: Reason.optional().describe('Why the days change, in one short sentence (shown on the days card)'),
     }),
     output: PlanWeekResult,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },

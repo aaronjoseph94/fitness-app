@@ -389,7 +389,11 @@ export const endpoints = {
       params: IdParams,
       response: ExerciseHistory,
     }),
-    /** Undo a train_change proposal (:id): the template, equipment status or hidden exercise goes back. 409 if already reverted. */
+    /**
+     * Undo an applied train_change proposal (:id) — the template, equipment status or hidden exercise goes back — or a
+     * kept split draft that replaced a template (a `workout` proposal with `replaced`): the template's old version comes
+     * back. 409 if already reverted or never applied.
+     */
     revertChange: defineEndpoint({ method: 'POST', path: '/api/train-changes/:id/revert', params: IdParams, response: Ok }),
   },
 

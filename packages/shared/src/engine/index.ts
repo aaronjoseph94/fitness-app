@@ -64,8 +64,8 @@ export { muscleScores, muscleLevels, e1rm, sessionSummary } from './lib/muscles'
 export type { MuscleValues, MuscleLevel, SessionSetLike, PrRecord, SessionSummaryInput, SessionTotals } from './lib/muscles'
 
 // Training: the weekly split (upper / lower / full body), body-group coverage, and swap candidates (same primary muscle, same kind of lift)
-export { splitSlots, splitSlot, splitNameKey } from './lib/split'
-export { BODY_GROUPS, focusGroups, bodyGroupsOf, missingGroups } from './lib/coverage'
+export { splitSlots, splitSlot, splitNameKey, splitTemplateFor } from './lib/split'
+export { BODY_GROUPS, focusGroups, requiredGroups, bodyGroupsOf, missingGroups } from './lib/coverage'
 export { swapCandidates, swapScore, sameLiftKind } from './lib/swap'
 export type { SwapInfo } from './lib/swap'
 

@@ -1,6 +1,7 @@
 // Owns: the weekly split over the training days (SPEC §7: upper / lower / upper / lower for four or more days; one to
 // three days follow the rest between them, so every body part is trained on some day) — which slot each training day
-// is, its name ("Upper A", "Lower A", "Full body", …), and the key a split day, a template and a draft are matched by.
+// is, its name ("Upper A", "Lower A", "Full body", …), the key a split day, a template and a draft are matched by, and
+// which template is a split day's when several share its name.
 import { Weekday } from '../../schemas/common'
 import type { SplitSlot } from '../../schemas/training'
 
@@ -72,4 +73,19 @@ export function splitSlot(weekday: Weekday, training_days: readonly Weekday[]): 
  */
 export function splitNameKey(name: string): string {
   return name.trim().toLowerCase()
+}
+
+/**
+ * The template of a split day: among `templates` whose splitNameKey equals splitNameKey(name), the oldest by created_at
+ * (ISO instants compare as strings), ties by the smaller id; null when none has the name. One rule for the worker (the
+ * week, Keep, a redraft) and the web, so a second template of the same name never takes the day.
+ */
+export function splitTemplateFor<T extends { id: string; name: string; created_at: string }>(templates: readonly T[], name: string): T | null {
+  const key = splitNameKey(name)
+  let best: T | null = null
+  for (const t of templates) {
+    if (splitNameKey(t.name) !== key) continue
+    if (!best || t.created_at < best.created_at || (t.created_at === best.created_at && t.id < best.id)) best = t
+  }
+  return best
 }

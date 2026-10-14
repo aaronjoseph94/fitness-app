@@ -3,9 +3,10 @@
 // Interface:
 //   chatTurn(deps, llm, ChatSend)          → ChatSent       POST /api/ai/chat. Replaying a message id returns the stored
 //        turn (no second run). Offers ≈15 tools picked by intent; runs calls as actor 'ai' for ≤ 5 model calls.
-//        Logging tools apply at once (Aaron asked); targets, workouts and week plans become proposals that wait for a
-//        tap (the modules' guards decide; auto_apply_safe only ever covers safe-list kinds, never targets); coach-only
-//        tools are never offered. Stores user, one tool row per call, and the assistant reply; the reply's tool_calls
+//        Logging tools apply at once (Aaron asked); targets, workouts, week plans and every Train change (templates,
+//        equipment statuses, hidden exercises, training days; plan_training_week's days) become proposals that wait
+//        for a tap (the modules' guards decide; auto_apply_safe only ever covers safe-list kinds, never targets); Undo
+//        (revert_train_change) and coach-only tools are never offered. Stores user, one tool row per call, and the assistant reply; the reply's tool_calls
 //        are the calls made and its proposals what waits for a tap. A router failure is a calm stored reply with
 //        error 'ai_unavailable' (or 'too_many_steps'), not an HTTP error. The model never sees the user's name.
 //   chatHistory(deps, { thread_id? })      → ChatMessage[]  GET /api/ai/chat: a thread oldest first, proposals at their

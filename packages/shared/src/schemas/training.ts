@@ -1,6 +1,7 @@
 // Owns: the exercise library, equipment profile and exclusions, templates, sessions and sets, muscle scores, PRs,
-// readiness, progression suggestions, the days of the upper/lower split (SplitSlot), and the workout_generate /
-// workout_fill / workout_template output (WorkoutDraft).
+// readiness, progression suggestions, the days of the weekly split over the training days (SplitSlot: upper, lower or
+// full body), Train changes and their results, the training week, and the workout_generate / workout_fill /
+// workout_template output (WorkoutDraft).
 import * as z from 'zod'
 import { Count, Id, Instant, Kg, LocalDate, Muscle, Row, Weekday } from './common'
 import { ImageType } from './files'
@@ -249,7 +250,11 @@ export const TemplateCreate = z.object({
   origin: TemplateOrigin.default('custom'),
   notes: z.string().max(1000).optional(),
   exercises: z.array(TemplateExerciseInput).min(1).max(20),
-  /** Saving an AI workout proposal as this template accepts the proposal. */
+  /**
+   * Saving an AI workout proposal as this template accepts the proposal. A split draft saved under its day's name
+   * (e.g. "Upper A" while an "Upper A" template exists) writes into that day's template instead (same id, old version
+   * kept for Undo): the response's `id` is then that template's, not this body's.
+   */
   proposal_id: Id.optional(),
 })
 export type TemplateCreate = z.infer<typeof TemplateCreate>
@@ -283,6 +288,8 @@ export type SplitSlot = z.infer<typeof SplitSlot>
 export const TemplateSnapshot = z.object({
   id: Id,
   name: z.string().min(1),
+  /** The template's origin, so an Undo of a delete brings an AI template back as 'ai' (absent on older records: custom). */
+  origin: TemplateOrigin.optional(),
   notes: z.string().nullable(),
   exercises: z.array(TemplateExerciseInput),
 })
@@ -290,8 +297,9 @@ export type TemplateSnapshot = z.infer<typeof TemplateSnapshot>
 
 /**
  * One change to Train that the AI (Ask AI or the MCP connector) makes: a template created, edited or deleted, an
- * equipment status moved, an exercise hidden. Applied now, and kept as a `train_change` proposal row so it can be
- * reverted with one tap (POST /api/train-changes/:id/revert). The allowed-exercise list and the rails still bind it.
+ * equipment status moved, an exercise hidden. Ask AI's waits as a pending `train_change` proposal until Aaron taps it;
+ * Claude's (MCP) applies now. Either way the row is its record, and once applied it reverts with one tap (POST
+ * /api/train-changes/:id/revert). The allowed-exercise list and the rails still bind it.
  */
 export const TrainChange = z.discriminatedUnion('op', [
   z.object({
@@ -317,6 +325,18 @@ export const TrainChange = z.discriminatedUnion('op', [
 ])
 export type TrainChange = z.infer<typeof TrainChange>
 
+/**
+ * What one Train change did (training trainChange; the tools' output): `applied` = written now (Aaron, MCP) with what
+ * it wrote; `proposed` = a pending train_change proposal waits for Aaron's tap (Ask AI), `applied` null. `proposal_id`:
+ * the train_change event — the pending proposal, or the auto_applied record that Undo reverts.
+ */
+export const TrainChangeResult = z.object({
+  status: z.enum(['applied', 'proposed']),
+  proposal_id: Id,
+  applied: z.object({ entity: z.enum(['template', 'equipment', 'exclusion']), id: z.string() }).nullable(),
+})
+export type TrainChangeResult = z.infer<typeof TrainChangeResult>
+
 // ── The training week (GET /api/ai/week, POST /api/ai/week) ────────────────────────────────────────────────────
 
 /**
@@ -327,9 +347,10 @@ export const BodyGroup = z.enum(['chest', 'back', 'shoulders', 'arms', 'quads', 
 export type BodyGroup = z.infer<typeof BodyGroup>
 
 /**
- * One split day of the training week: the slot, the template that holds its name (null = none yet), the pending
- * `workout` draft waiting for a tap (`replaces_template_id`: the template it would replace, null = a new one) and
- * whether a workout_template job is queued or running for it.
+ * One split day of the training week: the slot, its template (engine splitTemplateFor: the oldest template of its
+ * name; null = none yet), the pending `workout` draft waiting for a tap (`replaces_template_id`: the template it would
+ * replace, null = a new one), whether a workout_template job is queued or running for it, and whether its last one
+ * failed.
  */
 export const TrainingWeekSlot = SplitSlot.extend({
   template: z
@@ -343,6 +364,8 @@ export const TrainingWeekSlot = SplitSlot.extend({
     .nullable(),
   draft: z.object({ proposal_id: Id, replaces_template_id: Id.nullable() }).nullable(),
   drafting: z.boolean(),
+  /** The newest workout_template job for this day failed, and no pending draft or template came after it. */
+  failed: z.boolean(),
 })
 export type TrainingWeekSlot = z.infer<typeof TrainingWeekSlot>
 
@@ -355,7 +378,7 @@ export const TrainingWeek = z.object({
   training_days: z.array(Weekday),
   slots: z.array(TrainingWeekSlot),
   week_plan_sessions: z.partialRecord(Weekday, z.string().nullable()).nullable(),
-  /** Body groups no day's template (or pending draft) trains yet; empty when the week covers all of them. */
+  /** Body groups no split day's template trains yet (a pending draft does not count); empty when the week covers all of them. */
   uncovered: z.array(BodyGroup),
 })
 export type TrainingWeek = z.infer<typeof TrainingWeek>
@@ -378,8 +401,8 @@ export type PlanWeekRequest = z.infer<typeof PlanWeekRequest>
 /**
  * Response of POST /api/ai/week: the split planned, the workout_template jobs queued, the slot names skipped and what
  * happened to the chosen training days: `applied` (the settings changed now), `proposed` (a training_days proposal waits
- * for a tap) or `unchanged` (the request left the days as they were). `proposal_id`: the training_days proposal row
- * (the record and the one-tap revert), null when unchanged.
+ * for a tap) or `unchanged` (the request left the days as they were). `proposal_id`: the pending training_days proposal
+ * (the card Aaron taps), null when applied or unchanged. Days have no Undo: change them back the same way.
  */
 export const PlanWeekResult = z.object({
   slots: z.array(SplitSlot),

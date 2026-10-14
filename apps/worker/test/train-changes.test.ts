@@ -118,6 +118,15 @@ describe('trainChange', () => {
     await expect(revertTrainChange(as('user'), done.proposal_id)).rejects.toMatchObject({ status: 409, code: 'already_reverted' })
   })
 
+  it('Ask AI: the reason it gives is stored on the train_change body (the card\'s "Why:" line)', async () => {
+    const t = await upperA()
+
+    const proposed = await trainChange(as('ai'), { change: { op: 'template_update', template_id: t.id, name: 'Push' }, reason: 'Push day reads clearer' })
+
+    const body = await bodyOf(proposed.proposal_id)
+    expect(body.kind === 'train_change' ? body.reason : null).toBe('Push day reads clearer')
+  })
+
   it('Ask AI: a new template of 10 sets breaks the 12–28 sets rail (422) and stores no proposal', async () => {
     const change = { op: 'template_create' as const, name: 'Arms', exercises: [item(curl.id, 5), item(press.id, 5)] }
 
@@ -148,6 +157,35 @@ describe('Keep on a split draft named like a template', () => {
     expect(templates[0]!.exercises.map(({ id: _id, ...e }) => e)).toEqual(draft)
     const body = await bodyOf(draft_id)
     expect(body.kind === 'workout' ? body.replaced?.exercises.length : null).toBe(3)
+
+    await revertTrainChange(as('user'), draft_id)
+
+    expect((await getTemplate(as('user'), t.id)).exercises.map(({ id: _id, ...e }) => e)).toEqual(UPPER_A)
+  })
+
+  it('Preview → Save (POST /api/templates with proposal_id) writes into Upper A (same id) instead of adding a second one', async () => {
+    const t = await upperA()
+    const draft_id = crypto.randomUUID()
+    await db.insert(ai_events).values({
+      id: draft_id,
+      kind: 'proposal',
+      actor: 'ai',
+      summary: 'Split draft "Upper A"',
+      body: { kind: 'workout', mode: 'generate', date: null, workout: { name: 'Upper A', exercises: [item(bench.id, 3), item(row.id, 3), item(press.id, 3), item(curl.id, 3)], rationale: 'Upper A, redrafted.' }, muscle_scores: {} },
+      proposal_status: 'pending',
+    })
+    // Aaron edited the preview: one more set of rows.
+    const edited = [item(bench.id, 3), item(row.id, 4), item(press.id, 3), item(curl.id, 3)]
+
+    const saved = await createTemplate(as('user'), { id: crypto.randomUUID(), name: 'Upper A', origin: 'ai', exercises: edited, proposal_id: draft_id })
+
+    expect(saved.id).toBe(t.id)
+    const templates = await listTemplates(as('user'))
+    expect(templates.map((x) => [x.id, x.name])).toEqual([[t.id, 'Upper A']])
+    expect(templates[0]!.exercises.map(({ id: _id, ...e }) => e)).toEqual(edited)
+    const body = await bodyOf(draft_id)
+    expect(body.kind === 'workout' ? body.replaced?.exercises : null).toEqual(UPPER_A)
+    expect((await db.select().from(ai_events).where(eq(ai_events.id, draft_id)))[0]?.proposal_status).toBe('accepted')
 
     await revertTrainChange(as('user'), draft_id)
 

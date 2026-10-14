@@ -12,11 +12,13 @@
 //      (applied while resolving, before step 2)
 //   8. total sets into [min, max]: while above, −1 set on the exercise with the most sets (ties: the later one);
 //      while below, +1 on the one with the fewest sets under 6 (ties: the earlier one); no room → RepairError
-//  8b. body groups (a split day: `required` = engine focusGroups of its focus): for each required group the exercises'
-//      primary muscles do not reach (engine missingGroups), in `required` order, add the first of `candidates` (the
-//      prompt's ranked list) whose primary muscles reach it, that the draft does not hold, the guards allow and `avoid`
-//      does not hit — COVER_SETS sets, rep_min / rep_max / rest_sec = the lower median of the draft's own — only while
-//      total + COVER_SETS ≤ max and there are fewer than 10 exercises; a group with no candidate or no room gets a note
+//  8b. body groups (a split day: `required` = engine requiredGroups of its slot in its split): for each required group
+//      the exercises' primary muscles do not reach (engine missingGroups), in `required` order, add the first of
+//      `candidates` (the prompt's ranked list) whose primary muscles reach it, that the draft does not hold, the guards
+//      allow and `avoid` does not hit — COVER_SETS sets, rep_min / rep_max / rest_sec = the lower median of the draft's
+//      own. Room: fewer than 10 exercises, and total + COVER_SETS ≤ max — when it is over, first −1 set at a time on the
+//      exercise with the most sets (ties: the later one), never below MIN_SETS_TRIMMED, if that many sets can be freed
+//      at all; a group with no candidate or no room gets a note
 //   9. the whole workout through the engine guards (12–28 sets, allowed ids) — must pass, else RepairError
 import { applyGuards, bodyGroupsOf, missingGroups, type ExerciseSwapChange, type GuardContext, type WorkoutChange } from '@fitness/shared/engine'
 import type { BodyGroup, Muscle, TemplateExerciseInput } from '@fitness/shared/schemas'
@@ -30,6 +32,8 @@ const MAX_EXERCISES = 10
 const MAX_SETS_PER_PICK = 6
 /** Sets of an exercise added for a body group the draft missed (plan 2026-10-14, A3). */
 const COVER_SETS = 3
+/** Making room for a missed group never takes an exercise below this many sets. */
+const MIN_SETS_TRIMMED = 2
 
 export interface RepairInput {
   picks: LlmWorkout['exercises']
@@ -39,7 +43,7 @@ export interface RepairInput {
   guard: GuardContext
   avoid: readonly Muscle[]
   sets: { min: number; max: number }
-  /** Body groups the draft must reach (a split day's engine focusGroups); none for a day's session. */
+  /** Body groups the draft must reach (a split day's engine requiredGroups); none for a day's session. */
   required?: readonly BodyGroup[]
   /** Where a missing group's exercise comes from: the prompt's candidates, best first (plan.selectCandidates). */
   candidates?: readonly LibraryEntry[]
@@ -158,13 +162,22 @@ export function repairDraft(input: RepairInput): RepairResult {
       notes.push(`Nothing in the allowed list trains ${group}`)
       continue
     }
-    if (total() + COVER_SETS > input.sets.max || plans.length >= MAX_EXERCISES) {
+    const over = total() + COVER_SETS - input.sets.max
+    const spare = plans.reduce((n, p) => n + Math.max(p.sets - MIN_SETS_TRIMMED, 0), 0)
+    if (plans.length >= MAX_EXERCISES || over > spare) {
       notes.push(`No room to add ${group} (${total()} sets, ${plans.length} exercises)`)
       continue
     }
+    for (let i = 0; i < over; i++) {
+      let at = -1
+      plans.forEach((p, j) => {
+        if (p.sets > MIN_SETS_TRIMMED && (at < 0 || p.sets >= plans[at]!.sets)) at = j
+      })
+      plans[at]!.sets--
+    }
     entries.push(pick)
     plans.push({ exercise_id: pick.id, sets: COVER_SETS, ...like, target_load_kg: null, note: null })
-    notes.push(`Added ${pick.name} (${COVER_SETS} sets): the draft had nothing for ${group}`)
+    notes.push(`Added ${pick.name} (${COVER_SETS} sets): the draft had nothing for ${group}${over > 0 ? ` (${over} sets taken from the biggest exercises to stay within ${input.sets.max})` : ''}`)
   }
 
   // 9. the whole workout through the guards

@@ -55,7 +55,7 @@ ${RAILS}
 ## 3. What may change — apply_review changes[]
 - target: kcal (within the rails, ≤ 150 per review), protein_g, fat_g, fibre_g, water_ml (the water target), steps — for every day (weekday null) or one weekday. Carbs are the remainder of kcal after protein and fat; they are not a target of their own.
 - template (create or rewrite), exercise_swap (allowed exercises only), week_split (training days), equipment (statuses), reminder_time, milestone, fast / fast_cancel, scan_date, dashboard_note.
-- Train outside a review: create_template / update_template / delete_template, update_equipment, hide_exercise, set_training_days, plan_training_week (a fresh AI draft of every training day); revert_train_change undoes one.
+- Train outside a review: create_template / update_template / delete_template, update_equipment, hide_exercise, set_training_days, plan_training_week (a fresh AI draft of every training day); revert_train_change({ id: <its proposal_id> }) undoes one.
 - Never: the rails, auto_apply_safe, anything medical. Prefer one or two meaningful changes over many small ones.
 
 ${PRESENT}
@@ -113,7 +113,7 @@ ${RAILS}
 - Loads: leave target_load_kg null when there is no history — the engine's double progression sets the default load.
 
 ## 3. What may change
-Templates (create_template / update_template / delete_template, or apply_review kind "template" with record_review: false), exercise swaps, equipment statuses Aaron mentions (update_equipment), exercises he never wants (hide_exercise), training days (set_training_days), or a fresh AI draft of every training day (plan_training_week). Every Train change applies at once; revert_train_change(proposal_id) undoes one. A one-off week that differs from the split: propose_week_plan → apply_week_plan. Only the weekly coach_review records the week's review.
+Templates (create_template / update_template / delete_template, or apply_review kind "template" with record_review: false), exercise swaps, equipment statuses Aaron mentions (update_equipment), exercises he never wants (hide_exercise), training days (set_training_days), or a fresh AI draft of every training day (plan_training_week). Every Train change applies at once; revert_train_change({ id: <its proposal_id> }) undoes one (training days are changed back with set_training_days). A one-off week that differs from the split: propose_week_plan → apply_week_plan. Only the weekly coach_review records the week's review.
 
 ${PRESENT}
 Also show each session as exercise · sets × reps, and the weekly sets per muscle against the last block.`

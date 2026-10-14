@@ -43,10 +43,14 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
     /\b(work ?outs?|sessions?|gym|exercis\w*|sets?|reps?|lift\w*|bench|squat\w*|deadlift\w*|press|pull\w*|push\w*|legs?|upper|lower|back|shoulders?|biceps?|triceps?|glutes?|muscles?|dumbbells?|barbells?|cables?|train\w*|swap\w*|deload|prs?|e?1rm|volume)\b/,
     ['training'],
   ],
-  [/\b(templates?|routines?|renam\w*|re-?order\w*|delet\w*|remov\w*|upper [ab]|lower [ab]|full body( [ab])?)\b/, ['templates']],
+  // Delete / remove only near a template or day word: "remove the rice from lunch" is not a template change.
+  [
+    /\b(templates?|routines?|renam\w*|re-?order\w*|upper [ab]|lower [ab]|full body( [ab])?)\b|\b(delet\w*|remov\w*)\b.{0,40}\b(templates?|routines?|work ?outs?|upper|lower|full body)\b/,
+    ['templates'],
+  ],
   // Not "un-hide": only Aaron un-hides an exercise, so asking for it brings no hide tool in.
   [
-    /\b(equipment|machines?|kettlebells?|(don['’]?t|do not|doesn['’]?t|no longer|never) (have|has|use)|have no|haven['’]?t got|broken|out of order|missing|unavailable|avoid\w*|can['’]?t (use|do)|dislik\w*|hate|(?<!un-)hid(e|es|den|ing)|exclud\w*)\b/,
+    /\b(equipment|machines?|kettlebells?|(don['’]?t|do not|doesn['’]?t|no longer|never) (have|has|use)|have no|haven['’]?t got|lack\w*|broken|out of order|missing|unavailable|avoid\w*|can['’]?t (use|do)|dislik\w*|hate|(?<!un-)hid(e|es|den|ing)|exclud\w*)\b|\bno\b.{1,40}?\bat (my|the) gym\b/,
     ['equipment'],
   ],
   [

@@ -6,7 +6,8 @@
 // proposal_id accepts it). A workout_template draft is one day of the weekly split ("Upper A"): a reusable template with
 // that name and no date (lib/split.ts picks the day; plan 2026-10-09-split-drafts-and-swap); writing it rejects that
 // day's older pending drafts, so a split day has at most one. A split draft must reach its day's body groups (engine
-// focusGroups: the prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3).
+// requiredGroups over its split: its focus's groups, and for a full-body day the groups no other day requires; the
+// prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3).
 // Interface:
 //   requestWorkout(deps, body)            → JobRef     POST /api/ai/workout: enqueue (user priority) + run soon
 //   planTrainingWeek(deps, body)          → PlanWeekResult  POST /api/ai/week, Ask AI's plan_training_week: move the
@@ -29,7 +30,7 @@
 // Registers the 'workout_generate', 'workout_fill' and 'workout_template' job handlers (≤ 8 external fetches each). A
 // job no provider could answer fails at once when Aaron asked for it or no provider has a key (JobFailed); otherwise
 // the runner retries it.
-import { focusGroups, muscleScores, splitNameKey, splitSlot, today, weekdayOf, weekStart } from '@fitness/shared/engine'
+import { muscleScores, requiredGroups, splitNameKey, splitSlot, splitTemplateFor, today, weekdayOf, weekStart } from '@fitness/shared/engine'
 import {
   WeekPlanContent,
   type AiWorkoutRequest,
@@ -60,7 +61,7 @@ import {
   type Focus,
 } from './lib/plan'
 import { repairDraft } from './lib/repair'
-import { earlierDays, supersedeDraftsUpdate } from './lib/split'
+import { earlierDays, splitOf, supersedeDraftsUpdate } from './lib/split'
 
 export { RepairError } from './lib/repair'
 export { BACKGROUND_PRIORITY, USER_PRIORITY } from './lib/plan'
@@ -116,9 +117,11 @@ const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower 
  * A split draft (`input.slot`) is a reusable template, not a plan for one day: focus = the slot's, sets 12–28 (aim
  * 16–22) with none of the day's cuts (readiness, fast day, deload load, neighbouring-day avoid; recovery is checked
  * when a session starts), recent training read as of today, the prompt names the template, its body groups
- * (focusGroups; "every major muscle group" for a full-body day), what the earlier days hold (of its focus, or every
- * earlier day for a full-body day: B varies from A) and, for `replace`, his current version of it; the repair adds an
- * exercise for each body group the reply missed (3 sets, while ≤ 28); the proposal has `date: null` and `workout.name`
+ * (requiredGroups(slot, the split that holds it: lib/split splitOf); "every major muscle group" for a full-body day),
+ * what the earlier days hold (of its focus, or every earlier day for a full-body day: B varies from A) and, for
+ * `replace`, his current version of it (the split day's template: engine splitTemplateFor); the repair adds an
+ * exercise for each body group the reply missed (3 sets, making room by taking sets from the biggest exercises down to
+ * 2 when ≤ 28 would not hold them); the proposal has `date: null` and `workout.name`
  * = the slot's name, and the same batch rejects any older pending draft of that name (lower(trim(name)) =
  * splitNameKey(slot.name)).
  */
@@ -150,12 +153,13 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   const templated = new Set(ctx.templates.flatMap((t) => t.exercises.map((e) => e.exercise_id)))
   const candidates = selectCandidates(library.exercises, focus, { logged, templated })
   const slugOf = (id: string) => library.byId.get(id)?.slug
-  const current = slot && input.replace ? ctx.templates.find((t) => splitNameKey(t.name) === splitNameKey(slot.name)) : undefined
-  const groups = slot ? focusGroups(slot.focus) : []
+  const current = slot && input.replace ? splitTemplateFor(ctx.templates, slot.name) : null
+  const split = slot ? await splitOf(deps, slot, s.training_days) : []
+  const groups = slot ? requiredGroups(slot, split) : []
   const template = slot
     ? {
         name: slot.name,
-        earlier: await earlierDays(deps, { slot, training_days: s.training_days, templates: ctx.templates, slugOf }),
+        earlier: await earlierDays(deps, { slot, slots: split, templates: ctx.templates, slugOf }),
         groups,
         current: current ? current.exercises.flatMap((e) => slugOf(e.exercise_id) ?? []) : null,
       }

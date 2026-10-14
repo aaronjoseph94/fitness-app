@@ -8,10 +8,11 @@
 // put a clock reminder in the quiet hours (22:00–07:00).
 // Interface:
 //   getSettings(deps) / updateSettings(deps, { settings?, profile? }) → SettingsView
-//   proposeTrainingDays(deps, { training_days }) → { status, proposal_id, training_days }   the days in week order:
-//        'unchanged' when the settings already hold them; actor 'ai' → 'proposed' (a pending training_days proposal with
-//        `before`, lib/training-days.ts); 'user' / 'mcp' → 'applied' now through updateSettings (its change event is
-//        the record, so proposal_id is null). 400 for no day.
+//   proposeTrainingDays(deps, { training_days, reason? }) → { status, proposal_id, training_days }   the days in week
+//        order: 'unchanged' when the settings already hold them; actor 'ai' → 'proposed' (a pending training_days
+//        proposal with `before` and the AI's `reason`, lib/training-days.ts); 'user' / 'mcp' → 'applied' now through
+//        updateSettings (its change event is the record, so proposal_id is null; no Undo — change the days back). 400
+//        for no day.
 //   getMcpConnection(deps, origin)       → how Claude reaches the app
 // Registers the 'training_days' proposal handler for plan.acceptProposal: accepting saves the days (updateSettings as
 // the one who taps, which rebuilds the daily targets from today on).
@@ -139,16 +140,16 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
 
 /**
  * Change the training days (Ask AI's set_training_days and plan_training_week, Claude, the Train day chips): the days
- * in week order; unchanged when the settings hold them already; a pending proposal for actor 'ai' (he taps it); saved
- * now for 'user' and 'mcp'.
+ * in week order; unchanged when the settings hold them already; a pending proposal for actor 'ai' (he taps it; its
+ * body carries `reason`, the AI's why); saved now for 'user' and 'mcp'.
  */
-export async function proposeTrainingDays(deps: Deps, input: { training_days: readonly Weekday[] }): Promise<TrainingDaysResult> {
+export async function proposeTrainingDays(deps: Deps, input: { training_days: readonly Weekday[]; reason?: string }): Promise<TrainingDaysResult> {
   const training_days = weekOrder(input.training_days)
   if (!training_days.length) throw badRequest('Pick at least one training day')
   const current = (await getSettings(deps)).settings.training_days
   if (training_days.join() === weekOrder(current).join()) return { status: 'unchanged', proposal_id: null, training_days }
   if (deps.actor === 'ai')
-    return { status: 'proposed', proposal_id: await proposeDays(deps, { training_days, before: current }), training_days }
+    return { status: 'proposed', proposal_id: await proposeDays(deps, { training_days, before: current, reason: input.reason }), training_days }
   await updateSettings(deps, { settings: { training_days } })
   return { status: 'applied', proposal_id: null, training_days }
 }

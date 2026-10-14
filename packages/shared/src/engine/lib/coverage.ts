@@ -1,7 +1,9 @@
 // Owns: body-group coverage — which of the eight body groups a set of muscles reaches, which groups a split day's focus
-// must reach, and which required groups are still missing (the training week's "uncovered" list and the AI's check).
+// must reach (and, for a full-body day, the groups no other day of its split requires), and which required groups are
+// still missing (the training week's "uncovered" list and the AI's check).
 import type { Muscle } from '../../schemas/common'
 import { BodyGroup, type SplitSlot } from '../../schemas/training'
+import { splitNameKey } from './split'
 
 /** All eight body groups, in order. */
 export const BODY_GROUPS: readonly BodyGroup[] = BodyGroup.options
@@ -37,6 +39,19 @@ export function focusGroups(focus: SplitSlot['focus']): BodyGroup[] {
   if (focus === 'upper') return ['chest', 'back', 'shoulders', 'arms']
   if (focus === 'lower') return ['quads', 'hamstrings', 'glutes', 'calves']
   return ['chest', 'back', 'shoulders', 'quads', 'hamstrings', 'glutes']
+}
+
+/**
+ * What one split day must reach, given every day of its split (`slots`, the day itself among them; a day is known by
+ * its name, engine splitNameKey):
+ *   required(slot) = focusGroups(slot.focus) ∪ (slot.focus = 'full' ? { g ∈ BODY_GROUPS : no other slot's focusGroups ∋ g } : ∅)
+ * in BODY_GROUPS order. So a full-body day of an all-full-body week (1 or 2 days) also takes arms and calves, while
+ * Full body beside Upper A and Lower A keeps its six.
+ */
+export function requiredGroups(slot: SplitSlot, slots: readonly SplitSlot[]): BodyGroup[] {
+  const own = new Set(focusGroups(slot.focus))
+  const others = new Set(slots.filter((s) => splitNameKey(s.name) !== splitNameKey(slot.name)).flatMap((s) => focusGroups(s.focus)))
+  return BODY_GROUPS.filter((g) => own.has(g) || (slot.focus === 'full' && !others.has(g)))
 }
 
 /** The groups the muscles reach: { GROUP_OF[m] : m ∈ muscles } without nulls, unique, in BODY_GROUPS order. */

@@ -154,21 +154,29 @@ export const ProposalBody = z.discriminatedUnion('kind', [
     to_name: z.string(),
   }),
   /**
-   * A change to Train made by the AI (Ask AI or MCP) and applied now; the row is its record and its one-tap revert.
-   * `before`: the template as it was (update, delete), the equipment's status before (equipment_status), null when
-   * nothing existed (template_create, exercise_hide).
+   * A change to Train made by the AI: Ask AI's waits as a pending proposal for Aaron's tap, Claude's (MCP) applies now
+   * (auto_applied). The row is its record and, once applied, its one-tap revert. `before`: the template as it was
+   * (update, delete), the equipment's status before (equipment_status), null when nothing existed (template_create,
+   * exercise_hide); set again when a pending change is accepted.
    */
   z.object({
     kind: z.literal('train_change'),
     change: TrainChange,
     before: z.union([TemplateSnapshot, z.object({ equipment: EquipmentName, status: EquipmentStatus })]).nullable(),
+    /** The AI's why, shown on the card ("Why: …"); absent on older records and on Aaron's own changes. */
+    reason: z.string().max(300).optional(),
     reverted_at: Instant.optional(),
   }),
-  /** Aaron's training days moved by the AI (applied now); `before` puts the old days back on revert. */
+  /**
+   * Aaron's training days as Ask AI proposes them (pending until he taps it). `before`: the days when it was proposed,
+   * for display ("now Mon, Tue, Wed, Thu"); there is no Undo for days — change them back with set_training_days.
+   */
   z.object({
     kind: z.literal('training_days'),
     training_days: z.array(Weekday).min(1).max(7),
     before: z.array(Weekday).max(7),
+    /** The AI's why, shown on the card ("Why: …"); absent when none was given. */
+    reason: z.string().max(300).optional(),
   }),
 ])
 export type ProposalBody = z.infer<typeof ProposalBody>

@@ -6,7 +6,7 @@
 // day, a template and a draft are matched by the engine's splitNameKey (trimmed, case-insensitive: "Upper A" =
 // " upper a "), so deleting or renaming a template brings a fresh draft. A split is the settings' training days or the
 // days of a pending training_days proposal (Aaron has not tapped it yet), so the AI's drafts for those days survive.
-import { splitNameKey, splitSlots } from '@fitness/shared/engine'
+import { splitNameKey, splitSlots, splitTemplateFor } from '@fitness/shared/engine'
 import { ProposalBody, type SplitSlot, type Template, type Weekday } from '@fitness/shared/schemas'
 import { and, desc, eq, gte, inArray, ne, or, sql } from 'drizzle-orm'
 import { ai_events, ai_jobs, settings, workout_templates } from '../../../db'
@@ -37,10 +37,10 @@ const splitDraftRows = (deps: Deps) =>
     sql`json_extract(${ai_events.body}, '$.workout.name') IS NOT NULL`,
   )
 
-/** The pending split drafts (draft window), newest first: id and the split day's name. */
+/** The pending split drafts (draft window), newest first: id, the split day's name and when it was written. */
 export const pendingSplitDrafts = (deps: Deps) =>
   deps.db
-    .select({ id: ai_events.id, name: sql<unknown>`json_extract(${ai_events.body}, '$.workout.name')` })
+    .select({ id: ai_events.id, name: sql<unknown>`json_extract(${ai_events.body}, '$.workout.name')`, created_at: ai_events.created_at })
     .from(ai_events)
     .where(and(splitDraftRows(deps), eq(ai_events.proposal_status, 'pending')))
     .orderBy(desc(ai_events.created_at))
@@ -190,7 +190,7 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
  * The split that holds `slot` (its name): the settings' days when their split has it, else the newest pending
  * training_days proposal whose split has it (the AI drafts the days it proposed before he taps them), else the settings'.
  */
-async function splitOf(deps: Deps, slot: SplitSlot, training_days: readonly Weekday[]): Promise<SplitSlot[]> {
+export async function splitOf(deps: Deps, slot: SplitSlot, training_days: readonly Weekday[]): Promise<SplitSlot[]> {
   const holds = (split: SplitSlot[]) => split.some((s) => splitNameKey(s.name) === splitNameKey(slot.name))
   const own = splitSlots(training_days)
   if (holds(own)) return own
@@ -198,25 +198,30 @@ async function splitOf(deps: Deps, slot: SplitSlot, training_days: readonly Week
 }
 
 /**
- * The split days before `slot` (in the split that holds it: splitOf) that already hold exercises — the template of that
- * name, else its newest pending draft — as library slugs, for the prompt's "Already in Upper A: …" line: the days of its
- * focus (Upper B → Upper A; Upper C → Upper A, Upper B), and every earlier day for a full-body day (Full body after
- * Upper A and Lower A → both). The pending drafts are read only when such a day has no template.
+ * The split days before `slot` (in `slots`, the split that holds it: splitOf) that already hold exercises — the split
+ * day's template (engine splitTemplateFor: the oldest of its name), else its newest pending draft — as library slugs,
+ * for the prompt's "Already in Upper A: …" line: the days of its focus (Upper B → Upper A; Upper C → Upper A, Upper
+ * B), and every earlier day for a full-body day (Full body after Upper A and Lower A → both). The pending drafts are
+ * read only when such a day has no template.
  */
 export async function earlierDays(
   deps: Deps,
   input: {
     slot: SplitSlot
-    training_days: readonly Weekday[]
-    templates: readonly Pick<Template, 'name' | 'exercises'>[]
+    slots: readonly SplitSlot[]
+    templates: readonly Pick<Template, 'id' | 'name' | 'created_at' | 'exercises'>[]
     slugOf: (exercise_id: string) => string | undefined
   },
 ): Promise<{ name: string; slugs: string[] }[]> {
-  const slots = await splitOf(deps, input.slot, input.training_days)
+  const { slots } = input
   const at = slots.findIndex((s) => splitNameKey(s.name) === splitNameKey(input.slot.name))
   const earlier = slots.slice(0, Math.max(at, 0)).filter((s) => input.slot.focus === 'full' || s.focus === input.slot.focus)
   if (!earlier.length) return []
-  const held = new Map<string, string[]>(input.templates.map((t) => [splitNameKey(t.name), t.exercises.map((e) => e.exercise_id)]))
+  const held = new Map<string, string[]>()
+  for (const s of earlier) {
+    const t = splitTemplateFor(input.templates, s.name)
+    if (t) held.set(splitNameKey(s.name), t.exercises.map((e) => e.exercise_id))
+  }
   if (earlier.some((s) => !held.has(splitNameKey(s.name)))) {
     const rows = await deps.db
       .select({ body: ai_events.body })

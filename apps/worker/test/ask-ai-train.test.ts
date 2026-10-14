@@ -4,7 +4,8 @@
 // don't have a leg press" offers update_equipment; never more than MAX_TOOLS, never revert_train_change; a turn whose
 // model calls plan_training_week for Mon, Tue, Thu leaves one pending training_days proposal (settings unchanged), three
 // queued workout_template jobs, and the days card under the reply; renaming a template from the chat leaves a pending
-// train_change card and the template as it was. Rails from SPEC §2; split from SPEC §7 (Mon, Tue, Thu → Upper A,
+// train_change card and the template as it was; starting a session from a draft (which would accept it) is refused with
+// needs_approval. Rails from SPEC §2; split from SPEC §7 (Mon, Tue, Thu → Upper A,
 // Lower A, Full body).
 import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
@@ -186,5 +187,27 @@ describe('Ask AI runs Train', () => {
       expect.objectContaining({ type: 'proposal', status: 'pending', body: expect.objectContaining({ kind: 'train_change' }) }),
     ])
     expect((await getTemplate(deps, upperA.id)).name).toBe('Upper A')
+  })
+
+  it('starting a session from a draft (start_session with proposal_id) is refused with needs_approval; the draft stays pending', async () => {
+    const draft = crypto.randomUUID()
+    await db.insert(ai_events).values({
+      id: draft,
+      kind: 'proposal',
+      actor: 'ai',
+      summary: 'Draft for Upper A',
+      body: { kind: 'workout', mode: 'generate', date: null, workout: { name: 'Upper A', exercises: [item(bench.id, 4), item(pulldown.id, 4), item(press.id, 4)], rationale: '' }, muscle_scores: {} },
+      proposal_status: 'pending',
+    })
+    const llm = fakeRouter([
+      { calls: [{ id: 'c1', name: 'start_session', args: { proposal_id: draft } }] },
+      { reply: 'Start it from its card below: starting a draft accepts it.' },
+    ])
+
+    const out = await chatTurn(deps, llm, send('Start my Upper A workout from the new draft'))
+
+    expect(out.reply.tool_calls).toEqual([expect.objectContaining({ name: 'start_session', ok: false })])
+    expect(out.tool_messages[0]!.content).toContain('needs_approval')
+    expect((await db.select().from(ai_events).where(eq(ai_events.id, draft)))[0]?.proposal_status).toBe('pending')
   })
 })

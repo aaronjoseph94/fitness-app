@@ -1,13 +1,14 @@
 // Owns: the engine guards as training applies them — the GuardContext for workout and exercise checks (the allowed
-// exercise set, the excluded categories, and the rails from settings and the active plan), and the AI workout
-// proposals a template or session accepts.
+// exercise set, the excluded categories, and the rails from settings and the active plan), and the AI proposals a
+// template, session or Train change accepts (loading one, accepting it, rewriting its body in the same batch).
 import { applyGuards, type GuardContext, type GuardResult, type WorkoutChange } from '@fitness/shared/engine'
-import type { Actor, Proposal } from '@fitness/shared/schemas'
-import { eq } from 'drizzle-orm'
-import { plan_versions, settings } from '../../../db'
+import type { Actor, ProposalBody } from '@fitness/shared/schemas'
+import { and, eq, type SQL } from 'drizzle-orm'
+import { ai_events, plan_versions, settings } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError, notFound } from '../../../lib/http-error'
 import { getProposalRow, proposalDecisionUpdate, toProposal } from '../../events'
+import type { ProposalOf } from '../../plan'
 import type { Library } from './library'
 
 /**
@@ -43,14 +44,22 @@ export function guardWorkout(ctx: GuardContext, exercises: readonly { exercise_i
 }
 
 /** A stored AI workout proposal (404 when missing, 422 when it is another kind). */
-export async function loadWorkoutProposal(deps: Deps, id: string): Promise<Proposal & { body: { kind: 'workout' } }> {
+export async function loadWorkoutProposal(deps: Deps, id: string): Promise<ProposalOf<'workout'>> {
   const row = await getProposalRow(deps, id)
   if (!row) throw notFound('Proposal')
   const proposal = toProposal(row)
   if (!proposal || proposal.body.kind !== 'workout')
     throw new HttpError(422, 'not_a_workout_proposal', 'Only a workout proposal can become a template or a session')
-  return proposal as Proposal & { body: { kind: 'workout' } }
+  return proposal as ProposalOf<'workout'>
 }
 
 /** Mark a pending workout proposal accepted (no-op when already resolved), inside the caller's db.batch. */
 export const acceptStatement = (deps: Deps, proposal_id: string) => proposalDecisionUpdate(deps, proposal_id, { status: 'accepted' })
+
+/** Rewrite a proposal's body (and touch it for the since-poll) when `when` holds, inside the caller's db.batch. */
+export function proposalBodyUpdate(deps: Deps, id: string, body: ProposalBody, when: SQL) {
+  return deps.db
+    .update(ai_events)
+    .set({ body, updated_at: deps.now().toISOString() })
+    .where(and(eq(ai_events.id, id), eq(ai_events.kind, 'proposal'), when))
+}

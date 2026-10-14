@@ -188,7 +188,7 @@ export interface PromptInput {
   template: {
     name: string
     earlier: readonly { name: string; slugs: readonly string[] }[]
-    /** The body groups this day must reach (engine focusGroups of its focus). */
+    /** The body groups this day must reach (engine requiredGroups of its slot in its split). */
     groups: readonly BodyGroup[]
     /** A redraft of a template he has (the job's `replace`): that template's exercise slugs, to vary from; else null. */
     current: readonly string[] | null

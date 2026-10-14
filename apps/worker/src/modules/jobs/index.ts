@@ -7,6 +7,8 @@
 //   enqueue(deps, input)   → AiJob row            enqueue on its own
 //   queuedJobId(deps, type, match) → id | null    a queued job of `type` whose payload has these values (dedupe)
 //   jobInsertOnce(deps, input, match) → { id, statement } | null   jobInsert unless such a queued job exists
+//   jobInsertUnless(deps, input, exists) → { id, statement }   jobInsert decided in SQL: written only when no ai_jobs
+//                                                 row meets `exists`; the statement returns [] when it wrote nothing
 //   runSoon(deps, id)                             run in waitUntil after the response; no-op when no handler exists yet
 //   runJob(deps, id)       → JobOutcome           run one job now (lease, deadline, requeue or fail by error kind)
 //   sweep(deps, { max, fetch_budget })            requeue expired leases (failed once attempts reach MAX_REQUEUES),
@@ -17,7 +19,7 @@
 // backoff and fails after 3 attempts (lib/runner.ts `classify`). Every handler runs with actor 'ai'.
 // A job type with no registered handler is left queued untouched (its handler may arrive in a later phase).
 import { AiJob, type JobPayload, type JobType } from '@fitness/shared/schemas'
-import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, gte, inArray, is, lt, lte, SQL, sql } from 'drizzle-orm'
 import { ai_jobs, type Row } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { notFound } from '../../lib/http-error'
@@ -63,6 +65,38 @@ export function jobInsert<T extends JobType>(deps: Deps, input: EnqueueInput<T>)
     created_at: now,
     updated_at: now,
   })
+  return { id, statement }
+}
+
+/**
+ * jobInsert as one INSERT INTO ai_jobs … SELECT … WHERE NOT EXISTS (SELECT 1 FROM ai_jobs WHERE `exists`) RETURNING
+ * id, for the caller's db.batch: two racing calls write one job (the check is in SQL, not a read before the write).
+ * The statement's result is [{ id }] when it wrote the job, [] when a row met `exists`. Columns the input leaves out
+ * take their schema defaults, as jobInsert's do.
+ */
+export function jobInsertUnless<T extends JobType>(deps: Deps, input: EnqueueInput<T>, exists: SQL) {
+  const id = input.id ?? crypto.randomUUID()
+  const now = deps.now().toISOString()
+  const given: Record<string, unknown> = {
+    id,
+    type: input.type,
+    status: 'queued',
+    priority: input.priority ?? 0,
+    payload: input.payload,
+    run_after: input.run_after ?? now,
+    created_at: now,
+    updated_at: now,
+  }
+  // INSERT … SELECT lists every column in table order (drizzle), so the SELECT gives one value per column in that order.
+  const values = Object.entries(getTableColumns(ai_jobs)).map(([key, col]) => {
+    if (given[key] !== undefined) return sql.param(given[key], col)
+    if (is(col.default, SQL)) return col.default
+    return col.default === undefined ? sql`NULL` : sql.param(col.default, col)
+  })
+  const statement = deps.db
+    .insert(ai_jobs)
+    .select(sql`SELECT ${sql.join(values, sql`, `)} WHERE NOT EXISTS (SELECT 1 FROM ${ai_jobs} WHERE ${exists})`)
+    .returning({ id: ai_jobs.id })
   return { id, statement }
 }
 

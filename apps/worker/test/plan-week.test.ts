@@ -3,8 +3,8 @@
 // workout_template job per split day at user priority — Upper A, Lower A, Full body — marking the days whose template it
 // would replace; pressed again while they wait it queues nothing, and with no model key it refuses (409) before writing
 // anything. Each split draft must reach its day's body groups (engine focusGroups): a reply that misses one gains the
-// best allowed candidate for it (3 sets). trainingWeek shows each day's template, draft and job, and the body groups no
-// template reaches yet. Mon 2026-10-12 noon in Edmonton.
+// best allowed candidate for it (3 sets). trainingWeek shows each day's template, draft and job, whether its last draft
+// failed, and the body groups no template reaches yet. Mon 2026-10-12 noon in Edmonton.
 import { DEFAULT_REMINDER_PREFS, PlanWeekResult, TrainingWeek, type SplitSlot, type TemplateExerciseInput } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
@@ -241,5 +241,26 @@ describe('trainingWeek', () => {
     expect(week.slots[2]).toMatchObject({ template: null, draft: null, drafting: true })
     expect(week.uncovered).toEqual(['quads', 'hamstrings', 'glutes', 'calves'])
     expect(week.week_plan_sessions).toBeNull()
+  })
+
+  it("Lower A's last draft failed: failed until a draft of Lower A comes after it", async () => {
+    await db.update(settings).set({ training_days: ['mon', 'tue', 'thu'] })
+    const lowerA = { slot: { weekday: 'tue', name: 'Lower A', focus: 'lower' } }
+    await db.insert(ai_jobs).values([
+      { type: 'workout_template', status: 'done', priority: 10, payload: lowerA, created_at: '2026-10-12T16:00:00.000Z' },
+      { type: 'workout_template', status: 'failed', priority: 10, payload: lowerA, error: 'no provider', created_at: '2026-10-12T17:00:00.000Z' },
+    ])
+
+    expect((await trainingWeek(at('user'))).slots.map((s) => s.failed)).toEqual([false, true, false])
+
+    await db.insert(ai_events).values({
+      kind: 'proposal',
+      actor: 'ai',
+      summary: 'Draft for Lower A',
+      body: { kind: 'workout', mode: 'generate', date: null, workout: { name: 'Lower A', exercises: sets(4, legPress, legCurl, hipThrust, calfRaise), rationale: '' }, muscle_scores: {} },
+      proposal_status: 'pending',
+      created_at: '2026-10-12T17:30:00.000Z',
+    })
+    expect((await trainingWeek(at('user'))).slots.map((s) => s.failed)).toEqual([false, false, false])
   })
 })

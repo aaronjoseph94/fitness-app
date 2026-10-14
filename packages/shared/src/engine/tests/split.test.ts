@@ -2,7 +2,7 @@
 // follow the rest between the days: Full body goes on the best-rested day, back-to-back days are Upper A, Lower A) and
 // the key split days, templates and drafts are matched by.
 import { describe, expect, test } from 'vitest'
-import { splitNameKey, splitSlot, splitSlots } from '../index'
+import { splitNameKey, splitSlot, splitSlots, splitTemplateFor } from '../index'
 
 const MON_THU = ['mon', 'tue', 'wed', 'thu'] as const
 
@@ -80,5 +80,16 @@ describe('weekly split', () => {
 
   test("names match trimmed and case-insensitive: ' Upper A ' → 'upper a'", () => {
     expect(splitNameKey(' Upper A ')).toBe('upper a')
+  })
+
+  test("a split day's template is the oldest of that name (ties by id); none → null", () => {
+    const templates = [
+      { id: 'c', name: 'upper a', created_at: '2026-10-02T00:00:00.000Z' },
+      { id: 'b', name: 'Upper A ', created_at: '2026-10-01T00:00:00.000Z' },
+      { id: 'a', name: 'Upper A', created_at: '2026-10-01T00:00:00.000Z' },
+      { id: '0', name: 'Lower A', created_at: '2026-09-01T00:00:00.000Z' },
+    ]
+    expect(splitTemplateFor(templates, 'Upper A')?.id).toBe('a')
+    expect(splitTemplateFor(templates, 'Full body')).toBeNull()
   })
 })
