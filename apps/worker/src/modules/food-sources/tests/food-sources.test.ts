@@ -103,23 +103,21 @@ describe('food sources', () => {
   })
 
   it('prefers the Canadian Nutrient File over a branded Open Food Facts product for a generic "banana 120 g"', async () => {
-    await db
-      .insert(foods)
-      .values([
-        cnf(1704, 'Banana, raw', 89, 1.09, 22.84, 0.33, 1.7),
-        {
-          source: 'off',
-          source_id: '01129441',
-          barcode: '01129441',
-          name: 'Banana',
-          brand: 'fairtrade',
-          kcal_per_100g: 89,
-          protein_g: 1.1,
-          carbs_g: 23,
-          fat_g: 0.3,
-          fibre_g: 2.6,
-        },
-      ])
+    await db.insert(foods).values([
+      cnf(1704, 'Banana, raw', 89, 1.09, 22.84, 0.33, 1.7),
+      {
+        source: 'off',
+        source_id: '01129441',
+        barcode: '01129441',
+        name: 'Banana',
+        brand: 'fairtrade',
+        kcal_per_100g: 89,
+        protein_g: 1.1,
+        carbs_g: 23,
+        fat_g: 0.3,
+        fibre_g: 2.6,
+      },
+    ])
     const { fetch, calls } = fakeFetch(REMOTE)
 
     const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'banana', grams: 120 })
@@ -162,6 +160,33 @@ describe('food sources', () => {
 
     expect(match).toBeNull()
     expect(hosts(calls)).toEqual(['search.openfoodfacts.org'])
+  })
+
+  it('ignores an Open Food Facts suggestion whose source id is not a barcode, and still fetches a real one', async () => {
+    const spread = { ...OFF_PRODUCT_NUTELLA.product, code: '4000417025005', product_name: 'Hazelnut spread' }
+    const { fetch, calls } = fakeFetch({
+      'https://world.openfoodfacts.org/api/v2/product/4000417025005': {
+        code: '4000417025005',
+        status: 1,
+        product: spread,
+      },
+    })
+    const sources = createFoodSources(deps, { fetch })
+    const suggest = (source_id: string) => ({
+      name: 'hazelnut spread',
+      grams: 15,
+      candidates: [{ source: 'off' as const, source_id }],
+    })
+
+    await sources.matchItem(suggest('123/../search?q=x'))
+    await sources.matchItem(suggest('abc'))
+    expect(calls.filter((c) => c.url.includes('/api/v2/product/'))).toHaveLength(0)
+    expect(calls.some((c) => c.url.includes('123/..'))).toBe(false)
+
+    const match = await sources.matchItem(suggest('4000417025005'))
+    expect(calls.filter((c) => c.url.includes('/api/v2/product/'))).toHaveLength(1)
+    expect(calls.find((c) => c.url.includes('/api/v2/product/'))!.url).toContain('/product/4000417025005')
+    expect(match?.food).toMatchObject({ source: 'off', source_id: '4000417025005' })
   })
 
   it('scales a per-100 g food to a portion, counting unknown fibre as 0', () => {

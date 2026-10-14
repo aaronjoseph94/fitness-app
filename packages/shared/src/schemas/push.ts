@@ -11,11 +11,17 @@ export const Reminder = z.object({ enabled: z.boolean(), time: LocalTime.nullabl
 export type Reminder = z.infer<typeof Reminder>
 
 /**
- * Every reminder kind with its setting (exhaustive). Stored with the settings; not a rail. An object, not a record, so a
- * kind the app no longer has (rest_timer, removed 2026-10-14) is dropped on parse rather than refused: a settings row,
- * an export or a coach review's undo step saved before still loads.
+ * `value` without the legacy `rest_timer` key (the rest timer, removed 2026-10-14). Anything else comes back untouched, so
+ * non-objects and every other unknown key still reach the schema and fail there.
  */
-export const ReminderPrefs = z.object({
+function withoutRestTimerKey(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value) || !('rest_timer' in value))
+    return value
+  const { rest_timer: _legacy, ...rest } = value as Record<string, unknown>
+  return rest
+}
+
+const ReminderPrefsShape = z.strictObject({
   weigh_in: Reminder,
   water: Reminder,
   workout: Reminder,
@@ -23,6 +29,18 @@ export const ReminderPrefs = z.object({
   scan_due: Reminder,
   review_ready: Reminder,
 } satisfies Record<ReminderKind, typeof Reminder>)
+
+/**
+ * Every reminder kind with its setting (exhaustive). Stored with the settings; not a rail. Strict: a typo'd or unknown kind
+ * is refused. The one exception is `rest_timer`, a kind the app no longer has (removed 2026-10-14): it is dropped on parse
+ * rather than refused, so a settings row, an export or a coach review's undo step saved before still loads. `z.input` is
+ * kept as the plain object (the B type argument), so callers sending prefs stay typed.
+ */
+export const ReminderPrefs = z.preprocess<
+  unknown,
+  typeof ReminderPrefsShape,
+  z.input<typeof ReminderPrefsShape>
+>(withoutRestTimerKey, ReminderPrefsShape)
 export type ReminderPrefs = z.infer<typeof ReminderPrefs>
 
 /**
@@ -71,11 +89,24 @@ export function isPushEndpoint(url: string): boolean {
 /** A subscription endpoint as a browser gives it: an https URL on a known push service. */
 export const PushEndpoint = z.url().refine(isPushEndpoint, { message: 'Not a known Web Push service URL' })
 
+/**
+ * The kinds a device subscribes to. An older cached PWA bundle still sends `rest_timer` (removed 2026-10-14): that one entry
+ * is dropped before validating, so it re-subscribes instead of getting a 400; any other unknown kind still fails.
+ */
+function withoutRestTimerKind(value: unknown): unknown {
+  return Array.isArray(value) ? value.filter((kind) => kind !== 'rest_timer') : value
+}
+
+const SubscribedKinds = z.preprocess<unknown, z.ZodArray<typeof ReminderKind>, ReminderKind[]>(
+  withoutRestTimerKind,
+  z.array(ReminderKind),
+)
+
 /** Body of POST /api/push/subscribe — the browser PushSubscription JSON plus the kinds it wants. Upserts by endpoint. */
 export const PushSubscribe = z.object({
   endpoint: PushEndpoint,
   keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
-  kinds: z.array(ReminderKind),
+  kinds: SubscribedKinds,
 })
 export type PushSubscribe = z.infer<typeof PushSubscribe>
 

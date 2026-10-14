@@ -118,16 +118,14 @@ beforeAll(async () => {
     steps: 8000,
   }
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-26',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-26',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -283,6 +281,8 @@ describe('meal_analysis', () => {
     expect(system).toContain('Canadian Nutrient File')
     expect(system).toContain('Open Food Facts')
     expect(system).not.toMatch(/USDA|FoodData Central|fdcId/i)
+    expect(system).not.toMatch(/aaron/i)
+    expect(system).toMatch(/restaurant or chain item is named as the food/)
   })
 
   it('leaves the meal in review with its raw text when no provider answers: failed, or requeued for a quota', async () => {

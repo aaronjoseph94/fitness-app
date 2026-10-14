@@ -22,7 +22,7 @@
 //   createFoodSources(deps, FoodSourcesOptions?) → FoodSources { byBarcode(code), search(q, opts?), matchItem(item),
 //        nutritionFor(food, grams) }
 //   nutritionFor(food, grams) → Nutrients   per-100 g × grams / 100
-import type { FoodSource, Nutrients } from '@fitness/shared/schemas'
+import { Barcode, type FoodSource, type Nutrients } from '@fitness/shared/schemas'
 import type { Deps, FetchBudget } from '../../lib/deps'
 import { HttpError } from '../../lib/http-error'
 import { findByBarcode, findBySourceIds, recordUsage, remember, searchLocal, type FoodRow } from './lib/cache'
@@ -146,7 +146,8 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
 
   async function byBarcode(input: string): Promise<FoodRow | null> {
     const code = input.replace(/\D/g, '')
-    if (!/^\d{8,14}$/.test(code)) throw new HttpError(400, 'invalid_barcode', 'A barcode has 8 to 14 digits')
+    if (!Barcode.safeParse(code).success)
+      throw new HttpError(400, 'invalid_barcode', 'A barcode has 8 to 14 digits')
     const cached = await findByBarcode(deps.db, code)
     if (cached) return cached
     try {
@@ -171,7 +172,11 @@ export function createFoodSources(deps: Deps, opts: FoodSourcesOptions = {}): Fo
 
   /** The LLM's suggested foods: from the cache, plus at most one fetched by id (its ids are guesses; each costs a call). */
   async function suggestedEntries(refs: MatchItem['candidates'] = []): Promise<Entry[]> {
-    const wanted = refs.filter((r) => r.source !== 'llm').slice(0, 5)
+    // The model supplies source_id and an Open Food Facts one goes into the request path, so an `off` suggestion that is
+    // not a barcode is ignored (no cache lookup, no fetch).
+    const wanted = refs
+      .filter((r) => r.source !== 'llm' && (r.source !== 'off' || Barcode.safeParse(r.source_id).success))
+      .slice(0, 5)
     const cached = await findBySourceIds(deps.db, wanted)
     // Only an Open Food Facts suggestion can still be fetched (its source id is the barcode). A `usda` suggestion from
     // an older turn is left to the cache below: that database is no longer queried.

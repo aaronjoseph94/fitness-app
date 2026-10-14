@@ -264,7 +264,7 @@ On the **desktop** (1440 px or wider), signed in through Access:
    - the weight trend with its forecast band, goal line and milestones;
    - the targets (1,400 kcal floor respected).
 3. **Dashboard:** the sections and charts load, with no blank cards.
-4. **Train → start a session:** log one set; the rest timer bar appears.
+4. **Train → start a session:** log one set; it ticks, and the exercise card still shows its planned rest ("rest 90 s").
 5. **Progress, Log, Ask AI, Settings, Scans:** each loads without errors.
 
 On the **iPhone**, from the home-screen PWA (re-add it if the icon is stale):

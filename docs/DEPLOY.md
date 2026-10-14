@@ -65,6 +65,8 @@ Vars in `wrangler.jsonc`: `APP_ORIGIN` is the deployed URL (`https://fitness.aar
 
 Never set `DEV_AUTH_BYPASS` in production (it is only honoured on localhost anyway).
 
+`USDA_FDC_API_KEY` is no longer used (food data is Canadian: the Canadian Nutrient File and Open Food Facts) and Settings no longer lists it. If you ever stored one, delete it: `npx wrangler secret delete USDA_FDC_API_KEY` for a Worker secret, or `DELETE /api/settings/secrets/USDA_FDC_API_KEY` (signed in) for one pasted in the app.
+
 ## 5. Deploy
 
 ```sh

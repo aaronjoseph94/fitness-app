@@ -30,9 +30,9 @@ export type JobType = z.infer<typeof JobType>
 /**
  * meal_analysis: the foods in a text/photo meal. `name` carries the cooking state ("white rice, cooked") and a brand as
  * printed ("Oikos Pro greek yogurt"); `grams` is the edible weight as eaten; `confidence` covers the food and the grams;
- * `candidates` are database foods the model is sure of (a source and its id: an OFF barcode; a `usda` fdcId is only
- * looked up in the cache, USDA is no longer queried); `estimate` is nutrition PER 100 g, used only when no database
- * food matches (the item is then `estimated`).
+ * `candidates` are database foods the model is sure of: an OFF barcode printed or given (generic foods are matched by
+ * name against the Canadian Nutrient File instead); a legacy `usda` id is only looked up in the cache, USDA is never
+ * queried; `estimate` is nutrition PER 100 g, used only when no database food matches (the item is then `estimated`).
  */
 export const MealAnalysisOutput = z.object({
   items: z
