@@ -9,7 +9,7 @@ import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { formatNumber, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
@@ -31,11 +31,23 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
   const [note, setNote] = useState('')
   const save = useLogMutation(endpoints.body.createWeight)
 
-  // Prefill once the last weigh-in is known, unless Aaron has started typing.
+  // Prefill once the last weigh-in is known, unless Aaron has started typing. The input is focused (autoFocus) and the
+  // prefill moves its caret to the end, so when it lands just before the first keystroke the digits would be appended
+  // ("95.1" + "94.8"). Selecting the prefilled value, right after the commit that shows it, makes that keystroke replace it.
+  const inputRef = useRef<HTMLInputElement>(null)
+  const prefilledText = useRef<string | null>(null)
   const prefill = (onDate ?? last)?.kg
   useEffect(() => {
-    if (!touched && prefill !== undefined) setText(prefill.toFixed(1))
+    if (touched || prefill === undefined) return
+    prefilledText.current = prefill.toFixed(1)
+    setText(prefilledText.current)
   }, [prefill, touched])
+  useLayoutEffect(() => {
+    const input = inputRef.current
+    const shown = prefilledText.current
+    prefilledText.current = null
+    if (!touched && shown === text && input !== null && document.activeElement === input) input.select()
+  }, [text, touched])
 
   const kg = parseNumber(text)
   const valid = kg !== null && kg >= MIN_KG && kg <= MAX_KG && date <= today
@@ -85,6 +97,7 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
           }}
           unit="kg"
           autoFocus
+          inputRef={inputRef}
           error={showWeightProblem}
           slotProps={{
             htmlInput: {
