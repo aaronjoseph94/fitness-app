@@ -301,7 +301,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 **Session logging (sets and reps)**
 
 - Start from a template, an AI suggestion, the week plan's session, or blank. Each exercise shows last session's sets (reps × kg) greyed in, so logging is tap-to-copy then edit.
-- Per set: reps, load kg, optional RPE 6–10, done toggle. Add or remove sets; add an exercise mid-session, or swap one (a busy machine) for another with the same primary muscle; rest timer with push notification when the rest ends; notes per exercise.
+- Per set: reps, load kg, optional RPE 6–10, done toggle. Add or remove sets; add an exercise mid-session, or swap one (a busy machine) for another with the same primary muscle; each exercise shows its planned rest (no countdown timer — removed 2026-10-14 at Aaron's request); notes per exercise.
 - Finish: duration, total volume (sets × reps × kg), volume per muscle group, PRs detected (best load at a rep count, best estimated 1RM by Epley), the muscle map of what was trained, and a one-tap "save as template".
 
 **Muscle map**
@@ -383,7 +383,7 @@ Every week the app holds one `week_plans` row for the coming Monday to Sunday, a
 
 **Reminders (Web Push)**
 
-- Defaults: weigh-in 07:00, water when behind pace, workout 16:30 on training days, fast start/end, scan due, weekly review ready, rest timer end. All times editable; any kind can be off.
+- Defaults: weigh-in 07:00, water when behind pace, workout 16:30 on training days, fast start/end, scan due, weekly review ready. All times editable; any kind can be off.
 
 **Export and backup**
 
@@ -584,7 +584,7 @@ Five phases, each shippable on its own; phase 1 is usable for daily logging with
 
 **Phase 3 — training (weeks 5–6)**
 
-- Exercise library with images and video links, equipment profile and exclusions, workout builder, session logging with rest timer, muscle map, progression and deload rules, `workout_generate` and `workout_fill`, strength charts.
+- Exercise library with images and video links, equipment profile and exclusions, workout builder, session logging, muscle map, progression and deload rules, `workout_generate` and `workout_fill`, strength charts.
 - Acceptance: building and logging a four-exercise session takes under three minutes; every AI workout uses only allowed exercises; the muscle map matches the session's primary/secondary tags.
 
 **Phase 4 — scans, reviews, week plans, Claude (weeks 7–8)**
