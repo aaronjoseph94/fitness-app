@@ -46,7 +46,7 @@ const START_KG = 95.1
 const GOAL_KG = 65.0
 const GOAL_DATE = '2027-08-04'
 const TARGETS_THROUGH = '2026-12-31'
-const TRAINING_DAYS: Weekday[] = ['mon', 'tue', 'wed', 'thu']
+const TRAINING_DAYS: Weekday[] = ['mon', 'tue', 'thu'] // Aaron's default for a fresh database: Mon Upper A · Tue Lower A · Thu Full body
 const RAILS = {
   floor: 1400,
   ceiling: 1700,
