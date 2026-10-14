@@ -320,6 +320,13 @@ export type TrainChange = z.infer<typeof TrainChange>
 // ── The training week (GET /api/ai/week, POST /api/ai/week) ────────────────────────────────────────────────────
 
 /**
+ * The eight body groups a week of training must cover (engine bodyGroupsOf maps muscles onto them): chest, back (lats,
+ * middle back), shoulders, arms (biceps, triceps), quads, hamstrings, glutes, calves.
+ */
+export const BodyGroup = z.enum(['chest', 'back', 'shoulders', 'arms', 'quads', 'hamstrings', 'glutes', 'calves'])
+export type BodyGroup = z.infer<typeof BodyGroup>
+
+/**
  * One split day of the training week: the slot, the template that holds its name (null = none yet), the pending
  * `workout` draft waiting for a tap (`replaces_template_id`: the template it would replace, null = a new one) and
  * whether a workout_template job is queued or running for it.
@@ -340,13 +347,16 @@ export const TrainingWeekSlot = SplitSlot.extend({
 export type TrainingWeekSlot = z.infer<typeof TrainingWeekSlot>
 
 /**
- * The training week: the training days (settings), the split over them with each day's template and draft, and the
- * active week plan's session per weekday (a template name or null for a rest day; null overall = no active plan).
+ * The training week: the training days (settings), the split over them with each day's template and draft, the active
+ * week plan's session per weekday (a template name or null for a rest day; null overall = no active plan) and the body
+ * groups the week's templates do not reach.
  */
 export const TrainingWeek = z.object({
   training_days: z.array(Weekday),
   slots: z.array(TrainingWeekSlot),
   week_plan_sessions: z.partialRecord(Weekday, z.string().nullable()).nullable(),
+  /** Body groups no day's template (or pending draft) trains yet; empty when the week covers all of them. */
+  uncovered: z.array(BodyGroup),
 })
 export type TrainingWeek = z.infer<typeof TrainingWeek>
 
@@ -365,12 +375,18 @@ export const PlanWeekRequest = z.object({
 })
 export type PlanWeekRequest = z.infer<typeof PlanWeekRequest>
 
-/** Response of POST /api/ai/week: the split planned, the workout_template jobs queued, and the slot names skipped. */
+/**
+ * Response of POST /api/ai/week: the split planned, the workout_template jobs queued, the slot names skipped and what
+ * happened to the chosen training days: `applied` (the settings changed now), `proposed` (a training_days proposal waits
+ * for a tap) or `unchanged` (the request left the days as they were). `proposal_id`: the training_days proposal row
+ * (the record and the one-tap revert), null when unchanged.
+ */
 export const PlanWeekResult = z.object({
   slots: z.array(SplitSlot),
   job_ids: z.array(Id),
   /** Names of slots no job was queued for (not in `only`, or already drafting). */
   skipped: z.array(z.string()),
+  training_days: z.object({ status: z.enum(['applied', 'proposed', 'unchanged']), proposal_id: Id.nullable() }),
 })
 export type PlanWeekResult = z.infer<typeof PlanWeekResult>
 

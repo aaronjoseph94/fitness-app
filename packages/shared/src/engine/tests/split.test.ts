@@ -1,6 +1,6 @@
-// Owns: seam test for the weekly split (upper / lower by training-day position, a letter every two days; a 3-day week
-// is Upper A, Lower A, Full body; a 2-day week is Full body A, B; a 1-day week is Full body) and the key split days,
-// templates and drafts are matched by.
+// Owns: seam test for the weekly split (upper / lower by training-day position, a letter every two days; 1-3 day weeks
+// follow the rest between the days: Full body goes on the best-rested day, back-to-back days are Upper A, Lower A) and
+// the key split days, templates and drafts are matched by.
 import { describe, expect, test } from 'vitest'
 import { splitNameKey, splitSlot, splitSlots } from '../index'
 
@@ -30,17 +30,40 @@ describe('weekly split', () => {
     expect(splitSlot('sat', MON_THU)).toBeNull()
   })
 
-  test('three days (Mon, Tue, Thu) → Upper A, Lower A, Full body', () => {
+  test('three days: Full body goes on the best-rested day, the other two are Upper A then Lower A', () => {
+    // Mon, Tue, Thu: rest mon 1, tue 1, thu 2 → Full body on Thu.
     expect(splitSlots(['mon', 'tue', 'thu'])).toEqual([
       { weekday: 'mon', name: 'Upper A', focus: 'upper' },
       { weekday: 'tue', name: 'Lower A', focus: 'lower' },
       { weekday: 'thu', name: 'Full body', focus: 'full' },
     ])
-    expect(splitSlots(['mon', 'wed', 'fri']).map((s) => s.name)).toEqual(['Upper A', 'Lower A', 'Full body'])
+    // Mon, Wed, Fri: every rest is 2 → the tie goes to the latest day, Fri.
+    expect(splitSlots(['mon', 'wed', 'fri'])).toEqual([
+      { weekday: 'mon', name: 'Upper A', focus: 'upper' },
+      { weekday: 'wed', name: 'Lower A', focus: 'lower' },
+      { weekday: 'fri', name: 'Full body', focus: 'full' },
+    ])
+    // Tue, Thu, Fri: rest tue 2, thu 1, fri 1 → Full body on Tue; slots stay in week order.
+    expect(splitSlots(['tue', 'thu', 'fri'])).toEqual([
+      { weekday: 'tue', name: 'Full body', focus: 'full' },
+      { weekday: 'thu', name: 'Upper A', focus: 'upper' },
+      { weekday: 'fri', name: 'Lower A', focus: 'lower' },
+    ])
     expect(splitSlot('thu', ['mon', 'tue', 'thu'])?.focus).toBe('full')
   })
 
-  test('two days → Full body A, Full body B', () => {
+  test('two back-to-back days → Upper A, Lower A (Sun and Mon count as back to back)', () => {
+    expect(splitSlots(['mon', 'tue'])).toEqual([
+      { weekday: 'mon', name: 'Upper A', focus: 'upper' },
+      { weekday: 'tue', name: 'Lower A', focus: 'lower' },
+    ])
+    expect(splitSlots(['sun', 'mon'])).toEqual([
+      { weekday: 'mon', name: 'Upper A', focus: 'upper' },
+      { weekday: 'sun', name: 'Lower A', focus: 'lower' },
+    ])
+  })
+
+  test('two days with rest between → Full body A, Full body B', () => {
     expect(splitSlots(['tue', 'fri'])).toEqual([
       { weekday: 'tue', name: 'Full body A', focus: 'full' },
       { weekday: 'fri', name: 'Full body B', focus: 'full' },
