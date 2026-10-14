@@ -2,10 +2,10 @@
 // plan versions with their diff, plan changes (field/from/to/reason), the guards' verdicts on them (rejected,
 // scheduled later steps) and what a proposal proposes.
 import * as z from 'zod'
-import { Actor, byWeekday, Count, Id, Kcal, LocalDate, LocalTime, Ml, Row, Weekday } from './common'
+import { Actor, byWeekday, Count, Id, Instant, Kcal, LocalDate, LocalTime, Ml, Row, Weekday } from './common'
 import { Nutrients } from './nutrition'
 import { ClockReminder } from './push'
-import { MuscleScores, WorkoutDraft } from './training'
+import { EquipmentName, EquipmentStatus, MuscleScores, TemplateSnapshot, TrainChange, WorkoutDraft } from './training'
 
 /** One day's targets: energy and macros, water and steps. */
 export const TargetValues = Nutrients.extend({ water_ml: Ml, steps: Count })
@@ -135,6 +135,10 @@ export const ProposalBody = z.discriminatedUnion('kind', [
     workout: WorkoutDraft,
     /** Computed by the engine from the draft. */
     muscle_scores: MuscleScores,
+    /** A split draft that replaced a template: the template as it was, for revert (set when the draft is accepted). */
+    replaced: TemplateSnapshot.optional(),
+    /** When Aaron reverted the accepted draft (the template put back or removed). */
+    reverted_at: Instant.optional(),
   }),
   z.object({ kind: z.literal('week_plan'), week_plan_id: Id }),
   /** Safe list (SPEC §9): move a clock reminder (weigh-in, workout, scan due) to a new Edmonton time. */
@@ -148,6 +152,23 @@ export const ProposalBody = z.discriminatedUnion('kind', [
     from_name: z.string(),
     to_exercise_id: Id,
     to_name: z.string(),
+  }),
+  /**
+   * A change to Train made by the AI (Ask AI or MCP) and applied now; the row is its record and its one-tap revert.
+   * `before`: the template as it was (update, delete), the equipment's status before (equipment_status), null when
+   * nothing existed (template_create, exercise_hide).
+   */
+  z.object({
+    kind: z.literal('train_change'),
+    change: TrainChange,
+    before: z.union([TemplateSnapshot, z.object({ equipment: EquipmentName, status: EquipmentStatus })]).nullable(),
+    reverted_at: Instant.optional(),
+  }),
+  /** Aaron's training days moved by the AI (applied now); `before` puts the old days back on revert. */
+  z.object({
+    kind: z.literal('training_days'),
+    training_days: z.array(Weekday).min(1).max(7),
+    before: z.array(Weekday).max(7),
   }),
 ])
 export type ProposalBody = z.infer<typeof ProposalBody>

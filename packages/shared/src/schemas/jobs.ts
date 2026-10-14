@@ -139,8 +139,11 @@ export const JobPayloads = {
   }),
   workout_generate: z.object({ date: LocalDate, focus: z.string().max(200).nullable() }),
   workout_fill: z.object({ date: LocalDate, exercises: z.array(TemplateExerciseInput).min(1) }),
-  /** One day of the split, drafted as a reusable template (no date: a template is not a plan for one day). */
-  workout_template: z.object({ slot: SplitSlot }),
+  /**
+   * One day of the split, drafted as a reusable template (no date: a template is not a plan for one day). `replace`:
+   * the draft is for a template that already holds the name, so accepting it replaces that template.
+   */
+  workout_template: z.object({ slot: SplitSlot, replace: z.boolean().optional() }),
   scan_extract: z.object({ scan_id: Id }),
   scan_analysis: z.object({ scan_id: Id }),
   weekly_review: z.object({ week_start: LocalDate }),

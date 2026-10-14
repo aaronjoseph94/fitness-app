@@ -69,6 +69,8 @@ import {
   PhotoListQuery,
   PhotoUploadQuery,
   PlanVersion,
+  PlanWeekRequest,
+  PlanWeekResult,
   ProgressPhoto,
   ProposalDecision,
   PushKey,
@@ -104,6 +106,7 @@ import {
   Template,
   TemplateCreate,
   TemplatePatch,
+  TrainingWeek,
   TrendSeries,
   Upload,
   WaterLog,
@@ -386,6 +389,8 @@ export const endpoints = {
       params: IdParams,
       response: ExerciseHistory,
     }),
+    /** Undo a train_change proposal (:id): the template, equipment status or hidden exercise goes back. 409 if already reverted. */
+    revertChange: defineEndpoint({ method: 'POST', path: '/api/train-changes/:id/revert', params: IdParams, response: Ok }),
   },
 
   plan: {
@@ -415,6 +420,10 @@ export const endpoints = {
 
   ai: {
     workout: defineEndpoint({ method: 'POST', path: '/api/ai/workout', body: AiWorkoutRequest, response: JobRef }),
+    /** Plan the training week: queue a workout_template job per split day (optionally moving the training days first). */
+    planWeek: defineEndpoint({ method: 'POST', path: '/api/ai/week', body: PlanWeekRequest, response: PlanWeekResult }),
+    /** The training week as it stands: the split, each day's template and draft, and the active week plan's sessions. */
+    week: defineEndpoint({ method: 'GET', path: '/api/ai/week', response: TrainingWeek }),
     chat: defineEndpoint({ method: 'POST', path: '/api/ai/chat', body: ChatSend, response: ChatSent }),
     chatHistory: defineEndpoint({ method: 'GET', path: '/api/ai/chat', query: ChatHistoryQuery, response: z.array(ChatMessage) }),
     /** Forget one chat: its messages and tool rows go. Deleting an unknown thread is a no-op (still Ok). */

@@ -263,15 +263,116 @@ export const TemplatePatch = z.object({
 export type TemplatePatch = z.infer<typeof TemplatePatch>
 
 /**
- * One training day of the upper/lower split (engine splitSlots): its weekday, its name ("Upper A", "Lower A", …, a
- * letter every two days) and its focus. The workout_template job's payload; its kept draft is that day's template.
+ * One training day of the weekly split (engine splitSlots): its weekday, its name ("Upper A", "Lower A", "Upper B", …,
+ * "Full body", "Full body A") and its focus: 'upper' / 'lower', or 'full' (a whole-body session: a 3-day week's third
+ * day, and every day of a 1- or 2-day week). The workout_template job's payload; its kept draft is that day's template.
  */
 export const SplitSlot = z.object({
   weekday: Weekday,
   name: z.string().min(1).max(100),
-  focus: z.enum(['upper', 'lower']),
+  focus: z.enum(['upper', 'lower', 'full']),
 })
 export type SplitSlot = z.infer<typeof SplitSlot>
+
+// ── Train changes (the in-app AI runs Train) ───────────────────────────────────────────────────────────────────
+
+/**
+ * A template as it was before a Train change or a replacing draft: what one-tap revert puts back (the id is kept, so
+ * sessions and week plans that point at the template still do).
+ */
+export const TemplateSnapshot = z.object({
+  id: Id,
+  name: z.string().min(1),
+  notes: z.string().nullable(),
+  exercises: z.array(TemplateExerciseInput),
+})
+export type TemplateSnapshot = z.infer<typeof TemplateSnapshot>
+
+/**
+ * One change to Train that the AI (Ask AI or the MCP connector) makes: a template created, edited or deleted, an
+ * equipment status moved, an exercise hidden. Applied now, and kept as a `train_change` proposal row so it can be
+ * reverted with one tap (POST /api/train-changes/:id/revert). The allowed-exercise list and the rails still bind it.
+ */
+export const TrainChange = z.discriminatedUnion('op', [
+  z.object({
+    op: z.literal('template_create'),
+    name: TemplateName,
+    notes: z.string().max(1000).nullable().optional(),
+    exercises: z.array(TemplateExerciseInput).min(1).max(20),
+  }),
+  z
+    .object({
+      op: z.literal('template_update'),
+      template_id: Id,
+      name: TemplateName.optional(),
+      notes: z.string().max(1000).nullable().optional(),
+      exercises: z.array(TemplateExerciseInput).min(1).max(20).optional(),
+    })
+    .refine((c) => c.name !== undefined || c.notes !== undefined || c.exercises !== undefined, {
+      message: 'Change at least one of name, notes or exercises',
+    }),
+  z.object({ op: z.literal('template_delete'), template_id: Id }),
+  z.object({ op: z.literal('equipment_status'), equipment: EquipmentName, status: EquipmentStatus }),
+  z.object({ op: z.literal('exercise_hide'), exercise_id: Id, reason: z.string().trim().min(1).max(200) }),
+])
+export type TrainChange = z.infer<typeof TrainChange>
+
+// ── The training week (GET /api/ai/week, POST /api/ai/week) ────────────────────────────────────────────────────
+
+/**
+ * One split day of the training week: the slot, the template that holds its name (null = none yet), the pending
+ * `workout` draft waiting for a tap (`replaces_template_id`: the template it would replace, null = a new one) and
+ * whether a workout_template job is queued or running for it.
+ */
+export const TrainingWeekSlot = SplitSlot.extend({
+  template: z
+    .object({
+      id: Id,
+      name: z.string().min(1),
+      exercise_count: Count,
+      sets: Count,
+      muscle_scores: MuscleScores,
+    })
+    .nullable(),
+  draft: z.object({ proposal_id: Id, replaces_template_id: Id.nullable() }).nullable(),
+  drafting: z.boolean(),
+})
+export type TrainingWeekSlot = z.infer<typeof TrainingWeekSlot>
+
+/**
+ * The training week: the training days (settings), the split over them with each day's template and draft, and the
+ * active week plan's session per weekday (a template name or null for a rest day; null overall = no active plan).
+ */
+export const TrainingWeek = z.object({
+  training_days: z.array(Weekday),
+  slots: z.array(TrainingWeekSlot),
+  week_plan_sessions: z.partialRecord(Weekday, z.string().nullable()).nullable(),
+})
+export type TrainingWeek = z.infer<typeof TrainingWeek>
+
+/**
+ * Body of POST /api/ai/week: plan a whole-body week. `training_days` (1–7 weekdays, no repeats) is a proposal to change
+ * the settings' days first; absent = the current days. `only`: draft just the slots with these names (e.g. "Full body").
+ */
+export const PlanWeekRequest = z.object({
+  training_days: z
+    .array(Weekday)
+    .min(1)
+    .max(7)
+    .refine((d) => new Set(d).size === d.length, { message: 'Each training day once' })
+    .optional(),
+  only: z.array(z.string().trim().min(1).max(100)).min(1).max(7).optional(),
+})
+export type PlanWeekRequest = z.infer<typeof PlanWeekRequest>
+
+/** Response of POST /api/ai/week: the split planned, the workout_template jobs queued, and the slot names skipped. */
+export const PlanWeekResult = z.object({
+  slots: z.array(SplitSlot),
+  job_ids: z.array(Id),
+  /** Names of slots no job was queued for (not in `only`, or already drafting). */
+  skipped: z.array(z.string()),
+})
+export type PlanWeekResult = z.infer<typeof PlanWeekResult>
 
 /**
  * workout_generate / workout_fill / workout_template output (LLM): a session in the template format plus a two-line
