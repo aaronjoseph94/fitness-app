@@ -157,7 +157,7 @@ fitness/
   apps/web/            React PWA (src/features/<module>, src/charts, src/muscle-map, src/theme.ts)
   apps/worker/         Hono app: /api, /mcp, jobs, cron handlers; wrangler.jsonc; drizzle migrations
   packages/shared/     Zod schemas, TypeScript types, engine (pure functions)
-  packages/exercises/  free-exercise-db seed + muscle-group mapping + images (served as static assets)
+  packages/exercises/  free-exercise-db library (typed muscles, slugs) for the seed + images (served as static assets)
   seed/                scans/2026-09-26.json, equipment/anytime-fitness.json (his floor: 47 machines, by area)
   docs/                this spec as SPEC.md, PROGRESS.md, CLAUDE.md pointers
 ```
