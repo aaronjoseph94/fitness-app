@@ -3,7 +3,8 @@
 // workout_template job for the first day in split order with no template (name trimmed, case-insensitive), no pending
 // draft and no draft dismissed in the last 28 days; nothing while one is queued or running, or within 24 h of a failed
 // one. Drafts are read over that 28-day window, so a draft ignored longer is drafted afresh, and writing a split draft
-// rejects the day's older pending drafts (one pending draft per day). A split draft is a template (no date, no day's
+// rejects the day's older pending drafts (one pending draft per day). A pending draft whose day is in neither the split
+// nor the split of a pending training_days proposal is dismissed (plan 2026-10-14, decision 11). A split draft is a template (no date, no day's
 // cuts) that varies from the earlier day of its focus, and planNextTrainingDay leaves a day whose split template exists
 // to that template.
 import { ReminderKind, type ReminderPrefs, type SplitSlot } from '@fitness/shared/schemas'
@@ -148,6 +149,28 @@ describe('ensureSplitDrafts', () => {
     const later = await ensureSplitDrafts(at(hoursFrom(failed_at, 25)))
     expect(later).toMatchObject({ slot: 'Upper A', reason: 'queued' })
     expect(later.job_id).not.toBeNull()
+  })
+
+  it('dismisses a draft whose day left the split; Upper B (Mon–Thu) and Full body (the untapped Mon, Tue, Thu) stay', async () => {
+    const upperB = await draft('Upper B', 'pending', hoursFrom(NOW, -2))
+    const full = await draft('Full body', 'pending', hoursFrom(NOW, -2))
+    const fullA = await draft('Full body A', 'pending', hoursFrom(NOW, -2)) // a 2-day split's: in neither
+    await db.insert(ai_events).values({
+      kind: 'proposal',
+      actor: 'ai',
+      summary: 'Training days: Mon, Tue, Thu',
+      body: { kind: 'training_days', training_days: ['mon', 'tue', 'thu'], before: ['mon', 'tue', 'wed', 'thu'] },
+      proposal_status: 'pending',
+      created_at: hoursFrom(NOW, -3),
+      updated_at: hoursFrom(NOW, -3),
+    })
+
+    await ensureSplitDrafts(at(NOW))
+
+    const status = async (id: string) => (await db.select().from(ai_events).where(eq(ai_events.id, id)))[0]
+    expect(await status(fullA)).toMatchObject({ proposal_status: 'rejected', updated_at: NOW, read_at: NOW })
+    expect(await status(upperB)).toMatchObject({ proposal_status: 'pending' })
+    expect(await status(full)).toMatchObject({ proposal_status: 'pending' })
   })
 })
 

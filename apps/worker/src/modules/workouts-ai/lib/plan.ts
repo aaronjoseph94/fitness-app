@@ -1,15 +1,26 @@
-// Owns: what the AI workout jobs ask for and show the model — their queue priority, the day's focus (from Aaron's note
-// when he gave one, else the weekly split: default upper / lower / upper / lower over the training days), the candidate
-// exercises (allowed set only, compact), the prompt (a day's session, or a split day's reusable template), and the
-// LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by the repair step).
+// Owns: what the AI workout jobs ask for and show the model — their queue priority and fetch cost, the day's focus (from
+// Aaron's note when he gave one, else the weekly split over the training days: upper, lower or full body), the candidate
+// exercises (allowed set only, compact), the prompt (a day's session, or a split day's reusable template with the body
+// groups it must reach), and the LLM's reply schema (exercise ids as library slugs, mapped back to UUIDs by the repair
+// step).
 import { splitSlot } from '@fitness/shared/engine'
-import { EQUIPMENT_AREAS, type EquipmentItem, type Muscle, type Readiness, type TemplateExerciseInput, type Weekday } from '@fitness/shared/schemas'
+import {
+  EQUIPMENT_AREAS,
+  type BodyGroup,
+  type EquipmentItem,
+  type Muscle,
+  type Readiness,
+  type TemplateExerciseInput,
+  type Weekday,
+} from '@fitness/shared/schemas'
 import * as z from 'zod'
 import type { LibraryEntry, SessionDigest, TrainingDigest } from '../../training'
 
 /** ai_jobs.priority: Aaron's requests run before background drafts (the router also lets them use the whole quota). */
 export const USER_PRIORITY = 10
 export const BACKGROUND_PRIORITY = 0
+/** External fetches one draft may make (retries and failovers included); the sweep and "plan my week" budget by this. */
+export const LLM_FETCHES = 8
 
 export type Focus = 'upper' | 'lower' | 'full'
 
@@ -27,8 +38,7 @@ export const FOCUS_MUSCLES: Record<Focus, readonly Muscle[]> = {
 /**
  * The day's focus:
  *   fill with a partial list → upper when its primary muscles are all upper (or core), lower when all lower, else full
- *   otherwise → the weekday's split slot (engine splitSlot: position i among the training days in Mon…Sun order,
- *               i even → upper, i odd → lower); not a training day → full
+ *   otherwise → the focus of the weekday's split slot (engine splitSlot); not a training day → full
  */
 export function dayFocus(weekday: Weekday, training_days: readonly Weekday[], partial_primary: readonly Muscle[]): Focus {
   const own = partial_primary.filter((m) => !CORE.includes(m))
@@ -170,11 +180,19 @@ export function gymFloor(equipment: readonly EquipmentItem[]): GymFloor {
 export interface PromptInput {
   mode: 'generate' | 'fill'
   /**
-   * A split day's draft (workout_template): its name and the exercise slugs the earlier days of its focus hold, so
-   * Upper B varies from Upper A. It is a reusable template, so the prompt leaves out the day (date, readiness, fast
+   * A split day's draft (workout_template): its name, the exercise slugs the earlier days hold (of its focus; every
+   * earlier day for a full-body day), so Upper B varies from Upper A, the body groups it must reach, and his current
+   * version when it redrafts one. It is a reusable template, so the prompt leaves out the day (date, readiness, fast
    * day, neighbouring sessions). null for a day's session.
    */
-  template: { name: string; earlier: readonly { name: string; slugs: readonly string[] }[] } | null
+  template: {
+    name: string
+    earlier: readonly { name: string; slugs: readonly string[] }[]
+    /** The body groups this day must reach (engine focusGroups of its focus). */
+    groups: readonly BodyGroup[]
+    /** A redraft of a template he has (the job's `replace`): that template's exercise slugs, to vary from; else null. */
+    current: readonly string[] | null
+  } | null
   date: string
   weekday: Weekday
   focus: Focus
@@ -203,17 +221,31 @@ function digestLine(s: SessionDigest, slugOf: PromptInput['slugOf']): string {
   return `${s.date}: ${s.sets_done} sets, ${Math.round(s.volume_kg)} kg; ${topMuscles(s.muscle_scores) || 'muscles n/a'}${prs.length ? `; PRs ${prs.join(', ')}` : ''}`
 }
 
+/** What a body group means in muscles (engine bodyGroupsOf), where the name alone is not a library muscle. */
+const GROUP_MUSCLES: Partial<Record<BodyGroup, string>> = { back: 'lats or middle back', arms: 'biceps or triceps', quads: 'quadriceps' }
+
 /**
  * The day's lines: for a day's session its date, Aaron's note, readiness, fast day and the muscles to avoid; for a split
- * day's template its name and what the earlier days of its focus already hold.
+ * day's template its name, "every major muscle group" for a full-body day, the body groups it must reach, what the
+ * earlier days already hold and the current version it redrafts.
  */
 function dayLines(p: PromptInput): string[] {
   const focus = p.focus === 'full' ? 'full body' : `${p.focus} body`
-  if (p.template)
+  if (p.template) {
+    const { groups } = p.template
+    const meaning = groups.flatMap((g) => (GROUP_MUSCLES[g] ? [`${g} = ${GROUP_MUSCLES[g]}`] : []))
     return [
       `Template: "${p.template.name}". Focus: ${focus}. A reusable session for this day of the weekly split, not a plan for one date.`,
+      ...(p.focus === 'full' ? [`Full body: every major muscle group, ${p.sets.min}–${p.sets.max} sets.`] : []),
+      ...(groups.length
+        ? [`Train each of: ${groups.join(', ')} (at least one exercise with a primary muscle in each${meaning.length ? `; ${meaning.join(', ')}` : ''}).`]
+        : []),
       ...p.template.earlier.map((e) => `Already in ${e.name}: ${e.slugs.join(', ')}. Vary from it: other exercises for the same muscles where the list allows.`),
+      ...(p.template.current?.length
+        ? [`The current ${p.template.name}: ${p.template.current.join(', ')}. This is a new version of it: vary from it where the list allows.`]
+        : []),
     ]
+  }
   const r = p.readiness
   const readiness = `${r.score}/100 (sleep ${r.sleep_h ?? 'n/a'} h, yesterday's steps ${r.steps_vs_median ?? 'n/a'}x median, ${r.days_since_last_session ?? 'n/a'} days since last session)`
   return [

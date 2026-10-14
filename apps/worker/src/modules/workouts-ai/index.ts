@@ -5,21 +5,31 @@
 // and write one pending `workout` proposal (the web previews it; saving a template or starting a session with its
 // proposal_id accepts it). A workout_template draft is one day of the weekly split ("Upper A"): a reusable template with
 // that name and no date (lib/split.ts picks the day; plan 2026-10-09-split-drafts-and-swap); writing it rejects that
-// day's older pending drafts, so a split day has at most one.
+// day's older pending drafts, so a split day has at most one. A split draft must reach its day's body groups (engine
+// focusGroups: the prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3).
 // Interface:
 //   requestWorkout(deps, body)            → JobRef     POST /api/ai/workout: enqueue (user priority) + run soon
+//   planTrainingWeek(deps, body)          → PlanWeekResult  POST /api/ai/week, Ask AI's plan_training_week: move the
+//                                           training days (settings proposeTrainingDays: applied, or proposed for ai),
+//                                           then a user-priority workout_template job per split day not already
+//                                           drafting (replace: a template holds its name), run now while the fetch tally
+//                                           allows; 409 no_model_key (nothing written) when no model has a key
+//   trainingWeek(deps)                    → TrainingWeek  GET /api/ai/week: each split day's template, pending draft and
+//                                           job, the active week plan's sessions, the body groups not covered yet
 //   draftWorkout(deps, llm, input)        → WorkoutDraft (with muscle_scores, guard_notes, proposal_id; name for a split
 //                                           draft)  the job body
 //   planNextTrainingDay(deps, today)      → { date, job_id, reason }  nightly (after 00:30): queue workout_generate
 //                                           (background) for today when it is a training day with no session, week-plan
 //                                           session, split template (by its slot's name), pending workout proposal or
 //                                           queued job (yesterday's steps and session are known by then)
-//   ensureSplitDrafts(deps)               → { slot, job_id, reason }  cron, every tick: queue at most one background
-//                                           workout_template job for the first split day with no template or draft
+//   ensureSplitDrafts(deps)               → { slot, job_id, reason }  cron, every tick: dismiss pending split drafts
+//                                           whose day is in neither the split nor a pending training_days proposal's,
+//                                           then queue at most one background workout_template job for the first split
+//                                           day with no template or draft
 // Registers the 'workout_generate', 'workout_fill' and 'workout_template' job handlers (≤ 8 external fetches each). A
 // job no provider could answer fails at once when Aaron asked for it or no provider has a key (JobFailed); otherwise
 // the runner retries it.
-import { muscleScores, splitNameKey, splitSlot, today, weekdayOf, weekStart } from '@fitness/shared/engine'
+import { focusGroups, muscleScores, splitNameKey, splitSlot, today, weekdayOf, weekStart } from '@fitness/shared/engine'
 import {
   WeekPlanContent,
   type AiWorkoutRequest,
@@ -42,6 +52,7 @@ import {
   dayFocus,
   focusFromNote,
   gymFloor,
+  LLM_FETCHES,
   LlmWorkout,
   selectCandidates,
   SYSTEM_PROMPT,
@@ -49,14 +60,13 @@ import {
   type Focus,
 } from './lib/plan'
 import { repairDraft } from './lib/repair'
-import { earlierSameFocus, supersedeDraftsUpdate } from './lib/split'
+import { earlierDays, supersedeDraftsUpdate } from './lib/split'
 
 export { RepairError } from './lib/repair'
 export { BACKGROUND_PRIORITY, USER_PRIORITY } from './lib/plan'
 export { ensureSplitDrafts, type SplitDraftResult } from './lib/split'
+export { planTrainingWeek, trainingWeek } from './lib/week'
 
-/** External fetches one draft may make (retries and failovers included); the sweep budgets by this. */
-const LLM_FETCHES = 8
 /** Leave the job runner's 25 s deadline a margin for the database writes. */
 const LLM_DEADLINE_MS = 22_000
 /**
@@ -71,6 +81,8 @@ interface DraftOptions {
   note?: string | null
   /** fill: the partial list to complete (kept first). */
   exercises?: readonly TemplateExerciseInput[]
+  /** A split day's redraft of the template that holds its name (the job's `replace`): the prompt lists that version. */
+  replace?: boolean
   priority: Priority
   job_id?: string | null
   /** The job's deadline: an attempt the runner already requeued must not store a second proposal. */
@@ -103,9 +115,12 @@ const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower 
  *   muscle_scores  = engine muscleScores of the final exercises
  * A split draft (`input.slot`) is a reusable template, not a plan for one day: focus = the slot's, sets 12–28 (aim
  * 16–22) with none of the day's cuts (readiness, fast day, deload load, neighbouring-day avoid; recovery is checked
- * when a session starts), recent training read as of today, the prompt names the template and lists what the earlier
- * days of its focus hold (B varies from A), and the proposal has `date: null` and `workout.name` = the slot's name; the
- * same batch rejects any older pending draft of that name (lower(trim(name)) = splitNameKey(slot.name)).
+ * when a session starts), recent training read as of today, the prompt names the template, its body groups
+ * (focusGroups; "every major muscle group" for a full-body day), what the earlier days hold (of its focus, or every
+ * earlier day for a full-body day: B varies from A) and, for `replace`, his current version of it; the repair adds an
+ * exercise for each body group the reply missed (3 sets, while ≤ 28); the proposal has `date: null` and `workout.name`
+ * = the slot's name, and the same batch rejects any older pending draft of that name (lower(trim(name)) =
+ * splitNameKey(slot.name)).
  */
 export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>, input: DraftInput): Promise<WorkoutDraft> {
   const ai: Deps = { ...deps, actor: 'ai' }
@@ -135,8 +150,15 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   const templated = new Set(ctx.templates.flatMap((t) => t.exercises.map((e) => e.exercise_id)))
   const candidates = selectCandidates(library.exercises, focus, { logged, templated })
   const slugOf = (id: string) => library.byId.get(id)?.slug
+  const current = slot && input.replace ? ctx.templates.find((t) => splitNameKey(t.name) === splitNameKey(slot.name)) : undefined
+  const groups = slot ? focusGroups(slot.focus) : []
   const template = slot
-    ? { name: slot.name, earlier: await earlierSameFocus(deps, { slot, training_days: s.training_days, templates: ctx.templates, slugOf }) }
+    ? {
+        name: slot.name,
+        earlier: await earlierDays(deps, { slot, training_days: s.training_days, templates: ctx.templates, slugOf }),
+        groups,
+        current: current ? current.exercises.flatMap((e) => slugOf(e.exercise_id) ?? []) : null,
+      }
     : null
   const user = buildPrompt({
     mode: input.mode,
@@ -167,7 +189,7 @@ export async function draftWorkout(deps: Deps, llm: Pick<LlmRouter, 'complete'>,
   })
 
   const guard = await guardContext(ai, library, 'ai')
-  const repaired = repairDraft({ picks: reply.data.exercises, keep, byId: library.byId, bySlug, guard, avoid, sets })
+  const repaired = repairDraft({ picks: reply.data.exercises, keep, byId: library.byId, bySlug, guard, avoid, sets, required: groups, candidates })
   const suggestions = await progressionFor(deps, { before: deps.now().toISOString(), exercises: repaired.exercises, deload_week: !slot && ctx.deload.active })
   const keptIds = new Set(keep.map((k) => k.exercise_id))
   const exercises = repaired.exercises.map((e) => {
@@ -235,7 +257,7 @@ async function runWorkoutJob(deps: Deps, job: JobContext<'workout_generate'> | J
       job.type === 'workout_fill'
         ? await draftWorkout(deps, tracked, { mode: 'fill', date: job.payload.date, exercises: job.payload.exercises, ...attempt })
         : job.type === 'workout_template'
-          ? await draftWorkout(deps, tracked, { mode: 'generate', slot: job.payload.slot, ...attempt })
+          ? await draftWorkout(deps, tracked, { mode: 'generate', slot: job.payload.slot, replace: job.payload.replace, ...attempt })
           : await draftWorkout(deps, tracked, { mode: 'generate', date: job.payload.date, note: job.payload.focus, ...attempt })
     return { output, meta: provider }
   } catch (e) {

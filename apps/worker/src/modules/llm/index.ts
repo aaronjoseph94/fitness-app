@@ -18,7 +18,12 @@
 // - Background calls stop at 80 % of a provider's daily quota (provider_usage); user calls may use all of it.
 // - Limits, model ids and chains are data in ./providers.json. Providers without a key in env are skipped.
 // - Create one router per invocation (the fetch budget is per router unless you pass a shared `budget`).
+// - hasModelKey(deps, job) → true when some model in the job's chain has a key (app-stored or Worker secret), so a
+//   caller can refuse up front instead of queueing work no provider could answer.
+import type { JobType } from '@fitness/shared/schemas'
 import type { Deps } from '../../lib/deps'
+import { candidatesFor, defaultConfig } from './lib/config'
+import { createKeyResolver } from './lib/keys'
 import { createRouter, type RouterOptions } from './lib/router'
 import type { ChatRequest, ChatResult, CompleteRequest, CompleteResult } from './lib/types'
 
@@ -58,4 +63,12 @@ export interface LlmRouter {
 
 export function createLlmRouter(deps: Deps, opts?: RouterOptions): LlmRouter {
   return createRouter(deps, opts)
+}
+
+/** Whether any model in `job`'s chain (providers.json) has a key the router would use: app-stored first, then env. */
+export async function hasModelKey(deps: Deps, job: JobType): Promise<boolean> {
+  const resolveKey = createKeyResolver(deps)
+  const names = new Set(candidatesFor(defaultConfig, job, { vision: false, tools: false }).map((c) => c.provider.key_env))
+  for (const name of names) if (await resolveKey(name)) return true
+  return false
 }

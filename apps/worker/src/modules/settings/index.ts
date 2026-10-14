@@ -6,6 +6,15 @@
 // fibre_target_g also writes a plan version (defaults.water_ml / fibre_g, as deps.actor, through the guards) in that
 // batch, which rebuilds the targets from today on. Training days are stored once each in week order, and no path can
 // put a clock reminder in the quiet hours (22:00–07:00).
+// Interface:
+//   getSettings(deps) / updateSettings(deps, { settings?, profile? }) → SettingsView
+//   proposeTrainingDays(deps, { training_days }) → { status, proposal_id, training_days }   the days in week order:
+//        'unchanged' when the settings already hold them; actor 'ai' → 'proposed' (a pending training_days proposal with
+//        `before`, lib/training-days.ts); 'user' / 'mcp' → 'applied' now through updateSettings (its change event is
+//        the record, so proposal_id is null). 400 for no day.
+//   getMcpConnection(deps, origin)       → how Claude reaches the app
+// Registers the 'training_days' proposal handler for plan.acceptProposal: accepting saves the days (updateSettings as
+// the one who taps, which rebuilds the daily targets from today on).
 import { LOCKED_SETTINGS, today } from '@fitness/shared/engine'
 import {
   CLOCK_REMINDERS,
@@ -21,12 +30,14 @@ import { profile, settings } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, HttpError, notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
-import { planChangeStatements, targetStatementsFor } from '../plan'
+import { planChangeStatements, registerProposalHandler, targetStatementsFor, type ProposalOf, type ProposalOutcome } from '../plan'
 import { runSoon } from '../jobs'
 import { changedValues, fieldChanges, summarise } from './lib/changes'
+import { proposeDays, weekOrder, type TrainingDaysResult } from './lib/training-days'
 
 /** How Claude reaches the app (SPEC §8): the connector URL, discovery URLs and the bearer token's status. */
 export { getMcpConnection } from './lib/connection'
+export type { TrainingDaysResult } from './lib/training-days'
 
 /** Settings fields the daily targets read: changing one rebuilds them. */
 const TARGET_INPUTS: readonly string[] = ['training_days', 'calorie_floor', 'protein_min_g', 'fat_min_g', 'fast_hours']
@@ -125,3 +136,27 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
   if (version?.job_id) runSoon(deps, version.job_id)
   return getSettings(deps)
 }
+
+/**
+ * Change the training days (Ask AI's set_training_days and plan_training_week, Claude, the Train day chips): the days
+ * in week order; unchanged when the settings hold them already; a pending proposal for actor 'ai' (he taps it); saved
+ * now for 'user' and 'mcp'.
+ */
+export async function proposeTrainingDays(deps: Deps, input: { training_days: readonly Weekday[] }): Promise<TrainingDaysResult> {
+  const training_days = weekOrder(input.training_days)
+  if (!training_days.length) throw badRequest('Pick at least one training day')
+  const current = (await getSettings(deps)).settings.training_days
+  if (training_days.join() === weekOrder(current).join()) return { status: 'unchanged', proposal_id: null, training_days }
+  if (deps.actor === 'ai')
+    return { status: 'proposed', proposal_id: await proposeDays(deps, { training_days, before: current }), training_days }
+  await updateSettings(deps, { settings: { training_days } })
+  return { status: 'applied', proposal_id: null, training_days }
+}
+
+/** Accepting a training_days proposal: save its days as the one who taps (the daily targets rebuild from today on). */
+async function acceptTrainingDays(deps: Deps, proposal: ProposalOf<'training_days'>): Promise<ProposalOutcome> {
+  const view = await updateSettings(deps, { settings: { training_days: proposal.body.training_days } })
+  return { plan_version_id: null, applied: { entity: 'settings', id: view.settings.id } }
+}
+
+registerProposalHandler('training_days', { accept: acceptTrainingDays })

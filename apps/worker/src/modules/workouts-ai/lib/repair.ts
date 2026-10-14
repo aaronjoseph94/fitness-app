@@ -12,9 +12,14 @@
 //      (applied while resolving, before step 2)
 //   8. total sets into [min, max]: while above, −1 set on the exercise with the most sets (ties: the later one);
 //      while below, +1 on the one with the fewest sets under 6 (ties: the earlier one); no room → RepairError
+//  8b. body groups (a split day: `required` = engine focusGroups of its focus): for each required group the exercises'
+//      primary muscles do not reach (engine missingGroups), in `required` order, add the first of `candidates` (the
+//      prompt's ranked list) whose primary muscles reach it, that the draft does not hold, the guards allow and `avoid`
+//      does not hit — COVER_SETS sets, rep_min / rep_max / rest_sec = the lower median of the draft's own — only while
+//      total + COVER_SETS ≤ max and there are fewer than 10 exercises; a group with no candidate or no room gets a note
 //   9. the whole workout through the engine guards (12–28 sets, allowed ids) — must pass, else RepairError
-import { applyGuards, type ExerciseSwapChange, type GuardContext, type WorkoutChange } from '@fitness/shared/engine'
-import type { Muscle, TemplateExerciseInput } from '@fitness/shared/schemas'
+import { applyGuards, bodyGroupsOf, missingGroups, type ExerciseSwapChange, type GuardContext, type WorkoutChange } from '@fitness/shared/engine'
+import type { BodyGroup, Muscle, TemplateExerciseInput } from '@fitness/shared/schemas'
 import type { LibraryEntry } from '../../training'
 import type { LlmWorkout } from './plan'
 
@@ -23,6 +28,8 @@ export class RepairError extends Error {}
 
 const MAX_EXERCISES = 10
 const MAX_SETS_PER_PICK = 6
+/** Sets of an exercise added for a body group the draft missed (plan 2026-10-14, A3). */
+const COVER_SETS = 3
 
 export interface RepairInput {
   picks: LlmWorkout['exercises']
@@ -32,6 +39,10 @@ export interface RepairInput {
   guard: GuardContext
   avoid: readonly Muscle[]
   sets: { min: number; max: number }
+  /** Body groups the draft must reach (a split day's engine focusGroups); none for a day's session. */
+  required?: readonly BodyGroup[]
+  /** Where a missing group's exercise comes from: the prompt's candidates, best first (plan.selectCandidates). */
+  candidates?: readonly LibraryEntry[]
 }
 
 export interface RepairResult {
@@ -42,6 +53,8 @@ export interface RepairResult {
 type Item = { entry: LibraryEntry; plan: TemplateExerciseInput; kept: boolean; raw_sets: number }
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x))
+/** The lower median: sorted ascending, the value at index ⌊(n − 1) / 2⌋ (a value the draft itself uses). */
+const lowerMedian = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)]!
 
 export function repairDraft(input: RepairInput): RepairResult {
   const notes: string[] = []
@@ -129,6 +142,30 @@ export function repairDraft(input: RepairInput): RepairResult {
     plans[at]!.sets++
   }
   if (total() !== before) notes.push(`Sets ${total() < before ? 'trimmed' : 'raised'} from ${before} to ${total()} (limit ${input.sets.min}–${input.sets.max})`)
+
+  // 8b. every required body group reached
+  const entries = kept.map((i) => i.entry)
+  const primary = () => entries.flatMap((e) => e.primary_muscles)
+  const like = { rep_min: lowerMedian(plans.map((p) => p.rep_min)), rep_max: lowerMedian(plans.map((p) => p.rep_max)), rest_sec: lowerMedian(plans.map((p) => p.rest_sec)) }
+  const allowed = (e: LibraryEntry) =>
+    !entries.some((k) => k.id === e.id) &&
+    !e.primary_muscles.some((m) => input.avoid.includes(m)) &&
+    applyGuards<ExerciseSwapChange>([{ kind: 'exercise_swap', from_exercise_id: e.id, to_exercise_id: e.id }], input.guard).rejected.length === 0
+  for (const group of input.required ?? []) {
+    if (!missingGroups([group], primary()).length) continue
+    const pick = (input.candidates ?? []).find((e) => bodyGroupsOf(e.primary_muscles).includes(group) && allowed(e))
+    if (!pick) {
+      notes.push(`Nothing in the allowed list trains ${group}`)
+      continue
+    }
+    if (total() + COVER_SETS > input.sets.max || plans.length >= MAX_EXERCISES) {
+      notes.push(`No room to add ${group} (${total()} sets, ${plans.length} exercises)`)
+      continue
+    }
+    entries.push(pick)
+    plans.push({ exercise_id: pick.id, sets: COVER_SETS, ...like, target_load_kg: null, note: null })
+    notes.push(`Added ${pick.name} (${COVER_SETS} sets): the draft had nothing for ${group}`)
+  }
 
   // 9. the whole workout through the guards
   const final = applyGuards<WorkoutChange>([{ kind: 'workout', exercises: plans }], input.guard)

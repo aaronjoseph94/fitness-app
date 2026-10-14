@@ -1,8 +1,11 @@
-// Owns: the drafts of the weekly split (plan 2026-10-09-split-drafts-and-swap, decisions 3 and 5–9) — which split day
-// the cron drafts next as a workout_template job, and what the earlier days of a draft's focus already hold, so Upper B
-// varies from Upper A, and the statement that supersedes a day's older pending drafts when a new one is written (at
-// most one pending draft per split day). A split day, a template and a draft are matched by the engine's splitNameKey
-// (trimmed, case-insensitive: "Upper A" = " upper a "), so deleting or renaming a template brings a fresh draft.
+// Owns: the drafts of the weekly split (plan 2026-10-09-split-drafts-and-swap, decisions 3 and 5–9; plan
+// 2026-10-14-ai-runs-train-three-day-week, decision 11) — which split day the cron drafts next as a workout_template job,
+// which pending drafts it dismisses because their day left the split, what the earlier days already hold (the days of
+// the draft's focus, every earlier day for a full-body day), so Upper B varies from Upper A, and the statement that
+// supersedes a day's older pending drafts when a new one is written (at most one pending draft per split day). A split
+// day, a template and a draft are matched by the engine's splitNameKey (trimmed, case-insensitive: "Upper A" =
+// " upper a "), so deleting or renaming a template brings a fresh draft. A split is the settings' training days or the
+// days of a pending training_days proposal (Aaron has not tapped it yet), so the AI's drafts for those days survive.
 import { splitNameKey, splitSlots } from '@fitness/shared/engine'
 import { ProposalBody, type SplitSlot, type Template, type Weekday } from '@fitness/shared/schemas'
 import { and, desc, eq, gte, inArray, ne, or, sql } from 'drizzle-orm'
@@ -34,6 +37,55 @@ const splitDraftRows = (deps: Deps) =>
     sql`json_extract(${ai_events.body}, '$.workout.name') IS NOT NULL`,
   )
 
+/** The pending split drafts (draft window), newest first: id and the split day's name. */
+export const pendingSplitDrafts = (deps: Deps) =>
+  deps.db
+    .select({ id: ai_events.id, name: sql<unknown>`json_extract(${ai_events.body}, '$.workout.name')` })
+    .from(ai_events)
+    .where(and(splitDraftRows(deps), eq(ai_events.proposal_status, 'pending')))
+    .orderBy(desc(ai_events.created_at))
+
+/** Pending training_days proposals (draft window), newest first. */
+const proposedDaysRows = (deps: Deps) =>
+  deps.db
+    .select({ body: ai_events.body })
+    .from(ai_events)
+    .where(
+      and(
+        gte(ai_events.created_at, hoursAgo(deps, DRAFT_WINDOW_DAYS * 24)),
+        eq(ai_events.kind, 'proposal'),
+        eq(ai_events.proposal_status, 'pending'),
+        sql`json_extract(${ai_events.body}, '$.kind') = 'training_days'`,
+      ),
+    )
+    .orderBy(desc(ai_events.created_at))
+
+/** The proposed days of each training_days proposal row (a body that does not parse is skipped). */
+function parseDays(rows: readonly { body: unknown }[]): Weekday[][] {
+  return rows.flatMap((r) => {
+    const body = ProposalBody.safeParse(r.body)
+    return body.success && body.data.kind === 'training_days' ? [body.data.training_days] : []
+  })
+}
+
+/** Rows per UPDATE … WHERE id IN (…): 3 set values + 'pending' + the ids stay under 100 bound parameters. */
+const IDS_PER_UPDATE = 90
+
+/** Reject these pending drafts (decided as events.proposalDecisionUpdate decides), in one db.batch. */
+async function dismissDrafts(deps: Deps, ids: readonly string[]): Promise<void> {
+  const now = deps.now().toISOString()
+  const updates = []
+  for (let i = 0; i < ids.length; i += IDS_PER_UPDATE)
+    updates.push(
+      deps.db
+        .update(ai_events)
+        .set({ proposal_status: 'rejected', read_at: now, updated_at: now })
+        .where(and(inArray(ai_events.id, ids.slice(i, i + IDS_PER_UPDATE)), eq(ai_events.proposal_status, 'pending'))),
+    )
+  const [first, ...rest] = updates
+  if (first) await deps.db.batch([first, ...rest])
+}
+
 /**
  * Reject every other pending workout proposal for the split day `name` (json_extract $.workout.name, matched by
  * lower(trim(…)) = splitNameKey(name)), for the db.batch that writes the new draft `keep_id`: at most one pending draft
@@ -64,8 +116,11 @@ export interface SplitDraftResult {
 }
 
 /**
- * Cron, last in every tick. Queues at most one background workout_template job, so the split's drafts are written one
- * after another (B after A, so it can vary from it), each picked up by the next tick's sweep:
+ * Cron, last in every tick. First it dismisses (rejects) every pending split draft (draft window) whose name is in
+ * neither splitSlots(settings) nor splitSlots(the days of a pending training_days proposal): its day left the split, and
+ * a draft for a day the AI proposed stays while that proposal waits for his tap (decision 11). Then it queues at most
+ * one background workout_template job, so the split's drafts are written one after another (B after A, so it can vary
+ * from it), each picked up by the next tick's sweep:
  *   stop when  no training days                                   → 'no training days are set'
  *              a workout_template job is queued or running         → 'a split draft is being written'
  *              one failed in the last 24 h                         → 'waiting after a failed draft'
@@ -73,12 +128,14 @@ export interface SplitDraftResult {
  *   else       the first split day (Mon → Sun) with no template, no pending draft and no draft dismissed in the last
  *              28 days gets the job                                 → 'queued'
  *              none left                                           → 'every split day has a template or a draft'
- * One read when every day has a template (the usual case); the drafts are read only when a day lacks one.
+ * The usual tick (every day has a template, nothing to dismiss) is one batch of reads, the pending rows over the draft
+ * window's created_at index range; the decided drafts are read only when a day lacks a template, and a write happens
+ * only when a draft is dismissed or a job queued.
  */
 export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
   const { db } = deps
   const isDraftJob = eq(ai_jobs.type, 'workout_template')
-  const [[s], templates, writing, failed] = await db.batch([
+  const [[s], templates, writing, failed, pendingDrafts, proposed] = await db.batch([
     db.select({ training_days: settings.training_days }).from(settings).limit(1),
     db.select({ name: workout_templates.name }).from(workout_templates),
     db
@@ -91,9 +148,17 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
       .from(ai_jobs)
       .where(and(eq(ai_jobs.status, 'failed'), isDraftJob, gte(ai_jobs.updated_at, hoursAgo(deps, FAILED_WAIT_HOURS))))
       .limit(1),
+    pendingSplitDrafts(deps),
+    proposedDaysRows(deps),
   ])
-  const stop = (reason: string): SplitDraftResult => ({ slot: null, job_id: null, reason })
   const slots = splitSlots(s?.training_days ?? [])
+  const allowed = new Set([slots, ...parseDays(proposed).map(splitSlots)].flatMap((split) => split.map((slot) => splitNameKey(slot.name))))
+  await dismissDrafts(
+    deps,
+    pendingDrafts.flatMap((d) => (typeof d.name === 'string' && !allowed.has(splitNameKey(d.name)) ? [d.id] : [])),
+  )
+
+  const stop = (reason: string): SplitDraftResult => ({ slot: null, job_id: null, reason })
   if (!slots.length) return stop('no training days are set')
   if (writing.length) return stop('a split draft is being written')
   if (failed.length) return stop('waiting after a failed draft')
@@ -122,11 +187,23 @@ export async function ensureSplitDrafts(deps: Deps): Promise<SplitDraftResult> {
 }
 
 /**
- * The split days before `slot` with its focus (Upper B → Upper A; Upper C → Upper A, Upper B) that already hold
- * exercises — the template of that name, else its newest pending draft — as library slugs, for the prompt's
- * "Already in Upper A: …" line. The pending drafts are read only when such a day has no template.
+ * The split that holds `slot` (its name): the settings' days when their split has it, else the newest pending
+ * training_days proposal whose split has it (the AI drafts the days it proposed before he taps them), else the settings'.
  */
-export async function earlierSameFocus(
+async function splitOf(deps: Deps, slot: SplitSlot, training_days: readonly Weekday[]): Promise<SplitSlot[]> {
+  const holds = (split: SplitSlot[]) => split.some((s) => splitNameKey(s.name) === splitNameKey(slot.name))
+  const own = splitSlots(training_days)
+  if (holds(own)) return own
+  return parseDays(await proposedDaysRows(deps)).map(splitSlots).find(holds) ?? own
+}
+
+/**
+ * The split days before `slot` (in the split that holds it: splitOf) that already hold exercises — the template of that
+ * name, else its newest pending draft — as library slugs, for the prompt's "Already in Upper A: …" line: the days of its
+ * focus (Upper B → Upper A; Upper C → Upper A, Upper B), and every earlier day for a full-body day (Full body after
+ * Upper A and Lower A → both). The pending drafts are read only when such a day has no template.
+ */
+export async function earlierDays(
   deps: Deps,
   input: {
     slot: SplitSlot
@@ -135,9 +212,9 @@ export async function earlierSameFocus(
     slugOf: (exercise_id: string) => string | undefined
   },
 ): Promise<{ name: string; slugs: string[] }[]> {
-  const slots = splitSlots(input.training_days)
+  const slots = await splitOf(deps, input.slot, input.training_days)
   const at = slots.findIndex((s) => splitNameKey(s.name) === splitNameKey(input.slot.name))
-  const earlier = slots.slice(0, Math.max(at, 0)).filter((s) => s.focus === input.slot.focus)
+  const earlier = slots.slice(0, Math.max(at, 0)).filter((s) => input.slot.focus === 'full' || s.focus === input.slot.focus)
   if (!earlier.length) return []
   const held = new Map<string, string[]>(input.templates.map((t) => [splitNameKey(t.name), t.exercises.map((e) => e.exercise_id)]))
   if (earlier.some((s) => !held.has(splitNameKey(s.name)))) {
