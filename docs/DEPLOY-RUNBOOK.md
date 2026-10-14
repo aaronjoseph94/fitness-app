@@ -2,6 +2,8 @@
 
 <!-- Owns: the step-by-step deploy and post-deploy checklist for the deploying agent (acting for Aaron) after the 2026-10-05 thorough test pass. Background and the one-time setup live in docs/DEPLOY.md; decisions in docs/PROGRESS.md. -->
 
+> **Previous round (2026-10-05).** The commit ids, the migration range (`0000`–`0004`) and the test counts below belong to that round. For a deploy today, follow `docs/DEEPSEEK-HANDOFF.md` Part A. This file stays for its dashboard (§9), smoke-test (§10) and connector (§12) detail.
+
 **Who runs this:** the deploying agent, in this repo, on Aaron's machine, with Aaron at hand for logins, secret values and dashboard clicks.
 **What it ships:** `main` at or after `4b599e9`. That commit holds:
 
@@ -172,16 +174,15 @@ Work top to bottom. Each step says what to **run**, what to **expect**, and what
    - Don't echo values back.
    - Full details are in `docs/DEPLOY.md` §4.
 
-   | Secret                                                        | Notes                                                                                                                               |
-   | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-   | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`                            | From the Zero Trust Access application.                                                                                             |
-   | **`ACCESS_EMAIL`**                                            | **New this round.** Aaron's Access login email. Any other Access identity gets 403.                                                 |
-   | `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`                    | Service token for the weekly PDF (read-only).                                                                                       |
-   | `HEALTH_WEBHOOK_TOKEN`, `MCP_BEARER_TOKEN`, `FILE_URL_SECRET` | Random values.                                                                                                                      |
-   | `GEMINI_API_KEY`                                              | Required for any AI feature. Without keys, AI paths now say "not set up" at once.                                                   |
-   | `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`           | Fallbacks (optional).                                                                                                               |
-   | `USDA_FDC_API_KEY`                                            | Generic foods.                                                                                                                      |
-   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`      | Generate the keys with `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts`. The subject is `mailto:` plus Aaron's email. |
+   | Secret                                                        | Notes                                                                                                                                     |
+   | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+   | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`                            | From the Zero Trust Access application.                                                                                                   |
+   | **`ACCESS_EMAIL`**                                            | **New this round.** Aaron's Access login email. Any other Access identity gets 403.                                                       |
+   | `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`                    | Service token for the weekly PDF (read-only).                                                                                             |
+   | `HEALTH_WEBHOOK_TOKEN`, `MCP_BEARER_TOKEN`, `FILE_URL_SECRET` | Random values.                                                                                                                            |
+   | `GROQ_API_KEY`, `OPENROUTER_API_KEY`                          | At least one model key is needed for any AI feature (a provider with no key is skipped). Without keys, AI paths say "not set up" at once. |
+   | `ZAI_API_KEY`, `GEMINI_API_KEY`                               | More free providers (optional). The paid keys are optional too: `docs/DEPLOY.md` §4.                                                      |
+   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`      | Generate the keys with `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts`. The subject is `mailto:` plus Aaron's email.       |
 
    **Expect:** `npx wrangler secret list` shows all of them. **Never** set `DEV_AUTH_BYPASS`.
 
@@ -247,7 +248,7 @@ curl -sS -o /dev/null -w "register-bad %{http_code}\n" -X POST $H/register -H 'C
 curl -sS -o /dev/null -w "webhook-noauth %{http_code}\n" -X POST $H/api/ingest/health -H 'Content-Type: application/json' -d '{}'                             # 401
 curl -sS -o /dev/null -w "webhook-text %{http_code}\n" -X POST $H/api/ingest/health -H "Authorization: Bearer $HWT" -H 'Content-Type: text/plain' -d 'x'  # 415
 curl -sS -X POST $H/mcp -H "Authorization: Bearer $MCPT" -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 300; echo                 # a tools list (48 tools)
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | head -c 300; echo                 # a tools list (includes get_today)
 ```
 
 **If** any line differs from its comment, stop and report the line and the output.

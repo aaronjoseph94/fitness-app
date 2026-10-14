@@ -8,9 +8,11 @@
 
 - every screen of `apps/web` moved to the 2a design;
 - the MCP consent page restyled;
-- `pnpm check` is clean, 408 Vitest tests and 14 Playwright flows pass, and production dependencies pass `pnpm audit`.
+- at `c0d52be`, `pnpm check` was clean, 408 Vitest tests and 14 Playwright flows passed, and production dependencies passed `pnpm audit` (A3 re-runs all of it on the commit you deploy).
 
-There are no new D1 migrations since the last deploy (`0000`–`0007`); `migrate` should be a no-op. The only Worker change is the look of the consent page.
+Later commits on `main` add (details: `docs/PROGRESS.md` → Done): the app's new name and dumbbell mark, the optional paid models (Settings → AI), split drafts and exercise swap, the Train "This week" card (pick the days, Generate), and Ask AI changes to Train behind a tap with Undo.
+
+There is one new D1 migration since the last deploy: `0008_hide_imageless_kettlebell` (it hides three kettlebell moves that have no pictures and rewords two seeded texts). `0000`–`0007` are already applied, so `migrate` applies only `0008`.
 
 **Order:** Part A is the deploy, and it comes first. Part B is optional code work; do it only after Part A succeeds, and only if Aaron asks for it.
 
@@ -100,7 +102,7 @@ pnpm install --frozen-lockfile
    pnpm e2e
    ```
 
-   **Expect:** all 14 tests in `e2e/*.spec.ts` pass.
+   **Expect:** every test in `e2e/*.spec.ts` passes (20 tests in 12 files on 2026-10-14).
 
    - The run builds the web app, seeds a throwaway D1 in `apps/worker/.wrangler/e2e` and serves it on port 8799.
    - `llm_failed … ProvidersExhaustedError` warnings are expected, because the local run has no LLM keys.
@@ -155,7 +157,7 @@ pnpm install --frozen-lockfile
    pnpm --filter @fitness/worker db:migrate:remote
    ```
 
-   **Expect:** `No migrations to apply` (or `0000`–`0007` applied with ✅).
+   **Expect:** `0008_hide_imageless_kettlebell` applied with ✅ (or `No migrations to apply` if it has already run).
 
 3. Seed (safe to re-run):
 
@@ -201,7 +203,7 @@ cd apps/worker && npx wrangler secret list
 - `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, `ACCESS_EMAIL`;
 - `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET`;
 - `HEALTH_WEBHOOK_TOKEN`, `MCP_BEARER_TOKEN`, `FILE_URL_SECRET`;
-- `GEMINI_API_KEY`, plus optionally `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`;
+- at least one model key: `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `ZAI_API_KEY` or `GEMINI_API_KEY` (a key pasted in the app under Settings → AI also counts, and `secret list` does not show it);
 - optionally the paid models (2026-10-08, pay as you go; absent is fine, and Aaron can paste them in the app under Settings → AI instead): `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_PAID_API_KEY`;
 - `USDA_FDC_API_KEY` (legacy: USDA is no longer queried since 2026-10-06; its absence is fine);
 - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
@@ -283,7 +285,7 @@ Write one short summary:
 
 ### Rollback
 
-- **Code:** list versions with `cd apps/worker && npx wrangler deployments list`, then run `npx wrangler rollback <previous-version-id>`. This round is web-only, so a rollback is always safe.
+- **Code:** list versions with `cd apps/worker && npx wrangler deployments list`, then run `npx wrangler rollback <previous-version-id>`. A code rollback does not undo migration `0008`, which only adds three exclusion rows and rewords two seeded texts.
 - **Database** (only if A5 went wrong): `npx wrangler d1 time-travel restore fitness --bookmark=<bookmark from A5>`.
 - **Error 1102** (CPU limit) in Workers Logs: Aaron switches the account to Workers Paid. No code change is needed.
 

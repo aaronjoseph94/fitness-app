@@ -23,9 +23,9 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 
 - **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Geist (self-hosted variable font, OFL) on the "2a" design — a 240 px sidebar + 56 px header from md up, bottom tabs on phones, hairline white cards (spec: `docs/design/design_handoff_fitness_2a/README.md`; the kit lives in `apps/web/src/components`).
 - **Worker** (`apps/worker`, config `wrangler.jsonc`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp` (`@modelcontextprotocol/server` v2 + `@modelcontextprotocol/hono`, stateless, new server per request), job runner (`ai_jobs` + `ctx.waitUntil()` + one 5-minute cron). D1 via Drizzle ORM, R2 for files, Browser Rendering (`BROWSER.quickAction('pdf')`) for archived PDFs, Cloudflare Access JWT on every request.
-- **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/engine`), guardrails (`packages/shared/engine/guards.ts`).
+- **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/src/engine`), guardrails (`packages/shared/src/engine/guards.ts`).
 - **Exercises** (`packages/exercises`): free-exercise-db seed, muscle-group mapping, images served as static assets.
-- **Seed** (`seed/`): `scans/2026-09-26.json`, `equipment/anytime-fitness.json` — his floor: the 47 machines at Anytime Fitness Lacombe, each with the part of the gym it is in, plus the club's absences. A generated workout may only pull from it.
+- **Seed** (`seed/`): `scans/2026-09-26.json`, `foods/cnf.json` (the Canadian Nutrient File foods), `equipment/anytime-fitness.json` — his floor: the 47 machines at Anytime Fitness Lacombe, each with the part of the gym it is in, plus the club's absences. A generated workout may only pull from it.
 - **Tests**: Vitest (engine and schemas; Worker routes via `@cloudflare/vitest-plugin`), Playwright against the local Worker.
 - **LLMs**: free tiers by default (Groq → OpenRouter `:free` → Z.ai GLM → Gemini Flash), all via plain `fetch`. Paid models are optional: a key set under Settings → AI puts that model first in every chain (Claude Opus 5.5 → GPT-6.1 Sol → Gemini 3.1 Pro), capped by the app at 200 requests a day per provider. Claude also reaches the app through the MCP connector from Aaron's own Claude chats.
 
@@ -38,10 +38,10 @@ pnpm install
 pnpm dev                                 # web + Worker together for local development
 pnpm --filter @fitness/worker dev        # wrangler dev: Worker + built web assets, local D1 and R2
 pnpm test                                # Vitest across all packages
-pnpm --filter @fitness/shared test       # engine + schema fixtures only (fast)
+pnpm test:engine                         # engine + schema fixtures only (fast; root script, vitest --project engine)
 pnpm --filter @fitness/worker db:generate        # drizzle-kit generate → apps/worker/drizzle
-pnpm --filter @fitness/worker db:migrate:local   # wrangler d1 migrations apply fitness --local
-pnpm --filter @fitness/worker db:migrate:remote  # wrangler d1 migrations apply fitness --remote (CI, before deploy)
+pnpm --filter @fitness/worker db:migrate:local   # wrangler d1 migrations apply DB --local
+pnpm --filter @fitness/worker db:migrate:remote  # wrangler d1 migrations apply DB --remote (Aaron, before each deploy)
 pnpm --filter @fitness/worker seed:local         # load seed/ into local D1
 pnpm --filter @fitness/worker db:equipment       # regenerate the equipment-inventory migration (drizzle/0007) from seed/equipment/
 pnpm --filter @fitness/exercises run fetch:images # download exercise step images (gitignored) before a web build
@@ -49,7 +49,7 @@ pnpm --filter @fitness/exercises run fetch:media  # download matched ExerciseDB 
 pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts  # new Web Push key pair
 pnpm --filter @fitness/worker run deploy # wrangler deploy (Aaron only — see docs/DEPLOY.md)
 pnpm e2e                                 # Playwright flows against a seeded local Worker
-pnpm check                               # typecheck + deep-module boundaries
+pnpm check                               # typecheck + deep-module boundaries (pnpm lint:boundaries alone for the second)
 ```
 
 ## Conventions (SPEC §4)
@@ -58,7 +58,7 @@ pnpm check                               # typecheck + deep-module boundaries
 - Zod schema first for every API body, job output and MCP tool input. Types are inferred from schemas, never written twice by hand.
 - Visual tokens (colours, type scale, spacing, chart palette) live only in `apps/web/src/theme.ts`, and no other file hard-codes a colour. The scheme is Facebook blue (`accent.main` `#166FE5`), measured for WCAG AA wherever white text sits on it.
 - No secrets in the web bundle. The web app talks only to `/api`. LLM keys live in Worker secrets.
-- Local dev against local D1 and R2; deploy with `wrangler deploy`; migrations run in CI before deploy.
+- Local dev against local D1 and R2; deploy with `wrangler deploy`; Aaron applies migrations before each deploy (`docs/DEPLOY.md`; there is no CI).
 - Units kg, cm, ml, kcal, g. Timezone `America/Edmonton`. A day is an ISO date string (`2026-10-04`); instants are ISO timestamps with offset. IDs are UUID text.
 
 ## Rails (never break these)
@@ -66,7 +66,7 @@ pnpm check                               # typecheck + deep-module boundaries
 - **Calorie floor 1,400 kcal/day**, set with Aaron's doctor and dietitian. Nothing proposes below it. Review proposals stay at or under the ceiling (default 1,700). A single proposal moves daily kcal by at most 150.
 - **Two 24 h fasts a month** on dates Aaron picks. A fast day is a known pattern, not a missed day.
 - **Exercise set**: machines and free weights only. `body only` and floor exercises are excluded. AI only ever sees the allowed list. Sets per session 12–28.
-- **No LLM writes to the database directly.** Every LLM output passes Zod validation and `packages/shared/engine/guards.ts`. Every applied change is a `plan_versions` row with a reason, a diff and one-tap revert. Nothing can change the `settings` rails except Aaron.
+- **No LLM writes to the database directly.** Every LLM output passes Zod validation and `packages/shared/src/engine/guards.ts`. Every applied change is a `plan_versions` row with a reason, a diff and one-tap revert (a Train change — template, equipment status, hidden exercise — keeps its reason, a stored "before" and a one-tap Undo on its own event instead; SPEC §9). Nothing can change the `settings` rails except Aaron.
 - **Privacy**: the LLM never sees Aaron's name, photos of Aaron, or raw EXIF. Progress photos never go to any LLM.
 
 ## How we work
@@ -75,7 +75,7 @@ pnpm check                               # typecheck + deep-module boundaries
 
 1. Phase by phase (SPEC §12). Before each phase: a short plan (files, migrations, components, tests), then wait for Aaron's go.
 2. Within a phase: feature by feature, one commit per feature with a clear message. Parallel agents where the work splits cleanly (Aaron's standing preference).
-3. The engine (`packages/shared/engine`) is built first in every phase that touches numbers, with Vitest fixtures, before any UI or LLM code uses it.
+3. The engine (`packages/shared/src/engine`) is built first in every phase that touches numbers, with Vitest fixtures, before any UI or LLM code uses it.
 4. Testing during the build: a quick, targeted check per feature only (typecheck + at most one short test). Aaron runs the full suites himself.
 5. When something in the spec is impossible or a better option exists (a library, a Cloudflare limit, a free-tier change), say so and propose the smallest change. Never substitute silently. Record the decision in `docs/PROGRESS.md`.
 6. Show the running app (local Worker) at the end of each feature; Playwright flows for the main paths at the end of each phase.
@@ -133,7 +133,7 @@ It documents TesterArmy's agentic `e2e` runner (`npx e2e`, `e2e.config.ts`, `tes
 - Keep per-request CPU small: build JSON Schemas for tools once per isolate (module scope), never zip or process images in the Worker (export zip is built in the browser; backups are per-table JSON in R2).
 - One cron (`*/5 * * * *`). `src/cron.ts` sweeps `ai_jobs` and dispatches nightly / weekly / monthly work by **Edmonton local time**, made idempotent by a `cron_runs` row per (kind, local period).
 - Jobs run in `ctx.waitUntil()` with a 25 s deadline (per-attempt `AbortSignal.timeout`); on deadline set `status=queued`. `ai_jobs.lease_until` lets the sweep requeue stuck `running` rows.
-- Auth: Cloudflare Access JWT (`Cf-Access-Jwt-Assertion`, verified with `jose` against `${ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, JWKS cached at module scope). `DEV_AUTH_BYPASS=1` (only in `.dev.vars`, only honoured for localhost hosts) skips it locally. `/api/ingest/health` and `/mcp` use their own bearer tokens.
+- Auth: Cloudflare Access JWT (`Cf-Access-Jwt-Assertion`, verified with `jose` against `${ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, JWKS cached at module scope). `DEV_AUTH_BYPASS=1` (only in `.dev.vars`, only honoured for localhost hosts) skips it locally. `/api/ingest/health` uses its own bearer token; `/mcp` takes its bearer token or an OAuth 2.1 access token (Claude's connector; `/authorize` sits behind Access).
 - Files: R2 objects are served only through `/api/files/*` with our own HMAC-signed, expiring URLs (`FILE_URL_SECRET`). No S3 presigned URLs.
 
 **Web.**

@@ -4,7 +4,7 @@
 
 Everything runs in one Cloudflare Worker on the free plan: static assets (the PWA), `/api`, `/mcp`, jobs and one cron. Data lives in D1, files in R2. Commands run from the repo root unless noted.
 
-An agent deploying for Aaron follows [`DEPLOY-RUNBOOK.md`](DEPLOY-RUNBOOK.md): the same steps in order, each with its command, expected output and stop condition.
+An agent deploying for Aaron follows [`DEEPSEEK-HANDOFF.md`](DEEPSEEK-HANDOFF.md) Part A: the same steps in order, each with its command, expected output and stop condition. [`DEPLOY-RUNBOOK.md`](DEPLOY-RUNBOOK.md) is the previous round's checklist, with more detail on the dashboard and connector steps.
 
 ## 0. Prerequisites
 
@@ -40,7 +40,7 @@ pnpm build                                          # apps/web/dist (copies imag
 
 ## 4. Secrets
 
-Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate random values with `openssl rand -base64 32`.
+Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate random values with `openssl rand -base64 32`. The model keys and `MCP_BEARER_TOKEN` can instead be pasted in the app under Settings → AI; a value stored there wins over the Worker secret of the same name. `HEALTH_WEBHOOK_TOKEN` is read from the Worker secret only.
 
 | Secret | What it is | Where to get it |
 | --- | --- | --- |
@@ -51,10 +51,10 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | `HEALTH_WEBHOOK_TOKEN` | Bearer token for the iOS Shortcut | random |
 | `MCP_BEARER_TOKEN` | Static bearer for MCP clients that support headers (Claude Code; Claude if "Request headers" is offered) | random |
 | `FILE_URL_SECRET` | HMAC key for short-lived file URLs | random |
-| `OPENROUTER_API_KEY` | Primary LLM (free `:free` models) | openrouter.ai → Keys |
-| `GEMINI_API_KEY` | Fallback LLM (free tier) | aistudio.google.com → Get API key |
-| `ZAI_API_KEY` | GLM fallback (free Flash models) | z.ai → API keys |
-| `GROQ_API_KEY` | Fast text fallback | console.groq.com → API keys |
+| `GROQ_API_KEY` | First free text model (the free text chain is Groq → OpenRouter → GLM → Gemini; a provider with no key is skipped, and vision jobs skip Groq) | console.groq.com → API keys |
+| `OPENROUTER_API_KEY` | Free `:free` models: second for text, first for vision | openrouter.ai → Keys |
+| `ZAI_API_KEY` | GLM (free Flash models) | z.ai → API keys |
+| `GEMINI_API_KEY` | Gemini Flash, last of the free tiers | aistudio.google.com → Get API key |
 | `ANTHROPIC_API_KEY` | Optional, pay as you go: puts Claude Opus 5.5 first for every AI job, capped by the app at 200 requests/day. Set it here or in the app under Settings → AI | console.anthropic.com → API keys (a Claude Pro subscription does not include this) |
 | `OPENAI_API_KEY` | Optional, pay as you go: GPT-6.1 Sol, tried after Claude, same cap | platform.openai.com → API keys (a ChatGPT Plus subscription does not include this) |
 | `GEMINI_PAID_API_KEY` | Optional, pay as you go: Gemini 3.1 Pro, tried after ChatGPT, same cap. The same Google key as `GEMINI_API_KEY` with billing turned on; setting this name is the opt-in | aistudio.google.com → Get API key, then turn on billing |

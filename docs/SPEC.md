@@ -9,7 +9,7 @@ A single-user, AI-first fitness tracker (installable PWA + Cloudflare Worker) th
 **Goals**
 
 - Log meals (text, photo, voice, barcode), weigh-ins, tape measurements, water, fasts, workouts (sets, reps, load), sleep and steps from Apple Watch, Evolt 360 scans, and progress photos.
-- An LLM job runs after every log and nightly/weekly, using free tiers by default (OpenRouter `:free` primary, Z.ai, Gemini and Groq as fallbacks; a paid model goes first when its key is set, section 9), and proposes adjustments to targets, meals and training.
+- An LLM job runs after every log and nightly/weekly, using free tiers by default (Groq, OpenRouter `:free`, Z.ai and Gemini in a failover chain; a paid model goes first when its key is set, section 9), and proposes adjustments to targets, meals and training.
 - Deterministic engine owns the numbers (targets, trend weight, forecast, progression); the LLM explains, suggests and proposes. Every AI change is a plan version with a reason and one-tap revert.
 - Workouts suggested from the real equipment profile (have / don't have / dislike / can't use) and from a library where every exercise has images and a video link; a muscle map shows what any workout (AI or custom) trains.
 - Evolt scans uploaded as images, extracted to structured data, compared over time, and fed into the plan.
@@ -137,25 +137,25 @@ One pnpm monorepo deployed as a single Cloudflare Worker: it serves the React PW
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
-| Frontend | React 19, Vite, TypeScript (strict), MUI | PWA via vite-plugin-pwa (installable, offline shell). Recharts for charts (SVG, prints cleanly). TanStack Query for server state, Zustand for UI state. Dexie (IndexedDB) for the offline log queue. @zxing/browser for barcodes. Web Speech API for voice logging. Outfit font self-hosted (section 11). |
-| Hosting (web) | Workers static assets | The Vite build is served by the same Worker (`assets` binding in `wrangler.toml`); custom domain, HTTPS, no separate Pages project. |
-| API | Hono on Cloudflare Workers | REST under `/api`, MCP under `/mcp` (stateless Streamable HTTP with `@hono/mcp` + `@modelcontextprotocol/sdk`; Cloudflare's `McpAgent` on Durable Objects is the fallback if sessions are ever needed), job runner in the same Worker. Public HTTPS, which the Claude custom connector needs. Zod schemas shared with the web app. |
+| Frontend | React 19, Vite, TypeScript (strict), MUI | PWA via vite-plugin-pwa (installable, offline shell). Recharts for charts (SVG, prints cleanly). TanStack Query for server state, Zustand for UI state. Dexie (IndexedDB) for the offline log queue. `barcode-detector` (ZXing-C++ as WASM) for barcodes. Web Speech API for voice logging. Geist font self-hosted (section 11). |
+| Hosting (web) | Workers static assets | The Vite build is served by the same Worker (`assets` binding in `apps/worker/wrangler.jsonc`); HTTPS on the workers.dev hostname (a custom domain is optional), no separate Pages project. |
+| API | Hono on Cloudflare Workers | REST under `/api`, MCP under `/mcp` (stateless Streamable HTTP with `@modelcontextprotocol/hono` + `@modelcontextprotocol/server` v2; Cloudflare's `McpAgent` on Durable Objects is the fallback if sessions are ever needed), job runner in the same Worker. Public HTTPS, which the Claude custom connector needs. Zod schemas shared with the web app. |
 | Database | Cloudflare D1 (SQLite), Drizzle ORM | Migrations with `wrangler d1 migrations` from `apps/worker/drizzle`. Free tier: 5 GB, 5 M reads and 100 k writes a day, far above one user's needs. |
 | Storage | Cloudflare R2 | One private bucket with prefixes `meal-photos/`, `scan-sheets/`, `progress-photos/`, `reports/`. Files are served only through the Worker with short-lived signed URLs. 10 GB free. |
 | Auth | Cloudflare Access (Zero Trust) | The site and `/api` sit behind an Access application allowing Aaron's email (one-time PIN or Google login); the Worker verifies the Access JWT on every request. `/mcp` and `/api/ingest/health` are excluded from the Access policy and check their own bearer tokens. No login screen to build. |
-| Jobs | `ai_jobs` table + `ctx.waitUntil()` + Cron Triggers | A log request inserts its jobs and runs them in `waitUntil()` right after the response is sent, so analysis starts within seconds and no queue is needed. A Cron Trigger every 5 minutes sweeps queued or failed jobs. Nightly and weekly jobs are Cron Triggers in UTC (nightly 06:30 UTC; the Sunday-evening review at 03:00 UTC Monday) with the Edmonton date computed in code. |
+| Jobs | `ai_jobs` table + `ctx.waitUntil()` + Cron Triggers | A log request inserts its jobs and runs them in `waitUntil()` right after the response is sent, so analysis starts within seconds and no queue is needed. A Cron Trigger every 5 minutes sweeps queued or failed jobs. The same cron dispatches nightly (after 00:30), weekly (Sunday from 20:00) and monthly work by Edmonton local time, each once per local period (a `cron_runs` row). |
 | LLM | Provider router (section 9) | All providers are called with plain `fetch`; no SDK that needs Node APIs. |
-| PDF | Cloudflare Browser Rendering (Puppeteer binding) | Renders the weekly report page to PDF into `reports/`. Free-tier minutes are limited, so the in-app Print button (browser print-to-PDF) is the everyday path and Browser Rendering the archive path. |
+| PDF | Cloudflare Browser Rendering (`BROWSER` binding, `quickAction('pdf')`) | Renders the weekly report page to PDF into `reports/`. Free-tier minutes are limited, so the in-app Print button (browser print-to-PDF) is the everyday path and Browser Rendering the archive path. |
 | Push | Web Push (VAPID) | A Workers-compatible web-push library (WebCrypto based); the service worker displays the notification. |
 | Images | Browser only | Meal and progress photos are downscaled to 1,024 px and EXIF-stripped with canvas before upload; the Worker never processes images. |
-| Tests | Vitest (engine, schemas; Worker routes with `@cloudflare/vitest-pool-workers`), Playwright (key flows against `wrangler dev`) | Engine math is unit-tested against fixtures. |
+| Tests | Vitest (engine, schemas; Worker routes with `@cloudflare/vitest-plugin`), Playwright (key flows against `wrangler dev`) | Engine math is unit-tested against fixtures. |
 
 **Repo layout**
 
 ```text
 fitness/
   apps/web/            React PWA (src/features/<module>, src/charts, src/muscle-map, src/theme.ts)
-  apps/worker/         Hono app: /api, /mcp, jobs, cron handlers; wrangler.toml; drizzle migrations
+  apps/worker/         Hono app: /api, /mcp, jobs, cron handlers; wrangler.jsonc; drizzle migrations
   packages/shared/     Zod schemas, TypeScript types, engine (pure functions)
   packages/exercises/  free-exercise-db seed + muscle-group mapping + images (served as static assets)
   seed/                scans/2026-09-26.json, equipment/anytime-fitness.json (his floor: 47 machines, by area)
@@ -173,15 +173,15 @@ fitness/
 
 **Bindings and secrets**
 
-Bindings in `wrangler.toml`: `DB` (D1), `FILES` (R2), `ASSETS` (static assets), `BROWSER` (Browser Rendering). Secrets via `wrangler secret put`: `GEMINI_API_KEY`, `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_PAID_API_KEY` (the three optional paid models, section 9), `MCP_BEARER_TOKEN`, `HEALTH_WEBHOOK_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`. Vars: `APP_ORIGIN`, `TZ_NAME=America/Edmonton`.
+Bindings in `apps/worker/wrangler.jsonc`: `DB` (D1), `FILES` (R2), `ASSETS` (static assets), `BROWSER` (Browser Rendering), `OAUTH_KV` (KV, MCP OAuth). Secrets via `wrangler secret put`: `GEMINI_API_KEY`, `ZAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_PAID_API_KEY` (the three optional paid models, section 9), `MCP_BEARER_TOKEN`, `HEALTH_WEBHOOK_TOKEN`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `FILE_URL_SECRET`, `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`, `ACCESS_EMAIL`, `ACCESS_CLIENT_ID`, `ACCESS_CLIENT_SECRET` (full table: `docs/DEPLOY.md` §4). The model keys and `MCP_BEARER_TOKEN` can also be stored in the app (Settings → AI); a stored value wins over the secret. Vars: `APP_ORIGIN`, `TZ_NAME=America/Edmonton`.
 
 **Working conventions for Claude Code**
 
-- Every file starts with a short comment on what it owns. Functions in `packages/shared/engine` are pure, typed and commented with the formula they implement.
+- Every file starts with a short comment on what it owns. Functions in `packages/shared/src/engine` are pure, typed and commented with the formula they implement.
 - Zod schema first for every API body, job output and MCP tool input; types are inferred from the schema, never duplicated by hand.
 - Theme tokens (colours, type scale, spacing, chart palette) live in `apps/web/src/theme.ts` only, and nothing else in the app hard-codes a colour: charts read the tokens so their SVG carries literal hex for print. The action colour is Facebook blue (`accent.main` `#166FE5`).
 - No secrets in the web bundle. The web app talks only to `/api`.
-- Local dev with `wrangler dev` (local D1 and R2); deploy with `wrangler deploy`; migrations run in CI before deploy.
+- Local dev with `wrangler dev` (local D1 and R2); deploy with `wrangler deploy`; migrations are applied with `wrangler d1 migrations apply` before each deploy (`docs/DEPLOY.md` §2). Nothing deploys automatically.
 
 ## 5. Data model
 
@@ -306,7 +306,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **Muscle map**
 
-- An SVG body, front and back, with one `<path>` per muscle group keyed by the enum above (own asset in `apps/web/src/muscle-map`).
+- An SVG body, front and back, with one group per muscle keyed by the enum above (`data-muscle`). The geometry is vendored from react-muscle-map (public domain) in `apps/web/src/muscle-map/source/`; we draw no body art of our own.
 - Score per muscle for any workout = Σ over exercises of sets × (1.0 if primary, 0.5 if secondary). Colour scale: none, light, medium, heavy (quantile thresholds, legend shown).
 - Shown in: the builder (live as exercises are added), AI previews, session summary, template cards, the week plan, and the Progress tab as a weekly volume map with a 7-day slider.
 
@@ -341,7 +341,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **Weekly review and printable summary**
 
-- Sunday 20:00 (03:00 UTC Monday): the engine aggregates the week from `v_day` (trend change, average intake and macros, protein adherence, water, steps, sleep, sessions done vs planned, volume per muscle, PRs, fasts, logging adherence). The `weekly_review` job turns it into a narrative plus proposals inside the rails, unless a Claude review (below) already ran that week.
+- Sunday from 20:00 Edmonton time (the cron works in local time, so daylight saving needs no adjustment): the engine aggregates the week from `v_day` (trend change, average intake and macros, protein adherence, water, steps, sleep, sessions done vs planned, volume per muscle, PRs, fasts, logging adherence). The `weekly_review` job turns it into a narrative plus proposals inside the rails, unless a Claude review (below) already ran that week.
 - Page `/reports/week/<YYYY-Www>`: a print-ready layout (Letter, 15 mm margins, charts as SVG, page breaks between sections) with weight trend, intake vs target, macros, water, steps, sleep, training volume map, PRs, fasts, scan deltas if any, the narrative, the proposals with their status, and next week's plan. "Print" opens the browser dialog; "Save PDF" asks the Worker to render the same page with Browser Rendering and store it in `reports/`.
 - Past reviews list on the Progress tab; each opens the page and its PDF.
 
@@ -355,7 +355,7 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 **MCP connector**
 
-- `/mcp` on the Worker, Streamable HTTP, `@modelcontextprotocol/sdk`, authenticated by `Authorization: Bearer <MCP_BEARER_TOKEN>`. Add it in Claude as a custom connector with the token as a request header; the server must be public HTTPS because Claude connects from Anthropic's cloud.
+- `/mcp` on the Worker, Streamable HTTP, `@modelcontextprotocol/server`, authenticated by `Authorization: Bearer <MCP_BEARER_TOKEN>` or, when the connector dialog has no header field, by OAuth 2.1 (the consent page sits behind Access; `docs/DEPLOY.md` §8). Add it in Claude as a custom connector; the server must be public HTTPS because Claude connects from Anthropic's cloud.
 - Exposes the same tools as Ask AI plus resources `fitness://today`, `fitness://plan`, `fitness://week/<YYYY-Www>`; writes through MCP are recorded with actor `mcp` and follow the same rails and proposal rules.
 
 **Coach reviews through MCP (Claude as the senior coach)**
@@ -401,17 +401,16 @@ The engine computes; the LLM reads the computed state and proposes. Every LLM ca
 | OpenAI (ChatGPT) | `gpt-6.1-sol` | $2 / $10 | After Claude, before the free tiers, when its key is set | 200 requests/day, our own; background jobs stop at 80 % |
 | Google AI Studio (Gemini Pro) | `gemini-3.1-pro-preview` | $2 / $12 (paid tier only) | After ChatGPT, before the free tiers, when `GEMINI_PAID_API_KEY` is set — the same Google key as the free row with billing on; that name is the opt-in | 200 requests/day, our own; background jobs stop at 80 % |
 
-**Providers (free tiers, as of 2026-10-04; limits change, so they live in `apps/worker/src/modules/llm/providers.json`)**
+**Providers (free tiers, last checked 2026-10-08; limits change, so they live in `apps/worker/src/modules/llm/providers.json`, which also holds the exact model ids and the chains)**
 
 | Provider | Models | Role | Known limits |
 | --- | --- | --- | --- |
-| OpenRouter (`:free`) | Free models with tool calling and vision | Primary for every chain: meal parsing, classification, vision for meal photos and scan sheets | 20 RPM; 50 requests/day account-wide (1,000 after a one-time $10 top-up), so the daily cap is reached before any Gemini fallback |
-| Google AI Studio (Gemini) | Gemini Flash (vision, function calling); Flash-Lite for cheap classification | First fallback once OpenRouter's daily cap is spent | Flash and Flash-Lite only on the free tier since April 2026; roughly 5–15 requests/min and up to 1,000/day; free-tier data may be used by Google |
-| Z.ai (Zhipu) | GLM-4.7-Flash, GLM-4.5-Flash; GLM-4.6V-Flash for vision | First text fallback; vision fallback | Free API models |
-| OpenRouter `:free` | DeepSeek V4 Flash, Kimi K2.6, Qwen, GLM-4.5-Air, MiniMax M2.5 | Second fallback, model experiments | 50 requests/day; 1,000/day after a one-time $10 top-up |
-| Groq | Qwen, Kimi, Llama | Fast text fallback | Free tier with daily caps |
+| Groq | `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` | First free model for text jobs; it has no vision model | Free plan with per-minute, daily request and daily token caps |
+| OpenRouter (`:free`) | `qwen/qwen3.8-27b:free` (vision), `nvidia/nemotron-3-super-120b-a12b:free` | Second for text; first free model for vision (meal photos, scan sheets) | 20 RPM; 50 requests/day account-wide (1,000 after a one-time $10 top-up), so the daily cap is reached before Gemini is tried |
+| Z.ai (Zhipu) | GLM-4.7-Flash, GLM-4.5-Flash; GLM-4.6V-Flash for vision | Third for text; second for vision | Free API models, one request in flight per model |
+| Google AI Studio (Gemini) | Gemini Flash (vision, function calling); Flash-Lite for cheap classification | Last of the free tiers, for text and vision | Flash and Flash-Lite only on the free tier since April 2026; roughly 5–15 requests/min and up to 1,000/day; free-tier data may be used by Google |
 
-DeepSeek's own API and Kimi's API are paid, so they are reached only through OpenRouter's free models. Claude is in the paid table, not this one: without an Anthropic key the Worker never calls it, and it reaches the same data through the MCP connector from Aaron's own Claude chats (section 8), taking the review, program-design and plan-rewrite work that a Flash-class model should not be trusted with.
+Claude is in the paid table, not this one: without an Anthropic key the Worker never calls it, and it reaches the same data through the MCP connector from Aaron's own Claude chats (section 8), taking the review, program-design and plan-rewrite work that a Flash-class model should not be trusted with.
 
 **Router**
 
@@ -434,7 +433,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 | `ask_ai` | chat message | function-calling loop over the tools layer | `chat_messages`, proposals as above |
 | `plan_reforecast` | nightly (engine only, no LLM) | forecast object | `plan_versions.forecast`, `daily_targets` |
 
-**Guardrails (enforced in `packages/shared/engine/guards.ts`)**
+**Guardrails (enforced in `packages/shared/src/engine/guards.ts`)**
 
 - Proposed kcal never below `calorie_floor` or above `calorie_ceiling`; protein never below `protein_min_g`; fat never below `fat_min_g`.
 - Only exercise IDs in the allowed set; sets per session 12–28; no excluded category.
@@ -454,7 +453,7 @@ DeepSeek's own API and Kimi's API are paid, so they are reached only through Ope
 
 ## 10. API and the shared tools layer
 
-The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src/tools/*.ts`) that both Ask AI (function calling on the model chain) and the MCP server expose, so Claude and the in-app assistant can do exactly the same things.
+The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src/modules/tools`) that both Ask AI (function calling on the model chain) and the MCP server expose, so Claude and the in-app assistant can do exactly the same things.
 
 **REST (`/api`, JSON, Cloudflare Access JWT)**
 
@@ -516,11 +515,11 @@ All changes through `apply_review` and `apply_week_plan` pass the guardrails in 
 
 ## 11. UI, charts and print
 
-Mobile-first, five bottom tabs, one theme file, and a chart inventory large enough that the Progress tab feels like a real dashboard.
+Mobile-first, six bottom tabs, one theme file, and a chart inventory large enough that the Progress tab feels like a real dashboard.
 
 **Navigation**
 
-- Tabs: Today, Log, Train, Progress, AI. A floating quick-log button on Today and Log.
+- Tabs: Today, Dashboard, Log, Train, Progress, AI (a sidebar from md up). A floating quick-log button on Today and Log.
 - Phone width first (390 px), then a two-column tablet/desktop layout for Progress. Tap targets 44 px; no horizontal scroll; sticky bottom nav.
 - Design direction: clean, bright, minimal. White cards on a near-white page, generous whitespace, 16 px card radius with a hairline border and no shadows, one large number per card, text in two greys. Colour is reserved for data: every chart, ring, heatmap and the muscle map is colourful, and the colours are coordinated by metric (below). Light theme is the product; dark is a later option.
 
@@ -601,11 +600,11 @@ Five phases, each shippable on its own; phase 1 is usable for daily logging with
 **Open decisions**
 
 - [x] Hosting: all-Cloudflare, decided 2026-10-04. One Worker with static assets, D1, R2, Cron Triggers, Browser Rendering, Cloudflare Access.
-- [ ] Auto-apply safe AI changes on by default, or everything behind a tap for the first month?
-- [ ] Calorie ceiling for review proposals: 1,700 kcal as drafted, or another number agreed with the dietitian?
-- [ ] Scan interval: every 4 weeks or every 6 weeks?
-- [ ] Apple Watch route to start with: manual entry only, or set up the Shortcut webhook in phase 1?
-- [ ] Muscle map asset: own SVG (full control, more work) or `react-body-highlighter` (fast, fixed look)?
-- [ ] Default weekly split: upper/lower/upper/lower, or a different Mon–Thu structure?
+- [x] Auto-apply safe AI changes: off for the first month, everything behind a tap (MCP writes apply immediately; Aaron approves in the Claude chat). The setting `auto_apply_safe` is false in the seed.
+- [x] Calorie ceiling for review proposals: 1,700 kcal.
+- [x] Scan interval: every 4 weeks (`scan_interval_days` 28).
+- [x] Apple Watch route: manual entry and the Shortcut webhook, both in phase 1.
+- [x] Muscle map asset: an existing body graphic from the web (react-muscle-map, vendored), mapped to the 17 muscle keys; not drawn by us (Aaron, 2026-10-05).
+- [x] Default weekly split: Aaron picks the training days on Train and the split adapts to them (section 7); the default is Mon, Tue, Thu.
 
-(The defaults at the top of this prompt answer these unless Aaron says otherwise.)
+(Answers from Aaron's build prompt: `CLAUDE.md` → Decided defaults. Later decisions: `docs/PROGRESS.md`.)

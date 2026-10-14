@@ -11,7 +11,7 @@
 ## Rails and plans
 
 - **Rails**: the hard limits Aaron set with his doctor and dietitian, stored in `settings`: **calorie floor** (1,400 kcal), **calorie ceiling** for proposals (1,700 kcal), protein minimum, fat minimum, the fasting pattern, and the **allowed exercise set**. Nothing but Aaron changes a rail.
-- **Guard**: a pure check in `packages/shared/engine/guards.ts` that accepts or rejects a proposed change against the rails. Every LLM or MCP write passes the guards; a change that fails is dropped and reported, the rest applies.
+- **Guard**: a pure check in `packages/shared/src/engine/guards.ts` that accepts or rejects a proposed change against the rails. Every LLM or MCP write passes the guards; a change that fails is dropped and reported, the rest applies.
 - **Plan version**: an append-only snapshot of target defaults and per-weekday overrides, with `reason`, `diff`, `forecast` and `created_by`. Exactly one is **active**. **Revert** creates a new version copying an older one.
 - **Daily targets**: the materialised targets for one local date (kcal, macros, fibre, water, steps, fast day, training planned), rebuilt from the active plan version and the active week plan.
 - **Week plan**: the plan for one Monday–Sunday: per-day targets, the week's sessions as template snapshots, water, steps, fast dates, scan date, focus note. Status `proposed → active → superseded`.
