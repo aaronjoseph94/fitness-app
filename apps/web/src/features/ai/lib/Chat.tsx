@@ -360,8 +360,8 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   // The phone's composer sticks above the bottom tabs, so the end of the thread scrolls clear of both.
   const phonePage = variant === 'page' && !desktop
   const dock = useRef<HTMLDivElement>(null)
-  // While the phone's dock is up it is part of the bottom chrome, like the rest timer: the page's bottom scroll padding
-  // grows to clear it, so a proposal's Accept / Reject / Plan history never takes focus behind it (WCAG 2.4.11).
+  // While the phone's dock is up it is part of the bottom chrome: the page's bottom scroll padding grows to clear it,
+  // so a proposal's Accept / Reject / Plan history never takes focus behind it (WCAG 2.4.11).
   // `bottom` is the dock's sticky offset above the tabs.
   useLayoutEffect(() => {
     const el = dock.current

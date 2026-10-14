@@ -41,11 +41,6 @@ export const KINDS: readonly KindCopy[] = [
     label: 'Weekly review ready',
     help: () => 'When the week’s review is written, from Sunday evening.',
   },
-  {
-    kind: 'rest_timer',
-    label: 'Rest timer',
-    help: () => 'When a rest ends while the app is in the background on this device.',
-  },
 ]
 
 export const hasTime = (kind: ReminderKind): boolean =>

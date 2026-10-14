@@ -1,33 +1,19 @@
-// Owns: where the session logger's working copies and the rest timer live — a Zustand store persisted in
-// localStorage (a reload, an app update or a dead tab mid-session loses nothing), pruned of old copies, plus the
-// logger's last write problem (not persisted). Server data still belongs to TanStack Query; this is the local draft.
+// Owns: where the session logger's working copies live — a Zustand store persisted in localStorage (a reload, an app
+// update or a dead tab mid-session loses nothing), pruned of old copies, plus the logger's last write problem (not
+// persisted). Server data still belongs to TanStack Query; this is the local draft.
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { LoggerSession } from './logger-model'
 
-/** One rest countdown at a time, started when a set is ticked done. */
-export interface RestTimer {
-  session_id: string
-  exercise_id: string
-  /** Epoch ms when the rest ends. */
-  ends_at: number
-  /** Length of this rest in seconds (for the progress bar). */
-  total_sec: number
-}
-
 interface LoggerState {
   sessions: Record<string, LoggerSession>
-  rest: RestTimer | null
   /** A write the Worker refused, in plain words, for the logger's snackbar. */
   problem: string | null
   put: (session: LoggerSession) => void
   /** Apply `fn` to a working copy (no-op when absent); stamps `touched`. */
   update: (id: string, fn: (session: LoggerSession) => LoggerSession) => void
-  /** Drop a working copy (the session was deleted) and its rest timer. */
+  /** Drop a working copy (the session was deleted). */
   remove: (id: string) => void
-  startRest: (timer: Omit<RestTimer, 'ends_at'>) => void
-  extendRest: (seconds: number) => void
-  clearRest: () => void
   setProblem: (problem: string | null) => void
 }
 
@@ -51,7 +37,6 @@ export const useLoggerStore = create<LoggerState>()(
   persist(
     (set) => ({
       sessions: {},
-      rest: null,
       problem: null,
       put: (session) =>
         set((s) => ({ sessions: { ...s.sessions, [session.id]: { ...session, touched: Date.now() } } })),
@@ -64,32 +49,15 @@ export const useLoggerStore = create<LoggerState>()(
       remove: (id) =>
         set((s) => {
           const { [id]: _gone, ...sessions } = s.sessions
-          return { sessions, rest: s.rest?.session_id === id ? null : s.rest }
+          return { sessions }
         }),
-      startRest: (timer) =>
-        set({
-          rest: timer.total_sec > 0 ? { ...timer, ends_at: Date.now() + timer.total_sec * 1000 } : null,
-        }),
-      extendRest: (seconds) =>
-        set((s) =>
-          s.rest
-            ? {
-                rest: {
-                  ...s.rest,
-                  ends_at: Math.max(Date.now(), s.rest.ends_at) + seconds * 1000,
-                  total_sec: s.rest.total_sec + seconds,
-                },
-              }
-            : s,
-        ),
-      clearRest: () => set({ rest: null }),
       setProblem: (problem) => set({ problem }),
     }),
     {
       name: 'fitness.train.logger',
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ sessions: prune(s.sessions, Date.now()), rest: s.rest }),
+      partialize: (s) => ({ sessions: prune(s.sessions, Date.now()) }),
     },
   ),
 )

@@ -11,7 +11,6 @@
 //   water         at each water slot (every 2 h 09:00–21:00, 90 min on a fast day) when behind pace
 //   fast          at a planned fast's start, and at started_at + fast_hours for a fast still running
 //   review_ready  once per week, from Sunday 20:00 through Monday, as soon as the week's review row exists
-// rest_timer is not sent from here: the session page notifies on the device (a 5-minute cron can't time a rest).
 import { addDays, daysBetween, isoWeek, isoWeekRange, weekdayOf } from '@fitness/shared/engine'
 import type { PushNotification, ReminderKind, ReminderPrefs, Weekday } from '@fitness/shared/schemas'
 import { DEFAULT_REMINDER_PREFS } from '@fitness/shared/schemas'

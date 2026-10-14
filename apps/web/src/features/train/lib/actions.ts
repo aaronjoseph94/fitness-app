@@ -1,7 +1,6 @@
 // Owns: what each tap in the session logger does — change the working copy first (instant, offline), then ask the
 // sync chain to mirror it: type reps / kg / RPE, copy last session's set, tick a set done (greyed hints fill empty
-// fields, the rest timer starts), add or remove sets, add, swap or remove exercises (with their history), exercise
-// notes.
+// fields), add or remove sets, add, swap or remove exercises (with their history), exercise notes.
 import { endpoints } from '@fitness/shared/api'
 import type { ExerciseHistory } from '@fitness/shared/schemas'
 import { call } from '../../../api'
@@ -17,7 +16,6 @@ import {
   type LoggerSet,
 } from './logger-model'
 import { loggerState } from './logger-store'
-import { askNotificationPermission } from './rest'
 import { syncSet } from './sync'
 
 /** Typing settles before a stored set is patched; notes settle a little longer. */
@@ -141,14 +139,6 @@ export function loggerActions(sessionId: string): LoggerActions {
       if (load_kg === null) return 'need-load'
       update((x) => mapSet(x, setId, (y) => ({ ...y, reps: y.reps ?? hint.reps, load_kg, done: true })))
       syncSet(sessionId, setId)
-      // Fixing a finished session's sets afterwards: no rest to time.
-      if (current()?.finished) return 'ok'
-      askNotificationPermission()
-      loggerState().startRest({
-        session_id: sessionId,
-        exercise_id: exercise.exercise_id,
-        total_sec: exercise.rest_sec,
-      })
       return 'ok'
     },
 

@@ -3,23 +3,26 @@
 import * as z from 'zod'
 import { Count, LocalTime, Row } from './common'
 
-export const ReminderKind = z.enum([
-  'weigh_in',
-  'water',
-  'workout',
-  'fast',
-  'scan_due',
-  'review_ready',
-  'rest_timer',
-])
+export const ReminderKind = z.enum(['weigh_in', 'water', 'workout', 'fast', 'scan_due', 'review_ready'])
 export type ReminderKind = z.infer<typeof ReminderKind>
 
 /** One reminder: on/off and, for clock reminders (weigh-in 07:00, workout 16:30, scan due), the Edmonton time. */
 export const Reminder = z.object({ enabled: z.boolean(), time: LocalTime.nullable() })
 export type Reminder = z.infer<typeof Reminder>
 
-/** Every reminder kind with its setting (exhaustive). Stored with the settings; not a rail. */
-export const ReminderPrefs = z.record(ReminderKind, Reminder)
+/**
+ * Every reminder kind with its setting (exhaustive). Stored with the settings; not a rail. An object, not a record, so a
+ * kind the app no longer has (rest_timer, removed 2026-10-14) is dropped on parse rather than refused: a settings row,
+ * an export or a coach review's undo step saved before still loads.
+ */
+export const ReminderPrefs = z.object({
+  weigh_in: Reminder,
+  water: Reminder,
+  workout: Reminder,
+  fast: Reminder,
+  scan_due: Reminder,
+  review_ready: Reminder,
+} satisfies Record<ReminderKind, typeof Reminder>)
 export type ReminderPrefs = z.infer<typeof ReminderPrefs>
 
 /**
@@ -31,14 +34,14 @@ export const REMINDER_HOURS = { from: '07:00', to: '22:00' } as const satisfies 
   LocalTime
 >
 
-/** Kinds that fire at a time of day Aaron picks (the rest follow events: pace, planned fasts, reviews, the timer). */
+/** Kinds that fire at a time of day Aaron picks (the rest follow events: pace, planned fasts, reviews). */
 export const CLOCK_REMINDERS = ['weigh_in', 'workout', 'scan_due'] as const satisfies readonly ReminderKind[]
 export const ClockReminder = z.enum(CLOCK_REMINDERS)
 export type ClockReminder = z.infer<typeof ClockReminder>
 
 /**
  * SPEC §8 defaults: weigh-in 07:00, water when behind pace, workout 16:30 on training days, fast start/end, scan due
- * (09:00 on the due date), weekly review ready, rest timer end. All on.
+ * (09:00 on the due date), weekly review ready. All on.
  */
 export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
   weigh_in: { enabled: true, time: '07:00' },
@@ -47,7 +50,6 @@ export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
   fast: { enabled: true, time: null },
   scan_due: { enabled: true, time: '09:00' },
   review_ready: { enabled: true, time: null },
-  rest_timer: { enabled: true, time: null },
 }
 
 /**

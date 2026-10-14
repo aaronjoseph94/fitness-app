@@ -37,8 +37,8 @@ export function QuickLogFab({ width }: { width: PageWidth }) {
             onFocus={preloadQuickLog}
             sx={{
               pointerEvents: 'auto',
-              // 2a's dark surface and its one floating shadow (shared with the session's rest timer): a neutral lift,
-              // never a coloured glow, and an instant small scale on pointer-down.
+              // 2a's dark surface and its one floating shadow: a neutral lift, never a coloured glow, and an instant
+              // small scale on pointer-down.
               bgcolor: tokens.dark.bg,
               color: tokens.dark.text,
               boxShadow: tokens.elevation.floating,

@@ -4,9 +4,9 @@
 // allowed set), one card per exercise (the one in hand highlighted; once a session is under way the exercises still to
 // come open folded), one picker to add an exercise mid-session or swap one for another with the same primary muscle,
 // finish with a confirm, "Delete session", the rail beside the list from `lg` (progress ring and per-exercise bars,
-// last time's sets and volume, the readiness chip with its details), the floating rest timer, the snackbar (a write
-// problem, or a swap refused; at the top, clear of the rest timer), and the edit mode of a finished session (its
-// duration fixed, "Save changes" finishes it again with the same end time).
+// last time's sets and volume, the readiness chip with its details), the snackbar (a write problem, or a swap
+// refused; at the top, as the quick-log notice), and the edit mode of a finished session (its duration fixed, "Save
+// changes" finishes it again with the same end time).
 import AddRounded from '@mui/icons-material/AddRounded'
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import FlagRounded from '@mui/icons-material/FlagRounded'
@@ -48,7 +48,6 @@ import { ExerciseLogCard } from './ExerciseLogCard'
 import { LEFT_OUT, setCounts, type LoggerSession } from './logger-model'
 import { loggerState, useLoggerStore } from './logger-store'
 import { ReadinessChip } from './ReadinessChip'
-import { RestTimerBar } from './RestTimerBar'
 import { finishSession } from './sync'
 
 const ORIGIN_LABEL = {
@@ -100,25 +99,11 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
   const now = useNow(1000)
   const counts = setCounts(session)
   const picked = useMemo(() => new Set(session.exercises.map((e) => e.exercise_id)), [session.exercises])
-  const nameOf = useCallback((id: string) => index.byId.get(id)?.name ?? 'exercise', [index.byId])
   const [folded] = useState(() => (session.finished ? new Set<string>() : foldedAtStart(session)))
   const currentId = session.finished
     ? null
     : (session.exercises.find((e) => e.sets.some((s) => !s.done))?.exercise_id ?? null)
   const conflicts = session.recovery?.conflicts ?? []
-
-  /** The next set to do after a rest: the rested exercise's next open set, else the next exercise with one. */
-  const upNext = (exerciseId: string): string | null => {
-    const from = Math.max(
-      0,
-      session.exercises.findIndex((e) => e.exercise_id === exerciseId),
-    )
-    for (const e of [...session.exercises.slice(from), ...session.exercises.slice(0, from)]) {
-      const open = e.sets.findIndex((x) => !x.done)
-      if (open >= 0) return `${nameOf(e.exercise_id)}, set ${open + 1}`
-    }
-    return null
-  }
 
   const [deleting, setDeleting] = useState(false)
   /** A finished session reopened to fix its sets (SessionPage shows the logger while `editing`). */
@@ -324,7 +309,6 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
             {session.readiness && <ReadinessPanel readiness={session.readiness} />}
           </Box>
         </Box>
-        <RestTimerBar sessionId={session.id} nameOf={nameOf} upNext={upNext} />
       </Box>
 
       <ExercisePicker
@@ -370,7 +354,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         setsDone={counts.done}
         onClose={() => setDeleting(false)}
       />
-      {/* At the top, under the app bar or the desktop header (as the quick-log notice): the rest timer holds the bottom. */}
+      {/* At the top, under the app bar or the desktop header, as the quick-log notice. */}
       <Snackbar
         open={notice !== null || problem !== null}
         autoHideDuration={6000}

@@ -116,20 +116,3 @@ export async function syncPush(publicKey: string | null): Promise<boolean> {
   await register(subscription)
   return true
 }
-
-/** Show a notification from the page (through the service worker, as iOS requires). False when not allowed here. */
-export async function showLocalNotification(
-  title: string,
-  options: { body: string; tag: string; url: string },
-): Promise<boolean> {
-  if (permission() !== 'granted') return false
-  const registration = await navigator.serviceWorker?.getRegistration()
-  if (!registration) return false
-  await registration.showNotification(title, {
-    body: options.body,
-    tag: options.tag,
-    data: { url: options.url },
-    icon: '/icons/icon-192.png',
-  })
-  return true
-}

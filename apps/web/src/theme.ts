@@ -196,11 +196,11 @@ export const tokens = {
     border: BLUE[200],
     /** A light blue mark (chart series, muscle-map step 2). Never text. */
     light: BLUE[300],
-    /** A bright blue mark on dark (rest timer glyph and bar). Never text on white. */
+    /** A bright blue mark on dark (the barcode scanner's scan line). Never text on white. */
     bright: BLUE[400],
   },
-  /** The dark surface: the Accept button, the user's chat bubble, the rest-timer bar, tooltips, the dark segment. */
-  dark: { bg: INK, hover: '#27272A', border: ZINC[700], text: WHITE, muted: ZINC[400] },
+  /** The dark surface: the Accept button, the user's chat bubble, tooltips, the dark segment. */
+  dark: { bg: INK, hover: '#27272A', border: ZINC[700], text: WHITE },
   /** Status palettes — text on its own tint. Never a metric colour. */
   tone: TONE,
   /** One colour per metric, used identically in rings, charts, the report and legends (kept from the measured palette:
@@ -275,7 +275,7 @@ export const tokens = {
     card: '0 1px 2px rgba(0,0,0,0.04)',
     /** Menus, popovers, dialogs. */
     overlay: '0 10px 30px -6px rgba(9,9,11,0.16), 0 2px 6px rgba(9,9,11,0.06)',
-    /** The floating rest timer and the quick-log button. */
+    /** The floating quick-log button. */
     floating: '0 12px 32px rgba(9,9,11,0.28)',
     button: '0 1px 2px rgba(0,0,0,0.08)',
     /** The selected segment of a segmented control. */
