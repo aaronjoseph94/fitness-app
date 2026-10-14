@@ -44,7 +44,11 @@ describe('trend weight: input order, duplicates, leap day, empty', () => {
       { date: '2026-10-01', weight_kg: 95.0 },
     ])
     // 10-01 = 95.0 (the re-weigh) → 10-02 carries 95.0 → 10-03 = 95.0 + 0.25 × (94.0 − 95.0) = 94.75
-    expect(series.map((p) => [p.date, p.weight_kg])).toEqual([['2026-10-01', 95.0], ['2026-10-02', null], ['2026-10-03', 94.0]])
+    expect(series.map((p) => [p.date, p.weight_kg])).toEqual([
+      ['2026-10-01', 95.0],
+      ['2026-10-02', null],
+      ['2026-10-03', 94.0],
+    ])
     expect(series.map((p) => p.trend_kg)).toEqual([95.0, 95.0, 94.75])
   })
 
@@ -53,7 +57,11 @@ describe('trend weight: input order, duplicates, leap day, empty', () => {
       { date: '2028-02-28', weight_kg: 80.0 },
       { date: '2028-03-01', weight_kg: 76.0 },
     ])
-    expect(series.map((p) => [p.date, p.trend_kg])).toEqual([['2028-02-28', 80.0], ['2028-02-29', 80.0], ['2028-03-01', 79.0]])
+    expect(series.map((p) => [p.date, p.trend_kg])).toEqual([
+      ['2028-02-28', 80.0],
+      ['2028-02-29', 80.0],
+      ['2028-03-01', 79.0],
+    ])
   })
 
   test('no weigh-ins, no trend', () => {

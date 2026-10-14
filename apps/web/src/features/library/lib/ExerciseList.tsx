@@ -33,7 +33,13 @@ export function musclesLine(e: Pick<ExerciseSummary, 'primary_muscles' | 'equipm
   return [muscles, equipmentLabel(e.equipment)].filter(Boolean).join(' · ')
 }
 
-export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId = 'exercise-list' }: ExerciseListProps) {
+export function ExerciseList({
+  exercises,
+  onSelect,
+  trailing,
+  pickedIds,
+  testId = 'exercise-list',
+}: ExerciseListProps) {
   const [shown, setShown] = useState(PAGE)
   const sentinel = useRef<HTMLDivElement | null>(null)
 
@@ -43,9 +49,12 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
   useEffect(() => {
     const el = sentinel.current
     if (!el || shown >= exercises.length || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((x) => x.isIntersecting)) setShown((n) => n + PAGE)
-    }, { rootMargin: '400px 0px' })
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((x) => x.isIntersecting)) setShown((n) => n + PAGE)
+      },
+      { rootMargin: '400px 0px' },
+    )
     io.observe(el)
     return () => io.disconnect()
   }, [shown, exercises.length])
@@ -58,7 +67,11 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
           <Box
             component="li"
             key={e.id}
-            sx={{ display: 'flex', alignItems: 'center', '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+            }}
           >
             <ListItemButton
               onClick={() => onSelect(e)}
@@ -91,20 +104,44 @@ export function ExerciseList({ exercises, onSelect, trailing, pickedIds, testId 
                 >
                   {e.name}
                 </Box>
-                <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted, mt: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Box
+                  sx={{
+                    fontSize: tokens.font.size.caption,
+                    lineHeight: tokens.font.leading.caption,
+                    color: tokens.ink.muted,
+                    mt: '2px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
                   {musclesLine(e)}
                 </Box>
               </Box>
               {!e.allowed && <StatusChip tone="warning" size="small" label="Hidden" />}
-              {picked && <CheckCircleRounded aria-label="Added" sx={{ fontSize: 20, color: tokens.status.good, flex: 'none' }} />}
-              {!trailing && <ChevronRightRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none' }} />}
+              {picked && (
+                <CheckCircleRounded
+                  aria-label="Added"
+                  sx={{ fontSize: 20, color: tokens.status.good, flex: 'none' }}
+                />
+              )}
+              {!trailing && (
+                <ChevronRightRounded
+                  aria-hidden
+                  sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none' }}
+                />
+              )}
             </ListItemButton>
             {trailing && <Box sx={{ flex: 'none', pr: '12px' }}>{trailing(e)}</Box>}
           </Box>
         )
       })}
       {shown < exercises.length && (
-        <Box component="li" ref={sentinel} sx={{ py: 3, textAlign: 'center', borderTop: `1px solid ${tokens.ink.hairline}` }}>
+        <Box
+          component="li"
+          ref={sentinel}
+          sx={{ py: 3, textAlign: 'center', borderTop: `1px solid ${tokens.ink.hairline}` }}
+        >
           <Button onClick={() => setShown((n) => n + PAGE)}>Show more ({exercises.length - shown})</Button>
         </Box>
       )}

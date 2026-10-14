@@ -34,7 +34,9 @@ type Part<K extends string, S> = [Exclude<S, undefined>] extends [never]
     : {}
 
 /** Everything a caller supplies: path params, query and body (absent parts are omitted). */
-export type EndpointInput<E extends Endpoint> = Part<'params', E['params']> & Part<'query', E['query']> & Part<'body', E['body']>
+export type EndpointInput<E extends Endpoint> = Part<'params', E['params']> &
+  Part<'query', E['query']> &
+  Part<'body', E['body']>
 
 export type EndpointOutput<E extends Endpoint> = Infer<E['response']>
 

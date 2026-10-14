@@ -6,8 +6,20 @@ describe('nutrition', () => {
   test('a 120 g banana (89 kcal per 100 g, fibre unknown) is 106.8 kcal with 0 fibre', () => {
     const banana = { kcal_per_100g: 89, protein_g: 1.1, carbs_g: 22.8, fat_g: 0.3, fibre_g: null }
 
-    expect(portion(banana, 120)).toEqual({ kcal: 106.8, protein_g: 1.3, carbs_g: 27.4, fat_g: 0.4, fibre_g: 0 })
-    expect(sumNutrients([portion(banana, 120), portion(banana, 120)])).toEqual({ kcal: 213.6, protein_g: 2.6, carbs_g: 54.8, fat_g: 0.8, fibre_g: 0 })
+    expect(portion(banana, 120)).toEqual({
+      kcal: 106.8,
+      protein_g: 1.3,
+      carbs_g: 27.4,
+      fat_g: 0.4,
+      fibre_g: 0,
+    })
+    expect(sumNutrients([portion(banana, 120), portion(banana, 120)])).toEqual({
+      kcal: 213.6,
+      protein_g: 2.6,
+      carbs_g: 54.8,
+      fat_g: 0.8,
+      fibre_g: 0,
+    })
   })
 })
 
@@ -19,6 +31,12 @@ describe('nutrition: zero grams and rescaling', () => {
   })
 
   test('rescaling a 120 g portion to 60 g halves it: 106.8 → 53.4 kcal', () => {
-    expect(scaleNutrients(portion(banana, 120), 60 / 120)).toEqual({ kcal: 53.4, protein_g: 0.7, carbs_g: 13.7, fat_g: 0.2, fibre_g: 1.6 })
+    expect(scaleNutrients(portion(banana, 120), 60 / 120)).toEqual({
+      kcal: 53.4,
+      protein_g: 0.7,
+      carbs_g: 13.7,
+      fat_g: 0.2,
+      fibre_g: 1.6,
+    })
   })
 })

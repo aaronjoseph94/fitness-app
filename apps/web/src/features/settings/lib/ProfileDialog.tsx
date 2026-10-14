@@ -39,7 +39,8 @@ export function ProfileDialog({ field, profile, saving, error, onSave, onClose }
   const [touched, setTouched] = useState(false)
   const value = parseProfileInput(field, text)
   const problem = checkProfileValue(field, value)
-  const unchanged = stored === null || stored === undefined ? value === null : String(stored) === String(value)
+  const unchanged =
+    stored === null || stored === undefined ? value === null : String(stored) === String(value)
 
   const save = () => {
     setTouched(true)
@@ -48,11 +49,21 @@ export function ProfileDialog({ field, profile, saving, error, onSave, onClose }
   }
 
   return (
-    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="edit-profile-title">
+    <Dialog
+      open
+      onClose={saving ? undefined : onClose}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="edit-profile-title"
+    >
       <DialogTitle id="edit-profile-title">{field.label}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
-          {field.help && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>{field.help}</Box>}
+          {field.help && (
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+              {field.help}
+            </Box>
+          )}
           {field.kind === 'choice' ? (
             <TextField
               select
@@ -90,7 +101,9 @@ export function ProfileDialog({ field, profile, saving, error, onSave, onClose }
                   ...(field.kind === 'number' ? { inputMode: 'decimal', pattern: '[0-9.,]*' } : {}),
                   'data-testid': `profile-${field.key}-input`,
                 },
-                input: field.unit ? { endAdornment: <InputAdornment position="end">{field.unit}</InputAdornment> } : undefined,
+                input: field.unit
+                  ? { endAdornment: <InputAdornment position="end">{field.unit}</InputAdornment> }
+                  : undefined,
               }}
             />
           )}

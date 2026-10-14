@@ -24,7 +24,14 @@ import { createVersion, getActivePlan } from '../../plan'
 import { recordCoachReview } from '../../reviews'
 import { addMilestone } from '../../scans'
 import { getSettings, updateSettings } from '../../settings'
-import { createTemplate, getEquipment, getTemplate, templateSwapped, updateEquipment, updateTemplate } from '../../training'
+import {
+  createTemplate,
+  getEquipment,
+  getTemplate,
+  templateSwapped,
+  updateEquipment,
+  updateTemplate,
+} from '../../training'
 import { eventInsert } from '../../events'
 import { coachLogInsert, type UndoStep } from './log'
 import { setDashboardNote } from './note'
@@ -111,7 +118,11 @@ async function applyOne(deps: Deps, c: Exclude<ReviewChange, TargetChange>): Pro
           : e,
       )
       await updateTemplate(deps, c.template_id, { exercises })
-      await templateSwapped(deps, { template_id: c.template_id, from_exercise_id: c.from_exercise_id, to_exercise_id: c.to_exercise_id })
+      await templateSwapped(deps, {
+        template_id: c.template_id,
+        from_exercise_id: c.from_exercise_id,
+        to_exercise_id: c.to_exercise_id,
+      })
       return {
         summary: `swapped an exercise in "${before.name}"`,
         changes: [
@@ -132,7 +143,8 @@ async function applyOne(deps: Deps, c: Exclude<ReviewChange, TargetChange>): Pro
     case 'week_split': {
       const { settings } = await getSettings(deps)
       // As stored: settings de-duplicates the days and puts them in week order.
-      const stored = (await updateSettings(deps, { settings: { training_days: c.training_days } })).settings.training_days
+      const stored = (await updateSettings(deps, { settings: { training_days: c.training_days } })).settings
+        .training_days
       return {
         summary: `training days ${stored.join(', ')}`,
         changes: [{ path: 'settings.training_days', from: settings.training_days, to: stored }],
@@ -188,7 +200,12 @@ async function applyOne(deps: Deps, c: Exclude<ReviewChange, TargetChange>): Pro
     case 'milestone': {
       if (c.milestone_kind === 'segment' && !c.segment)
         throw badRequest("A 'segment' milestone needs its segment (e.g. torso)")
-      const id = await addMilestone(deps, { kind: c.milestone_kind, segment: c.segment ?? null, target_value: c.target_value, label: c.label })
+      const id = await addMilestone(deps, {
+        kind: c.milestone_kind,
+        segment: c.segment ?? null,
+        target_value: c.target_value,
+        label: c.label,
+      })
       return {
         summary: `milestone "${c.label}" added`,
         changes: [{ path: `milestones.${id}`, from: null, to: c.label }],
@@ -380,7 +397,12 @@ export async function applyReview(deps: Deps, input: ApplyReviewInput): Promise<
     })
     review_id = review.id
   } else {
-    const note = eventInsert(deps, { kind: 'note', summary: `Coach: ${input.summary}`, body: { text: input.narrative }, date: today(deps.now()) })
+    const note = eventInsert(deps, {
+      kind: 'note',
+      summary: `Coach: ${input.summary}`,
+      body: { text: input.narrative },
+      date: today(deps.now()),
+    })
     await note.statement
     review_id = note.id
   }

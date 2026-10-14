@@ -10,7 +10,16 @@ import { endpoints } from '@fitness/shared/api'
 import type { MeasurementSite } from '@fitness/shared/schemas'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { problemText, useApiQuery } from '../../../api'
-import { formatNumber, formatShortDate, formatSigned, formatWeekday, NumberField, parseNumber, PendingBadge, visuallyHidden } from '../../../components'
+import {
+  formatNumber,
+  formatShortDate,
+  formatSigned,
+  formatWeekday,
+  NumberField,
+  parseNumber,
+  PendingBadge,
+  visuallyHidden,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { shiftDate, todayLocal, useLogMutation, usePendingLogs } from '../../quick-log'
 import { CardMeta, LogCard } from './LogCard'
@@ -41,8 +50,15 @@ export function MeasurementsCard({ date }: { date: string }) {
   const last = useMemo(() => {
     const out = new Map<MeasurementSite, { cm: number; date: string; pending: boolean }>()
     const rows = [
-      ...(trend.data?.measurements ?? []).map((m) => ({ site: m.site, cm: m.value_cm, date: m.date, pending: false })),
-      ...pending.flatMap((p) => p.body.entries.map((e) => ({ site: e.site, cm: e.value_cm, date: p.body.date, pending: true }))),
+      ...(trend.data?.measurements ?? []).map((m) => ({
+        site: m.site,
+        cm: m.value_cm,
+        date: m.date,
+        pending: false,
+      })),
+      ...pending.flatMap((p) =>
+        p.body.entries.map((e) => ({ site: e.site, cm: e.value_cm, date: p.body.date, pending: true })),
+      ),
     ].filter((r) => r.date <= date)
     rows.sort((a, b) => a.date.localeCompare(b.date))
     for (const r of rows) out.set(r.site, r)
@@ -59,14 +75,19 @@ export function MeasurementsCard({ date }: { date: string }) {
     return n === null ? [] : [{ site, cm: n }]
   })
   const allValid = entries.every((e) => e.cm > 0 && e.cm <= 300)
-  const lastDate = [...last.values()].reduce<string | null>((max, r) => (max === null || r.date > max ? r.date : max), null)
+  const lastDate = [...last.values()].reduce<string | null>(
+    (max, r) => (max === null || r.date > max ? r.date : max),
+    null,
+  )
   const anyPending = [...last.values()].some((r) => r.pending)
 
   // The waist's change since the first tape in the window (2a: "108.0 −1.5"), and the waist-to-hip ratio.
-  const firstWaist = (trend.data?.measurements ?? []).filter((m) => m.site === 'waist_navel' && m.date <= date).reduce<{ cm: number; date: string } | null>(
-    (first, m) => (first === null || m.date < first.date ? { cm: m.value_cm, date: m.date } : first),
-    null,
-  )
+  const firstWaist = (trend.data?.measurements ?? [])
+    .filter((m) => m.site === 'waist_navel' && m.date <= date)
+    .reduce<{ cm: number; date: string } | null>(
+      (first, m) => (first === null || m.date < first.date ? { cm: m.value_cm, date: m.date } : first),
+      null,
+    )
   const waist = last.get('waist_navel')
   const hips = last.get('hips')
   const waistChange = waist && firstWaist && firstWaist.date < waist.date ? waist.cm - firstWaist.cm : null
@@ -80,24 +101,45 @@ export function MeasurementsCard({ date }: { date: string }) {
       meta={
         <>
           {anyPending && <PendingBadge />}
-          <CardMeta>{lastDate ? `Weekly tape · last ${formatWeekday(lastDate)}, ${formatShortDate(lastDate)}` : 'Weekly tape, cm'}</CardMeta>
+          <CardMeta>
+            {lastDate
+              ? `Weekly tape · last ${formatWeekday(lastDate)}, ${formatShortDate(lastDate)}`
+              : 'Weekly tape, cm'}
+          </CardMeta>
         </>
       }
       testId="log-measurements"
     >
       {trend.isError && !trend.data && (
-        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mb: 2 }}>Last values didn't load; you can still log today's.</Box>
+        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mb: 2 }}>
+          Last values didn't load; you can still log today's.
+        </Box>
       )}
-      <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px 8px', fontSize: tokens.font.size.caption }}>
+      <Box
+        component="dl"
+        sx={{
+          m: 0,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          gap: '8px 8px',
+          fontSize: tokens.font.size.caption,
+        }}
+      >
         <Site label="Neck">{cm('neck')}</Site>
         <Site label="Chest">{cm('chest')}</Site>
         <Site label="Waist">
           {cm('waist_navel')}
           {waistChange !== null && Math.abs(waistChange) >= 0.05 && firstWaist && (
-            <Box component="span" sx={{ color: waistChange < 0 ? tokens.tone.success.text : tokens.ink.label }}>
+            <Box
+              component="span"
+              sx={{ color: waistChange < 0 ? tokens.tone.success.text : tokens.ink.label }}
+            >
               {' '}
               {formatSigned(waistChange, 1)}
-              <Box component="span" sx={visuallyHidden}>{` cm since ${formatShortDate(firstWaist.date)}`}</Box>
+              <Box
+                component="span"
+                sx={visuallyHidden}
+              >{` cm since ${formatShortDate(firstWaist.date)}`}</Box>
             </Box>
           )}
         </Site>
@@ -112,8 +154,17 @@ export function MeasurementsCard({ date }: { date: string }) {
           {waist && hips && hips.cm > 0 ? formatNumber(waist.cm / hips.cm, 2) : '—'}
         </Site>
       </Box>
-      <Button variant="outlined" size="tiny" aria-expanded={open} aria-controls={formId} onClick={() => setOpen((o) => !o)} sx={{ mt: 3 }}>
-        {due === null ? 'Measure now' : `Measure now · ${due > date ? `due ${formatWeekday(due)}` : due === date ? 'due today' : 'overdue'}`}
+      <Button
+        variant="outlined"
+        size="tiny"
+        aria-expanded={open}
+        aria-controls={formId}
+        onClick={() => setOpen((o) => !o)}
+        sx={{ mt: 3 }}
+      >
+        {due === null
+          ? 'Measure now'
+          : `Measure now · ${due > date ? `due ${formatWeekday(due)}` : due === date ? 'due today' : 'overdue'}`}
       </Button>
       <Collapse in={open} unmountOnExit>
         <Box
@@ -125,11 +176,22 @@ export function MeasurementsCard({ date }: { date: string }) {
             e.preventDefault()
             if (entries.length === 0 || !allValid) return
             save.mutate(
-              { body: { date, entries: entries.map((e) => ({ id: crypto.randomUUID(), site: e.site, value_cm: Math.round(e.cm * 10) / 10 })) } },
+              {
+                body: {
+                  date,
+                  entries: entries.map((e) => ({
+                    id: crypto.randomUUID(),
+                    site: e.site,
+                    value_cm: Math.round(e.cm * 10) / 10,
+                  })),
+                },
+              },
               {
                 onSuccess: (o) => {
                   setValues({})
-                  setSaved(`Saved ${entries.length} ${entries.length === 1 ? 'site' : 'sites'} for ${date}${o.status === 'queued' ? ' on this device' : ''}.`)
+                  setSaved(
+                    `Saved ${entries.length} ${entries.length === 1 ? 'site' : 'sites'} for ${date}${o.status === 'queued' ? ' on this device' : ''}.`,
+                  )
                 },
               },
             )
@@ -155,11 +217,28 @@ export function MeasurementsCard({ date }: { date: string }) {
               )
             })}
           </Box>
-          <Box sx={{ fontSize: tokens.font.size.caption, color: save.isError ? tokens.tone.danger.text : tokens.ink.secondary, minHeight: 18 }} aria-live="polite">
-            {save.isError ? problemText(save.error) : saved ?? 'Fill in the sites you measured; the rest stay as they were.'}
+          <Box
+            sx={{
+              fontSize: tokens.font.size.caption,
+              color: save.isError ? tokens.tone.danger.text : tokens.ink.secondary,
+              minHeight: 18,
+            }}
+            aria-live="polite"
+          >
+            {save.isError
+              ? problemText(save.error)
+              : (saved ?? 'Fill in the sites you measured; the rest stay as they were.')}
           </Box>
-          <Button type="submit" variant="contained" disabled={entries.length === 0 || !allValid || save.isPending}>
-            {save.isPending ? 'Saving…' : entries.length > 0 ? `Save ${entries.length} ${entries.length === 1 ? 'site' : 'sites'}` : 'Save'}
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={entries.length === 0 || !allValid || save.isPending}
+          >
+            {save.isPending
+              ? 'Saving…'
+              : entries.length > 0
+                ? `Save ${entries.length} ${entries.length === 1 ? 'site' : 'sites'}`
+                : 'Save'}
           </Button>
         </Box>
       </Collapse>
@@ -174,7 +253,10 @@ function Site({ label, wide = false, children }: { label: string; wide?: boolean
       <Box component="dt" sx={{ color: tokens.ink.secondary }}>
         {label}
       </Box>
-      <Box component="dd" sx={{ m: 0, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}>
+      <Box
+        component="dd"
+        sx={{ m: 0, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}
+      >
         {children}
       </Box>
     </Box>

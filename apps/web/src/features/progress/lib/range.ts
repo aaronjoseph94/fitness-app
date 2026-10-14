@@ -24,9 +24,16 @@ const FALLBACK_ALL_DAYS = 365
  * The dates a range covers, ending today: 4 w = 28 days, 12 w = 84 days, all = at most 400 days. No range starts
  * before the profile's start date (nothing is logged before it), but every range shows at least 7 days.
  */
-export function rangeDates(key: RangeKey, date: LocalDate, startDate: LocalDate | null): { from: LocalDate; to: LocalDate } {
+export function rangeDates(
+  key: RangeKey,
+  date: LocalDate,
+  startDate: LocalDate | null,
+): { from: LocalDate; to: LocalDate } {
   const wanted = RANGES.find((r) => r.key === key)?.days ?? FALLBACK_ALL_DAYS
   const sinceStart = startDate && startDate <= date ? daysBetween(startDate, date) + 1 : Infinity
-  const days = Math.max(7, Math.min(MAX_DAYS, key === 'all' && sinceStart !== Infinity ? sinceStart : Math.min(wanted, sinceStart)))
+  const days = Math.max(
+    7,
+    Math.min(MAX_DAYS, key === 'all' && sinceStart !== Infinity ? sinceStart : Math.min(wanted, sinceStart)),
+  )
   return { from: addDays(date, -(days - 1)), to: date }
 }

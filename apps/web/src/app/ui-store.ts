@@ -43,7 +43,8 @@ export const useUiStore = create<UiState>()((set) => ({
   paletteOpen: false,
   lastTab: 'today',
   sidebarCollapsed: null,
-  openQuickLog: (kind, target) => set({ quickLog: { open: true, kind: kind ?? null, date: target?.date, slot: target?.slot } }),
+  openQuickLog: (kind, target) =>
+    set({ quickLog: { open: true, kind: kind ?? null, date: target?.date, slot: target?.slot } }),
   closeQuickLog: () => set((state) => ({ quickLog: { ...state.quickLog, open: false } })),
   setAskAiOpen: (askAiOpen) => set({ askAiOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),

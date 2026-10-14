@@ -9,8 +9,12 @@ export function mountSettingsRoutes(app: App): void {
   route(app, endpoints.settings.get, (_, deps) => getSettings(deps))
   route(app, endpoints.settings.update, ({ body }, deps) => updateSettings(deps, body))
   route(app, endpoints.settings.secrets, (_, deps) => listSecrets(deps))
-  route(app, endpoints.settings.setSecret, ({ params, body }, deps) => setSecret(deps, params.name, body.value))
+  route(app, endpoints.settings.setSecret, ({ params, body }, deps) =>
+    setSecret(deps, params.name, body.value),
+  )
   route(app, endpoints.settings.clearSecret, ({ params }, deps) => clearSecret(deps, params.name))
   // Claude must reach the Worker at the origin the request arrived on (Access and the OAuth metadata are per origin).
-  route(app, endpoints.settings.connection, (_input, deps, c) => getMcpConnection(deps, new URL(c.req.url).origin))
+  route(app, endpoints.settings.connection, (_input, deps, c) =>
+    getMcpConnection(deps, new URL(c.req.url).origin),
+  )
 }

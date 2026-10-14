@@ -49,9 +49,13 @@ export function draftWeeklyReview(deps: Deps, llm: LlmRouter, week_start: string
 }
 
 /** Queue the weekly_review job for a week (Sunday cron, or Aaron's "Draft review"); skipped when Claude reviewed it. */
-export async function requestWeeklyReview(deps: Deps, week: string): Promise<{ job_id: string } | { skipped: 'claude_review' }> {
+export async function requestWeeklyReview(
+  deps: Deps,
+  week: string,
+): Promise<{ job_id: string } | { skipped: 'claude_review' }> {
   const week_start = weekStartOf(week)
-  if (week_start > today(deps.now())) throw badRequest(`${week} has not started yet; a review looks back at days that happened`)
+  if (week_start > today(deps.now()))
+    throw badRequest(`${week} has not started yet; a review looks back at days that happened`)
   const existing = await findReviewRow(deps, week_start)
   if (existing?.author === 'claude_mcp') return { skipped: 'claude_review' }
   const job = await enqueue(deps, { type: 'weekly_review', payload: { week_start } })
@@ -67,7 +71,10 @@ export async function weeklyReviewHook(deps: Deps, week: string): Promise<void> 
 
 export async function listReviews(deps: Deps): Promise<WeeklyReview[]> {
   const rows = await deps.db.select().from(weekly_reviews).orderBy(desc(weekly_reviews.week_start))
-  const statuses = await proposalStatuses(deps, rows.flatMap((r) => storedProposals(r).flatMap((p) => (p.event_id ? [p.event_id] : []))))
+  const statuses = await proposalStatuses(
+    deps,
+    rows.flatMap((r) => storedProposals(r).flatMap((p) => (p.event_id ? [p.event_id] : []))),
+  )
   const reviews = await Promise.all(rows.map((r) => toReview(deps, r, statuses)))
   return reviews.filter((r): r is WeeklyReview => r !== null)
 }
@@ -86,12 +93,20 @@ export function archiveReviewPdf(deps: Deps, week: string): Promise<PdfOutcome> 
 registerJobHandler('weekly_review', {
   fetches: LLM_FETCHES,
   run: async (deps, job) => {
-    const llm = createLlmRouter(deps, { budget: { limit: LLM_FETCHES, used: 0 }, deadlineMs: LLM_DEADLINE_MS })
+    const llm = createLlmRouter(deps, {
+      budget: { limit: LLM_FETCHES, used: 0 },
+      deadlineMs: LLM_DEADLINE_MS,
+    })
     const outcome = await draftReview(deps, llm, job.payload.week_start)
     const meta = outcome.status === 'written' && outcome.meta ? outcome.meta : undefined
     return {
       output: outcome.output,
-      meta: meta && { provider: meta.provider, model: meta.model, tokens_in: meta.tokens_in, tokens_out: meta.tokens_out },
+      meta: meta && {
+        provider: meta.provider,
+        model: meta.model,
+        tokens_in: meta.tokens_in,
+        tokens_out: meta.tokens_out,
+      },
     }
   },
 })

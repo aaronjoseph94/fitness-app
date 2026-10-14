@@ -2,7 +2,12 @@
 // ("Saturday, Oct 10"). Pure. Times use the kit's `formatClock`.
 import { dateToTime, formatShortDate, formatWeekday } from '../../../components'
 
-const longWeekdayDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })
+const longWeekdayDate = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
 const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' })
 
 /** "2026-10-07" → "Wed, Oct 7". */

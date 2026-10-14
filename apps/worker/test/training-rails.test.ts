@@ -7,7 +7,18 @@ import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { ai_events, createDb, equipment_profile, exercise_exclusions, exercises, plan_versions, session_sets, settings, workout_sessions, type NewRow } from '../src/db'
+import {
+  ai_events,
+  createDb,
+  equipment_profile,
+  exercise_exclusions,
+  exercises,
+  plan_versions,
+  session_sets,
+  settings,
+  workout_sessions,
+  type NewRow,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { HttpError } from '../src/lib/http-error'
 import { enqueue, runJob } from '../src/modules/jobs'
@@ -41,7 +52,12 @@ afterEach(async () => {
 })
 
 type Ex = NewRow<typeof exercises>
-const ex = (slug: string, name: string, equipment: string, primary: Ex['primary_muscles']): Ex & { id: string } => ({
+const ex = (
+  slug: string,
+  name: string,
+  equipment: string,
+  primary: Ex['primary_muscles'],
+): Ex & { id: string } => ({
   id: crypto.randomUUID(),
   slug,
   name,
@@ -64,7 +80,9 @@ const swing = ex('one-arm-kettlebell-swings', 'One-Arm Kettlebell Swings', 'kett
 const pushup = ex('pushups', 'Pushups', 'body only', ['chest'])
 const library = [bench, row, press, curl, swing, pushup]
 
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 beforeAll(async () => {
   await db.batch([
@@ -84,7 +102,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 118.75,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
     ...library.map((e) => db.insert(exercises).values(e)), // one row per statement: ≤ 100 bound parameters
     db.insert(equipment_profile).values([
@@ -98,7 +127,19 @@ beforeAll(async () => {
 const upper = (sets: number) =>
   [bench, row, press, curl].flatMap((e, i) => {
     const n = Math.floor(sets / 4) + (i < sets % 4 ? 1 : 0)
-    return n ? [{ exercise_id: e.id, sets: n, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }] : []
+    return n
+      ? [
+          {
+            exercise_id: e.id,
+            sets: n,
+            rep_min: 8,
+            rep_max: 12,
+            target_load_kg: null,
+            rest_sec: 90,
+            note: null,
+          },
+        ]
+      : []
   })
 
 const rejection = async (p: Promise<unknown>) => {
@@ -112,7 +153,13 @@ const rejection = async (p: Promise<unknown>) => {
 describe("rails on Aaron's own templates and sessions", () => {
   it('a template holds 12–28 sets: 11 and 29 are refused, 12 and 28 are kept', async () => {
     const deps = at('2026-10-05T15:00:00.000Z')
-    const make = (sets: number) => createTemplate(deps, { id: crypto.randomUUID(), name: `T${sets}`, origin: 'custom', exercises: upper(sets) })
+    const make = (sets: number) =>
+      createTemplate(deps, {
+        id: crypto.randomUUID(),
+        name: `T${sets}`,
+        origin: 'custom',
+        exercises: upper(sets),
+      })
     expect(await rejection(make(11))).toEqual({ status: 422, code: 'session_sets' })
     expect(await rejection(make(29))).toEqual({ status: 422, code: 'session_sets' })
     expect((await make(12)).exercises.reduce((n, e) => n + e.sets, 0)).toBe(12)
@@ -121,30 +168,83 @@ describe("rails on Aaron's own templates and sessions", () => {
 
   it('a template never holds an exercise outside the allowed set; a session plan leaves it out (a log is never refused)', async () => {
     const deps = at('2026-10-05T15:00:00.000Z')
-    const withPushups = [...upper(12), { exercise_id: pushup.id, sets: 3, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }]
-    expect(await rejection(createTemplate(deps, { id: crypto.randomUUID(), name: 'Pushups', origin: 'custom', exercises: withPushups }))).toMatchObject({
+    const withPushups = [
+      ...upper(12),
+      {
+        exercise_id: pushup.id,
+        sets: 3,
+        rep_min: 8,
+        rep_max: 12,
+        target_load_kg: null,
+        rest_sec: 90,
+        note: null,
+      },
+    ]
+    expect(
+      await rejection(
+        createTemplate(deps, {
+          id: crypto.randomUUID(),
+          name: 'Pushups',
+          origin: 'custom',
+          exercises: withPushups,
+        }),
+      ),
+    ).toMatchObject({
       status: 422,
       code: 'excluded_category',
     })
-    const session = await startSession(deps, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at: '2026-10-05T15:00:00.000Z', exercises: withPushups })
+    const session = await startSession(deps, {
+      id: crypto.randomUUID(),
+      template_id: null,
+      origin: 'blank',
+      started_at: '2026-10-05T15:00:00.000Z',
+      exercises: withPushups,
+    })
     expect(session.plan?.map((p) => p.exercise_id)).not.toContain(pushup.id)
     expect(session.recovery?.notes).toContainEqual(expect.stringMatching(/^Left out Pushups: /))
   })
 
   it('a session started from a template leaves out an exercise excluded since the template was saved, and says so', async () => {
     const deps = at('2026-10-06T15:00:00.000Z')
-    const list = [...upper(12), { exercise_id: swing.id, sets: 3, rep_min: 10, rep_max: 15, target_load_kg: 16, rest_sec: 60, note: null }]
-    const template = await createTemplate(deps, { id: crypto.randomUUID(), name: 'With swings', origin: 'custom', exercises: list })
-    await db.update(equipment_profile).set({ status: 'dont_have' }).where(eq(equipment_profile.equipment, 'kettlebells'))
+    const list = [
+      ...upper(12),
+      {
+        exercise_id: swing.id,
+        sets: 3,
+        rep_min: 10,
+        rep_max: 15,
+        target_load_kg: 16,
+        rest_sec: 60,
+        note: null,
+      },
+    ]
+    const template = await createTemplate(deps, {
+      id: crypto.randomUUID(),
+      name: 'With swings',
+      origin: 'custom',
+      exercises: list,
+    })
+    await db
+      .update(equipment_profile)
+      .set({ status: 'dont_have' })
+      .where(eq(equipment_profile.equipment, 'kettlebells'))
 
-    const session = await startSession(deps, { id: crypto.randomUUID(), template_id: template.id, origin: 'template', started_at: '2026-10-06T15:00:00.000Z' })
+    const session = await startSession(deps, {
+      id: crypto.randomUUID(),
+      template_id: template.id,
+      origin: 'template',
+      started_at: '2026-10-06T15:00:00.000Z',
+    })
     expect(session.plan?.map((p) => p.exercise_id)).not.toContain(swing.id)
     expect(session.plan).toHaveLength(4)
     expect(session.recovery?.notes).toContainEqual(expect.stringContaining('One-Arm Kettlebell Swings'))
 
     // Renaming the template keeps its list as it is (no rail check on a list the patch does not replace).
     expect((await updateTemplate(deps, template.id, { name: 'Renamed' })).name).toBe('Renamed')
-    await db.update(equipment_profile).set({ status: 'have' }).where(eq(equipment_profile.equipment, 'kettlebells'))
+    await db
+      .update(equipment_profile)
+      .set({ status: 'have' })
+      .where(eq(equipment_profile.equipment, 'kettlebells'))
   })
 })
 
@@ -164,12 +264,38 @@ describe('un-hiding', () => {
 
 describe('progression after two sessions on one day', () => {
   it("holds at the later session's load, not the earlier one's", async () => {
-    const plan = [{ exercise_id: press.id, sets: 3, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }]
+    const plan = [
+      {
+        exercise_id: press.id,
+        sets: 3,
+        rep_min: 8,
+        rep_max: 12,
+        target_load_kg: null,
+        rest_sec: 90,
+        note: null,
+      },
+    ]
     const session = async (started_at: string, load_kg: number) => {
       const deps = at(started_at)
-      const s = await startSession(deps, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at, exercises: plan })
-      for (const set_index of [1, 2, 3]) await logSet(deps, s.id, { id: crypto.randomUUID(), exercise_id: press.id, set_index, reps: 10, load_kg, completed: true })
-      await finishSession(deps, s.id, { ended_at: new Date(Date.parse(started_at) + 45 * 60_000).toISOString() })
+      const s = await startSession(deps, {
+        id: crypto.randomUUID(),
+        template_id: null,
+        origin: 'blank',
+        started_at,
+        exercises: plan,
+      })
+      for (const set_index of [1, 2, 3])
+        await logSet(deps, s.id, {
+          id: crypto.randomUUID(),
+          exercise_id: press.id,
+          set_index,
+          reps: 10,
+          load_kg,
+          completed: true,
+        })
+      await finishSession(deps, s.id, {
+        ended_at: new Date(Date.parse(started_at) + 45 * 60_000).toISOString(),
+      })
     }
     await session('2026-11-02T15:00:00.000Z', 20) // Mon 08:00 Edmonton
     await session('2026-11-02T23:30:00.000Z', 25) // Mon 16:30 Edmonton, same local date
@@ -180,11 +306,34 @@ describe('progression after two sessions on one day', () => {
 
 describe('recovery notes', () => {
   it('say a muscle trained the day before once, however many sessions that day had', async () => {
-    const plan = [{ exercise_id: row.id, sets: 4, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }]
-    for (const started_at of ['2026-11-09T15:00:00.000Z', '2026-11-09T23:00:00.000Z']) // Mon 2026-11-09, twice
-      await startSession(at(started_at), { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at, exercises: plan })
+    const plan = [
+      {
+        exercise_id: row.id,
+        sets: 4,
+        rep_min: 8,
+        rep_max: 12,
+        target_load_kg: null,
+        rest_sec: 90,
+        note: null,
+      },
+    ]
+    for (const started_at of ['2026-11-09T15:00:00.000Z', '2026-11-09T23:00:00.000Z'])
+      // Mon 2026-11-09, twice
+      await startSession(at(started_at), {
+        id: crypto.randomUUID(),
+        template_id: null,
+        origin: 'blank',
+        started_at,
+        exercises: plan,
+      })
     const tue = '2026-11-10T23:00:00.000Z'
-    const session = await startSession(at(tue), { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at: tue, exercises: plan })
+    const session = await startSession(at(tue), {
+      id: crypto.randomUUID(),
+      template_id: null,
+      origin: 'blank',
+      started_at: tue,
+      exercises: plan,
+    })
     expect(session.recovery?.conflicts).toEqual(['middle back'])
     expect(session.recovery?.notes).toEqual(['middle back is also a primary target the day before'])
   })
@@ -192,12 +341,38 @@ describe('recovery notes', () => {
 
 describe('deleting a session', () => {
   it('removes its sets, its finish note and the session in one go; a replay is a no-op', async () => {
-    const plan = [{ exercise_id: bench.id, sets: 3, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }]
+    const plan = [
+      {
+        exercise_id: bench.id,
+        sets: 3,
+        rep_min: 8,
+        rep_max: 12,
+        target_load_kg: null,
+        rest_sec: 90,
+        note: null,
+      },
+    ]
     const run = async (started_at: string) => {
       const deps = at(started_at)
-      const s = await startSession(deps, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at, exercises: plan })
-      for (const set_index of [1, 2]) await logSet(deps, s.id, { id: crypto.randomUUID(), exercise_id: bench.id, set_index, reps: 10, load_kg: 40, completed: true })
-      await finishSession(deps, s.id, { ended_at: new Date(Date.parse(started_at) + 40 * 60_000).toISOString() })
+      const s = await startSession(deps, {
+        id: crypto.randomUUID(),
+        template_id: null,
+        origin: 'blank',
+        started_at,
+        exercises: plan,
+      })
+      for (const set_index of [1, 2])
+        await logSet(deps, s.id, {
+          id: crypto.randomUUID(),
+          exercise_id: bench.id,
+          set_index,
+          reps: 10,
+          load_kg: 40,
+          completed: true,
+        })
+      await finishSession(deps, s.id, {
+        ended_at: new Date(Date.parse(started_at) + 40 * 60_000).toISOString(),
+      })
       return s.id
     }
     const keep = await run('2026-11-16T23:00:00.000Z')
@@ -216,20 +391,50 @@ describe('deleting a session', () => {
     // A queued delete replayed (or an unknown id) answers 200 like the other deletes, so the offline queue moves on.
     expect(await deleteSession(deps, gone)).toEqual({ ok: true })
     // The deleted session no longer counts: the next one's "last" sets come from the session kept.
-    const next = await startSession(deps, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at: '2026-11-18T15:00:00.000Z', exercises: plan })
+    const next = await startSession(deps, {
+      id: crypto.randomUUID(),
+      template_id: null,
+      origin: 'blank',
+      started_at: '2026-11-18T15:00:00.000Z',
+      exercises: plan,
+    })
     expect(next.plan?.[0]?.last?.session_id).toBe(keep)
   })
 })
 
 describe('editing a finished session', () => {
   it('re-finishing with the same end time recomputes the summary and rewrites the finish note', async () => {
-    const plan = [{ exercise_id: curl.id, sets: 2, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }]
+    const plan = [
+      {
+        exercise_id: curl.id,
+        sets: 2,
+        rep_min: 8,
+        rep_max: 12,
+        target_load_kg: null,
+        rest_sec: 90,
+        note: null,
+      },
+    ]
     const started_at = '2026-11-23T23:00:00.000Z'
     const ended_at = '2026-11-23T23:50:00.000Z'
     const deps = at(started_at)
-    const s = await startSession(deps, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at, exercises: plan })
+    const s = await startSession(deps, {
+      id: crypto.randomUUID(),
+      template_id: null,
+      origin: 'blank',
+      started_at,
+      exercises: plan,
+    })
     const ids = [crypto.randomUUID(), crypto.randomUUID()]
-    for (const [i, id] of ids.entries()) await logSet(deps, s.id, { id, exercise_id: curl.id, set_index: i + 1, reps: 10, load_kg: 12, completed: true })
+    for (const [i, id] of ids.entries())
+      await logSet(deps, s.id, {
+        id,
+        exercise_id: curl.id,
+        set_index: i + 1,
+        reps: 10,
+        load_kg: 12,
+        completed: true,
+      })
     const first = await finishSession(deps, s.id, { ended_at })
     expect(first.summary.total_volume_kg).toBe(240) // 2 × 10 × 12
 
@@ -249,7 +454,11 @@ describe('editing a finished session', () => {
 describe('AI workout with no LLM provider set up', () => {
   it("fails Aaron's request at once instead of leaving him at a spinner for minutes", async () => {
     const deps = at('2026-10-05T18:00:00.000Z')
-    const job = await enqueue(deps, { type: 'workout_generate', payload: { date: '2026-10-05', focus: 'Upper body' }, priority: USER_PRIORITY })
+    const job = await enqueue(deps, {
+      type: 'workout_generate',
+      payload: { date: '2026-10-05', focus: 'Upper body' },
+      priority: USER_PRIORITY,
+    })
     const outcome = await runJob(deps, job.id)
     expect(outcome.status).toBe('failed')
     expect(outcome.error).toMatch(/no AI provider/i)
@@ -257,7 +466,11 @@ describe('AI workout with no LLM provider set up', () => {
 
   it('fails a nightly draft at once too when no provider has a key (retrying cannot help)', async () => {
     const deps = at('2026-10-05T18:00:00.000Z', 'ai')
-    const job = await enqueue(deps, { type: 'workout_generate', payload: { date: '2026-10-05', focus: null }, priority: BACKGROUND_PRIORITY })
+    const job = await enqueue(deps, {
+      type: 'workout_generate',
+      payload: { date: '2026-10-05', focus: null },
+      priority: BACKGROUND_PRIORITY,
+    })
     expect((await runJob(deps, job.id)).status).toBe('failed')
   })
 })

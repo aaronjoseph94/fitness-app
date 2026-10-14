@@ -26,9 +26,20 @@ const riceId = crypto.randomUUID()
 
 beforeAll(async () => {
   // The rails and the active plan the day view (and so the day adjustment card) reads.
-  const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+  const reminders = Object.fromEntries(
+    ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+  ) as ReminderPrefs
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -45,12 +56,39 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
   // Per 100 g. Chicken breast: 165 kcal, 31 g protein, 3.6 g fat. Cooked rice: 130 kcal, 2.6 g protein, 28 g carbs.
-  await createFood(deps, { id: chickenId, name: 'Chicken breast', kcal_per_100g: 165, protein_g: 31, carbs_g: 0, fat_g: 3.6, fibre_g: 0 })
-  await createFood(deps, { id: riceId, name: 'Rice, cooked', kcal_per_100g: 130, protein_g: 2.6, carbs_g: 28, fat_g: 0.4, fibre_g: 0.4 })
+  await createFood(deps, {
+    id: chickenId,
+    name: 'Chicken breast',
+    kcal_per_100g: 165,
+    protein_g: 31,
+    carbs_g: 0,
+    fat_g: 3.6,
+    fibre_g: 0,
+  })
+  await createFood(deps, {
+    id: riceId,
+    name: 'Rice, cooked',
+    kcal_per_100g: 130,
+    protein_g: 2.6,
+    carbs_g: 28,
+    fat_g: 0.4,
+    fibre_g: 0.4,
+  })
 })
 
 afterEach(async () => {
@@ -90,7 +128,10 @@ describe('meals', () => {
       items: [{ id: crypto.randomUUID(), food_id: riceId, grams: 100 }],
     }
     const first = await createMeal(deps, body)
-    const replay = await createMeal(deps, { ...body, items: [{ id: crypto.randomUUID(), food_id: chickenId, grams: 500 }] })
+    const replay = await createMeal(deps, {
+      ...body,
+      items: [{ id: crypto.randomUUID(), food_id: chickenId, grams: 500 }],
+    })
 
     expect(replay).toEqual(first)
   })
@@ -105,21 +146,46 @@ describe('meals', () => {
     })
     await Promise.all(pending.splice(0)) // runSoon runs meal_analysis; no provider keys in tests → it fails fast
 
-    expect(meal).toMatchObject({ status: 'parsing', raw_text: '2 eggs, toast with butter, black coffee', items: [] })
+    expect(meal).toMatchObject({
+      status: 'parsing',
+      raw_text: '2 eggs, toast with butter, black coffee',
+      items: [],
+    })
     const jobs = await db.select().from(ai_jobs).where(eq(ai_jobs.type, 'meal_analysis'))
-    expect(jobs).toEqual([expect.objectContaining({ status: 'failed', attempts: 1, payload: { meal_id: meal.id } })])
+    expect(jobs).toEqual([
+      expect.objectContaining({ status: 'failed', attempts: 1, payload: { meal_id: meal.id } }),
+    ])
   })
 })
 
 describe('a confirmed meal has something in it', () => {
   it('refuses to confirm a meal with no items, or to empty a confirmed one (delete it instead)', async () => {
-    const text = await createMeal(deps, { id: crypto.randomUUID(), slot: 'snack', eaten_at: '2026-10-05T16:00:00.000Z', input_method: 'text', raw_text: 'an apple' })
+    const text = await createMeal(deps, {
+      id: crypto.randomUUID(),
+      slot: 'snack',
+      eaten_at: '2026-10-05T16:00:00.000Z',
+      input_method: 'text',
+      raw_text: 'an apple',
+    })
     await Promise.all(pending.splice(0)) // no LLM keys: the analysis fails and the meal waits in review with no items
     await expect(updateMeal(deps, text.id, { confirm: true })).rejects.toMatchObject({ status: 400 })
     const items = [{ id: crypto.randomUUID(), food_id: riceId, grams: 100 }]
-    const manual = await createMeal(deps, { id: crypto.randomUUID(), slot: 'snack', eaten_at: '2026-10-05T16:00:00.000Z', input_method: 'manual', items })
+    const manual = await createMeal(deps, {
+      id: crypto.randomUUID(),
+      slot: 'snack',
+      eaten_at: '2026-10-05T16:00:00.000Z',
+      input_method: 'manual',
+      items,
+    })
     await expect(updateMeal(deps, manual.id, { items: [] })).rejects.toMatchObject({ status: 400 })
-    expect((await updateMeal(deps, text.id, { items: [{ id: crypto.randomUUID(), food_id: riceId, grams: 80 }], confirm: true })).status).toBe('confirmed')
+    expect(
+      (
+        await updateMeal(deps, text.id, {
+          items: [{ id: crypto.randomUUID(), food_id: riceId, grams: 80 }],
+          confirm: true,
+        })
+      ).status,
+    ).toBe('confirmed')
   })
 })
 
@@ -127,8 +193,22 @@ describe('meals that have not been eaten yet', () => {
   it('refuses a meal eaten tomorrow, and moving a meal there', async () => {
     const tomorrow = '2026-10-06T18:00:00.000Z' // 12:00 MDT on 2026-10-06; the test clock is 2026-10-05 12:00 MDT
     const items = [{ id: crypto.randomUUID(), food_id: riceId, grams: 100 }]
-    await expect(createMeal(deps, { id: crypto.randomUUID(), slot: 'lunch', eaten_at: tomorrow, input_method: 'manual', items })).rejects.toMatchObject({ status: 400 })
-    const meal = await createMeal(deps, { id: crypto.randomUUID(), slot: 'dinner', eaten_at: '2026-10-05T17:30:00.000Z', input_method: 'manual', items })
+    await expect(
+      createMeal(deps, {
+        id: crypto.randomUUID(),
+        slot: 'lunch',
+        eaten_at: tomorrow,
+        input_method: 'manual',
+        items,
+      }),
+    ).rejects.toMatchObject({ status: 400 })
+    const meal = await createMeal(deps, {
+      id: crypto.randomUUID(),
+      slot: 'dinner',
+      eaten_at: '2026-10-05T17:30:00.000Z',
+      input_method: 'manual',
+      items,
+    })
     await expect(updateMeal(deps, meal.id, { eaten_at: tomorrow })).rejects.toMatchObject({ status: 400 })
   })
 })

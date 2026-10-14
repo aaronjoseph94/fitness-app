@@ -13,11 +13,26 @@ import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import { endpoints } from '@fitness/shared/api'
-import type { Exercise, ExerciseHistory, ExerciseSummary, Muscle, PersonalRecord } from '@fitness/shared/schemas'
+import type {
+  Exercise,
+  ExerciseHistory,
+  ExerciseSummary,
+  Muscle,
+  PersonalRecord,
+} from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
 import { StrengthChart, type StrengthSession } from '../../../charts'
-import { ChartCard, formatNumber, formatShortDate, LegendChips, Panel, PanelRow, Reveal, staggerDelay } from '../../../components'
+import {
+  ChartCard,
+  formatNumber,
+  formatShortDate,
+  LegendChips,
+  Panel,
+  PanelRow,
+  Reveal,
+  staggerDelay,
+} from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, type MuscleLevel } from '../../../muscle-map'
 import { tokens, withAlpha } from '../../../theme'
 import { HiddenNotice } from './HiddenNotice'
@@ -25,7 +40,9 @@ import { HideForeverDialog } from './HideForeverDialog'
 import { categoryLabel, equipmentLabel, sentence } from './labels'
 
 /** Map levels for one exercise: primary muscles heavy (4), secondary moderate (2). */
-export function exerciseLevels(e: Pick<Exercise, 'primary_muscles' | 'secondary_muscles'>): Partial<Record<Muscle, MuscleLevel>> {
+export function exerciseLevels(
+  e: Pick<Exercise, 'primary_muscles' | 'secondary_muscles'>,
+): Partial<Record<Muscle, MuscleLevel>> {
   const levels: Partial<Record<Muscle, MuscleLevel>> = {}
   for (const m of e.secondary_muscles) levels[m] = 2
   for (const m of e.primary_muscles) levels[m] = 4
@@ -42,7 +59,12 @@ export function strengthSessions(history: ExerciseHistory): StrengthSession[] {
     if (entry.top_load_kg === null) continue
     const atTop = entry.sets.filter((s) => s.load_kg === entry.top_load_kg && s.reps !== null)
     const reps = atTop.length ? Math.max(...atTop.map((s) => s.reps ?? 0)) : null
-    points.push({ date: entry.date, load: entry.top_load_kg, reps, e1rm: entry.best_e1rm_kg ?? entry.top_load_kg })
+    points.push({
+      date: entry.date,
+      load: entry.top_load_kg,
+      reps,
+      e1rm: entry.best_e1rm_kg ?? entry.top_load_kg,
+    })
   }
   return points.sort((a, b) => a.date.localeCompare(b.date))
 }
@@ -77,11 +99,33 @@ function Media({ exercise, delay }: { exercise: ExerciseSummary; delay: number }
       <Stack spacing={2} data-testid="exercise-media">
         {gif && (
           <Box component="figure" sx={{ m: 0 }}>
-            <Box component="img" src={gif} alt={`${exercise.name} demonstration`} onError={() => fail(gif)} sx={{ ...frame, aspectRatio: '1 / 1', maxHeight: 320 }} />
+            <Box
+              component="img"
+              src={gif}
+              alt={`${exercise.name} demonstration`}
+              onError={() => fail(gif)}
+              sx={{ ...frame, aspectRatio: '1 / 1', maxHeight: 320 }}
+            />
             {isExerciseDbGif(gif) && (
-              <Box component="figcaption" data-testid="exercise-gif-credit" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, textAlign: 'center' }}>
+              <Box
+                component="figcaption"
+                data-testid="exercise-gif-credit"
+                sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, textAlign: 'center' }}
+              >
                 {/* A full-height tap target (44 px), not just the 15 px line of text. */}
-                <Box component="a" href={GIF_CREDIT_URL} target="_blank" rel="noopener noreferrer" sx={{ color: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget, px: 2 }}>
+                <Box
+                  component="a"
+                  href={GIF_CREDIT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    color: 'inherit',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    minHeight: tokens.tapTarget,
+                    px: 2,
+                  }}
+                >
                   {GIF_CREDIT}
                 </Box>
               </Box>
@@ -89,10 +133,19 @@ function Media({ exercise, delay }: { exercise: ExerciseSummary; delay: number }
           </Box>
         )}
         {steps.length > 0 && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 2 }}>
+          <Box
+            sx={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: 2 }}
+          >
             {steps.map((src, i) => (
               <Box key={src} sx={{ position: 'relative' }}>
-                <Box component="img" src={src} alt={`${exercise.name}, step ${i + 1}`} loading="lazy" onError={() => fail(src)} sx={{ ...frame, aspectRatio: '3 / 2' }} />
+                <Box
+                  component="img"
+                  src={src}
+                  alt={`${exercise.name}, step ${i + 1}`}
+                  loading="lazy"
+                  onError={() => fail(src)}
+                  sx={{ ...frame, aspectRatio: '3 / 2' }}
+                />
                 {/* A badge on the photo: 11/500 on a near-opaque white chip. */}
                 <Box
                   sx={{
@@ -121,11 +174,17 @@ function Media({ exercise, delay }: { exercise: ExerciseSummary; delay: number }
 }
 
 function History({ exerciseId, heading, delay }: { exerciseId: string; heading: Heading; delay: number }) {
-  const history = useApiQuery(endpoints.training.exerciseHistory, { params: { id: exerciseId } }, { retry: false })
+  const history = useApiQuery(
+    endpoints.training.exerciseHistory,
+    { params: { id: exerciseId } },
+    { retry: false },
+  )
   const points = useMemo(() => (history.data ? strengthSessions(history.data) : []), [history.data])
   if (!history.data || points.length === 0) return null
   // The highest e1RM PR (PRs of one day come in no particular order).
-  const best = history.data.prs.filter((p) => p.kind === 'best_e1rm').reduce<PersonalRecord | null>((b, p) => (b && b.e1rm_kg >= p.e1rm_kg ? b : p), null)
+  const best = history.data.prs
+    .filter((p) => p.kind === 'best_e1rm')
+    .reduce<PersonalRecord | null>((b, p) => (b && b.e1rm_kg >= p.e1rm_kg ? b : p), null)
   const next = history.data.next
   return (
     <Reveal delay={delay}>
@@ -137,7 +196,14 @@ function History({ exerciseId, heading, delay }: { exerciseId: string; heading: 
       >
         <StrengthChart sessions={points} />
         {next && (
-          <Box sx={{ mt: 3, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+          <Box
+            sx={{
+              mt: 3,
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+            }}
+          >
             <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
               Next time:{' '}
             </Box>
@@ -151,14 +217,30 @@ function History({ exerciseId, heading, delay }: { exerciseId: string; heading: 
 }
 
 /** "How to": the steps from GET /api/exercises/:id (kept for an hour; offline it answers from the read cache). */
-function Instructions({ exerciseId, heading, delay }: { exerciseId: string; heading: Heading; delay: number }) {
-  const full = useApiQuery(endpoints.training.getExercise, { params: { id: exerciseId } }, { staleTime: 60 * 60_000 })
+function Instructions({
+  exerciseId,
+  heading,
+  delay,
+}: {
+  exerciseId: string
+  heading: Heading
+  delay: number
+}) {
+  const full = useApiQuery(
+    endpoints.training.getExercise,
+    { params: { id: exerciseId } },
+    { staleTime: 60 * 60_000 },
+  )
   const steps: Exercise['instructions'] = full.data?.instructions ?? []
   if (!full.isPending && steps.length === 0) return null
   return (
     <Reveal delay={delay}>
       <Box data-testid="exercise-instructions">
-        <Panel title="How to" description={full.isPending ? undefined : `${steps.length} step${steps.length === 1 ? '' : 's'}`} headingComponent={heading}>
+        <Panel
+          title="How to"
+          description={full.isPending ? undefined : `${steps.length} step${steps.length === 1 ? '' : 's'}`}
+          headingComponent={heading}
+        >
           {full.isPending ? (
             <Stack spacing={1} aria-busy="true" aria-label="Loading the steps">
               {[0, 1, 2].map((i) => (
@@ -167,10 +249,35 @@ function Instructions({ exerciseId, heading, delay }: { exerciseId: string; head
             </Stack>
           ) : (
             // Numbered like Train's exercise list: the step number in muted tabular figures, the text 14/1.55.
-            <Box component="ol" role="list" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <Box
+              component="ol"
+              role="list"
+              sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}
+            >
               {steps.map((step, i) => (
-                <Box component="li" key={i} sx={{ display: 'flex', alignItems: 'baseline', gap: '12px', fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body }}>
-                  <Box component="span" sx={{ flex: 'none', width: 16, textAlign: 'right', color: tokens.ink.secondary, fontSize: tokens.font.size.small, fontVariantNumeric: 'tabular-nums' }}>
+                <Box
+                  component="li"
+                  key={i}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '12px',
+                    fontSize: tokens.font.size.body,
+                    lineHeight: tokens.font.leading.emphasis,
+                    color: tokens.ink.body,
+                  }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      flex: 'none',
+                      width: 16,
+                      textAlign: 'right',
+                      color: tokens.ink.secondary,
+                      fontSize: tokens.font.size.small,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
                     {i + 1}
                   </Box>
                   <Box component="span" sx={{ minWidth: 0 }}>
@@ -205,12 +312,25 @@ function Overview({ exercise, heading }: { exercise: ExerciseSummary; heading: H
       headingComponent={heading}
       padding="none"
       actions={
-        <Button variant="outlined" size="small" startIcon={<OndemandVideoRounded />} href={exercise.video_search_url} target="_blank" rel="noopener noreferrer">
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<OndemandVideoRounded />}
+          href={exercise.video_search_url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Watch form videos
         </Button>
       }
     >
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) 260px' }, borderTop: `1px solid ${tokens.ink.hairline}` }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) 260px' },
+          borderTop: `1px solid ${tokens.ink.hairline}`,
+        }}
+      >
         <Box sx={{ px: `${tokens.pad.card.x}px`, py: '6px', minWidth: 0 }}>
           {rows
             .filter(([, value]) => value !== '')
@@ -231,7 +351,11 @@ function Overview({ exercise, heading }: { exercise: ExerciseSummary; heading: H
             borderTop: { xs: `1px solid ${tokens.ink.border}`, sm: 'none' },
           }}
         >
-          <MuscleMap levels={exerciseLevels(exercise)} size={200} title={`Muscles trained by ${exercise.name}`} />
+          <MuscleMap
+            levels={exerciseLevels(exercise)}
+            size={200}
+            title={`Muscles trained by ${exercise.name}`}
+          />
           <LegendChips
             items={[
               { label: 'Primary', color: tokens.muscleMap.steps[3] },
@@ -272,7 +396,12 @@ export function ExerciseDetail({ exercise, onHidden, headingComponent = 'h3' }: 
 
       {exercise.allowed && (
         <Reveal delay={cardDelay(5)}>
-          <Button color="error" startIcon={<BlockRounded />} onClick={() => setHiding(true)} data-testid="hide-forever">
+          <Button
+            color="error"
+            startIcon={<BlockRounded />}
+            onClick={() => setHiding(true)}
+            data-testid="hide-forever"
+          >
             Hide forever
           </Button>
         </Reveal>

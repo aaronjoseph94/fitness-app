@@ -3,7 +3,14 @@
 import type { ChatMessage, ChatProposal } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 import { resolveProposals } from './proposals'
-import { storedCalls, threadOpenings, threadRows, toChatMessage, type ChatRow, type ProposalRef } from './store'
+import {
+  storedCalls,
+  threadOpenings,
+  threadRows,
+  toChatMessage,
+  type ChatRow,
+  type ProposalRef,
+} from './store'
 
 const refsOf = (row: ChatRow): ProposalRef[] =>
   row.role === 'assistant' ? storedCalls(row).flatMap((c) => c.created ?? []) : []

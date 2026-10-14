@@ -17,7 +17,10 @@ export function isIos(): boolean {
 }
 
 export function isStandalone(): boolean {
-  return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  )
 }
 
 export async function pushSupport(): Promise<PushSupport> {
@@ -39,7 +42,10 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
 
 /** base64url → bytes (the VAPID key format). */
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(base64url.length / 4) * 4, '=')
+  const base64 = base64url
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(base64url.length / 4) * 4, '=')
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
 }
 
@@ -54,9 +60,14 @@ function sameKey(subscription: PushSubscription, publicKey: string): boolean {
 /** Tell the Worker about this subscription (upsert by endpoint); every kind — the reminder settings decide. */
 async function register(subscription: PushSubscription): Promise<void> {
   const json = subscription.toJSON()
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) throw new Error('The browser returned an incomplete subscription')
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth)
+    throw new Error('The browser returned an incomplete subscription')
   await call(endpoints.push.subscribe, {
-    body: { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth }, kinds: ReminderKind.options },
+    body: {
+      endpoint: json.endpoint,
+      keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      kinds: ReminderKind.options,
+    },
   })
 }
 
@@ -74,7 +85,10 @@ export async function enablePush(publicKey: string): Promise<NotificationPermiss
     await subscription.unsubscribe()
     subscription = null
   }
-  subscription ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) })
+  subscription ??= await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: keyBytes(publicKey),
+  })
   await register(subscription)
   return granted
 }
@@ -104,10 +118,18 @@ export async function syncPush(publicKey: string | null): Promise<boolean> {
 }
 
 /** Show a notification from the page (through the service worker, as iOS requires). False when not allowed here. */
-export async function showLocalNotification(title: string, options: { body: string; tag: string; url: string }): Promise<boolean> {
+export async function showLocalNotification(
+  title: string,
+  options: { body: string; tag: string; url: string },
+): Promise<boolean> {
   if (permission() !== 'granted') return false
   const registration = await navigator.serviceWorker?.getRegistration()
   if (!registration) return false
-  await registration.showNotification(title, { body: options.body, tag: options.tag, data: { url: options.url }, icon: '/icons/icon-192.png' })
+  await registration.showNotification(title, {
+    body: options.body,
+    tag: options.tag,
+    data: { url: options.url },
+    icon: '/icons/icon-192.png',
+  })
   return true
 }

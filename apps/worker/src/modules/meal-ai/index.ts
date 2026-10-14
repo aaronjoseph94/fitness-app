@@ -28,8 +28,14 @@ const defaultAdapters: MealAiAdapters = {
 }
 
 export function registerMealAiJobs(adapters: MealAiAdapters = defaultAdapters): void {
-  registerJobHandler('meal_analysis', { fetches: MEAL_ANALYSIS_FETCHES, run: (deps, job) => analyseMeal(deps, adapters, job) })
-  registerJobHandler('day_adjustment', { fetches: DAY_ADJUSTMENT_FETCHES, run: (deps, job) => adjustDay(deps, adapters, job) })
+  registerJobHandler('meal_analysis', {
+    fetches: MEAL_ANALYSIS_FETCHES,
+    run: (deps, job) => analyseMeal(deps, adapters, job),
+  })
+  registerJobHandler('day_adjustment', {
+    fetches: DAY_ADJUSTMENT_FETCHES,
+    run: (deps, job) => adjustDay(deps, adapters, job),
+  })
 }
 
 // Loading the module registers the handlers, so the cron sweep finds them whether or not the app's routes mounted.

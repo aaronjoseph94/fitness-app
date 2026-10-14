@@ -7,7 +7,8 @@ import { HttpError } from '../../../lib/http-error'
 import { findTool, toolJsonSchemas } from './registry'
 import { unknownKeys } from './strict'
 
-const invalid = (name: string, why: string) => new HttpError(400, 'invalid_tool_input', `Invalid input for ${name}: ${why}`)
+const invalid = (name: string, why: string) =>
+  new HttpError(400, 'invalid_tool_input', `Invalid input for ${name}: ${why}`)
 
 export async function callTool(deps: Deps, name: string, rawInput: unknown): Promise<unknown> {
   const tool = findTool(name)
@@ -22,14 +23,21 @@ export async function callTool(deps: Deps, name: string, rawInput: unknown): Pro
   }
   const unknown = unknownKeys(toolJsonSchemas(tool).input, input)
   const problems = [
-    ...(unknown.length > 0 ? [`✖ Unknown argument: ${unknown.join(', ')} (check the spelling against the input schema)`] : []),
+    ...(unknown.length > 0
+      ? [`✖ Unknown argument: ${unknown.join(', ')} (check the spelling against the input schema)`]
+      : []),
     ...(parsed.success ? [] : [z.prettifyError(parsed.error)]),
   ]
   if (problems.length > 0 || !parsed.success) throw invalid(name, problems.join('\n'))
   const out = await tool.run(deps, parsed.data)
   if (deps.env.DEV_AUTH_BYPASS === '1') {
     const r = tool.output.safeParse(out)
-    if (!r.success) throw new HttpError(500, 'invalid_tool_output', `${name} broke its output schema: ${z.prettifyError(r.error)}`)
+    if (!r.success)
+      throw new HttpError(
+        500,
+        'invalid_tool_output',
+        `${name} broke its output schema: ${z.prettifyError(r.error)}`,
+      )
   }
   return out
 }

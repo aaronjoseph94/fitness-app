@@ -21,13 +21,24 @@ export function useProposedWeekPlans(date: LocalDate) {
     {
       staleTime: 60_000,
       select: (plans: WeekPlan[]) =>
-        plans.filter((p) => p.week_start >= from).sort((a, b) => a.week_start.localeCompare(b.week_start) || b.updated_at.localeCompare(a.updated_at)),
+        plans
+          .filter((p) => p.week_start >= from)
+          .sort(
+            (a, b) => a.week_start.localeCompare(b.week_start) || b.updated_at.localeCompare(a.updated_at),
+          ),
     },
   )
 }
 
 /** Reads that show a week's targets or planned sessions. */
-const STALE_AFTER_SWITCH = [endpoints.weekPlans.get, endpoints.weekPlans.list, endpoints.day.get, endpoints.day.range, endpoints.plan.get, endpoints.plan.versions]
+const STALE_AFTER_SWITCH = [
+  endpoints.weekPlans.get,
+  endpoints.weekPlans.list,
+  endpoints.day.get,
+  endpoints.day.range,
+  endpoints.plan.get,
+  endpoints.plan.versions,
+]
 
 /** Accept a proposed plan: it becomes the week's active plan and rebuilds that week's daily targets. */
 export function useApplyWeekPlan() {

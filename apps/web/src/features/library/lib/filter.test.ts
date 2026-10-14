@@ -33,13 +33,53 @@ const row = (
   allowed: true,
 })
 
-const legPress = row('Leg_Press', 'Leg Press', 'strength', 'machine', 'compound', ['quadriceps'], ['calves', 'glutes', 'hamstrings'])
+const legPress = row(
+  'Leg_Press',
+  'Leg Press',
+  'strength',
+  'machine',
+  'compound',
+  ['quadriceps'],
+  ['calves', 'glutes', 'hamstrings'],
+)
 const library: ExerciseSummary[] = [
   legPress,
-  row('Bicycling_Stationary', 'Bicycling, Stationary', 'cardio', 'machine', null, ['quadriceps'], ['calves', 'glutes', 'hamstrings']),
-  row('Jogging_Treadmill', 'Jogging, Treadmill', 'cardio', 'machine', null, ['quadriceps'], ['glutes', 'hamstrings']),
-  row('Barbell_Squat', 'Barbell Squat', 'strength', 'barbell', 'compound', ['quadriceps'], ['calves', 'glutes', 'hamstrings', 'lower back']),
-  row('Hack_Squat', 'Hack Squat', 'strength', 'machine', 'compound', ['quadriceps'], ['calves', 'glutes', 'hamstrings']),
+  row(
+    'Bicycling_Stationary',
+    'Bicycling, Stationary',
+    'cardio',
+    'machine',
+    null,
+    ['quadriceps'],
+    ['calves', 'glutes', 'hamstrings'],
+  ),
+  row(
+    'Jogging_Treadmill',
+    'Jogging, Treadmill',
+    'cardio',
+    'machine',
+    null,
+    ['quadriceps'],
+    ['glutes', 'hamstrings'],
+  ),
+  row(
+    'Barbell_Squat',
+    'Barbell Squat',
+    'strength',
+    'barbell',
+    'compound',
+    ['quadriceps'],
+    ['calves', 'glutes', 'hamstrings', 'lower back'],
+  ),
+  row(
+    'Hack_Squat',
+    'Hack Squat',
+    'strength',
+    'machine',
+    'compound',
+    ['quadriceps'],
+    ['calves', 'glutes', 'hamstrings'],
+  ),
   row('Leg_Extensions', 'Leg Extensions', 'strength', 'machine', 'isolation', ['quadriceps'], []),
   row('Lying_Leg_Curls', 'Lying Leg Curls', 'strength', 'machine', 'isolation', ['hamstrings'], []),
 ]
@@ -55,6 +95,9 @@ describe('sameMuscleCandidates', () => {
   })
 
   it('leaves out an exercise already in the workout', () => {
-    expect(names(sameMuscleCandidates(library, legPress, new Set(['Hack_Squat', 'Leg_Press'])))).toEqual(['Barbell Squat', 'Leg Extensions'])
+    expect(names(sameMuscleCandidates(library, legPress, new Set(['Hack_Squat', 'Leg_Press'])))).toEqual([
+      'Barbell Squat',
+      'Leg Extensions',
+    ])
   })
 })

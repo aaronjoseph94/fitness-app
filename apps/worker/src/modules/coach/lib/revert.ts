@@ -82,7 +82,9 @@ export async function revertReview(deps: Deps, review_id: string): Promise<Rever
     const reviewVersion = log.plan_version.version
     later_versions_undone = (await listVersions(deps)).filter((v) => v.version > reviewVersion).length
     // The review's split kcal move: its later steps (series = the review's version) go with it, in the same batch.
-    const restored = await restoreVersion(deps, log.plan_version_before.id, { withdraw_series: [log.plan_version.id] })
+    const restored = await restoreVersion(deps, log.plan_version_before.id, {
+      withdraw_series: [log.plan_version.id],
+    })
     plan_version = { id: restored.id, version: restored.version }
   }
 

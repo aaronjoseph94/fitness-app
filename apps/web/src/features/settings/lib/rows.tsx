@@ -34,7 +34,14 @@ export function SettingsGroup({
   children: ReactNode
 }) {
   return (
-    <Panel id={id} title={title} description={subtitle} actions={actions} padding="none" testId={`settings-${id}`}>
+    <Panel
+      id={id}
+      title={title}
+      description={subtitle}
+      actions={actions}
+      padding="none"
+      testId={`settings-${id}`}
+    >
       {children}
     </Panel>
   )
@@ -82,7 +89,9 @@ export function ValueRow({
   disabled?: boolean
   testId?: string
 }) {
-  return <ListRow label={label} help={help} value={value} onClick={onClick} disabled={disabled} testId={testId} />
+  return (
+    <ListRow label={label} help={help} value={value} onClick={onClick} disabled={disabled} testId={testId} />
+  )
 }
 
 export function ReadOnlyRow({ label, help, value }: { label: string; help?: ReactNode; value: ReactNode }) {
@@ -115,7 +124,9 @@ export function SwitchRow({
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
-            slotProps={{ input: { 'aria-label': label, ...(testId ? { 'data-testid': testId } : {}) } as object }}
+            slotProps={{
+              input: { 'aria-label': label, ...(testId ? { 'data-testid': testId } : {}) } as object,
+            }}
           />
         }
       />
@@ -144,11 +155,38 @@ export function CopyRow({
   testId?: string
 }) {
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '10px 12px', px: `${tokens.pad.card.x}px`, py: '12px', borderTop: hairline }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'flex-start',
+        gap: '10px 12px',
+        px: `${tokens.pad.card.x}px`,
+        py: '12px',
+        borderTop: hairline,
+      }}
+    >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>{label}</Box>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.label,
+            color: tokens.ink.text,
+          }}
+        >
+          {label}
+        </Box>
         {help && (
-          <Box sx={{ mt: '1px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>{help}</Box>
+          <Box
+            sx={{
+              mt: '1px',
+              fontSize: tokens.font.size.caption,
+              lineHeight: tokens.font.leading.caption,
+              color: tokens.ink.secondary,
+            }}
+          >
+            {help}
+          </Box>
         )}
       </Box>
       <Button
@@ -201,7 +239,17 @@ export function LinkRow({
   to: string
   testId?: string
 }) {
-  return <ListRow label={label} help={help} value={value} icon={icon} component={RouterLink} to={to} testId={testId} />
+  return (
+    <ListRow
+      label={label}
+      help={help}
+      value={value}
+      icon={icon}
+      component={RouterLink}
+      to={to}
+      testId={testId}
+    />
+  )
 }
 
 /**
@@ -216,7 +264,10 @@ export function DayTiles({ days }: { days: readonly Weekday[] }) {
       <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
         {text}
       </Box>
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline-flex' }, gap: '4px', verticalAlign: 'middle' }}>
+      <Box
+        component="span"
+        sx={{ display: { xs: 'none', sm: 'inline-flex' }, gap: '4px', verticalAlign: 'middle' }}
+      >
         <Box component="span" sx={visuallyHidden}>
           {text}
         </Box>

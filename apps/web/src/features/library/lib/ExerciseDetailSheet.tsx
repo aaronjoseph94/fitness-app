@@ -18,7 +18,13 @@ export interface ExerciseDetailSheetProps {
   nested?: boolean
 }
 
-export function ExerciseDetailSheet({ exerciseId, open, onClose, action, nested = false }: ExerciseDetailSheetProps) {
+export function ExerciseDetailSheet({
+  exerciseId,
+  open,
+  onClose,
+  action,
+  nested = false,
+}: ExerciseDetailSheetProps) {
   const index = useExerciseIndex()
   const exercise = exerciseId ? index.byId.get(exerciseId) : undefined
   return (

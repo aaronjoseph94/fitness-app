@@ -81,7 +81,14 @@ function useFallback() {
 function SheetLink({ scan }: { scan: Scan }) {
   if (!scan.sheet_url) return null
   return (
-    <Button component="a" href={scan.sheet_url} target="_blank" rel="noopener" variant="outlined" endIcon={<OpenInNewRounded />}>
+    <Button
+      component="a"
+      href={scan.sheet_url}
+      target="_blank"
+      rel="noopener"
+      variant="outlined"
+      endIcon={<OpenInNewRounded />}
+    >
       View sheet
     </Button>
   )
@@ -90,7 +97,8 @@ function SheetLink({ scan }: { scan: Scan }) {
 /** Plain words for a failed read (the router lists every provider it tried). */
 function readError(error: string | null): string {
   if (!error) return "The sheet couldn't be read."
-  if (/no_key/.test(error) && !/(quota|rate_limited|server|timeout|invalid_output)/.test(error)) return 'No AI provider is set up to read sheets yet.'
+  if (/no_key/.test(error) && !/(quota|rate_limited|server|timeout|invalid_output)/.test(error))
+    return 'No AI provider is set up to read sheets yet.'
   if (/quota|rate_limited/.test(error)) return 'The free AI providers are at their limit right now.'
   if (/invalid_output/.test(error)) return "The AI couldn't make sense of the sheet."
   return "The sheet couldn't be read."
@@ -129,7 +137,16 @@ function PendingScan({ scan }: { scan: Scan }) {
   const actions = (
     <>
       <SheetLink scan={scan} />
-      <Button color="inherit" disabled={discard.isPending} onClick={() => discard.mutate({ params: { id: scan.id } }, { onSuccess: () => void navigate('/scans', { replace: true }) })}>
+      <Button
+        color="inherit"
+        disabled={discard.isPending}
+        onClick={() =>
+          discard.mutate(
+            { params: { id: scan.id } },
+            { onSuccess: () => void navigate('/scans', { replace: true }) },
+          )
+        }
+      >
         Discard
       </Button>
     </>
@@ -139,7 +156,11 @@ function PendingScan({ scan }: { scan: Scan }) {
     if (!fallback.ready) return <Skeleton variant="rounded" height={320} />
     return (
       <Box sx={page}>
-        <PageHeader title={scan.extracted && !manual ? 'Check the values' : 'Enter the values'} subtitle={`Uploaded ${scanDay(scan.date)}`} action={actions} />
+        <PageHeader
+          title={scan.extracted && !manual ? 'Check the values' : 'Enter the values'}
+          subtitle={`Uploaded ${scanDay(scan.date)}`}
+          action={actions}
+        />
         <ReviewForm
           scanId={scan.id}
           initial={formFrom({ draft: manual ? null : scan.extracted, fallback })}
@@ -156,11 +177,26 @@ function PendingScan({ scan }: { scan: Scan }) {
     <Box sx={page}>
       <PageHeader title="New scan" subtitle={`Uploaded ${scanDay(scan.date)}`} action={actions} />
       {reading && !x?.error && (
-        <Box sx={{ ...cardSurface, px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px`, display: 'flex', alignItems: 'center', gap: 3 }} data-testid="scan-extracting" aria-live="polite">
+        <Box
+          sx={{
+            ...cardSurface,
+            px: `${tokens.pad.card.x}px`,
+            py: `${tokens.pad.card.y}px`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+          }}
+          data-testid="scan-extracting"
+          aria-live="polite"
+        >
           <CircularProgress size={28} />
           <Box>
-            <Box sx={{ fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading }}>Extracting…</Box>
-            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>This takes up to half a minute.</Box>
+            <Box sx={{ fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading }}>
+              Extracting…
+            </Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+              This takes up to half a minute.
+            </Box>
           </Box>
         </Box>
       )}
@@ -171,7 +207,12 @@ function PendingScan({ scan }: { scan: Scan }) {
           testId="scan-extract-failed"
           title={readError(x?.error ?? null)}
           action={
-            <Button variant="outlined" size="small" disabled={reextract.isPending} onClick={() => reextract.mutate({ params: { id: scan.id } })}>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={reextract.isPending}
+              onClick={() => reextract.mutate({ params: { id: scan.id } })}
+            >
               Try again
             </Button>
           }
@@ -180,7 +221,12 @@ function PendingScan({ scan }: { scan: Scan }) {
           {reextract.error && <Box sx={{ mt: 1 }}>{problemText(reextract.error)}</Box>}
         </Banner>
       )}
-      <Button variant={failed ? 'contained' : 'outlined'} onClick={() => setManual(true)} data-testid="scan-enter-manually" sx={{ justifySelf: { sm: 'start' } }}>
+      <Button
+        variant={failed ? 'contained' : 'outlined'}
+        onClick={() => setManual(true)}
+        data-testid="scan-enter-manually"
+        sx={{ justifySelf: { sm: 'start' } }}
+      >
         Enter the values by hand
       </Button>
     </Box>
@@ -194,21 +240,58 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
   const anchored = a.milestone_updates.filter((m) => m.reached_on !== null)
   const milestones = anchored.length
     ? anchored.map((m) => ({ key: m.milestone_id, text: `${m.label}: reached ${m.reached_on}` }))
-    : (a.vs_previous?.milestones_reached ?? []).map((m) => ({ key: m.label, text: `Milestone reached: ${m.label}` }))
+    : (a.vs_previous?.milestones_reached ?? []).map((m) => ({
+        key: m.label,
+        text: `Milestone reached: ${m.label}`,
+      }))
   return (
     <Reveal delay={enter(3)}>
-      <Panel title="Debrief" actions={a.narrative_by && <StatusChip tone="outline" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />} testId="scan-debrief">
+      <Panel
+        title="Debrief"
+        actions={
+          a.narrative_by && (
+            <StatusChip tone="outline" label={a.narrative_by === 'ai' ? 'AI clerk' : 'Engine summary'} />
+          )
+        }
+        testId="scan-debrief"
+      >
         {a.status === 'pending' && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: tokens.ink.muted, fontSize: tokens.font.size.small }} aria-live="polite">
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              color: tokens.ink.muted,
+              fontSize: tokens.font.size.small,
+            }}
+            aria-live="polite"
+          >
             <CircularProgress size={18} /> Writing the debrief…
           </Box>
         )}
-        {a.status === 'failed' && !a.narrative && <Box sx={{ color: tokens.ink.muted, fontSize: tokens.font.size.small }}>The debrief could not be written; the numbers below are the engine's.</Box>}
+        {a.status === 'failed' && !a.narrative && (
+          <Box sx={{ color: tokens.ink.muted, fontSize: tokens.font.size.small }}>
+            The debrief could not be written; the numbers below are the engine's.
+          </Box>
+        )}
         {a.narrative && (
-          <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body, whiteSpace: 'pre-line' }}>{a.narrative}</Box>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.emphasis,
+              lineHeight: tokens.font.leading.emphasis,
+              color: tokens.ink.body,
+              whiteSpace: 'pre-line',
+            }}
+          >
+            {a.narrative}
+          </Box>
         )}
         {milestones.length > 0 && (
-          <Box component="ul" sx={{ m: 0, mt: 3, pl: 2.5, fontSize: tokens.font.size.small, lineHeight: 1.7 }} data-testid="scan-milestones">
+          <Box
+            component="ul"
+            sx={{ m: 0, mt: 3, pl: 2.5, fontSize: tokens.font.size.small, lineHeight: 1.7 }}
+            data-testid="scan-milestones"
+          >
             {milestones.map((m) => (
               <li key={m.key}>{m.text}</li>
             ))}
@@ -216,8 +299,15 @@ function Debrief({ scan }: { scan: ConfirmedScan }) {
         )}
         {a.proposal_ids.length > 0 && (
           <Box sx={{ mt: 3, fontSize: tokens.font.size.small }}>
-            {a.proposal_ids.length === 1 ? 'One plan proposal is' : `${a.proposal_ids.length} plan proposals are`} waiting for a tap on{' '}
-            <Box component={RouterLink} to="/" sx={{ color: 'primary.main', fontWeight: tokens.font.weight.label }}>
+            {a.proposal_ids.length === 1
+              ? 'One plan proposal is'
+              : `${a.proposal_ids.length} plan proposals are`}{' '}
+            waiting for a tap on{' '}
+            <Box
+              component={RouterLink}
+              to="/"
+              sx={{ color: 'primary.main', fontWeight: tokens.font.weight.label }}
+            >
               Today
             </Box>
             .
@@ -235,21 +325,33 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
   const r = scan.record
   const a = scan.analysis
   const prev = a?.vs_previous ?? null
-  const delta = (v: number | undefined, good: 'up' | 'down') => (prev && v !== undefined ? { value: v, good } : undefined)
+  const delta = (v: number | undefined, good: 'up' | 'down') =>
+    prev && v !== undefined ? { value: v, good } : undefined
   const c = r.conditions
   const conditionChips = [
     c.time_of_day[0]!.toUpperCase() + c.time_of_day.slice(1),
     c.fasted === true ? 'Fasted' : c.fasted === false ? 'Not fasted' : null,
     c.hours_since_training !== null ? `${c.hours_since_training} h since training` : null,
     c.hydration ? `Hydration: ${c.hydration}` : null,
-    c.matches_baseline === true ? 'Baseline conditions' : c.matches_baseline === false ? 'Not baseline conditions' : null,
+    c.matches_baseline === true
+      ? 'Baseline conditions'
+      : c.matches_baseline === false
+        ? 'Not baseline conditions'
+        : null,
   ].filter((x): x is string => x !== null)
 
   if (editing)
     return (
       <Box sx={page}>
         <PageHeader title="Edit scan values" subtitle="Saving re-runs the analysis." />
-        <ReviewForm scanId={scan.id} initial={formFrom({ record: r, fallback })} draft={null} mode="edit" onConfirmed={() => setEditing(false)} onCancel={() => setEditing(false)} />
+        <ReviewForm
+          scanId={scan.id}
+          initial={formFrom({ record: r, fallback })}
+          draft={null}
+          mode="edit"
+          onConfirmed={() => setEditing(false)}
+          onCancel={() => setEditing(false)}
+        />
       </Box>
     )
 
@@ -278,17 +380,57 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
       </Box>
 
       <Reveal delay={enter(2)}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: { xs: 3, md: 4 } }}>
-          <StatCard label="Weight" value={r.weight_kg} unit="kg" precision={1} metric="weight" delta={delta(prev?.fat_vs_lean.weight_kg, 'down')} />
-          <StatCard label="Body fat" value={r.body_fat_pct} unit="%" precision={1} metric="fatMass" delta={delta(prev?.deltas.body_fat_pct, 'down')} />
-          <StatCard label="Fat mass" value={r.body_fat_mass_kg} unit="kg" precision={1} metric="fatMass" delta={delta(prev?.fat_vs_lean.fat_kg, 'down')} />
-          <StatCard label="Lean mass" value={r.lean_body_mass_kg} unit="kg" precision={1} metric="lean" delta={delta(prev?.fat_vs_lean.lean_kg, 'up')} />
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+            gap: { xs: 3, md: 4 },
+          }}
+        >
+          <StatCard
+            label="Weight"
+            value={r.weight_kg}
+            unit="kg"
+            precision={1}
+            metric="weight"
+            delta={delta(prev?.fat_vs_lean.weight_kg, 'down')}
+          />
+          <StatCard
+            label="Body fat"
+            value={r.body_fat_pct}
+            unit="%"
+            precision={1}
+            metric="fatMass"
+            delta={delta(prev?.deltas.body_fat_pct, 'down')}
+          />
+          <StatCard
+            label="Fat mass"
+            value={r.body_fat_mass_kg}
+            unit="kg"
+            precision={1}
+            metric="fatMass"
+            delta={delta(prev?.fat_vs_lean.fat_kg, 'down')}
+          />
+          <StatCard
+            label="Lean mass"
+            value={r.lean_body_mass_kg}
+            unit="kg"
+            precision={1}
+            metric="lean"
+            delta={delta(prev?.fat_vs_lean.lean_kg, 'up')}
+          />
         </Box>
       </Reveal>
 
       {/* role="status": a polite live region (the call-outs arrive with the page; an alert would interrupt). */}
       {a?.flags.map((f) => (
-        <Banner key={f.code} tone={SEVERITY[f.code]} title={FLAG_TITLE[f.code]} role="status" testId={`scan-flag-${f.code}`}>
+        <Banner
+          key={f.code}
+          tone={SEVERITY[f.code]}
+          title={FLAG_TITLE[f.code]}
+          role="status"
+          testId={`scan-flag-${f.code}`}
+        >
           {f.message}
         </Banner>
       ))}
@@ -299,7 +441,15 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
       </Reveal>
 
       <Reveal delay={enter(5)}>
-        <Panel title="Every value" description={prev ? 'This scan against the previous one and the baseline' : 'The baseline every later scan is compared with'} padding="none">
+        <Panel
+          title="Every value"
+          description={
+            prev
+              ? 'This scan against the previous one and the baseline'
+              : 'The baseline every later scan is compared with'
+          }
+          padding="none"
+        >
           <DeltaTable record={r} previous={prev} baseline={a?.vs_baseline ?? null} />
         </Panel>
       </Reveal>
@@ -310,7 +460,9 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
           </Button>
         </Box>
       </Reveal>
-      {deleting && <DeleteScanDialog scanId={scan.id} date={scanDay(scan.date)} onClose={() => setDeleting(false)} />}
+      {deleting && (
+        <DeleteScanDialog scanId={scan.id} date={scanDay(scan.date)} onClose={() => setDeleting(false)} />
+      )}
     </Box>
   )
 }
@@ -338,5 +490,10 @@ export function ScanPage() {
   const s = scan.data
   if (!s.confirmed || !s.record) return <PendingScan scan={s} />
   const all = confirmedScans(scans.data ?? [s])
-  return <ConfirmedScanView scan={s as ConfirmedScan} all={all.some((x) => x.id === s.id) ? all : confirmedScans([...all, s])} />
+  return (
+    <ConfirmedScanView
+      scan={s as ConfirmedScan}
+      all={all.some((x) => x.id === s.id) ? all : confirmedScans([...all, s])}
+    />
+  )
 }

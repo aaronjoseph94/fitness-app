@@ -41,13 +41,28 @@ export function Panel({
         '@media print': { p: 2, borderRadius: `${tokens.radius.control}px`, boxShadow: 'none' },
       }}
     >
-      <Box component="h2" sx={{ m: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle, '@media print': { lineHeight: 1.3 } }}>
+      <Box
+        component="h2"
+        sx={{
+          m: 0,
+          fontSize: tokens.font.size.body,
+          fontWeight: tokens.font.weight.heading,
+          lineHeight: tokens.font.leading.cardTitle,
+          '@media print': { lineHeight: 1.3 },
+        }}
+      >
         {title}
       </Box>
       {subtitle && (
         <Box
           className="report-secondary"
-          sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary, '@media print': printSubtitle ? { mt: 0.25, fontSize: 10 } : { display: 'none' } }}
+          sx={{
+            mt: '2px',
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.secondary,
+            '@media print': printSubtitle ? { mt: 0.25, fontSize: 10 } : { display: 'none' },
+          }}
         >
           {subtitle}
         </Box>
@@ -60,7 +75,14 @@ export function Panel({
 /** Two columns from 600 px and always on paper; one column on a phone. */
 export function Pair({ children }: { children: ReactNode }) {
   return (
-    <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, '@media print': { gridTemplateColumns: '1fr 1fr', gap: 1.5 } }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gap: 4,
+        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+        '@media print': { gridTemplateColumns: '1fr 1fr', gap: 1.5 },
+      }}
+    >
       {children}
     </Box>
   )
@@ -97,7 +119,13 @@ export function StatStrip({ stats }: { stats: readonly Stat[] }) {
         >
           <Box
             className="report-secondary"
-            sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, color: tokens.ink.label, whiteSpace: 'nowrap', '@media print': { fontSize: 11, fontWeight: tokens.font.weight.body } }}
+            sx={{
+              fontSize: tokens.font.size.caption,
+              fontWeight: tokens.font.weight.label,
+              color: tokens.ink.label,
+              whiteSpace: 'nowrap',
+              '@media print': { fontSize: 11, fontWeight: tokens.font.weight.body },
+            }}
           >
             {s.label}
           </Box>
@@ -115,7 +143,14 @@ export function StatStrip({ stats }: { stats: readonly Stat[] }) {
           {s.detail && (
             <Box
               className="report-secondary"
-              sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', '@media print': { fontSize: 11 } }}
+              sx={{
+                fontSize: tokens.font.size.caption,
+                color: tokens.ink.secondary,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                '@media print': { fontSize: 11 },
+              }}
             >
               {s.detail}
             </Box>
@@ -126,7 +161,15 @@ export function StatStrip({ stats }: { stats: readonly Stat[] }) {
   )
 }
 
-export function Table({ head, rows, testId }: { head: readonly string[]; rows: readonly (readonly ReactNode[])[]; testId?: string }) {
+export function Table({
+  head,
+  rows,
+  testId,
+}: {
+  head: readonly string[]
+  rows: readonly (readonly ReactNode[])[]
+  testId?: string
+}) {
   return (
     <Box
       component="table"
@@ -137,7 +180,15 @@ export function Table({ head, rows, testId }: { head: readonly string[]; rows: r
         fontSize: tokens.font.size.small,
         ...tabularNums,
         // 2a's table on screen: a 12/500 muted head between rules, 13 px rows on hairlines; paper keeps it tight.
-        '& th': { textAlign: 'left', fontWeight: tokens.font.weight.label, color: tokens.ink.secondary, fontSize: tokens.font.size.caption, py: '6px', pr: 1, borderBottom: `1px solid ${tokens.ink.border}` },
+        '& th': {
+          textAlign: 'left',
+          fontWeight: tokens.font.weight.label,
+          color: tokens.ink.secondary,
+          fontSize: tokens.font.size.caption,
+          py: '6px',
+          pr: 1,
+          borderBottom: `1px solid ${tokens.ink.border}`,
+        },
         '& td': { borderTop: `1px solid ${tokens.ink.hairline}`, py: '7px', pr: 1, verticalAlign: 'top' },
         '& tbody tr:first-of-type td': { borderTop: 0 },
         '@media print': {

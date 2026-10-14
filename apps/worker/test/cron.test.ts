@@ -22,7 +22,9 @@ const at = (now: string, actor: Deps['actor'] = 'ai'): Deps => ({
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 type Ex = NewRow<typeof exercises> & { id: string }
 const ex = (slug: string, equipment: string, primary: Ex['primary_muscles']): Ex => ({
@@ -39,11 +41,25 @@ const ex = (slug: string, equipment: string, primary: Ex['primary_muscles']): Ex
   image_paths: [],
   source: 'free-exercise-db',
 })
-const lifts = [ex('barbell-bench-press', 'barbell', ['chest']), ex('wide-grip-lat-pulldown', 'cable', ['lats']), ex('seated-cable-rows', 'cable', ['middle back']), ex('dumbbell-shoulder-press', 'dumbbell', ['shoulders'])]
+const lifts = [
+  ex('barbell-bench-press', 'barbell', ['chest']),
+  ex('wide-grip-lat-pulldown', 'cable', ['lats']),
+  ex('seated-cable-rows', 'cable', ['middle back']),
+  ex('dumbbell-shoulder-press', 'dumbbell', ['shoulders']),
+]
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -60,14 +76,25 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
     ...lifts.map((e) => db.insert(exercises).values(e)),
   ])
 })
 
 describe('weekly review catch-up', () => {
-  it("runs a Sunday the cron missed on Monday morning, once, for the week just ended", async () => {
+  it('runs a Sunday the cron missed on Monday morning, once, for the week just ended', async () => {
     // Monday 2026-10-05 09:00 and 09:05 MDT; no tick claimed 2026-W40 on Sunday evening.
     const first = await runCron(at('2026-10-05T15:00:00.000Z'))
     const again = await runCron(at('2026-10-05T15:05:00.000Z'))
@@ -86,12 +113,28 @@ describe('weekly review catch-up', () => {
 })
 
 describe('nightly AI workout', () => {
-  it("skips a Monday the active week plan leaves without a session (its training is on Tuesday)", async () => {
+  it('skips a Monday the active week plan leaves without a session (its training is on Tuesday)', async () => {
     const day = { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }
-    const set = (e: Ex) => ({ exercise_id: e.id, sets: 4, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null })
+    const set = (e: Ex) => ({
+      exercise_id: e.id,
+      sets: 4,
+      rep_min: 8,
+      rep_max: 12,
+      target_load_kg: null,
+      rest_sec: 90,
+      note: null,
+    })
     const plan: WeekPlanContentInput = {
       targets: { mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day },
-      sessions: { mon: null, tue: { template_id: null, name: 'Upper A', exercises: lifts.map(set) }, wed: null, thu: null, fri: null, sat: null, sun: null },
+      sessions: {
+        mon: null,
+        tue: { template_id: null, name: 'Upper A', exercises: lifts.map(set) },
+        wed: null,
+        thu: null,
+        fri: null,
+        sat: null,
+        sun: null,
+      },
       water_ml: 3000,
       steps: 8000,
       fast_dates: [],
@@ -102,6 +145,9 @@ describe('nightly AI workout', () => {
     const { week_plan } = await proposeWeekPlan(at(monday, 'user'), { week_start: '2026-10-19', plan })
     await applyWeekPlan(at(monday, 'user'), week_plan!.id)
 
-    expect(await planNextTrainingDay(at(monday), '2026-10-19')).toMatchObject({ job_id: null, reason: 'not a training day' })
+    expect(await planNextTrainingDay(at(monday), '2026-10-19')).toMatchObject({
+      job_id: null,
+      reason: 'not a training day',
+    })
   })
 })

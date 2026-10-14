@@ -59,7 +59,8 @@ export function useDayAdjustment(
  * Clamped to the API's (0, 10]. Null when the favourite has no grams to scale by.
  */
 export function suggestionScale(favourite: Favourite, grams: number): number | null {
-  const base = favourite.kind === 'food' ? favourite.default_grams : favourite.recipe.reduce((a, r) => a + r.grams, 0)
+  const base =
+    favourite.kind === 'food' ? favourite.default_grams : favourite.recipe.reduce((a, r) => a + r.grams, 0)
   if (!(base > 0) || !(grams > 0)) return null
   return Math.min(10, Math.max(0.05, Math.round((grams / base) * 100) / 100))
 }

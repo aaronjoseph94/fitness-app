@@ -10,7 +10,10 @@ const OFF_PRODUCT = 'https://world.openfoodfacts.org/api/v2/product'
 const OFF_SEARCH = 'https://search.openfoodfacts.org/search'
 const OFF_FIELDS = 'code,product_name,brands,serving_size,nutriments,image_front_small_url'
 
-const OffProductResponse = z.looseObject({ status: z.union([z.number(), z.string()]).nullish(), product: z.unknown() })
+const OffProductResponse = z.looseObject({
+  status: z.union([z.number(), z.string()]).nullish(),
+  product: z.unknown(),
+})
 const OffSearchResponse = z.looseObject({ hits: z.array(z.unknown()).default([]) })
 
 const drafts = <T>(items: unknown[], schema: z.ZodType<T>, map: (t: T) => FoodDraft | null): FoodDraft[] =>
@@ -29,7 +32,9 @@ export interface Remote {
 export function createRemote(gate: Gate): Remote {
   return {
     async offProduct(code) {
-      const body = OffProductResponse.safeParse(await gate.getJson('off', `${OFF_PRODUCT}/${code}?fields=${OFF_FIELDS}`))
+      const body = OffProductResponse.safeParse(
+        await gate.getJson('off', `${OFF_PRODUCT}/${code}?fields=${OFF_FIELDS}`),
+      )
       if (!body.success || Number(body.data.status) !== 1) return null
       const product = OffProduct.safeParse(body.data.product)
       return product.success ? fromOff(product.data) : null

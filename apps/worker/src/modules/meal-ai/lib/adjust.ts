@@ -16,7 +16,14 @@ import type { FetchBudget } from '../../../lib/deps'
 import type { JobContext, JobMeta } from '../../jobs'
 import { BudgetError, DeadlineError, ProvidersExhaustedError, type LlmRouter } from '../../llm'
 import { listFavourites } from '../../nutrition'
-import { adjustmentSummary, dayStatus, fallbackNote, fallbackWhy, pickSuggestions, remainingOf } from './numbers'
+import {
+  adjustmentSummary,
+  dayStatus,
+  fallbackNote,
+  fallbackWhy,
+  pickSuggestions,
+  remainingOf,
+} from './numbers'
 import { DAY_ADJUSTMENT_SYSTEM, dayAdjustmentMessage } from './prompts'
 
 /** Subrequests one run may make (the router only). */
@@ -29,7 +36,11 @@ export interface AdjustAdapters {
 
 type Output = { output: DayAdjustmentOutput; meta?: JobMeta }
 
-export async function adjustDay(deps: Deps, adapters: AdjustAdapters, job: JobContext<'day_adjustment'>): Promise<Output> {
+export async function adjustDay(
+  deps: Deps,
+  adapters: AdjustAdapters,
+  job: JobContext<'day_adjustment'>,
+): Promise<Output> {
   const { date } = job.payload
   // A rerun of a job whose card was already written (e.g. after a lease expired) returns that card.
   const [written] = await deps.db
@@ -48,7 +59,11 @@ export async function adjustDay(deps: Deps, adapters: AdjustAdapters, job: JobCo
   const fasting = fast_day || running !== null
   const tomorrow = addDays(date, 1)
   const fast_day_tomorrow =
-    !fast_day && running !== null && (await fastDaysIn(deps, { from: date, to: tomorrow })).some((d) => d.fast.id === running.id && d.date === tomorrow)
+    !fast_day &&
+    running !== null &&
+    (await fastDaysIn(deps, { from: date, to: tomorrow })).some(
+      (d) => d.fast.id === running.id && d.date === tomorrow,
+    )
   const remaining = remainingOf(day)
   const status = dayStatus(remaining)
   const picks = fasting ? [] : pickSuggestions(await listFavourites(deps), remaining, status)
@@ -73,7 +88,12 @@ export async function adjustDay(deps: Deps, adapters: AdjustAdapters, job: JobCo
             eaten: { kcal: day.intake.total.kcal, protein_g: day.intake.total.protein_g },
             targets: day.targets && { kcal: day.targets.kcal, protein_g: day.targets.protein_g },
             water_target_ml,
-            suggestions: picks.map((p) => ({ label: p.label, grams: p.grams, kcal: p.kcal, protein_g: p.protein_g })),
+            suggestions: picks.map((p) => ({
+              label: p.label,
+              grams: p.grams,
+              kcal: p.kcal,
+              protein_g: p.protein_g,
+            })),
           }),
         },
       ],
@@ -85,8 +105,11 @@ export async function adjustDay(deps: Deps, adapters: AdjustAdapters, job: JobCo
     wording = res.data
     meta = { provider: res.provider, model: res.model, tokens_in: res.tokens_in, tokens_out: res.tokens_out }
   } catch (e) {
-    if (!(e instanceof ProvidersExhaustedError || e instanceof DeadlineError || e instanceof BudgetError)) throw e
-    console.warn(JSON.stringify({ at: 'day_adjustment', job: job.id, event: 'written_without_llm', error: e.name }))
+    if (!(e instanceof ProvidersExhaustedError || e instanceof DeadlineError || e instanceof BudgetError))
+      throw e
+    console.warn(
+      JSON.stringify({ at: 'day_adjustment', job: job.id, event: 'written_without_llm', error: e.name }),
+    )
   }
 
   const output = DayAdjustmentOutput.parse({
@@ -98,7 +121,9 @@ export async function adjustDay(deps: Deps, adapters: AdjustAdapters, job: JobCo
       grams: p.grams,
       why: wording?.why[i]?.trim() || fallbackWhy(p, remaining),
     })),
-    note: wording?.note.trim() || fallbackNote(status, remaining, { fast_day, fasting, fast_day_tomorrow, water_target_ml }),
+    note:
+      wording?.note.trim() ||
+      fallbackNote(status, remaining, { fast_day, fasting, fast_day_tomorrow, water_target_ml }),
   })
   await recordEvent(deps, {
     kind: 'adjustment',

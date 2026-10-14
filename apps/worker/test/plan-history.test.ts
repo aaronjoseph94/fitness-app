@@ -8,7 +8,13 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { createDb, daily_targets, plan_versions, profile, settings } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { getDay } from '../src/modules/day'
-import { createVersion, ensureTargetsThrough, getActivePlan, listVersions, restoreVersion } from '../src/modules/plan'
+import {
+  createVersion,
+  ensureTargetsThrough,
+  getActivePlan,
+  listVersions,
+  restoreVersion,
+} from '../src/modules/plan'
 import { updateSettings } from '../src/modules/settings'
 
 const db = createDb(env.DB)
@@ -26,12 +32,24 @@ const at = (now = MONDAY, actor: Deps['actor'] = 'user'): Deps => ({
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
-const targetsOn = async (date: string) => (await db.select().from(daily_targets).where(eq(daily_targets.date, date)))[0]
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
+const targetsOn = async (date: string) =>
+  (await db.select().from(daily_targets).where(eq(daily_targets.date, date)))[0]
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -48,7 +66,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -57,7 +86,10 @@ describe('restoreVersion', () => {
   it('v1 1,400 → v2 1,550 → restoring v1 the next day makes v3 at 1,400; Monday keeps its 1,550', async () => {
     await ensureTargetsThrough(at(), '2026-10-05')
     const v1 = (await getActivePlan(at())).id
-    await createVersion(at(), { changes: [{ field: 'kcal', weekday: null, from: 1400, to: 1550, reason: 'More energy' }], reason: 'Aaron' })
+    await createVersion(at(), {
+      changes: [{ field: 'kcal', weekday: null, from: 1400, to: 1550, reason: 'More energy' }],
+      reason: 'Aaron',
+    })
     expect(await targetsOn('2026-10-05')).toMatchObject({ kcal: 1550 })
 
     const v3 = await restoreVersion(at(TUESDAY), v1)
@@ -70,7 +102,10 @@ describe('restoreVersion', () => {
 
   it('is not open to Ask AI (403 needs_approval)', async () => {
     const [, v2] = await listVersions(at())
-    await expect(restoreVersion(at(TUESDAY, 'ai'), v2!.id)).rejects.toMatchObject({ status: 403, code: 'needs_approval' })
+    await expect(restoreVersion(at(TUESDAY, 'ai'), v2!.id)).rejects.toMatchObject({
+      status: 403,
+      code: 'needs_approval',
+    })
   })
 })
 

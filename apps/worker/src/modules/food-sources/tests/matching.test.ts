@@ -9,7 +9,13 @@ import { fakeFetch } from './fixtures'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
-const deps: Deps = { db, env, now: () => new Date('2026-10-05T18:00:00.000Z'), actor: 'ai', waitUntil: (p) => void pending.push(p) }
+const deps: Deps = {
+  db,
+  env,
+  now: () => new Date('2026-10-05T18:00:00.000Z'),
+  actor: 'ai',
+  waitUntil: (p) => void pending.push(p),
+}
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
@@ -37,7 +43,11 @@ beforeAll(async () => {
     cnf(2605, 'Nuts, almond butter, plain', 614),
     cnf(2534, 'Nuts, almonds, dried, unblanched, unroasted', 579),
     cnf(2537, 'Nuts, almonds, oil roasted, unblanched', 608),
-    cnf(7226, 'Plant-based beverage, almond beverage, chocolate flavoured, sweetened, fortified, refrigerated', 48),
+    cnf(
+      7226,
+      'Plant-based beverage, almond beverage, chocolate flavoured, sweetened, fortified, refrigerated',
+      48,
+    ),
   ]
   // 9 bound values per row; D1 allows 100 per statement.
   await db.batch([db.insert(foods).values(rows.slice(0, 8)), db.insert(foods).values(rows.slice(8))])
@@ -64,9 +74,15 @@ describe('matching prefers the plainest food', () => {
     const oatmeal = await sources.matchItem({ name: 'oatmeal, cooked', grams: 250 })
     const almonds = await sources.matchItem({ name: 'almonds', grams: 28 })
 
-    expect(oatmeal?.food).toMatchObject({ source_id: '1440', name: 'Cereal, hot, oats (oatmeal), quick, prepared, Quaker' })
+    expect(oatmeal?.food).toMatchObject({
+      source_id: '1440',
+      name: 'Cereal, hot, oats (oatmeal), quick, prepared, Quaker',
+    })
     expect(oatmeal?.nutrients.kcal).toBe(207.5)
-    expect(almonds?.food).toMatchObject({ source_id: '2534', name: 'Nuts, almonds, dried, unblanched, unroasted' })
+    expect(almonds?.food).toMatchObject({
+      source_id: '2534',
+      name: 'Nuts, almonds, dried, unblanched, unroasted',
+    })
     expect(almonds?.nutrients.kcal).toBe(162.1)
   })
 })

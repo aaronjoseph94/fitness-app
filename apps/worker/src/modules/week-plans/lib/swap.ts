@@ -21,7 +21,9 @@ export async function swapInWeekPlans(deps: Deps, swap: SwapInput): Promise<void
   const rows = await deps.db
     .select()
     .from(week_plans)
-    .where(and(inArray(week_plans.status, ['active', 'proposed']), gte(week_plans.week_start, addDays(date, -6))))
+    .where(
+      and(inArray(week_plans.status, ['active', 'proposed']), gte(week_plans.week_start, addDays(date, -6))),
+    )
   let library: Library | null = null
   for (const plan of rows.flatMap((r) => toWeekPlan(r) ?? [])) {
     const sessions = { ...plan.plan.sessions }
@@ -33,11 +35,21 @@ export async function swapInWeekPlans(deps: Deps, swap: SwapInput): Promise<void
       if (!ids.includes(swap.from_exercise_id) || ids.includes(swap.to_exercise_id)) continue
       library ??= await loadLibrary(deps)
       const exercises = s.exercises.map((e) =>
-        e.exercise_id === swap.from_exercise_id ? { ...e, exercise_id: swap.to_exercise_id, target_load_kg: null } : e,
+        e.exercise_id === swap.from_exercise_id
+          ? { ...e, exercise_id: swap.to_exercise_id, target_load_kg: null }
+          : e,
       )
       const tagged = exercises.flatMap((e) => {
         const tags = library!.byId.get(e.exercise_id)
-        return tags ? [{ primary_muscles: tags.primary_muscles, secondary_muscles: tags.secondary_muscles, sets: e.sets }] : []
+        return tags
+          ? [
+              {
+                primary_muscles: tags.primary_muscles,
+                secondary_muscles: tags.secondary_muscles,
+                sets: e.sets,
+              },
+            ]
+          : []
       })
       sessions[weekday] = { ...s, exercises, muscle_scores: muscleScores(tagged) }
       changed = true
@@ -46,7 +58,10 @@ export async function swapInWeekPlans(deps: Deps, swap: SwapInput): Promise<void
 
     const content: WeekPlanContent = { ...plan.plan, sessions }
     const now = deps.now().toISOString()
-    const update = deps.db.update(week_plans).set({ plan: content, updated_at: now }).where(eq(week_plans.id, plan.id))
+    const update = deps.db
+      .update(week_plans)
+      .set({ plan: content, updated_at: now })
+      .where(eq(week_plans.id, plan.id))
     if (plan.status !== 'active') {
       await update
       continue

@@ -13,7 +13,13 @@ export function createKeyResolver(deps: Deps): KeyResolver {
   return async (name) => {
     // A read that fails (a migration not applied yet) must not break a call that has a Worker secret to fall back on.
     stored ??= loadSecretValues(deps).catch((err: unknown) => {
-      console.warn(JSON.stringify({ at: 'llm', event: 'secrets_read_failed', error: err instanceof Error ? err.message : String(err) }))
+      console.warn(
+        JSON.stringify({
+          at: 'llm',
+          event: 'secrets_read_failed',
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
       return new Map<string, string>()
     })
     return (await stored).get(name) ?? deps.env[name]

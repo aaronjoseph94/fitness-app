@@ -48,9 +48,27 @@ import { WeekSplitCard } from './WeekSplitCard'
 /** The four ways out of this tab, as a row of tool cards. */
 const TOOLS: { to: string; label: string; help?: string; Icon: SvgIconComponent; testId: string }[] = [
   { to: '/train/library', label: 'Exercise library', Icon: MenuBookOutlined, testId: 'link-library' },
-  { to: '/train/equipment', label: 'Equipment', help: 'The machines at your gym', Icon: FitnessCenterRounded, testId: 'link-equipment' },
-  { to: '/train/builder', label: 'Workout builder', help: 'Create or edit a template', Icon: EditNoteRounded, testId: 'link-builder' },
-  { to: GENERATE_PATH, label: 'AI workout', help: 'From your equipment and readiness', Icon: AutoAwesomeRounded, testId: 'link-ai' },
+  {
+    to: '/train/equipment',
+    label: 'Equipment',
+    help: 'The machines at your gym',
+    Icon: FitnessCenterRounded,
+    testId: 'link-equipment',
+  },
+  {
+    to: '/train/builder',
+    label: 'Workout builder',
+    help: 'Create or edit a template',
+    Icon: EditNoteRounded,
+    testId: 'link-builder',
+  },
+  {
+    to: GENERATE_PATH,
+    label: 'AI workout',
+    help: 'From your equipment and readiness',
+    Icon: AutoAwesomeRounded,
+    testId: 'link-ai',
+  },
 ]
 
 const weekdayLong = new Intl.DateTimeFormat('en-CA', { weekday: 'long', timeZone: 'UTC' })
@@ -115,8 +133,11 @@ export function TrainPage() {
       : day.data?.targets?.training_planned || day.data?.planned_session || splitTemplate
         ? 'Training day'
         : null
-  const done = sessions.data ? `${week.sessions} session${week.sessions === 1 ? '' : 's'} done this week` : null
-  const libraryHelp = index.all.length > 0 ? `${index.allowed.length} allowed of ${index.all.length}` : undefined
+  const done = sessions.data
+    ? `${week.sessions} session${week.sessions === 1 ? '' : 's'} done this week`
+    : null
+  const libraryHelp =
+    index.all.length > 0 ? `${index.allowed.length} allowed of ${index.all.length}` : undefined
 
   return (
     <Stack spacing={5} data-testid="train-page">
@@ -164,9 +185,19 @@ export function TrainPage() {
         {trainingWeek.isLoading ? (
           <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 680, md: 440 } }} />
         ) : trainingWeek.error && !trainingWeek.data ? (
-          <LoadProblem what="This week" error={trainingWeek.error} onRetry={() => void trainingWeek.refetch()} />
+          <LoadProblem
+            what="This week"
+            error={trainingWeek.error}
+            onRetry={() => void trainingWeek.refetch()}
+          />
         ) : trainingWeek.data ? (
-          <WeekSplitCard week={trainingWeek.data} date={date} templates={templates.data ?? []} onKept={markKept} onGenerate={clearKept} />
+          <WeekSplitCard
+            week={trainingWeek.data}
+            date={date}
+            templates={templates.data ?? []}
+            onKept={markKept}
+            onGenerate={clearKept}
+          />
         ) : null}
       </Reveal>
 
@@ -178,9 +209,17 @@ export function TrainPage() {
               <SectionHeader
                 id="templates"
                 title="Templates"
-                subtitle={drafts.some((d) => !d.kept) ? 'AI drafts for your split: keep the ones you like' : undefined}
+                subtitle={
+                  drafts.some((d) => !d.kept) ? 'AI drafts for your split: keep the ones you like' : undefined
+                }
                 action={
-                  <Button component={Link} to="/train/builder" size="small" startIcon={<AddRounded />} sx={headerLink}>
+                  <Button
+                    component={Link}
+                    to="/train/builder"
+                    size="small"
+                    startIcon={<AddRounded />}
+                    sx={headerLink}
+                  >
                     New template
                   </Button>
                 }
@@ -239,7 +278,12 @@ export function TrainPage() {
                   onRetry={() => void sessions.refetch()}
                 />
               ) : (sessions.data?.length ?? 0) + unsynced.length > 0 ? (
-                <RecentSessions sessions={sessions.data ?? []} unsynced={unsynced} templates={templates.data} week={week} />
+                <RecentSessions
+                  sessions={sessions.data ?? []}
+                  unsynced={unsynced}
+                  templates={templates.data}
+                  week={week}
+                />
               ) : (
                 <EmptyState title="No sessions yet" body="Finished sessions show here." />
               )}
@@ -256,7 +300,11 @@ export function TrainPage() {
           sx={{
             display: 'grid',
             gap: 4,
-            gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
+            gridTemplateColumns: {
+              xs: 'minmax(0, 1fr)',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              lg: 'repeat(4, minmax(0, 1fr))',
+            },
           }}
         >
           {TOOLS.map(({ to, label, help, Icon, testId }) => (

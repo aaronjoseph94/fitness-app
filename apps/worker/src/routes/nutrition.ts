@@ -26,14 +26,23 @@ export function mountNutritionRoutes(app: App): void {
   route(app, endpoints.nutrition.createMeal, ({ body }, deps) => createMeal(deps, body), { status: 201 })
   route(app, endpoints.nutrition.updateMeal, ({ params, body }, deps) => updateMeal(deps, params.id, body))
   route(app, endpoints.nutrition.deleteMeal, ({ params }, deps) => deleteMeal(deps, params.id))
-  route(app, endpoints.nutrition.addMealPhoto, ({ params, query, body }, deps) => addMealPhoto(deps, params.id, query, body), {
-    status: 201,
-  })
+  route(
+    app,
+    endpoints.nutrition.addMealPhoto,
+    ({ params, query, body }, deps) => addMealPhoto(deps, params.id, query, body),
+    {
+      status: 201,
+    },
+  )
   route(app, endpoints.nutrition.searchFoods, ({ query }, deps) => searchFoods(deps, query))
   route(app, endpoints.nutrition.recentFoods, ({ query }, deps) => recentFoods(deps, query))
   route(app, endpoints.nutrition.createFood, ({ body }, deps) => createFood(deps, body), { status: 201 })
   route(app, endpoints.nutrition.listFavourites, (_, deps) => listFavourites(deps))
-  route(app, endpoints.nutrition.createFavourite, ({ body }, deps) => createFavourite(deps, body), { status: 201 })
-  route(app, endpoints.nutrition.updateFavourite, ({ params, body }, deps) => updateFavourite(deps, params.id, body))
+  route(app, endpoints.nutrition.createFavourite, ({ body }, deps) => createFavourite(deps, body), {
+    status: 201,
+  })
+  route(app, endpoints.nutrition.updateFavourite, ({ params, body }, deps) =>
+    updateFavourite(deps, params.id, body),
+  )
   route(app, endpoints.nutrition.deleteFavourite, ({ params }, deps) => deleteFavourite(deps, params.id))
 }

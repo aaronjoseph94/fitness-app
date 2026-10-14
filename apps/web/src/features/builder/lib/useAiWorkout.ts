@@ -45,7 +45,10 @@ export function useAiWorkout(): AiWorkout {
     { params: { id: jobId ?? '00000000-0000-4000-8000-000000000000' } },
     {
       enabled: jobId !== null && state.status === 'working',
-      refetchInterval: (q) => (q.state.data && (q.state.data.status === 'done' || q.state.data.status === 'failed') ? false : POLL_MS),
+      refetchInterval: (q) =>
+        q.state.data && (q.state.data.status === 'done' || q.state.data.status === 'failed')
+          ? false
+          : POLL_MS,
       retry: 3,
       gcTime: 0,
     },
@@ -62,7 +65,10 @@ export function useAiWorkout(): AiWorkout {
       }
     } else if (data.status === 'failed') {
       const why = readableJobError(data.error)
-      setState({ status: 'failed', message: why ? `The AI couldn't build it: ${why}` : "The AI couldn't build a workout. Try again." })
+      setState({
+        status: 'failed',
+        message: why ? `The AI couldn't build it: ${why}` : "The AI couldn't build a workout. Try again.",
+      })
     }
   }, [data, state.status])
 
@@ -72,7 +78,10 @@ export function useAiWorkout(): AiWorkout {
     const t = setInterval(() => {
       const elapsed = Date.now() - startedAt.current
       if (elapsed > GIVE_UP_MS) {
-        setState({ status: 'failed', message: 'Still no answer after 3 minutes. The AI tab will show it if it arrives.' })
+        setState({
+          status: 'failed',
+          message: 'Still no answer after 3 minutes. The AI tab will show it if it arrives.',
+        })
       } else if (elapsed > SLOW_MS && !state.slow) {
         setState({ status: 'working', slow: true })
       }
@@ -81,7 +90,8 @@ export function useAiWorkout(): AiWorkout {
   }, [state])
 
   useEffect(() => {
-    if (job.error && state.status === 'working' && !job.error.transient) setState({ status: 'failed', message: problemText(job.error) })
+    if (job.error && state.status === 'working' && !job.error.transient)
+      setState({ status: 'failed', message: problemText(job.error) })
   }, [job.error, state.status])
 
   const run = useCallback((request: AiWorkoutRequest) => {
@@ -91,7 +101,8 @@ export function useAiWorkout(): AiWorkout {
     setState({ status: 'working', slow: false })
     call(endpoints.ai.workout, { body: request }).then(
       (ref) => mine === runId.current && setJobId(ref.job_id),
-      (error: unknown) => mine === runId.current && setState({ status: 'failed', message: problemText(error) }),
+      (error: unknown) =>
+        mine === runId.current && setState({ status: 'failed', message: problemText(error) }),
     )
   }, [])
 

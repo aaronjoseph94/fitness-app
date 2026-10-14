@@ -19,11 +19,19 @@ import type { Deps } from '../src/lib/deps'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
-const at = (now: string): Deps => ({ db, env, now: () => new Date(now), actor: 'ai', waitUntil: (p) => void pending.push(p.catch(() => undefined)) })
+const at = (now: string): Deps => ({
+  db,
+  env,
+  now: () => new Date(now),
+  actor: 'ai',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+})
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 const FIVE_MIN = 5 * 60_000
 
@@ -42,7 +50,12 @@ async function ticks(from: string, to: string): Promise<[string, string[]][]> {
 
 /** cron_runs claims of a kind for these period keys: [period_key, ran_at]. */
 const claimed = async (kind: CronKind, ...keys: string[]) =>
-  (await db.select({ period_key: cron_runs.period_key, ran_at: cron_runs.ran_at }).from(cron_runs).where(eq(cron_runs.kind, kind)))
+  (
+    await db
+      .select({ period_key: cron_runs.period_key, ran_at: cron_runs.ran_at })
+      .from(cron_runs)
+      .where(eq(cron_runs.kind, kind))
+  )
     .filter((r) => keys.includes(r.period_key))
     .map((r) => [r.period_key, r.ran_at])
     .sort()
@@ -57,11 +70,26 @@ const backups = async (from: string, to: string) =>
   ).sort((a, b) => a.ran_at.localeCompare(b.ran_at))
 
 const lastTargetDate = async () =>
-  (await db.select({ date: daily_targets.date }).from(daily_targets).orderBy(desc(daily_targets.date)).limit(1))[0]?.date
+  (
+    await db
+      .select({ date: daily_targets.date })
+      .from(daily_targets)
+      .orderBy(desc(daily_targets.date))
+      .limit(1)
+  )[0]?.date
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2025-10-01' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2025-10-01',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -78,7 +106,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -100,9 +139,24 @@ describe('month end (Fri 2025-10-31 → Sat 2025-11-01, MDT)', () => {
     const rows = await backups('2025-11-01T05:00:00.000Z', '2025-11-01T07:30:00.000Z')
 
     expect(rows.filter((r) => r.period_key === '2025-10').map((r) => r.ran_at)).toEqual(
-      ['05:00', '05:05', '05:10', '05:15', '05:20', '05:25', '05:30', '05:35', '05:40', '05:45', '05:50', '05:55'].map((t) => `2025-11-01T${t}:00.000Z`),
+      [
+        '05:00',
+        '05:05',
+        '05:10',
+        '05:15',
+        '05:20',
+        '05:25',
+        '05:30',
+        '05:35',
+        '05:40',
+        '05:45',
+        '05:50',
+        '05:55',
+      ].map((t) => `2025-11-01T${t}:00.000Z`),
     )
-    expect(rows.filter((r) => r.ran_at >= '2025-11-01T06:00:00.000Z' && r.ran_at < '2025-11-01T07:00:00.000Z')).toEqual([])
+    expect(
+      rows.filter((r) => r.ran_at >= '2025-11-01T06:00:00.000Z' && r.ran_at < '2025-11-01T07:00:00.000Z'),
+    ).toEqual([])
     expect(rows.filter((r) => r.period_key === '2025-11').map((r) => r.ran_at)).toEqual(
       ['07:00', '07:05', '07:10', '07:15', '07:20', '07:25', '07:30'].map((t) => `2025-11-01T${t}:00.000Z`),
     )
@@ -112,17 +166,23 @@ describe('month end (Fri 2025-10-31 → Sat 2025-11-01, MDT)', () => {
 describe('fall back (Sun 2025-11-02: 01:00–02:00 happens twice)', () => {
   it('nightly runs once for 2025-11-02 at 00:30 MDT and not again in either 01:00 hour', async () => {
     // Sat 23:00 MDT (05:00Z) … Sun 03:00 MST (10:00Z). 01:00 MDT = 07:00Z; 01:00 MST = 08:00Z.
-    expect(await ticks('2025-11-02T05:00:00.000Z', '2025-11-02T10:00:00.000Z')).toEqual([['2025-11-02T06:30:00.000Z', ['nightly']]])
+    expect(await ticks('2025-11-02T05:00:00.000Z', '2025-11-02T10:00:00.000Z')).toEqual([
+      ['2025-11-02T06:30:00.000Z', ['nightly']],
+    ])
     expect(await lastTargetDate()).toBe('2025-11-16') // 2025-11-02 + 14
   })
 
   it('weekly runs once for 2025-W44 at Sunday 20:00 MST (03:00Z Monday), not at 02:00Z (20:00 on summer time)', async () => {
-    expect(await ticks('2025-11-03T01:30:00.000Z', '2025-11-03T04:00:00.000Z')).toEqual([['2025-11-03T03:00:00.000Z', ['weekly']]])
+    expect(await ticks('2025-11-03T01:30:00.000Z', '2025-11-03T04:00:00.000Z')).toEqual([
+      ['2025-11-03T03:00:00.000Z', ['weekly']],
+    ])
     expect(await claimed('weekly', '2025-W44')).toEqual([['2025-W44', '2025-11-03T03:00:00.000Z']])
   })
 
   it('Monday’s catch-up window does not run 2025-W44 again; its nightly runs at 00:30 MST (07:30Z)', async () => {
-    expect(await ticks('2025-11-03T07:20:00.000Z', '2025-11-03T07:40:00.000Z')).toEqual([['2025-11-03T07:30:00.000Z', ['nightly']]])
+    expect(await ticks('2025-11-03T07:20:00.000Z', '2025-11-03T07:40:00.000Z')).toEqual([
+      ['2025-11-03T07:30:00.000Z', ['nightly']],
+    ])
     expect(await ticks('2025-11-03T16:00:00.000Z', '2025-11-03T16:00:00.000Z')).toEqual([]) // Mon 09:00 MST
   })
 })
@@ -142,12 +202,16 @@ describe('spring forward (Sun 2026-03-08: 02:00–03:00 doesn’t exist)', () =>
   })
 
   it('weekly runs once for 2026-W10 at Sunday 20:00 MDT (02:00Z Monday)', async () => {
-    expect(await ticks('2026-03-09T01:00:00.000Z', '2026-03-09T04:00:00.000Z')).toEqual([['2026-03-09T02:00:00.000Z', ['weekly']]])
+    expect(await ticks('2026-03-09T01:00:00.000Z', '2026-03-09T04:00:00.000Z')).toEqual([
+      ['2026-03-09T02:00:00.000Z', ['weekly']],
+    ])
     expect(await claimed('weekly', '2026-W10')).toEqual([['2026-W10', '2026-03-09T02:00:00.000Z']])
   })
 
   it('the nightly for Mon 2026-03-09 runs at 00:30 MDT (06:30Z), the first day on summer time', async () => {
-    expect(await ticks('2026-03-09T06:20:00.000Z', '2026-03-09T06:40:00.000Z')).toEqual([['2026-03-09T06:30:00.000Z', ['nightly']]])
+    expect(await ticks('2026-03-09T06:20:00.000Z', '2026-03-09T06:40:00.000Z')).toEqual([
+      ['2026-03-09T06:30:00.000Z', ['nightly']],
+    ])
   })
 })
 
@@ -167,7 +231,10 @@ describe('nightly on an ordinary day (UTC−6)', () => {
 
   it('a retried tick and two overlapping ticks run it once', async () => {
     // Wed 2026-10-14 00:30, twice in parallel, then the same instant again.
-    const both = await Promise.all([runCron(at('2026-10-14T06:30:00.000Z')), runCron(at('2026-10-14T06:30:00.000Z'))])
+    const both = await Promise.all([
+      runCron(at('2026-10-14T06:30:00.000Z')),
+      runCron(at('2026-10-14T06:30:00.000Z')),
+    ])
     const again = await runCron(at('2026-10-14T06:30:00.000Z'))
 
     expect(both.map((r) => r.ran).sort()).toEqual([[], ['nightly']])
@@ -177,7 +244,9 @@ describe('nightly on an ordinary day (UTC−6)', () => {
 
   it('catches up when the Worker was down over 00:30: the first tick that day runs it', async () => {
     // Thu 2026-10-15: no tick from 00:00 to 09:55; 10:00 = 16:00Z.
-    expect(await ticks('2026-10-15T16:00:00.000Z', '2026-10-15T16:10:00.000Z')).toEqual([['2026-10-15T16:00:00.000Z', ['nightly']]])
+    expect(await ticks('2026-10-15T16:00:00.000Z', '2026-10-15T16:10:00.000Z')).toEqual([
+      ['2026-10-15T16:00:00.000Z', ['nightly']],
+    ])
   })
 })
 
@@ -195,12 +264,16 @@ describe('Sun 2026-11-01 under tzdb 2026c (Alberta on permanent UTC−6: no fall
     const rows = await backups('2026-11-01T05:00:00.000Z', '2026-11-01T10:00:00.000Z')
 
     expect(rows.filter((r) => r.period_key === '2026-10').at(-1)?.ran_at).toBe('2026-11-01T05:55:00.000Z')
-    expect(rows.filter((r) => r.ran_at >= '2026-11-01T06:00:00.000Z' && r.ran_at < '2026-11-01T07:00:00.000Z')).toEqual([])
+    expect(
+      rows.filter((r) => r.ran_at >= '2026-11-01T06:00:00.000Z' && r.ran_at < '2026-11-01T07:00:00.000Z'),
+    ).toEqual([])
     expect(rows.filter((r) => r.period_key === '2026-11')[0]?.ran_at).toBe('2026-11-01T07:00:00.000Z')
   })
 
   it('weekly runs once for 2026-W44 at Sunday 20:00 = 02:00Z Monday (not 03:00Z as on the old MST rule)', async () => {
-    expect(await ticks('2026-11-02T01:00:00.000Z', '2026-11-02T04:00:00.000Z')).toEqual([['2026-11-02T02:00:00.000Z', ['weekly']]])
+    expect(await ticks('2026-11-02T01:00:00.000Z', '2026-11-02T04:00:00.000Z')).toEqual([
+      ['2026-11-02T02:00:00.000Z', ['weekly']],
+    ])
     expect(await claimed('weekly', '2026-W44')).toEqual([['2026-W44', '2026-11-02T02:00:00.000Z']])
   })
 })
@@ -208,13 +281,17 @@ describe('Sun 2026-11-01 under tzdb 2026c (Alberta on permanent UTC−6: no fall
 describe('weekly catch-up after an outage', () => {
   it('a Worker down from Sunday 2026-11-08 19:00 until Monday 11:55 runs 2026-W45 on its first tick', async () => {
     // Mon 2026-11-09 11:55 = 17:55Z.
-    expect(await ticks('2026-11-09T17:55:00.000Z', '2026-11-09T18:05:00.000Z')).toEqual([['2026-11-09T17:55:00.000Z', ['nightly', 'weekly']]])
+    expect(await ticks('2026-11-09T17:55:00.000Z', '2026-11-09T18:05:00.000Z')).toEqual([
+      ['2026-11-09T17:55:00.000Z', ['nightly', 'weekly']],
+    ])
     expect(await claimed('weekly', '2026-W45')).toEqual([['2026-W45', '2026-11-09T17:55:00.000Z']])
   })
 
   it('back at Monday 12:00 or later: the week is left (PROGRESS decision: catch-up only before 12:00)', async () => {
     // Mon 2026-11-16 12:00 = 18:00Z; 2026-W46 had no Sunday tick.
-    expect(await ticks('2026-11-16T18:00:00.000Z', '2026-11-16T18:00:00.000Z')).toEqual([['2026-11-16T18:00:00.000Z', ['nightly']]])
+    expect(await ticks('2026-11-16T18:00:00.000Z', '2026-11-16T18:00:00.000Z')).toEqual([
+      ['2026-11-16T18:00:00.000Z', ['nightly']],
+    ])
     expect(await claimed('weekly', '2026-W46')).toEqual([])
   })
 })
@@ -237,9 +314,13 @@ describe('year end (UTC−6)', () => {
       ['2027-01-04T01:30:00.000Z', ['nightly']],
       ['2027-01-04T02:00:00.000Z', ['weekly']],
     ])
-    expect(await claimed('weekly', '2026-W53', '2027-W01')).toEqual([['2026-W53', '2027-01-04T02:00:00.000Z']])
+    expect(await claimed('weekly', '2026-W53', '2027-W01')).toEqual([
+      ['2026-W53', '2027-01-04T02:00:00.000Z'],
+    ])
     // Mon 2027-01-04 09:00 = 15:00Z: the catch-up finds the week claimed.
-    expect(await ticks('2027-01-04T15:00:00.000Z', '2027-01-04T15:00:00.000Z')).toEqual([['2027-01-04T15:00:00.000Z', ['nightly']]])
+    expect(await ticks('2027-01-04T15:00:00.000Z', '2027-01-04T15:00:00.000Z')).toEqual([
+      ['2027-01-04T15:00:00.000Z', ['nightly']],
+    ])
   })
 })
 

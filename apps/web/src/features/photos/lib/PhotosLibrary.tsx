@@ -60,14 +60,17 @@ export function PhotosLibrary() {
   const compareFrom = (photo: ProgressPhoto) => {
     const ofPose = all.filter((p) => p.pose === photo.pose)
     const newest = ofPose[0]
-    const pair = newest && newest.id !== photo.id ? [photo, newest] : [ofPose[ofPose.length - 1] ?? photo, photo]
+    const pair =
+      newest && newest.id !== photo.id ? [photo, newest] : [ofPose[ofPose.length - 1] ?? photo, photo]
     setOpen(null)
     update({ view: 'compare', pose: photo.pose, before: pair[0]!.id, after: pair[1]!.id })
   }
 
   const pair = useMemo((): [ProgressPhoto, ProgressPhoto] | null => {
     const byId = (id: string | null) => (id ? shown.find((p) => p.id === id) : undefined)
-    const fallback = defaultPair(shown, pose ?? shown[0]?.pose ?? 'front') ?? (shown.length >= 2 ? [shown[shown.length - 1]!, shown[0]!] : null)
+    const fallback =
+      defaultPair(shown, pose ?? shown[0]?.pose ?? 'front') ??
+      (shown.length >= 2 ? [shown[shown.length - 1]!, shown[0]!] : null)
     if (!fallback) return null
     return [byId(params.get('before')) ?? fallback[0], byId(params.get('after')) ?? fallback[1]]
   }, [shown, pose, params])
@@ -83,14 +86,27 @@ export function PhotosLibrary() {
           </Box>
         }
         action={
-          <Button component={RouterLink} to="/photos/new" variant="contained" startIcon={<AddAPhotoOutlined />}>
+          <Button
+            component={RouterLink}
+            to="/photos/new"
+            variant="contained"
+            startIcon={<AddAPhotoOutlined />}
+          >
             Take photos
           </Button>
         }
       />
 
       <Reveal delay={enter(1)}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 3,
+          }}
+        >
           <Segmented
             ariaLabel="View"
             value={view}
@@ -104,9 +120,24 @@ export function PhotosLibrary() {
 
       <Reveal delay={enter(2)}>
         {isLoading ? (
-          <Box sx={{ display: 'grid', columnGap: 3, rowGap: 4, gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' } }}>
+          <Box
+            sx={{
+              display: 'grid',
+              columnGap: 3,
+              rowGap: 4,
+              gridTemplateColumns: {
+                xs: 'repeat(3, minmax(0, 1fr))',
+                sm: 'repeat(4, minmax(0, 1fr))',
+                md: 'repeat(5, minmax(0, 1fr))',
+              },
+            }}
+          >
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} variant="rounded" sx={{ aspectRatio: '3 / 4', height: 'auto', borderRadius: `${tokens.radius.control}px` }} />
+              <Skeleton
+                key={i}
+                variant="rounded"
+                sx={{ aspectRatio: '3 / 4', height: 'auto', borderRadius: `${tokens.radius.control}px` }}
+              />
             ))}
           </Box>
         ) : error && !data ? (
@@ -116,7 +147,12 @@ export function PhotosLibrary() {
             title={pose ? `No ${POSE_LABEL[pose].toLowerCase()} photos yet` : 'No progress photos yet'}
             body="Front, side and back, lined up with the outline. Private: never sent to any AI."
             action={
-              <Button component={RouterLink} to={pose ? `/photos/new?pose=${pose}` : '/photos/new'} variant="outlined" startIcon={<AddAPhotoOutlined />}>
+              <Button
+                component={RouterLink}
+                to={pose ? `/photos/new?pose=${pose}` : '/photos/new'}
+                variant="outlined"
+                startIcon={<AddAPhotoOutlined />}
+              >
                 Take {pose ? `a ${POSE_LABEL[pose].toLowerCase()} photo` : 'your first photos'}
               </Button>
             }

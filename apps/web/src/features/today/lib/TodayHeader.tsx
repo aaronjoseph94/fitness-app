@@ -7,7 +7,17 @@ import TrendingFlatRounded from '@mui/icons-material/TrendingFlatRounded'
 import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded'
 import Box from '@mui/material/Box'
 import type { Forecast } from '@fitness/shared/schemas'
-import { CountUp, formatNumber, formatShortDate, formatSigned, KeyStat, KeyStatGrid, PendingBadge, statValue, StatusChip } from '../../../components'
+import {
+  CountUp,
+  formatNumber,
+  formatShortDate,
+  formatSigned,
+  KeyStat,
+  KeyStatGrid,
+  PendingBadge,
+  statValue,
+  StatusChip,
+} from '../../../components'
 import { tokens } from '../../../theme'
 
 export interface TrendNumbers {
@@ -25,7 +35,8 @@ export interface TrendNumbers {
 /** Under this the change since the start reads as flat. */
 const FLAT_KG = 0.05
 
-const sinceStartKg = ({ trendKg, startKg }: TrendNumbers) => (trendKg !== null && startKg !== null ? trendKg - startKg : null)
+const sinceStartKg = ({ trendKg, startKg }: TrendNumbers) =>
+  trendKg !== null && startKg !== null ? trendKg - startKg : null
 
 /** "2027-04-09" → "Apr 9, 2027". */
 const finishLabel = (date: string) => `${formatShortDate(date)}, ${date.slice(0, 4)}`
@@ -35,13 +46,20 @@ export function TrendHeadline(props: TrendNumbers) {
   const since = sinceStartKg(props)
   const flat = since === null || Math.abs(since) < FLAT_KG
   return (
-    <Box data-testid="today-header" sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '10px', rowGap: 1 }}>
+    <Box
+      data-testid="today-header"
+      sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '10px', rowGap: 1 }}
+    >
       <Box
         component="span"
         data-testid="today-trend"
         sx={{ ...statValue('medium'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}
       >
-        {trendKg === null ? '—' : <CountUp value={trendKg} from={startKg ?? trendKg} precision={1} delay={300} />}
+        {trendKg === null ? (
+          '—'
+        ) : (
+          <CountUp value={trendKg} from={startKg ?? trendKg} precision={1} delay={300} />
+        )}
       </Box>
       <Box component="span" sx={{ fontSize: tokens.font.size.body, color: tokens.ink.muted }}>
         kg trend
@@ -58,7 +76,15 @@ export function TrendHeadline(props: TrendNumbers) {
         </Box>
       )}
       {rawKg !== null && (
-        <Box component="span" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        <Box
+          component="span"
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.muted,
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          }}
+        >
           Weigh-in {formatNumber(rawKg, 1)} kg
         </Box>
       )}
@@ -77,7 +103,11 @@ export function TrendFacts(props: TrendNumbers) {
   const toGo = trendKg !== null ? Math.max(0, trendKg - goalKg) : null
   const finish = forecast?.finish_date ?? null
   // The week's loss at or above the slow edge of the plan's ±20 % band (SPEC §9): −change_7d ≥ weekly_rate × 0.8.
-  const onPace = change7dKg !== null && forecast !== null && forecast.weekly_rate_kg > 0 && -change7dKg >= forecast.band.low
+  const onPace =
+    change7dKg !== null &&
+    forecast !== null &&
+    forecast.weekly_rate_kg > 0 &&
+    -change7dKg >= forecast.band.low
   return (
     <KeyStatGrid>
       <KeyStat

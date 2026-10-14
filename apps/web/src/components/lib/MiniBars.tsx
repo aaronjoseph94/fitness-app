@@ -32,7 +32,10 @@ export function MiniBars({ values, metric, target, height = 40, label, testId }:
   const isHit = (v: number) => target !== null && target !== undefined && v >= target
   const color = tokens.metric[metric]
   const tint = metricTint(metric)
-  const targetTop = target !== null && target !== undefined && top > 0 ? Math.max(0, Math.min(100, (1 - target / top) * 100)) : null
+  const targetTop =
+    target !== null && target !== undefined && top > 0
+      ? Math.max(0, Math.min(100, (1 - target / top) * 100))
+      : null
 
   return (
     <Box
@@ -42,7 +45,8 @@ export function MiniBars({ values, metric, target, height = 40, label, testId }:
       sx={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: '3px', height, minWidth: 0 }}
     >
       {values.map((v, i) => {
-        const pct = v === null || !Number.isFinite(v) || top <= 0 ? 0 : Math.max(0, Math.min(100, (v / top) * 100))
+        const pct =
+          v === null || !Number.isFinite(v) || top <= 0 ? 0 : Math.max(0, Math.min(100, (v / top) * 100))
         return (
           <Box
             key={i}
@@ -56,7 +60,9 @@ export function MiniBars({ values, metric, target, height = 40, label, testId }:
               bgcolor: v === null ? tokens.ink.fill : isHit(v) ? color : tint,
               transformOrigin: 'bottom',
               transform: entered ? 'none' : 'scaleY(0)',
-              transition: reduced ? 'none' : `transform ${tokens.motion.duration.grow}ms ${enterEasing()} ${i * BAR_STAGGER}ms`,
+              transition: reduced
+                ? 'none'
+                : `transform ${tokens.motion.duration.grow}ms ${enterEasing()} ${i * BAR_STAGGER}ms`,
             }}
           />
         )

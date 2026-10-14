@@ -10,7 +10,20 @@ import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import type { ReactNode } from 'react'
 import { Sparkline } from '../../../charts'
-import { Column, Columns, CountUp, deltaTone, formatNumber, formatShortDate, MiniBars, ProgressBar, Reveal, StatCard, statValue, StatusChip } from '../../../components'
+import {
+  Column,
+  Columns,
+  CountUp,
+  deltaTone,
+  formatNumber,
+  formatShortDate,
+  MiniBars,
+  ProgressBar,
+  Reveal,
+  StatCard,
+  statValue,
+  StatusChip,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import type { GoalFacts } from './GoalRail'
 import { barSeries, type Kpi, type KpiGroup } from './kpis'
@@ -33,7 +46,9 @@ export interface KpiBandProps {
 
 export function KpiBand({ kpis, goal, rail }: KpiBandProps) {
   // Stable sort: within a category the order stays the order `dashboardKpis` pushed them in.
-  const [hero, ...rest] = [...kpis].sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group))
+  const [hero, ...rest] = [...kpis].sort(
+    (a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group),
+  )
   if (!hero) return null
   return (
     <Reveal delay={80}>
@@ -54,7 +69,13 @@ export function KpiBand({ kpis, goal, rail }: KpiBandProps) {
             // Two tiles across below `lg`: an odd last tile takes the whole row rather than leaving a hole beside it.
             const alone = i === rest.length - 1 && rest.length % 2 === 1
             return (
-              <Column key={kpi.key} span={kpi.span} mdSpan={alone ? 6 : (kpi.mdSpan ?? 3)} xsSpan={1} smSpan={alone ? 2 : 1}>
+              <Column
+                key={kpi.key}
+                span={kpi.span}
+                mdSpan={alone ? 6 : (kpi.mdSpan ?? 3)}
+                xsSpan={1}
+                smSpan={alone ? 2 : 1}
+              >
                 <MetricTile kpi={kpi} />
               </Column>
             )
@@ -65,7 +86,11 @@ export function KpiBand({ kpis, goal, rail }: KpiBandProps) {
   )
 }
 
-const caption = { fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary } as const
+const caption = {
+  fontSize: tokens.font.size.caption,
+  lineHeight: tokens.font.leading.caption,
+  color: tokens.ink.secondary,
+} as const
 
 /**
  * The hero's facts column never gets narrower than its start / share / goal line needs to sit on one line over the
@@ -86,14 +111,20 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
   const facts = [
     kpi.footnote,
     goal.requiredRate !== null ? `${formatNumber(goal.requiredRate, 2)} kg a week` : null,
-    goal.nextMilestone?.date ? `next milestone ${goal.nextMilestone.label} on ${formatShortDate(goal.nextMilestone.date)}` : null,
+    goal.nextMilestone?.date
+      ? `next milestone ${goal.nextMilestone.label} on ${formatShortDate(goal.nextMilestone.date)}`
+      : null,
   ].filter(Boolean)
   return (
     <Card data-testid={`kpi-${kpi.key}`} sx={{ height: '100%' }}>
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) minmax(0, 38%)', lg: `minmax(${HERO_FACTS_MIN}px, 1fr) minmax(0, 300px)` },
+          gridTemplateColumns: {
+            xs: 'minmax(0, 1fr)',
+            sm: 'minmax(0, 1fr) minmax(0, 38%)',
+            lg: `minmax(${HERO_FACTS_MIN}px, 1fr) minmax(0, 300px)`,
+          },
           gap: '20px',
           px: '22px',
           py: '20px',
@@ -101,17 +132,44 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: tokens.font.size.label,
+              fontWeight: tokens.font.weight.label,
+              color: tokens.ink.label,
+            }}
+          >
             {Icon && <Icon aria-hidden sx={{ fontSize: 16, color: tokens.accent.main }} />}
             {kpi.label}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '10px', rowGap: 1, mt: '10px' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              columnGap: '10px',
+              rowGap: 1,
+              mt: '10px',
+            }}
+          >
             <Box
               component="span"
               data-testid="goal-now"
               sx={{ ...statValue('large'), lineHeight: 1, color: tokens.ink.text }}
             >
-              {kpi.value === null ? '—' : <CountUp value={kpi.value} from={goal.startKg ?? undefined} precision={precision} delay={500} />}
+              {kpi.value === null ? (
+                '—'
+              ) : (
+                <CountUp
+                  value={kpi.value}
+                  from={goal.startKg ?? undefined}
+                  precision={precision}
+                  delay={500}
+                />
+              )}
             </Box>
             <Box component="span" sx={{ fontSize: tokens.font.size.body, color: tokens.ink.secondary }}>
               {kpi.unit}
@@ -130,9 +188,19 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
           </Box>
           {percent !== null && (
             <>
-              <Box sx={{ ...caption, display: 'flex', justifyContent: 'space-between', gap: 2, mt: '18px', flexWrap: 'wrap' }}>
+              <Box
+                sx={{
+                  ...caption,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  mt: '18px',
+                  flexWrap: 'wrap',
+                }}
+              >
                 <Box component="span" data-testid="goal-start" sx={{ whiteSpace: 'nowrap' }}>
-                  Start {formatNumber(goal.startKg, 1)} kg{goal.startDate ? ` · ${formatShortDate(goal.startDate)}` : ''}
+                  Start {formatNumber(goal.startKg, 1)} kg
+                  {goal.startDate ? ` · ${formatShortDate(goal.startDate)}` : ''}
                 </Box>
                 <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
                   <Box component="b" sx={{ fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
@@ -145,7 +213,12 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
                 </Box>
               </Box>
               <Box sx={{ mt: '6px' }}>
-                <ProgressBar value={goal.progress} color={tokens.accent.main} label="Goal progress" delay={700} />
+                <ProgressBar
+                  value={goal.progress}
+                  color={tokens.accent.main}
+                  label="Goal progress"
+                  delay={700}
+                />
               </Box>
             </>
           )}
@@ -155,7 +228,15 @@ function HeroTile({ kpi, goal }: { kpi: Kpi; goal: GoalFacts }) {
           <Box sx={{ alignSelf: 'end', minWidth: 0 }}>
             <Sparkline values={kpi.series} metric={kpi.metric ?? 'weight'} height={120} />
             {kpi.seriesFrom && kpi.seriesTo && (
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: '6px', fontSize: tokens.font.size.micro, color: tokens.ink.secondary }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  mt: '6px',
+                  fontSize: tokens.font.size.micro,
+                  color: tokens.ink.secondary,
+                }}
+              >
                 <span>{formatShortDate(kpi.seriesFrom)}</span>
                 <span>{formatShortDate(kpi.seriesTo)}</span>
               </Box>

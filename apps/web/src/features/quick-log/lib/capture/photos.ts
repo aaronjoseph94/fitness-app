@@ -22,7 +22,11 @@ export interface PreparedPhoto {
 }
 
 /** The size that fits `max` on the long side: scale = min(1, max / max(width, height)), rounded, never 0. */
-export function fitWithin(width: number, height: number, max = MAX_PHOTO_EDGE): { width: number; height: number } {
+export function fitWithin(
+  width: number,
+  height: number,
+  max = MAX_PHOTO_EDGE,
+): { width: number; height: number } {
   const scale = Math.min(1, max / Math.max(width, height))
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) }
 }
@@ -80,12 +84,21 @@ export function releasePhoto(photo: PreparedPhoto): void {
  * Upload one prepared photo to a meal through the shared client (octet-stream body, metadata in the query). Resolves
  * with the stored MealPhoto; throws ApiError like every other call. Never queued: the review needs the analysis now.
  */
-export async function uploadMealPhoto(mealId: string, photo: PreparedPhoto, signal?: AbortSignal): Promise<MealPhoto> {
+export async function uploadMealPhoto(
+  mealId: string,
+  photo: PreparedPhoto,
+  signal?: AbortSignal,
+): Promise<MealPhoto> {
   return call(
     endpoints.nutrition.addMealPhoto,
     {
       params: { id: mealId },
-      query: { photo_id: photo.id, width: photo.width, height: photo.height, content_type: photo.contentType },
+      query: {
+        photo_id: photo.id,
+        width: photo.width,
+        height: photo.height,
+        content_type: photo.contentType,
+      },
       body: await photo.blob.arrayBuffer(),
     },
     { signal, timeoutMs: UPLOAD_TIMEOUT_MS },

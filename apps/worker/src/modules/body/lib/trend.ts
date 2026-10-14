@@ -21,7 +21,11 @@ export async function buildTrend(deps: Deps, { from, to }: DateRange): Promise<T
       .from(measurements)
       .where(and(gte(measurements.date, from), lte(measurements.date, to)))
       .orderBy(asc(measurements.date), asc(measurements.site)),
-    db.select({ forecast: plan_versions.forecast }).from(plan_versions).where(eq(plan_versions.active, true)).limit(1),
+    db
+      .select({ forecast: plan_versions.forecast })
+      .from(plan_versions)
+      .where(eq(plan_versions.active, true))
+      .limit(1),
     db.select().from(milestones).orderBy(asc(milestones.kind), asc(milestones.target_value)),
     db.select({ id: scans.id, scanned_at: scans.scanned_at }).from(scans).where(eq(scans.confirmed, true)),
   ])
@@ -30,7 +34,11 @@ export async function buildTrend(deps: Deps, { from, to }: DateRange): Promise<T
   const history = trendWeights(weighIns, { to })
   const weightRows = stored.filter((r) => r.kind === 'weight')
   const reached = new Map(
-    milestoneStatus({ trend: history, scans: scanDates, definitions: weightRows.map((r) => ({ id: r.id, kind: 'weight', target_value: r.target_value })) }).map((m) => [m.id, m]),
+    milestoneStatus({
+      trend: history,
+      scans: scanDates,
+      definitions: weightRows.map((r) => ({ id: r.id, kind: 'weight', target_value: r.target_value })),
+    }).map((m) => [m.id, m]),
   )
 
   return {
@@ -41,12 +49,19 @@ export async function buildTrend(deps: Deps, { from, to }: DateRange): Promise<T
     measurements: tape.map(toMeasurement),
     // The contract's keys only: the stored forecast also keeps the reforecast's night markers (plan lib/forecast).
     forecast: plan?.forecast
-      ? { finish_date: plan.forecast.finish_date, weekly_rate_kg: plan.forecast.weekly_rate_kg, band: plan.forecast.band, tdee_est: plan.forecast.tdee_est }
+      ? {
+          finish_date: plan.forecast.finish_date,
+          weekly_rate_kg: plan.forecast.weekly_rate_kg,
+          band: plan.forecast.band,
+          tdee_est: plan.forecast.tdee_est,
+        }
       : null,
     milestones: stored.map((row) => {
       const m = toMilestone(row)
       const computed = m.kind === 'weight' && m.reached_on === null ? reached.get(m.id) : undefined
-      return computed?.reached_on ? { ...m, reached_on: computed.reached_on, scan_id: m.scan_id ?? computed.scan_id } : m
+      return computed?.reached_on
+        ? { ...m, reached_on: computed.reached_on, scan_id: m.scan_id ?? computed.scan_id }
+        : m
     }),
   }
 }

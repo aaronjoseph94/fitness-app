@@ -34,5 +34,9 @@ export async function basePlan(deps: Deps, week_start: string): Promise<WeekPlan
 /** A template as a planned session (404 when there is no such template). */
 export async function templateSession(deps: Deps, template_id: string): Promise<WeekPlanSessionInput> {
   const t = await getTemplate(deps, template_id)
-  return { template_id: t.id, name: t.name.slice(0, 100), exercises: t.exercises.map(({ id: _id, ...e }) => e) }
+  return {
+    template_id: t.id,
+    name: t.name.slice(0, 100),
+    exercises: t.exercises.map(({ id: _id, ...e }) => e),
+  }
 }

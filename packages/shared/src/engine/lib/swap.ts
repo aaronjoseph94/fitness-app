@@ -57,7 +57,11 @@ export function swapScore(target: SwapInfo, candidate: SwapInfo): number {
  *   |primary(e) ∩ primary(target)| ≥ 1, and sameLiftKind(e, target)
  * sorted by swapScore desc, then name asc.
  */
-export function swapCandidates<T extends SwapInfo>(target: SwapInfo, library: readonly T[], exclude?: ReadonlySet<string>): T[] {
+export function swapCandidates<T extends SwapInfo>(
+  target: SwapInfo,
+  library: readonly T[],
+  exclude?: ReadonlySet<string>,
+): T[] {
   return library
     .filter(
       (e) =>

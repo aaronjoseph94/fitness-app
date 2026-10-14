@@ -3,7 +3,15 @@
 import * as z from 'zod'
 import { Count, LocalTime, Row } from './common'
 
-export const ReminderKind = z.enum(['weigh_in', 'water', 'workout', 'fast', 'scan_due', 'review_ready', 'rest_timer'])
+export const ReminderKind = z.enum([
+  'weigh_in',
+  'water',
+  'workout',
+  'fast',
+  'scan_due',
+  'review_ready',
+  'rest_timer',
+])
 export type ReminderKind = z.infer<typeof ReminderKind>
 
 /** One reminder: on/off and, for clock reminders (weigh-in 07:00, workout 16:30, scan due), the Edmonton time. */
@@ -18,7 +26,10 @@ export type ReminderPrefs = z.infer<typeof ReminderPrefs>
  * Reminders are sent only from 07:00 (inclusive) to 22:00 (exclusive), Edmonton time; outside that is quiet. The same
  * window is the "waking day" the water pace is measured against.
  */
-export const REMINDER_HOURS = { from: '07:00', to: '22:00' } as const satisfies Record<'from' | 'to', LocalTime>
+export const REMINDER_HOURS = { from: '07:00', to: '22:00' } as const satisfies Record<
+  'from' | 'to',
+  LocalTime
+>
 
 /** Kinds that fire at a time of day Aaron picks (the rest follow events: pace, planned fasts, reviews, the timer). */
 export const CLOCK_REMINDERS = ['weigh_in', 'workout', 'scan_due'] as const satisfies readonly ReminderKind[]
@@ -43,7 +54,8 @@ export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
  * The browsers' push services (the Worker POSTs every reminder to a subscription's endpoint, so it must be one of them):
  * Apple (web.push.apple.com), Google FCM (Chrome, Android), Mozilla (Firefox) and Windows (Edge). https only.
  */
-const PUSH_HOST = /^(?:[a-z0-9-]+\.)+push\.apple\.com$|^fcm\.googleapis\.com$|^(?:[a-z0-9-]+\.)+push\.services\.mozilla\.com$|^(?:[a-z0-9-]+\.)+notify\.windows\.com$/
+const PUSH_HOST =
+  /^(?:[a-z0-9-]+\.)+push\.apple\.com$|^fcm\.googleapis\.com$|^(?:[a-z0-9-]+\.)+push\.services\.mozilla\.com$|^(?:[a-z0-9-]+\.)+notify\.windows\.com$/
 
 /** The host of an https URL without user info (a port is allowed); anything else does not match. */
 const HTTPS_HOST = /^https:\/\/([a-z0-9.-]+)(?::\d{1,5})?(?:[/?#]|$)/i

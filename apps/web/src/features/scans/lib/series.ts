@@ -9,7 +9,13 @@ import type { Muscle, Scan, ScanRecord, ScanSegment } from '@fitness/shared/sche
  * SPEC §3: body fat ≤ 18 % at goal (about 11.7 kg fat, 53.3 kg lean); visceral level 9 or lower; segmental torso fat
  * under 10.4 kg.
  */
-export const TARGETS = { fatMassKg: 11.7, leanMassKg: 53.3, bodyFatPct: 18, visceralLevel: 9, torsoFatKg: 10.4 } as const
+export const TARGETS = {
+  fatMassKg: 11.7,
+  leanMassKg: 53.3,
+  bodyFatPct: 18,
+  visceralLevel: 9,
+  torsoFatKg: 10.4,
+} as const
 
 /** Evolt's healthy body-fat range for Aaron's profile, %. */
 export const BODY_FAT_RANGE = { low: 15, high: 20 } as const
@@ -53,11 +59,19 @@ export function confirmedScans(scans: readonly Scan[]): ConfirmedScan[] {
 }
 
 export function compositionSeries(scans: readonly ConfirmedScan[]): CompositionScan[] {
-  return scans.map((s) => ({ date: s.date, fatMass: s.record.body_fat_mass_kg, leanMass: s.record.lean_body_mass_kg }))
+  return scans.map((s) => ({
+    date: s.date,
+    fatMass: s.record.body_fat_mass_kg,
+    leanMass: s.record.lean_body_mass_kg,
+  }))
 }
 
 export function fatSeries(scans: readonly ConfirmedScan[]): FatScan[] {
-  return scans.map((s) => ({ date: s.date, bodyFatPct: s.record.body_fat_pct, visceralLevel: s.record.visceral_fat_level }))
+  return scans.map((s) => ({
+    date: s.date,
+    bodyFatPct: s.record.body_fat_pct,
+    visceralLevel: s.record.visceral_fat_level,
+  }))
 }
 
 /** A segment's fat share: fat ÷ (fat + lean). */
@@ -80,16 +94,30 @@ const REGION_MUSCLES: Record<'torso' | 'legs' | 'arms', Muscle[]> = {
  */
 export function segmentFatLevels(record: ScanRecord): Partial<Record<Muscle, MuscleLevel>> {
   const s = record.segments
-  const sum = (a: ScanSegment, b: ScanSegment) => ({ lean_kg: s[a].lean_kg + s[b].lean_kg, fat_kg: s[a].fat_kg + s[b].fat_kg })
-  const shares = { torso: fatShare(s.torso), legs: fatShare(sum('left_leg', 'right_leg')), arms: fatShare(sum('left_arm', 'right_arm')) }
+  const sum = (a: ScanSegment, b: ScanSegment) => ({
+    lean_kg: s[a].lean_kg + s[b].lean_kg,
+    fat_kg: s[a].fat_kg + s[b].fat_kg,
+  })
+  const shares = {
+    torso: fatShare(s.torso),
+    legs: fatShare(sum('left_leg', 'right_leg')),
+    arms: fatShare(sum('left_arm', 'right_arm')),
+  }
   const highest = Math.max(shares.torso, shares.legs, shares.arms)
-  const level = (share: number): MuscleLevel => Math.max(1, 4 - Math.round((highest - share) / 0.02)) as MuscleLevel
+  const level = (share: number): MuscleLevel =>
+    Math.max(1, 4 - Math.round((highest - share) / 0.02)) as MuscleLevel
   return Object.fromEntries(
-    (Object.keys(REGION_MUSCLES) as (keyof typeof REGION_MUSCLES)[]).flatMap((r) => REGION_MUSCLES[r].map((m) => [m, level(shares[r])])),
+    (Object.keys(REGION_MUSCLES) as (keyof typeof REGION_MUSCLES)[]).flatMap((r) =>
+      REGION_MUSCLES[r].map((m) => [m, level(shares[r])]),
+    ),
   )
 }
 
 /** Fat kg per segment at the baseline and at `latest`. */
 export function segmentalFat(baseline: ScanRecord, latest: ScanRecord): SegmentFat[] {
-  return SEGMENTS.map((s) => ({ segment: SEGMENT_LABEL[s], baseline: baseline.segments[s].fat_kg, latest: latest.segments[s].fat_kg }))
+  return SEGMENTS.map((s) => ({
+    segment: SEGMENT_LABEL[s],
+    baseline: baseline.segments[s].fat_kg,
+    latest: latest.segments[s].fat_kg,
+  }))
 }

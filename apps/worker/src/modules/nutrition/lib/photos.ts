@@ -15,7 +15,12 @@ import { toPhoto } from './meals'
 export const MEAL_ANALYSIS_PRIORITY = 10
 
 /** POST /api/meals/:id/photos. Replaying a photo id returns the stored photo (409 if it belongs to another meal). */
-export async function addMealPhoto(deps: Deps, mealId: string, q: MealPhotoUploadQuery, body: ArrayBuffer): Promise<MealPhoto> {
+export async function addMealPhoto(
+  deps: Deps,
+  mealId: string,
+  q: MealPhotoUploadQuery,
+  body: ArrayBuffer,
+): Promise<MealPhoto> {
   const { db } = deps
   const [[meal], [existing]] = await db.batch([
     db.select().from(meals).where(eq(meals.id, mealId)),
@@ -23,12 +28,14 @@ export async function addMealPhoto(deps: Deps, mealId: string, q: MealPhotoUploa
   ])
   if (!meal) throw notFound('Meal')
   if (existing) {
-    if (existing.meal_id !== mealId) throw new HttpError(409, 'photo_conflict', 'That photo id belongs to another meal')
+    if (existing.meal_id !== mealId)
+      throw new HttpError(409, 'photo_conflict', 'That photo id belongs to another meal')
     return toPhoto(deps, existing)
   }
 
   checkPhotoBytes(body, q.content_type) // stored as exif_stripped and sent to the vision LLM: check, don't trust
-  const key = `meal-photos/${mealId}/${q.photo_id}.${q.content_type === 'image/webp' ? 'webp' : 'jpg'}` as FileKey
+  const key =
+    `meal-photos/${mealId}/${q.photo_id}.${q.content_type === 'image/webp' ? 'webp' : 'jpg'}` as FileKey
   await deps.env.FILES.put(key, body, { httpMetadata: { contentType: q.content_type } })
 
   const now = deps.now().toISOString()
@@ -50,7 +57,14 @@ export async function addMealPhoto(deps: Deps, mealId: string, q: MealPhotoUploa
   const analyse = meal.input_method === 'photo' && meal.status !== 'confirmed'
   // One queued job reads every photo when it runs: reuse a queued one, else queue a new one.
   const queued = analyse ? await queuedJobId(deps, 'meal_analysis', { meal_id: mealId }) : null
-  const job = analyse && !queued ? jobInsert(deps, { type: 'meal_analysis', payload: { meal_id: mealId }, priority: MEAL_ANALYSIS_PRIORITY }) : null
+  const job =
+    analyse && !queued
+      ? jobInsert(deps, {
+          type: 'meal_analysis',
+          payload: { meal_id: mealId },
+          priority: MEAL_ANALYSIS_PRIORITY,
+        })
+      : null
   if (analyse)
     statements.push(
       db

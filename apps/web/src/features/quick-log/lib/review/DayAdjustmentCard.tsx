@@ -54,9 +54,22 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
   const suggestions = adjustment?.body.suggestions ?? []
 
   return (
-    <Box data-testid="day-adjustment" data-status={status} sx={{ ...cardSurface, px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px`, minWidth: 0 }}>
+    <Box
+      data-testid="day-adjustment"
+      data-status={status}
+      sx={{ ...cardSurface, px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px`, minWidth: 0 }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ flex: 1, minWidth: 0, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle, color: tokens.ink.text }}>
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.heading,
+            lineHeight: tokens.font.leading.cardTitle,
+            color: tokens.ink.text,
+          }}
+        >
           Rest of {date === todayLocal() ? 'today' : date}
         </Box>
         <StatusChip tone={STATUS[status].tone} label={STATUS[status].label} />
@@ -67,16 +80,35 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
           <Box sx={{ ...statValue('standard'), color: tokens.ink.text, lineHeight: 1.1 }}>
             {formatNumber(Math.abs(kcal))}
           </Box>
-          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{kcal >= 0 ? 'kcal left' : 'kcal over'}</Box>
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
+            {kcal >= 0 ? 'kcal left' : 'kcal over'}
+          </Box>
         </Box>
       )}
 
       {remaining && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: '14px', rowGap: 1, mt: 2, fontSize: tokens.font.size.caption, color: tokens.ink.secondary, ...tabularNums }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            columnGap: '14px',
+            rowGap: 1,
+            mt: 2,
+            fontSize: tokens.font.size.caption,
+            color: tokens.ink.secondary,
+            ...tabularNums,
+          }}
+        >
           {MACROS.map(({ key, label, color }) => (
             <Box key={key} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: `${tokens.radius.bar}px`, bgcolor: color }} />
-              {label} {remaining[key] >= 0 ? `${formatNumber(remaining[key])} g left` : `${formatNumber(-remaining[key])} g over`}
+              <Box
+                aria-hidden
+                sx={{ width: 8, height: 8, borderRadius: `${tokens.radius.bar}px`, bgcolor: color }}
+              />
+              {label}{' '}
+              {remaining[key] >= 0
+                ? `${formatNumber(remaining[key])} g left`
+                : `${formatNumber(-remaining[key])} g over`}
             </Box>
           ))}
         </Box>
@@ -84,28 +116,72 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
 
       {/* Protein status in words, unless the AI's note already says it. */}
       {protein !== null && !adjustment?.body.note && (
-        <Box sx={{ mt: 3, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.body }}>
-          {protein > 0 ? `${formatNumber(protein)} g protein still to go today.` : 'Protein target met for today.'}
+        <Box
+          sx={{
+            mt: 3,
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.emphasis,
+            color: tokens.ink.body,
+          }}
+        >
+          {protein > 0
+            ? `${formatNumber(protein)} g protein still to go today.`
+            : 'Protein target met for today.'}
         </Box>
       )}
 
-      {adjustment?.body.note && <Box sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.ink.body, lineHeight: tokens.font.leading.emphasis }}>{adjustment.body.note}</Box>}
+      {adjustment?.body.note && (
+        <Box
+          sx={{
+            mt: 3,
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.body,
+            lineHeight: tokens.font.leading.emphasis,
+          }}
+        >
+          {adjustment.body.note}
+        </Box>
+      )}
 
       {suggestions.length > 0 && (
         <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${tokens.ink.hairline}` }}>
-          <Box sx={{ fontSize: tokens.font.size.micro, fontWeight: tokens.font.weight.label, letterSpacing: tokens.font.em.micro, textTransform: 'uppercase', color: tokens.ink.secondary, mb: 1 }}>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.micro,
+              fontWeight: tokens.font.weight.label,
+              letterSpacing: tokens.font.em.micro,
+              textTransform: 'uppercase',
+              color: tokens.ink.secondary,
+              mb: 1,
+            }}
+          >
             Next meal ideas
           </Box>
           <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid' }}>
             {suggestions.map((s, i) => (
-              <Suggestion key={`${s.favorite_id ?? s.description}-${i}`} date={date} suggestion={s} onLogged={onLogged} />
+              <Suggestion
+                key={`${s.favorite_id ?? s.description}-${i}`}
+                date={date}
+                suggestion={s}
+                onLogged={onLogged}
+              />
             ))}
           </Box>
         </Box>
       )}
 
       {waiting && (
-        <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 3, fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
+        <Box
+          role="status"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            mt: 3,
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+          }}
+        >
           <CircularProgress size={14} aria-hidden />
           Working out next-meal ideas…
         </Box>
@@ -116,11 +192,25 @@ export function DayAdjustmentCard({ date, adjustment, waiting = false, onLogged 
 
 type SuggestionData = AdjustmentEvent['body']['suggestions'][number]
 
-function Suggestion({ date, suggestion, onLogged }: { date: string; suggestion: SuggestionData; onLogged?: (notice: LogNotice) => void }) {
-  const favourites = useApiQuery(endpoints.nutrition.listFavourites, {}, { staleTime: 5 * 60_000, enabled: suggestion.favorite_id !== null })
+function Suggestion({
+  date,
+  suggestion,
+  onLogged,
+}: {
+  date: string
+  suggestion: SuggestionData
+  onLogged?: (notice: LogNotice) => void
+}) {
+  const favourites = useApiQuery(
+    endpoints.nutrition.listFavourites,
+    {},
+    { staleTime: 5 * 60_000, enabled: suggestion.favorite_id !== null },
+  )
   const create = useLogMutation(endpoints.nutrition.createMeal)
   const [logged, setLogged] = useState(false)
-  const favourite = suggestion.favorite_id ? favourites.data?.find((f) => f.id === suggestion.favorite_id) : undefined
+  const favourite = suggestion.favorite_id
+    ? favourites.data?.find((f) => f.id === suggestion.favorite_id)
+    : undefined
   const label = favourite?.label ?? suggestion.description ?? 'A favourite'
   const scale = favourite ? suggestionScale(favourite, suggestion.grams) : null
 
@@ -142,7 +232,12 @@ function Suggestion({ date, suggestion, onLogged }: { date: string; suggestion: 
       {
         onSuccess: (outcome) => {
           setLogged(true)
-          onLogged?.(noticeFor(outcome, `${SLOT_LABEL[slot]}: ${label} · ${formatNumber(favourite.totals.kcal * scale)} kcal`))
+          onLogged?.(
+            noticeFor(
+              outcome,
+              `${SLOT_LABEL[slot]}: ${label} · ${formatNumber(favourite.totals.kcal * scale)} kcal`,
+            ),
+          )
         },
       },
     )
@@ -152,18 +247,45 @@ function Suggestion({ date, suggestion, onLogged }: { date: string; suggestion: 
     <Box
       component="li"
       data-testid="adjustment-suggestion"
-      sx={{ display: 'flex', alignItems: 'center', gap: 3, minHeight: tokens.tapTarget, py: 2, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 3,
+        minHeight: tokens.tapTarget,
+        py: 2,
+        '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+      }}
     >
       <FoodIcon name={label} size={32} />
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.itemTitle }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.label,
+            lineHeight: tokens.font.leading.itemTitle,
+          }}
+        >
           {label}
-          <Box component="span" sx={{ fontWeight: tokens.font.weight.body, color: tokens.ink.secondary, ...tabularNums }}>
+          <Box
+            component="span"
+            sx={{ fontWeight: tokens.font.weight.body, color: tokens.ink.secondary, ...tabularNums }}
+          >
             {' '}
             · {formatNumber(suggestion.grams)} g
           </Box>
         </Box>
-        {suggestion.why && <Box sx={{ mt: '2px', fontSize: tokens.font.size.caption, color: tokens.ink.secondary, lineHeight: tokens.font.leading.caption }}>{suggestion.why}</Box>}
+        {suggestion.why && (
+          <Box
+            sx={{
+              mt: '2px',
+              fontSize: tokens.font.size.caption,
+              color: tokens.ink.secondary,
+              lineHeight: tokens.font.leading.caption,
+            }}
+          >
+            {suggestion.why}
+          </Box>
+        )}
         {create.isError && (
           <Box role="alert" sx={{ fontSize: tokens.font.size.caption, color: tokens.tone.danger.text }}>
             {problemText(create.error)}

@@ -27,7 +27,11 @@ const POSE_ORDER: Record<Pose, number> = { front: 0, side: 1, back: 2 }
  */
 export function groupByMonth(photos: readonly ProgressPhoto[]): MonthGroup[] {
   const sorted = [...photos].sort((a, b) =>
-    a.date !== b.date ? (a.date < b.date ? 1 : -1) : POSE_ORDER[a.pose] - POSE_ORDER[b.pose] || b.taken_at.localeCompare(a.taken_at),
+    a.date !== b.date
+      ? a.date < b.date
+        ? 1
+        : -1
+      : POSE_ORDER[a.pose] - POSE_ORDER[b.pose] || b.taken_at.localeCompare(a.taken_at),
   )
   const groups: MonthGroup[] = []
   for (const photo of sorted) {
@@ -80,7 +84,10 @@ export function monthlyStrip(photos: readonly ProgressPhoto[], poses: readonly P
 }
 
 /** The default comparison for a pose: its first photo against its latest (null when it has fewer than two). */
-export function defaultPair(photos: readonly ProgressPhoto[], pose: Pose): [ProgressPhoto, ProgressPhoto] | null {
+export function defaultPair(
+  photos: readonly ProgressPhoto[],
+  pose: Pose,
+): [ProgressPhoto, ProgressPhoto] | null {
   const ofPose = photos.filter((p) => p.pose === pose)
   if (ofPose.length < 2) return null
   // The list is newest first.

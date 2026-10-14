@@ -52,7 +52,16 @@ export interface FilterBarProps {
   autoFocus?: boolean
 }
 
-export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extra, autoFocus = false }: FilterBarProps) {
+export function FilterBar({
+  q,
+  onQ,
+  filter,
+  onFilter,
+  equipment,
+  hide = [],
+  extra,
+  autoFocus = false,
+}: FilterBarProps) {
   const [menu, setMenu] = useState<{ key: Key; anchor: HTMLElement } | null>(null)
 
   const options: Record<Key, { label: string; options: Option[]; display: (v: string) => string }> = {
@@ -71,7 +80,11 @@ export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extr
       options: ExerciseCategory.options.map((c) => ({ value: c, label: categoryLabel(c) })),
       display: (v) => sentence(v),
     },
-    level: { label: 'Level', options: LEVELS.map((l) => ({ value: l, label: sentence(l) })), display: (v) => sentence(v) },
+    level: {
+      label: 'Level',
+      options: LEVELS.map((l) => ({ value: l, label: sentence(l) })),
+      display: (v) => sentence(v),
+    },
   }
 
   const set = (key: Key, value: string | undefined) => {
@@ -104,7 +117,13 @@ export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extr
           '& input::-webkit-search-cancel-button': { WebkitAppearance: 'none', display: 'none' },
         }}
         slotProps={{
-          htmlInput: { 'aria-label': 'Search exercises', autoCapitalize: 'off', autoCorrect: 'off', spellCheck: false, enterKeyHint: 'search' },
+          htmlInput: {
+            'aria-label': 'Search exercises',
+            autoCapitalize: 'off',
+            autoCorrect: 'off',
+            spellCheck: false,
+            enterKeyHint: 'search',
+          },
           input: {
             startAdornment: (
               <InputAdornment position="start">
@@ -133,7 +152,11 @@ export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extr
               color={value ? 'primary' : 'default'}
               variant={value ? 'filled' : 'outlined'}
               onClick={(e) => setMenu({ key, anchor: e.currentTarget })}
-              onDelete={value ? () => set(key, undefined) : (e) => setMenu({ key, anchor: (e.currentTarget as HTMLElement).parentElement! })}
+              onDelete={
+                value
+                  ? () => set(key, undefined)
+                  : (e) => setMenu({ key, anchor: (e.currentTarget as HTMLElement).parentElement! })
+              }
               deleteIcon={value ? <CloseRounded /> : <ExpandMoreRounded />}
               sx={FILTER_CHIP}
             />
@@ -147,30 +170,31 @@ export function FilterBar({ q, onQ, filter, onFilter, equipment, hide = [], extr
         onClose={() => setMenu(null)}
         slotProps={{ paper: { sx: { maxHeight: 360 } } }}
       >
-        {open && menu && [
-          <MenuItem
-            key="__any"
-            selected={filter[menu.key] === undefined}
-            onClick={() => {
-              set(menu.key, undefined)
-              setMenu(null)
-            }}
-          >
-            Any {open.label.toLowerCase()}
-          </MenuItem>,
-          ...open.options.map((o) => (
+        {open &&
+          menu && [
             <MenuItem
-              key={o.value}
-              selected={filter[menu.key] === o.value}
+              key="__any"
+              selected={filter[menu.key] === undefined}
               onClick={() => {
-                set(menu.key, o.value)
+                set(menu.key, undefined)
                 setMenu(null)
               }}
             >
-              {o.label}
-            </MenuItem>
-          )),
-        ]}
+              Any {open.label.toLowerCase()}
+            </MenuItem>,
+            ...open.options.map((o) => (
+              <MenuItem
+                key={o.value}
+                selected={filter[menu.key] === o.value}
+                onClick={() => {
+                  set(menu.key, o.value)
+                  setMenu(null)
+                }}
+              >
+                {o.label}
+              </MenuItem>
+            )),
+          ]}
       </Menu>
     </Box>
   )

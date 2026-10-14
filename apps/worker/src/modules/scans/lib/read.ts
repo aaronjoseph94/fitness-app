@@ -20,7 +20,10 @@ export interface ScanStore {
 
 export async function loadStore(deps: Deps): Promise<ScanStore> {
   const { db } = deps
-  const [rows, segs] = await db.batch([db.select().from(scans).orderBy(desc(scans.scanned_at)), db.select().from(scan_segments)])
+  const [rows, segs] = await db.batch([
+    db.select().from(scans).orderBy(desc(scans.scanned_at)),
+    db.select().from(scan_segments),
+  ])
   const segments = new Map<string, SegmentRow[]>()
   for (const s of segs) segments.set(s.scan_id, [...(segments.get(s.scan_id) ?? []), s])
   const confirmed = inScanOrder(
@@ -35,10 +38,22 @@ export async function loadStore(deps: Deps): Promise<ScanStore> {
 const scanIdOf = (payload: unknown) => (payload as { scan_id?: unknown } | null)?.scan_id
 
 /** Jobs of `type` about these scans, newest first (`statuses` narrows the read to the ai_jobs status index). */
-async function jobsFor(deps: Deps, type: 'scan_extract' | 'scan_analysis', scanIds: string[], statuses?: ('queued' | 'running' | 'failed')[]) {
+async function jobsFor(
+  deps: Deps,
+  type: 'scan_extract' | 'scan_analysis',
+  scanIds: string[],
+  statuses?: ('queued' | 'running' | 'failed')[],
+) {
   if (scanIds.length === 0) return []
   return deps.db
-    .select({ id: ai_jobs.id, status: ai_jobs.status, attempts: ai_jobs.attempts, error: ai_jobs.error, payload: ai_jobs.payload, created_at: ai_jobs.created_at })
+    .select({
+      id: ai_jobs.id,
+      status: ai_jobs.status,
+      attempts: ai_jobs.attempts,
+      error: ai_jobs.error,
+      payload: ai_jobs.payload,
+      created_at: ai_jobs.created_at,
+    })
     .from(ai_jobs)
     .where(
       and(
@@ -53,7 +68,8 @@ async function jobsFor(deps: Deps, type: 'scan_extract' | 'scan_analysis', scanI
 /** Latest debrief note per scan (notes on the scans' dates; the ai_events date index keeps the read small). */
 async function debriefNotes(deps: Deps, rows: readonly ScanRow[]) {
   const dates = [...new Set(rows.map((r) => r.date))]
-  if (dates.length === 0) return new Map<string, { body: DebriefNoteBody; job_id: string | null; created_at: string }>()
+  if (dates.length === 0)
+    return new Map<string, { body: DebriefNoteBody; job_id: string | null; created_at: string }>()
   const notes = await deps.db
     .select({ body: ai_events.body, job_id: ai_events.job_id, created_at: ai_events.created_at })
     .from(ai_events)
@@ -62,7 +78,8 @@ async function debriefNotes(deps: Deps, rows: readonly ScanRow[]) {
   const byScan = new Map<string, { body: DebriefNoteBody; job_id: string | null; created_at: string }>()
   for (const n of notes) {
     const body = DebriefNoteBody.safeParse(n.body)
-    if (body.success && !byScan.has(body.data.scan_id)) byScan.set(body.data.scan_id, { body: body.data, job_id: n.job_id, created_at: n.created_at })
+    if (body.success && !byScan.has(body.data.scan_id))
+      byScan.set(body.data.scan_id, { body: body.data, job_id: n.job_id, created_at: n.created_at })
   }
   return byScan
 }
@@ -110,7 +127,13 @@ export async function toViews(deps: Deps, store: ScanStore, rows: readonly ScanR
         const job = analysisJobs.find((j) => scanIdOf(j.payload) === row.id)
         const note = notes.get(row.id)
         const status: ScanAnalysis['status'] =
-          job && job.status !== 'failed' ? 'pending' : job && (!note || job.created_at > note.created_at) ? 'failed' : note ? 'done' : 'none'
+          job && job.status !== 'failed'
+            ? 'pending'
+            : job && (!note || job.created_at > note.created_at)
+              ? 'failed'
+              : note
+                ? 'done'
+                : 'none'
         analysis = {
           vs_previous,
           vs_baseline,

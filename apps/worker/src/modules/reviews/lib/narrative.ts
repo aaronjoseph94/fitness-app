@@ -9,7 +9,8 @@ const SLEEP_CONCERN_MIN = 420
 /** Shares under this are concerns, at or over it highlights. */
 const GOOD_SHARE = 0.8
 
-const num = (x: number, dp = 0) => x.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp })
+const num = (x: number, dp = 0) =>
+  x.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp })
 const signed = (x: number, dp = 1) => `${x > 0 ? '+' : x < 0 ? '−' : '±'}${num(Math.abs(x), dp)}`
 const pct = (share: number) => `${Math.round(share * 100)} %`
 const hours = (min: number) => `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`
@@ -62,22 +63,34 @@ export function engineReview(m: WeeklyMetrics, note?: string): EngineReview {
 
   const highlights: string[] = []
   const concerns: string[] = m.flags.map((f) => f.message)
-  if (m.trend_change_kg !== null && m.trend_change_kg < 0) highlights.push(`Trend down ${num(-m.trend_change_kg, 1)} kg`)
-  if (m.trend_change_kg !== null && m.trend_change_kg > 0) concerns.push(`Trend up ${num(m.trend_change_kg, 1)} kg`)
+  if (m.trend_change_kg !== null && m.trend_change_kg < 0)
+    highlights.push(`Trend down ${num(-m.trend_change_kg, 1)} kg`)
+  if (m.trend_change_kg !== null && m.trend_change_kg > 0)
+    concerns.push(`Trend up ${num(m.trend_change_kg, 1)} kg`)
   if (eatingDays > 0) {
-    if (m.protein_adherence >= GOOD_SHARE) highlights.push(`Protein target met on ${pct(m.protein_adherence)} of eating days`)
+    if (m.protein_adherence >= GOOD_SHARE)
+      highlights.push(`Protein target met on ${pct(m.protein_adherence)} of eating days`)
     else concerns.push(`Protein target met on only ${pct(m.protein_adherence)} of eating days`)
   }
-  if (m.sessions_planned > 0 && m.sessions_done >= m.sessions_planned) highlights.push(`All ${plural(m.sessions_planned, 'planned session')} done`)
-  else if (m.sessions_done < m.sessions_planned) concerns.push(`${m.sessions_planned - m.sessions_done} of ${plural(m.sessions_planned, 'planned session')} missed`)
+  if (m.sessions_planned > 0 && m.sessions_done >= m.sessions_planned)
+    highlights.push(`All ${plural(m.sessions_planned, 'planned session')} done`)
+  else if (m.sessions_done < m.sessions_planned)
+    concerns.push(
+      `${m.sessions_planned - m.sessions_done} of ${plural(m.sessions_planned, 'planned session')} missed`,
+    )
   if (m.prs.length)
-    highlights.push(`${plural(m.prs.length, 'PR')}: ${[...new Set(m.prs.map((p) => p.exercise_name))].slice(0, 3).join(', ')}`)
+    highlights.push(
+      `${plural(m.prs.length, 'PR')}: ${[...new Set(m.prs.map((p) => p.exercise_name))].slice(0, 3).join(', ')}`,
+    )
   if (completedFasts.length) highlights.push(`${plural(completedFasts.length, 'fast')} completed`)
-  for (const f of m.fasts.filter((f) => f.status === 'partial')) concerns.push(`A fast ended early at ${num(f.hours, 1)} h`)
-  if (m.sleep_avg_min !== null && m.sleep_avg_min < SLEEP_CONCERN_MIN) concerns.push(`Sleep averaged ${hours(m.sleep_avg_min)}, under 7 h`)
+  for (const f of m.fasts.filter((f) => f.status === 'partial'))
+    concerns.push(`A fast ended early at ${num(f.hours, 1)} h`)
+  if (m.sleep_avg_min !== null && m.sleep_avg_min < SLEEP_CONCERN_MIN)
+    concerns.push(`Sleep averaged ${hours(m.sleep_avg_min)}, under 7 h`)
   if (m.logging_adherence >= GOOD_SHARE) highlights.push(`Logging adherence ${pct(m.logging_adherence)}`)
   else concerns.push(`Logging adherence ${pct(m.logging_adherence)}`)
-  if (m.scan && m.scan.fat_vs_lean.fat_kg < 0) highlights.push(`Scan: ${num(-m.scan.fat_vs_lean.fat_kg, 1)} kg fat lost since ${m.scan.previous_date}`)
+  if (m.scan && m.scan.fat_vs_lean.fat_kg < 0)
+    highlights.push(`Scan: ${num(-m.scan.fat_vs_lean.fat_kg, 1)} kg fat lost since ${m.scan.previous_date}`)
 
   return { narrative: lines.join(' '), highlights, concerns }
 }

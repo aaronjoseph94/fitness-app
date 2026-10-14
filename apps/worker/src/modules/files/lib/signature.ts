@@ -7,10 +7,13 @@ let cached: { secret: string; key: CryptoKey } | null = null
 async function hmacKey(secret: string | undefined): Promise<CryptoKey> {
   if (!secret) throw new HttpError(500, 'files_not_configured', 'FILE_URL_SECRET is not set')
   if (cached?.secret !== secret) {
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [
-      'sign',
-      'verify',
-    ])
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign', 'verify'],
+    )
     cached = { secret, key }
   }
   return cached.key
@@ -37,7 +40,12 @@ export async function sign(secret: string | undefined, key: string, exp: number)
   return toBase64Url(await crypto.subtle.sign('HMAC', await hmacKey(secret), message(key, exp)))
 }
 
-export async function verify(secret: string | undefined, key: string, exp: number, sig: string): Promise<boolean> {
+export async function verify(
+  secret: string | undefined,
+  key: string,
+  exp: number,
+  sig: string,
+): Promise<boolean> {
   const bytes = fromBase64Url(sig)
   return !!bytes && crypto.subtle.verify('HMAC', await hmacKey(secret), bytes, message(key, exp))
 }

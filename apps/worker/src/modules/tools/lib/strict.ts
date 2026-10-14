@@ -5,7 +5,8 @@
 // a Saturday kcal change applied to every day. Records and loose objects (additionalProperties) take any key.
 type Schema = Record<string, unknown>
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** The schema's union members (anyOf / oneOf, flattened), or the schema itself when it is not a union. */
 function members(schema: Schema): Schema[] {
@@ -18,7 +19,9 @@ function fits(member: Schema, value: Record<string, unknown>): boolean {
   if (!isObject(member.properties)) return false
   const required = Array.isArray(member.required) ? (member.required as string[]) : []
   if (!required.every((k) => k in value)) return false
-  return Object.entries(member.properties).every(([k, p]) => !isObject(p) || !('const' in p) || !(k in value) || value[k] === p.const)
+  return Object.entries(member.properties).every(
+    ([k, p]) => !isObject(p) || !('const' in p) || !(k in value) || value[k] === p.const,
+  )
 }
 
 /**

@@ -9,7 +9,8 @@ export const OFF_PRODUCT_NUTELLA = {
   product: {
     brands: 'Ferrero',
     code: '3017624010701',
-    image_front_small_url: 'https://images.openfoodfacts.org/images/products/301/762/401/0701/front_en.100.200.jpg',
+    image_front_small_url:
+      'https://images.openfoodfacts.org/images/products/301/762/401/0701/front_en.100.200.jpg',
     nutriments: {
       carbohydrates: 57.5,
       carbohydrates_100g: 57.5,
@@ -40,7 +41,16 @@ export const OFF_SEARCH_BANANA = {
     {
       code: '01129441',
       brands: ['fairtrade'],
-      nutriments: { carbohydrates_100g: 23, 'energy-kcal_100g': 89, fat_100g: 0.3, fiber_100g: 2.6, proteins_100g: 1.1, salt_100g: 0.001, sodium_100g: 0.0004, sugars_100g: 12 },
+      nutriments: {
+        carbohydrates_100g: 23,
+        'energy-kcal_100g': 89,
+        fat_100g: 0.3,
+        fiber_100g: 2.6,
+        proteins_100g: 1.1,
+        salt_100g: 0.001,
+        sodium_100g: 0.0004,
+        sugars_100g: 12,
+      },
       product_name: 'Banana',
     },
   ],
@@ -55,7 +65,15 @@ export const OFF_SEARCH_OIKOS = {
     {
       code: '0056800100237',
       brands: ['Oikos'],
-      nutriments: { carbohydrates_100g: 5.3, 'energy-kcal_100g': 90, fat_100g: 2.3, fiber_100g: 0, proteins_100g: 15, salt_100g: 0.1, sugars_100g: 4 },
+      nutriments: {
+        carbohydrates_100g: 5.3,
+        'energy-kcal_100g': 90,
+        fat_100g: 2.3,
+        fiber_100g: 0,
+        proteins_100g: 15,
+        salt_100g: 0.1,
+        sugars_100g: 4,
+      },
       product_name: 'Oikos Pro Yogurt',
     },
   ],
@@ -71,7 +89,9 @@ export function fakeFetch(routes: Record<string, unknown>) {
     const headers = new Headers(init?.headers)
     calls.push({ url, userAgent: headers.get('User-Agent'), apiKey: headers.get('X-Api-Key') })
     const prefix = Object.keys(routes).find((p) => url.startsWith(p))
-    return prefix ? Response.json(routes[prefix]) : Response.json({ status: 0, status_verbose: 'product not found' }, { status: 404 })
+    return prefix
+      ? Response.json(routes[prefix])
+      : Response.json({ status: 0, status_verbose: 'product not found' }, { status: 404 })
   }
   return { fetch, calls }
 }

@@ -9,7 +9,15 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.jsonc' },
-      miniflare: { bindings: { TEST_MIGRATIONS: migrations, DEV_AUTH_BYPASS: '1', HEALTH_WEBHOOK_TOKEN: 'test-health-token', MCP_BEARER_TOKEN: 'test-mcp-token', FILE_URL_SECRET: 'test-secret' } },
+      miniflare: {
+        bindings: {
+          TEST_MIGRATIONS: migrations,
+          DEV_AUTH_BYPASS: '1',
+          HEALTH_WEBHOOK_TOKEN: 'test-health-token',
+          MCP_BEARER_TOKEN: 'test-mcp-token',
+          FILE_URL_SECRET: 'test-secret',
+        },
+      },
     }),
   ],
   test: {

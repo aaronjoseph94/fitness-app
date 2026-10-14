@@ -18,13 +18,21 @@ export async function reanchorMilestones(
   const { db } = deps
   const [stored, weighIns] = await db.batch([
     db.select().from(milestones),
-    db.select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg }).from(weight_logs).orderBy(asc(weight_logs.date)),
+    db
+      .select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg })
+      .from(weight_logs)
+      .orderBy(asc(weight_logs.date)),
   ])
   const computed = new Map(
     milestoneStatus({
       trend: trendWeights(weighIns),
       scans: confirmed.map((s) => ({ id: s.id, ...s.record })),
-      definitions: stored.map((r) => ({ id: r.id, kind: MilestoneKind.parse(r.kind), target_value: r.target_value, segment: r.segment })),
+      definitions: stored.map((r) => ({
+        id: r.id,
+        kind: MilestoneKind.parse(r.kind),
+        target_value: r.target_value,
+        segment: r.segment,
+      })),
     }).map((m) => [m.id, m]),
   )
   const now = deps.now().toISOString()
@@ -42,8 +50,18 @@ export async function reanchorMilestones(
       if (c.reached_on === row.reached_on && c.scan_id === row.scan_id) continue
       next = { reached_on: c.reached_on, scan_id: c.scan_id }
     }
-    statements.push(db.update(milestones).set({ ...next, actor: deps.actor, updated_at: now }).where(eq(milestones.id, row.id)))
-    updates.push({ milestone_id: row.id, kind: MilestoneKind.parse(row.kind), label: row.label, reached_on: next.reached_on })
+    statements.push(
+      db
+        .update(milestones)
+        .set({ ...next, actor: deps.actor, updated_at: now })
+        .where(eq(milestones.id, row.id)),
+    )
+    updates.push({
+      milestone_id: row.id,
+      kind: MilestoneKind.parse(row.kind),
+      label: row.label,
+      reached_on: next.reached_on,
+    })
   }
   return { updates, statements }
 }

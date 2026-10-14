@@ -12,7 +12,8 @@ const RETRY_POLL_MS = 15_000
 export function pollInterval(scan: Scan | undefined): number | false {
   if (!scan) return false
   const x = scan.extraction
-  if (!scan.confirmed && !scan.extracted && x && (x.status === 'queued' || x.status === 'running')) return x.error ? RETRY_POLL_MS : POLL_MS
+  if (!scan.confirmed && !scan.extracted && x && (x.status === 'queued' || x.status === 'running'))
+    return x.error ? RETRY_POLL_MS : POLL_MS
   if (scan.analysis?.status === 'pending') return POLL_MS
   return false
 }
@@ -31,10 +32,20 @@ export function useScans() {
 }
 
 export function useScan(id: string, enabled = true) {
-  return useApiQuery(endpoints.scans.get, { params: { id } }, { enabled, refetchInterval: (q) => pollInterval(q.state.data) })
+  return useApiQuery(
+    endpoints.scans.get,
+    { params: { id } },
+    { enabled, refetchInterval: (q) => pollInterval(q.state.data) },
+  )
 }
 
-const STALE_AFTER_SCAN_WRITE = [endpoints.scans.list, endpoints.scans.get, endpoints.scans.schedule, endpoints.body.trend, endpoints.day.events] as const
+const STALE_AFTER_SCAN_WRITE = [
+  endpoints.scans.list,
+  endpoints.scans.get,
+  endpoints.scans.schedule,
+  endpoints.body.trend,
+  endpoints.day.events,
+] as const
 
 export function useConfirmScan() {
   return useApiMutation(endpoints.scans.confirm, { invalidates: STALE_AFTER_SCAN_WRITE })
@@ -54,7 +65,13 @@ export function useDiscardScan() {
  */
 export function useDeleteScan() {
   return useApiMutation(endpoints.scans.remove, {
-    invalidates: [endpoints.scans.list, endpoints.scans.schedule, endpoints.body.trend, endpoints.day.events, endpoints.day.get],
+    invalidates: [
+      endpoints.scans.list,
+      endpoints.scans.schedule,
+      endpoints.body.trend,
+      endpoints.day.events,
+      endpoints.day.get,
+    ],
   })
 }
 

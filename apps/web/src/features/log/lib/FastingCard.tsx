@@ -11,9 +11,26 @@ import { fastDay } from '@fitness/shared/engine'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
 import { fastLook } from '../../../charts'
-import { formatClock, formatNumber, formatShortDate, formatWeekday, LoadProblem, PendingBadge } from '../../../components'
+import {
+  formatClock,
+  formatNumber,
+  formatShortDate,
+  formatWeekday,
+  LoadProblem,
+  PendingBadge,
+} from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
-import { dateOf, formatDateTime, fastsInMonth, shiftDate, useFasts, useLogMutation, useLogSettings, useNow, type FastView } from '../../quick-log'
+import {
+  dateOf,
+  formatDateTime,
+  fastsInMonth,
+  shiftDate,
+  useFasts,
+  useLogMutation,
+  useLogSettings,
+  useNow,
+  type FastView,
+} from '../../quick-log'
 import { dayLabel, longDayLabel } from './labels'
 import { CardMeta, LoadingRows, LogCard } from './LogCard'
 
@@ -56,8 +73,11 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
   const history = fasting.fasts.filter((f) => f.status !== 'planned').slice(0, HISTORY_MAX)
   const planned = fastsInMonth(fasting.fasts, today, fastHours)
   const anyPending = fasting.fasts.some((f) => f.pending)
-  const dayOf = (f: FastView) => fastDay({ started_at: f.startedAt, ended_at: f.endedAt }, fastHours) ?? dateOf(f.startedAt)
-  const [next, ...later] = fasting.fasts.filter((f) => f.status === 'planned').sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+  const dayOf = (f: FastView) =>
+    fastDay({ started_at: f.startedAt, ended_at: f.endedAt }, fastHours) ?? dateOf(f.startedAt)
+  const [next, ...later] = fasting.fasts
+    .filter((f) => f.status === 'planned')
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
 
   return (
     <LogCard
@@ -79,15 +99,40 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
       ) : (
         <>
           {next && (
-            <Box sx={{ px: 3, py: '10px', borderRadius: `${tokens.radius.control}px`, bgcolor: tokens.tone.warning.bg, fontSize: tokens.font.size.small, mb: 3 }}>
-              <Box component="b" sx={{ color: tokens.tone.warning.deep, fontWeight: tokens.font.weight.heading }}>
+            <Box
+              sx={{
+                px: 3,
+                py: '10px',
+                borderRadius: `${tokens.radius.control}px`,
+                bgcolor: tokens.tone.warning.bg,
+                fontSize: tokens.font.size.small,
+                mb: 3,
+              }}
+            >
+              <Box
+                component="b"
+                sx={{ color: tokens.tone.warning.deep, fontWeight: tokens.font.weight.heading }}
+              >
                 Next: {longDayLabel(dayOf(next))}
               </Box>
-              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.tone.warning.text, fontVariantNumeric: 'tabular-nums' }}>
-                {formatNumber(fastHours)} h from {formatClock(next.startedAt)} {formatWeekday(dateOf(next.startedAt))}
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.caption,
+                  color: tokens.tone.warning.text,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {formatNumber(fastHours)} h from {formatClock(next.startedAt)}{' '}
+                {formatWeekday(dateOf(next.startedAt))}
               </Box>
               {later.length > 0 && (
-                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.tone.warning.text, fontVariantNumeric: 'tabular-nums' }}>
+                <Box
+                  sx={{
+                    fontSize: tokens.font.size.caption,
+                    color: tokens.tone.warning.text,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
                   Then: {later.map((f) => longDayLabel(dayOf(f))).join(' · ')}
                 </Box>
               )}
@@ -95,12 +140,23 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
           )}
           <FastStrip fasts={fasting.fasts} today={today} dayOf={dayOf} />
           {history.length > 0 && (
-            <Box component="ul" aria-label="Fasting history" sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid' }}>
+            <Box
+              component="ul"
+              aria-label="Fasting history"
+              sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid' }}
+            >
               {history.map((f) => (
                 <Box
                   component="li"
                   key={f.id}
-                  sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 36, fontSize: tokens.font.size.caption, borderTop: `1px solid ${tokens.ink.hairline}` }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    minHeight: 36,
+                    fontSize: tokens.font.size.caption,
+                    borderTop: `1px solid ${tokens.ink.hairline}`,
+                  }}
                 >
                   <Box sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatDateTime(f.startedAt)}</Box>
                   <Box sx={{ flex: 1, color: tokens.ink.secondary }}>{STATUS_TEXT[f.status]}</Box>
@@ -110,18 +166,28 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
                     </Button>
                   )}
                   {f.status === 'partial' && f.hours !== null && f.hours < MISTAP_H && !f.pending && (
-                    <Button size="tiny" variant="text" onClick={() => remove.mutate({ params: { id: f.id } })} disabled={remove.isPending} data-testid="fast-remove">
+                    <Button
+                      size="tiny"
+                      variant="text"
+                      onClick={() => remove.mutate({ params: { id: f.id } })}
+                      disabled={remove.isPending}
+                      data-testid="fast-remove"
+                    >
                       Remove
                     </Button>
                   )}
                   {f.pending && <PendingBadge />}
-                  <Box sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: tokens.font.weight.label }}>{f.hours !== null ? `${formatNumber(f.hours, 1)} h` : '—'}</Box>
+                  <Box sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: tokens.font.weight.label }}>
+                    {f.hours !== null ? `${formatNumber(f.hours, 1)} h` : '—'}
+                  </Box>
                 </Box>
               ))}
             </Box>
           )}
           {fasting.fasts.length === 0 && (
-            <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 3 }}>No fasts yet. Plan the month's two on the dates that suit you.</Box>
+            <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 3 }}>
+              No fasts yet. Plan the month's two on the dates that suit you.
+            </Box>
           )}
         </>
       )}
@@ -138,15 +204,27 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
  * a button: tapping it puts its date, status and hours in the line under the strip (the kit's FastingStrip tap caption),
  * in place of the range labels.
  */
-function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today: string; dayOf: (f: FastView) => string }) {
+function FastStrip({
+  fasts,
+  today,
+  dayOf,
+}: {
+  fasts: readonly FastView[]
+  today: string
+  dayOf: (f: FastView) => string
+}) {
   const [selected, setSelected] = useState<string | null>(null)
   const first = shiftDate(today, -STRIP_BACK)
   const days = Array.from({ length: STRIP_DAYS }, (_, i) => shiftDate(first, i))
   const last = days[days.length - 1] ?? today
   const byDay = new Map(fasts.map((f) => [dayOf(f), f]))
   const shown = days.flatMap((d) => byDay.get(d) ?? [])
-  const summary = shown.length === 0 ? 'no fasts' : shown.map((f) => `${STATUS_TEXT[f.status].toLowerCase()} ${formatShortDate(dayOf(f))}`).join(', ')
-  const detail = (d: string, f: FastView) => `${dayLabel(d)} · ${STATUS_TEXT[f.status]}${f.hours !== null ? ` · ${formatNumber(f.hours, 1)} h` : ''}`
+  const summary =
+    shown.length === 0
+      ? 'no fasts'
+      : shown.map((f) => `${STATUS_TEXT[f.status].toLowerCase()} ${formatShortDate(dayOf(f))}`).join(', ')
+  const detail = (d: string, f: FastView) =>
+    `${dayLabel(d)} · ${STATUS_TEXT[f.status]}${f.hours !== null ? ` · ${formatNumber(f.hours, 1)} h` : ''}`
   const pick = selected !== null ? byDay.get(selected) : undefined
   return (
     <Box>
@@ -166,9 +244,15 @@ function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today:
             minWidth: 0,
             boxSizing: 'border-box',
             borderRadius: `${tokens.chart.barRadius}px`,
-            bgcolor: look?.fill ?? (look?.dashed ? 'transparent' : isToday ? tokens.dark.bg : tokens.ink.fill),
+            bgcolor:
+              look?.fill ?? (look?.dashed ? 'transparent' : isToday ? tokens.dark.bg : tokens.ink.fill),
             border: look?.dashed ? `1.5px dashed ${look.dashed}` : undefined,
-            boxShadow: d === selected ? `inset 0 0 0 1.5px ${tokens.ink.text}` : f && isToday ? `inset 0 0 0 1.5px ${tokens.dark.bg}` : undefined,
+            boxShadow:
+              d === selected
+                ? `inset 0 0 0 1.5px ${tokens.ink.text}`
+                : f && isToday
+                  ? `inset 0 0 0 1.5px ${tokens.dark.bg}`
+                  : undefined,
           } as const
           if (!f) return <Box key={d} aria-hidden sx={cellSx} />
           // Beside another fast the hit area stops at the 3 px gap, so a tap on one fast's cell never lands on its neighbour.
@@ -183,15 +267,43 @@ function FastStrip({ fasts, today, dayOf }: { fasts: readonly FastView[]; today:
                 ...cellSx,
                 position: 'relative',
                 // The 18 px cell stays as drawn; on touch its hit area is 44 × 44 around it.
-                [COARSE_POINTER_QUERY]: { '&::after': { content: '""', position: 'absolute', top: TOUCH_REACH, bottom: TOUCH_REACH, left: side(days[i - 1]), right: side(days[i + 1]) } },
+                [COARSE_POINTER_QUERY]: {
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: TOUCH_REACH,
+                    bottom: TOUCH_REACH,
+                    left: side(days[i - 1]),
+                    right: side(days[i + 1]),
+                  },
+                },
               }}
             />
           )
         })}
       </Box>
-      <Box aria-live="polite" sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mt: 1, minHeight: 18, fontSize: tokens.font.size.micro, lineHeight: '18px', color: tokens.ink.secondary }}>
+      <Box
+        aria-live="polite"
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 2,
+          mt: 1,
+          minHeight: 18,
+          fontSize: tokens.font.size.micro,
+          lineHeight: '18px',
+          color: tokens.ink.secondary,
+        }}
+      >
         {pick && selected !== null ? (
-          <Box component="span" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.label, fontVariantNumeric: 'tabular-nums' }}>
+          <Box
+            component="span"
+            sx={{
+              fontSize: tokens.font.size.caption,
+              color: tokens.ink.label,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
             {detail(selected, pick)}
           </Box>
         ) : (

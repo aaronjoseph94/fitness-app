@@ -24,8 +24,20 @@ export type ToolCall = z.infer<typeof ToolCall>
  * POST /api/week-plans/:id/apply.
  */
 export const ChatProposal = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('proposal'), id: Id, summary: z.string(), status: ProposalStatus, body: ProposalBody }),
-  z.object({ type: z.literal('week_plan'), id: Id, week_start: LocalDate, status: WeekPlanStatus, focus_note: z.string() }),
+  z.object({
+    type: z.literal('proposal'),
+    id: Id,
+    summary: z.string(),
+    status: ProposalStatus,
+    body: ProposalBody,
+  }),
+  z.object({
+    type: z.literal('week_plan'),
+    id: Id,
+    week_start: LocalDate,
+    status: WeekPlanStatus,
+    focus_note: z.string(),
+  }),
 ])
 export type ChatProposal = z.infer<typeof ChatProposal>
 

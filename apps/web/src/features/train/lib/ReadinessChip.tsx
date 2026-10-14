@@ -78,7 +78,11 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
           [COARSE_POINTER_QUERY]: { height: tokens.tapTarget },
         }}
       >
-        <Box component="span" aria-hidden sx={{ width: 8, height: 8, flex: 'none', borderRadius: '50%', bgcolor: tone }} />
+        <Box
+          component="span"
+          aria-hidden
+          sx={{ width: 8, height: 8, flex: 'none', borderRadius: '50%', bgcolor: tone }}
+        />
         Readiness {readiness.score} · {volume}
         <InfoOutlined aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint }} />
       </ButtonBase>

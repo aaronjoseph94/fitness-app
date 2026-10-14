@@ -21,7 +21,11 @@ const weighIn = (date: string) => JSON.stringify({ id: crypto.randomUUID(), date
 
 describe('request bodies say what they are', () => {
   it('a JSON body sent as text/plain (what a cross-site <form enctype="text/plain"> can send) is 415', async () => {
-    const res = await app.request(`${LOCAL}/api/weights`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: weighIn('2026-07-01') }, env)
+    const res = await app.request(
+      `${LOCAL}/api/weights`,
+      { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: weighIn('2026-07-01') },
+      env,
+    )
     expect(res.status).toBe(415)
     expect(await res.json()).toMatchObject({ error: 'unsupported_media_type' })
 
@@ -30,7 +34,12 @@ describe('request bodies say what they are', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ restore_id: crypto.randomUUID(), overwrite: true, table: 'settings', rows: [{ id: crypto.randomUUID() }] }),
+        body: JSON.stringify({
+          restore_id: crypto.randomUUID(),
+          overwrite: true,
+          table: 'settings',
+          rows: [{ id: crypto.randomUUID() }],
+        }),
       },
       env,
     )
@@ -38,10 +47,22 @@ describe('request bodies say what they are', () => {
   })
 
   it('a body with no Content-Type is refused; no body at all still counts as {} for all-optional bodies', async () => {
-    const untyped = await app.request(`${LOCAL}/api/weights`, { method: 'POST', body: new Blob([weighIn('2026-07-02')]) }, env)
+    const untyped = await app.request(
+      `${LOCAL}/api/weights`,
+      { method: 'POST', body: new Blob([weighIn('2026-07-02')]) },
+      env,
+    )
     expect(untyped.status).toBe(415)
 
-    const json = await app.request(`${LOCAL}/api/weights`, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: weighIn('2026-07-03') }, env)
+    const json = await app.request(
+      `${LOCAL}/api/weights`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: weighIn('2026-07-03'),
+      },
+      env,
+    )
     expect(json.status).toBe(201)
   })
 
@@ -60,7 +81,11 @@ describe('cross-site writes', () => {
     const send = (site: string) =>
       app.request(
         `${LOCAL}/api/weights`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json', 'Sec-Fetch-Site': site }, body: weighIn('2026-07-04') },
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Sec-Fetch-Site': site },
+          body: weighIn('2026-07-04'),
+        },
         env,
       )
     const cross = await send('cross-site')
@@ -74,11 +99,19 @@ describe('cross-site writes', () => {
   it('without Sec-Fetch-Site (older browsers), a foreign Origin on a write is refused too; reads are untouched', async () => {
     const res = await app.request(
       `${LOCAL}/api/weights`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' }, body: weighIn('2026-07-05') },
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' },
+        body: weighIn('2026-07-05'),
+      },
       env,
     )
     expect(res.status).toBe(403)
-    const read = await app.request(`${LOCAL}/api/health`, { headers: { 'Sec-Fetch-Site': 'cross-site' } }, env)
+    const read = await app.request(
+      `${LOCAL}/api/health`,
+      { headers: { 'Sec-Fetch-Site': 'cross-site' } },
+      env,
+    )
     expect(read.status).toBe(200)
   })
 })
@@ -87,7 +120,11 @@ describe('unreadable values', () => {
   it('an instant that is not a date ("now", "yesterday") is a 400 invalid_request, never a 500', async () => {
     const water = await app.request(
       `${LOCAL}/api/water`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: crypto.randomUUID(), amount_ml: 250, logged_at: 'now' }) },
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: crypto.randomUUID(), amount_ml: 250, logged_at: 'now' }),
+      },
       env,
     )
     expect(water.status).toBe(400)
@@ -145,7 +182,9 @@ describe('security headers', () => {
       expect(res.headers.get('X-Content-Type-Options'), path).toBe('nosniff')
       expect(res.headers.get('Referrer-Policy'), path).toBe('same-origin')
       expect(res.headers.get('X-Frame-Options'), path).toBe('DENY')
-      expect(res.headers.get('Content-Security-Policy'), path).toMatch(/default-src 'none'.*frame-ancestors 'none'/)
+      expect(res.headers.get('Content-Security-Policy'), path).toMatch(
+        /default-src 'none'.*frame-ancestors 'none'/,
+      )
     }
   })
 
@@ -168,7 +207,9 @@ describe('D1 constraint violations', () => {
       return new Response(null, { status: 204 })
     })
     probe.post('/foreign-key', async () => {
-      await env.DB.prepare(`INSERT INTO meal_items (id, meal_id, description, grams, kcal) VALUES (?1, ?2, 'x', 1, 1)`)
+      await env.DB.prepare(
+        `INSERT INTO meal_items (id, meal_id, description, grams, kcal) VALUES (?1, ?2, 'x', 1, 1)`,
+      )
         .bind(crypto.randomUUID(), crypto.randomUUID())
         .run()
       return new Response(null, { status: 204 })

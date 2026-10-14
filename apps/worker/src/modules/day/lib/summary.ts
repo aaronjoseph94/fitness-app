@@ -3,7 +3,15 @@
 import { trendWeights } from '@fitness/shared/engine'
 import type { DaySummary, MealSlot } from '@fitness/shared/schemas'
 import { and, between, eq, lte, sql } from 'drizzle-orm'
-import { meal_items, meals, session_sets, sleep_logs, v_day, weight_logs, workout_sessions } from '../../../db'
+import {
+  meal_items,
+  meals,
+  session_sets,
+  sleep_logs,
+  v_day,
+  weight_logs,
+  workout_sessions,
+} from '../../../db'
 import type { Deps } from '../../../lib/deps'
 
 const round2 = (x: number) => Math.round(x * 100) / 100
@@ -13,7 +21,11 @@ export async function buildDays(deps: Deps, range: { from: string; to: string })
   const { db } = deps
   const { from, to } = range
   const [rows, weights, slotKcal, sleeps, volumes] = await db.batch([
-    db.select().from(v_day).where(between(v_day.date, from, to)).orderBy(v_day.date),
+    db
+      .select()
+      .from(v_day)
+      .where(between(v_day.date, from, to))
+      .orderBy(v_day.date),
     db
       .select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg })
       .from(weight_logs)

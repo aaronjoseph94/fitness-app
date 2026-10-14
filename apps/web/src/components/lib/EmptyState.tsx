@@ -38,11 +38,27 @@ export function EmptyState({ title, body, action, compact = false, testId }: Emp
       }}
     >
       <Box sx={{ flex: '1 1 200px', minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle, color: tokens.ink.text }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.cardTitle,
+            fontWeight: tokens.font.weight.heading,
+            lineHeight: tokens.font.leading.cardTitle,
+            color: tokens.ink.text,
+          }}
+        >
           {title}
         </Box>
         {body && (
-          <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{body}</Box>
+          <Box
+            sx={{
+              mt: '2px',
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+            }}
+          >
+            {body}
+          </Box>
         )}
       </Box>
       {action && (

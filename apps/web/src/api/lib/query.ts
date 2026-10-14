@@ -54,7 +54,11 @@ export function useApiQuery<E extends Endpoint, TData = EndpointOutput<E>>(
 /** Transient failures (network, 5xx, 429) are tried twice more; everything else fails at once. */
 const retryTransient = (failureCount: number, error: ApiError) => error.transient && failureCount < 2
 
-async function readThrough<E extends Endpoint>(endpoint: E, input: EndpointInput<E>, signal: AbortSignal): Promise<EndpointOutput<E>> {
+async function readThrough<E extends Endpoint>(
+  endpoint: E,
+  input: EndpointInput<E>,
+  signal: AbortSignal,
+): Promise<EndpointOutput<E>> {
   const request = toWireRequest(endpoint, input)
   const cacheKey = hashKey(apiQueryKey(endpoint, input))
   let body: unknown
@@ -70,11 +74,19 @@ async function readThrough<E extends Endpoint>(endpoint: E, input: EndpointInput
   }
   const data = parseResponse(endpoint, request, body)
   // The offline copy is not needed to show this response: write it once the page is idle.
-  whenIdle(() => void responseCache.write(cacheKey, body).catch((error: unknown) => console.warn('[api] cache write failed', error)))
+  whenIdle(
+    () =>
+      void responseCache
+        .write(cacheKey, body)
+        .catch((error: unknown) => console.warn('[api] cache write failed', error)),
+  )
   return data
 }
 
-export type ApiMutationOptions<E extends Endpoint> = Omit<UseMutationOptions<WriteOutcome<E>, ApiError, EndpointInput<E>>, 'mutationFn'> & {
+export type ApiMutationOptions<E extends Endpoint> = Omit<
+  UseMutationOptions<WriteOutcome<E>, ApiError, EndpointInput<E>>,
+  'mutationFn'
+> & {
   /** Endpoints whose queries go stale after this write, saved or queued. */
   invalidates?: readonly Endpoint[]
 }

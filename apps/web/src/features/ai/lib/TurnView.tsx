@@ -42,7 +42,11 @@ export function ReplyText({ text }: { text: string }) {
       const ordered = /^\s*\d/.test(line)
       while (i < lines.length && LIST_ITEM.test(lines[i]!)) items.push(lines[i++]!.replace(LIST_ITEM, ''))
       blocks.push(
-        <Box component={ordered ? 'ol' : 'ul'} key={blocks.length} sx={{ m: 0, pl: 5, display: 'grid', gap: 1 }}>
+        <Box
+          component={ordered ? 'ol' : 'ul'}
+          key={blocks.length}
+          sx={{ m: 0, pl: 5, display: 'grid', gap: 1 }}
+        >
           {items.map((item, n) => (
             <li key={n}>{inline(item)}</li>
           ))}
@@ -51,14 +55,27 @@ export function ReplyText({ text }: { text: string }) {
       continue
     }
     const para: string[] = []
-    while (i < lines.length && lines[i]!.trim() && !LIST_ITEM.test(lines[i]!)) para.push(lines[i++]!.replace(/^#+\s*/, ''))
+    while (i < lines.length && lines[i]!.trim() && !LIST_ITEM.test(lines[i]!))
+      para.push(lines[i++]!.replace(/^#+\s*/, ''))
     blocks.push(
       <Box component="p" key={blocks.length} sx={{ m: 0 }}>
         {inline(para.join(' '))}
       </Box>,
     )
   }
-  return <Box sx={{ display: 'grid', gap: '10px', fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.emphasis, color: tokens.ink.text }}>{blocks}</Box>
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gap: '10px',
+        fontSize: tokens.font.size.body,
+        lineHeight: tokens.font.leading.emphasis,
+        color: tokens.ink.text,
+      }}
+    >
+      {blocks}
+    </Box>
+  )
 }
 
 /** The AI's 28 px blue sparkle tile, at the start of every reply, of the thinking row and of the empty thread's note. */
@@ -85,7 +102,16 @@ export function AiTile() {
 /** Three dots breathing in turn (static under reduced motion) beside "Looking it up…". */
 function Thinking() {
   return (
-    <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+    <Box
+      role="status"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        fontSize: tokens.font.size.small,
+        color: tokens.ink.muted,
+      }}
+    >
       <AiTile />
       <Box
         aria-hidden
@@ -157,8 +183,17 @@ export function TurnView({ turn }: { turn: Turn }) {
                 ))}
               </Box>
             )}
-            <Box sx={{ mt: '8px', fontSize: tokens.font.size.caption, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
-              {question.content ? replyWhen(question.created_at, reply.created_at) : formatClock(reply.created_at)}
+            <Box
+              sx={{
+                mt: '8px',
+                fontSize: tokens.font.size.caption,
+                color: tokens.ink.muted,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {question.content
+                ? replyWhen(question.created_at, reply.created_at)
+                : formatClock(reply.created_at)}
               {waitingForTap && ' · nothing changes until you tap'}
             </Box>
           </Box>

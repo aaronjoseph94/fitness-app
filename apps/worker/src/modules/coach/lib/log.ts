@@ -19,8 +19,18 @@ const Before = z.object({
 
 /** Restoring a settings field: each field's `before` parsed with its own schema. */
 const SettingsUndo = z.discriminatedUnion('field', [
-  z.object({ op: z.literal('settings'), label: z.string(), field: z.literal('training_days'), before: z.array(Weekday) }),
-  z.object({ op: z.literal('settings'), label: z.string(), field: z.literal('reminders'), before: ReminderPrefs }),
+  z.object({
+    op: z.literal('settings'),
+    label: z.string(),
+    field: z.literal('training_days'),
+    before: z.array(Weekday),
+  }),
+  z.object({
+    op: z.literal('settings'),
+    label: z.string(),
+    field: z.literal('reminders'),
+    before: ReminderPrefs,
+  }),
 ])
 
 /** One step that undoes one applied change; `label` says what the change was, for the revert report. */
@@ -121,7 +131,9 @@ export async function findRevert(
   deps: Deps,
   review_id: string,
 ): Promise<z.infer<typeof RevertReviewResult> | null> {
-  const parsed = RevertLogBody.safeParse(await latestBody(deps, ['coach_review', 'coach_review_revert'], review_id))
+  const parsed = RevertLogBody.safeParse(
+    await latestBody(deps, ['coach_review', 'coach_review_revert'], review_id),
+  )
   return parsed.success ? parsed.data.result : null
 }
 

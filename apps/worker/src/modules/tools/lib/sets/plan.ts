@@ -90,7 +90,9 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
       changes: z
         .array(
           z.object({
-            field: MovableTargetField.describe('carbs_g is not movable: carbs are the remainder of kcal after protein and fat'),
+            field: MovableTargetField.describe(
+              'carbs_g is not movable: carbs are the remainder of kcal after protein and fat',
+            ),
             weekday: Weekday.nullable().default(null).describe('null = every day'),
             to: z.number().nonnegative(),
             reason: z.string().trim().min(1).max(500).optional(),
@@ -128,7 +130,7 @@ export const PLAN_TOOLS: readonly ToolDefinition[] = [
     title: 'Accept a proposal',
     area: 'plan',
     description:
-      'Accept a pending proposal: a plan change re-runs the guards and becomes a new plan version (revertible); a workout becomes an AI template; a week plan becomes the week\'s active plan; a reminder time or template swap is applied. Only after Aaron says yes to that proposal. Not available to Ask AI.',
+      "Accept a pending proposal: a plan change re-runs the guards and becomes a new plan version (revertible); a workout becomes an AI template; a week plan becomes the week's active plan; a reminder time or template swap is applied. Only after Aaron says yes to that proposal. Not available to Ask AI.",
     input: z.object({
       id: Id.describe('The proposal id (get_today → proposals, or get_review_bundle → open_proposals)'),
     }),

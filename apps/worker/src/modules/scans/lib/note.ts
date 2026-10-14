@@ -14,5 +14,10 @@ export const DebriefNoteBody = z.object({
 export type DebriefNoteBody = z.infer<typeof DebriefNoteBody>
 
 /** Body of the nightly "scan due" note (SPEC §3: remind when a scan is due). */
-export const ScanDueNoteBody = z.object({ text: z.string().min(1), flag: z.literal('scan_due'), due: z.iso.date(), last_scan_date: z.iso.date().nullable() })
+export const ScanDueNoteBody = z.object({
+  text: z.string().min(1),
+  flag: z.literal('scan_due'),
+  due: z.iso.date(),
+  last_scan_date: z.iso.date().nullable(),
+})
 export type ScanDueNoteBody = z.infer<typeof ScanDueNoteBody>

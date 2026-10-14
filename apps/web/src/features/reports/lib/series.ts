@@ -2,7 +2,14 @@
 // levels, weekly volume to the four muscle groups across the last reviews (in real kg), the ISO-week arithmetic of the
 // prev/next links, and the next week's plan as table rows. Data in, plain rows out; no React, no fetching.
 import { addDays, isoWeek, isoWeekRange, muscleLevels } from '@fitness/shared/engine'
-import type { DaySummary, IsoWeek, MuscleScores, WeekPlan, Weekday, WeeklyMetrics } from '@fitness/shared/schemas'
+import type {
+  DaySummary,
+  IsoWeek,
+  MuscleScores,
+  WeekPlan,
+  Weekday,
+  WeeklyMetrics,
+} from '@fitness/shared/schemas'
 import type { VolumeWeek } from '../../../charts'
 import { groupVolume, VOLUME_GROUPS } from '../../progress/series'
 
@@ -28,7 +35,14 @@ export function shiftWeek(monday: string, offset: number): IsoWeek {
 // ── Days ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 // The day and weight series are Progress's own mappings (SPEC §11 puts these charts on both), so both draw the same.
-export { caloriesDays, macrosDays, sleepNights, stepsDays, waterDays, weightPoints } from '../../progress/series'
+export {
+  caloriesDays,
+  macrosDays,
+  sleepNights,
+  stepsDays,
+  waterDays,
+  weightPoints,
+} from '../../progress/series'
 
 /** The week's targets for the dashed lines: those of its first non-fast day with targets. */
 export function weekTargets(days: readonly DaySummary[]) {
@@ -47,8 +61,18 @@ export { VOLUME_GROUPS }
  * Real kg per group for each week, oldest first: the current week plus up to `count − 1` earlier reviewed weeks. The
  * weighted volume_by_muscle is scaled to the week's volume_kg (groupVolume), so the stacks match "X kg lifted".
  */
-export function volumeWeeks(current: WeeklyMetrics, earlier: readonly WeeklyMetrics[], count = 4): VolumeWeek[] {
-  const weeks = [...earlier.filter((m) => m.week_start < current.week_start).sort((a, b) => (a.week_start < b.week_start ? -1 : 1)).slice(-(count - 1)), current]
+export function volumeWeeks(
+  current: WeeklyMetrics,
+  earlier: readonly WeeklyMetrics[],
+  count = 4,
+): VolumeWeek[] {
+  const weeks = [
+    ...earlier
+      .filter((m) => m.week_start < current.week_start)
+      .sort((a, b) => (a.week_start < b.week_start ? -1 : 1))
+      .slice(-(count - 1)),
+    current,
+  ]
   return weeks.map((m) => ({ week: m.week_start, volume: groupVolume(m.volume_by_muscle, m.volume_kg) }))
 }
 
@@ -59,7 +83,13 @@ const WEEKDAYS: readonly Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 
 /** The plan to show for a week: the active row, else the newest proposed one. */
 export function pickWeekPlan(plans: readonly WeekPlan[] | undefined): WeekPlan | null {
   if (!plans?.length) return null
-  return plans.find((p) => p.status === 'active') ?? [...plans].filter((p) => p.status === 'proposed').sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))[0] ?? null
+  return (
+    plans.find((p) => p.status === 'active') ??
+    [...plans]
+      .filter((p) => p.status === 'proposed')
+      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))[0] ??
+    null
+  )
 }
 
 export interface PlanRow {

@@ -84,7 +84,10 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
   const actions = useMemo(() => loggerActions(session.id), [session.id])
   // The picker adds exercises, or swaps `swapFrom` for one with the same primary muscle. The mode is kept while the
   // sheet closes, so its list doesn't change under the exit animation.
-  const [picker, setPicker] = useState<{ open: boolean; swapFrom: string | null }>({ open: false, swapFrom: null })
+  const [picker, setPicker] = useState<{ open: boolean; swapFrom: string | null }>({
+    open: false,
+    swapFrom: null,
+  })
   const openAdd = () => setPicker({ open: true, swapFrom: null })
   const openSwap = useCallback((exerciseId: string) => setPicker({ open: true, swapFrom: exerciseId }), [])
   /** A plain message for the snackbar (not a write problem). */
@@ -99,12 +102,17 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
   const picked = useMemo(() => new Set(session.exercises.map((e) => e.exercise_id)), [session.exercises])
   const nameOf = useCallback((id: string) => index.byId.get(id)?.name ?? 'exercise', [index.byId])
   const [folded] = useState(() => (session.finished ? new Set<string>() : foldedAtStart(session)))
-  const currentId = session.finished ? null : (session.exercises.find((e) => e.sets.some((s) => !s.done))?.exercise_id ?? null)
+  const currentId = session.finished
+    ? null
+    : (session.exercises.find((e) => e.sets.some((s) => !s.done))?.exercise_id ?? null)
   const conflicts = session.recovery?.conflicts ?? []
 
   /** The next set to do after a rest: the rested exercise's next open set, else the next exercise with one. */
   const upNext = (exerciseId: string): string | null => {
-    const from = Math.max(0, session.exercises.findIndex((e) => e.exercise_id === exerciseId))
+    const from = Math.max(
+      0,
+      session.exercises.findIndex((e) => e.exercise_id === exerciseId),
+    )
     for (const e of [...session.exercises.slice(from), ...session.exercises.slice(0, from)]) {
       const open = e.sets.findIndex((x) => !x.done)
       if (open >= 0) return `${nameOf(e.exercise_id)}, set ${open + 1}`
@@ -143,7 +151,10 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
       ? ['Readiness is low: consider one set fewer per exercise.']
       : []),
     // Left out here at the start, or by the Worker (same wording, so a note shows once).
-    ...new Set([...(session.left_out ?? []), ...(session.recovery?.notes.filter((n) => n.startsWith(LEFT_OUT)) ?? [])]),
+    ...new Set([
+      ...(session.left_out ?? []),
+      ...(session.recovery?.notes.filter((n) => n.startsWith(LEFT_OUT)) ?? []),
+    ]),
   ]
 
   const clock = elapsed(session.started_at, edited ? Date.parse(edited.ended_at) : now)
@@ -178,7 +189,12 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                     <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
                     Train
                   </ButtonBase>
-                  <StatusChip tone="info" label={edited ? `Editing · ${formatShortDate(session.date)}` : ORIGIN_LABEL[session.origin]} />
+                  <StatusChip
+                    tone="info"
+                    label={
+                      edited ? `Editing · ${formatShortDate(session.date)}` : ORIGIN_LABEL[session.origin]
+                    }
+                  />
                   {!edited && <StatusChip tone="success" dot label="In progress" />}
                   {session.start === 'pending' && <PendingBadge label="Starting…" />}
                 </Box>
@@ -197,7 +213,9 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                   <KeyStat size="md" label="Time" value={clock} testId="session-clock" />
                   <KeyStat size="md" label="Sets" value={`${counts.done}/${counts.planned}`} />
                   <KeyStat size="md" label="Volume" value={counts.volume_kg} unit="kg" />
-                  {session.readiness && <KeyStat size="md" label="Readiness" value={session.readiness.score} />}
+                  {session.readiness && (
+                    <KeyStat size="md" label="Readiness" value={session.readiness.score} />
+                  )}
                 </Box>
               }
             />
@@ -222,7 +240,11 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               session.exercises.map((e, i) => {
                 const info = index.byId.get(e.exercise_id)
                 return (
-                  <Reveal key={e.exercise_id} delay={staggerDelay(i, tokens.motion.stagger.section, 200)} sx={{ minWidth: 0 }}>
+                  <Reveal
+                    key={e.exercise_id}
+                    delay={staggerDelay(i, tokens.motion.stagger.section, 200)}
+                    sx={{ minWidth: 0 }}
+                  >
                     <ExerciseLogCard
                       exercise={e}
                       position={i}
@@ -289,7 +311,11 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
             sx={{
               display: 'grid',
               gap: 4,
-              gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'minmax(0, 1fr)' },
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                lg: 'minmax(0, 1fr)',
+              },
               alignItems: 'start',
             }}
           >
@@ -309,7 +335,8 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         sameMuscleAs={picker.swapFrom ?? undefined}
         onPick={(e) => {
           if (picker.swapFrom === null) actions.addExercise(e.id)
-          else if (!actions.swapExercise(picker.swapFrom, e.id)) setNotice('That exercise is already in this session.')
+          else if (!actions.swapExercise(picker.swapFrom, e.id))
+            setNotice('That exercise is already in this session.')
         }}
         title={picker.swapFrom === null ? 'Add to session' : undefined}
       />
@@ -337,7 +364,12 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         </DialogActions>
       </Dialog>
 
-      <DeleteSessionDialog open={deleting} sessionId={session.id} setsDone={counts.done} onClose={() => setDeleting(false)} />
+      <DeleteSessionDialog
+        open={deleting}
+        sessionId={session.id}
+        setsDone={counts.done}
+        onClose={() => setDeleting(false)}
+      />
       {/* At the top, under the app bar or the desktop header (as the quick-log notice): the rest timer holds the bottom. */}
       <Snackbar
         open={notice !== null || problem !== null}
@@ -363,16 +395,32 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
 /** Rail entrance: after the title row, 90 ms apart. */
 const railDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 300)
 
-const RAIL_TEXT_SX = { fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.label } as const
+const RAIL_TEXT_SX = {
+  fontSize: tokens.font.size.small,
+  lineHeight: tokens.font.leading.small,
+  color: tokens.ink.label,
+} as const
 const STRONG_SX = { color: tokens.ink.text, fontWeight: tokens.font.weight.heading } as const
 
 /**
  * Progress: a 56 px ring of sets ticked, the time left at this pace (minutes so far ÷ sets ticked × sets still open),
  * and one 6 px bar per exercise filled by its share of sets ticked.
  */
-function ProgressPanel({ session, done, planned, now }: { session: LoggerSession; done: number; planned: number; now: number }) {
+function ProgressPanel({
+  session,
+  done,
+  planned,
+  now,
+}: {
+  session: LoggerSession
+  done: number
+  planned: number
+  now: number
+}) {
   const pct = planned ? Math.round((done / planned) * 100) : 0
-  const minutesLeft = done ? Math.round(((now - Date.parse(session.started_at)) / done / 60_000) * (planned - done)) : null
+  const minutesLeft = done
+    ? Math.round(((now - Date.parse(session.started_at)) / done / 60_000) * (planned - done))
+    : null
   const pace = session.finished
     ? null
     : done === 0
@@ -450,7 +498,10 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
   if (withLast.length === 0) return null
   const sets = withLast.flatMap((e) => e.last!.sets)
   const lastVolume = sets.reduce((sum, s) => sum + (s.reps ?? 0) * (s.load_kg ?? 0), 0)
-  const date = withLast.map((e) => e.last!.date).sort().at(-1)!
+  const date = withLast
+    .map((e) => e.last!.date)
+    .sort()
+    .at(-1)!
   const planned = session.exercises.reduce((n, e) => n + e.sets.length, 0)
   const started = session.exercises.filter((e) => e.sets.some((x) => x.done)).length
   return (
@@ -472,7 +523,13 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
           ].map(([label, value]) => (
             <Box key={label} sx={{ ...wellSurface, p: '10px' }}>
               <Box sx={{ fontSize: tokens.font.size.micro, color: tokens.ink.muted }}>{label}</Box>
-              <Box sx={{ fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums' }}>
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.sectionTitle,
+                  fontWeight: tokens.font.weight.number,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {value}
               </Box>
             </Box>
@@ -518,7 +575,9 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
 function ReadinessPanel({ readiness }: { readiness: NonNullable<LoggerSession['readiness']> }) {
   const sleep = readiness.sleep_h === null ? 'not logged' : `${formatNumber(readiness.sleep_h, 1)} h of 7.5 h`
   const steps =
-    readiness.steps_vs_median === null ? 'not logged' : `${formatNumber(readiness.steps_vs_median, 2)} × your 14-day median`
+    readiness.steps_vs_median === null
+      ? 'not logged'
+      : `${formatNumber(readiness.steps_vs_median, 2)} × your 14-day median`
   const days =
     readiness.days_since_last_session === null
       ? 'no session yet'
@@ -535,7 +594,15 @@ function ReadinessPanel({ readiness }: { readiness: NonNullable<LoggerSession['r
         titleSize="card"
         padding="dense"
       >
-        <Box sx={{ display: 'grid', gap: 2, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.body,
+          }}
+        >
           <Box>
             <ReadinessChip readiness={readiness} />
           </Box>

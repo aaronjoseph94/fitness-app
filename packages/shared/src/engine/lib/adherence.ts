@@ -28,7 +28,12 @@ export function dayAdherence(day: AdherenceDay): DayAdherence {
   return { date: day.date, weigh_in, meals_or_fast, water, score: met / 3, adherent: met === 3 }
 }
 
-export type AdherenceWindow = { share: number; adherent_days: number; window_days: number; by_day: DayAdherence[] }
+export type AdherenceWindow = {
+  share: number
+  adherent_days: number
+  window_days: number
+  by_day: DayAdherence[]
+}
 
 /**
  * A window: share = adherent days / window days. `window_days` defaults to the rows given; pass the calendar length

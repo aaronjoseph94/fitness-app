@@ -31,7 +31,12 @@ export function ProgressBar({ value, metric, color, label, delay = 0, testId }: 
       aria-valuemax={100}
       aria-valuenow={Math.round(ratio * 100)}
       data-testid={testId}
-      sx={{ height: 6, borderRadius: `${tokens.radius.pill}px`, bgcolor: tokens.ink.fill, overflow: 'hidden' }}
+      sx={{
+        height: 6,
+        borderRadius: `${tokens.radius.pill}px`,
+        bgcolor: tokens.ink.fill,
+        overflow: 'hidden',
+      }}
     >
       <Box
         sx={{

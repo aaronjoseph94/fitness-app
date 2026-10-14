@@ -125,7 +125,10 @@ async function flushOnce(send: QueueSender): Promise<number> {
     const write = await db.queue.orderBy('seq').first()
     if (!write || write.seq === undefined) return delivered
     const { seq, ...pending } = write
-    const outcome = await send(pending).catch((error: unknown): SendOutcome => ({ kind: 'retry', error: String(error) }))
+    const outcome = await send(pending).catch((error: unknown): SendOutcome => ({
+      kind: 'retry',
+      error: String(error),
+    }))
     switch (outcome.kind) {
       case 'sent':
         await db.queue.delete(seq)
@@ -140,7 +143,11 @@ async function flushOnce(send: QueueSender): Promise<number> {
         const attempts = write.attempts + 1
         // A 5xx adds one; any other HTTP answer (429, 408) ends the run; a network failure leaves it as it was.
         const serverErrors =
-          outcome.status === undefined ? (write.server_errors ?? 0) : outcome.status >= 500 ? (write.server_errors ?? 0) + 1 : 0
+          outcome.status === undefined
+            ? (write.server_errors ?? 0)
+            : outcome.status >= 500
+              ? (write.server_errors ?? 0) + 1
+              : 0
         if (serverErrors >= MAX_SERVER_ERRORS) {
           await reject(seq, { ...pending, attempts }, outcome.status!, outcome.error)
           break

@@ -12,10 +12,11 @@ import { useEffect, useState } from 'react'
 export function useScrolled(threshold = 6): boolean {
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
-    const read = () => setScrolled((prev) => {
-      const next = window.scrollY > threshold
-      return prev === next ? prev : next
-    })
+    const read = () =>
+      setScrolled((prev) => {
+        const next = window.scrollY > threshold
+        return prev === next ? prev : next
+      })
     read()
     window.addEventListener('scroll', read, { passive: true })
     return () => window.removeEventListener('scroll', read)

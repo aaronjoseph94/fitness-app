@@ -10,7 +10,15 @@ import { CountUp } from './CountUp'
 import { formatNumber } from './format'
 import { statValue } from './surfaces'
 
-export function StatHead({ label, icon: Icon, badge }: { label: ReactNode; icon?: SvgIconComponent; badge?: ReactNode }) {
+export function StatHead({
+  label,
+  icon: Icon,
+  badge,
+}: {
+  label: ReactNode
+  icon?: SvgIconComponent
+  badge?: ReactNode
+}) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: 20, minWidth: 0 }}>
       <Box
@@ -48,17 +56,38 @@ export interface StatFigureProps {
   trailingBelowOnPhone?: boolean
 }
 
-export function StatFigure({ value, unit, precision, hero = false, countUp = false, delay, trailing, trailingBelowOnPhone = false }: StatFigureProps) {
+export function StatFigure({
+  value,
+  unit,
+  precision,
+  hero = false,
+  countUp = false,
+  delay,
+  trailing,
+  trailingBelowOnPhone = false,
+}: StatFigureProps) {
   const display = typeof value === 'number' || value === null ? formatNumber(value, precision) : value
   const numeric = typeof value === 'number' && Number.isFinite(value)
   return (
-    <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '6px', rowGap: '6px', mt: '10px', minWidth: 0 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'baseline',
+        flexWrap: 'wrap',
+        columnGap: '6px',
+        rowGap: '6px',
+        mt: '10px',
+        minWidth: 0,
+      }}
+    >
       <Box
         component="span"
         sx={{
           ...statValue(hero ? 'large' : 'standard'),
           // A hero steps down to 34 on a phone; a stat value stays 28 (its unit wraps under it in a narrow card).
-          ...(hero && { fontSize: { xs: tokens.font.size.bigNumberMedium, sm: tokens.font.size.bigNumberLarge } }),
+          ...(hero && {
+            fontSize: { xs: tokens.font.size.bigNumberMedium, sm: tokens.font.size.bigNumberLarge },
+          }),
           lineHeight: tokens.font.leading.number,
           color: tokens.ink.text,
           whiteSpace: 'nowrap',
@@ -67,7 +96,14 @@ export function StatFigure({ value, unit, precision, hero = false, countUp = fal
         {countUp && numeric ? <CountUp value={value} precision={precision} delay={delay} /> : display}
       </Box>
       {unit && value !== null && (
-        <Box component="span" sx={{ fontSize: hero ? tokens.font.size.body : tokens.font.size.small, color: tokens.ink.secondary, minWidth: 0 }}>
+        <Box
+          component="span"
+          sx={{
+            fontSize: hero ? tokens.font.size.body : tokens.font.size.small,
+            color: tokens.ink.secondary,
+            minWidth: 0,
+          }}
+        >
           {unit}
         </Box>
       )}
@@ -78,7 +114,10 @@ export function StatFigure({ value, unit, precision, hero = false, countUp = fal
             display: 'inline-flex',
             alignSelf: 'center',
             minWidth: 0,
-            ...(trailingBelowOnPhone && { flexBasis: { xs: '100%', sm: 'auto' }, justifyContent: 'flex-end' }),
+            ...(trailingBelowOnPhone && {
+              flexBasis: { xs: '100%', sm: 'auto' },
+              justifyContent: 'flex-end',
+            }),
           }}
         >
           {trailing}
@@ -89,7 +128,13 @@ export function StatFigure({ value, unit, precision, hero = false, countUp = fal
 }
 
 /** The caption under a stat: 12 px muted, with any <strong>/<b> inside it as the 500 ink key figure. */
-export function StatCaption({ children, muted = tokens.ink.secondary }: { children: ReactNode; muted?: string }) {
+export function StatCaption({
+  children,
+  muted = tokens.ink.secondary,
+}: {
+  children: ReactNode
+  muted?: string
+}) {
   return (
     <Box
       sx={{

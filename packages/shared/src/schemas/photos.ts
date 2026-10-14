@@ -40,7 +40,9 @@ export const ProgressPhoto = Row.extend({
 export type ProgressPhoto = z.infer<typeof ProgressPhoto>
 
 /** Pixel size of an uploaded photo: a whole number from 1 to PHOTO_MAX_EDGE (the browser already downscaled it). */
-const PhotoEdge = QueryInt.refine((n) => n >= 1 && n <= PHOTO_MAX_EDGE, { message: `Must be 1 to ${PHOTO_MAX_EDGE} px` })
+const PhotoEdge = QueryInt.refine((n) => n >= 1 && n <= PHOTO_MAX_EDGE, {
+  message: `Must be 1 to ${PHOTO_MAX_EDGE} px`,
+})
 
 /** Query of POST /api/photos (body: the downscaled, EXIF-stripped image as Binary). Replaying an id returns the stored photo. */
 export const PhotoUploadQuery = z.object({
@@ -55,5 +57,9 @@ export const PhotoUploadQuery = z.object({
 export type PhotoUploadQuery = z.infer<typeof PhotoUploadQuery>
 
 /** Query of GET /api/photos: newest first, optionally one pose and an inclusive range of local dates. */
-export const PhotoListQuery = z.object({ pose: Pose.optional(), from: LocalDate.optional(), to: LocalDate.optional() })
+export const PhotoListQuery = z.object({
+  pose: Pose.optional(),
+  from: LocalDate.optional(),
+  to: LocalDate.optional(),
+})
 export type PhotoListQuery = z.infer<typeof PhotoListQuery>

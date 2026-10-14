@@ -15,5 +15,9 @@ export function PhotoKind({ onLeave }: { onLeave: () => void }) {
     onLeave()
     void navigate('/photos/new')
   }, [navigate, onLeave])
-  return <Box sx={{ py: 4, textAlign: 'center', fontSize: tokens.font.size.small, color: 'text.secondary' }}>Opening the camera…</Box>
+  return (
+    <Box sx={{ py: 4, textAlign: 'center', fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+      Opening the camera…
+    </Box>
+  )
 }

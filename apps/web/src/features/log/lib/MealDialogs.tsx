@@ -18,7 +18,18 @@ import type { Favourite, MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { formatNumber } from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, dateOf, draftTotals, instantAt, ItemsEditor, SLOT_LABEL, toItemInputs, useLogMutation, visibleSlots, type DraftItem } from '../../quick-log'
+import {
+  clockOf,
+  dateOf,
+  draftTotals,
+  instantAt,
+  ItemsEditor,
+  SLOT_LABEL,
+  toItemInputs,
+  useLogMutation,
+  visibleSlots,
+  type DraftItem,
+} from '../../quick-log'
 import { draftFromView, type MealView } from './meals'
 import { problemText } from '../../../api'
 
@@ -52,7 +63,14 @@ export function MealEditor({ meal, onClose }: { meal: MealView; onClose: () => v
   }
 
   return (
-    <Dialog open onClose={onClose} fullScreen={fullScreen} fullWidth maxWidth="sm" aria-labelledby="meal-editor-title">
+    <Dialog
+      open
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="meal-editor-title"
+    >
       <DialogTitle id="meal-editor-title" sx={{ display: 'flex', alignItems: 'center', gap: 2, pr: 2 }}>
         <Box sx={{ flex: 1 }}>Edit {SLOT_LABEL[meal.slot].toLowerCase()}</Box>
         <IconButton aria-label="Close" onClick={onClose}>
@@ -69,24 +87,58 @@ export function MealEditor({ meal, onClose }: { meal: MealView; onClose: () => v
               label={SLOT_LABEL[s]}
               onClick={() => setSlot(s)}
               variant={slot === s ? 'filled' : 'outlined'}
-              sx={{ height: tokens.tapTarget, px: 1, ...(slot === s ? { bgcolor: tokens.ink.text, color: tokens.ink.card, '&:hover': { bgcolor: tokens.ink.text } } : {}) }}
+              sx={{
+                height: tokens.tapTarget,
+                px: 1,
+                ...(slot === s
+                  ? {
+                      bgcolor: tokens.ink.text,
+                      color: tokens.ink.card,
+                      '&:hover': { bgcolor: tokens.ink.text },
+                    }
+                  : {}),
+              }}
             />
           ))}
         </Box>
-        <TextField label="Time" type="time" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ maxWidth: 180 }} />
+        <TextField
+          label="Time"
+          type="time"
+          value={time}
+          onChange={(e) => e.target.value && setTime(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ maxWidth: 180 }}
+        />
 
-        {meal.rawText && <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>Logged as “{meal.rawText}”</Box>}
+        {meal.rawText && (
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+            Logged as “{meal.rawText}”
+          </Box>
+        )}
 
         <ItemsEditor items={items} onChange={setItems} disabled={update.isPending} />
-        {items.length === 0 && <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>No items. Add one, or delete the meal from its menu.</Box>}
+        {items.length === 0 && (
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+            No items. Add one, or delete the meal from its menu.
+          </Box>
+        )}
         {update.isError && (
           <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(update.error)}
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 6, pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`, gap: 2 }}>
-        <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+      <DialogActions
+        sx={{ px: 6, pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))`, gap: 2 }}
+      >
+        <Box
+          sx={{
+            flex: 1,
+            fontSize: tokens.font.size.small,
+            color: 'text.secondary',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
           {items.length > 0 ? `${formatNumber(totals.kcal)}${complete ? '' : '+'} kcal` : ''}
         </Box>
         {meal.status === 'review' ? (
@@ -94,13 +146,21 @@ export function MealEditor({ meal, onClose }: { meal: MealView; onClose: () => v
             <Button onClick={() => save(false)} disabled={!valid || update.isPending}>
               Save
             </Button>
-            <Button variant="contained" onClick={() => save(true)} disabled={!valid || update.isPending || items.length === 0}>
+            <Button
+              variant="contained"
+              onClick={() => save(true)}
+              disabled={!valid || update.isPending || items.length === 0}
+            >
               {update.isPending ? 'Saving…' : 'Save and confirm'}
             </Button>
           </>
         ) : (
           // A confirmed meal keeps at least one item (the Worker refuses an empty one): remove it from its menu instead.
-          <Button variant="contained" onClick={() => save(false)} disabled={!valid || update.isPending || items.length === 0}>
+          <Button
+            variant="contained"
+            onClick={() => save(false)}
+            disabled={!valid || update.isPending || items.length === 0}
+          >
             {update.isPending ? 'Saving…' : 'Save'}
           </Button>
         )}
@@ -115,7 +175,10 @@ export function DeleteMealDialog({ meal, onClose }: { meal: MealView; onClose: (
     <Dialog open onClose={onClose} aria-labelledby="delete-meal-title" maxWidth="xs" fullWidth>
       <DialogTitle id="delete-meal-title">Delete this {SLOT_LABEL[meal.slot].toLowerCase()}?</DialogTitle>
       <DialogContent sx={{ fontSize: tokens.font.size.emphasis, color: 'text.secondary' }}>
-        {clockOf(meal.eatenAt)} · {meal.items.length > 0 ? meal.items.map((i) => i.description).join(', ') : (meal.rawText ?? 'No items')}
+        {clockOf(meal.eatenAt)} ·{' '}
+        {meal.items.length > 0
+          ? meal.items.map((i) => i.description).join(', ')
+          : (meal.rawText ?? 'No items')}
         {meal.totals ? ` · ${formatNumber(meal.totals.kcal)} kcal` : ''}
         {remove.isError && (
           <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small, mt: 2 }}>
@@ -125,7 +188,12 @@ export function DeleteMealDialog({ meal, onClose }: { meal: MealView; onClose: (
       </DialogContent>
       <DialogActions sx={{ px: 6, pb: 4, gap: 2 }}>
         <Button onClick={onClose}>Keep it</Button>
-        <Button variant="contained" color="error" disabled={remove.isPending} onClick={() => remove.mutate({ params: { id: meal.id } }, { onSuccess: onClose })}>
+        <Button
+          variant="contained"
+          color="error"
+          disabled={remove.isPending}
+          onClick={() => remove.mutate({ params: { id: meal.id } }, { onSuccess: onClose })}
+        >
           {remove.isPending ? 'Deleting…' : 'Delete'}
         </Button>
       </DialogActions>
@@ -133,10 +201,23 @@ export function DeleteMealDialog({ meal, onClose }: { meal: MealView; onClose: (
   )
 }
 
-export function SaveFavouriteDialog({ meal, favourites, onClose }: { meal: MealView; favourites: readonly Favourite[]; onClose: () => void }) {
+export function SaveFavouriteDialog({
+  meal,
+  favourites,
+  onClose,
+}: {
+  meal: MealView
+  favourites: readonly Favourite[]
+  onClose: () => void
+}) {
   const foods = meal.items.filter((i) => i.foodId && i.grams > 0)
   const skipped = meal.items.length - foods.length
-  const [label, setLabel] = useState(() => foods.map((i) => i.description).join(', ').slice(0, 100))
+  const [label, setLabel] = useState(() =>
+    foods
+      .map((i) => i.description)
+      .join(', ')
+      .slice(0, 100),
+  )
   const create = useLogMutation(endpoints.nutrition.createFavourite)
   const nextOrder = favourites.reduce((max, f) => Math.max(max, f.sort_order), 0) + 10
   const valid = label.trim().length > 0 && foods.length > 0
@@ -147,7 +228,11 @@ export function SaveFavouriteDialog({ meal, favourites, onClose }: { meal: MealV
     const single = foods.length === 1 ? foods[0] : undefined
     const body = single?.foodId
       ? { ...base, kind: 'food' as const, food_id: single.foodId, default_grams: single.grams }
-      : { ...base, kind: 'recipe' as const, recipe: foods.map((i) => ({ food_id: i.foodId as string, grams: i.grams })) }
+      : {
+          ...base,
+          kind: 'recipe' as const,
+          recipe: foods.map((i) => ({ food_id: i.foodId as string, grams: i.grams })),
+        }
     create.mutate({ body }, { onSuccess: onClose })
   }
 
@@ -159,9 +244,17 @@ export function SaveFavouriteDialog({ meal, favourites, onClose }: { meal: MealV
           {foods.length === 1
             ? `One tap logs ${formatNumber(foods[0]?.grams ?? 0)} g of it, adjustable.`
             : `A recipe of ${foods.length} foods with their grams; one tap logs it all.`}
-          {skipped > 0 && ` ${skipped} ${skipped === 1 ? 'item has' : 'items have'} no food match and ${skipped === 1 ? 'is' : 'are'} left out.`}
+          {skipped > 0 &&
+            ` ${skipped} ${skipped === 1 ? 'item has' : 'items have'} no food match and ${skipped === 1 ? 'is' : 'are'} left out.`}
         </Box>
-        <TextField label="Name" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus slotProps={{ htmlInput: { maxLength: 100 } }} sx={{ mt: 1 }} />
+        <TextField
+          label="Name"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          autoFocus
+          slotProps={{ htmlInput: { maxLength: 100 } }}
+          sx={{ mt: 1 }}
+        />
         {create.isError && (
           <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(create.error)}

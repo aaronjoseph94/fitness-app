@@ -11,7 +11,15 @@
 //   sendTest(deps, endpoint?)              → PushResult          the "Send a test" notification
 // The push service is an adapter (PushSender): deps.pushSender when given (tests), else Web Push with the VAPID secrets.
 // Missing VAPID keys are not an error: sends return configured: false and nothing leaves the Worker.
-import type { Ok, PushKey, PushNotification, PushResult, PushSubscribe, PushSubscription, ReminderKind } from '@fitness/shared/schemas'
+import type {
+  Ok,
+  PushKey,
+  PushNotification,
+  PushResult,
+  PushSubscribe,
+  PushSubscription,
+  ReminderKind,
+} from '@fitness/shared/schemas'
 import { ReminderKind as ReminderKindSchema } from '@fitness/shared/schemas'
 import { eq, inArray } from 'drizzle-orm'
 import { push_subscriptions } from '../../db'
@@ -59,7 +67,10 @@ export async function subscribe(deps: Deps, input: PushSubscribe): Promise<PushS
   const [row] = await deps.db
     .insert(push_subscriptions)
     .values({ endpoint: input.endpoint, keys: input.keys, kinds, created_at: now, updated_at: now })
-    .onConflictDoUpdate({ target: push_subscriptions.endpoint, set: { keys: input.keys, kinds, updated_at: now } })
+    .onConflictDoUpdate({
+      target: push_subscriptions.endpoint,
+      set: { keys: input.keys, kinds, updated_at: now },
+    })
     .returning()
   return toApi(row!)
 }
@@ -101,7 +112,8 @@ export async function sendPush(
     ),
   )
   const gone = targets.filter((_, i) => isGone(statuses[i]!)).map((t) => t.endpoint)
-  if (gone.length > 0) await deps.db.delete(push_subscriptions).where(inArray(push_subscriptions.endpoint, gone))
+  if (gone.length > 0)
+    await deps.db.delete(push_subscriptions).where(inArray(push_subscriptions.endpoint, gone))
   const sent = statuses.filter((s) => s >= 200 && s < 300).length
   const failed = statuses.length - sent - gone.length
   if (failed > 0)
@@ -114,7 +126,12 @@ export function sendTest(deps: PushDeps, endpoint?: string): Promise<PushResult>
   return sendPush(
     deps,
     'test',
-    { title: 'Notifications are on', body: 'Reminders will arrive like this one. Tap to open the app.', url: '/settings/reminders', tag: 'test' },
+    {
+      title: 'Notifications are on',
+      body: 'Reminders will arrive like this one. Tap to open the app.',
+      url: '/settings/reminders',
+      tag: 'test',
+    },
     { delivery: { ttl_s: 300, urgency: 'high' }, ...(endpoint ? { only_endpoint: endpoint } : {}) },
   )
 }
@@ -128,4 +145,5 @@ const hostOf = (endpoint: string) => {
   }
 }
 
-const log = (msg: string, extra: Record<string, unknown>) => console.error(JSON.stringify({ level: 'error', msg, ...extra }))
+const log = (msg: string, extra: Record<string, unknown>) =>
+  console.error(JSON.stringify({ level: 'error', msg, ...extra }))

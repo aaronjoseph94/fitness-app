@@ -3,7 +3,16 @@
 // essentials (the day rows and the trend) have arrived, and the optional reads fall back to empty lists.
 import { endpoints } from '@fitness/shared/api'
 import { addDays, daysBetween } from '@fitness/shared/engine'
-import type { DaySummary, Fast, LocalDate, Profile, Scan, Settings, TrendSeries, WorkoutSession } from '@fitness/shared/schemas'
+import type {
+  DaySummary,
+  Fast,
+  LocalDate,
+  Profile,
+  Scan,
+  Settings,
+  TrendSeries,
+  WorkoutSession,
+} from '@fitness/shared/schemas'
 import { keepPreviousData } from '@tanstack/react-query'
 import { useApiQuery, type ApiError } from '../../../api'
 import { essentialsLoading } from './essential-reads'

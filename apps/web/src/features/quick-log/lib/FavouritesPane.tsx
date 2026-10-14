@@ -10,7 +10,14 @@ import { endpoints } from '@fitness/shared/api'
 import type { Favourite, Nutrients } from '@fitness/shared/schemas'
 import { useState, type ReactNode } from 'react'
 import { problemText, useApiQuery } from '../../../api'
-import { formatNumber, NumberField, outlinedIconButton, parseNumber, SectionHeader, tabularNums } from '../../../components'
+import {
+  formatNumber,
+  NumberField,
+  outlinedIconButton,
+  parseNumber,
+  SectionHeader,
+  tabularNums,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { scaled } from './nutrition'
 import { useRecentFoods, type RecentFood } from './reads'
@@ -23,7 +30,15 @@ export type QuickMeal =
 const PORTIONS = [1, 1.5, 2, 0.5] as const
 const MAX_SCALE = 10
 
-export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (meal: QuickMeal) => void; busy: boolean }) {
+export function FavouritesPane({
+  date,
+  onLog,
+  busy,
+}: {
+  date: string
+  onLog: (meal: QuickMeal) => void
+  busy: boolean
+}) {
   const favourites = useApiQuery(endpoints.nutrition.listFavourites, {})
   const recents = useRecentFoods(date)
   const favs = [...(favourites.data ?? [])].sort((a, b) => a.sort_order - b.sort_order)
@@ -40,7 +55,9 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
             <Skeleton variant="rounded" height={52} />
           </Box>
         ) : favourites.isError && favs.length === 0 ? (
-          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>{problemText(favourites.error)}</Box>
+          <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+            {problemText(favourites.error)}
+          </Box>
         ) : favs.length === 0 ? (
           <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
             None yet. Save a logged meal as a favourite from the Log tab and it becomes one tap here.
@@ -55,7 +72,10 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
       </Box>
       {recentRows.length > 0 && (
         <Box>
-          <SectionHeader title="Recent" subtitle="Foods from the last three days, at the grams you last had." />
+          <SectionHeader
+            title="Recent"
+            subtitle="Foods from the last three days, at the grams you last had."
+          />
           <Box>
             {recentRows.map((food) => (
               <RecentRow key={food.foodId} food={food} onLog={onLog} busy={busy} />
@@ -67,7 +87,15 @@ export function FavouritesPane({ date, onLog, busy }: { date: string; onLog: (me
   )
 }
 
-function FavouriteRow({ favourite, onLog, busy }: { favourite: Favourite; onLog: (meal: QuickMeal) => void; busy: boolean }) {
+function FavouriteRow({
+  favourite,
+  onLog,
+  busy,
+}: {
+  favourite: Favourite
+  onLog: (meal: QuickMeal) => void
+  busy: boolean
+}) {
   const [portion, setPortion] = useState(0)
   const [gramsText, setGramsText] = useState(favourite.kind === 'food' ? String(favourite.default_grams) : '')
   const [editing, setEditing] = useState(false)
@@ -88,7 +116,11 @@ function FavouriteRow({ favourite, onLog, busy }: { favourite: Favourite; onLog:
   return (
     <Row
       label={favourite.label}
-      detail={nutrients ? `${detail} · ${formatNumber(nutrients.kcal)} kcal · ${formatNumber(nutrients.protein_g)} g protein` : detail}
+      detail={
+        nutrients
+          ? `${detail} · ${formatNumber(nutrients.kcal)} kcal · ${formatNumber(nutrients.protein_g)} g protein`
+          : detail
+      }
       adjust={
         favourite.kind === 'food' ? (
           editing ? (
@@ -103,7 +135,11 @@ function FavouriteRow({ favourite, onLog, busy }: { favourite: Favourite; onLog:
               sx={{ width: 104 }}
             />
           ) : (
-            <AdjustButton label={`${formatNumber(grams ?? favourite.default_grams)} g`} onClick={() => setEditing(true)} aria={`Change grams of ${favourite.label}`} />
+            <AdjustButton
+              label={`${formatNumber(grams ?? favourite.default_grams)} g`}
+              onClick={() => setEditing(true)}
+              aria={`Change grams of ${favourite.label}`}
+            />
           )
         ) : (
           <AdjustButton
@@ -116,14 +152,28 @@ function FavouriteRow({ favourite, onLog, busy }: { favourite: Favourite; onLog:
       disabled={busy || scale === null}
       onLog={() => {
         if (scale === null || !nutrients) return
-        onLog({ kind: 'favourite', favouriteId: favourite.id, scale: Math.round(scale * 1000) / 1000, label: favourite.label, nutrients })
+        onLog({
+          kind: 'favourite',
+          favouriteId: favourite.id,
+          scale: Math.round(scale * 1000) / 1000,
+          label: favourite.label,
+          nutrients,
+        })
       }}
       testId="favourite-row"
     />
   )
 }
 
-function RecentRow({ food, onLog, busy }: { food: RecentFood; onLog: (meal: QuickMeal) => void; busy: boolean }) {
+function RecentRow({
+  food,
+  onLog,
+  busy,
+}: {
+  food: RecentFood
+  onLog: (meal: QuickMeal) => void
+  busy: boolean
+}) {
   const [gramsText, setGramsText] = useState(String(Math.round(food.grams)))
   const [editing, setEditing] = useState(false)
   const grams = parseNumber(gramsText)
@@ -132,7 +182,11 @@ function RecentRow({ food, onLog, busy }: { food: RecentFood; onLog: (meal: Quic
   return (
     <Row
       label={food.description}
-      detail={nutrients ? `${formatNumber(grams)} g · ${formatNumber(nutrients.kcal)} kcal · ${formatNumber(nutrients.protein_g)} g protein` : 'Enter grams'}
+      detail={
+        nutrients
+          ? `${formatNumber(grams)} g · ${formatNumber(nutrients.kcal)} kcal · ${formatNumber(nutrients.protein_g)} g protein`
+          : 'Enter grams'
+      }
       adjust={
         editing ? (
           <NumberField
@@ -146,7 +200,11 @@ function RecentRow({ food, onLog, busy }: { food: RecentFood; onLog: (meal: Quic
             sx={{ width: 104 }}
           />
         ) : (
-          <AdjustButton label={`${formatNumber(grams)} g`} onClick={() => setEditing(true)} aria={`Change grams of ${food.description}`} />
+          <AdjustButton
+            label={`${formatNumber(grams)} g`}
+            onClick={() => setEditing(true)}
+            aria={`Change grams of ${food.description}`}
+          />
         )
       }
       disabled={busy || !valid}
@@ -161,7 +219,13 @@ function RecentRow({ food, onLog, busy }: { food: RecentFood; onLog: (meal: Quic
 
 function AdjustButton({ label, onClick, aria }: { label: string; onClick: () => void; aria: string }) {
   return (
-    <Button variant="outlined" size="small" onClick={onClick} aria-label={aria} sx={{ minWidth: 64, ...tabularNums }}>
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={onClick}
+      aria-label={aria}
+      sx={{ minWidth: 64, ...tabularNums }}
+    >
       {label}
     </Button>
   )
@@ -185,14 +249,49 @@ function Row({
   return (
     <Box
       data-testid={testId}
-      sx={{ display: 'flex', alignItems: 'center', gap: 2, py: '10px', '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        py: '10px',
+        '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+      }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.body, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Box>
-        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: 'text.secondary', ...tabularNums, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail}</Box>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.label,
+            lineHeight: tokens.font.leading.body,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </Box>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: 'text.secondary',
+            ...tabularNums,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {detail}
+        </Box>
       </Box>
       {adjust}
-      <IconButton aria-label={`Log ${label}`} onClick={onLog} disabled={disabled} size="small" sx={outlinedIconButton}>
+      <IconButton
+        aria-label={`Log ${label}`}
+        onClick={onLog}
+        disabled={disabled}
+        size="small"
+        sx={outlinedIconButton}
+      >
         <AddRounded fontSize="small" />
       </IconButton>
     </Box>

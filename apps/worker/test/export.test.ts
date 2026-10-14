@@ -69,16 +69,14 @@ beforeAll(async () => {
     weight_kg: 95.1 - i * 0.01,
   }))
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-26',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-26',
+    }),
     db.insert(settings).values({
       protein_min_g: 130,
       fat_min_g: 45,
@@ -107,39 +105,33 @@ beforeAll(async () => {
         overrides: {},
       },
     }),
-    db
-      .insert(daily_targets)
-      .values({
-        date: '2026-10-05',
-        plan_version_id: planId,
-        kcal: 1400,
-        protein_g: 130,
-        carbs_g: 118.75,
-        fat_g: 45,
-        fibre_g: 30,
-        water_ml: 3000,
-        steps: 8000,
-      }),
-    db
-      .insert(foods)
-      .values({
-        id: foodId,
-        source: 'user',
-        name: 'Chicken breast',
-        kcal_per_100g: 165,
-        protein_g: 31,
-        fat_g: 3.6,
-      }),
+    db.insert(daily_targets).values({
+      date: '2026-10-05',
+      plan_version_id: planId,
+      kcal: 1400,
+      protein_g: 130,
+      carbs_g: 118.75,
+      fat_g: 45,
+      fibre_g: 30,
+      water_ml: 3000,
+      steps: 8000,
+    }),
+    db.insert(foods).values({
+      id: foodId,
+      source: 'user',
+      name: 'Chicken breast',
+      kcal_per_100g: 165,
+      protein_g: 31,
+      fat_g: 3.6,
+    }),
     ...mealIds.map((id, i) =>
-      db
-        .insert(meals)
-        .values({
-          id,
-          date: `2026-10-0${i + 1}`,
-          slot: 'dinner',
-          input_method: 'manual',
-          status: 'confirmed',
-        }),
+      db.insert(meals).values({
+        id,
+        date: `2026-10-0${i + 1}`,
+        slot: 'dinner',
+        input_method: 'manual',
+        status: 'confirmed',
+      }),
     ),
     ...mealIds.map((meal_id) =>
       db
@@ -212,41 +204,37 @@ describe('export and restore through the routes', () => {
     await wipe()
     // A fresh instance: the seed's baseline weigh-in and plan v1, and targets materialised under ids of its own.
     await db.batch([
-      db
-        .insert(plan_versions)
-        .values({
-          id: planId,
-          version: 1,
-          active: true,
-          created_by: 'user',
-          reason: 'Seed',
-          diff: [],
-          targets: {
-            defaults: {
-              kcal: 1400,
-              protein_g: 130,
-              carbs_g: 118.75,
-              fat_g: 45,
-              fibre_g: 30,
-              water_ml: 3000,
-              steps: 8000,
-            },
-            overrides: {},
+      db.insert(plan_versions).values({
+        id: planId,
+        version: 1,
+        active: true,
+        created_by: 'user',
+        reason: 'Seed',
+        diff: [],
+        targets: {
+          defaults: {
+            kcal: 1400,
+            protein_g: 130,
+            carbs_g: 118.75,
+            fat_g: 45,
+            fibre_g: 30,
+            water_ml: 3000,
+            steps: 8000,
           },
-        }),
-      db
-        .insert(daily_targets)
-        .values({
-          date: '2026-10-05',
-          plan_version_id: planId,
-          kcal: 1500,
-          protein_g: 130,
-          carbs_g: 118.75,
-          fat_g: 45,
-          fibre_g: 30,
-          water_ml: 3000,
-          steps: 8000,
-        }),
+          overrides: {},
+        },
+      }),
+      db.insert(daily_targets).values({
+        date: '2026-10-05',
+        plan_version_id: planId,
+        kcal: 1500,
+        protein_g: 130,
+        carbs_g: 118.75,
+        fat_g: 45,
+        fibre_g: 30,
+        water_ml: 3000,
+        steps: 8000,
+      }),
       db.insert(weight_logs).values({ date: '2025-01-01', weight_kg: 99 }),
     ])
 
@@ -290,8 +278,13 @@ describe('export and restore through the routes', () => {
       const restored = again.tables[table] ?? []
       if (table === 'ai_events') {
         const isRestore = (r: ExportRow) => String(r.summary).startsWith('Settings and rails restored')
-        expect(restored.filter(isRestore), table).toEqual([expect.objectContaining({ kind: 'change', actor: 'user' })])
-        expect(restored.filter((r) => !isRestore(r)), table).toEqual(tables.ai_events ?? [])
+        expect(restored.filter(isRestore), table).toEqual([
+          expect.objectContaining({ kind: 'change', actor: 'user' }),
+        ])
+        expect(
+          restored.filter((r) => !isRestore(r)),
+          table,
+        ).toEqual(tables.ai_events ?? [])
       } else expect(restored, table).toEqual(tables[table] ?? [])
     }
   })
@@ -348,7 +341,12 @@ describe('restore validates what it writes', () => {
     expect(await db.$count(settings)).toBe(1)
     const me = tables.profile![0]!
     await expect(
-      importTablePage(deps(), { restore_id: crypto.randomUUID(), overwrite: true, table: 'profile', rows: [me, { ...me, id: crypto.randomUUID() }] }),
+      importTablePage(deps(), {
+        restore_id: crypto.randomUUID(),
+        overwrite: true,
+        table: 'profile',
+        rows: [me, { ...me, id: crypto.randomUUID() }],
+      }),
     ).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
     expect(await db.$count(profile)).toBe(1)
   })
@@ -357,10 +355,19 @@ describe('restore validates what it writes', () => {
     const { tables } = await exportAll()
     const version = tables.plan_versions![0]!
     const badTargets = JSON.stringify({ defaults: { kcal: -5, protein_g: 130 }, overrides: {} })
-    await expect(page('plan_versions', [{ ...version, targets: badTargets }])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    await expect(page('plan_versions', [{ ...version, targets: badTargets }])).rejects.toMatchObject({
+      status: 422,
+      code: 'invalid_rows',
+    })
     const day = tables.daily_targets![0]!
-    await expect(page('daily_targets', [{ ...day, kcal: 'lots' }])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
-    await expect(page('daily_targets', [{ ...day, date: 'tomorrow' }])).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
+    await expect(page('daily_targets', [{ ...day, kcal: 'lots' }])).rejects.toMatchObject({
+      status: 422,
+      code: 'invalid_rows',
+    })
+    await expect(page('daily_targets', [{ ...day, date: 'tomorrow' }])).rejects.toMatchObject({
+      status: 422,
+      code: 'invalid_rows',
+    })
     // The exported rows themselves are valid.
     await expect(page('plan_versions', [version])).resolves.toEqual({ table: 'plan_versions', upserted: 1 })
   })

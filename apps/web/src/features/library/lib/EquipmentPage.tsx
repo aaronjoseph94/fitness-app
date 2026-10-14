@@ -27,9 +27,25 @@ import { endpoints } from '@fitness/shared/api'
 import { EQUIPMENT_AREAS, EquipmentStatus } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
 import { problemText, useApiMutation, useApiQuery } from '../../../api'
-import { EmptyState, LoadProblem, PageHeader, Panel, PendingBadge, Reveal, SectionHeader, staggerDelay } from '../../../components'
+import {
+  EmptyState,
+  LoadProblem,
+  PageHeader,
+  Panel,
+  PendingBadge,
+  Reveal,
+  SectionHeader,
+  staggerDelay,
+} from '../../../components'
 import { tokens } from '../../../theme'
-import { equipmentLabel, isLibraryEquipment, LIBRARY_EQUIPMENT, MACHINE_SUGGESTIONS, sentence, STATUS_LABEL } from './labels'
+import {
+  equipmentLabel,
+  isLibraryEquipment,
+  LIBRARY_EQUIPMENT,
+  MACHINE_SUGGESTIONS,
+  sentence,
+  STATUS_LABEL,
+} from './labels'
 import { useExerciseIndex, useRefreshLibrary } from './useExercises'
 
 /** The group of machines marked "Don't have" (after the areas). */
@@ -50,10 +66,22 @@ interface Row {
  * ring 2.96:1 on the green — WCAG 1.4.11); "Don't have" stays neutral white with the theme's ring.
  */
 const STATUS_SELECTED: Record<EquipmentStatus, { bgcolor: string; color: string; boxShadow?: string }> = {
-  have: { bgcolor: tokens.tone.success.bg, color: tokens.tone.success.text, boxShadow: `inset 0 0 0 1px ${tokens.tone.success.text}` },
+  have: {
+    bgcolor: tokens.tone.success.bg,
+    color: tokens.tone.success.text,
+    boxShadow: `inset 0 0 0 1px ${tokens.tone.success.text}`,
+  },
   dont_have: { bgcolor: tokens.ink.card, color: tokens.ink.text },
-  dislike: { bgcolor: tokens.tone.warning.bg, color: tokens.tone.warning.text, boxShadow: `inset 0 0 0 1px ${tokens.tone.warning.text}` },
-  cant_use: { bgcolor: tokens.tone.danger.bg, color: tokens.tone.danger.text, boxShadow: `inset 0 0 0 1px ${tokens.tone.danger.text}` },
+  dislike: {
+    bgcolor: tokens.tone.warning.bg,
+    color: tokens.tone.warning.text,
+    boxShadow: `inset 0 0 0 1px ${tokens.tone.warning.text}`,
+  },
+  cant_use: {
+    bgcolor: tokens.tone.danger.bg,
+    color: tokens.tone.danger.text,
+    boxShadow: `inset 0 0 0 1px ${tokens.tone.danger.text}`,
+  },
 }
 
 /**
@@ -61,12 +89,37 @@ const STATUS_SELECTED: Record<EquipmentStatus, { bgcolor: string; color: string;
  * tint. `stretch` fills the line with equal segments: always (a dialog), or only on a phone (a row, where it wraps under
  * the name; from `sm` up it keeps its natural width beside it).
  */
-function StatusToggle({ value, onChange, label, stretch }: { value: EquipmentStatus | null; onChange: (status: EquipmentStatus) => void; label: string; stretch: 'always' | 'phone' }) {
+function StatusToggle({
+  value,
+  onChange,
+  label,
+  stretch,
+}: {
+  value: EquipmentStatus | null
+  onChange: (status: EquipmentStatus) => void
+  label: string
+  stretch: 'always' | 'phone'
+}) {
   const fill = stretch === 'always' ? 1 : { xs: 1, sm: 'none' }
   return (
-    <ToggleButtonGroup exclusive size="small" value={value} onChange={(_, v: EquipmentStatus | null) => v && onChange(v)} aria-label={label} sx={{ flex: fill, minWidth: 0 }}>
+    <ToggleButtonGroup
+      exclusive
+      size="small"
+      value={value}
+      onChange={(_, v: EquipmentStatus | null) => v && onChange(v)}
+      aria-label={label}
+      sx={{ flex: fill, minWidth: 0 }}
+    >
       {EquipmentStatus.options.map((s) => (
-        <ToggleButton key={s} value={s} sx={{ flex: fill, whiteSpace: 'nowrap', '&.Mui-selected, &.Mui-selected:hover': STATUS_SELECTED[s] }}>
+        <ToggleButton
+          key={s}
+          value={s}
+          sx={{
+            flex: fill,
+            whiteSpace: 'nowrap',
+            '&.Mui-selected, &.Mui-selected:hover': STATUS_SELECTED[s],
+          }}
+        >
           {STATUS_LABEL[s]}
         </ToggleButton>
       ))}
@@ -79,7 +132,15 @@ function StatusToggle({ value, onChange, label, stretch }: { value: EquipmentSta
  * runs name → control → note so Tab follows what you see; on a phone the control wraps to its own full-width line
  * under the name and its note button.
  */
-function EquipmentRow({ row, count, onChange }: { row: Row; count?: number; onChange: (status: EquipmentStatus, note: string | null) => void }) {
+function EquipmentRow({
+  row,
+  count,
+  onChange,
+}: {
+  row: Row
+  count?: number
+  onChange: (status: EquipmentStatus, note: string | null) => void
+}) {
   const [editing, setEditing] = useState(false)
   const [note, setNote] = useState(row.note ?? '')
   const saveNote = () => {
@@ -87,18 +148,62 @@ function EquipmentRow({ row, count, onChange }: { row: Row; count?: number; onCh
     const next = note.trim() || null
     if (next !== row.note) onChange(row.status ?? 'have', next)
   }
-  const help = [count !== undefined ? `${count} exercise${count === 1 ? '' : 's'} in the library` : null, row.note].filter(Boolean).join(' · ')
+  const help = [
+    count !== undefined ? `${count} exercise${count === 1 ? '' : 's'} in the library` : null,
+    row.note,
+  ]
+    .filter(Boolean)
+    .join(' · ')
   return (
-    <Box sx={{ px: `${tokens.pad.card.x}px`, py: '12px', borderTop: `1px solid ${tokens.ink.hairline}` }} data-testid="equipment-row">
-      <Box sx={{ display: 'flex', flexWrap: { xs: 'wrap', sm: 'nowrap' }, alignItems: 'center', columnGap: '12px', rowGap: 2 }}>
+    <Box
+      sx={{ px: `${tokens.pad.card.x}px`, py: '12px', borderTop: `1px solid ${tokens.ink.hairline}` }}
+      data-testid="equipment-row"
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          alignItems: 'center',
+          columnGap: '12px',
+          rowGap: 2,
+        }}
+      >
         <Box sx={{ flex: '1 1 0%', minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.label, color: tokens.ink.text }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              fontSize: tokens.font.size.body,
+              fontWeight: tokens.font.weight.label,
+              lineHeight: tokens.font.leading.label,
+              color: tokens.ink.text,
+            }}
+          >
             {equipmentLabel(row.equipment)} {row.pending && <PendingBadge />}
           </Box>
-          {help && <Box sx={{ mt: '2px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>{help}</Box>}
+          {help && (
+            <Box
+              sx={{
+                mt: '2px',
+                fontSize: tokens.font.size.caption,
+                lineHeight: tokens.font.leading.caption,
+                color: tokens.ink.secondary,
+              }}
+            >
+              {help}
+            </Box>
+          )}
         </Box>
-        <Box sx={{ order: { xs: 2, sm: 0 }, flex: { xs: '1 1 100%', sm: 'none' }, minWidth: 0, display: 'flex' }}>
-          <StatusToggle value={row.status} onChange={(v) => onChange(v, row.note)} label={`Status of ${row.equipment}`} stretch="phone" />
+        <Box
+          sx={{ order: { xs: 2, sm: 0 }, flex: { xs: '1 1 100%', sm: 'none' }, minWidth: 0, display: 'flex' }}
+        >
+          <StatusToggle
+            value={row.status}
+            onChange={(v) => onChange(v, row.note)}
+            label={`Status of ${row.equipment}`}
+            stretch="phone"
+          />
         </Box>
         <IconButton
           size="small"
@@ -120,25 +225,49 @@ function EquipmentRow({ row, count, onChange }: { row: Row; count?: number; onCh
           onKeyDown={(e) => e.key === 'Enter' && saveNote()}
           placeholder="e.g. left shoulder"
           sx={{ mt: 2 }}
-          slotProps={{ htmlInput: { maxLength: 200, 'aria-label': `Note for ${row.equipment}`, enterKeyHint: 'done' } }}
+          slotProps={{
+            htmlInput: { maxLength: 200, 'aria-label': `Note for ${row.equipment}`, enterKeyHint: 'done' },
+          }}
         />
       )}
     </Box>
   )
 }
 
-function AddMachineDialog({ existing, onClose, onAdd }: { existing: ReadonlySet<string>; onClose: () => void; onAdd: (name: string, status: EquipmentStatus, note: string | null) => void }) {
+function AddMachineDialog({
+  existing,
+  onClose,
+  onAdd,
+}: {
+  existing: ReadonlySet<string>
+  onClose: () => void
+  onAdd: (name: string, status: EquipmentStatus, note: string | null) => void
+}) {
   const [name, setName] = useState('')
   const [status, setStatus] = useState<EquipmentStatus>('have')
   const [note, setNote] = useState('')
   const key = name.trim().toLowerCase()
   const suggestions = MACHINE_SUGGESTIONS.filter((m) => !existing.has(m) && (!key || m.includes(key)))
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs" aria-labelledby="add-machine-title" slotProps={{ paper: { sx: { mx: 4, width: 'calc(100% - 32px)' } } }}>
+    <Dialog
+      open
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="add-machine-title"
+      slotProps={{ paper: { sx: { mx: 4, width: 'calc(100% - 32px)' } } }}
+    >
       <DialogTitle id="add-machine-title">Add a machine</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ pt: 1 }}>
-          <TextField autoFocus label="Machine" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. hack squat" slotProps={{ htmlInput: { maxLength: 100 } }} />
+          <TextField
+            autoFocus
+            label="Machine"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. hack squat"
+            slotProps={{ htmlInput: { maxLength: 100 } }}
+          />
           {suggestions.length > 0 && (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
               {suggestions.slice(0, 10).map((m) => (
@@ -147,7 +276,12 @@ function AddMachineDialog({ existing, onClose, onAdd }: { existing: ReadonlySet<
             </Box>
           )}
           <StatusToggle value={status} onChange={setStatus} label="Status" stretch="always" />
-          <TextField label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} slotProps={{ htmlInput: { maxLength: 200 } }} />
+          <TextField
+            label="Note (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            slotProps={{ htmlInput: { maxLength: 200 } }}
+          />
           {existing.has(key) && <Alert severity="info">Already in your profile; this updates it.</Alert>}
         </Stack>
       </DialogContent>
@@ -168,7 +302,9 @@ export function EquipmentPage() {
   const [local, setLocal] = useState<Record<string, Row>>({})
   const [adding, setAdding] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const update = useApiMutation(endpoints.training.updateEquipment, { invalidates: [endpoints.training.getEquipment] })
+  const update = useApiMutation(endpoints.training.updateEquipment, {
+    invalidates: [endpoints.training.getEquipment],
+  })
 
   const counts = useMemo(() => {
     const c = new Map<string, number>()
@@ -179,9 +315,16 @@ export function EquipmentPage() {
   /** Library values in the fixed order, then the machines: the areas in EQUIPMENT_AREAS order, then what the gym lacks. */
   const rows = useMemo(() => {
     const byName = new Map<string, Row>()
-    for (const name of LIBRARY_EQUIPMENT) byName.set(name, { equipment: name, status: null, note: null, area: null, pending: false })
+    for (const name of LIBRARY_EQUIPMENT)
+      byName.set(name, { equipment: name, status: null, note: null, area: null, pending: false })
     for (const item of profile.data ?? [])
-      byName.set(item.equipment, { equipment: item.equipment, status: item.status, note: item.note, area: item.area ?? null, pending: false })
+      byName.set(item.equipment, {
+        equipment: item.equipment,
+        status: item.status,
+        note: item.note,
+        area: item.area ?? null,
+        pending: false,
+      })
     for (const [name, row] of Object.entries(local)) byName.set(name, row)
     const all = [...byName.values()]
     const machines = all.filter((r) => !isLibraryEquipment(r.equipment))
@@ -192,9 +335,19 @@ export function EquipmentPage() {
     }
     // Only "Don't have" means the club lacks it; a machine he dislikes or can't use stays where it stands in the gym.
     const atGym = machines.filter((r) => r.status !== 'dont_have')
-    for (const area of EQUIPMENT_AREAS) add(area, atGym.filter((r) => r.area === area))
-    add('Other', atGym.filter((r) => !(EQUIPMENT_AREAS as readonly string[]).includes(r.area ?? '')))
-    add(NOT_AT_GYM, machines.filter((r) => r.status === 'dont_have'))
+    for (const area of EQUIPMENT_AREAS)
+      add(
+        area,
+        atGym.filter((r) => r.area === area),
+      )
+    add(
+      'Other',
+      atGym.filter((r) => !(EQUIPMENT_AREAS as readonly string[]).includes(r.area ?? '')),
+    )
+    add(
+      NOT_AT_GYM,
+      machines.filter((r) => r.status === 'dont_have'),
+    )
     return { library: LIBRARY_EQUIPMENT.map((n) => byName.get(n)!), groups, all }
   }, [profile.data, local])
 
@@ -206,7 +359,10 @@ export function EquipmentPage() {
       { body: { items: [{ equipment, status, note }] } },
       {
         onSuccess: (outcome) => {
-          setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, area, pending: outcome.status === 'queued' } }))
+          setLocal((l) => ({
+            ...l,
+            [equipment]: { equipment, status, note, area, pending: outcome.status === 'queued' },
+          }))
           refresh(outcome)
           if (outcome.status === 'queued') setNotice('Saved on this device · syncs when you’re back online')
         },
@@ -223,7 +379,9 @@ export function EquipmentPage() {
 
   const existing = useMemo(() => new Set(rows.all.map((r) => r.equipment)), [rows])
 
-  const machineCount = rows.groups.filter((g) => g.title !== NOT_AT_GYM).reduce((n, g) => n + g.rows.length, 0)
+  const machineCount = rows.groups
+    .filter((g) => g.title !== NOT_AT_GYM)
+    .reduce((n, g) => n + g.rows.length, 0)
   // The title row stays while the profile loads (same element first in both returns, so it rises in only once).
   const header = (
     <PageHeader
@@ -248,7 +406,13 @@ export function EquipmentPage() {
   return (
     <Stack spacing={6} data-testid="equipment-page">
       {header}
-      {profile.error && !profile.data && <LoadProblem what="Your equipment profile" error={profile.error} onRetry={() => void profile.refetch()} />}
+      {profile.error && !profile.data && (
+        <LoadProblem
+          what="Your equipment profile"
+          error={profile.error}
+          onRetry={() => void profile.refetch()}
+        />
+      )}
       {/* 2a's entrance: after the title row, each band rises in reading order, a section's stagger apart. */}
       <Reveal delay={staggerDelay(1, tokens.motion.stagger.section)}>
         <Panel
@@ -257,7 +421,12 @@ export function EquipmentPage() {
           padding="none"
         >
           {rows.library.map((row) => (
-            <EquipmentRow key={row.equipment} row={row} count={counts.get(row.equipment) ?? 0} onChange={(s, n) => set(row.equipment, s, n)} />
+            <EquipmentRow
+              key={row.equipment}
+              row={row}
+              count={counts.get(row.equipment) ?? 0}
+              onChange={(s, n) => set(row.equipment, s, n)}
+            />
           ))}
         </Panel>
       </Reveal>
@@ -266,13 +435,21 @@ export function EquipmentPage() {
           title="Machines"
           subtitle="Every machine at your gym, by area"
           action={
-            <Button size="small" startIcon={<AddRounded />} onClick={() => setAdding(true)} data-testid="add-machine">
+            <Button
+              size="small"
+              startIcon={<AddRounded />}
+              onClick={() => setAdding(true)}
+              data-testid="add-machine"
+            >
               Add machine
             </Button>
           }
         />
         {rows.groups.length === 0 ? (
-          <EmptyState title="No named machines yet" body="Add the machines at your gym; the AI builds workouts from them." />
+          <EmptyState
+            title="No named machines yet"
+            body="Add the machines at your gym; the AI builds workouts from them."
+          />
         ) : (
           <Stack spacing={4}>
             {rows.groups.map((group) => (
@@ -305,7 +482,12 @@ export function EquipmentPage() {
           }}
         />
       )}
-      <Snackbar open={notice !== null} autoHideDuration={4000} onClose={() => setNotice(null)} message={notice ?? ''} />
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={4000}
+        onClose={() => setNotice(null)}
+        message={notice ?? ''}
+      />
     </Stack>
   )
 }

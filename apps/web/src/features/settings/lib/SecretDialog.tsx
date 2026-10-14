@@ -38,17 +38,29 @@ export function SecretDialog({ field, status, saving, error, onSave, onRemove, o
   }
 
   return (
-    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="secret-title">
+    <Dialog
+      open
+      onClose={saving ? undefined : onClose}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="secret-title"
+    >
       <DialogTitle id="secret-title">{removing ? `Remove the ${field.label} key?` : field.label}</DialogTitle>
       <DialogContent>
         {removing ? (
-          <Box data-testid="secret-remove-confirm" sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.55 }}>
-            The key stored in the app is deleted and no longer used. AI features that need it switch off. This does not
-            touch a Worker secret with the same name — set one with <code>wrangler secret put</code> and it applies again.
+          <Box
+            data-testid="secret-remove-confirm"
+            sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.55 }}
+          >
+            The key stored in the app is deleted and no longer used. AI features that need it switch off. This
+            does not touch a Worker secret with the same name — set one with <code>wrangler secret put</code>{' '}
+            and it applies again.
           </Box>
         ) : (
           <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
-            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>{field.help}</Box>
+            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+              {field.help}
+            </Box>
             <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text }}>
               Now: <strong>{sourceLabel(status)}</strong>.{' '}
               {field.url !== '' && (
@@ -68,7 +80,11 @@ export function SecretDialog({ field, status, saving, error, onSave, onRemove, o
               }}
               autoFocus
               error={touched && check.problem !== null}
-              helperText={touched && (check.problem ?? check.warning) ? (check.problem ?? check.warning) : `Paste the value (at least 8 characters).`}
+              helperText={
+                touched && (check.problem ?? check.warning)
+                  ? (check.problem ?? check.warning)
+                  : `Paste the value (at least 8 characters).`
+              }
               slotProps={{
                 htmlInput: {
                   autoComplete: 'off',
@@ -117,11 +133,21 @@ export function SecretDialog({ field, status, saving, error, onSave, onRemove, o
               Cancel
             </Button>
             {stored && (
-              <Button color="error" onClick={() => setRemoving(true)} disabled={saving} data-testid="secret-ask-remove">
+              <Button
+                color="error"
+                onClick={() => setRemoving(true)}
+                disabled={saving}
+                data-testid="secret-ask-remove"
+              >
                 Remove
               </Button>
             )}
-            <Button variant="contained" onClick={next} disabled={saving || text.trim().length === 0 || check.problem !== null} data-testid="secret-save">
+            <Button
+              variant="contained"
+              onClick={next}
+              disabled={saving || text.trim().length === 0 || check.problem !== null}
+              data-testid="secret-save"
+            >
               {saving ? 'Saving…' : 'Save'}
             </Button>
           </>

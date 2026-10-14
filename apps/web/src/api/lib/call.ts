@@ -6,7 +6,11 @@ import { schemaError } from './errors'
 import { send, type SendOptions, type WireRequest } from './transport'
 
 /** Call an endpoint: resolves with the validated response, throws ApiError (see its `kind`). Never queues. */
-export async function call<E extends Endpoint>(endpoint: E, input: EndpointInput<E>, options?: SendOptions): Promise<EndpointOutput<E>> {
+export async function call<E extends Endpoint>(
+  endpoint: E,
+  input: EndpointInput<E>,
+  options?: SendOptions,
+): Promise<EndpointOutput<E>> {
   const request = toWireRequest(endpoint, input)
   return parseResponse(endpoint, request, await exchange(request, options))
 }
@@ -44,9 +48,14 @@ export function toWireRequest<E extends Endpoint>(endpoint: E, input: EndpointIn
   }
 }
 
-export function parseResponse<E extends Endpoint>(endpoint: E, request: WireRequest, body: unknown): EndpointOutput<E> {
+export function parseResponse<E extends Endpoint>(
+  endpoint: E,
+  request: WireRequest,
+  body: unknown,
+): EndpointOutput<E> {
   const result = endpoint.response.safeParse(body)
-  if (!result.success) throw schemaError('invalid-response', `${request.method} ${request.path}`, result.error)
+  if (!result.success)
+    throw schemaError('invalid-response', `${request.method} ${request.path}`, result.error)
   return result.data as EndpointOutput<E>
 }
 

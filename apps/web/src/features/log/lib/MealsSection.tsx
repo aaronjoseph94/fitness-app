@@ -51,15 +51,24 @@ export function MealsSection({ day, meals, favourites, onAdd }: MealsSectionProp
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-slots">
       {/* When the whole day failed the header already says so; one notice is enough. */}
-      {day !== undefined && meals.error != null && meals.meals.length === 0 && !meals.isLoading && <LoadProblem what="Meals" error={meals.error} onRetry={meals.refetch} />}
+      {day !== undefined && meals.error != null && meals.meals.length === 0 && !meals.isLoading && (
+        <LoadProblem what="Meals" error={meals.error} onRetry={meals.refetch} />
+      )}
       {slots.map((slot) => {
         const label = SLOT_LABEL[slot]
         const inSlot = meals.meals.filter((m) => m.slot === slot)
-        const logged = day?.intake.by_slot[slot]?.kcal ?? inSlot.reduce((a, m) => a + (m.totals?.kcal ?? 0), 0)
-        const planned = targetKcal !== null && !fastDay ? Math.round((targetKcal * slotShare(slot)) / 10) * 10 : null
+        const logged =
+          day?.intake.by_slot[slot]?.kcal ?? inSlot.reduce((a, m) => a + (m.totals?.kcal ?? 0), 0)
+        const planned =
+          targetKcal !== null && !fastDay ? Math.round((targetKcal * slotShare(slot)) / 10) * 10 : null
         const plannedText = planned !== null ? `planned ${formatNumber(planned)} kcal` : null
         const add = (
-          <IconButton size="small" aria-label={`Add to ${label.toLowerCase()}`} onClick={() => onAdd(slot)} sx={{ color: tokens.ink.secondary }}>
+          <IconButton
+            size="small"
+            aria-label={`Add to ${label.toLowerCase()}`}
+            onClick={() => onAdd(slot)}
+            sx={{ color: tokens.ink.secondary }}
+          >
             <AddRounded sx={{ fontSize: 18 }} />
           </IconButton>
         )
@@ -67,7 +76,13 @@ export function MealsSection({ day, meals, favourites, onAdd }: MealsSectionProp
         if (meals.isLoading && inSlot.length === 0 && day?.intake.by_slot[slot]) {
           // The day already says this slot has a meal: hold a meal card's space while the meals load.
           return (
-            <Panel key={slot} title={label} description={plannedText && capitalise(plannedText)} actions={add} testId={`slot-${slot}`}>
+            <Panel
+              key={slot}
+              title={label}
+              description={plannedText && capitalise(plannedText)}
+              actions={add}
+              testId={`slot-${slot}`}
+            >
               <LoadingRows rows={1} height={MEAL_CARD_PX} />
             </Panel>
           )
@@ -76,15 +91,32 @@ export function MealsSection({ day, meals, favourites, onAdd }: MealsSectionProp
         if (inSlot.length === 0) {
           const loading = meals.isLoading
           const note =
-            meals.error != null ? "Didn't load. Anything you add still saves." : fastDay ? 'Fast day' : slot === 'snack' ? 'optional' : 'nothing logged yet'
+            meals.error != null
+              ? "Didn't load. Anything you add still saves."
+              : fastDay
+                ? 'Fast day'
+                : slot === 'snack'
+                  ? 'optional'
+                  : 'nothing logged yet'
           return (
             <Panel
               key={slot}
               tone="dashed"
               title={label}
-              description={loading ? <Skeleton variant="text" width={160} aria-busy="true" /> : capitalise([plannedText, note].filter(Boolean).join(' · '))}
+              description={
+                loading ? (
+                  <Skeleton variant="text" width={160} aria-busy="true" />
+                ) : (
+                  capitalise([plannedText, note].filter(Boolean).join(' · '))
+                )
+              }
               actions={
-                <Button variant="outlined" size="dense" startIcon={<AddRounded />} onClick={() => onAdd(slot)}>
+                <Button
+                  variant="outlined"
+                  size="dense"
+                  startIcon={<AddRounded />}
+                  onClick={() => onAdd(slot)}
+                >
                   Add {label.toLowerCase()}
                 </Button>
               }
@@ -125,7 +157,15 @@ export function MealsSection({ day, meals, favourites, onAdd }: MealsSectionProp
             description={capitalise([`${inSlot.length} meals`, plannedText].filter(Boolean).join(' · '))}
             actions={
               <>
-                <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}>{formatNumber(logged)} kcal</Box>
+                <Box
+                  sx={{
+                    fontSize: tokens.font.size.body,
+                    fontWeight: tokens.font.weight.heading,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {formatNumber(logged)} kcal
+                </Box>
                 {add}
               </>
             }
@@ -139,15 +179,35 @@ export function MealsSection({ day, meals, favourites, onAdd }: MealsSectionProp
       {open?.kind === 'review' && <MealReviewDialog meal={open.meal} onClose={() => setOpen(null)} />}
       {open?.kind === 'edit' && <MealEditor meal={open.meal} onClose={() => setOpen(null)} />}
       {open?.kind === 'delete' && <DeleteMealDialog meal={open.meal} onClose={() => setOpen(null)} />}
-      {open?.kind === 'favourite' && <SaveFavouriteDialog meal={open.meal} favourites={favourites} onClose={() => setOpen(null)} />}
+      {open?.kind === 'favourite' && (
+        <SaveFavouriteDialog meal={open.meal} favourites={favourites} onClose={() => setOpen(null)} />
+      )}
     </Box>
   )
 }
 
 /** A slot with meals: the 2a card, its body flush so the item table runs edge to edge. */
-function SlotCard({ slot, description, actions, testId, children }: { slot: MealSlot; description: ReactNode; actions: ReactNode; testId: string; children: ReactNode }) {
+function SlotCard({
+  slot,
+  description,
+  actions,
+  testId,
+  children,
+}: {
+  slot: MealSlot
+  description: ReactNode
+  actions: ReactNode
+  testId: string
+  children: ReactNode
+}) {
   return (
-    <Panel title={SLOT_LABEL[slot]} description={description} actions={actions} padding="none" testId={testId}>
+    <Panel
+      title={SLOT_LABEL[slot]}
+      description={description}
+      actions={actions}
+      padding="none"
+      testId={testId}
+    >
       {children}
     </Panel>
   )

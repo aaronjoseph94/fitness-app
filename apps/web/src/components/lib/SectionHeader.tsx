@@ -18,8 +18,28 @@ export interface SectionHeaderProps {
 
 export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProps) {
   return (
-    <Box id={id} sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: '12px', minWidth: 0, scrollMarginTop: tokens.layout.scrollPadding.top }}>
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '10px', rowGap: '2px' }}>
+    <Box
+      id={id}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 3,
+        mb: '12px',
+        minWidth: 0,
+        scrollMarginTop: tokens.layout.scrollPadding.top,
+      }}
+    >
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'baseline',
+          flexWrap: 'wrap',
+          columnGap: '10px',
+          rowGap: '2px',
+        }}
+      >
         <Box
           component="h2"
           id={id ? `${id}-title` : undefined}
@@ -34,7 +54,14 @@ export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProp
           {title}
         </Box>
         {subtitle && (
-          <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, minWidth: 0 }}>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+              minWidth: 0,
+            }}
+          >
             {subtitle}
           </Box>
         )}

@@ -23,9 +23,14 @@ const deps: Deps = {
 }
 
 /** A minimal canvas-style JPEG header: SOI, APP0 "JFIF", then EOI. */
-const JFIF = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9])
+const JFIF = new Uint8Array([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01,
+  0x00, 0x00, 0xff, 0xd9,
+])
 /** The same file as a phone camera writes it: an APP1 "Exif" segment straight after SOI. */
-const WITH_EXIF = new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0xff, 0xd9])
+const WITH_EXIF = new Uint8Array([
+  0xff, 0xd8, 0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0xff, 0xd9,
+])
 
 const nearScanId = crypto.randomUUID()
 
@@ -35,8 +40,25 @@ beforeAll(async () => {
     db.insert(weight_logs).values({ date: '2001-03-01', weight_kg: 100 }),
     db.insert(weight_logs).values({ date: '2001-03-03', weight_kg: 96 }),
     // Confirmed scans 8 days before and 13 days after the photo; an unconfirmed one on the photo's own day is ignored.
-    db.insert(scans).values({ id: nearScanId, scanned_at: '2001-03-02T16:00:00.000Z', date: '2001-03-02', confirmed: true, body_fat_pct: 30.6, weight_kg: 99.2 }),
-    db.insert(scans).values({ scanned_at: '2001-03-23T16:00:00.000Z', date: '2001-03-23', confirmed: true, body_fat_pct: 29.9, weight_kg: 97.5 }),
+    db
+      .insert(scans)
+      .values({
+        id: nearScanId,
+        scanned_at: '2001-03-02T16:00:00.000Z',
+        date: '2001-03-02',
+        confirmed: true,
+        body_fat_pct: 30.6,
+        weight_kg: 99.2,
+      }),
+    db
+      .insert(scans)
+      .values({
+        scanned_at: '2001-03-23T16:00:00.000Z',
+        date: '2001-03-23',
+        confirmed: true,
+        body_fat_pct: 29.9,
+        weight_kg: 97.5,
+      }),
     db.insert(scans).values({ scanned_at: '2001-03-10T16:00:00.000Z', date: '2001-03-10', confirmed: false }),
   ])
 })
@@ -61,8 +83,21 @@ describe('progress photos', () => {
     const photo = await uploadPhoto(deps, upload)
 
     // trend(03-01) = 100; trend(03-03) = 100 + 0.25 × (96 − 100) = 99; carried forward to 03-10.
-    expect(photo).toMatchObject({ id, date: '2001-03-10', pose: 'front', weight_kg: 99, taken_at: '2001-03-10T14:30:00.000Z', width: 768, height: 1024 })
-    expect(photo.nearest_scan).toEqual({ id: nearScanId, date: '2001-03-02', body_fat_pct: 30.6, weight_kg: 99.2 })
+    expect(photo).toMatchObject({
+      id,
+      date: '2001-03-10',
+      pose: 'front',
+      weight_kg: 99,
+      taken_at: '2001-03-10T14:30:00.000Z',
+      width: 768,
+      height: 1024,
+    })
+    expect(photo.nearest_scan).toEqual({
+      id: nearScanId,
+      date: '2001-03-02',
+      body_fat_pct: 30.6,
+      weight_kg: 99.2,
+    })
     // Signed for 30 minutes from now.
     expect(photo.url_expires_at).toBe('2001-03-10T18:30:00.000Z')
 
@@ -75,7 +110,11 @@ describe('progress photos', () => {
     const url = new URL(photo.url, 'http://localhost')
     const key = decodeURIComponent(url.pathname.slice('/api/files/'.length))
     expect(key).toBe(`progress-photos/${id}.jpg`)
-    const served = await serveSignedFile(deps, { key: key as never, exp: url.searchParams.get('exp')!, sig: url.searchParams.get('sig')! })
+    const served = await serveSignedFile(deps, {
+      key: key as never,
+      exp: url.searchParams.get('exp')!,
+      sig: url.searchParams.get('sig')!,
+    })
     expect(served.headers.get('content-type')).toBe('image/jpeg')
     expect(new Uint8Array(await served.arrayBuffer())).toEqual(JFIF)
 
@@ -106,12 +145,25 @@ describe('progress photos', () => {
       outbound.push(input instanceof Request ? input.url : String(input))
       return Response.json({ error: 'no network in this test' }, { status: 503 })
     })
-    const keyed = { ...env, GEMINI_API_KEY: 'k', ZAI_API_KEY: 'k', OPENROUTER_API_KEY: 'k', GROQ_API_KEY: 'k' }
+    const keyed = {
+      ...env,
+      GEMINI_API_KEY: 'k',
+      ZAI_API_KEY: 'k',
+      OPENROUTER_API_KEY: 'k',
+      GROQ_API_KEY: 'k',
+    }
     const app = createApp()
     const jobsBefore = await db.$count(ai_jobs)
     try {
       const id = crypto.randomUUID()
-      const query = new URLSearchParams({ id, taken_at: '2001-03-11T14:30:00.000Z', pose: 'back', width: '768', height: '1024', content_type: 'image/jpeg' })
+      const query = new URLSearchParams({
+        id,
+        taken_at: '2001-03-11T14:30:00.000Z',
+        pose: 'back',
+        width: '768',
+        height: '1024',
+        content_type: 'image/jpeg',
+      })
       const up = await app.request(
         `http://localhost/api/photos?${query}`,
         { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: JFIF.slice() },
@@ -123,7 +175,9 @@ describe('progress photos', () => {
       expect(photos.map((p) => p.id)).toContain(id)
       const view = await app.request(`http://localhost${photos.find((p) => p.id === id)!.url}`, {}, keyed)
       expect(view.status).toBe(200)
-      expect((await app.request(`http://localhost/api/photos/${id}`, { method: 'DELETE' }, keyed)).status).toBe(200)
+      expect(
+        (await app.request(`http://localhost/api/photos/${id}`, { method: 'DELETE' }, keyed)).status,
+      ).toBe(200)
       await Promise.all(pending.splice(0))
     } finally {
       vi.restoreAllMocks()
@@ -146,12 +200,17 @@ const bytes = (...parts: (Uint8Array | number[])[]) => {
   return out
 }
 /** One JPEG marker segment: FF marker, a 2-byte big-endian length (payload + 2), the payload. */
-const segment = (marker: number, payload: Uint8Array) => bytes([0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff], payload)
+const segment = (marker: number, payload: Uint8Array) =>
+  bytes([0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff], payload)
 /** SOI, the segments, then SOS with a little entropy-coded data and EOI. */
-const jpeg = (...segments: Uint8Array[]) => bytes([0xff, 0xd8], ...segments, [0xff, 0xda, 0x00, 0x02, 0x12, 0x34, 0xff, 0xd9]).buffer
+const jpeg = (...segments: Uint8Array[]) =>
+  bytes([0xff, 0xd8], ...segments, [0xff, 0xda, 0x00, 0x02, 0x12, 0x34, 0xff, 0xd9]).buffer
 const APP0 = segment(0xe0, bytes(enc('JFIF\0'), [1, 1, 0, 0, 1, 0, 1, 0, 0]))
 const EXIF_GPS = segment(0xe1, bytes(enc('Exif\0\0'), enc('MM\0*GPS-LAT-51.04-LON-114.07')))
-const XMP_GPS = segment(0xe1, enc('http://ns.adobe.com/xap/1.0/\0<x:xmpmeta><exif:GPSLatitude>51,2.4N</exif:GPSLatitude></x:xmpmeta>'))
+const XMP_GPS = segment(
+  0xe1,
+  enc('http://ns.adobe.com/xap/1.0/\0<x:xmpmeta><exif:GPSLatitude>51,2.4N</exif:GPSLatitude></x:xmpmeta>'),
+)
 const ICC = segment(0xe2, new Uint8Array(65_000)) // e.g. a colour profile: harmless, and big
 
 /** One PNG chunk: 4-byte length, type, data, CRC (not checked by the Worker). */
@@ -160,7 +219,12 @@ const chunk = (type: string, data: Uint8Array) => {
   return bytes([n >>> 24, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff], enc(type), data, [0, 0, 0, 0])
 }
 const png = (...chunks: Uint8Array[]) =>
-  bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], chunk('IHDR', new Uint8Array(13)), ...chunks, chunk('IEND', new Uint8Array(0))).buffer
+  bytes(
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    chunk('IHDR', new Uint8Array(13)),
+    ...chunks,
+    chunk('IEND', new Uint8Array(0)),
+  ).buffer
 const IDAT = chunk('IDAT', new Uint8Array(32))
 
 /** One RIFF chunk: fourcc, 4-byte little-endian size, data padded to even. */
@@ -193,13 +257,17 @@ describe('metadata in uploaded images', () => {
     expect(verdict(jpeg(APP0, ICC, ICC, EXIF_GPS), 'image/jpeg')).toBe('exif_present')
     expect(verdict(jpeg(APP0, XMP_GPS), 'image/jpeg')).toBe('exif_present')
     // Lost sync before the image data (not a marker where one must be): not a well-formed JPEG.
-    expect(verdict(bytes([0xff, 0xd8], APP0, [0x00, 0x00, 0xff, 0xe1, 0, 4, 0, 0]).buffer, 'image/jpeg')).toBe('not_an_image')
+    expect(
+      verdict(bytes([0xff, 0xd8], APP0, [0x00, 0x00, 0xff, 0xe1, 0, 4, 0, 0]).buffer, 'image/jpeg'),
+    ).toBe('not_an_image')
   })
 
   it('PNG: a plain file passes; eXIf, tEXt, iTXt and zTXt chunks are refused, before or after the image data', () => {
     expect(verdict(png(IDAT), 'image/png')).toBe('ok')
     for (const type of ['eXIf', 'tEXt', 'iTXt', 'zTXt']) {
-      expect(verdict(png(chunk(type, enc('GPS 51.04 -114.07')), IDAT), 'image/png'), type).toBe('exif_present')
+      expect(verdict(png(chunk(type, enc('GPS 51.04 -114.07')), IDAT), 'image/png'), type).toBe(
+        'exif_present',
+      )
       expect(verdict(png(IDAT, chunk(type, enc('Comment\0phone'))), 'image/png'), type).toBe('exif_present')
     }
     expect(verdict(bytes([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).buffer, 'image/png')).toBe('not_an_image')

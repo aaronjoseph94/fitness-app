@@ -10,7 +10,13 @@ import { muscleLevels } from '@fitness/shared/engine'
 import type { Muscle, Template } from '@fitness/shared/schemas'
 import { memo } from 'react'
 import { Link } from 'react-router'
-import { cardSurface, formatNumber, highlightSurface, outlinedIconButton, StatusChip } from '../../../components'
+import {
+  cardSurface,
+  formatNumber,
+  highlightSurface,
+  outlinedIconButton,
+  StatusChip,
+} from '../../../components'
 import { MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { sessionDay, type SessionLine } from './RecentSessions'
@@ -37,7 +43,11 @@ function TemplateCardInner({ template, onStart, today = false, lastDone }: Templ
       sx={{ ...(today ? highlightSurface : cardSurface), display: 'flex', gap: '14px', p: 4, minWidth: 0 }}
     >
       <Box sx={{ width: 92, flex: 'none' }}>
-        <MuscleMap levels={muscleLevels(template.muscle_scores)} size={92} title={`Muscles in ${template.name}`} />
+        <MuscleMap
+          levels={muscleLevels(template.muscle_scores)}
+          size={92}
+          title={`Muscles in ${template.name}`}
+        />
       </Box>
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
@@ -55,7 +65,9 @@ function TemplateCardInner({ template, onStart, today = false, lastDone }: Templ
           </Box>
           {today && <StatusChip tone="info" size="small" label="Today" />}
         </Box>
-        <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}>
+        <Box
+          sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}
+        >
           {template.exercises.length} exercises · {sets} sets{template.origin === 'ai' ? ' · AI' : ''}
           {top.length > 0 && ` · ${top.join(', ')}`}
         </Box>

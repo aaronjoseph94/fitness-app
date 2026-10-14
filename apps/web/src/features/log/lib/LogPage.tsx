@@ -98,7 +98,12 @@ export function LogPage() {
       <Columns md={2} lg={3}>
         <Column span={2} mdSpan={1}>
           <Reveal delay={200}>
-            <MealsSection day={day.data} meals={meals} favourites={favs} onAdd={(slot) => openSheet('meal', slot)} />
+            <MealsSection
+              day={day.data}
+              meals={meals}
+              favourites={favs}
+              onAdd={(slot) => openSheet('meal', slot)}
+            />
           </Reveal>
         </Column>
         <Column span={1}>
@@ -116,12 +121,23 @@ export function LogPage() {
               <FastingCard today={today} onPlan={() => openSheet('fast')} />
             </Reveal>
             <Reveal delay={railDelay(4)}>
-              <FavouritesManager favourites={favs} isLoading={favourites.isLoading} error={favourites.error} onRetry={() => void favourites.refetch()} />
+              <FavouritesManager
+                favourites={favs}
+                isLoading={favourites.isLoading}
+                error={favourites.error}
+                onRetry={() => void favourites.refetch()}
+              />
             </Reveal>
           </Box>
         </Column>
       </Columns>
-      <LogSheet open={sheet.open} kind={sheet.kind} date={date} slot={sheet.slot} onClose={() => setSheet((s) => ({ ...s, open: false }))} />
+      <LogSheet
+        open={sheet.open}
+        kind={sheet.kind}
+        date={date}
+        slot={sheet.slot}
+        onClose={() => setSheet((s) => ({ ...s, open: false }))}
+      />
     </Box>
   )
 }

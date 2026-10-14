@@ -64,12 +64,14 @@ function Nav({ sections, delay }: { sections: readonly NavSection[]; delay: numb
     read()
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll)
-    for (const kind of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const) window.addEventListener(kind, release, { passive: true })
+    for (const kind of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const)
+      window.addEventListener(kind, release, { passive: true })
     return () => {
       cancelAnimationFrame(frame)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
-      for (const kind of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const) window.removeEventListener(kind, release)
+      for (const kind of ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const)
+        window.removeEventListener(kind, release)
     }
   }, [sections])
 
@@ -89,7 +91,10 @@ function Nav({ sections, delay }: { sections: readonly NavSection[]; delay: numb
   }
 
   return (
-    <Reveal delay={delay} sx={{ position: 'sticky', top: tokens.layout.headerHeight + tokens.layout.mainPadding.top }}>
+    <Reveal
+      delay={delay}
+      sx={{ position: 'sticky', top: tokens.layout.headerHeight + tokens.layout.mainPadding.top }}
+    >
       <Box component="nav" aria-label="Settings sections" sx={{ display: 'grid', gap: '2px' }}>
         {sections.map((section) => {
           const on = section.id === active
@@ -107,7 +112,11 @@ function Nav({ sections, delay }: { sections: readonly NavSection[]; delay: numb
                 fontSize: tokens.font.size.body,
                 // 2a's items sit 34 px apart: 7 px padding round the face's own line, 2 px between; 44 px on touch.
                 lineHeight: 'normal',
-                [COARSE_POINTER_QUERY]: { display: 'flex', alignItems: 'center', minHeight: tokens.tapTarget },
+                [COARSE_POINTER_QUERY]: {
+                  display: 'flex',
+                  alignItems: 'center',
+                  minHeight: tokens.tapTarget,
+                },
                 fontWeight: on ? tokens.font.weight.heading : tokens.font.weight.body,
                 color: on ? tokens.ink.text : tokens.ink.label,
                 bgcolor: on ? tokens.ink.fill : 'transparent',

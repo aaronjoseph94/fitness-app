@@ -104,7 +104,12 @@ export interface TableSpec {
   singleRow: boolean
 }
 
-const KINDS: Partial<Record<string, ColumnRule['kind']>> = { number: 'number', boolean: 'boolean', json: 'json', string: 'text' }
+const KINDS: Partial<Record<string, ColumnRule['kind']>> = {
+  number: 'number',
+  boolean: 'boolean',
+  json: 'json',
+  string: 'text',
+}
 
 function columnRule(column: Column): ColumnRule {
   const kind = KINDS[column.dataType]

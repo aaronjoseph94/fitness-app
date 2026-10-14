@@ -11,7 +11,16 @@ import { ChartCard, Column, Columns, formatNumber, formatShortDate, statValue } 
 import { useUiStore } from '../../../app/ui-store'
 import { tokens } from '../../../theme'
 import { confirmedScans, type ConfirmedScan } from '../../scans/charts'
-import { effectiveRate, forecastPath, lastTrend, milestoneTimelines, waistPoints, weeklyLoss, weightMilestones, weightPoints } from '../../progress/series'
+import {
+  effectiveRate,
+  forecastPath,
+  lastTrend,
+  milestoneTimelines,
+  waistPoints,
+  weeklyLoss,
+  weightMilestones,
+  weightPoints,
+} from '../../progress/series'
 import { DashboardSection, WIDE_ROW } from './Section'
 import type { DashboardData } from './useDashboardData'
 
@@ -34,7 +43,11 @@ export function BodySection({ data }: { data: DashboardData }) {
   const navigate = useNavigate()
   const goalKg = data.profile?.goal_weight_kg ?? DEFAULT_GOAL_KG
   const subtitle = 'Weight, the forecast, and what the scans say'
-  const noWeighIns = { title: 'No weigh-ins in this window', body: 'A morning weigh-in each day starts the trend line.', action: { label: 'Log weigh-in', onClick: () => openQuickLog('weigh-in') } }
+  const noWeighIns = {
+    title: 'No weigh-ins in this window',
+    body: 'A morning weigh-in each day starts the trend line.',
+    action: { label: 'Log weigh-in', onClick: () => openQuickLog('weigh-in') },
+  }
 
   if (!data.trend)
     return (
@@ -55,15 +68,23 @@ export function BodySection({ data }: { data: DashboardData }) {
   const last = lastTrend(trend.points)
   const rate = trend.forecast?.weekly_rate_kg ?? null
   // 2a's journey: the forecast runs on to the goal rather than stopping at the end of the window.
-  const forecast = last && trend.forecast ? forecastPath({ from: last, forecast: trend.forecast, goalKg }) : []
+  const forecast =
+    last && trend.forecast ? forecastPath({ from: last, forecast: trend.forecast, goalKg }) : []
   const weighed = trend.points.some((p) => p.weight_kg !== null)
   const weeks = weeklyLoss(trend.points, rate)
-  const timelines = milestoneTimelines(trend.milestones, last, last && trend.forecast ? effectiveRate(last, trend.forecast, goalKg) : null)
+  const timelines = milestoneTimelines(
+    trend.milestones,
+    last,
+    last && trend.forecast ? effectiveRate(last, trend.forecast, goalKg) : null,
+  )
   const waist = waistPoints(trend.measurements)
   const scan = confirmedScans(data.scans).at(-1) ?? null
-  const band = trend.forecast && trend.forecast.weekly_rate_kg > 0
-    ? Math.round(((trend.forecast.band.high - trend.forecast.band.low) / 2 / trend.forecast.weekly_rate_kg) * 100)
-    : null
+  const band =
+    trend.forecast && trend.forecast.weekly_rate_kg > 0
+      ? Math.round(
+          ((trend.forecast.band.high - trend.forecast.band.low) / 2 / trend.forecast.weekly_rate_kg) * 100,
+        )
+      : null
   const journey = trend.forecast
     ? `Trend so far, then ${formatNumber(trend.forecast.weekly_rate_kg, 2)} kg a week to ${formatNumber(goalKg, 0)} kg${band ? ` · band ±${band} %` : ''}`
     : `Trend so far; goal ${formatNumber(goalKg, 0)} kg`
@@ -73,8 +94,21 @@ export function BodySection({ data }: { data: DashboardData }) {
       <Stack spacing={4}>
         <Columns md={2} lg={WIDE_ROW.tracks} align="stretch">
           <Column span={WIDE_ROW.wide} mdSpan={2}>
-            <ChartCard titleSize="card" fill title="Weight trend and forecast" subtitle={journey} empty={weighed ? null : noWeighIns} testId="dashboard-weight-trend">
-              <WeightTrendChart points={points} forecast={forecast} goal={goalKg} milestones={weightMilestones(trend.milestones)} height={JOURNEY_HEIGHT} />
+            <ChartCard
+              titleSize="card"
+              fill
+              title="Weight trend and forecast"
+              subtitle={journey}
+              empty={weighed ? null : noWeighIns}
+              testId="dashboard-weight-trend"
+            >
+              <WeightTrendChart
+                points={points}
+                forecast={forecast}
+                goal={goalKg}
+                milestones={weightMilestones(trend.milestones)}
+                height={JOURNEY_HEIGHT}
+              />
             </ChartCard>
           </Column>
           <Column span={WIDE_ROW.narrow} mdSpan={1}>
@@ -82,8 +116,19 @@ export function BodySection({ data }: { data: DashboardData }) {
               titleSize="card"
               fill
               title="Weekly loss vs expected"
-              subtitle={rate === null ? 'Trend change per Monday–Sunday week' : `Trend change per week · expected −${formatNumber(rate, 2)} kg`}
-              empty={weeks.length ? null : { title: 'No full week yet', body: 'A full Monday–Sunday week of weigh-ins draws the first bar.' }}
+              subtitle={
+                rate === null
+                  ? 'Trend change per Monday–Sunday week'
+                  : `Trend change per week · expected −${formatNumber(rate, 2)} kg`
+              }
+              empty={
+                weeks.length
+                  ? null
+                  : {
+                      title: 'No full week yet',
+                      body: 'A full Monday–Sunday week of weigh-ins draws the first bar.',
+                    }
+              }
               testId="dashboard-weekly-loss"
             >
               <WeeklyLossChart weeks={weeks} height={JOURNEY_HEIGHT} />
@@ -101,7 +146,14 @@ export function BodySection({ data }: { data: DashboardData }) {
               fill
               title="Waist and WHR"
               subtitle="Weekly tape: waist at the navel and the waist-to-hip ratio"
-              empty={waist.length ? null : { title: 'No tape measurements in this window', body: 'Measure waist and hips once a week and both lines start here.' }}
+              empty={
+                waist.length
+                  ? null
+                  : {
+                      title: 'No tape measurements in this window',
+                      body: 'Measure waist and hips once a week and both lines start here.',
+                    }
+              }
               testId="dashboard-waist"
             >
               <WaistWhrChart points={waist} whrTarget={WHR_TARGET} height={WAIST_HEIGHT} />
@@ -113,12 +165,18 @@ export function BodySection({ data }: { data: DashboardData }) {
               fill
               title="Milestones"
               subtitle="Reached, and forecast dates for the next ones"
-              empty={timelines.weight.length === 0 && timelines.composition.length === 0 ? { title: 'No milestones yet', body: 'Milestones appear here as the trend reaches them.' } : null}
+              empty={
+                timelines.weight.length === 0 && timelines.composition.length === 0
+                  ? { title: 'No milestones yet', body: 'Milestones appear here as the trend reaches them.' }
+                  : null
+              }
               testId="dashboard-milestones"
             >
               <Stack spacing={4}>
                 <MilestoneTimeline milestones={timelines.weight} />
-                {timelines.composition.length > 0 && <MilestoneTimeline milestones={timelines.composition} metric="fatMass" />}
+                {timelines.composition.length > 0 && (
+                  <MilestoneTimeline milestones={timelines.composition} metric="fatMass" />
+                )}
               </Stack>
             </ChartCard>
           </Column>
@@ -131,14 +189,31 @@ export function BodySection({ data }: { data: DashboardData }) {
 const statLabel = { fontSize: tokens.font.size.caption, color: tokens.ink.secondary } as const
 const statNote = { fontSize: tokens.font.size.micro, color: tokens.ink.secondary } as const
 
-function ScanStat({ label, value, unit, note }: { label: string; value: string; unit?: string; note: string }) {
+function ScanStat({
+  label,
+  value,
+  unit,
+  note,
+}: {
+  label: string
+  value: string
+  unit?: string
+  note: string
+}) {
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={statLabel}>{label}</Box>
       <Box sx={{ ...statValue('small'), color: tokens.ink.text }}>
         {value}
         {unit && (
-          <Box component="span" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, color: tokens.ink.secondary }}>
+          <Box
+            component="span"
+            sx={{
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.body,
+              color: tokens.ink.secondary,
+            }}
+          >
             {` ${unit}`}
           </Box>
         )}
@@ -152,7 +227,15 @@ function ScanStat({ label, value, unit, note }: { label: string; value: string; 
  * The latest confirmed scan as 2a's composition card: body fat and visceral level against their SPEC §3 goals, the
  * fat / lean split as one bar, and what the goal weight means at 18 % body fat. Before the first scan, the empty slot.
  */
-function CompositionCard({ scan, goalKg, onScans }: { scan: ConfirmedScan | null; goalKg: number; onScans: () => void }) {
+function CompositionCard({
+  scan,
+  goalKg,
+  onScans,
+}: {
+  scan: ConfirmedScan | null
+  goalKg: number
+  onScans: () => void
+}) {
   if (!scan)
     return (
       <ChartCard
@@ -160,7 +243,11 @@ function CompositionCard({ scan, goalKg, onScans }: { scan: ConfirmedScan | null
         fill
         title="Body composition"
         subtitle="Fat and lean mass, body fat % and visceral level per Evolt scan"
-        empty={{ title: 'No scans yet', body: 'Upload an Evolt sheet and every metric is charted here.', action: { label: 'Go to scans', onClick: onScans } }}
+        empty={{
+          title: 'No scans yet',
+          body: 'Upload an Evolt sheet and every metric is charted here.',
+          action: { label: 'Go to scans', onClick: onScans },
+        }}
         testId="dashboard-scans"
       />
     )
@@ -178,8 +265,17 @@ function CompositionCard({ scan, goalKg, onScans }: { scan: ConfirmedScan | null
       testId="dashboard-scans"
     >
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 3 }}>
-        <ScanStat label="Body fat" value={formatNumber(r.body_fat_pct, 1)} unit="%" note={`goal ≤ ${BODY_FAT_TARGET_PCT} %`} />
-        <ScanStat label="Visceral level" value={formatNumber(r.visceral_fat_level)} note={`goal ≤ ${VISCERAL_TARGET}`} />
+        <ScanStat
+          label="Body fat"
+          value={formatNumber(r.body_fat_pct, 1)}
+          unit="%"
+          note={`goal ≤ ${BODY_FAT_TARGET_PCT} %`}
+        />
+        <ScanStat
+          label="Visceral level"
+          value={formatNumber(r.visceral_fat_level)}
+          note={`goal ≤ ${VISCERAL_TARGET}`}
+        />
       </Box>
       <Box sx={{ ...statLabel, display: 'flex', justifyContent: 'space-between', gap: 2, mt: '14px' }}>
         <span>Fat {formatNumber(r.body_fat_mass_kg, 1)} kg</span>
@@ -188,7 +284,13 @@ function CompositionCard({ scan, goalKg, onScans }: { scan: ConfirmedScan | null
       <Box
         role="img"
         aria-label={`Fat ${formatNumber(r.body_fat_mass_kg, 1)} kg, lean ${formatNumber(r.lean_body_mass_kg, 1)} kg`}
-        sx={{ display: 'flex', height: 10, mt: '6px', borderRadius: `${tokens.radius.pill}px`, overflow: 'hidden' }}
+        sx={{
+          display: 'flex',
+          height: 10,
+          mt: '6px',
+          borderRadius: `${tokens.radius.pill}px`,
+          overflow: 'hidden',
+        }}
       >
         <Box sx={{ width: `${fatShare * 100}%`, bgcolor: tokens.metric.fatMass }} />
         <Box sx={{ flex: 1, bgcolor: tokens.metric.lean }} />

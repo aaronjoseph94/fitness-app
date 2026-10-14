@@ -28,7 +28,10 @@ const ESTIMATE_CONFIDENCE_CAP = 0.6
 
 export interface AnalyseAdapters {
   router: (deps: Deps, budget: FetchBudget) => Pick<LlmRouter, 'complete'>
-  foodSources: (deps: Deps, opts: { budget: FetchBudget; maxExternalCalls: number; until: number }) => FoodSources
+  foodSources: (
+    deps: Deps,
+    opts: { budget: FetchBudget; maxExternalCalls: number; until: number },
+  ) => FoodSources
 }
 
 type Output = { output: MealAnalysisOutput; meta?: JobMeta }
@@ -38,11 +41,16 @@ const round3 = (x: number) => Math.round(x * 1000) / 1000
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const skipped = (notes: string): Output => ({ output: { items: [], notes } })
 
-export async function analyseMeal(deps: Deps, adapters: AnalyseAdapters, job: JobContext<'meal_analysis'>): Promise<Output> {
+export async function analyseMeal(
+  deps: Deps,
+  adapters: AnalyseAdapters,
+  job: JobContext<'meal_analysis'>,
+): Promise<Output> {
   const input = await analysisInput(deps, job.payload.meal_id)
   if (!input) return skipped('The meal was deleted before it was analysed.')
   const { meal, photos } = input
-  if (meal.status === 'confirmed' || (meal.status === 'review' && meal.item_count > 0)) return skipped('The meal already has items.')
+  if (meal.status === 'confirmed' || (meal.status === 'review' && meal.item_count > 0))
+    return skipped('The meal already has items.')
   const text = meal.raw_text?.trim() || null
   const shown = meal.input_method === 'photo' ? photos.slice(0, MAX_PHOTOS) : []
 
@@ -65,7 +73,11 @@ export async function analyseMeal(deps: Deps, adapters: AnalyseAdapters, job: Jo
       maxTokens: 2048,
     })
 
-    const foods = adapters.foodSources(deps, { budget, maxExternalCalls: FOOD_CALLS, until: started + MATCH_WINDOW_MS })
+    const foods = adapters.foodSources(deps, {
+      budget,
+      maxExternalCalls: FOOD_CALLS,
+      until: started + MATCH_WINDOW_MS,
+    })
     const items = await Promise.all(res.data.items.map((item) => toItem(foods, item)))
     const summary = noteText(meal.slot, items)
     const note = eventInsert(deps, {
@@ -78,7 +90,12 @@ export async function analyseMeal(deps: Deps, adapters: AnalyseAdapters, job: Jo
     await applyAnalysis(deps, meal.id, { items, photo_ids: photos.map((p) => p.id) }, [note.statement])
     return {
       output: res.data,
-      meta: { provider: res.provider, model: res.model, tokens_in: res.tokens_in, tokens_out: res.tokens_out },
+      meta: {
+        provider: res.provider,
+        model: res.model,
+        tokens_in: res.tokens_in,
+        tokens_out: res.tokens_out,
+      },
     }
   } catch (e) {
     // Aaron is never left waiting on a spinner: the meal shows its raw text in review. A requeued run (deadline, fetch
@@ -94,7 +111,8 @@ export async function analyseMeal(deps: Deps, adapters: AnalyseAdapters, job: Jo
 async function readPhotos(deps: Deps, photos: { key: string; mime: string }[]): Promise<ImageInput[]> {
   const objects = await Promise.all(photos.map((p) => deps.env.FILES.get(p.key)))
   const out: ImageInput[] = []
-  for (const [i, o] of objects.entries()) if (o) out.push({ mime: photos[i]!.mime, data: await o.arrayBuffer() })
+  for (const [i, o] of objects.entries())
+    if (o) out.push({ mime: photos[i]!.mime, data: await o.arrayBuffer() })
   return out
 }
 
@@ -121,7 +139,16 @@ async function toItem(foods: FoodSources, item: MealAnalysisOutput['items'][numb
     grams: item.grams,
     food_id: null,
     nutrients: e
-      ? nutritionFor({ kcal_per_100g: e.kcal, protein_g: e.protein_g, carbs_g: e.carbs_g, fat_g: e.fat_g, fibre_g: e.fibre_g }, item.grams)
+      ? nutritionFor(
+          {
+            kcal_per_100g: e.kcal,
+            protein_g: e.protein_g,
+            carbs_g: e.carbs_g,
+            fat_g: e.fat_g,
+            fibre_g: e.fibre_g,
+          },
+          item.grams,
+        )
       : ZERO,
     confidence: e ? round3(Math.min(item.confidence, ESTIMATE_CONFIDENCE_CAP)) : 0,
     estimated: true,

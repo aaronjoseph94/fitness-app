@@ -34,7 +34,12 @@ const FILE_CSP = {
  * The consent page (/authorize): inline styles only, no scripts. No form-action: approving redirects to the client's
  * registered callback (claude.ai, or a loopback port for Claude Code), which form-action would also have to list.
  */
-const PAGE_CSP = { defaultSrc: ["'none'"], styleSrc: ["'unsafe-inline'"], frameAncestors: ["'none'"], baseUri: ["'none'"] }
+const PAGE_CSP = {
+  defaultSrc: ["'none'"],
+  styleSrc: ["'unsafe-inline'"],
+  frameAncestors: ["'none'"],
+  baseUri: ["'none'"],
+}
 
 const api = secureHeaders({ ...COMMON, contentSecurityPolicy: API_CSP })
 const files = secureHeaders({ ...COMMON, contentSecurityPolicy: FILE_CSP })

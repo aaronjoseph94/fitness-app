@@ -9,7 +9,19 @@ import { env } from 'cloudflare:workers'
 import { and, eq, sql } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { runCron } from '../src/cron'
-import { ai_events, ai_jobs, createDb, fast_logs, meal_items, meals, plan_versions, profile, settings, weight_logs, type Db } from '../src/db'
+import {
+  ai_events,
+  ai_jobs,
+  createDb,
+  fast_logs,
+  meal_items,
+  meals,
+  plan_versions,
+  profile,
+  settings,
+  weight_logs,
+  type Db,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { ensureTargetsThrough } from '../src/modules/plan'
 
@@ -18,7 +30,9 @@ const pending: Promise<unknown>[] = []
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 /** `db`, except that the next insert into ai_jobs throws (once). */
 function dbFailingNextJobInsert(): Db {
@@ -48,11 +62,22 @@ const at = (now: string, database: Db = db): Deps => ({
 })
 
 /** Every day Sun 2026-09-27 … Sun 2026-10-11 eaten at 1,400 kcal; weight 95.0 kg at both ends (trend flat). */
-const EATING = Array.from({ length: 15 }, (_, i) => new Date(Date.UTC(2026, 8, 27 + i)).toISOString().slice(0, 10))
+const EATING = Array.from({ length: 15 }, (_, i) =>
+  new Date(Date.UTC(2026, 8, 27 + i)).toISOString().slice(0, 10),
+)
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-20' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-20',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -69,8 +94,24 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
-      forecast: { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
+      forecast: {
+        finish_date: '2027-06-17',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
     db.insert(weight_logs).values([
       { date: '2026-09-27', weight_kg: 95 },
@@ -80,7 +121,18 @@ beforeAll(async () => {
       const id = crypto.randomUUID()
       return [
         db.insert(meals).values({ id, date, slot: 'dinner', input_method: 'manual', status: 'confirmed' }),
-        db.insert(meal_items).values({ meal_id: id, description: 'dinner', grams: 500, kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }),
+        db
+          .insert(meal_items)
+          .values({
+            meal_id: id,
+            description: 'dinner',
+            grams: 500,
+            kcal: 1400,
+            protein_g: 130,
+            carbs_g: 119,
+            fat_g: 45,
+            fibre_g: 30,
+          }),
       ]
     }),
   ])
@@ -88,7 +140,12 @@ beforeAll(async () => {
 })
 
 const activeTdee = async () =>
-  (await db.select({ forecast: plan_versions.forecast }).from(plan_versions).where(eq(plan_versions.active, true)))[0]?.forecast?.tdee_est
+  (
+    await db
+      .select({ forecast: plan_versions.forecast })
+      .from(plan_versions)
+      .where(eq(plan_versions.active, true))
+  )[0]?.forecast?.tdee_est
 
 describe('nightly retry', () => {
   it('a Monday nightly redone after a failed later step re-estimates expenditure once: 1,976 kcal, not 1,688', async () => {
@@ -105,7 +162,12 @@ describe('nightly retry', () => {
     const jobs = await db
       .select({ id: ai_jobs.id })
       .from(ai_jobs)
-      .where(and(eq(ai_jobs.type, 'workout_generate'), sql`json_extract(${ai_jobs.payload}, '$.date') = '2026-10-12'`))
+      .where(
+        and(
+          eq(ai_jobs.type, 'workout_generate'),
+          sql`json_extract(${ai_jobs.payload}, '$.date') = '2026-10-12'`,
+        ),
+      )
     expect(jobs).toHaveLength(1)
   })
 })
@@ -129,7 +191,9 @@ describe('fast start card retry', () => {
     const cards = await db
       .select({ id: ai_jobs.id })
       .from(ai_jobs)
-      .where(and(eq(ai_jobs.type, 'day_adjustment'), sql`json_extract(${ai_jobs.payload}, '$.fast_id') = ${fast}`))
+      .where(
+        and(eq(ai_jobs.type, 'day_adjustment'), sql`json_extract(${ai_jobs.payload}, '$.fast_id') = ${fast}`),
+      )
     expect(cards).toHaveLength(1)
   })
 })
@@ -154,7 +218,8 @@ describe('nightly catch-up of scheduled proposals', () => {
 
     expect((await runCron(at('2026-10-15T19:00:00.000Z'))).ran).toEqual(['nightly'])
 
-    const updated = async (id: string) => (await db.select({ u: ai_events.updated_at }).from(ai_events).where(eq(ai_events.id, id)))[0]?.u
+    const updated = async (id: string) =>
+      (await db.select({ u: ai_events.updated_at }).from(ai_events).where(eq(ai_events.id, id)))[0]?.u
     expect(await updated(p14.id)).toBe('2026-10-15T19:00:00.000Z')
     expect(await updated(p15.id)).toBe('2026-10-15T19:00:00.000Z')
     expect(await updated(p12.id)).toBe(stamp)

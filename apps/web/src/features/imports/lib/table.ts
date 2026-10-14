@@ -49,7 +49,11 @@ export function parseCsv(text: string): Table {
   if (record.some((f) => f.trim() !== '')) records.push(record)
   const [header = [], ...body] = records
   const columns = header.map((h, i) => h.trim() || `Column ${i + 1}`)
-  return { format: 'csv', columns, rows: body.map((r) => Object.fromEntries(columns.map((c, i) => [c, (r[i] ?? '').trim()]))) }
+  return {
+    format: 'csv',
+    columns,
+    rows: body.map((r) => Object.fromEntries(columns.map((c, i) => [c, (r[i] ?? '').trim()]))),
+  }
 }
 
 function flatten(value: unknown, prefix: string, out: Record<string, string>): void {
@@ -67,7 +71,10 @@ interface HaeMetric {
 
 function isHae(json: unknown): json is { data: { metrics: HaeMetric[] } } {
   const metrics = (json as { data?: { metrics?: unknown } } | null)?.data?.metrics
-  return Array.isArray(metrics) && metrics.every((m) => typeof (m as HaeMetric).name === 'string' && Array.isArray((m as HaeMetric).data))
+  return (
+    Array.isArray(metrics) &&
+    metrics.every((m) => typeof (m as HaeMetric).name === 'string' && Array.isArray((m as HaeMetric).data))
+  )
 }
 
 /** The date part of a Health Auto Export timestamp ("2026-10-01 00:00:00 -0600"), else the value itself. */
@@ -90,17 +97,25 @@ function fromHae(metrics: HaeMetric[]): Table {
         columns.add(col)
         // Several points on one date (hourly exports): add numbers, keep the first text.
         const prev = row[col]
-        row[col] = prev !== undefined && Number.isFinite(Number(prev)) && Number.isFinite(Number(v)) ? String(Number(prev) + Number(v)) : (prev ?? v)
+        row[col] =
+          prev !== undefined && Number.isFinite(Number(prev)) && Number.isFinite(Number(v))
+            ? String(Number(prev) + Number(v))
+            : (prev ?? v)
       }
       byDate.set(date, row)
     }
   }
-  return { format: 'json', columns: [...columns], rows: [...byDate.values()].sort((a, b) => (a.date! < b.date! ? -1 : 1)) }
+  return {
+    format: 'json',
+    columns: [...columns],
+    rows: [...byDate.values()].sort((a, b) => (a.date! < b.date! ? -1 : 1)),
+  }
 }
 
 /** The first array of objects in a JSON document (the document itself, or a property one or two levels down). */
 function firstArray(json: unknown, depth = 0): Record<string, unknown>[] | null {
-  if (Array.isArray(json)) return json.every((x) => typeof x === 'object' && x !== null) ? (json as Record<string, unknown>[]) : null
+  if (Array.isArray(json))
+    return json.every((x) => typeof x === 'object' && x !== null) ? (json as Record<string, unknown>[]) : null
   if (depth >= 2 || typeof json !== 'object' || json === null) return null
   for (const v of Object.values(json)) {
     const found = firstArray(v, depth + 1)
@@ -130,9 +145,13 @@ export function parseJson(text: string): Table {
 
 /** Read a CSV or JSON export into a table. */
 export async function readTable(file: File): Promise<Table> {
-  if (file.size > MAX_BYTES) throw new Error('That file is too large. Export daily totals (CSV or JSON) instead of the full Health archive.')
+  if (file.size > MAX_BYTES)
+    throw new Error(
+      'That file is too large. Export daily totals (CSV or JSON) instead of the full Health archive.',
+    )
   const text = await file.text()
-  const isJson = /\.json$/i.test(file.name) || file.type.includes('json') || /^\s*[[{]/.test(text.slice(0, 100))
+  const isJson =
+    /\.json$/i.test(file.name) || file.type.includes('json') || /^\s*[[{]/.test(text.slice(0, 100))
   const table = isJson ? parseJson(text) : parseCsv(text)
   if (table.rows.length === 0) throw new Error('That file has no rows.')
   return table

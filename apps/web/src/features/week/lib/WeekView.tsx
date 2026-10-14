@@ -20,10 +20,25 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import { addDays, weekStart } from '@fitness/shared/engine'
-import { Weekday, type LocalDate, type WeekDayActual, type WeekPlan, type WeekPlanView } from '@fitness/shared/schemas'
+import {
+  Weekday,
+  type LocalDate,
+  type WeekDayActual,
+  type WeekPlan,
+  type WeekPlanView,
+} from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { WeekPlanVsActualChart, type PlanDay, type SessionStatus } from '../../../charts'
-import { formatDayRange, formatNumber, formatShortDate, formatWeekday, isQueryLoading, Panel, QueryStateCard, visuallyHidden } from '../../../components'
+import {
+  formatDayRange,
+  formatNumber,
+  formatShortDate,
+  formatWeekday,
+  isQueryLoading,
+  Panel,
+  QueryStateCard,
+  visuallyHidden,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { AUTHOR, Label, PlanBadge, planDays } from './parts'
 import { ProposedBanner } from './ProposedBanner'
@@ -38,7 +53,12 @@ export interface WeekViewProps {
 const kcalProtein = (kcal: number, protein: number) => `${formatNumber(kcal)} · ${formatNumber(protein)} g`
 
 /** Session mark per day: done when a session was finished, else planned (ahead) or missed (past), else rest. */
-function sessionStatus(planned: boolean, d: WeekDayActual | undefined, today: LocalDate, date: LocalDate): SessionStatus {
+function sessionStatus(
+  planned: boolean,
+  d: WeekDayActual | undefined,
+  today: LocalDate,
+  date: LocalDate,
+): SessionStatus {
   if ((d?.sessions_done ?? 0) > 0) return 'done'
   if (!planned) return 'rest'
   return date < today ? 'missed' : 'planned'
@@ -80,12 +100,24 @@ function RevertButton({ plan }: { plan: WeekPlan }) {
       <Button size="small" onClick={() => setOpen(true)}>
         Revert
       </Button>
-      <Dialog open={open} onClose={revert.isPending ? undefined : () => setOpen(false)} fullWidth maxWidth="xs" aria-labelledby="revert-week-plan-title">
+      <Dialog
+        open={open}
+        onClose={revert.isPending ? undefined : () => setOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        aria-labelledby="revert-week-plan-title"
+      >
         <DialogTitle id="revert-week-plan-title">Revert this week’s plan?</DialogTitle>
         <DialogContent>
-          <Box sx={{ fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body, color: tokens.ink.body }}>
-            The plan it replaced comes back, or the week follows your everyday targets and training days again. Days already
-            past keep their targets.
+          <Box
+            sx={{
+              fontSize: tokens.font.size.body,
+              lineHeight: tokens.font.leading.body,
+              color: tokens.ink.body,
+            }}
+          >
+            The plan it replaced comes back, or the week follows your everyday targets and training days
+            again. Days already past keep their targets.
           </Box>
           {revert.isError && (
             <Box role="alert" sx={{ mt: 2, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
@@ -124,7 +156,11 @@ const cellSx = {
 function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; today: LocalDate }) {
   const last = view.last_week.days
   return (
-    <Table data-testid="week-view-days" aria-label={`Week plan, ${formatDayRange(plan.week_start, addDays(plan.week_start, 6))}`} sx={{ '& .MuiTableCell-root': cellSx }}>
+    <Table
+      data-testid="week-view-days"
+      aria-label={`Week plan, ${formatDayRange(plan.week_start, addDays(plan.week_start, 6))}`}
+      sx={{ '& .MuiTableCell-root': cellSx }}
+    >
       <TableHead>
         <TableRow>
           <TableCell>Day</TableCell>
@@ -156,11 +192,20 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
               >
                 {formatWeekday(d.date)} {Number(d.date.slice(8))}
               </TableCell>
-              <TableCell sx={{ fontWeight: strong, color: d.session || d.fast ? tokens.ink.text : muted, overflowWrap: 'anywhere' }}>
+              <TableCell
+                sx={{
+                  fontWeight: strong,
+                  color: d.session || d.fast ? tokens.ink.text : muted,
+                  overflowWrap: 'anywhere',
+                }}
+              >
                 {d.fast ? 'Fast day' : (d.session?.name ?? 'Rest')}
                 {done && (
                   <>
-                    <CheckRounded aria-hidden sx={{ ml: '4px', fontSize: 15, verticalAlign: '-3px', color: tokens.tone.success.text }} />
+                    <CheckRounded
+                      aria-hidden
+                      sx={{ ml: '4px', fontSize: 15, verticalAlign: '-3px', color: tokens.tone.success.text }}
+                    />
                     <Box component="span" sx={visuallyHidden}>
                       , done
                     </Box>
@@ -187,7 +232,11 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
   )
 }
 
-const note = { fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary } as const
+const note = {
+  fontSize: tokens.font.size.small,
+  lineHeight: tokens.font.leading.small,
+  color: tokens.ink.secondary,
+} as const
 const gutter = { px: { xs: '16px', sm: `${tokens.pad.card.x}px` } } as const
 
 export function WeekView({ date }: WeekViewProps) {
@@ -198,7 +247,14 @@ export function WeekView({ date }: WeekViewProps) {
   const shown = plan ?? data?.proposed ?? null
   const thisWeek = weekStart(date)
   const range = formatDayRange(monday, addDays(monday, 6))
-  const label = monday === thisWeek ? null : monday === addDays(thisWeek, 7) ? 'Next week' : monday === addDays(thisWeek, -7) ? 'Last week' : null
+  const label =
+    monday === thisWeek
+      ? null
+      : monday === addDays(thisWeek, 7)
+        ? 'Next week'
+        : monday === addDays(thisWeek, -7)
+          ? 'Last week'
+          : null
   const changes = plan ? (data?.changes.active ?? []) : (data?.changes.proposed ?? [])
   const open = addDays(monday, 6) >= date
   const source = !data ? null : plan ? `Plan by ${AUTHOR[plan.author]}` : 'Your everyday targets'
@@ -214,7 +270,11 @@ export function WeekView({ date }: WeekViewProps) {
         <>
           {plan && <PlanBadge plan={plan} />}
           <Box sx={{ display: 'flex' }}>
-            <IconButton size="small" aria-label="Previous week" onClick={() => setMonday(addDays(monday, -7))}>
+            <IconButton
+              size="small"
+              aria-label="Previous week"
+              onClick={() => setMonday(addDays(monday, -7))}
+            >
               <ChevronLeftRounded fontSize="small" />
             </IconButton>
             <IconButton size="small" aria-label="Next week" onClick={() => setMonday(addDays(monday, 7))}>
@@ -238,17 +298,34 @@ export function WeekView({ date }: WeekViewProps) {
             </Box>
           )}
           {shown?.plan.focus_note && (
-            <Box sx={{ ...gutter, pb: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>
+            <Box
+              sx={{
+                ...gutter,
+                pb: '12px',
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: tokens.ink.body,
+              }}
+            >
               {shown.plan.focus_note}
             </Box>
           )}
           {shown ? (
             <DayTable view={data} plan={shown} today={date} />
           ) : (
-            <Box sx={{ ...gutter, pt: '4px', pb: '16px', ...note }}>No week plan yet. The coach review (Claude) or Sunday’s weekly review drafts one.</Box>
+            <Box sx={{ ...gutter, pt: '4px', pb: '16px', ...note }}>
+              No week plan yet. The coach review (Claude) or Sunday’s weekly review drafts one.
+            </Box>
           )}
 
-          <Box sx={{ ...gutter, pt: '12px', pb: shown ? '4px' : '16px', borderTop: `1px solid ${tokens.ink.hairline}` }}>
+          <Box
+            sx={{
+              ...gutter,
+              pt: '12px',
+              pb: shown ? '4px' : '16px',
+              borderTop: `1px solid ${tokens.ink.hairline}`,
+            }}
+          >
             <Label>Planned vs eaten</Label>
             <Box sx={{ mt: '8px' }}>
               <WeekPlanVsActualChart days={chartDays(data, plan, date)} height={200} />
@@ -256,7 +333,15 @@ export function WeekView({ date }: WeekViewProps) {
           </Box>
 
           {shown && (
-            <Box sx={{ ...gutter, py: '12px', borderTop: `1px solid ${tokens.ink.hairline}`, display: 'grid', gap: '10px' }}>
+            <Box
+              sx={{
+                ...gutter,
+                py: '12px',
+                borderTop: `1px solid ${tokens.ink.hairline}`,
+                display: 'grid',
+                gap: '10px',
+              }}
+            >
               <Box data-testid="week-view-changes">
                 <Label>Changed from last week{plan ? '' : ' (if accepted)'}</Label>
                 {changes.length === 0 ? (
@@ -272,7 +357,9 @@ export function WeekView({ date }: WeekViewProps) {
               <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Box sx={{ flex: 1, minWidth: 0, ...note, fontVariantNumeric: 'tabular-nums' }}>
                   Water {formatNumber(shown.plan.water_ml)} ml · steps {formatNumber(shown.plan.steps)}
-                  {shown.plan.scan_date ? ` · scan ${formatWeekday(shown.plan.scan_date)} ${formatShortDate(shown.plan.scan_date)}` : ''}
+                  {shown.plan.scan_date
+                    ? ` · scan ${formatWeekday(shown.plan.scan_date)} ${formatShortDate(shown.plan.scan_date)}`
+                    : ''}
                 </Box>
                 {plan && open && <RevertButton plan={plan} />}
               </Box>

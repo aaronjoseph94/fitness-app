@@ -63,7 +63,11 @@ export function useProposalDecision<T>(
     notes:
       offline || error ? (
         <>
-          {offline && <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>Deciding needs a connection; it will wait here.</Box>}
+          {offline && (
+            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary }}>
+              Deciding needs a connection; it will wait here.
+            </Box>
+          )}
           {error && (
             <Alert severity="error" onClose={() => setError(null)}>
               {error}

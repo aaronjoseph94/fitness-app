@@ -1,7 +1,17 @@
 // Owns: the pure mapping from API data (TrendSeries, DaySummary rows, fasts, the forecast, sessions) to the chart kit's
 // plain series, plus the small aggregates the Progress summary shows. The weekly report reuses the day, weight and
 // volume mappings through ./series. No React, no fetching: data in, series out.
-import { addDays, dayAdherence, daysBetween, fastDay, localDate, localTime, sessionSummary, weekStart, type MuscleValues } from '@fitness/shared/engine'
+import {
+  addDays,
+  dayAdherence,
+  daysBetween,
+  fastDay,
+  localDate,
+  localTime,
+  sessionSummary,
+  weekStart,
+  type MuscleValues,
+} from '@fitness/shared/engine'
 import type {
   DaySummary,
   ExerciseSummary,
@@ -117,13 +127,19 @@ export function forecastBandDates(
 }
 
 /** Date the trend reaches `kg` at `rate` kg/week from `from`: from.date + ⌈(from.kg − kg) / rate × 7⌉ days. */
-export function expectedOn(kg: number, from: { date: LocalDate; kg: number } | null, rate: number | null): LocalDate | null {
+export function expectedOn(
+  kg: number,
+  from: { date: LocalDate; kg: number } | null,
+  rate: number | null,
+): LocalDate | null {
   if (!from || rate === null || !(rate > 0) || kg >= from.kg) return null
   return addDays(from.date, Math.ceil(((from.kg - kg) / rate) * 7))
 }
 
 export function weightMilestones(rows: readonly MilestoneRow[]): WeightMilestone[] {
-  return rows.filter((m) => m.kind === 'weight').map((m) => ({ value: m.target_value, reachedOn: m.reached_on }))
+  return rows
+    .filter((m) => m.kind === 'weight')
+    .map((m) => ({ value: m.target_value, reachedOn: m.reached_on }))
 }
 
 /** Weight milestones (heaviest first) with forecast dates for the ones still ahead; composition milestones in order. */
@@ -135,8 +151,14 @@ export function milestoneTimelines(
   const weight = rows
     .filter((m) => m.kind === 'weight')
     .sort((a, b) => b.target_value - a.target_value)
-    .map((m) => ({ label: m.label, reachedOn: m.reached_on, expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate) }))
-  const composition = rows.filter((m) => m.kind !== 'weight').map((m) => ({ label: shortLabel(m), reachedOn: m.reached_on }))
+    .map((m) => ({
+      label: m.label,
+      reachedOn: m.reached_on,
+      expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate),
+    }))
+  const composition = rows
+    .filter((m) => m.kind !== 'weight')
+    .map((m) => ({ label: shortLabel(m), reachedOn: m.reached_on }))
   return { weight, composition }
 }
 
@@ -220,7 +242,11 @@ export function weeklyLoss(points: readonly TrendPoint[], weeklyRateKg: number |
     const sunday = addDays(monday, 6)
     const after = trend.get(sunday)
     if (sunday > last || before === undefined || after === undefined) continue
-    out.push({ week: monday, change: round(after - before), expected: weeklyRateKg === null ? null : round(-weeklyRateKg) })
+    out.push({
+      week: monday,
+      change: round(after - before),
+      expected: weeklyRateKg === null ? null : round(-weeklyRateKg),
+    })
   }
   return out
 }
@@ -258,7 +284,12 @@ export function macrosDays(days: readonly DaySummary[]): MacrosDay[] {
   return days.map((d) =>
     d.meals_logged === 0
       ? { date: d.date, protein: null, carbs: null, fat: null }
-      : { date: d.date, protein: Math.round(d.intake.protein_g), carbs: Math.round(d.intake.carbs_g), fat: Math.round(d.intake.fat_g) },
+      : {
+          date: d.date,
+          protein: Math.round(d.intake.protein_g),
+          carbs: Math.round(d.intake.carbs_g),
+          fat: Math.round(d.intake.fat_g),
+        },
   )
 }
 
@@ -408,13 +439,19 @@ export function sessionVolumeWeeks(
 }
 
 /** Sessions per exercise with a completed loaded set, most first (the strength chart's picker order). */
-export function exercisesByUse(sessions: readonly WorkoutSession[]): { exercise_id: string; sessions: number }[] {
+export function exercisesByUse(
+  sessions: readonly WorkoutSession[],
+): { exercise_id: string; sessions: number }[] {
   const count = new Map<string, number>()
   for (const s of sessions) {
-    const ids = new Set(s.sets.filter((x) => x.completed && x.load_kg !== null && x.load_kg > 0).map((x) => x.exercise_id))
+    const ids = new Set(
+      s.sets.filter((x) => x.completed && x.load_kg !== null && x.load_kg > 0).map((x) => x.exercise_id),
+    )
     for (const id of ids) count.set(id, (count.get(id) ?? 0) + 1)
   }
-  return [...count].map(([exercise_id, n]) => ({ exercise_id, sessions: n })).sort((a, b) => b.sessions - a.sessions)
+  return [...count]
+    .map(([exercise_id, n]) => ({ exercise_id, sessions: n }))
+    .sort((a, b) => b.sessions - a.sessions)
 }
 
 // ── Targets and summaries ──────────────────────────────────────────────────────────────────────────────────────
@@ -467,11 +504,15 @@ export function rangeSummary(days: readonly DaySummary[], points: readonly Trend
     avgKcal: mean(logged.map((d) => d.intake.kcal)),
     avgProteinG: mean(logged.map((d) => d.intake.protein_g)),
     loggedDays: logged.length,
-    proteinHitDays: logged.filter((d) => d.targets !== null && d.targets.protein_g > 0 && d.intake.protein_g >= d.targets.protein_g).length,
+    proteinHitDays: logged.filter(
+      (d) => d.targets !== null && d.targets.protein_g > 0 && d.intake.protein_g >= d.targets.protein_g,
+    ).length,
     adherence: days.length ? adherentDays / days.length : null,
     adherentDays,
     days: days.length,
-    daysWithData: days.filter((d) => d.weight_kg !== null || d.meals_logged > 0 || d.water_ml > 0 || d.is_fast_day).length,
+    daysWithData: days.filter(
+      (d) => d.weight_kg !== null || d.meals_logged > 0 || d.water_ml > 0 || d.is_fast_day,
+    ).length,
     fastDays: days.filter((d) => d.is_fast_day).length,
   }
 }

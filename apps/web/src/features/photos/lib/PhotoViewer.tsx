@@ -45,39 +45,91 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
   }
 
   return (
-    <Dialog open={photo !== null} onClose={close} fullScreen={phone} maxWidth="sm" fullWidth slotProps={{ paper: { 'aria-label': 'Progress photo' } }}>
+    <Dialog
+      open={photo !== null}
+      onClose={close}
+      fullScreen={phone}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{ paper: { 'aria-label': 'Progress photo' } }}
+    >
       {photo && (
         <Stack sx={{ height: '100%', pb: 'env(safe-area-inset-bottom, 0px)' }} data-testid="photo-viewer">
-          <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 2, px: 5, pt: 'calc(16px + env(safe-area-inset-top, 0px))', pb: 3 }}>
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: 'flex-start',
+              gap: 2,
+              px: 5,
+              pt: 'calc(16px + env(safe-area-inset-top, 0px))',
+              pb: 3,
+            }}
+          >
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: tokens.font.size.cardTitle, lineHeight: tokens.font.leading.cardTitle }}>{POSE_LABEL[photo.pose]}</Box>
-              <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{takenAtFormat.format(new Date(photo.taken_at))}</Box>
+              <Box
+                sx={{
+                  fontWeight: tokens.font.weight.heading,
+                  fontSize: tokens.font.size.cardTitle,
+                  lineHeight: tokens.font.leading.cardTitle,
+                }}
+              >
+                {POSE_LABEL[photo.pose]}
+              </Box>
+              <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
+                {takenAtFormat.format(new Date(photo.taken_at))}
+              </Box>
             </Box>
             <IconButton aria-label="Close" onClick={close} sx={{ mr: -2, mt: -1 }}>
               <Close fontSize="small" />
             </IconButton>
           </Stack>
           <Box sx={{ flex: 1, minHeight: 0, px: 5, display: 'flex', justifyContent: 'center' }}>
-            <Box sx={{ width: '100%', maxHeight: phone ? 'none' : '60vh', aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill }}>
+            <Box
+              sx={{
+                width: '100%',
+                maxHeight: phone ? 'none' : '60vh',
+                aspectRatio: '3 / 4',
+                borderRadius: `${tokens.radius.control}px`,
+                overflow: 'hidden',
+                border: `1px solid ${tokens.ink.border}`,
+                bgcolor: tokens.ink.fill,
+              }}
+            >
               <PhotoImage photo={photo} fit="contain" eager />
             </Box>
           </Box>
           <Stack spacing={1} sx={{ px: 5, pt: 4 }}>
             <Box sx={{ display: 'flex', gap: 3, alignItems: 'baseline', flexWrap: 'wrap' }}>
-              <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>Trend weight</Box>
-              {photo.weight_kg === null ? <Box sx={{ fontSize: tokens.font.size.body }}>—</Box> : <TrendWeight kg={photo.weight_kg} size={tokens.font.size.cardTitle} />}
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.label,
+                  fontWeight: tokens.font.weight.label,
+                  color: tokens.ink.label,
+                }}
+              >
+                Trend weight
+              </Box>
+              {photo.weight_kg === null ? (
+                <Box sx={{ fontSize: tokens.font.size.body }}>—</Box>
+              ) : (
+                <TrendWeight kg={photo.weight_kg} size={tokens.font.size.cardTitle} />
+              )}
             </Box>
             <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.text }}>
               {photo.nearest_scan ? (
                 <>
                   Nearest scan {photo.nearest_scan.date}
                   {photo.nearest_scan.body_fat_pct !== null && (
-                    <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
+                    <Box
+                      component="span"
+                      sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}
+                    >
                       {' '}
                       · {formatNumber(photo.nearest_scan.body_fat_pct, 1)} % body fat
                     </Box>
                   )}
-                  {photo.nearest_scan.weight_kg !== null && ` · ${formatNumber(photo.nearest_scan.weight_kg, 1)} kg`}
+                  {photo.nearest_scan.weight_kg !== null &&
+                    ` · ${formatNumber(photo.nearest_scan.weight_kg, 1)} kg`}
                 </>
               ) : (
                 <Box component="span" sx={{ color: tokens.ink.secondary }}>
@@ -85,7 +137,9 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
                 </Box>
               )}
             </Box>
-            {photo.note && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{photo.note}</Box>}
+            {photo.note && (
+              <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>{photo.note}</Box>
+            )}
           </Stack>
           {remove.isError && (
             <Alert severity="warning" sx={{ mx: 5, mt: 3 }}>
@@ -110,10 +164,21 @@ export function PhotoViewer({ photo, onClose, onCompare }: PhotoViewerProps) {
               </>
             ) : (
               <>
-                <Button variant="outlined" color="error" startIcon={<DeleteOutlined />} onClick={() => setConfirming(true)} sx={{ flex: 1 }}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlined />}
+                  onClick={() => setConfirming(true)}
+                  sx={{ flex: 1 }}
+                >
                   Delete
                 </Button>
-                <Button variant="contained" startIcon={<CompareOutlined />} onClick={() => onCompare(photo)} sx={{ flex: 1 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<CompareOutlined />}
+                  onClick={() => onCompare(photo)}
+                  sx={{ flex: 1 }}
+                >
                   Compare
                 </Button>
               </>

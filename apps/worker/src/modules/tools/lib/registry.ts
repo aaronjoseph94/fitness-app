@@ -29,7 +29,10 @@ export function findTool(name: string): ToolDefinition | undefined {
 function cached(cache: Map<string, JsonSchema>, tool: ToolDefinition, side: 'input' | 'output'): JsonSchema {
   let s = cache.get(tool.name)
   if (!s) {
-    const { $schema: _drop, ...rest } = z.toJSONSchema(tool[side], { io: side, unrepresentable: 'any' }) as JsonSchema
+    const { $schema: _drop, ...rest } = z.toJSONSchema(tool[side], {
+      io: side,
+      unrepresentable: 'any',
+    }) as JsonSchema
     s = rest
     cache.set(tool.name, s)
   }

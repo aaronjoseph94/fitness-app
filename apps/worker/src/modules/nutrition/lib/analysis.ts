@@ -10,7 +10,15 @@ import type { Deps } from '../../../lib/deps'
 import { itemInserts, type ItemInsert } from './meals'
 
 export interface AnalysisInput {
-  meal: { id: string; date: string; slot: MealSlot; input_method: InputMethod; raw_text: string | null; status: MealStatus; item_count: number }
+  meal: {
+    id: string
+    date: string
+    slot: MealSlot
+    input_method: InputMethod
+    raw_text: string | null
+    status: MealStatus
+    item_count: number
+  }
   /** The meal's own photos, oldest first. `key` is always meal-photos/<meal_id>/<photo_id>.(jpg|webp). */
   photos: { id: string; key: string; mime: 'image/jpeg' | 'image/webp' }[]
 }
@@ -48,7 +56,9 @@ export async function analysisInput(deps: Deps, mealId: string): Promise<Analysi
       item_count: items?.n ?? 0,
     },
     // Privacy rail: only this meal's own photo objects can ever reach the LLM.
-    photos: photos.filter((p) => p.storage_path.startsWith(prefix)).map((p) => ({ id: p.id, key: p.storage_path, mime: mimeOf(p.storage_path) })),
+    photos: photos
+      .filter((p) => p.storage_path.startsWith(prefix))
+      .map((p) => ({ id: p.id, key: p.storage_path, mime: mimeOf(p.storage_path) })),
   }
 }
 
@@ -94,11 +104,21 @@ export async function applyAnalysis(
   const parsing = sql`exists (select 1 from ${meals} where ${meals.id} = ${mealId} and ${meals.status} = 'parsing')`
   const noItems = sql`not exists (select 1 from ${meal_items} where ${meal_items.meal_id} = ${mealId})`
   const [, , ...rest] = await db.batch([
-    db.update(meals).set({ status: 'parsing' }).where(and(eq(meals.id, mealId), eq(meals.status, 'review'), noItems)),
+    db
+      .update(meals)
+      .set({ status: 'parsing' })
+      .where(and(eq(meals.id, mealId), eq(meals.status, 'review'), noItems)),
     db.delete(meal_items).where(and(eq(meal_items.meal_id, mealId), parsing)),
     ...itemInserts(deps, rows),
-    ...chunk(rows.map((r) => r.id!), 90).map((ids) => db.delete(meal_items).where(and(inArray(meal_items.id, ids), sql`not ${parsing}`))),
-    db.update(meals).set({ status: 'review', updated_at: now }).where(and(eq(meals.id, mealId), eq(meals.status, 'parsing'))).returning({ id: meals.id }),
+    ...chunk(
+      rows.map((r) => r.id!),
+      90,
+    ).map((ids) => db.delete(meal_items).where(and(inArray(meal_items.id, ids), sql`not ${parsing}`))),
+    db
+      .update(meals)
+      .set({ status: 'review', updated_at: now })
+      .where(and(eq(meals.id, mealId), eq(meals.status, 'parsing')))
+      .returning({ id: meals.id }),
     ...extra,
   ])
   const landed = rest[rest.length - 1 - extra.length]

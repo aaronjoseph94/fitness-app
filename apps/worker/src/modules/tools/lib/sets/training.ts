@@ -100,14 +100,21 @@ const BEHIND_A_TAP =
   'From the in-app assistant it waits as a proposal card for a tap (status "proposed"; nothing changes until then); ' +
   'from Claude it applies at once (status "applied") and revert_train_change({ id: proposal_id }) undoes it.'
 
-const Reason = z.string().trim().min(1).max(300).describe('Why, in one short sentence (e.g. "You asked to rename it")')
+const Reason = z
+  .string()
+  .trim()
+  .min(1)
+  .max(300)
+  .describe('Why, in one short sentence (e.g. "You asked to rename it")')
 
 /** What one Train change did (shared TrainChangeResult, the training module's trainChange), described for the model. */
 const TrainChangeOutput = TrainChangeResult.extend({
   proposal_id: TrainChangeResult.shape.proposal_id.describe(
     "The change's record: the card waiting for a tap, or (applied) the id revert_train_change takes",
   ),
-  applied: TrainChangeResult.shape.applied.describe('What it wrote (status applied; null while proposed): a new template\'s id is applied.id'),
+  applied: TrainChangeResult.shape.applied.describe(
+    "What it wrote (status applied; null while proposed): a new template's id is applied.id",
+  ),
 })
 
 /** list_templates shows at most this many (newest first); `more` counts the rest. */
@@ -158,7 +165,9 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     area: 'training',
     description:
       'Search the exercise library: the allowed exercise set only (what the equipment profile and exclusions permit; the only exercises any workout may use). Filter by primary muscle (17 keys: abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower back, middle back, neck, quadriceps, shoulders, traps, triceps), equipment, category, level or name words. Returns compact entries; use get_exercise for instructions and media. Read-only.',
-    input: ExerciseQuery.omit({ scope: true }).extend({ limit: z.number().int().min(1).max(200).default(40) }),
+    input: ExerciseQuery.omit({ scope: true }).extend({
+      limit: z.number().int().min(1).max(200).default(40),
+    }),
     output: z.object({ exercises: z.array(ExerciseBrief), total: Count }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     // The allowed set only (scope is not an input): the AI only ever sees the allowed list (SPEC §7).
@@ -231,7 +240,10 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       const rejected: Array<{ equipment: string; error: string; message: string }> = []
       for (const { equipment, status } of items) {
         try {
-          changes.push({ equipment, ...(await trainChange(deps, { change: { op: 'equipment_status', equipment, status }, reason })) })
+          changes.push({
+            equipment,
+            ...(await trainChange(deps, { change: { op: 'equipment_status', equipment, status }, reason })),
+          })
         } catch (e) {
           // A refused item (422, 404) doesn't undo the others: each is its own change with its own card.
           if (!(e instanceof HttpError) || e.status >= 500) throw e
@@ -251,11 +263,14 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       BEHIND_A_TAP,
     input: z.object({
       exercise_id: HideChange.shape.exercise_id.describe('The exercise to hide (list_exercises)'),
-      reason: HideChange.shape.reason.describe('Why, in a few words (shown in the library as why it is hidden)'),
+      reason: HideChange.shape.reason.describe(
+        'Why, in a few words (shown in the library as why it is hidden)',
+      ),
     }),
     output: TrainChangeOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    run: (deps, { exercise_id, reason }) => trainChange(deps, { change: { op: 'exercise_hide', exercise_id, reason }, reason }),
+    run: (deps, { exercise_id, reason }) =>
+      trainChange(deps, { change: { op: 'exercise_hide', exercise_id, reason }, reason }),
   }),
   defineTool({
     name: 'list_templates',
@@ -268,11 +283,16 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       "start_session take (get_training_week names each split day's template). To change sets, reps, rest or order, " +
       'send update_template the whole new list in this shape (target_load_kg and note null when not listed). Read-only.',
     input: z.object({}),
-    output: z.object({ templates: z.array(TemplateBrief), more: Count.describe('Older templates not listed') }),
+    output: z.object({
+      templates: z.array(TemplateBrief),
+      more: Count.describe('Older templates not listed'),
+    }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     run: async (deps) => {
       const [all, library] = await Promise.all([listTemplates(deps), loadLibrary(deps)])
-      const newest = [...all].sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
+      const newest = [...all].sort(
+        (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+      )
       const templates = newest.slice(0, TEMPLATES_SHOWN)
       return {
         more: newest.length - templates.length,
@@ -308,7 +328,8 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     input: z.object({ ...createFields, reason: Reason }),
     output: TrainChangeOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    run: (deps, { reason, ...fields }) => trainChange(deps, { change: { op: 'template_create', ...fields }, reason }),
+    run: (deps, { reason, ...fields }) =>
+      trainChange(deps, { change: { op: 'template_create', ...fields }, reason }),
   }),
   defineTool({
     name: 'update_template',
@@ -330,7 +351,8 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       }),
     output: TrainChangeOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    run: (deps, { reason, ...fields }) => trainChange(deps, { change: { op: 'template_update', ...fields }, reason }),
+    run: (deps, { reason, ...fields }) =>
+      trainChange(deps, { change: { op: 'template_update', ...fields }, reason }),
   }),
   defineTool({
     name: 'delete_template',
@@ -340,12 +362,15 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'Delete a saved template (id from list_templates or get_training_week). Past sessions stay, unlinked from it; a ' +
       `split day left without a template gets a fresh draft. ${BEHIND_A_TAP}`,
     input: z.object({
-      template_id: DeleteChange.shape.template_id.describe('The template (list_templates or get_training_week)'),
+      template_id: DeleteChange.shape.template_id.describe(
+        'The template (list_templates or get_training_week)',
+      ),
       reason: Reason,
     }),
     output: TrainChangeOutput,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-    run: (deps, { template_id, reason }) => trainChange(deps, { change: { op: 'template_delete', template_id }, reason }),
+    run: (deps, { template_id, reason }) =>
+      trainChange(deps, { change: { op: 'template_delete', template_id }, reason }),
   }),
   defineTool({
     name: 'swap_template_exercise',
@@ -360,9 +385,13 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'once only when auto-apply of safe changes is on in Settings, otherwise it waits as a proposal for a tap. ' +
       '`status` says which (applied, proposed or rejected with the rule).',
     input: z.object({
-      template_id: Id.describe('The template id (list_templates, a get_week_plan session\'s template_id, or get_review_bundle templates)'),
+      template_id: Id.describe(
+        "The template id (list_templates, a get_week_plan session's template_id, or get_review_bundle templates)",
+      ),
       from_exercise_id: Id.describe('The exercise in the template to replace'),
-      to_exercise_id: Id.describe('The allowed exercise to put in its place (same primary muscle, same kind of lift)'),
+      to_exercise_id: Id.describe(
+        'The allowed exercise to put in its place (same primary muscle, same kind of lift)',
+      ),
     }),
     output: safeChangeOutput(Template),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
@@ -423,15 +452,19 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
       'tap, from Claude at once: `training_days.status`), then drafts every day of the split over them in the ' +
       'background, one AI workout draft per day, so that together they cover every body group (2 days in a row: Upper ' +
       'A, Lower A; 3 days: Upper A, Lower A, Full body). Each draft arrives as a card within a minute or two; keeping ' +
-      'one saves it as that day\'s template (replacing the template of that name). `only` redrafts just those days ' +
+      "one saves it as that day's template (replacing the template of that name). `only` redrafts just those days " +
       '(slot names). A day already being drafted is in `skipped`. Fails with no_model_key when no AI model key is set ' +
       '(Settings → AI).',
     input: z.object({
       training_days: PlanWeekRequest.shape.training_days.describe(
         'The training days to plan, e.g. ["mon","tue","thu"]; leave out to keep the current days',
       ),
-      only: PlanWeekRequest.shape.only.describe('Slot names to redraft, e.g. ["Full body"]; leave out for every day'),
-      reason: Reason.optional().describe('Why the days change, in one short sentence (shown on the days card)'),
+      only: PlanWeekRequest.shape.only.describe(
+        'Slot names to redraft, e.g. ["Full body"]; leave out for every day',
+      ),
+      reason: Reason.optional().describe(
+        'Why the days change, in one short sentence (shown on the days card)',
+      ),
     }),
     output: PlanWeekResult,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
@@ -506,7 +539,11 @@ export const TRAINING_TOOLS: readonly ToolDefinition[] = [
     run: (deps, i) => {
       // Starting from a proposal accepts it, and accepting proposals is Aaron's (his tap), never Ask AI's.
       if (i.proposal_id && deps.actor === 'ai')
-        throw new HttpError(403, 'needs_approval', 'Starting from a draft accepts it: the user starts it from its card in the app')
+        throw new HttpError(
+          403,
+          'needs_approval',
+          'Starting from a draft accepts it: the user starts it from its card in the app',
+        )
       const origin = i.proposal_id
         ? 'ai'
         : i.template_id

@@ -36,10 +36,14 @@ const SCOPE = 'fitness'
 const DAY = 86_400
 
 /** Where Claude (web, desktop, mobile) sends the code back. */
-const CLAUDE_CALLBACKS = new Set(['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback'])
+const CLAUDE_CALLBACKS = new Set([
+  'https://claude.ai/api/mcp/auth_callback',
+  'https://claude.com/api/mcp/auth_callback',
+])
 
 /** Claude Code (and other native clients, RFC 8252 §7.3) listen on a loopback port: http, any port, any path. */
-const isLoopback = (url: URL) => url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
+const isLoopback = (url: URL) =>
+  url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
 
 /** True when `uri` is one of Claude's callbacks or a loopback URL. */
 function isAllowedRedirect(uri: unknown): boolean {
@@ -137,7 +141,10 @@ function build(origin: string): OAuthServers {
       }
       return valid
     },
-    handler: { fetch: (request, _env, ctx: OAuthResourceContext<McpProps>) => (ctx as unknown as McpContext).serve(request) },
+    handler: {
+      fetch: (request, _env, ctx: OAuthResourceContext<McpProps>) =>
+        (ctx as unknown as McpContext).serve(request),
+    },
   })
   return { authorization, resource: resourceServer }
 }
@@ -178,7 +185,11 @@ export function mountMcp(app: App, serve: McpServe): void {
   // The MCP endpoint: the resource server checks the token (401 + challenge without one), then serves the request.
   app.all('/mcp', (c) => {
     const deps = mcpDeps(c)
-    return serversFor(c.req.url).resource.fetch(c.req.raw, c.env, contextFor(deps, (request) => serve(request, deps)))
+    return serversFor(c.req.url).resource.fetch(
+      c.req.raw,
+      c.env,
+      contextFor(deps, (request) => serve(request, deps)),
+    )
   })
 
   // Consent (Cloudflare Access already verified Aaron). GET shows the page; POST approves or denies.
@@ -224,9 +235,11 @@ async function consentStep(step: () => Promise<Response>): Promise<Response> {
   try {
     return await step()
   } catch (err) {
-    if (err instanceof AuthorizationError && err.redirectTo) return new Response(null, { status: 302, headers: { Location: err.redirectTo } })
+    if (err instanceof AuthorizationError && err.redirectTo)
+      return new Response(null, { status: 302, headers: { Location: err.redirectTo } })
     if (err instanceof AuthorizationError) return errorPage(err.description)
-    if (err instanceof CimdFetchError) return errorPage('This app could not be verified (its client metadata could not be fetched).')
+    if (err instanceof CimdFetchError)
+      return errorPage('This app could not be verified (its client metadata could not be fetched).')
     throw err
   }
 }

@@ -12,7 +12,8 @@ const QUEUEABLE_TIMEOUT_MS = 10_000
 /** A photo (≤ 1,024 px, a few hundred KB) gets longer on a slow connection before it falls back to the queue. */
 const QUEUEABLE_BINARY_TIMEOUT_MS = 30_000
 
-const timeoutFor = (body: unknown) => (isBinaryBody(body) ? QUEUEABLE_BINARY_TIMEOUT_MS : QUEUEABLE_TIMEOUT_MS)
+const timeoutFor = (body: unknown) =>
+  isBinaryBody(body) ? QUEUEABLE_BINARY_TIMEOUT_MS : QUEUEABLE_TIMEOUT_MS
 
 export type WriteOutcome<E extends Endpoint> =
   /** The Worker stored it; `data` is its validated response. */
@@ -20,13 +21,20 @@ export type WriteOutcome<E extends Endpoint> =
   /** Stored on this device; it replays in order when the Worker is reachable. Show it as pending. */
   | { status: 'queued'; pending: PendingWrite<BodyOf<E>> }
 
-export async function write<E extends Endpoint>(endpoint: E, input: EndpointInput<E>): Promise<WriteOutcome<E>> {
+export async function write<E extends Endpoint>(
+  endpoint: E,
+  input: EndpointInput<E>,
+): Promise<WriteOutcome<E>> {
   const request = toWireRequest(endpoint, input)
-  if (endpoint.offline !== 'queue') return { status: 'saved', data: parseResponse(endpoint, request, await exchange(request)) }
+  if (endpoint.offline !== 'queue')
+    return { status: 'saved', data: parseResponse(endpoint, request, await exchange(request)) }
 
   const enqueue = async (): Promise<WriteOutcome<E>> => {
     // IndexedDB keeps a Blob as a file on disk, not inline with the queue row.
-    const body = request.body instanceof ArrayBuffer ? new Blob([request.body], { type: 'application/octet-stream' }) : request.body
+    const body =
+      request.body instanceof ArrayBuffer
+        ? new Blob([request.body], { type: 'application/octet-stream' })
+        : request.body
     const pending = await queueWrite({ method: request.method, path: request.path, body })
     return { status: 'queued', pending: pending as PendingWrite<BodyOf<E>> }
   }
@@ -52,7 +60,12 @@ export const sendQueuedWrite: QueueSender = async (pending) => {
     if (!isApiError(error)) return { kind: 'retry', error: String(error) }
     if (error.kind === 'auth-expired') return { kind: 'auth-expired' }
     // A transient HTTP answer carries its status, so the queue can tell a failing Worker (5xx) from no network.
-    if (error.transient) return { kind: 'retry', error: error.message, ...(error.status !== null ? { status: error.status } : {}) }
+    if (error.transient)
+      return {
+        kind: 'retry',
+        error: error.message,
+        ...(error.status !== null ? { status: error.status } : {}),
+      }
     return { kind: 'rejected', status: error.status ?? 0, error: error.message }
   }
 }

@@ -57,33 +57,29 @@ function meal(date: string, slot: 'lunch' | 'dinner', kcal: number, protein_g: n
   const id = crypto.randomUUID()
   return [
     db.insert(meals).values({ id, date, slot, input_method: 'manual', status: 'confirmed' }),
-    db
-      .insert(meal_items)
-      .values({
-        meal_id: id,
-        description: slot,
-        grams: 300,
-        kcal,
-        protein_g,
-        carbs_g: 50,
-        fat_g: 10,
-        fibre_g: 5,
-      }),
+    db.insert(meal_items).values({
+      meal_id: id,
+      description: slot,
+      grams: 300,
+      kcal,
+      protein_g,
+      carbs_g: 50,
+      fat_g: 10,
+      fibre_g: 5,
+    }),
   ] as const
 }
 
 beforeAll(async () => {
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-26',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-26',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -169,20 +165,33 @@ describe('tools layer', () => {
 
   it('set_reminder_time waits as a proposal from Ask AI (auto-apply off) until accepted; from Claude it applies', async () => {
     type Out = { status: string; proposal: { id: string } | null; applied: ReminderPrefs | null }
-    const asked = (await callTool({ ...deps, actor: 'ai' }, 'set_reminder_time', { kind: 'weigh_in', time: '07:15' })) as Out
+    const asked = (await callTool({ ...deps, actor: 'ai' }, 'set_reminder_time', {
+      kind: 'weigh_in',
+      time: '07:15',
+    })) as Out
     expect(asked).toMatchObject({ status: 'proposed', applied: null })
     expect((await getSettings(deps)).settings.reminders.weigh_in?.time).toBeNull()
 
-    expect(await acceptProposal({ ...deps, actor: 'user' }, asked.proposal!.id)).toMatchObject({ applied: { entity: 'settings' } })
+    expect(await acceptProposal({ ...deps, actor: 'user' }, asked.proposal!.id)).toMatchObject({
+      applied: { entity: 'settings' },
+    })
     expect((await getSettings(deps)).settings.reminders.weigh_in).toEqual({ enabled: true, time: '07:15' })
 
     const claude = (await callTool(deps, 'set_reminder_time', { kind: 'workout', time: '17:15' })) as Out
-    expect(claude).toMatchObject({ status: 'applied', proposal: null, applied: { workout: { enabled: true, time: '17:15' } } })
+    expect(claude).toMatchObject({
+      status: 'applied',
+      proposal: null,
+      applied: { workout: { enabled: true, time: '17:15' } },
+    })
   })
 
   it('schedule_scan moves the due date the reminder and the nightly note use', async () => {
     await callTool(deps, 'schedule_scan', { date: '2026-10-20' })
-    expect(await scanSchedule(deps)).toMatchObject({ scheduled: '2026-10-20', due: '2026-10-20', source: 'scheduled' })
+    expect(await scanSchedule(deps)).toMatchObject({
+      scheduled: '2026-10-20',
+      due: '2026-10-20',
+      source: 'scheduled',
+    })
     expect(await noteScanDue(deps, '2026-10-20')).toEqual({ due: '2026-10-20', noted: true })
     expect(await noteScanDue(deps, '2026-10-20')).toEqual({ due: '2026-10-20', noted: false })
   })
@@ -270,7 +279,9 @@ describe('tools layer', () => {
     })) as ApplyReviewResult
     expect((await listVersions(deps))[0]!.targets.defaults.protein_g).toBe(140)
 
-    const reverted = (await callTool(deps, 'revert_review', { review_id: applied.review_id })) as RevertReviewResult
+    const reverted = (await callTool(deps, 'revert_review', {
+      review_id: applied.review_id,
+    })) as RevertReviewResult
     expect(reverted.already_reverted ?? false).toBe(false)
     expect((await listVersions(deps))[0]!.targets.defaults.protein_g).toBe(130)
   })
@@ -285,13 +296,17 @@ describe('tools layer', () => {
     })) as ApplyReviewResult
     expect((await getReview(deps, '2026-W40')).narrative).toBe(before.narrative)
 
-    const reverted = (await callTool(deps, 'revert_review', { review_id: applied.review_id })) as RevertReviewResult
+    const reverted = (await callTool(deps, 'revert_review', {
+      review_id: applied.review_id,
+    })) as RevertReviewResult
     expect(reverted.undone).toEqual(['dashboard note removed'])
   })
 
   it('start_fast refuses a future start: future fasts go through plan_fast and its monthly cap', async () => {
     const at = '2026-10-07T01:00:00.000Z'
-    await expect(callTool({ ...deps, actor: 'ai' }, 'start_fast', { at })).rejects.toMatchObject({ status: 400 })
+    await expect(callTool({ ...deps, actor: 'ai' }, 'start_fast', { at })).rejects.toMatchObject({
+      status: 400,
+    })
     expect(await db.select().from(fast_logs).where(eq(fast_logs.started_at, at))).toEqual([])
   })
 
@@ -312,13 +327,21 @@ describe('tool input is read strictly', () => {
       message: expect.stringContaining('dat'),
     })
     // REST's `logged_at` is the tool's `at`: refused rather than logged now.
-    await expect(callTool(deps, 'log_water', { amount_ml: 250, logged_at: '2026-09-30T18:00:00Z' })).rejects.toMatchObject({
+    await expect(
+      callTool(deps, 'log_water', { amount_ml: 250, logged_at: '2026-09-30T18:00:00Z' }),
+    ).rejects.toMatchObject({
       code: 'invalid_tool_input',
     })
     // Nested: `week_day` must not turn a Saturday change into an every-day one.
     await expect(
-      callTool(deps, 'propose_plan_change', { changes: [{ field: 'kcal', to: 1450, week_day: 'sat' }], reason: 'Saturday' }),
-    ).rejects.toMatchObject({ code: 'invalid_tool_input', message: expect.stringContaining('changes[0].week_day') })
+      callTool(deps, 'propose_plan_change', {
+        changes: [{ field: 'kcal', to: 1450, week_day: 'sat' }],
+        reason: 'Saturday',
+      }),
+    ).rejects.toMatchObject({
+      code: 'invalid_tool_input',
+      message: expect.stringContaining('changes[0].week_day'),
+    })
     expect(await db.$count(weight_logs)).toBe(weighIns)
     // Union members keep their own fields (a review change of each kind), and an empty object stays valid.
     await expect(callTool(deps, 'get_plan', {})).resolves.toBeTruthy()
@@ -337,10 +360,12 @@ describe('tool input is read strictly', () => {
   }, 30_000)
 
   it('get_trend takes at most 400 days, like query_metric', async () => {
-    await expect(callTool(deps, 'get_trend', { from: '1900-01-01', to: '2100-01-01' })).rejects.toMatchObject({
-      code: 'invalid_tool_input',
-      message: expect.stringContaining('400 days'),
-    })
+    await expect(callTool(deps, 'get_trend', { from: '1900-01-01', to: '2100-01-01' })).rejects.toMatchObject(
+      {
+        code: 'invalid_tool_input',
+        message: expect.stringContaining('400 days'),
+      },
+    )
   })
 
   it('an instant that is not a date ("now") is a 400 invalid_tool_input, not a server error', async () => {

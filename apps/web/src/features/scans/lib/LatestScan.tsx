@@ -42,7 +42,13 @@ import {
 } from './series'
 
 /** The lean-loss guard of a scan against the one before it; the first scan is the baseline. */
-export function GuardChip({ change, size = 'medium' }: { change: ScanChange | null; size?: 'medium' | 'small' }) {
+export function GuardChip({
+  change,
+  size = 'medium',
+}: {
+  change: ScanChange | null
+  size?: 'medium' | 'small'
+}) {
   if (!change) return <StatusChip size={size} label="Baseline" />
   if (change.lean_loss === 'lean_loss') return <StatusChip size={size} tone="danger" label="Lean loss" />
   if (change.lean_loss === 'hydration') return <StatusChip size={size} tone="outline" label="Water shift" />
@@ -50,12 +56,30 @@ export function GuardChip({ change, size = 'medium' }: { change: ScanChange | nu
 }
 
 /** The change since the previous scan beside a value, in the kit's delta tone: green the good way, amber not. */
-function Delta({ value, precision, good, since }: { value: number | undefined; precision: number; good: 'up' | 'down'; since: string }) {
+function Delta({
+  value,
+  precision,
+  good,
+  since,
+}: {
+  value: number | undefined
+  precision: number
+  good: 'up' | 'down'
+  since: string
+}) {
   if (value === undefined) return null
   const flat = Math.abs(value) < 10 ** -precision / 2
   const colour = tokens.tone[deltaTone({ value, good }, precision)].text
   return (
-    <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, letterSpacing: 0, color: colour }}>
+    <Box
+      component="span"
+      sx={{
+        fontSize: tokens.font.size.caption,
+        fontWeight: tokens.font.weight.label,
+        letterSpacing: 0,
+        color: colour,
+      }}
+    >
       {flat ? formatNumber(0, precision) : formatSigned(value, precision)}
       <Box component="span" sx={visuallyHidden}>{` since ${since}`}</Box>
     </Box>
@@ -69,12 +93,19 @@ export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
   const r = scan.record
   const prev = scan.analysis?.vs_previous ?? null
   const since = prev ? formatShortDate(prev.date) : ''
-  const delta = (v: number | undefined, precision: number, good: 'up' | 'down') => prev && <Delta value={v} precision={precision} good={good} since={since} />
+  const delta = (v: number | undefined, precision: number, good: 'up' | 'down') =>
+    prev && <Delta value={v} precision={precision} good={good} since={since} />
   const outOfRange = r.body_fat_pct < BODY_FAT_RANGE.low || r.body_fat_pct > BODY_FAT_RANGE.high
   const guardAndLink = (
     <>
       <GuardChip change={prev} />
-      <Button variant="text" size="small" component={RouterLink} to={`/scans/${scan.id}`} sx={{ ml: 'auto', mr: -2 }}>
+      <Button
+        variant="text"
+        size="small"
+        component={RouterLink}
+        to={`/scans/${scan.id}`}
+        sx={{ ml: 'auto', mr: -2 }}
+      >
         Open scan
       </Button>
     </>
@@ -84,14 +115,24 @@ export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
       title={`Latest scan · ${scanDay(scan.date)}`}
       description={
         <>
-          {[prev ? `${prev.days} days after ${since}` : 'The baseline', formatClock(r.scanned_at), r.conditions.time_of_day, 'confirmed by you'].join(' · ')}
+          {[
+            prev ? `${prev.days} days after ${since}` : 'The baseline',
+            formatClock(r.scanned_at),
+            r.conditions.time_of_day,
+            'confirmed by you',
+          ].join(' · ')}
           {/* On a phone the chip and the link drop under the description, so the title keeps the card's width. */}
-          <Box component="span" sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 2, mt: 2 }}>
+          <Box
+            component="span"
+            sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center', gap: 2, mt: 2 }}
+          >
             {guardAndLink}
           </Box>
         </>
       }
-      actions={<Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>{guardAndLink}</Box>}
+      actions={
+        <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>{guardAndLink}</Box>
+      }
       padding="none"
     >
       <KeyStatGrid ruleAbove rule="hairline" columns={cells}>
@@ -136,10 +177,26 @@ export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
         />
       </KeyStatGrid>
       <KeyStatGrid ruleAbove rule="hairline" dense columns={cells}>
-        <KeyStat size={tokens.font.size.small} label="Visceral fat" value={`${formatNumber(r.visceral_fat_kg, 1)} kg · ${formatNumber(r.visceral_fat_area_cm2)} cm²`} />
-        <KeyStat size={tokens.font.size.small} label="Subcutaneous fat" value={`${formatNumber(r.subcutaneous_fat_kg, 1)} kg`} />
-        <KeyStat size={tokens.font.size.small} label="BMR · TEE" value={`${formatNumber(r.bmr_kcal)} · ${formatNumber(r.tee_kcal)} kcal`} />
-        <KeyStat size={tokens.font.size.small} label="Waist-to-hip · bio age" value={`${formatNumber(r.waist_hip_ratio, 2)} · ${formatNumber(r.bio_age)}`} />
+        <KeyStat
+          size={tokens.font.size.small}
+          label="Visceral fat"
+          value={`${formatNumber(r.visceral_fat_kg, 1)} kg · ${formatNumber(r.visceral_fat_area_cm2)} cm²`}
+        />
+        <KeyStat
+          size={tokens.font.size.small}
+          label="Subcutaneous fat"
+          value={`${formatNumber(r.subcutaneous_fat_kg, 1)} kg`}
+        />
+        <KeyStat
+          size={tokens.font.size.small}
+          label="BMR · TEE"
+          value={`${formatNumber(r.bmr_kcal)} · ${formatNumber(r.tee_kcal)} kcal`}
+        />
+        <KeyStat
+          size={tokens.font.size.small}
+          label="Waist-to-hip · bio age"
+          value={`${formatNumber(r.waist_hip_ratio, 2)} · ${formatNumber(r.bio_age)}`}
+        />
       </KeyStatGrid>
     </Panel>
   )
@@ -157,12 +214,21 @@ export function CompositionCard({ scans }: { scans: readonly ConfirmedScan[] }) 
           items={[
             { label: 'Fat', color: tokens.metric.fatMass },
             { label: 'Lean', color: tokens.metric.lean },
-            { label: `Fat at goal ${formatNumber(TARGETS.fatMassKg, 1)}`, color: tokens.metric.fatMass, mark: 'dashed' },
+            {
+              label: `Fat at goal ${formatNumber(TARGETS.fatMassKg, 1)}`,
+              color: tokens.metric.fatMass,
+              mark: 'dashed',
+            },
           ]}
         />
       }
     >
-      <BodyCompositionChart scans={compositionSeries(scans)} fatTarget={TARGETS.fatMassKg} height={240} legend={false} />
+      <BodyCompositionChart
+        scans={compositionSeries(scans)}
+        fatTarget={TARGETS.fatMassKg}
+        height={240}
+        legend={false}
+      />
     </Panel>
   )
 }
@@ -207,9 +273,21 @@ export function SegmentsCard({ scan }: { scan: ConfirmedScan }) {
                   {segmentKg(segments[s].fat_kg)}
                 </TableCell>
                 <TableCell align="right">
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      verticalAlign: 'top',
+                    }}
+                  >
                     <Box sx={{ width: 70, display: { xs: 'none', sm: 'block' } }}>
-                      <ProgressBar value={share} color={tokens.muscleMap.fatSteps[3]} label={`${SEGMENT_LABEL[s]} fat share`} />
+                      <ProgressBar
+                        value={share}
+                        color={tokens.muscleMap.fatSteps[3]}
+                        label={`${SEGMENT_LABEL[s]} fat share`}
+                      />
                     </Box>
                     {formatNumber(share * 100)} %
                   </Box>
@@ -226,8 +304,18 @@ export function SegmentsCard({ scan }: { scan: ConfirmedScan }) {
 function Well({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ ...wellSurface, p: '10px', minWidth: 0 }}>
-      <Box sx={{ fontSize: tokens.font.size.micro, lineHeight: tokens.font.leading.micro, color: tokens.ink.muted }}>{label}</Box>
-      <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, ...tabularNums }}>{value}</Box>
+      <Box
+        sx={{
+          fontSize: tokens.font.size.micro,
+          lineHeight: tokens.font.leading.micro,
+          color: tokens.ink.muted,
+        }}
+      >
+        {label}
+      </Box>
+      <Box sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, ...tabularNums }}>
+        {value}
+      </Box>
     </Box>
   )
 }
@@ -239,9 +327,19 @@ export function WaterCard({ scan }: { scan: ConfirmedScan }) {
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
         <Well label="Total body water" value={`${formatNumber(r.total_body_water_kg, 1)} kg`} />
         <Well label="ICF · ECF" value={`${formatNumber(r.icf_kg, 1)} · ${formatNumber(r.ecf_kg, 1)}`} />
-        <Well label="Protein · mineral" value={`${formatNumber(r.protein_kg, 1)} · ${formatNumber(r.mineral_kg, 1)} kg`} />
+        <Well
+          label="Protein · mineral"
+          value={`${formatNumber(r.protein_kg, 1)} · ${formatNumber(r.mineral_kg, 1)} kg`}
+        />
       </Box>
-      <Box sx={{ mt: '10px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.body, color: tokens.ink.muted }}>
+      <Box
+        sx={{
+          mt: '10px',
+          fontSize: tokens.font.size.caption,
+          lineHeight: tokens.font.leading.body,
+          color: tokens.ink.muted,
+        }}
+      >
         A lean-mass drop that comes with a matching water drop is flagged as hydration, not muscle.
       </Box>
     </Panel>

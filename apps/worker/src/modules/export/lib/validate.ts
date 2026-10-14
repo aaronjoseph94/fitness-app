@@ -7,7 +7,13 @@
 // with their shared Zod schemas; settings also need calorie_floor ≤ calorie_ceiling; profile and settings take exactly
 // one row. One bad row refuses the whole page (422 invalid_rows, naming the table, the row and the column), so nothing
 // half-valid is stored.
-import { DailyTargets, PlanVersion, Settings, type ExportRow, type ExportTable } from '@fitness/shared/schemas'
+import {
+  DailyTargets,
+  PlanVersion,
+  Settings,
+  type ExportRow,
+  type ExportTable,
+} from '@fitness/shared/schemas'
 import * as z from 'zod'
 import { HttpError } from '../../../lib/http-error'
 import type { ColumnRule, TableSpec } from './tables'
@@ -18,11 +24,29 @@ import type { ColumnRule, TableSpec } from './tables'
  */
 const SettingsRow = Settings.omit({ id: true, created_at: true, updated_at: true })
   .partial()
-  .required({ calorie_floor: true, calorie_ceiling: true, protein_min_g: true, fat_min_g: true, fasts_per_month: true, fast_hours: true })
-  .refine((s) => s.calorie_floor <= s.calorie_ceiling, { message: 'calorie_floor must not exceed calorie_ceiling', path: ['calorie_floor'] })
+  .required({
+    calorie_floor: true,
+    calorie_ceiling: true,
+    protein_min_g: true,
+    fat_min_g: true,
+    fasts_per_month: true,
+    fast_hours: true,
+  })
+  .refine((s) => s.calorie_floor <= s.calorie_ceiling, {
+    message: 'calorie_floor must not exceed calorie_ceiling',
+    path: ['calorie_floor'],
+  })
 
 /** A plan version's stored columns: the targets always, the rest when present. */
-const PlanVersionRow = PlanVersion.pick({ version: true, active: true, created_by: true, reason: true, diff: true, targets: true, forecast: true })
+const PlanVersionRow = PlanVersion.pick({
+  version: true,
+  active: true,
+  created_by: true,
+  reason: true,
+  diff: true,
+  targets: true,
+  forecast: true,
+})
   .partial()
   .required({ targets: true })
 
@@ -52,7 +76,8 @@ const shown = (cell: ExportRow[string]) => JSON.stringify(cell).slice(0, 40)
 
 /** Why `cell` can't be stored in a column with `rule`, or null when it can. A cell missing from the row is NULL. */
 function cellProblem(rule: ColumnRule, cell: ExportRow[string] | undefined): string | null {
-  if (cell === null || cell === undefined) return rule.nullable ? null : 'is empty, but the column is NOT NULL'
+  if (cell === null || cell === undefined)
+    return rule.nullable ? null : 'is empty, but the column is NOT NULL'
   switch (rule.kind) {
     case 'number':
       return typeof cell === 'number' ? null : `must be a number, not ${shown(cell)}`
@@ -68,7 +93,9 @@ function cellProblem(rule: ColumnRule, cell: ExportRow[string] | undefined): str
       }
     case 'text':
       if (typeof cell !== 'string') return `must be text, not ${shown(cell)}`
-      return rule.values && !rule.values.has(cell) ? `must be one of ${[...rule.values].join(', ')}, not ${shown(cell)}` : null
+      return rule.values && !rule.values.has(cell)
+        ? `must be one of ${[...rule.values].join(', ')}, not ${shown(cell)}`
+        : null
   }
 }
 
@@ -80,7 +107,11 @@ function checkCells(spec: TableSpec, columns: readonly string[], rows: readonly 
   const carried = new Set(columns)
   for (const [column, rule] of spec.rules) {
     if (rule.required && !carried.has(column))
-      throw new HttpError(422, 'invalid_rows', `${spec.name}: every row needs ${column}, and this page has none`)
+      throw new HttpError(
+        422,
+        'invalid_rows',
+        `${spec.name}: every row needs ${column}, and this page has none`,
+      )
   }
   const checks = columns.map((column) => [column, spec.rules.get(column)!] as const)
   for (const [index, row] of rows.entries()) {
@@ -115,7 +146,11 @@ function decode(spec: TableSpec, index: number, row: ExportRow): Record<string, 
  */
 export function validateRows(spec: TableSpec, columns: readonly string[], rows: readonly ExportRow[]): void {
   if (spec.singleRow && rows.length > 1)
-    throw new HttpError(422, 'invalid_rows', `${spec.name} holds exactly one row; this page has ${rows.length}`)
+    throw new HttpError(
+      422,
+      'invalid_rows',
+      `${spec.name} holds exactly one row; this page has ${rows.length}`,
+    )
   checkCells(spec, columns, rows)
   const schema = VALIDATORS[spec.name]
   if (!schema) return

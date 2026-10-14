@@ -103,7 +103,9 @@ export function CommandPalette() {
 
   // Arrow keys past the fold bring the highlighted row into view, the way a native menu behaves.
   useEffect(() => {
-    results.current?.querySelector<HTMLElement>(`[data-index="${index}"]`)?.scrollIntoView({ block: 'nearest' })
+    results.current
+      ?.querySelector<HTMLElement>(`[data-index="${index}"]`)
+      ?.scrollIntoView({ block: 'nearest' })
   }, [index, open, matches])
 
   return (
@@ -207,14 +209,26 @@ export function CommandPalette() {
               // colour goes on the root, where the theme's ListItemText override sets it.
               sx={{ '& .MuiListItemText-secondary': { color: tokens.ink.label } }}
               slotProps={{
-                primary: { sx: { fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, color: tokens.ink.text } },
+                primary: {
+                  sx: {
+                    fontSize: tokens.font.size.body,
+                    fontWeight: tokens.font.weight.label,
+                    color: tokens.ink.text,
+                  },
+                },
                 secondary: { sx: { fontSize: tokens.font.size.label } },
               }}
             />
           </ListItemButton>
         ))}
         {matches.length === 0 && (
-          <ListItemButton disabled role="option" aria-selected={false} data-index={0} sx={{ minHeight: tokens.tapTarget }}>
+          <ListItemButton
+            disabled
+            role="option"
+            aria-selected={false}
+            data-index={0}
+            sx={{ minHeight: tokens.tapTarget }}
+          >
             <ListItemText primary={`Nothing matches “${query.trim()}”.`} />
           </ListItemButton>
         )}

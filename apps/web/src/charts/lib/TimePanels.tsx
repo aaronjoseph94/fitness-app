@@ -65,7 +65,6 @@ export interface TimePanelsProps {
   tickEveryPoint?: boolean
 }
 
-
 /**
  * Every point's date as a tick, thinned by pixel distance (points can sit a day apart), the newest always kept:
  * x(t) = (t − d0) / (d1 − d0) × (plotWidth − y-axis width − side margins); going back from the newest, a tick stays

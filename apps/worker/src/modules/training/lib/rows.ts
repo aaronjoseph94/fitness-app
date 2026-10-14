@@ -14,7 +14,14 @@ import {
   type WorkoutSession,
 } from '@fitness/shared/schemas'
 import * as z from 'zod'
-import type { exercises, Row, session_sets, template_exercises, workout_sessions, workout_templates } from '../../../db'
+import type {
+  exercises,
+  Row,
+  session_sets,
+  template_exercises,
+  workout_sessions,
+  workout_templates,
+} from '../../../db'
 
 export type ExerciseRow = Row<typeof exercises>
 export type SetRow = Row<typeof session_sets>
@@ -25,7 +32,15 @@ export type TemplateExerciseRow = Row<typeof template_exercises>
 /** What the engine needs about an exercise (structurally ExerciseInfo minus `allowed`). */
 export type ExerciseTags = Pick<
   ExerciseRow,
-  'id' | 'slug' | 'name' | 'category' | 'equipment' | 'mechanic' | 'level' | 'primary_muscles' | 'secondary_muscles'
+  | 'id'
+  | 'slug'
+  | 'name'
+  | 'category'
+  | 'equipment'
+  | 'mechanic'
+  | 'level'
+  | 'primary_muscles'
+  | 'secondary_muscles'
 >
 
 /** YouTube search for "<name> form" (SPEC §7); same as @fitness/exercises videoSearchUrl (not imported: 1 MB JSON). */
@@ -95,13 +110,23 @@ const LegacyStartRecord = Readiness.extend({
 /** The start plan of a session row (recovery/deload null on old rows that lack them); null when none was stored. */
 export function startPlan(
   row: Pick<SessionRow, 'plan' | 'readiness'>,
-): { exercises: TemplateExerciseInput[]; recovery: SessionRecovery | null; deload: DeloadStatus | null } | null {
+): {
+  exercises: TemplateExerciseInput[]
+  recovery: SessionRecovery | null
+  deload: DeloadStatus | null
+} | null {
   if (row.plan !== null) {
     const parsed = StartPlan.safeParse(row.plan)
     return parsed.success ? parsed.data : null
   }
   const legacy = LegacyStartRecord.safeParse(row.readiness)
-  return legacy.success ? { exercises: legacy.data.plan, recovery: legacy.data.recovery ?? null, deload: legacy.data.deload ?? null } : null
+  return legacy.success
+    ? {
+        exercises: legacy.data.plan,
+        recovery: legacy.data.recovery ?? null,
+        deload: legacy.data.deload ?? null,
+      }
+    : null
 }
 
 /** The readiness score a session started with (extra keys on old rows stripped); null when none was stored. */
@@ -166,4 +191,3 @@ export const unique = <T>(xs: Iterable<T>): T[] => [...new Set(xs)]
 export { chunk } from '../../../db'
 
 export const round = (x: number, dp = 1) => Math.round(x * 10 ** dp) / 10 ** dp
-

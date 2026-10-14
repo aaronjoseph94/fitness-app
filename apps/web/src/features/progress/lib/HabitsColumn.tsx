@@ -11,9 +11,26 @@ import type { ReactNode } from 'react'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
 import { CaloriesChart, FastingStrip, frameHeight, MacrosChart } from '../../../charts'
-import { ChartCard, formatNumber, isQueryLoading, MiniBars, Panel, QueryStateCard, SectionHeader } from '../../../components'
+import {
+  ChartCard,
+  formatNumber,
+  isQueryLoading,
+  MiniBars,
+  Panel,
+  QueryStateCard,
+  SectionHeader,
+} from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
-import { caloriesDays, fastEntries, latestTargets, macrosDays, SLEEP_TARGET_H, sleepNights, stepsDays, waterDays } from './series'
+import {
+  caloriesDays,
+  fastEntries,
+  latestTargets,
+  macrosDays,
+  SLEEP_TARGET_H,
+  sleepNights,
+  stepsDays,
+  waterDays,
+} from './series'
 
 /** The small cards' mini bars: the range's last 12 days (2a's sparkline length). */
 const MINI_DAYS = 12
@@ -40,7 +57,9 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
         {header}
         <Box sx={{ display: 'grid', gap: 4 }}>
           <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />
-          {isQueryLoading(days) && <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />}
+          {isQueryLoading(days) && (
+            <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />
+          )}
         </Box>
       </Box>
     )
@@ -51,11 +70,20 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
   const entries = fasts.data ? fastEntries(fasts.data, Date.now(), fastHours) : []
   const stripTo = entries.reduce((latest, f) => (f.date > latest ? f.date : latest), to)
   const proteinTarget = targets?.protein_g
-  const water = waterDays(rows).slice(-MINI_DAYS).map((d) => d.ml ?? null)
-  const steps = stepsDays(rows).slice(-MINI_DAYS).map((d) => d.steps ?? null)
-  const sleep = sleepNights(rows).slice(-MINI_DAYS).map((n) => n.hours ?? null)
+  const water = waterDays(rows)
+    .slice(-MINI_DAYS)
+    .map((d) => d.ml ?? null)
+  const steps = stepsDays(rows)
+    .slice(-MINI_DAYS)
+    .map((d) => d.steps ?? null)
+  const sleep = sleepNights(rows)
+    .slice(-MINI_DAYS)
+    .map((n) => n.hours ?? null)
   const litres = (ml: number) => `${formatNumber(ml / 1000, ml % 1000 === 0 ? 0 : 1)} L`
-  const fastsLine = fastsPerMonth === null ? `${fastHours} h fasts` : `${COUNT_WORDS[fastsPerMonth] ?? fastsPerMonth} ${fastHours} h fasts a month`
+  const fastsLine =
+    fastsPerMonth === null
+      ? `${fastHours} h fasts`
+      : `${COUNT_WORDS[fastsPerMonth] ?? fastsPerMonth} ${fastHours} h fasts a month`
 
   return (
     <Box data-testid="progress-habits">
@@ -87,13 +115,23 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
         <ChartCard
           title="Macros"
           titleSize="card"
-          subtitle={proteinTarget ? `Grams per day, stacked · protein target ${formatNumber(proteinTarget)} g as the line` : 'Grams per day, stacked'}
+          subtitle={
+            proteinTarget
+              ? `Grams per day, stacked · protein target ${formatNumber(proteinTarget)} g as the line`
+              : 'Grams per day, stacked'
+          }
           empty={meals ? undefined : { title: 'No meals logged in this range' }}
         >
           <MacrosChart days={macrosDays(rows)} proteinTarget={proteinTarget} height={160} />
         </ChartCard>
 
-        <Box sx={{ display: 'grid', gap: 4, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' } }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 4,
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+          }}
+        >
           <MiniCard
             title="Water"
             metric="water"
@@ -125,7 +163,9 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
             values={sleep}
             target={SLEEP_TARGET_H}
             average={(v) => `avg ${formatNumber(v, 1)} h`}
-            onTarget={(hit, n, t) => `${hit} of ${n} ${n === 1 ? 'night' : 'nights'} at ${formatNumber(t, 1)} h`}
+            onTarget={(hit, n, t) =>
+              `${hit} of ${n} ${n === 1 ? 'night' : 'nights'} at ${formatNumber(t, 1)} h`
+            }
             empty="Last night’s sleep arrives from the Apple Watch Shortcut or the manual form."
           />
         </Box>
@@ -133,7 +173,11 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
         {!fasts.data ? (
           <QueryStateCard query={fasts} what="your fasts" height={90} titleSize="card" />
         ) : (
-          <ChartCard title="Fasting" titleSize="card" subtitle={`${fastsLine} · planned, done, partial, missed`}>
+          <ChartCard
+            title="Fasting"
+            titleSize="card"
+            subtitle={`${fastsLine} · planned, done, partial, missed`}
+          >
             <FastingStrip fasts={entries} from={from} to={stripTo} />
           </ChartCard>
         )}
@@ -166,12 +210,38 @@ function MiniCard({ title, metric, testId, values, target, average, onTarget, em
   const caption = target !== null && logged.length ? onTarget(hit, logged.length, target) : null
   return (
     <Panel padding="dense">
-      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', columnGap: 2, mb: '12px' }}>
-        <Box component="h3" sx={{ m: 0, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, fontWeight: tokens.font.weight.heading }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          columnGap: 2,
+          mb: '12px',
+        }}
+      >
+        <Box
+          component="h3"
+          sx={{
+            m: 0,
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            fontWeight: tokens.font.weight.heading,
+          }}
+        >
           {title}
         </Box>
         {mean !== null && (
-          <Box component="span" sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          <Box
+            component="span"
+            sx={{
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {average(mean)}
           </Box>
         )}
@@ -184,7 +254,14 @@ function MiniCard({ title, metric, testId, values, target, average, onTarget, em
         testId={testId}
         label={`${title}, last ${values.length} days${mean !== null ? `: ${average(mean)}` : ': nothing logged'}${caption ? `; ${caption}` : ''}`}
       />
-      <Box sx={{ mt: '8px', fontSize: tokens.font.size.micro, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
+      <Box
+        sx={{
+          mt: '8px',
+          fontSize: tokens.font.size.micro,
+          lineHeight: tokens.font.leading.caption,
+          color: tokens.ink.secondary,
+        }}
+      >
         {logged.length ? caption : empty}
       </Box>
     </Panel>

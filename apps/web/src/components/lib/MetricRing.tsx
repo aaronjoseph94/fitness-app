@@ -61,7 +61,9 @@ export function MetricRing({
   const centreFont = Math.max(12, Math.round(size * 0.19))
   const half = size / 2
   const ariaLabel = `${label}: ${formatNumber(value)} of ${formatNumber(target)}${unit ? ` ${unit}` : ''}`
-  const draw = reduced ? 'none' : `stroke-dasharray ${tokens.motion.duration.grow}ms ${enterEasing()} ${delay}ms`
+  const draw = reduced
+    ? 'none'
+    : `stroke-dasharray ${tokens.motion.duration.grow}ms ${enterEasing()} ${delay}ms`
 
   return (
     <Box
@@ -72,7 +74,13 @@ export function MetricRing({
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden focusable="false">
         <g transform={`rotate(-90 ${half} ${half})`} fill="none" strokeLinecap="round">
-          <circle cx={half} cy={half} r={r} stroke={trackColor ?? withAlpha(color, 0.16)} strokeWidth={stroke} />
+          <circle
+            cx={half}
+            cy={half}
+            r={r}
+            stroke={trackColor ?? withAlpha(color, 0.16)}
+            strokeWidth={stroke}
+          />
           {firstLap > 0 && (
             <circle
               cx={half}
@@ -87,8 +95,24 @@ export function MetricRing({
           {overLap > 0 && (
             <>
               {/* Surface ring separates the second lap from the first. */}
-              <circle cx={half} cy={half} r={r} stroke={tokens.ink.card} strokeWidth={stroke + 3} strokeDasharray={`${entered ? c * overLap : 0} ${c}`} style={{ transition: draw }} />
-              <circle cx={half} cy={half} r={r} stroke={color} strokeWidth={stroke} strokeDasharray={`${entered ? c * overLap : 0} ${c}`} style={{ transition: draw }} />
+              <circle
+                cx={half}
+                cy={half}
+                r={r}
+                stroke={tokens.ink.card}
+                strokeWidth={stroke + 3}
+                strokeDasharray={`${entered ? c * overLap : 0} ${c}`}
+                style={{ transition: draw }}
+              />
+              <circle
+                cx={half}
+                cy={half}
+                r={r}
+                stroke={color}
+                strokeWidth={stroke}
+                strokeDasharray={`${entered ? c * overLap : 0} ${c}`}
+                style={{ transition: draw }}
+              />
             </>
           )}
         </g>

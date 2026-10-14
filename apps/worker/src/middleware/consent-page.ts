@@ -77,5 +77,8 @@ export function errorPage(message: string): Response {
     'Connection not allowed',
     `<div class="card"><h1>This connection can't continue</h1><p>${escape(message)}</p><p>Start connecting again from the app.</p></div>`,
   )
-  return new Response(body, { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY' } })
+  return new Response(body, {
+    status: 400,
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY' },
+  })
 }

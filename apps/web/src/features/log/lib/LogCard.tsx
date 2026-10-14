@@ -18,7 +18,14 @@ interface LogCardProps {
   testId?: string
 }
 
-export function LogCard({ title, icon: Icon, iconColor = tokens.ink.secondary, meta, children, testId }: LogCardProps) {
+export function LogCard({
+  title,
+  icon: Icon,
+  iconColor = tokens.ink.secondary,
+  meta,
+  children,
+  testId,
+}: LogCardProps) {
   return (
     <Panel
       titleSize="card"
@@ -39,7 +46,17 @@ export function LogCard({ title, icon: Icon, iconColor = tokens.ink.secondary, m
 
 /** A rail card's 12 px meta line (right of its title). */
 export function CardMeta({ children }: { children: ReactNode }) {
-  return <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{children}</Box>
+  return (
+    <Box
+      sx={{
+        fontSize: tokens.font.size.caption,
+        color: tokens.ink.secondary,
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {children}
+    </Box>
+  )
 }
 
 /** Placeholder rows while a list loads; `height` per row (default 40). */

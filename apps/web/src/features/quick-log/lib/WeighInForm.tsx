@@ -10,7 +10,15 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { formatNumber, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
+import {
+  formatNumber,
+  NumberField,
+  outlinedIconButton,
+  parseNumber,
+  PendingBadge,
+  statValue,
+  tabularNums,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
 import { useLastWeight } from './reads'
@@ -21,7 +29,13 @@ import { problemText } from '../../../api'
 const MIN_KG = 30
 const MAX_KG = 300
 
-export function WeighInForm({ date: initialDate, onLogged }: { date: string; onLogged: (notice: LogNotice) => void }) {
+export function WeighInForm({
+  date: initialDate,
+  onLogged,
+}: {
+  date: string
+  onLogged: (notice: LogNotice) => void
+}) {
   const today = todayLocal()
   const [date, setDate] = useState(initialDate)
   const { last, onDate, isLoading } = useLastWeight(date)
@@ -52,7 +66,13 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
   const kg = parseNumber(text)
   const valid = kg !== null && kg >= MIN_KG && kg <= MAX_KG && date <= today
   const weightProblem =
-    text.trim() === '' ? null : kg === null ? 'Enter a number, e.g. 92.4' : kg < MIN_KG || kg > MAX_KG ? `Enter a weight between ${MIN_KG} and ${MAX_KG} kg` : null
+    text.trim() === ''
+      ? null
+      : kg === null
+        ? 'Enter a number, e.g. 92.4'
+        : kg < MIN_KG || kg > MAX_KG
+          ? `Enter a weight between ${MIN_KG} and ${MAX_KG} kg`
+          : null
   const showWeightProblem = touched && weightProblem !== null
   const dateProblem = date > today ? 'Pick today or an earlier day' : null
   const weightHelpId = useId()
@@ -69,7 +89,10 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
     const weight = Math.round(kg * 10) / 10
     save.mutate(
       { body: { id: crypto.randomUUID(), date, weight_kg: weight, note: note.trim() || undefined } },
-      { onSuccess: (outcome) => onLogged(noticeFor(outcome, `Weigh-in ${formatNumber(weight, 1)} kg on ${date}`)) },
+      {
+        onSuccess: (outcome) =>
+          onLogged(noticeFor(outcome, `Weigh-in ${formatNumber(weight, 1)} kg on ${date}`)),
+      },
     )
   }
 
@@ -113,12 +136,28 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
       </Box>
       {/* Under the whole row (not inside the field) so the ± buttons stay level with the number. */}
       {showWeightProblem && (
-        <FormHelperText id={weightHelpId} error sx={{ mt: -2, mx: 0, textAlign: 'center' }} data-testid="weigh-in-problem">
+        <FormHelperText
+          id={weightHelpId}
+          error
+          sx={{ mt: -2, mx: 0, textAlign: 'center' }}
+          data-testid="weigh-in-problem"
+        >
           {weightProblem}
         </FormHelperText>
       )}
 
-      <Box sx={{ minHeight: 20, fontSize: tokens.font.size.small, color: 'text.secondary', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', ...tabularNums }}>
+      <Box
+        sx={{
+          minHeight: 20,
+          fontSize: tokens.font.size.small,
+          color: 'text.secondary',
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          ...tabularNums,
+        }}
+      >
         {isLoading && !last ? (
           'Looking up your last weigh-in…'
         ) : onDate ? (
@@ -154,7 +193,12 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
         )}
       </Box>
       {noteOpen && (
-        <TextField label="Note" value={note} onChange={(e) => setNote(e.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />
+        <TextField
+          label="Note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          slotProps={{ htmlInput: { maxLength: 500 } }}
+        />
       )}
 
       {save.isError && (
@@ -162,8 +206,18 @@ export function WeighInForm({ date: initialDate, onLogged }: { date: string; onL
           {problemText(save.error)}
         </Box>
       )}
-      <Button type="submit" variant="contained" size="large" disabled={!valid || save.isPending} data-testid="weigh-in-save">
-        {save.isPending ? 'Saving…' : kg !== null && valid ? `Save ${formatNumber(kg, 1)} kg` : 'Save weigh-in'}
+      <Button
+        type="submit"
+        variant="contained"
+        size="large"
+        disabled={!valid || save.isPending}
+        data-testid="weigh-in-save"
+      >
+        {save.isPending
+          ? 'Saving…'
+          : kg !== null && valid
+            ? `Save ${formatNumber(kg, 1)} kg`
+            : 'Save weigh-in'}
       </Button>
     </Box>
   )

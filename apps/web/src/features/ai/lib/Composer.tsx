@@ -23,7 +23,8 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
   const dictation = useDictation((phrase) => onChange(appendPhrase(value, phrase)))
   const canSend = online && !sending && value.trim().length > 0
   const hint = !online ? 'Ask AI needs a connection; logging still works offline.' : dictation.error
-  const shown = dictation.listening && dictation.interim ? `${value}${value ? ' ' : ''}${dictation.interim}` : value
+  const shown =
+    dictation.listening && dictation.interim ? `${value}${value ? ' ' : ''}${dictation.interim}` : value
   return (
     <Box>
       <Box
@@ -38,7 +39,10 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
           border: `1px solid ${tokens.ink.border}`,
           borderRadius: `${tokens.radius.card}px`,
           boxShadow: tokens.elevation.card,
-          '&:focus-within': { borderColor: tokens.accent.main, boxShadow: `0 0 0 ${tokens.focusRing.inputRing}px ${tokens.accent.ring}` },
+          '&:focus-within': {
+            borderColor: tokens.accent.main,
+            boxShadow: `0 0 0 ${tokens.focusRing.inputRing}px ${tokens.accent.ring}`,
+          },
         }}
       >
         <InputBase
@@ -54,7 +58,9 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
               if (canSend) onSend()
             }
           }}
-          placeholder={dictation.listening ? 'Listening…' : 'Ask about your day, your plan, or tell me what you ate…'}
+          placeholder={
+            dictation.listening ? 'Listening…' : 'Ask about your day, your plan, or tell me what you ate…'
+          }
           inputProps={{ 'aria-label': 'Message', maxLength: 4000, enterKeyHint: 'send' }}
           autoFocus={autoFocus}
           sx={{
@@ -64,7 +70,11 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
             fontSize: tokens.font.size.body,
             lineHeight: tokens.font.leading.label,
             // The placeholder stays one line however narrow the thread: it ends in an ellipsis rather than wrapping.
-            '& textarea:placeholder-shown, & textarea::placeholder': { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+            '& textarea:placeholder-shown, & textarea::placeholder': {
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            },
           }}
         />
         {dictation.supported && (

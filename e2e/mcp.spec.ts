@@ -56,7 +56,10 @@ test('MCP: 401 without auth; with the bearer token it lists the tools and answer
   expect(today.content[0].text).toContain(todayLocal())
 
   // A misspelled argument is a tool error naming it, never a silent default (here: today's weigh-in replaced).
-  const typo = await rpc(request, 4, 'tools/call', { name: 'log_weight', arguments: { weight_kg: 94, dat: '2026-01-01' } })
+  const typo = await rpc(request, 4, 'tools/call', {
+    name: 'log_weight',
+    arguments: { weight_kg: 94, dat: '2026-01-01' },
+  })
   expect(typo.isError).toBe(true)
   expect(typo.content[0].text).toContain('Unknown argument: dat')
 })

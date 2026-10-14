@@ -21,7 +21,14 @@ export interface BeforeAfterProps {
 }
 
 /** One row. Render it inside a `BeforeAfterList` (it is a `<dt>`/`<dd>` pair). */
-export function BeforeAfter({ label, from, to, background = tokens.ink.panel, size = 'medium', testId }: BeforeAfterProps) {
+export function BeforeAfter({
+  label,
+  from,
+  to,
+  background = tokens.ink.panel,
+  size = 'medium',
+  testId,
+}: BeforeAfterProps) {
   const small = size === 'small'
   return (
     <Box
@@ -44,7 +51,16 @@ export function BeforeAfter({ label, from, to, background = tokens.ink.panel, si
       <Box component="dt" sx={{ color: tokens.ink.label, minWidth: 0 }}>
         {label}
       </Box>
-      <Box component="dd" sx={{ m: 0, ml: 'auto', color: tokens.ink.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+      <Box
+        component="dd"
+        sx={{
+          m: 0,
+          ml: 'auto',
+          color: tokens.ink.text,
+          fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
+        }}
+      >
         <Box component="s" sx={{ color: tokens.ink.muted }}>
           {from}
         </Box>
@@ -74,9 +90,20 @@ export interface BeforeAfterListProps {
 export function BeforeAfterList({ changes, background, size = 'medium', testId }: BeforeAfterListProps) {
   if (changes.length === 0) return null
   return (
-    <Box component="dl" data-testid={testId} sx={{ m: 0, display: 'grid', gap: size === 'small' ? '4px' : '6px' }}>
+    <Box
+      component="dl"
+      data-testid={testId}
+      sx={{ m: 0, display: 'grid', gap: size === 'small' ? '4px' : '6px' }}
+    >
       {changes.map((c) => (
-        <BeforeAfter key={c.label} label={c.label} from={c.from} to={c.to} background={background} size={size} />
+        <BeforeAfter
+          key={c.label}
+          label={c.label}
+          from={c.from}
+          to={c.to}
+          background={background}
+          size={size}
+        />
       ))}
     </Box>
   )

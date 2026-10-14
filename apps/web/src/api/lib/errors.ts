@@ -25,7 +25,14 @@ export class ApiError extends Error {
   /** 'POST /api/water' — which call failed. */
   readonly request: string
 
-  constructor(init: { kind: ApiErrorKind; request: string; message: string; status?: number; code?: string | null; detail?: unknown }) {
+  constructor(init: {
+    kind: ApiErrorKind
+    request: string
+    message: string
+    status?: number
+    code?: string | null
+    detail?: unknown
+  }) {
     super(init.message)
     this.kind = init.kind
     this.request = init.request
@@ -37,7 +44,11 @@ export class ApiError extends Error {
   /** Worth retrying later: the request may succeed unchanged (network, timeout, 408/425/429, 5xx). */
   get transient(): boolean {
     if (this.kind === 'network') return true
-    return this.kind === 'http' && this.status !== null && (this.status >= 500 || [408, 425, 429].includes(this.status))
+    return (
+      this.kind === 'http' &&
+      this.status !== null &&
+      (this.status >= 500 || [408, 425, 429].includes(this.status))
+    )
   }
 }
 
@@ -45,8 +56,17 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError
 }
 
-export function schemaError(kind: 'invalid-request' | 'invalid-response', request: string, error: z.ZodError): ApiError {
+export function schemaError(
+  kind: 'invalid-request' | 'invalid-response',
+  request: string,
+  error: z.ZodError,
+): ApiError {
   const first = error.issues[0]
   const where = first?.path.length ? ` at ${first.path.join('.')}` : ''
-  return new ApiError({ kind, request, message: `${first?.message ?? 'Invalid data'}${where}`, detail: error.issues })
+  return new ApiError({
+    kind,
+    request,
+    message: `${first?.message ?? 'Invalid data'}${where}`,
+    detail: error.issues,
+  })
 }

@@ -41,8 +41,13 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
   const avgProtein = s?.avgProteinG == null ? null : Math.round(s.avgProteinG)
   const logged = s?.loggedDays ?? null
   const trendLine =
-    s?.trendFromKg != null && s.trendToKg != null ? `${formatNumber(s.trendFromKg, 1)} → ${formatNumber(s.trendToKg, 1)} kg` : 'Trend at the start and end of the range'
-  const expected = forecast && forecast.weekly_rate_kg > 0 ? ` · expected ${formatSigned(-forecast.weekly_rate_kg, 2)} a week` : ''
+    s?.trendFromKg != null && s.trendToKg != null
+      ? `${formatNumber(s.trendFromKg, 1)} → ${formatNumber(s.trendToKg, 1)} kg`
+      : 'Trend at the start and end of the range'
+  const expected =
+    forecast && forecast.weekly_rate_kg > 0
+      ? ` · expected ${formatSigned(-forecast.weekly_rate_kg, 2)} a week`
+      : ''
 
   return (
     <Box
@@ -75,7 +80,12 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
             s === null
               ? null
               : avgKcal !== null && kcalTarget
-                ? { value: avgKcal - kcalTarget, unit: '', period: `vs ${formatNumber(kcalTarget)}`, good: 'neutral' }
+                ? {
+                    value: avgKcal - kcalTarget,
+                    unit: '',
+                    period: `vs ${formatNumber(kcalTarget)}`,
+                    good: 'neutral',
+                  }
                 : undefined
           }
           countUp
@@ -99,7 +109,12 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
             s === null
               ? null
               : avgProtein !== null && proteinTarget
-                ? { value: avgProtein - proteinTarget, unit: '', period: `vs ${formatNumber(proteinTarget)}`, good: 'up' }
+                ? {
+                    value: avgProtein - proteinTarget,
+                    unit: '',
+                    period: `vs ${formatNumber(proteinTarget)}`,
+                    good: 'up',
+                  }
                 : undefined
           }
           countUp
@@ -127,7 +142,11 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
           badge={
             s ? (
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline-flex' }, my: '-1px' }}>
-                <StatusChip tone={s.adherentDays === s.days ? 'success' : 'neutral'} shape="pill" label={`${s.adherentDays} of ${s.days} days`} />
+                <StatusChip
+                  tone={s.adherentDays === s.days ? 'success' : 'neutral'}
+                  shape="pill"
+                  label={`${s.adherentDays} of ${s.days} days`}
+                />
               </Box>
             ) : undefined
           }

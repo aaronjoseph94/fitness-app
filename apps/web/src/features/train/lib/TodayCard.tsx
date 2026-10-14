@@ -94,12 +94,27 @@ function plannedToday(
 }
 
 /** The muscle map panel on the card's right (below the content on a phone). */
-function MapPanel({ levels, title, caption }: { levels: ReturnType<typeof muscleLevels>; title: string; caption?: string }) {
+function MapPanel({
+  levels,
+  title,
+  caption,
+}: {
+  levels: ReturnType<typeof muscleLevels>
+  title: string
+  caption?: string
+}) {
   return (
     <>
       <MuscleMap levels={levels} size={200} title={title} />
       {caption && (
-        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted, textAlign: 'center' }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.muted,
+            textAlign: 'center',
+          }}
+        >
           {caption}
         </Box>
       )}
@@ -160,12 +175,18 @@ function Shell({
           {title}
         </Box>
         {body && (
-          <Box sx={{ mt: 1, fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}>
+          <Box
+            sx={{ mt: 1, fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}
+          >
             {body}
           </Box>
         )}
         {list}
-        {children && <Box sx={{ mt: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>{children}</Box>}
+        {children && (
+          <Box sx={{ mt: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            {children}
+          </Box>
+        )}
       </Box>
       {aside && (
         <Box
@@ -192,7 +213,13 @@ function Shell({
  * The planned exercises as a numbered list: one column on a phone, two from `sm` (filled down, then across, so the
  * reading order stays 1 … n), each row "name · sets × reps · kg" over a hairline.
  */
-function ExerciseList({ exercises, name }: { exercises: readonly TemplateExerciseInput[]; name: (id: string) => string }) {
+function ExerciseList({
+  exercises,
+  name,
+}: {
+  exercises: readonly TemplateExerciseInput[]
+  name: (id: string) => string
+}) {
   const rows = Math.ceil(exercises.length / 2)
   const hairline = `1px solid ${tokens.ink.hairline}`
   return (
@@ -233,12 +260,24 @@ function ExerciseList({ exercises, name }: { exercises: readonly TemplateExercis
             }}
           >
             <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              <Box component="span" aria-hidden sx={{ mr: 2, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
+              <Box
+                component="span"
+                aria-hidden
+                sx={{ mr: 2, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}
+              >
                 {i + 1}
               </Box>
               {name(e.exercise_id)}
             </Box>
-            <Box component="span" sx={{ flex: 'none', color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            <Box
+              component="span"
+              sx={{
+                flex: 'none',
+                color: tokens.ink.muted,
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {e.sets} × {reps}
               {e.target_load_kg !== null && ` · ${e.target_load_kg} kg`}
             </Box>
@@ -249,7 +288,15 @@ function ExerciseList({ exercises, name }: { exercises: readonly TemplateExercis
   )
 }
 
-export function TodayCard({ day, active, activeCounts, templates, splitTemplate, lastDone, onStart }: TodayCardProps) {
+export function TodayCard({
+  day,
+  active,
+  activeCounts,
+  templates,
+  splitTemplate,
+  lastDone,
+  onStart,
+}: TodayCardProps) {
   const navigate = useNavigate()
   const index = useExerciseIndex()
   const planned = plannedToday(day?.planned_session ?? null, splitTemplate, templates)
@@ -387,7 +434,12 @@ export function TodayCard({ day, active, activeCounts, templates, splitTemplate,
   const trainingDay = day?.targets?.training_planned ?? null
   return (
     <Shell
-      chip={<StatusChip tone={day?.fast.is_fast_day ? 'warning' : 'neutral'} label={day?.fast.is_fast_day ? 'Fast day' : 'Today'} />}
+      chip={
+        <StatusChip
+          tone={day?.fast.is_fast_day ? 'warning' : 'neutral'}
+          label={day?.fast.is_fast_day ? 'Fast day' : 'Today'}
+        />
+      }
       title={trainingDay === false ? 'Rest day' : 'Training day'}
       body={trainingDay === false ? 'Nothing planned.' : 'No week plan yet.'}
       testId="today-unplanned"

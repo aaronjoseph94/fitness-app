@@ -7,7 +7,9 @@ import type { LocalDate } from '@fitness/shared/schemas'
 export const HERO_DAYS = 56
 
 /** GET /api/trend for the hero chart: the HERO_DAYS days ending on `date`. */
-export const heroTrendInput = (date: LocalDate) => ({ query: { from: addDays(date, -(HERO_DAYS - 1)), to: date } })
+export const heroTrendInput = (date: LocalDate) => ({
+  query: { from: addDays(date, -(HERO_DAYS - 1)), to: date },
+})
 
 /** Settings change only from the Settings page (which marks them stale). */
 export const SETTINGS_STALE_MS = 5 * 60_000

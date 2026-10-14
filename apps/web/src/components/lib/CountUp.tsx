@@ -33,7 +33,15 @@ export function CountUp({ value, from = 0, precision = 0, delay = 0 }: CountUpPr
   useLayoutEffect(() => {
     const box = ref.current
     const node = box?.firstChild
-    if (played.current || !box || !node || node.nodeType !== Node.TEXT_NODE || prefersReducedMotion() || !Number.isFinite(from)) return
+    if (
+      played.current ||
+      !box ||
+      !node ||
+      node.nodeType !== Node.TEXT_NODE ||
+      prefersReducedMotion() ||
+      !Number.isFinite(from)
+    )
+      return
     played.current = true
     const final = text
     // Hold the final number's width while it counts, so a unit or pill beside it never reflows mid-count.

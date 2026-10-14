@@ -40,13 +40,21 @@ export function ReportToolbar({ week, prevWeek, nextWeek, author, started, onDra
   const [notice, setNotice] = useState<Notice>(null)
   const [savingPdf, setSavingPdf] = useState(false)
   const [jobId, setJobId] = useState<string | null>(null)
-  const job = useApiQuery(endpoints.ai.job, { params: { id: jobId ?? '' } }, { enabled: jobId !== null, refetchInterval: 1500, retry: false })
+  const job = useApiQuery(
+    endpoints.ai.job,
+    { params: { id: jobId ?? '' } },
+    { enabled: jobId !== null, refetchInterval: 1500, retry: false },
+  )
 
   useEffect(() => {
     const status = job.data?.status
     if (!jobId || (status !== 'done' && status !== 'failed')) return
     setJobId(null)
-    setNotice(status === 'done' ? { severity: 'success', text: 'Review drafted.' } : { severity: 'error', text: job.data?.error ?? 'The review job failed.' })
+    setNotice(
+      status === 'done'
+        ? { severity: 'success', text: 'Review drafted.' }
+        : { severity: 'error', text: job.data?.error ?? 'The review job failed.' },
+    )
     onDrafted()
   }, [job.data, jobId, onDrafted])
 
@@ -79,32 +87,85 @@ export function ReportToolbar({ week, prevWeek, nextWeek, author, started, onDra
   return (
     <Box className="no-print" sx={{ mb: 6, display: 'grid', gap: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Button component={RouterLink} to="/progress" color="inherit" size="small" startIcon={<ArrowBackRounded />} sx={{ ml: -2, mr: 'auto', color: tokens.ink.label }}>
+        <Button
+          component={RouterLink}
+          to="/progress"
+          color="inherit"
+          size="small"
+          startIcon={<ArrowBackRounded />}
+          sx={{ ml: -2, mr: 'auto', color: tokens.ink.label }}
+        >
           Progress
         </Button>
         <Box
           role="group"
           aria-label="Week"
-          sx={{ display: 'inline-flex', alignItems: 'center', gap: '2px', p: '2px', border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.control}px` }}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '2px',
+            p: '2px',
+            border: `1px solid ${tokens.ink.border}`,
+            borderRadius: `${tokens.radius.control}px`,
+          }}
         >
-          <IconButton component={RouterLink} to={`/reports/week/${prevWeek}`} size="small" aria-label={`Previous week ${prevWeek}`} data-testid="report-prev">
+          <IconButton
+            component={RouterLink}
+            to={`/reports/week/${prevWeek}`}
+            size="small"
+            aria-label={`Previous week ${prevWeek}`}
+            data-testid="report-prev"
+          >
             <ChevronLeftRounded fontSize="small" />
           </IconButton>
-          <Box sx={{ px: 2, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, ...tabularNums, color: tokens.ink.text }}>{week}</Box>
-          <IconButton component={RouterLink} to={`/reports/week/${nextWeek}`} size="small" aria-label={`Next week ${nextWeek}`} data-testid="report-next">
+          <Box
+            sx={{
+              px: 2,
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.label,
+              ...tabularNums,
+              color: tokens.ink.text,
+            }}
+          >
+            {week}
+          </Box>
+          <IconButton
+            component={RouterLink}
+            to={`/reports/week/${nextWeek}`}
+            size="small"
+            aria-label={`Next week ${nextWeek}`}
+            data-testid="report-next"
+          >
             <ChevronRightRounded fontSize="small" />
           </IconButton>
         </Box>
       </Box>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Button variant="contained" startIcon={<PrintRounded />} onClick={() => window.print()} data-testid="report-print">
+        <Button
+          variant="contained"
+          startIcon={<PrintRounded />}
+          onClick={() => window.print()}
+          data-testid="report-print"
+        >
           Print
         </Button>
-        <Button variant="outlined" startIcon={<PictureAsPdfRounded />} onClick={savePdf} disabled={savingPdf || author === null} data-testid="report-save-pdf">
+        <Button
+          variant="outlined"
+          startIcon={<PictureAsPdfRounded />}
+          onClick={savePdf}
+          disabled={savingPdf || author === null}
+          data-testid="report-save-pdf"
+        >
           {savingPdf ? 'Saving…' : 'Save PDF'}
         </Button>
         {author !== 'claude_mcp' && started && (
-          <Button variant="text" startIcon={<RefreshRounded />} onClick={draft} disabled={jobId !== null} data-testid="report-draft">
+          <Button
+            variant="text"
+            startIcon={<RefreshRounded />}
+            onClick={draft}
+            disabled={jobId !== null}
+            data-testid="report-draft"
+          >
             {author === null ? 'Draft review' : 'Redraft'}
           </Button>
         )}

@@ -59,7 +59,12 @@ describe('ScanRecord', () => {
   })
 
   test('refuses lean mass above the weight (a typo: 120 kg lean on 91.1 kg), on the lean field', () => {
-    const result = ScanRecord.safeParse({ ...seedRecord, weight_kg: 91.1, lean_body_mass_kg: 120, body_fat_mass_kg: 33.2 })
+    const result = ScanRecord.safeParse({
+      ...seedRecord,
+      weight_kg: 91.1,
+      lean_body_mass_kg: 120,
+      body_fat_mass_kg: 33.2,
+    })
 
     expect(result.success).toBe(false)
     expect(result.error?.issues.map((i) => i.path.join('.'))).toContain('lean_body_mass_kg')
@@ -78,6 +83,8 @@ describe('ScanRecord', () => {
     expect(off.error?.issues.map((i) => i.path.join('.'))).toContain('weight_kg')
 
     // A sheet read in lb converts each value on its own (95.12 = 59.58 + 35.5 + rounding).
-    expect(ScanRecord.safeParse({ ...seedRecord, weight_kg: 95.12, lean_body_mass_kg: 59.58 }).success).toBe(true)
+    expect(ScanRecord.safeParse({ ...seedRecord, weight_kg: 95.12, lean_body_mass_kg: 59.58 }).success).toBe(
+      true,
+    )
   })
 })

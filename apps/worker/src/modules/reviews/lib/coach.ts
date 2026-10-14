@@ -21,11 +21,19 @@ export interface CoachReviewInput {
 
 export async function recordCoachReview(deps: Deps, input: CoachReviewInput): Promise<WeeklyReview> {
   const { week_start } = input
-  const [existing, metrics] = await Promise.all([findReviewRow(deps, week_start), buildWeeklyMetrics(deps, week_start)])
+  const [existing, metrics] = await Promise.all([
+    findReviewRow(deps, week_start),
+    buildWeeklyMetrics(deps, week_start),
+  ])
   const ownIds = new Set((input.proposals ?? []).flatMap((p) => (p.event_id ? [p.event_id] : [])))
-  const draftPending = existing?.author === 'gemini' ? storedProposals(existing).flatMap((p) => (p.event_id && !ownIds.has(p.event_id) ? [p.event_id] : [])) : []
+  const draftPending =
+    existing?.author === 'gemini'
+      ? storedProposals(existing).flatMap((p) => (p.event_id && !ownIds.has(p.event_id) ? [p.event_id] : []))
+      : []
   const statuses = draftPending.length ? await proposalStatuses(deps, draftPending) : new Map()
-  const withdraw = draftPending.filter((id) => statuses.get(id) === 'pending').map((id) => proposalDecisionUpdate(deps, id, { status: 'rejected' }))
+  const withdraw = draftPending
+    .filter((id) => statuses.get(id) === 'pending')
+    .map((id) => proposalDecisionUpdate(deps, id, { status: 'rejected' }))
 
   const now = deps.now().toISOString()
   const id = existing?.id ?? crypto.randomUUID()

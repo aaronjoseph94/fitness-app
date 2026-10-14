@@ -40,26 +40,47 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
   }
 
   return (
-    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="edit-setting-title">
-      <DialogTitle id="edit-setting-title">{confirming ? `Change the ${field.label.toLowerCase()}?` : field.label}</DialogTitle>
+    <Dialog
+      open
+      onClose={saving ? undefined : onClose}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="edit-setting-title"
+    >
+      <DialogTitle id="edit-setting-title">
+        {confirming ? `Change the ${field.label.toLowerCase()}?` : field.label}
+      </DialogTitle>
       <DialogContent>
         {confirming && value !== null ? (
           <Box data-testid="rail-confirm" sx={{ display: 'grid', gap: 3 }}>
-            <Box sx={{ fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}>
-              <Box component="span" sx={{ color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}>
+            <Box
+              sx={{
+                fontSize: tokens.font.size.cardTitle,
+                fontWeight: tokens.font.weight.heading,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              <Box
+                component="span"
+                sx={{ color: tokens.ink.secondary, fontWeight: tokens.font.weight.label }}
+              >
                 {formatValue(field, current)}
               </Box>
               {' → '}
               {formatValue(field, value)}
             </Box>
             <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.55, color: tokens.ink.text }}>
-              This is a rail you set with your doctor and dietitian. Change it only if they agree. The AI and the Coach
-              work inside it and can never change it.
+              This is a rail you set with your doctor and dietitian. Change it only if they agree. The AI and
+              the Coach work inside it and can never change it.
             </Box>
           </Box>
         ) : (
           <Box sx={{ display: 'grid', gap: 2, pt: 1 }}>
-            {help && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>{help}</Box>}
+            {help && (
+              <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5 }}>
+                {help}
+              </Box>
+            )}
             <TextField
               label={field.label}
               value={text}
@@ -73,7 +94,9 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
               helperText={touched && problem ? problem : `Now ${formatValue(field, current)}`}
               slotProps={{
                 htmlInput: { inputMode: 'numeric', pattern: '[0-9]*', 'data-testid': `edit-${field.key}` },
-                input: field.unit ? { endAdornment: <InputAdornment position="end">{field.unit}</InputAdornment> } : undefined,
+                input: field.unit
+                  ? { endAdornment: <InputAdornment position="end">{field.unit}</InputAdornment> }
+                  : undefined,
               }}
             />
           </Box>
@@ -94,7 +117,12 @@ export function EditDialog({ field, settings, saving, error, onSave, onClose }: 
             Cancel
           </Button>
         )}
-        <Button variant="contained" onClick={next} disabled={saving || unchanged || (touched && problem !== null)} data-testid="edit-save">
+        <Button
+          variant="contained"
+          onClick={next}
+          disabled={saving || unchanged || (touched && problem !== null)}
+          data-testid="edit-save"
+        >
           {saving ? 'Saving…' : confirming ? 'Change rail' : field.rail ? 'Continue' : 'Save'}
         </Button>
       </DialogActions>

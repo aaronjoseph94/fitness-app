@@ -39,7 +39,14 @@ describe('swapExercise', () => {
     expect(c).toMatchObject({ default_load_kg: null, last: null, suggestion: null })
     expect(c.sets.map((s) => s.set_index)).toEqual([1, 2])
     for (const s of c.sets) {
-      expect(s).toMatchObject({ reps: null, load_kg: null, rpe: null, done: false, created: false, sent: null })
+      expect(s).toMatchObject({
+        reps: null,
+        load_kg: null,
+        rpe: null,
+        done: false,
+        created: false,
+        sent: null,
+      })
       expect(open).not.toContain(s.id)
     }
   })

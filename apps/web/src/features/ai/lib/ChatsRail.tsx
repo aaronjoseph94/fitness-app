@@ -13,7 +13,8 @@ import { useThreads } from './useChat'
 import { chatWhen } from './when'
 
 /** The first `n` characters of a chat's opening words, with an ellipsis when cut. */
-export const shorten = (text: string, n: number) => (text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text)
+export const shorten = (text: string, n: number) =>
+  text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text
 
 const noteSx = { px: '10px', py: '9px', fontSize: tokens.font.size.caption, color: tokens.ink.muted } as const
 
@@ -24,17 +25,54 @@ export function ChatsRail() {
     <Box
       component="nav"
       aria-labelledby="ask-ai-chats-title"
-      sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, bgcolor: tokens.ink.panel, borderRight: `1px solid ${tokens.ink.border}` }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        bgcolor: tokens.ink.panel,
+        borderRight: `1px solid ${tokens.ink.border}`,
+      }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', px: '14px', pt: '14px', pb: '10px' }}>
-        <Box component="h2" id="ask-ai-chats-title" sx={{ m: 0, flex: 1, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+        <Box
+          component="h2"
+          id="ask-ai-chats-title"
+          sx={{
+            m: 0,
+            flex: 1,
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.heading,
+            color: tokens.ink.text,
+          }}
+        >
           Chats
         </Box>
-        <Button variant="outlined" size="tiny" startIcon={<AddRounded />} onClick={startNew} aria-label="New chat">
+        <Button
+          variant="outlined"
+          size="tiny"
+          startIcon={<AddRounded />}
+          onClick={startNew}
+          aria-label="New chat"
+        >
           New
         </Button>
       </Box>
-      <Box component="ul" sx={{ m: 0, px: '8px', py: 0, listStyle: 'none', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'start', gap: '2px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <Box
+        component="ul"
+        sx={{
+          m: 0,
+          px: '8px',
+          py: 0,
+          listStyle: 'none',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          alignContent: 'start',
+          gap: '2px',
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+        }}
+      >
         {threads.isPending &&
           [0, 1, 2].map((i) => (
             <Box component="li" key={i} sx={{ px: '10px', py: '9px' }}>
@@ -78,7 +116,10 @@ export function ChatsRail() {
                   boxShadow: active ? `inset 0 0 0 1px ${tokens.ink.border}` : 'none',
                   color: tokens.ink.text,
                   // On the `ink.fill` background the time line steps up to `ink.label` (`ink.muted` there is 4.39:1, under AA).
-                  '&:hover, &[aria-current]': { bgcolor: tokens.ink.fill, '& .chat-when': { color: tokens.ink.label } },
+                  '&:hover, &[aria-current]': {
+                    bgcolor: tokens.ink.fill,
+                    '& .chat-when': { color: tokens.ink.label },
+                  },
                   // Inset, like the kit's flush rows: the scrolling list would clip a ring drawn outside the row.
                   '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width },
                 }}
@@ -97,7 +138,16 @@ export function ChatsRail() {
                 >
                   {shorten(m.content, 80)}
                 </Box>
-                <Box component="span" className="chat-when" sx={{ display: 'block', fontSize: tokens.font.size.caption, lineHeight: 'normal', color: tokens.ink.muted }}>
+                <Box
+                  component="span"
+                  className="chat-when"
+                  sx={{
+                    display: 'block',
+                    fontSize: tokens.font.size.caption,
+                    lineHeight: 'normal',
+                    color: tokens.ink.muted,
+                  }}
+                >
                   {chatWhen(m.created_at)}
                 </Box>
               </ButtonBase>

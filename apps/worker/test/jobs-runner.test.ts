@@ -10,15 +10,33 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ai_jobs, createDb } from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { enqueue, registerJobHandler, registerSweepStep, runJob, sweep, type JobContext } from '../src/modules/jobs'
+import {
+  enqueue,
+  registerJobHandler,
+  registerSweepStep,
+  runJob,
+  sweep,
+  type JobContext,
+} from '../src/modules/jobs'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
 const NOW = '2026-10-05T15:00:00.000Z' // Mon 09:00 MDT
-const at = (now = NOW): Deps => ({ db, env, now: () => new Date(now), actor: 'ai', waitUntil: (p) => void pending.push(p.catch(() => undefined)) })
+const at = (now = NOW): Deps => ({
+  db,
+  env,
+  now: () => new Date(now),
+  actor: 'ai',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+})
 const job = async (id: string) => (await db.select().from(ai_jobs).where(eq(ai_jobs.id, id)))[0]!
 
-const FORECAST: Forecast = { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 }
+const FORECAST: Forecast = {
+  finish_date: '2027-06-17',
+  weekly_rate_kg: 1.046,
+  band: { low: 0.837, high: 1.256 },
+  tdee_est: 2551,
+}
 
 function deferred<T>() {
   let resolve!: (v: T) => void
@@ -124,7 +142,13 @@ describe('the 25 s deadline', () => {
 
     expect(await runJob(at(), row.id)).toEqual({ id: row.id, status: 'done' })
     expect(vi.getTimerCount()).toBe(0)
-    expect(await job(row.id)).toMatchObject({ status: 'done', attempts: 1, result: FORECAST, error: null, lease_until: null })
+    expect(await job(row.id)).toMatchObject({
+      status: 'done',
+      attempts: 1,
+      result: FORECAST,
+      error: null,
+      lease_until: null,
+    })
   })
 })
 
@@ -147,7 +171,12 @@ describe('leases', () => {
 
     const ids = rows.map((r) => r.id).sort()
     expect(calls.map((c) => c.id).sort()).toEqual(ids)
-    expect([...a.ran, ...b.ran].filter((o) => o.status === 'done').map((o) => o.id).sort()).toEqual(ids)
+    expect(
+      [...a.ran, ...b.ran]
+        .filter((o) => o.status === 'done')
+        .map((o) => o.id)
+        .sort(),
+    ).toEqual(ids)
   })
 
   it('a job not yet due is not leased', async () => {
@@ -184,11 +213,19 @@ describe('leases', () => {
 
     first.resolve(FORECAST)
     await a
-    expect(await job(row.id)).toMatchObject({ status: 'running', attempts: 2, lease_until: '2026-10-05T15:01:01.000Z' })
+    expect(await job(row.id)).toMatchObject({
+      status: 'running',
+      attempts: 2,
+      lease_until: '2026-10-05T15:01:01.000Z',
+    })
 
     second.reject(new Error('boom'))
     expect(await b).toMatchObject({ status: 'queued', error: 'boom' })
-    expect(await job(row.id)).toMatchObject({ status: 'queued', attempts: 2, run_after: '2026-10-05T15:02:31.000Z' })
+    expect(await job(row.id)).toMatchObject({
+      status: 'queued',
+      attempts: 2,
+      run_after: '2026-10-05T15:02:31.000Z',
+    })
   })
 })
 
@@ -223,12 +260,18 @@ describe('the sweep', () => {
       { id: rest[0]!.id, status: 'done' },
       { id: rest[1]!.id, status: 'done' },
     ])
-    expect(await job(poison.id)).toMatchObject({ status: 'queued', attempts: 1, run_after: '2026-10-05T15:01:00.000Z' })
+    expect(await job(poison.id)).toMatchObject({
+      status: 'queued',
+      attempts: 1,
+      run_after: '2026-10-05T15:01:00.000Z',
+    })
     expect((await sweep(at('2026-10-05T15:00:30.000Z'))).ran).toEqual([]) // not due again yet
   })
 
   it('jobs of a type without a handler take none of the sweep’s slots', async () => {
-    const orphans = Array.from({ length: 5 }, () => queued({ type: 'ask_ai', run_after: '2026-10-05T14:00:00.000Z' }))
+    const orphans = Array.from({ length: 5 }, () =>
+      queued({ type: 'ask_ai', run_after: '2026-10-05T14:00:00.000Z' }),
+    )
     const mine = queued()
     await db.insert(ai_jobs).values([...orphans, mine])
 
@@ -253,7 +296,11 @@ describe('the sweep', () => {
     await db.insert(ai_jobs).values(parent)
     const child = crypto.randomUUID()
     behaviour = async (j) => {
-      if (j.id === parent.id) await enqueue({ ...at(), actor: 'ai' }, { id: child, type: 'plan_reforecast', payload: { date: '2026-10-04' } })
+      if (j.id === parent.id)
+        await enqueue(
+          { ...at(), actor: 'ai' },
+          { id: child, type: 'plan_reforecast', payload: { date: '2026-10-04' } },
+        )
       return FORECAST
     }
 

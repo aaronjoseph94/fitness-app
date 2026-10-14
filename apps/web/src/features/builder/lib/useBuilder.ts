@@ -2,7 +2,12 @@
 // drag and drop) — loaded once from a template being edited or duplicated, with dirty tracking and validation (the
 // rails a template must keep, which the Worker also enforces: the allowed exercise set and 12–28 sets).
 import { SESSION_SETS } from '@fitness/shared/engine'
-import type { ExerciseSummary, Template, TemplateExerciseInput, TemplateOrigin } from '@fitness/shared/schemas'
+import type {
+  ExerciseSummary,
+  Template,
+  TemplateExerciseInput,
+  TemplateOrigin,
+} from '@fitness/shared/schemas'
 import { useCallback, useState } from 'react'
 import type { BuilderItem } from './ExerciseCard'
 
@@ -30,7 +35,12 @@ function keyed(list: readonly TemplateExerciseInput[]): BuilderItem[] {
 
 /** The template's fields as the builder edits them; a duplicate gets " copy" and keeps the origin. */
 export function fromTemplate(t: Template, duplicate: boolean): BuilderState {
-  return { name: duplicate ? `${t.name} copy`.slice(0, 100) : t.name, notes: t.notes ?? '', origin: t.origin, items: keyed(t.exercises) }
+  return {
+    name: duplicate ? `${t.name} copy`.slice(0, 100) : t.name,
+    notes: t.notes ?? '',
+    origin: t.origin,
+    items: keyed(t.exercises),
+  }
 }
 
 /** The exercise list as the API takes it (no keys, empty notes as null). */
@@ -39,7 +49,10 @@ export function toExercises(items: readonly BuilderItem[]): TemplateExerciseInpu
 }
 
 /** What stops a save, in words; `byId` (the cached library) finds exercises outside the allowed set. */
-export function problems(s: BuilderState, byId?: ReadonlyMap<string, Pick<ExerciseSummary, 'name' | 'allowed'>>): string[] {
+export function problems(
+  s: BuilderState,
+  byId?: ReadonlyMap<string, Pick<ExerciseSummary, 'name' | 'allowed'>>,
+): string[] {
   const out: string[] = []
   if (!s.name.trim()) out.push('Give the template a name.')
   if (s.items.length === 0) out.push('Add at least one exercise.')
@@ -49,7 +62,10 @@ export function problems(s: BuilderState, byId?: ReadonlyMap<string, Pick<Exerci
     const x = byId?.get(i.exercise_id)
     return x && !x.allowed ? [x.name] : []
   })
-  if (hidden.length) out.push(`${hidden.join(', ')} ${hidden.length > 1 ? 'are' : 'is'} outside your allowed exercises: swap or remove ${hidden.length > 1 ? 'them' : 'it'}.`)
+  if (hidden.length)
+    out.push(
+      `${hidden.join(', ')} ${hidden.length > 1 ? 'are' : 'is'} outside your allowed exercises: swap or remove ${hidden.length > 1 ? 'them' : 'it'}.`,
+    )
   const sets = s.items.reduce((n, i) => n + i.sets, 0)
   if (s.items.length && (sets < SESSION_SETS.min || sets > SESSION_SETS.max))
     out.push(`A session has ${SESSION_SETS.min}–${SESSION_SETS.max} sets; this template has ${sets}.`)

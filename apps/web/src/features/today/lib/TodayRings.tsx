@@ -16,7 +16,15 @@ import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import type { DayView } from '@fitness/shared/schemas'
 import { useEffect, useState, type ReactNode } from 'react'
-import { formatClock, formatNumber, PendingBadge, Reveal, StatCard, StatusChip, staggerDelay } from '../../../components'
+import {
+  formatClock,
+  formatNumber,
+  PendingBadge,
+  Reveal,
+  StatCard,
+  StatusChip,
+  staggerDelay,
+} from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
 import type { PendingToday } from './pending'
 
@@ -32,12 +40,19 @@ const GRID = {
   display: 'grid',
   // A slightly tighter gap on a phone buys each half-width card the few pixels a four-digit number needs.
   gap: { xs: 2, sm: 4 },
-  gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(6, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))' },
+  gridTemplateColumns: {
+    xs: 'repeat(2, minmax(0, 1fr))',
+    sm: 'repeat(6, minmax(0, 1fr))',
+    lg: 'repeat(5, minmax(0, 1fr))',
+  },
 } as const
 
 /** Card `i`'s place in GRID: the fifth spans a phone's row; from `sm` the first three take two of the six tracks and
  * the last two take three. */
-const cellSx = (i: number) => ({ minWidth: 0, gridColumn: { xs: i === 4 ? 'span 2' : 'auto', sm: `span ${i < 3 ? 2 : 3}`, lg: 'auto' } })
+const cellSx = (i: number) => ({
+  minWidth: 0,
+  gridColumn: { xs: i === 4 ? 'span 2' : 'auto', sm: `span ${i < 3 ? 2 : 3}`, lg: 'auto' },
+})
 
 /** 2a's stagger: the row starts after the title and the cards follow 60 ms apart. */
 const cardDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.card, 100)
@@ -70,14 +85,17 @@ interface Stat {
 /** "Water: 1,750 of 3,000 ml" with a target, "Steps: — steps" without one. */
 function sentence(label: string, value: number | null, target: number, unit: string, precision = 0): string {
   const amount = formatNumber(value, precision)
-  return value !== null && target > 0 ? `${label}: ${amount} of ${formatNumber(target, precision)} ${unit}` : `${label}: ${amount} ${unit}`
+  return value !== null && target > 0
+    ? `${label}: ${amount} of ${formatNumber(target, precision)} ${unit}`
+    : `${label}: ${amount} ${unit}`
 }
 
 /** Litres for a card: "1.75", and "3.0" for a round amount. */
 const litrePrecision = (ml: number) => (ml % 100 === 0 ? 1 : 2)
 const litres = (ml: number) => formatNumber(ml / 1000, litrePrecision(ml))
 
-const toGo = (left: number, unit: string) => (left > 0 ? <strong>{`${formatNumber(left)}${unit} to go`}</strong> : <strong>Target met</strong>)
+const toGo = (left: number, unit: string) =>
+  left > 0 ? <strong>{`${formatNumber(left)}${unit} to go`}</strong> : <strong>Target met</strong>
 
 /** The five cards for a day, with queued logs added in. Pure. */
 export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: number): Stat[] {
@@ -98,7 +116,8 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
   const sleepMin = day.sleep?.asleep_min ?? pending.sleepMin
   const sleepH = sleepMin === null ? null : sleepMin / 60
   const bed = day.sleep?.asleep_min != null && day.sleep.in_bed_at && day.sleep.woke_at ? day.sleep : null
-  const ratio = (value: number | null, target: number) => (value !== null && target > 0 ? value / target : null)
+  const ratio = (value: number | null, target: number) =>
+    value !== null && target > 0 ? value / target : null
 
   return [
     {
@@ -114,7 +133,8 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
       footnote:
         kcalTarget > 0 ? (
           <>
-            <strong>{left >= 0 ? `${formatNumber(left)} left` : `${formatNumber(-left)} over`}</strong> · {meals} {meals === 1 ? 'meal' : 'meals'} logged
+            <strong>{left >= 0 ? `${formatNumber(left)} left` : `${formatNumber(-left)} over`}</strong> ·{' '}
+            {meals} {meals === 1 ? 'meal' : 'meals'} logged
           </>
         ) : (
           noTarget
@@ -142,7 +162,12 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
       unit: `/ ${litres(waterTarget)} L`,
       progress: ratio(waterMl, waterTarget),
       name: sentence('Water', waterMl, waterTarget, 'ml'),
-      footnote: waterTarget - waterMl > 0 ? <strong>{`${litres(waterTarget - waterMl)} L to go`}</strong> : <strong>Target met</strong>,
+      footnote:
+        waterTarget - waterMl > 0 ? (
+          <strong>{`${litres(waterTarget - waterMl)} L to go`}</strong>
+        ) : (
+          <strong>Target met</strong>
+        ),
     },
     {
       id: 'steps',
@@ -167,7 +192,13 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
       progress: ratio(sleepH, SLEEP_TARGET_H),
       name: sentence('Sleep', sleepH, SLEEP_TARGET_H, 'h', 1),
       footnote:
-        sleepH === null ? 'Not logged' : bed ? <strong>{`${formatClock(bed.in_bed_at!)} – ${formatClock(bed.woke_at!)}`}</strong> : 'Last night',
+        sleepH === null ? (
+          'Not logged'
+        ) : bed ? (
+          <strong>{`${formatClock(bed.in_bed_at!)} – ${formatClock(bed.woke_at!)}`}</strong>
+        ) : (
+          'Last night'
+        ),
     },
   ]
 }
@@ -206,7 +237,8 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
   const now = useMinuteClock()
   if (loading || !day) return <RingsSkeleton />
 
-  const missingHealth = (day.steps ?? pending.steps) === null || (day.sleep?.asleep_min ?? pending.sleepMin) === null
+  const missingHealth =
+    (day.steps ?? pending.steps) === null || (day.sleep?.asleep_min ?? pending.sleepMin) === null
   const fast = fastLabel(day, pending, now)
   return (
     <Box data-testid="today-rings">
@@ -214,7 +246,12 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
         {statsFor(day, pending, waterTargetMl).map((s, i) => (
           <Reveal key={s.id} delay={cardDelay(i)} sx={cellSx(i)}>
             {/* `group`, not `img`: the card has readable content inside it (the number, the caption, the bar). */}
-            <Box role="group" aria-label={s.name} data-testid={`today-metric-${s.id}`} sx={{ height: '100%', minWidth: 0 }}>
+            <Box
+              role="group"
+              aria-label={s.name}
+              data-testid={`today-metric-${s.id}`}
+              sx={{ height: '100%', minWidth: 0 }}
+            >
               <StatCard
                 label={s.label}
                 icon={s.icon}
@@ -242,7 +279,13 @@ export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }
             </Box>
           )}
           {missingHealth && (
-            <Button variant="outlined" size="small" onClick={onAddHealth} sx={{ ml: 'auto' }} data-testid="add-health">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onAddHealth}
+              sx={{ ml: 'auto' }}
+              data-testid="add-health"
+            >
               Add steps or sleep
             </Button>
           )}

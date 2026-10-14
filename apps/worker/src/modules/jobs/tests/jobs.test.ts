@@ -11,7 +11,13 @@ import { JobFailed, MAX_ATTEMPTS, MAX_REQUEUES, registerJobHandler, runJob, swee
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
 const NOW = '2026-10-05T15:00:00.000Z'
-const at = (now = NOW): Deps => ({ db, env, now: () => new Date(now), actor: 'ai', waitUntil: (p) => void pending.push(p.catch(() => undefined)) })
+const at = (now = NOW): Deps => ({
+  db,
+  env,
+  now: () => new Date(now),
+  actor: 'ai',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+})
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
@@ -30,20 +36,39 @@ describe('runJob', () => {
   it('requeues an ordinary error after 1 min, then 2 min, and fails it at the 3rd attempt', async () => {
     failWith = new Error('boom')
     const id = crypto.randomUUID()
-    await db.insert(ai_jobs).values({ id, type: 'plan_reforecast', status: 'queued', payload: { date: '2026-10-04' }, run_after: NOW })
+    await db
+      .insert(ai_jobs)
+      .values({
+        id,
+        type: 'plan_reforecast',
+        status: 'queued',
+        payload: { date: '2026-10-04' },
+        run_after: NOW,
+      })
 
     expect(await runJob(at(), id)).toMatchObject({ status: 'queued', error: 'boom' })
     expect(await job(id)).toMatchObject({ attempts: 1, run_after: '2026-10-05T15:01:00.000Z' })
     expect(await runJob(at('2026-10-05T15:01:00.000Z'), id)).toMatchObject({ status: 'queued' })
     expect(await job(id)).toMatchObject({ attempts: 2, run_after: '2026-10-05T15:03:00.000Z' })
-    expect(await runJob(at('2026-10-05T15:03:00.000Z'), id)).toMatchObject({ status: 'failed', error: 'boom' })
+    expect(await runJob(at('2026-10-05T15:03:00.000Z'), id)).toMatchObject({
+      status: 'failed',
+      error: 'boom',
+    })
     expect(await job(id)).toMatchObject({ attempts: MAX_ATTEMPTS, status: 'failed' })
   })
 
   it('fails a JobFailed at once', async () => {
     failWith = new JobFailed('nothing to work on')
     const id = crypto.randomUUID()
-    await db.insert(ai_jobs).values({ id, type: 'plan_reforecast', status: 'queued', payload: { date: '2026-10-04' }, run_after: NOW })
+    await db
+      .insert(ai_jobs)
+      .values({
+        id,
+        type: 'plan_reforecast',
+        status: 'queued',
+        payload: { date: '2026-10-04' },
+        run_after: NOW,
+      })
 
     expect(await runJob(at(), id)).toMatchObject({ status: 'failed', error: 'nothing to work on' })
     expect(await job(id)).toMatchObject({ attempts: 1, status: 'failed' })
@@ -68,7 +93,12 @@ describe('sweep: expired leases', () => {
 
     await sweep(at(), { max: 0 })
 
-    expect(await job(row.id)).toMatchObject({ status: 'failed', attempts: MAX_REQUEUES, error: 'lease_expired_max_attempts', lease_until: null })
+    expect(await job(row.id)).toMatchObject({
+      status: 'failed',
+      attempts: MAX_REQUEUES,
+      error: 'lease_expired_max_attempts',
+      lease_until: null,
+    })
   })
 
   it('requeues a job whose lease expired with attempts left', async () => {

@@ -376,11 +376,7 @@ export function ChartFrame({ testId, label, legend, unit, width, empty, height, 
           )}
         </Box>
       )}
-      {empty ? (
-        <Box sx={{ ...plotSlot, height }}>No data yet</Box>
-      ) : (
-        children
-      )}
+      {empty ? <Box sx={{ ...plotSlot, height }}>No data yet</Box> : children}
     </Box>
   )
 }

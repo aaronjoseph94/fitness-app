@@ -125,23 +125,46 @@ export function RestoreCard({ online }: { online: boolean }) {
     >
       <Stack spacing={4}>
         <Alert severity="warning" data-testid="restore-warning">
-          Restore is for a <b>fresh instance</b>: a new deployment that holds only the seed. It writes every row and file from the export into this app,
-          replacing rows with the same id, and deletes nothing else. It refuses an app that already has logs unless you tick “merge over existing data”.
+          Restore is for a <b>fresh instance</b>: a new deployment that holds only the seed. It writes every
+          row and file from the export into this app, replacing rows with the same id, and deletes nothing
+          else. It refuses an app that already has logs unless you tick “merge over existing data”.
         </Alert>
 
-        <input ref={input} type="file" accept=".zip,application/zip" hidden onChange={(e) => void pick(e)} data-testid="restore-file" />
+        <input
+          ref={input}
+          type="file"
+          accept=".zip,application/zip"
+          hidden
+          onChange={(e) => void pick(e)}
+          data-testid="restore-file"
+        />
 
         {state.kind === 'reading' && <Help>Reading {state.name}…</Help>}
         {pickError && <Alert severity="error">{pickError}</Alert>}
 
         {files && (
           <Box data-testid="restore-preview">
-            <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.body, overflowWrap: 'anywhere' }}>
+            <Box
+              sx={{
+                fontSize: tokens.font.size.body,
+                fontWeight: tokens.font.weight.heading,
+                lineHeight: tokens.font.leading.body,
+                overflowWrap: 'anywhere',
+              }}
+            >
               {files.fileName}
             </Box>
-            <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, ...tabularNums }}>
-              Exported {localStamp(files.exportedAt)} · {formatNumber(files.totalRows)} rows · {formatNumber(files.files.length)} files ·{' '}
-              {formatBytes(files.zip.byteLength)}
+            <Box
+              sx={{
+                mt: '2px',
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: tokens.ink.secondary,
+                ...tabularNums,
+              }}
+            >
+              Exported {localStamp(files.exportedAt)} · {formatNumber(files.totalRows)} rows ·{' '}
+              {formatNumber(files.files.length)} files · {formatBytes(files.zip.byteLength)}
               {files.missingFiles > 0 && ` · ${files.missingFiles} listed files are not in the zip`}
             </Box>
             <Box
@@ -173,8 +196,19 @@ export function RestoreCard({ online }: { online: boolean }) {
                     borderBottom: `1px solid ${tokens.ink.border}`,
                   }}
                 >
-                  <Box sx={{ color: tokens.ink.secondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label(t.table)}</Box>
-                  <Box sx={{ ...tabularNums, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>{formatNumber(t.rows)}</Box>
+                  <Box
+                    sx={{
+                      color: tokens.ink.secondary,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {label(t.table)}
+                  </Box>
+                  <Box sx={{ ...tabularNums, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>
+                    {formatNumber(t.rows)}
+                  </Box>
                 </Box>
               ))}
             </Box>
@@ -187,9 +221,21 @@ export function RestoreCard({ online }: { online: boolean }) {
               m: 0,
               alignItems: 'flex-start',
               gap: 1,
-              '& .MuiFormControlLabel-label': { pt: '9px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body },
+              '& .MuiFormControlLabel-label': {
+                pt: '9px',
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: tokens.ink.body,
+              },
             }}
-            control={<Checkbox checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} data-testid="restore-overwrite" sx={{ ml: '-9px' }} />}
+            control={
+              <Checkbox
+                checked={overwrite}
+                onChange={(e) => setOverwrite(e.target.checked)}
+                data-testid="restore-overwrite"
+                sx={{ ml: '-9px' }}
+              />
+            }
             label="Merge over existing data. Only if this app already has logs and you mean to write the export over them."
           />
         )}
@@ -212,15 +258,23 @@ export function RestoreCard({ online }: { online: boolean }) {
 
         {state.kind === 'done' && (
           <Alert severity="success" data-testid="restore-done">
-            Restored {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)} files. Every screen now shows the restored
-            data.
+            Restored {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)}{' '}
+            files. Every screen now shows the restored data.
           </Alert>
         )}
 
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' }}>
           {state.kind === 'preview' && (
-            <Button variant="contained" color="warning" startIcon={<RestoreRounded />} disabled={!online} onClick={() => start(state.opened)} data-testid="restore-start">
-              Restore {formatNumber(state.opened.totalRows)} rows and {formatNumber(state.opened.files.length)} files
+            <Button
+              variant="contained"
+              color="warning"
+              startIcon={<RestoreRounded />}
+              disabled={!online}
+              onClick={() => start(state.opened)}
+              data-testid="restore-start"
+            >
+              Restore {formatNumber(state.opened.totalRows)} rows and{' '}
+              {formatNumber(state.opened.files.length)} files
             </Button>
           )}
           {state.kind === 'failed' && !state.notFresh && (
@@ -240,7 +294,9 @@ export function RestoreCard({ online }: { online: boolean }) {
           ) : (
             <Button
               variant="outlined"
-              startIcon={state.kind === 'idle' || state.kind === 'reading' ? <UploadFileRounded /> : undefined}
+              startIcon={
+                state.kind === 'idle' || state.kind === 'reading' ? <UploadFileRounded /> : undefined
+              }
               disabled={state.kind === 'reading'}
               onClick={() => input.current?.click()}
               data-testid="restore-pick"

@@ -1,7 +1,15 @@
 // Owns: assembling one DayView — the date's targets and v_day row, intake by slot, trend weight, last night's sleep,
 // the fast state, the session, the planned session from the active week plan and the active forecast, read in one
 // batched round trip.
-import { addDays, fastDay, localDate, trendChange, trendWeights, weekdayOf, weekStart } from '@fitness/shared/engine'
+import {
+  addDays,
+  fastDay,
+  localDate,
+  trendChange,
+  trendWeights,
+  weekdayOf,
+  weekStart,
+} from '@fitness/shared/engine'
 import {
   SleepStages,
   WeekPlanContent,
@@ -44,60 +52,75 @@ export type DayCore = Omit<DayView, 'proposals' | 'note'>
 export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
   const { db } = deps
   const now = deps.now()
-  const [targetRows, vdayRows, slots, weights, sleepRows, fastRows, sessionRows, setRows, weekRows, settingsRows, activeRows] =
-    await db.batch([
-      db.select().from(daily_targets).where(eq(daily_targets.date, date)),
-      db.select().from(v_day).where(eq(v_day.date, date)),
-      db
-        .select({
-          slot: meals.slot,
-          meals: countDistinct(meals.id),
-          kcal: total(meal_items.kcal),
-          protein_g: total(meal_items.protein_g),
-          carbs_g: total(meal_items.carbs_g),
-          fat_g: total(meal_items.fat_g),
-          fibre_g: total(meal_items.fibre_g),
-        })
-        .from(meals)
-        .leftJoin(meal_items, eq(meal_items.meal_id, meals.id))
-        .where(and(eq(meals.date, date), eq(meals.status, 'confirmed')))
-        .groupBy(meals.slot),
-      db
-        .select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg })
-        .from(weight_logs)
-        .where(lte(weight_logs.date, date))
-        .orderBy(weight_logs.date),
-      db.select().from(sleep_logs).where(eq(sleep_logs.date, date)),
-      db
-        .select()
-        .from(fast_logs)
-        .where(between(fast_logs.start_date, addDays(date, -2), date))
-        .orderBy(fast_logs.started_at),
-      db
-        .select({ session: workout_sessions, template_name: workout_templates.name })
-        .from(workout_sessions)
-        .leftJoin(workout_templates, eq(workout_templates.id, workout_sessions.template_id))
-        .where(eq(workout_sessions.date, date))
-        .orderBy(desc(workout_sessions.started_at))
-        .limit(1),
-      db
-        .select({
-          session_id: session_sets.session_id,
-          sets_done: count(),
-          volume_kg: sql<number>`coalesce(sum(${session_sets.reps} * ${session_sets.load_kg}), 0)`,
-        })
-        .from(session_sets)
-        .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
-        .where(and(eq(workout_sessions.date, date), eq(session_sets.completed, true)))
-        .groupBy(session_sets.session_id),
-      db
-        .select({ plan: week_plans.plan })
-        .from(week_plans)
-        .where(and(eq(week_plans.week_start, weekStart(date)), eq(week_plans.status, 'active')))
-        .limit(1),
-      db.select({ fast_hours: settings.fast_hours }).from(settings).limit(1),
-      db.select({ forecast: plan_versions.forecast }).from(plan_versions).where(eq(plan_versions.active, true)).limit(1),
-    ])
+  const [
+    targetRows,
+    vdayRows,
+    slots,
+    weights,
+    sleepRows,
+    fastRows,
+    sessionRows,
+    setRows,
+    weekRows,
+    settingsRows,
+    activeRows,
+  ] = await db.batch([
+    db.select().from(daily_targets).where(eq(daily_targets.date, date)),
+    db.select().from(v_day).where(eq(v_day.date, date)),
+    db
+      .select({
+        slot: meals.slot,
+        meals: countDistinct(meals.id),
+        kcal: total(meal_items.kcal),
+        protein_g: total(meal_items.protein_g),
+        carbs_g: total(meal_items.carbs_g),
+        fat_g: total(meal_items.fat_g),
+        fibre_g: total(meal_items.fibre_g),
+      })
+      .from(meals)
+      .leftJoin(meal_items, eq(meal_items.meal_id, meals.id))
+      .where(and(eq(meals.date, date), eq(meals.status, 'confirmed')))
+      .groupBy(meals.slot),
+    db
+      .select({ date: weight_logs.date, weight_kg: weight_logs.weight_kg })
+      .from(weight_logs)
+      .where(lte(weight_logs.date, date))
+      .orderBy(weight_logs.date),
+    db.select().from(sleep_logs).where(eq(sleep_logs.date, date)),
+    db
+      .select()
+      .from(fast_logs)
+      .where(between(fast_logs.start_date, addDays(date, -2), date))
+      .orderBy(fast_logs.started_at),
+    db
+      .select({ session: workout_sessions, template_name: workout_templates.name })
+      .from(workout_sessions)
+      .leftJoin(workout_templates, eq(workout_templates.id, workout_sessions.template_id))
+      .where(eq(workout_sessions.date, date))
+      .orderBy(desc(workout_sessions.started_at))
+      .limit(1),
+    db
+      .select({
+        session_id: session_sets.session_id,
+        sets_done: count(),
+        volume_kg: sql<number>`coalesce(sum(${session_sets.reps} * ${session_sets.load_kg}), 0)`,
+      })
+      .from(session_sets)
+      .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
+      .where(and(eq(workout_sessions.date, date), eq(session_sets.completed, true)))
+      .groupBy(session_sets.session_id),
+    db
+      .select({ plan: week_plans.plan })
+      .from(week_plans)
+      .where(and(eq(week_plans.week_start, weekStart(date)), eq(week_plans.status, 'active')))
+      .limit(1),
+    db.select({ fast_hours: settings.fast_hours }).from(settings).limit(1),
+    db
+      .select({ forecast: plan_versions.forecast })
+      .from(plan_versions)
+      .where(eq(plan_versions.active, true))
+      .limit(1),
+  ])
 
   const t = targetRows[0] ?? null
   const vd = vdayRows[0] ?? null
@@ -126,7 +149,13 @@ export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
         fat_g: round2(vd.intake_fat_g),
         fibre_g: round2(vd.intake_fibre_g),
       }
-    : { kcal: round2(sum.kcal), protein_g: round2(sum.protein_g), carbs_g: round2(sum.carbs_g), fat_g: round2(sum.fat_g), fibre_g: round2(sum.fibre_g) }
+    : {
+        kcal: round2(sum.kcal),
+        protein_g: round2(sum.protein_g),
+        carbs_g: round2(sum.carbs_g),
+        fat_g: round2(sum.fat_g),
+        fibre_g: round2(sum.fibre_g),
+      }
 
   // Weight: raw weigh-in and the trend (EWMA over every weigh-in up to the date).
   const series = trendWeights(weights, { to: date })
@@ -134,7 +163,9 @@ export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
 
   const fastHours = settingsRows[0]?.fast_hours ?? 24
   const fast = fastState(fastRows, date, now.getTime(), fastHours)
-  const session = sessionRows[0] ? toSessionBrief(sessionRows[0].session, sessionRows[0].template_name, setRows) : null
+  const session = sessionRows[0]
+    ? toSessionBrief(sessionRows[0].session, sessionRows[0].template_name, setRows)
+    : null
   const plan = weekRows[0] ? WeekPlanContent.safeParse(weekRows[0].plan) : null
 
   return {
@@ -181,7 +212,12 @@ export async function buildDay(deps: Deps, date: string): Promise<DayCore> {
  * The fast state on `date`. A fast covers [started_at, end) with end = ended_at, or (running) max(now, start +
  * fast_hours); a fast with no end older than 2 × fast_hours counts as ended. Priority: active > scheduled > ended.
  */
-function fastState(rows: Row<typeof fast_logs>[], date: string, nowMs: number, fastHours: number): { state: FastState; fast: Fast | null } {
+function fastState(
+  rows: Row<typeof fast_logs>[],
+  date: string,
+  nowMs: number,
+  fastHours: number,
+): { state: FastState; fast: Fast | null } {
   const rank: Record<FastState, number> = { active: 3, scheduled: 2, ended: 1, none: 0 }
   let best: { state: FastState; fast: Fast | null } = { state: 'none', fast: null }
   for (const f of rows) {
@@ -190,7 +226,13 @@ function fastState(rows: Row<typeof fast_logs>[], date: string, nowMs: number, f
     const running = !f.ended_at && startMs <= nowMs && nowMs < startMs + 2 * fastHours * HOUR_MS
     const endMs = f.ended_at ? Date.parse(f.ended_at) : running ? Math.max(nowMs, plannedEndMs) : plannedEndMs
     if (localDate(startMs) > date || localDate(Math.max(startMs, endMs - 1)) < date) continue
-    const state: FastState = f.ended_at ? 'ended' : startMs > nowMs ? 'scheduled' : running ? 'active' : 'ended'
+    const state: FastState = f.ended_at
+      ? 'ended'
+      : startMs > nowMs
+        ? 'scheduled'
+        : running
+          ? 'active'
+          : 'ended'
     if (rank[state] > rank[best.state])
       best = {
         state,
@@ -209,7 +251,8 @@ function fastState(rows: Row<typeof fast_logs>[], date: string, nowMs: number, f
 }
 
 function toSleepLog(r: Row<typeof sleep_logs>): SleepLog {
-  const fromTimes = r.in_bed_at && r.woke_at ? Math.round((Date.parse(r.woke_at) - Date.parse(r.in_bed_at)) / 60_000) : 0
+  const fromTimes =
+    r.in_bed_at && r.woke_at ? Math.round((Date.parse(r.woke_at) - Date.parse(r.in_bed_at)) / 60_000) : 0
   const stages = r.stages === null ? null : SleepStages.safeParse(r.stages)
   return {
     id: r.id,
@@ -242,6 +285,15 @@ function toSessionBrief(
   }
 }
 
-function publicForecast(f: { finish_date: string | null; weekly_rate_kg: number; band: { low: number; high: number }; tdee_est: number } | null) {
-  return f && { finish_date: f.finish_date, weekly_rate_kg: f.weekly_rate_kg, band: f.band, tdee_est: f.tdee_est }
+function publicForecast(
+  f: {
+    finish_date: string | null
+    weekly_rate_kg: number
+    band: { low: number; high: number }
+    tdee_est: number
+  } | null,
+) {
+  return (
+    f && { finish_date: f.finish_date, weekly_rate_kg: f.weekly_rate_kg, band: f.band, tdee_est: f.tdee_est }
+  )
 }

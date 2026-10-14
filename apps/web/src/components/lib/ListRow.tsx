@@ -74,22 +74,49 @@ export function ListRow({
       <Box component="span" sx={{ flex: 1, minWidth: 0, display: 'block' }}>
         <Box
           component="span"
-          sx={{ display: 'block', fontSize: tokens.font.size.body, fontWeight: card ? tokens.font.weight.heading : tokens.font.weight.label, color: tokens.ink.text }}
+          sx={{
+            display: 'block',
+            fontSize: tokens.font.size.body,
+            fontWeight: card ? tokens.font.weight.heading : tokens.font.weight.label,
+            color: tokens.ink.text,
+          }}
         >
           {label}
         </Box>
         {help && (
-          <Box component="span" sx={{ display: 'block', mt: '1px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
+          <Box
+            component="span"
+            sx={{
+              display: 'block',
+              mt: '1px',
+              fontSize: tokens.font.size.caption,
+              lineHeight: tokens.font.leading.caption,
+              color: tokens.ink.secondary,
+            }}
+          >
             {help}
           </Box>
         )}
       </Box>
-      {trailing ?? (value !== undefined && value !== null && (
-        <Box component="span" sx={{ flex: 'none', maxWidth: '50%', textAlign: 'right', fontSize: tokens.font.size.body, color: tokens.ink.label, fontVariantNumeric: 'tabular-nums' }}>
-          {value}
-        </Box>
-      ))}
-      {showChevron && <ChevronRightRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none' }} />}
+      {trailing ??
+        (value !== undefined && value !== null && (
+          <Box
+            component="span"
+            sx={{
+              flex: 'none',
+              maxWidth: '50%',
+              textAlign: 'right',
+              fontSize: tokens.font.size.body,
+              color: tokens.ink.label,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {value}
+          </Box>
+        ))}
+      {showChevron && (
+        <ChevronRightRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none' }} />
+      )}
     </>
   )
 
@@ -106,7 +133,11 @@ export function ListRow({
     color: tokens.ink.text,
     bgcolor: tokens.ink.card,
     ...(card
-      ? { border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.card}px`, boxShadow: tokens.elevation.card }
+      ? {
+          border: `1px solid ${tokens.ink.border}`,
+          borderRadius: `${tokens.radius.card}px`,
+          boxShadow: tokens.elevation.card,
+        }
       : { borderTop: `1px solid ${tokens.ink.hairline}` }),
     ...(interactive && {
       transition: transitionOf('background-color', tokens.motion.duration.instant),

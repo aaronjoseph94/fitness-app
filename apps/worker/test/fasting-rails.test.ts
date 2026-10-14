@@ -25,11 +25,22 @@ const at = (actor: Deps['actor'] = 'user', now = NOW): Deps => ({
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -46,7 +57,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -57,11 +79,16 @@ describe('two fasts a calendar month, counted by fast day', () => {
     await planFast(at(), { id: crypto.randomUUID(), started_at: '2026-11-01T01:00:00.000Z' }) // fast day Sun 1 Nov
     await planFast(at(), { id: crypto.randomUUID(), started_at: '2026-11-11T02:00:00.000Z' }) // 10 Nov 19:00 MST → 11 Nov
 
-    await expect(planFast(at(), { id: crypto.randomUUID(), started_at: '2026-11-21T02:00:00.000Z' })).rejects.toMatchObject({
+    await expect(
+      planFast(at(), { id: crypto.randomUUID(), started_at: '2026-11-21T02:00:00.000Z' }),
+    ).rejects.toMatchObject({
       status: 422,
       code: 'fasting_pattern',
     })
-    expect((await fastDaysIn(at(), { from: '2026-11-01', to: '2026-11-30' })).map((f) => f.date)).toEqual(['2026-11-01', '2026-11-11'])
+    expect((await fastDaysIn(at(), { from: '2026-11-01', to: '2026-11-30' })).map((f) => f.date)).toEqual([
+      '2026-11-01',
+      '2026-11-11',
+    ])
   })
 })
 
@@ -71,15 +98,21 @@ describe('fasts started by Ask AI or Claude', () => {
     await planFast(at(), { id: crypto.randomUUID(), started_at: '2026-12-10T02:00:00.000Z' }) // fast day 10 Dec
     const third = '2026-12-20T16:00:00.000Z'
 
-    await expect(startFast(at('ai', third), { id: crypto.randomUUID(), started_at: third })).rejects.toMatchObject({ status: 422, code: 'fasting_pattern' })
-    await expect(startFast(at('user', third), { id: crypto.randomUUID(), started_at: third })).resolves.toMatchObject({ started_at: third })
+    await expect(
+      startFast(at('ai', third), { id: crypto.randomUUID(), started_at: third }),
+    ).rejects.toMatchObject({ status: 422, code: 'fasting_pattern' })
+    await expect(
+      startFast(at('user', third), { id: crypto.randomUUID(), started_at: third }),
+    ).resolves.toMatchObject({ started_at: third })
   })
 
   it('an AI start may not be backdated more than 24 h (400)', async () => {
     const now = '2027-01-20T16:00:00.000Z'
     const started_at = '2027-01-19T15:00:00.000Z' // 25 h earlier
 
-    await expect(startFast(at('mcp', now), { id: crypto.randomUUID(), started_at })).rejects.toMatchObject({ status: 400 })
+    await expect(startFast(at('mcp', now), { id: crypto.randomUUID(), started_at })).rejects.toMatchObject({
+      status: 400,
+    })
   })
 })
 
@@ -87,26 +120,31 @@ describe('one running fast', () => {
   it('two starts tapped at once with different ids leave one running fast; the other is 409 fast_active', async () => {
     const now = '2027-02-10T15:00:00.000Z'
     const ids = [crypto.randomUUID(), crypto.randomUUID()]
-    const results = await Promise.allSettled(ids.map((id) => startFast(at('user', now), { id, started_at: now })))
+    const results = await Promise.allSettled(
+      ids.map((id) => startFast(at('user', now), { id, started_at: now })),
+    )
 
     const running = await db.select().from(fast_logs).where(isNull(fast_logs.ended_at))
     expect(running.filter((f) => ids.includes(f.id))).toHaveLength(1)
-    expect(results.filter((r) => r.status === 'rejected').map((r) => (r as PromiseRejectedResult).reason)).toEqual([
-      expect.objectContaining({ status: 409, code: 'fast_active' }),
-    ])
+    expect(
+      results.filter((r) => r.status === 'rejected').map((r) => (r as PromiseRejectedResult).reason),
+    ).toEqual([expect.objectContaining({ status: 409, code: 'fast_active' })])
     // A replay of the winning id is still a no-op.
     const winner = running.find((f) => ids.includes(f.id))!
-    await expect(startFast(at('user', now), { id: winner.id, started_at: now })).resolves.toMatchObject({ id: winner.id })
+    await expect(startFast(at('user', now), { id: winner.id, started_at: now })).resolves.toMatchObject({
+      id: winner.id,
+    })
   })
 })
 
 describe('a missed fast', () => {
-  it("removing a skipped planned fast after its day gives that past day back its targets", async () => {
+  it('removing a skipped planned fast after its day gives that past day back its targets', async () => {
     // Planned Wed 2026-09-30 19:00 MDT → fast day Thu 1 Oct; never started by a tap, never ended: skipped.
     const id = crypto.randomUUID()
     await planFast(at('user', '2026-09-28T15:00:00.000Z'), { id, started_at: '2026-10-01T01:00:00.000Z' })
     await ensureTargetsThrough(at('user', '2026-09-28T15:00:00.000Z'), '2026-10-05')
-    const day = async () => (await db.select().from(daily_targets).where(eq(daily_targets.date, '2026-10-01')))[0]
+    const day = async () =>
+      (await db.select().from(daily_targets).where(eq(daily_targets.date, '2026-10-01')))[0]
     expect(await day()).toMatchObject({ is_fast_day: true, kcal: 0 })
 
     await cancelFast(at(), id)

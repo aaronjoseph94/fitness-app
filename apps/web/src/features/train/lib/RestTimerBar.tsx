@@ -143,19 +143,18 @@ export function RestTimerBar({ sessionId, nameOf, upNext }: RestTimerBarProps) {
         {/* From `sm`: on a phone the captions need the room more than the glyph does. */}
         <TimerOutlined
           aria-hidden
-          sx={{ display: { xs: 'none', sm: 'block' }, fontSize: 22, flex: 'none', color: over ? tokens.dark.text : tokens.accent.bright }}
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            fontSize: 22,
+            flex: 'none',
+            color: over ? tokens.dark.text : tokens.accent.bright,
+          }}
         />
         <Box sx={{ flex: { xs: 1, sm: 'none' }, minWidth: 0, maxWidth: { sm: '40%' } }}>
           <Box sx={{ ...CAPTION_SX, color: over ? tokens.dark.text : tokens.dark.muted }}>
-            {over
-              ? overText
-              : next
-                ? `Rest · then ${next}`
-                : `Rest · ${nameOf(rest.exercise_id)}`}
+            {over ? overText : next ? `Rest · then ${next}` : `Rest · ${nameOf(rest.exercise_id)}`}
           </Box>
-          <Box sx={{ ...statValue('small'), lineHeight: 1.2 }}>
-            {over ? 'Rest over' : clock(remaining)}
-          </Box>
+          <Box sx={{ ...statValue('small'), lineHeight: 1.2 }}>{over ? 'Rest over' : clock(remaining)}</Box>
           {!over && (
             <Box sx={{ ...CAPTION_SX, display: { xs: '-webkit-box', sm: 'none' }, color: tokens.dark.muted }}>
               Keep the app open for the alert

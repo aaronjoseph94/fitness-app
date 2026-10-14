@@ -9,8 +9,13 @@ export {}
 
 const base64url = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64url')
 
-const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair
-const publicKey = base64url(new Uint8Array((await crypto.subtle.exportKey('raw', pair.publicKey)) as ArrayBuffer))
+const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+  'sign',
+  'verify',
+])) as CryptoKeyPair
+const publicKey = base64url(
+  new Uint8Array((await crypto.subtle.exportKey('raw', pair.publicKey)) as ArrayBuffer),
+)
 const { d } = (await crypto.subtle.exportKey('jwk', pair.privateKey)) as JsonWebKey
 if (!d) throw new Error('WebCrypto did not export the private scalar')
 
@@ -18,4 +23,6 @@ console.log(`VAPID_PUBLIC_KEY=${publicKey}`)
 console.log(`VAPID_PRIVATE_KEY=${d}`)
 console.log('')
 console.log('Local: paste both lines into apps/worker/.dev.vars (with VAPID_SUBJECT=mailto:you@example.com).')
-console.log('Production: wrangler secret put VAPID_PUBLIC_KEY, then VAPID_PRIVATE_KEY and VAPID_SUBJECT, from apps/worker.')
+console.log(
+  'Production: wrangler secret put VAPID_PUBLIC_KEY, then VAPID_PRIVATE_KEY and VAPID_SUBJECT, from apps/worker.',
+)

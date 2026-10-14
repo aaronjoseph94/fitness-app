@@ -147,7 +147,10 @@ export async function runRestore(
         if (!bytes) throw new Error(`${step.path} is missing from the zip`)
         await call(
           endpoints.export.importFile,
-          { query: { key: step.key, restore_id: options.restoreId, overwrite: options.overwrite }, body: ownBuffer(bytes) },
+          {
+            query: { key: step.key, restore_id: options.restoreId, overwrite: options.overwrite },
+            body: ownBuffer(bytes),
+          },
           { signal: options.signal, timeoutMs: 60_000 },
         )
       }
@@ -161,6 +164,9 @@ export async function runRestore(
 
 /** The bytes as a standalone ArrayBuffer (an unzipped entry may be a view into a larger one). */
 function ownBuffer(bytes: Uint8Array): ArrayBuffer {
-  const whole = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength && bytes.buffer instanceof ArrayBuffer
+  const whole =
+    bytes.byteOffset === 0 &&
+    bytes.byteLength === bytes.buffer.byteLength &&
+    bytes.buffer instanceof ArrayBuffer
   return whole ? (bytes.buffer as ArrayBuffer) : bytes.slice().buffer
 }

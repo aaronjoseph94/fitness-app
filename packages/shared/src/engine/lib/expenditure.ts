@@ -23,7 +23,9 @@ export function isLoggedIntakeDay(d: Pick<DayRow, 'meals_logged' | 'is_fast_day'
 }
 
 /** A v_day row as the estimate reads it. */
-export type ExpenditureDay = Pick<DayRow, 'date' | 'trend_kg' | 'meals_logged' | 'is_fast_day'> & { intake: { kcal: number } }
+export type ExpenditureDay = Pick<DayRow, 'date' | 'trend_kg' | 'meals_logged' | 'is_fast_day'> & {
+  intake: { kcal: number }
+}
 
 export type ExpenditureEstimate = {
   /** The new estimate (kcal/day, whole) — the previous one when the window is not usable. */
@@ -43,7 +45,11 @@ export type ExpenditureEstimate = {
  * With fewer than 10 logged days, or no trend at either end, tdee_est = previous_kcal (not updated).
  * Start: previous_kcal = the scan TEE (2,551 kcal) until there is an estimate.
  */
-export function estimateExpenditure(input: { as_of: LocalDate; days: readonly ExpenditureDay[]; previous_kcal: number }): ExpenditureEstimate {
+export function estimateExpenditure(input: {
+  as_of: LocalDate
+  days: readonly ExpenditureDay[]
+  previous_kcal: number
+}): ExpenditureEstimate {
   const from = addDays(input.as_of, -(EXPENDITURE_WINDOW_DAYS - 1))
   const logged = input.days.filter((d) => d.date >= from && d.date <= input.as_of && isLoggedIntakeDay(d))
   const start = trendOn(input.days, addDays(input.as_of, -EXPENDITURE_WINDOW_DAYS))

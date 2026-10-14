@@ -88,8 +88,8 @@ export function ExportCard({ online }: { online: boolean }) {
       title="Export everything"
       description={
         <>
-          One zip with a CSV per table, <b>full.json</b> (every table, for restoring) and your photos, scan sheets and report PDFs. It is built on
-          this device; the server only hands over the data.
+          One zip with a CSV per table, <b>full.json</b> (every table, for restoring) and your photos, scan
+          sheets and report PDFs. It is built on this device; the server only hands over the data.
         </>
       }
     >
@@ -107,13 +107,13 @@ export function ExportCard({ online }: { online: boolean }) {
         {state.kind === 'ready' && (
           <Stack spacing={3} data-testid="export-ready">
             <Alert severity="success">
-              Export ready: {formatNumber(state.built.rows)} rows from {state.built.tables} tables and {formatNumber(state.built.files)} files,{' '}
-              {formatBytes(state.built.blob.size)}.
+              Export ready: {formatNumber(state.built.rows)} rows from {state.built.tables} tables and{' '}
+              {formatNumber(state.built.files)} files, {formatBytes(state.built.blob.size)}.
             </Alert>
             {state.built.missing.length > 0 && (
               <Alert severity="warning">
-                {state.built.missing.length} file{state.built.missing.length === 1 ? '' : 's'} could not be fetched and are not in the zip (listed in its
-                README).
+                {state.built.missing.length} file{state.built.missing.length === 1 ? '' : 's'} could not be
+                fetched and are not in the zip (listed in its README).
               </Alert>
             )}
             {/* One action row once the zip is ready: Save zip, Share… and Export again side by side. */}
@@ -122,7 +122,11 @@ export function ExportCard({ online }: { online: boolean }) {
                 Save zip
               </Button>
               {shareable(state.built) && (
-                <Button variant="outlined" startIcon={<IosShareRounded />} onClick={() => void share(state.built)}>
+                <Button
+                  variant="outlined"
+                  startIcon={<IosShareRounded />}
+                  onClick={() => void share(state.built)}
+                >
                   Share…
                 </Button>
               )}

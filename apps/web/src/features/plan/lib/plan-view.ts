@@ -4,7 +4,17 @@
 // re-checked against today's rails with the engine's own applyGuards (the Worker re-runs the guards on accept; this
 // only shows what they would say).
 import { applyGuards, type TargetChange } from '@fitness/shared/engine'
-import type { Actor, AiEvent, Forecast, PlanChange, PlanDiff, PlanTargets, Rails, TargetField, Weekday } from '@fitness/shared/schemas'
+import type {
+  Actor,
+  AiEvent,
+  Forecast,
+  PlanChange,
+  PlanDiff,
+  PlanTargets,
+  Rails,
+  TargetField,
+  Weekday,
+} from '@fitness/shared/schemas'
 import { formatNumber, formatSigned } from '../../../components'
 import { actorLabel, TARGET_FIELD as FIELD, targetAmount as amount, targetLabel } from '../../proposals'
 
@@ -36,7 +46,8 @@ export function diffRows(diff: PlanDiff): DiffRow[] {
 export function targetsDiff(from: PlanTargets, to: PlanTargets): PlanDiff {
   const out: PlanDiff = []
   for (const field of FIELD_ORDER) {
-    if (from.defaults[field] !== to.defaults[field]) out.push({ field, weekday: null, from: from.defaults[field], to: to.defaults[field] })
+    if (from.defaults[field] !== to.defaults[field])
+      out.push({ field, weekday: null, from: from.defaults[field], to: to.defaults[field] })
   }
   for (const weekday of WEEKDAYS) {
     for (const field of FIELD_ORDER) {
@@ -53,7 +64,9 @@ export function overrideRows(targets: PlanTargets): { key: string; label: string
   return WEEKDAYS.flatMap((weekday) =>
     FIELD_ORDER.flatMap((field) => {
       const v = targets.overrides[weekday]?.[field]
-      return v === undefined ? [] : [{ key: `${weekday}:${field}`, label: targetLabel(field, weekday), value: amount(field, v) }]
+      return v === undefined
+        ? []
+        : [{ key: `${weekday}:${field}`, label: targetLabel(field, weekday), value: amount(field, v) }]
     }),
   )
 }
@@ -62,8 +75,12 @@ export const DEFAULT_ROWS = FIELD_ORDER
 
 /** "0.9 kg a week (0.7–1.1) · goal 2027-04-16 · expenditure about 2,551 kcal" */
 export function forecastText(f: Forecast): string {
-  const rate = f.weekly_rate_kg > 0 ? `${formatNumber(f.weekly_rate_kg, 2)} kg a week` : 'no loss at this target'
-  const band = f.weekly_rate_kg > 0 ? ` (${formatNumber(Math.min(f.band.low, f.band.high), 2)}–${formatNumber(Math.max(f.band.low, f.band.high), 2)})` : ''
+  const rate =
+    f.weekly_rate_kg > 0 ? `${formatNumber(f.weekly_rate_kg, 2)} kg a week` : 'no loss at this target'
+  const band =
+    f.weekly_rate_kg > 0
+      ? ` (${formatNumber(Math.min(f.band.low, f.band.high), 2)}–${formatNumber(Math.max(f.band.low, f.band.high), 2)})`
+      : ''
   const finish = f.finish_date ? ` · goal ${f.finish_date}` : ''
   return `${rate}${band}${finish} · expenditure about ${formatNumber(f.tdee_est)} kcal`
 }
@@ -85,8 +102,17 @@ export interface GuardLine {
  * Each change of a pending proposal re-checked now: applyGuards with today's rails and active targets as the proposer.
  * A kcal move over 150 shows how it would be stepped (the first step now, the rest a week apart).
  */
-export function guardLines(changes: readonly PlanChange[], ctx: { actor: Actor; rails: Rails; plan: PlanTargets; autoApplySafe: boolean }): GuardLine[] {
-  const batch: TargetChange[] = changes.map((c) => ({ kind: 'target', field: c.field, weekday: c.weekday, from: c.from, to: c.to }))
+export function guardLines(
+  changes: readonly PlanChange[],
+  ctx: { actor: Actor; rails: Rails; plan: PlanTargets; autoApplySafe: boolean },
+): GuardLine[] {
+  const batch: TargetChange[] = changes.map((c) => ({
+    kind: 'target',
+    field: c.field,
+    weekday: c.weekday,
+    from: c.from,
+    to: c.to,
+  }))
   const result = applyGuards(batch, {
     actor: ctx.actor,
     rails: ctx.rails,
@@ -101,8 +127,12 @@ export function guardLines(changes: readonly PlanChange[], ctx: { actor: Actor; 
     const key = `${i}:${change.field}:${change.weekday ?? 'all'}`
     const rejected = result.rejected.find((r) => r.change === change)
     if (rejected) return { key, label: label(change), ok: false, detail: rejected.reason }
-    const accepted = result.accepted.find((a) => a.change.field === change.field && a.change.weekday === change.weekday)
-    const later = result.scheduled.filter((s) => s.change.field === change.field && s.change.weekday === change.weekday)
+    const accepted = result.accepted.find(
+      (a) => a.change.field === change.field && a.change.weekday === change.weekday,
+    )
+    const later = result.scheduled.filter(
+      (s) => s.change.field === change.field && s.change.weekday === change.weekday,
+    )
     const detail =
       later.length > 0 && accepted
         ? `Within the rails; stepped ≤ 150 kcal at a time: ${amount(change.field, accepted.change.to)} now, then ${later.map((s) => amount(change.field, s.change.to)).join(', ')} a week apart`

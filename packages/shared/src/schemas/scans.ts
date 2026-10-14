@@ -88,7 +88,11 @@ export const ScanRecord = z
     const kg = (v: number) => `${Math.round(v * 100) / 100} kg`
     const over = (path: 'lean_body_mass_kg' | 'body_fat_mass_kg', label: string) => {
       if (r[path] < r.weight_kg) return false
-      ctx.addIssue({ code: 'custom', path: [path], message: `${label} ${kg(r[path])} is not less than the weight ${kg(r.weight_kg)}` })
+      ctx.addIssue({
+        code: 'custom',
+        path: [path],
+        message: `${label} ${kg(r[path])} is not less than the weight ${kg(r.weight_kg)}`,
+      })
       return true
     }
     const leanOver = over('lean_body_mass_kg', 'Lean mass')
@@ -162,7 +166,12 @@ export const ScanChange = z.object({
   days: z.number().int(),
   deltas: z.partialRecord(ScanMetricField, z.number()),
   segments: z.partialRecord(ScanSegment, SegmentChange),
-  fat_vs_lean: z.object({ weight_kg: z.number(), fat_kg: z.number(), lean_kg: z.number(), water_kg: z.number() }),
+  fat_vs_lean: z.object({
+    weight_kg: z.number(),
+    fat_kg: z.number(),
+    lean_kg: z.number(),
+    water_kg: z.number(),
+  }),
   /** lean lost / weight lost when weight was lost; else null. */
   lean_share_of_loss: z.number().nullable(),
   lean_loss: LeanLossGuard,
@@ -179,7 +188,12 @@ export const ScanFlag = z.object({
 export type ScanFlag = z.infer<typeof ScanFlag>
 
 /** A milestone the analysis re-anchored to this scan (reached_on null = no longer met). */
-export const ScanMilestoneUpdate = z.object({ milestone_id: Id, kind: MilestoneKind, label: z.string(), reached_on: LocalDate.nullable() })
+export const ScanMilestoneUpdate = z.object({
+  milestone_id: Id,
+  kind: MilestoneKind,
+  label: z.string(),
+  reached_on: LocalDate.nullable(),
+})
 export type ScanMilestoneUpdate = z.infer<typeof ScanMilestoneUpdate>
 
 /**

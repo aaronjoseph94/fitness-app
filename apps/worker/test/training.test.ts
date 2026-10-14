@@ -6,9 +6,26 @@ import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { ai_events, createDb, equipment_profile, exercise_exclusions, exercises, plan_versions, settings, type NewRow } from '../src/db'
+import {
+  ai_events,
+  createDb,
+  equipment_profile,
+  exercise_exclusions,
+  exercises,
+  plan_versions,
+  settings,
+  type NewRow,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { createTemplate, deleteExclusion, finishSession, listExercises, logSet, startSession, swapTemplateExercise } from '../src/modules/training'
+import {
+  createTemplate,
+  deleteExclusion,
+  finishSession,
+  listExercises,
+  logSet,
+  startSession,
+  swapTemplateExercise,
+} from '../src/modules/training'
 import { draftWorkout, planNextTrainingDay } from '../src/modules/workouts-ai'
 import type { LlmRouter } from '../src/modules/llm'
 
@@ -26,7 +43,13 @@ afterEach(async () => {
 })
 
 type Ex = NewRow<typeof exercises>
-const ex = (slug: string, name: string, equipment: string, primary: Ex['primary_muscles'], secondary: Ex['secondary_muscles'] = []): Ex & { id: string } => ({
+const ex = (
+  slug: string,
+  name: string,
+  equipment: string,
+  primary: Ex['primary_muscles'],
+  secondary: Ex['secondary_muscles'] = [],
+): Ex & { id: string } => ({
   id: crypto.randomUUID(),
   slug,
   name,
@@ -52,10 +75,22 @@ const smith = ex('smith-machine-bench-press', 'Smith Machine Bench Press', 'mach
 const hidden = ex('dumbbell-flyes', 'Dumbbell Flyes', 'dumbbell', ['chest'])
 // Both allowed (machine: have) and both quadriceps; the bike is cardio (free-exercise-db Bicycling_Stationary).
 const legPress = ex('leg-press', 'Leg Press', 'machine', ['quadriceps'], ['calves', 'glutes', 'hamstrings'])
-const bike: Ex & { id: string } = { ...ex('bicycling-stationary', 'Bicycling, Stationary', 'machine', ['quadriceps'], ['calves', 'glutes', 'hamstrings']), category: 'cardio', mechanic: null }
+const bike: Ex & { id: string } = {
+  ...ex(
+    'bicycling-stationary',
+    'Bicycling, Stationary',
+    'machine',
+    ['quadriceps'],
+    ['calves', 'glutes', 'hamstrings'],
+  ),
+  category: 'cardio',
+  mechanic: null,
+}
 const library = [bench, pulldown, row, press, curl, pushdown, pushup, smith, hidden, legPress, bike]
 
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 beforeAll(async () => {
   await db.batch([
@@ -75,7 +110,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 118.75,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
     ...library.map((e) => db.insert(exercises).values(e)), // one row per statement: ≤ 100 bound parameters
     db.insert(equipment_profile).values([
@@ -83,9 +129,17 @@ beforeAll(async () => {
       { equipment: 'machine', kind: 'library', status: 'have' },
       { equipment: 'smith machine', kind: 'machine', status: 'dont_have', note: 'No T-bar at your gym.' },
       // A machine of his, with the part of the gym it is in: the prompt groups the floor by area.
-      { equipment: 'iso-lateral row', kind: 'machine', status: 'have', note: 'Plate-loaded.', area: 'Hammer Strength' },
+      {
+        equipment: 'iso-lateral row',
+        kind: 'machine',
+        status: 'have',
+        note: 'Plate-loaded.',
+        area: 'Hammer Strength',
+      },
     ]),
-    db.insert(exercise_exclusions).values({ exercise_id: hidden.id, reason: 'Hidden from its detail sheet: left shoulder' }),
+    db
+      .insert(exercise_exclusions)
+      .values({ exercise_id: hidden.id, reason: 'Hidden from its detail sheet: left shoulder' }),
   ])
 })
 
@@ -120,18 +174,48 @@ describe('allowed exercise set', () => {
 
 describe('sessions', () => {
   it('finishing a session stores volume and an e1RM PR against the previous session', async () => {
-    const plan = [{ exercise_id: bench.id, sets: 3, rep_min: 6, rep_max: 8, target_load_kg: 60, rest_sec: 120, note: null }]
+    const plan = [
+      {
+        exercise_id: bench.id,
+        sets: 3,
+        rep_min: 6,
+        rep_max: 8,
+        target_load_kg: 60,
+        rest_sec: 120,
+        note: null,
+      },
+    ]
     const logBench = async (deps: Deps, session_id: string, load_kg: number) => {
-      for (const set_index of [0, 1, 2]) await logSet(deps, session_id, { id: crypto.randomUUID(), exercise_id: bench.id, set_index, reps: 8, load_kg, completed: true })
+      for (const set_index of [0, 1, 2])
+        await logSet(deps, session_id, {
+          id: crypto.randomUUID(),
+          exercise_id: bench.id,
+          set_index,
+          reps: 8,
+          load_kg,
+          completed: true,
+        })
     }
 
     const first = at('2026-10-05T23:00:00.000Z')
-    const s1 = await startSession(first, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at: '2026-10-05T23:00:00.000Z', exercises: plan })
+    const s1 = await startSession(first, {
+      id: crypto.randomUUID(),
+      template_id: null,
+      origin: 'blank',
+      started_at: '2026-10-05T23:00:00.000Z',
+      exercises: plan,
+    })
     await logBench(first, s1.id, 60)
     await finishSession(first, s1.id, { ended_at: '2026-10-05T23:50:00.000Z' })
 
     const second = at('2026-10-07T23:00:00.000Z')
-    const s2 = await startSession(second, { id: crypto.randomUUID(), template_id: null, origin: 'blank', started_at: '2026-10-07T23:00:00.000Z', exercises: plan })
+    const s2 = await startSession(second, {
+      id: crypto.randomUUID(),
+      template_id: null,
+      origin: 'blank',
+      started_at: '2026-10-07T23:00:00.000Z',
+      exercises: plan,
+    })
     expect(s2.plan?.[0]?.last?.sets).toHaveLength(3) // last session's 3 × 8 × 60 kg, greyed in
     expect(s2.plan?.[0]?.default_load_kg).toBe(60) // one session at the top of the range: hold
     await logBench(second, s2.id, 62.5)
@@ -142,7 +226,9 @@ describe('sessions', () => {
     expect(summary.volume_by_muscle).toMatchObject({ chest: 1500, triceps: 750, shoulders: 750 })
     expect(summary.muscle_scores).toMatchObject({ chest: 3, triceps: 1.5 })
     // Epley: 62.5 × (1 + 8/30) = 79.17 vs 60 × (1 + 8/30) = 76
-    expect(summary.prs).toContainEqual(expect.objectContaining({ kind: 'best_e1rm', e1rm_kg: 79.17, previous_best_kg: 76 }))
+    expect(summary.prs).toContainEqual(
+      expect.objectContaining({ kind: 'best_e1rm', e1rm_kg: 79.17, previous_best_kg: 76 }),
+    )
     expect(session.prs).toHaveLength(summary.prs.length)
   })
 })
@@ -150,9 +236,28 @@ describe('sessions', () => {
 describe('template swaps', () => {
   it('a swap keeps the kind of lift: Leg Press for Bicycling, Stationary (same primary muscle, cardio) → 422', async () => {
     const deps = at('2026-10-05T15:00:00.000Z')
-    const set = (exercise_id: string) => ({ exercise_id, sets: 4, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null })
-    const template = await createTemplate(deps, { id: crypto.randomUUID(), name: 'Lower A', origin: 'custom', exercises: [set(legPress.id), set(bench.id), set(pulldown.id)] })
-    await expect(swapTemplateExercise(deps, { template_id: template.id, from_exercise_id: legPress.id, to_exercise_id: bike.id })).rejects.toMatchObject({
+    const set = (exercise_id: string) => ({
+      exercise_id,
+      sets: 4,
+      rep_min: 8,
+      rep_max: 12,
+      target_load_kg: null,
+      rest_sec: 90,
+      note: null,
+    })
+    const template = await createTemplate(deps, {
+      id: crypto.randomUUID(),
+      name: 'Lower A',
+      origin: 'custom',
+      exercises: [set(legPress.id), set(bench.id), set(pulldown.id)],
+    })
+    await expect(
+      swapTemplateExercise(deps, {
+        template_id: template.id,
+        from_exercise_id: legPress.id,
+        to_exercise_id: bike.id,
+      }),
+    ).rejects.toMatchObject({
       status: 422,
       code: 'different_kind_of_lift',
       message: 'Bicycling, Stationary is not the same kind of lift as Leg Press',
@@ -167,12 +272,34 @@ describe('AI workouts', () => {
     const llm: Pick<LlmRouter, 'complete'> = {
       complete: async (req) => {
         prompt = req.messages.map((m) => m.content).join('\n')
-        const pick = (exercise_id: string, sets: number) => ({ exercise_id, sets, rep_min: 8, rep_max: 12, load_kg: null, rest_sec: 90 })
+        const pick = (exercise_id: string, sets: number) => ({
+          exercise_id,
+          sets,
+          rep_min: 8,
+          rep_max: 12,
+          load_kg: null,
+          rest_sec: 90,
+        })
         const data = {
-          exercises: [pick('barbell-bench-press', 6), pick('pushups', 4), pick('wide-grip-lat-pulldown', 6), pick('seated-cable-rows', 6), pick('dumbbell-shoulder-press', 6), pick('triceps-pushdown', 6)],
+          exercises: [
+            pick('barbell-bench-press', 6),
+            pick('pushups', 4),
+            pick('wide-grip-lat-pulldown', 6),
+            pick('seated-cable-rows', 6),
+            pick('dumbbell-shoulder-press', 6),
+            pick('triceps-pushdown', 6),
+          ],
           rationale: 'Upper day: press and pull balanced.\nModerate volume in a deficit.',
         }
-        return { data: data as never, provider: 'fake', model: 'fake', latency_ms: 1, tokens_in: 1, tokens_out: 1, attempts: 1 }
+        return {
+          data: data as never,
+          provider: 'fake',
+          model: 'fake',
+          latency_ms: 1,
+          tokens_in: 1,
+          tokens_out: 1,
+          attempts: 1,
+        }
       },
     }
 
@@ -184,7 +311,9 @@ describe('AI workouts', () => {
     expect(prompt).toContain('Your gym (program only from this):')
     expect(prompt).toContain('Hammer Strength: iso-lateral row (Plate-loaded.)')
     expect(prompt).toContain('Also available: barbell, machine')
-    expect(prompt).toContain("Do not use (don't have, can't use or dislike): smith machine: don't have (No T-bar at your gym.)")
+    expect(prompt).toContain(
+      "Do not use (don't have, can't use or dislike): smith machine: don't have (No T-bar at your gym.)",
+    )
     const ids = draft.exercises.map((e) => e.exercise_id)
     expect(ids).not.toContain(pushup.id)
     expect(draft.guard_notes).toContainEqual(expect.stringContaining('Dropped Pushups'))
@@ -214,7 +343,13 @@ describe('AI workouts', () => {
     const first = await planNextTrainingDay(deps, '2026-10-15')
     expect(first).toMatchObject({ date: '2026-10-15', reason: 'queued' })
     expect(first.job_id).not.toBeNull()
-    expect(await planNextTrainingDay(deps, '2026-10-15')).toMatchObject({ job_id: null, reason: 'a workout job is already queued' })
-    expect(await planNextTrainingDay(deps, '2026-10-16')).toMatchObject({ job_id: null, reason: 'not a training day' }) // Friday
+    expect(await planNextTrainingDay(deps, '2026-10-15')).toMatchObject({
+      job_id: null,
+      reason: 'a workout job is already queued',
+    })
+    expect(await planNextTrainingDay(deps, '2026-10-16')).toMatchObject({
+      job_id: null,
+      reason: 'not a training day',
+    }) // Friday
   })
 })

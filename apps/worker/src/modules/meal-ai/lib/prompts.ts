@@ -26,7 +26,10 @@ If a photo shows no food or drink, return no items and say so in notes.`
 /** The user message for one meal: its slot, its text (redacted) and how many photos are attached. */
 export function mealAnalysisMessage(slot: MealSlot, text: string | null, photos: number): string {
   const lines = [`Meal slot: ${slot}.`]
-  if (photos > 0) lines.push(`${photos} photo${photos > 1 ? 's' : ''} of the meal attached. List the foods and drinks you can see.`)
+  if (photos > 0)
+    lines.push(
+      `${photos} photo${photos > 1 ? 's' : ''} of the meal attached. List the foods and drinks you can see.`,
+    )
   if (text) lines.push(`${photos > 0 ? 'Note with the photo' : 'What was eaten'}: """${redact(text)}"""`)
   return lines.join('\n')
 }
@@ -58,5 +61,8 @@ export interface AdjustmentFacts {
 
 /** The user message for a day card: the computed facts as JSON (labels redacted). */
 export function dayAdjustmentMessage(facts: AdjustmentFacts): string {
-  return JSON.stringify({ ...facts, suggestions: facts.suggestions.map((s) => ({ ...s, label: redact(s.label) })) })
+  return JSON.stringify({
+    ...facts,
+    suggestions: facts.suggestions.map((s) => ({ ...s, label: redact(s.label) })),
+  })
 }

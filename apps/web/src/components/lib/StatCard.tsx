@@ -61,15 +61,37 @@ export function deltaTone(delta: StatDelta, precision: number): 'success' | 'war
   return delta.value < 0 === (delta.good === 'down') ? 'success' : 'warning'
 }
 
-const TEXT_TONES = { success: tokens.tone.success.text, warning: tokens.tone.warning.text, neutral: tokens.ink.label } as const
+const TEXT_TONES = {
+  success: tokens.tone.success.text,
+  warning: tokens.tone.warning.text,
+  neutral: tokens.ink.label,
+} as const
 
-function Delta({ delta, fallbackUnit, precision, style }: { delta: StatDelta; fallbackUnit?: string; precision: number; style: 'pill' | 'text' }) {
+function Delta({
+  delta,
+  fallbackUnit,
+  precision,
+  style,
+}: {
+  delta: StatDelta
+  fallbackUnit?: string
+  precision: number
+  style: 'pill' | 'text'
+}) {
   const unit = delta.unit ?? fallbackUnit
   const text = [formatSigned(delta.value, precision), unit, delta.period].filter(Boolean).join(' ')
   const tone = deltaTone(delta, precision)
   if (style === 'pill') return <StatusChip tone={tone} shape="pill" label={text} />
   return (
-    <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.heading, color: TEXT_TONES[tone], whiteSpace: 'nowrap' }}>
+    <Box
+      component="span"
+      sx={{
+        fontSize: tokens.font.size.caption,
+        fontWeight: tokens.font.weight.heading,
+        color: TEXT_TONES[tone],
+        whiteSpace: 'nowrap',
+      }}
+    >
       {text}
     </Box>
   )
@@ -105,7 +127,16 @@ export function StatCard({
 
   return (
     <Card data-testid={testId} sx={{ height: '100%', display: 'flex' }}>
-      <Box sx={{ px: `${tokens.pad.card.x}px`, pt: `${tokens.pad.card.y}px`, pb: '16px', width: '100%', textAlign: 'left', minWidth: 0 }}>
+      <Box
+        sx={{
+          px: `${tokens.pad.card.x}px`,
+          pt: `${tokens.pad.card.y}px`,
+          pb: '16px',
+          width: '100%',
+          textAlign: 'left',
+          minWidth: 0,
+        }}
+      >
         <StatHead label={label} icon={icon} badge={badge} />
         <StatFigure
           value={value}

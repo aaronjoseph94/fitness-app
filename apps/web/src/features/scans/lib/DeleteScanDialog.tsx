@@ -12,7 +12,15 @@ import { useOnline } from '../../../offline'
 import { tokens } from '../../../theme'
 import { useDeleteScan } from './hooks'
 
-export function DeleteScanDialog({ scanId, date, onClose }: { scanId: string; date: string; onClose: () => void }) {
+export function DeleteScanDialog({
+  scanId,
+  date,
+  onClose,
+}: {
+  scanId: string
+  date: string
+  onClose: () => void
+}) {
   const online = useOnline()
   const navigate = useNavigate()
   const remove = useDeleteScan()
@@ -20,11 +28,21 @@ export function DeleteScanDialog({ scanId, date, onClose }: { scanId: string; da
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth aria-labelledby="delete-scan-title">
       <DialogTitle id="delete-scan-title">Delete the scan of {date}?</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 2 }}>
-        <Box sx={{ fontSize: tokens.font.size.body, color: tokens.ink.muted, lineHeight: tokens.font.leading.body }}>
-          Its values, segments and sheet are removed for good. Milestones it reached are re-checked against your other scans, and
-          proposals from its debrief that still wait for a tap are withdrawn.
+        <Box
+          sx={{
+            fontSize: tokens.font.size.body,
+            color: tokens.ink.muted,
+            lineHeight: tokens.font.leading.body,
+          }}
+        >
+          Its values, segments and sheet are removed for good. Milestones it reached are re-checked against
+          your other scans, and proposals from its debrief that still wait for a tap are withdrawn.
         </Box>
-        {!online && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>Deleting needs a connection.</Box>}
+        {!online && (
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+            Deleting needs a connection.
+          </Box>
+        )}
         {remove.isError && (
           <Box role="alert" sx={{ color: 'error.main', fontSize: tokens.font.size.small }}>
             {problemText(remove.error)}
@@ -39,7 +57,12 @@ export function DeleteScanDialog({ scanId, date, onClose }: { scanId: string; da
           variant="contained"
           color="error"
           disabled={!online || remove.isPending}
-          onClick={() => remove.mutate({ params: { id: scanId } }, { onSuccess: () => void navigate('/scans', { replace: true }) })}
+          onClick={() =>
+            remove.mutate(
+              { params: { id: scanId } },
+              { onSuccess: () => void navigate('/scans', { replace: true }) },
+            )
+          }
           data-testid="scan-delete-confirm"
         >
           {remove.isPending ? 'Deleting…' : 'Delete scan'}

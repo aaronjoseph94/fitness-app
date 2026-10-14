@@ -28,7 +28,10 @@ export interface BannerProps {
 }
 
 /** The theme's banner colours (shared with MUI's `<Alert>`) plus each tone's glyph. */
-const TONES: Record<BannerTone, { bg: string; border: string; text: string; icon: string; glyph: SvgIconComponent }> = {
+const TONES: Record<
+  BannerTone,
+  { bg: string; border: string; text: string; icon: string; glyph: SvgIconComponent }
+> = {
   info: { ...BANNER_TONES.info, glyph: InfoRounded },
   warning: { ...BANNER_TONES.warning, glyph: WarningAmberRounded },
   danger: { ...BANNER_TONES.danger, glyph: ErrorOutlineRounded },

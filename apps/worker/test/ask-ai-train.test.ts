@@ -11,10 +11,25 @@ import { ReminderKind, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { ai_events, ai_jobs, createDb, exercises, plan_versions, profile, settings, type NewRow } from '../src/db'
+import {
+  ai_events,
+  ai_jobs,
+  createDb,
+  exercises,
+  plan_versions,
+  profile,
+  settings,
+  type NewRow,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { chatTurn, MAX_TOOLS, selectTools } from '../src/modules/ask-ai'
-import { ProvidersExhaustedError, type ChatRequest, type ChatResult, type LlmRouter, type ToolCall } from '../src/modules/llm'
+import {
+  ProvidersExhaustedError,
+  type ChatRequest,
+  type ChatResult,
+  type LlmRouter,
+  type ToolCall,
+} from '../src/modules/llm'
 import { getSettings } from '../src/modules/settings'
 import { createTemplate, getTemplate } from '../src/modules/training'
 
@@ -36,7 +51,9 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 type Ex = NewRow<typeof exercises> & { id: string }
 const ex = (slug: string, primary: Ex['primary_muscles'], equipment = 'cable'): Ex => ({
@@ -56,7 +73,15 @@ const ex = (slug: string, primary: Ex['primary_muscles'], equipment = 'cable'): 
 const bench = ex('barbell-bench-press', ['chest'], 'barbell')
 const pulldown = ex('wide-grip-lat-pulldown', ['lats'])
 const press = ex('dumbbell-shoulder-press', ['shoulders'], 'dumbbell')
-const item = (exercise_id: string, sets: number) => ({ exercise_id, sets, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null })
+const item = (exercise_id: string, sets: number) => ({
+  exercise_id,
+  sets,
+  rep_min: 8,
+  rep_max: 12,
+  target_load_kg: null,
+  rest_sec: 90,
+  note: null,
+})
 
 beforeAll(async () => {
   await db.batch([
@@ -84,8 +109,24 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
-      forecast: { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
+      forecast: {
+        finish_date: '2027-06-17',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
     ...[bench, pulldown, press].map((e) => db.insert(exercises).values(e)),
   ])
@@ -99,13 +140,23 @@ function fakeRouter(steps: Step[]): LlmRouter & { requests: ChatRequest<unknown>
   const meta = { provider: 'fake', model: 'fake-1', latency_ms: 1, tokens_in: 1, tokens_out: 1, attempts: 1 }
   return {
     requests,
-    chat: async <T,>(req: ChatRequest<T>): Promise<ChatResult<T>> => {
+    chat: async <T>(req: ChatRequest<T>): Promise<ChatResult<T>> => {
       requests.push(req as ChatRequest<unknown>)
       const step = steps.shift()
       if (!step) throw new ProvidersExhaustedError([{ provider: 'fake', model: 'fake-1', reason: 'quota' }])
       if ('calls' in step)
-        return { type: 'tool_calls', toolCalls: step.calls, message: { role: 'assistant', content: '', toolCalls: step.calls }, ...meta }
-      return { type: 'reply', data: step.reply as T, message: { role: 'assistant', content: step.reply }, ...meta }
+        return {
+          type: 'tool_calls',
+          toolCalls: step.calls,
+          message: { role: 'assistant', content: '', toolCalls: step.calls },
+          ...meta,
+        }
+      return {
+        type: 'reply',
+        data: step.reply as T,
+        message: { role: 'assistant', content: step.reply },
+        ...meta,
+      }
     },
     complete: async () => {
       throw new Error('not used')
@@ -119,11 +170,16 @@ const names = (message: string) => offered(message).map((o) => o.tool.name)
 
 describe('Ask AI runs Train', () => {
   it('offers the Train tools a question needs, each change as a proposal, within MAX_TOOLS', () => {
-    expect(names('come up with exercises for the week')).toEqual(expect.arrayContaining(['plan_training_week', 'get_training_week']))
-    expect(names('rename Upper A to Push')).toEqual(expect.arrayContaining(['update_template', 'list_templates']))
+    expect(names('come up with exercises for the week')).toEqual(
+      expect.arrayContaining(['plan_training_week', 'get_training_week']),
+    )
+    expect(names('rename Upper A to Push')).toEqual(
+      expect.arrayContaining(['update_template', 'list_templates']),
+    )
     expect(names("I don't have a leg press")).toContain('update_equipment')
 
-    const access = (message: string, tool: string) => offered(message).find((o) => o.tool.name === tool)?.access
+    const access = (message: string, tool: string) =>
+      offered(message).find((o) => o.tool.name === tool)?.access
     expect(access('rename Upper A to Push', 'update_template')).toBe('propose')
     expect(access("I don't have a leg press", 'update_equipment')).toBe('propose')
     expect(access('Plan my week: Mon, Tue, Thu', 'plan_training_week')).toBe('propose')
@@ -150,19 +206,32 @@ describe('Ask AI runs Train', () => {
       { calls: [{ id: 'c1', name: 'plan_training_week', args: { training_days: ['mon', 'tue', 'thu'] } }] },
       { reply: 'I proposed Mon, Tue and Thu; the three drafts arrive as cards in a minute or two.' },
     ])
-    const out = await chatTurn(deps, llm, send('Come up with exercises for the week: Monday, Tuesday and Thursday'))
+    const out = await chatTurn(
+      deps,
+      llm,
+      send('Come up with exercises for the week: Monday, Tuesday and Thursday'),
+    )
 
     expect(out.reply.tool_calls).toEqual([expect.objectContaining({ name: 'plan_training_week', ok: true })])
     const days = await db.select().from(ai_events).where(eq(ai_events.kind, 'proposal'))
     const proposals = days.filter((e) => (e.body as { kind?: string } | null)?.kind === 'training_days')
     expect(proposals).toHaveLength(1)
-    expect(proposals[0]).toMatchObject({ proposal_status: 'pending', body: { kind: 'training_days', training_days: ['mon', 'tue', 'thu'] } })
-    expect(out.reply.proposals).toEqual([expect.objectContaining({ type: 'proposal', id: proposals[0]!.id, status: 'pending' })])
+    expect(proposals[0]).toMatchObject({
+      proposal_status: 'pending',
+      body: { kind: 'training_days', training_days: ['mon', 'tue', 'thu'] },
+    })
+    expect(out.reply.proposals).toEqual([
+      expect.objectContaining({ type: 'proposal', id: proposals[0]!.id, status: 'pending' }),
+    ])
     expect((await getSettings(deps)).settings.training_days).toEqual(['mon', 'tue', 'wed', 'thu'])
 
     const jobs = await db.select().from(ai_jobs).where(eq(ai_jobs.type, 'workout_template'))
     expect(jobs.map((j) => j.status)).toEqual(['queued', 'queued', 'queued'])
-    expect(jobs.map((j) => (j.payload as { slot: { name: string } }).slot.name).sort()).toEqual(['Full body', 'Lower A', 'Upper A'])
+    expect(jobs.map((j) => (j.payload as { slot: { name: string } }).slot.name).sort()).toEqual([
+      'Full body',
+      'Lower A',
+      'Upper A',
+    ])
 
     // What the model was told: plan the week with the days named; un-hiding and the rails stay his.
     expect(llm.requests[0]!.system).toMatch(/plan_training_week with the days he names/)
@@ -177,14 +246,26 @@ describe('Ask AI runs Train', () => {
       exercises: [item(bench.id, 4), item(pulldown.id, 4), item(press.id, 4)],
     })
     const llm = fakeRouter([
-      { calls: [{ id: 'c1', name: 'update_template', args: { template_id: upperA.id, name: 'Push', reason: 'You asked to rename it' } }] },
+      {
+        calls: [
+          {
+            id: 'c1',
+            name: 'update_template',
+            args: { template_id: upperA.id, name: 'Push', reason: 'You asked to rename it' },
+          },
+        ],
+      },
       { reply: 'Tap Apply below to rename Upper A to Push.' },
     ])
     const out = await chatTurn(deps, llm, send('rename Upper A to Push'))
 
     expect(out.reply.tool_calls).toEqual([expect.objectContaining({ name: 'update_template', ok: true })])
     expect(out.reply.proposals).toEqual([
-      expect.objectContaining({ type: 'proposal', status: 'pending', body: expect.objectContaining({ kind: 'train_change' }) }),
+      expect.objectContaining({
+        type: 'proposal',
+        status: 'pending',
+        body: expect.objectContaining({ kind: 'train_change' }),
+      }),
     ])
     expect((await getTemplate(deps, upperA.id)).name).toBe('Upper A')
   })
@@ -196,7 +277,17 @@ describe('Ask AI runs Train', () => {
       kind: 'proposal',
       actor: 'ai',
       summary: 'Draft for Upper A',
-      body: { kind: 'workout', mode: 'generate', date: null, workout: { name: 'Upper A', exercises: [item(bench.id, 4), item(pulldown.id, 4), item(press.id, 4)], rationale: '' }, muscle_scores: {} },
+      body: {
+        kind: 'workout',
+        mode: 'generate',
+        date: null,
+        workout: {
+          name: 'Upper A',
+          exercises: [item(bench.id, 4), item(pulldown.id, 4), item(press.id, 4)],
+          rationale: '',
+        },
+        muscle_scores: {},
+      },
       proposal_status: 'pending',
     })
     const llm = fakeRouter([
@@ -208,6 +299,8 @@ describe('Ask AI runs Train', () => {
 
     expect(out.reply.tool_calls).toEqual([expect.objectContaining({ name: 'start_session', ok: false })])
     expect(out.tool_messages[0]!.content).toContain('needs_approval')
-    expect((await db.select().from(ai_events).where(eq(ai_events.id, draft)))[0]?.proposal_status).toBe('pending')
+    expect((await db.select().from(ai_events).where(eq(ai_events.id, draft)))[0]?.proposal_status).toBe(
+      'pending',
+    )
   })
 })

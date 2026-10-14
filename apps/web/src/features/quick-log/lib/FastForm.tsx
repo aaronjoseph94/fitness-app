@@ -8,9 +8,25 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { fastDay } from '@fitness/shared/engine'
 import { useState } from 'react'
-import { formatNumber, LoadProblem, MetricRing, PendingBadge, statValue, tabularNums } from '../../../components'
+import {
+  formatNumber,
+  LoadProblem,
+  MetricRing,
+  PendingBadge,
+  statValue,
+  tabularNums,
+} from '../../../components'
 import { tokens } from '../../../theme'
-import { clockOf, dateOf, formatDateTime, formatDuration, instantAt, relativeDay, shiftDate, todayLocal } from './dates'
+import {
+  clockOf,
+  dateOf,
+  formatDateTime,
+  formatDuration,
+  instantAt,
+  relativeDay,
+  shiftDate,
+  todayLocal,
+} from './dates'
 import { fastsInMonth, useFasts, useNow, type FastView } from './fasts'
 import { useLogSettings } from './reads'
 import { noticeFor, type LogNotice } from './ui'
@@ -48,17 +64,36 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
     const endedAt = new Date().toISOString()
     end.mutate(
       { params: { id: fast.id }, body: { ended_at: endedAt } },
-      { onSuccess: (o) => onLogged(noticeFor(o, `Fast ended after ${formatDuration(Date.parse(endedAt) - Date.parse(fast.startedAt))}`)) },
+      {
+        onSuccess: (o) =>
+          onLogged(
+            noticeFor(
+              o,
+              `Fast ended after ${formatDuration(Date.parse(endedAt) - Date.parse(fast.startedAt))}`,
+            ),
+          ),
+      },
     )
   }
   const endAt = (fast: FastView, endedAt: string) => {
     end.mutate(
       { params: { id: fast.id }, body: { ended_at: endedAt } },
-      { onSuccess: (o) => onLogged(noticeFor(o, `Fast recorded: ${formatDuration(Date.parse(endedAt) - Date.parse(fast.startedAt))}`)) },
+      {
+        onSuccess: (o) =>
+          onLogged(
+            noticeFor(
+              o,
+              `Fast recorded: ${formatDuration(Date.parse(endedAt) - Date.parse(fast.startedAt))}`,
+            ),
+          ),
+      },
     )
   }
   const didNotFast = (fast: FastView) => {
-    cancel.mutate({ params: { id: fast.id } }, { onSuccess: (o) => onLogged(noticeFor(o, `Fast of ${formatDateTime(fast.startedAt)} removed`)) })
+    cancel.mutate(
+      { params: { id: fast.id } },
+      { onSuccess: (o) => onLogged(noticeFor(o, `Fast of ${formatDateTime(fast.startedAt)} removed`)) },
+    )
   }
 
   return (
@@ -85,7 +120,14 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
               <Box sx={{ ...statValue('small'), lineHeight: 1.2 }}>
                 {formatDuration(now - Date.parse(active.startedAt))}
               </Box>
-              <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mt: 1, lineHeight: tokens.font.leading.small }}>
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.small,
+                  color: 'text.secondary',
+                  mt: 1,
+                  lineHeight: tokens.font.leading.small,
+                }}
+              >
                 Started {formatDateTime(active.startedAt)}
                 <br />
                 {fastHours} h at {formatDateTime(Date.parse(active.startedAt) + fastHours * HOUR_MS)}
@@ -97,22 +139,46 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
               )}
             </Box>
           </Box>
-          <Button variant="contained" size="large" onClick={() => endNow(active)} disabled={end.isPending} data-testid="fast-end">
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => endNow(active)}
+            disabled={end.isPending}
+            data-testid="fast-end"
+          >
             {end.isPending ? 'Saving…' : 'End fast'}
           </Button>
           {active.planned && (
-            <Button variant="text" onClick={() => didNotFast(active)} disabled={cancel.isPending} data-testid="fast-skip">
+            <Button
+              variant="text"
+              onClick={() => didNotFast(active)}
+              disabled={cancel.isPending}
+              data-testid="fast-skip"
+            >
               Didn't fast
             </Button>
           )}
         </>
       ) : (
         <>
-          <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>
-            No fast running. A fast day is a known pattern: intake expected 0, water target up, training light.
+          <Box
+            sx={{
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: 'text.secondary',
+            }}
+          >
+            No fast running. A fast day is a known pattern: intake expected 0, water target up, training
+            light.
           </Box>
           {soon ? (
-            <Button variant="contained" size="large" onClick={() => startNow(soon)} disabled={start.isPending} data-testid="fast-start-planned">
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => startNow(soon)}
+              disabled={start.isPending}
+              data-testid="fast-start-planned"
+            >
               Start planned fast ({relativeDay(dateOf(soon.startedAt), today)} {clockOf(soon.startedAt)})
             </Button>
           ) : null}
@@ -163,14 +229,34 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
           </Button>
         )}
         {upcoming.length > 0 && (
-          <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid' }} aria-label="Planned fasts">
+          <Box
+            component="ul"
+            sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid' }}
+            aria-label="Planned fasts"
+          >
             {upcoming.slice(0, 4).map((f) => (
               <Box
                 component="li"
                 key={f.id}
-                sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.small, minHeight: 36, '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontSize: tokens.font.size.small,
+                  minHeight: 36,
+                  '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+                }}
               >
-                <Box aria-hidden sx={{ width: 8, height: 8, flex: 'none', borderRadius: `${tokens.radius.pill}px`, border: `2px solid ${tokens.metric.fasting}` }} />
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    flex: 'none',
+                    borderRadius: `${tokens.radius.pill}px`,
+                    border: `2px solid ${tokens.metric.fasting}`,
+                  }}
+                />
                 <Box sx={{ flex: 1, ...tabularNums }}>Planned {formatDateTime(f.startedAt)}</Box>
                 {f.pending && <PendingBadge />}
               </Box>
@@ -205,13 +291,25 @@ function MissedFast({
   const start = Date.parse(fast.startedAt)
   const fallback = Math.min(start + fastHours * HOUR_MS, now)
   const [value, setValue] = useState(`${dateOf(fallback)}T${clockOf(fallback)}`)
-  const endedAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? instantAt(value.slice(0, 10), value.slice(11, 16)) : null
+  const endedAt = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)
+    ? instantAt(value.slice(0, 10), value.slice(11, 16))
+    : null
   const valid = endedAt !== null && Date.parse(endedAt) > start && Date.parse(endedAt) <= now
 
   return (
-    <Box sx={{ display: 'grid', gap: 3, borderTop: `1px solid ${tokens.ink.border}`, pt: 4 }} data-testid="fast-missed">
-      <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>
-        The fast {fast.planned ? 'planned for' : 'started'} {formatDateTime(fast.startedAt)} was never ended. When did it end?
+    <Box
+      sx={{ display: 'grid', gap: 3, borderTop: `1px solid ${tokens.ink.border}`, pt: 4 }}
+      data-testid="fast-missed"
+    >
+      <Box
+        sx={{
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: 'text.secondary',
+        }}
+      >
+        The fast {fast.planned ? 'planned for' : 'started'} {formatDateTime(fast.startedAt)} was never ended.
+        When did it end?
       </Box>
       <TextField
         label="Ended at"
@@ -222,7 +320,12 @@ function MissedFast({
       />
       {/* "Didn't fast" removes a planned fast that never began; a fast Aaron started himself did begin (409 otherwise). */}
       <Box sx={{ display: 'grid', gridTemplateColumns: fast.planned ? '1fr 1fr' : '1fr', gap: 2 }}>
-        <Button variant="contained" onClick={() => endedAt && onEndAt(endedAt)} disabled={!valid || busy} data-testid="fast-end-at">
+        <Button
+          variant="contained"
+          onClick={() => endedAt && onEndAt(endedAt)}
+          disabled={!valid || busy}
+          data-testid="fast-end-at"
+        >
           End at this time
         </Button>
         {fast.planned && (
@@ -263,7 +366,9 @@ function PlanFastForm({
   // from 31 Oct 19:00 is one of November's.
   const day = (valid && fastDay({ started_at: instantAt(date, time), ended_at: null }, fastHours)) || date
   const count = fastsInMonth(fasts, day, fastHours)
-  const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(Date.parse(`${day}T12:00:00Z`))
+  const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(
+    Date.parse(`${day}T12:00:00Z`),
+  )
 
   return (
     <Box
@@ -288,7 +393,13 @@ function PlanFastForm({
           onChange={(e) => e.target.value && setDate(e.target.value)}
           slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: today } }}
         />
-        <TextField label="Start" type="time" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+        <TextField
+          label="Start"
+          type="time"
+          value={time}
+          onChange={(e) => e.target.value && setTime(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
       </Box>
       <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }} data-testid="fast-plan-count">
         {day !== date && `Fast day ${day}. `}

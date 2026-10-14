@@ -13,7 +13,17 @@ import { endpoints } from '@fitness/shared/api'
 import type { DayView, HealthSource } from '@fitness/shared/schemas'
 import { useEffect, useId, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
-import { formatClock, formatNumber, NumberField, parseNumber, PendingBadge, Segmented, StatusChip, statValue, wellSurface } from '../../../components'
+import {
+  formatClock,
+  formatNumber,
+  NumberField,
+  parseNumber,
+  PendingBadge,
+  Segmented,
+  StatusChip,
+  statValue,
+  wellSurface,
+} from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { clockOf, instantAt, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
 import { LogCard } from './LogCard'
@@ -22,7 +32,15 @@ import { problemText } from '../../../api'
 type SleepMode = 'times' | 'hours'
 
 /** `loading`: the day is still being read (its tiles hold placeholders; once it fails they read "—" with no caption). */
-export function SleepStepsCard({ date, day, loading }: { date: string; day: DayView | undefined; loading: boolean }) {
+export function SleepStepsCard({
+  date,
+  day,
+  loading,
+}: {
+  date: string
+  day: DayView | undefined
+  loading: boolean
+}) {
   const steps = useLogMutation(endpoints.health.createSteps)
   const sleep = useLogMutation(endpoints.health.createSleep)
   const pendingSteps = usePendingLogs(endpoints.health.createSteps).filter((p) => p.body.date === date)
@@ -64,10 +82,16 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
   const sleepGiven = mode === 'times' ? timesGiven : hoursValid
   // Only a night Aaron changed is sent: re-saving the prefilled one would replace the watch's own asleep minutes and
   // stages with time in bed (a manual entry), just because the day's steps were saved.
-  const serverTimes = serverSleep?.in_bed_at && serverSleep.woke_at ? { bed: clockOf(serverSleep.in_bed_at), wake: clockOf(serverSleep.woke_at) } : null
+  const serverTimes =
+    serverSleep?.in_bed_at && serverSleep.woke_at
+      ? { bed: clockOf(serverSleep.in_bed_at), wake: clockOf(serverSleep.woke_at) }
+      : null
   const serverHours = serverSleep ? Math.round((serverSleep.asleep_min / 60) * 10) / 10 : null
   const sleepChanged =
-    sleepGiven && (mode === 'times' ? !serverTimes || serverTimes.bed !== bed || serverTimes.wake !== wake : hoursN !== serverHours)
+    sleepGiven &&
+    (mode === 'times'
+      ? !serverTimes || serverTimes.bed !== bed || serverTimes.wake !== wake
+      : hoursN !== serverHours)
   const stepsChanged = stepsN !== null && stepsN !== serverSteps
   const canSave = stepsValid && (stepsChanged || sleepChanged) && !steps.isPending && !sleep.isPending
 
@@ -84,9 +108,22 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
       if (mode === 'times') {
         // In bed after the wake time on the clock means the evening before (22:45 → 06:30).
         const bedDate = bed > wake ? shiftDate(date, -1) : date
-        sleep.mutate({ body: { id: crypto.randomUUID(), date, in_bed_at: instantAt(bedDate, bed), woke_at: instantAt(date, wake) } }, { onSuccess: after('sleep') })
+        sleep.mutate(
+          {
+            body: {
+              id: crypto.randomUUID(),
+              date,
+              in_bed_at: instantAt(bedDate, bed),
+              woke_at: instantAt(date, wake),
+            },
+          },
+          { onSuccess: after('sleep') },
+        )
       } else if (hoursN !== null) {
-        sleep.mutate({ body: { id: crypto.randomUUID(), date, asleep_min: Math.round(hoursN * 60) } }, { onSuccess: after('sleep') })
+        sleep.mutate(
+          { body: { id: crypto.randomUUID(), date, asleep_min: Math.round(hoursN * 60) } },
+          { onSuccess: after('sleep') },
+        )
       }
     }
   }
@@ -103,7 +140,13 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
       meta={
         <>
           {pendingSteps.length + pendingSleep.length > 0 && <PendingBadge />}
-          {serverSleep && <StatusChip tone="outline" size="small" label={`${SOURCE_LABEL[serverSleep.source]} · ${formatClock(serverSleep.updated_at)}`} />}
+          {serverSleep && (
+            <StatusChip
+              tone="outline"
+              size="small"
+              label={`${SOURCE_LABEL[serverSleep.source]} · ${formatClock(serverSleep.updated_at)}`}
+            />
+          )}
         </>
       }
       testId="log-sleep-steps"
@@ -127,11 +170,23 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
         <Tile
           label="Steps"
           value={serverSteps !== null ? formatNumber(serverSteps) : !known && loading ? null : '—'}
-          caption={stepsTarget !== null ? `of ${formatNumber(stepsTarget)}` : known && serverSteps === null ? 'Not logged' : undefined}
+          caption={
+            stepsTarget !== null
+              ? `of ${formatNumber(stepsTarget)}`
+              : known && serverSteps === null
+                ? 'Not logged'
+                : undefined
+          }
         />
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 12px', mt: '10px' }}>
-        <Button variant="outlined" size="tiny" aria-expanded={open} aria-controls={formId} onClick={() => setOpen((o) => !o)}>
+        <Button
+          variant="outlined"
+          size="tiny"
+          aria-expanded={open}
+          aria-controls={formId}
+          onClick={() => setOpen((o) => !o)}
+        >
           Enter by hand
         </Button>
         <Link
@@ -162,7 +217,14 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
           }}
           sx={{ display: 'grid', gap: 3, pt: 4 }}
         >
-          <NumberField label="Steps" value={stepsText} onChange={setStepsText} unit="steps" integer error={!stepsValid} />
+          <NumberField
+            label="Steps"
+            value={stepsText}
+            onChange={setStepsText}
+            unit="steps"
+            integer
+            error={!stepsValid}
+          />
           <Segmented
             ariaLabel="Sleep entry"
             value={mode}
@@ -176,13 +238,34 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
           />
           {mode === 'times' ? (
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <TextField label="In bed" type="time" value={bed} onChange={(e) => setBed(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-              <TextField label="Woke" type="time" value={wake} onChange={(e) => setWake(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+              <TextField
+                label="In bed"
+                type="time"
+                value={bed}
+                onChange={(e) => setBed(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Woke"
+                type="time"
+                value={wake}
+                onChange={(e) => setWake(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
             </Box>
           ) : (
-            <NumberField label="Hours asleep" value={hours} onChange={setHours} unit="h" error={hours !== '' && !hoursValid} />
+            <NumberField
+              label="Hours asleep"
+              value={hours}
+              onChange={setHours}
+              unit="h"
+              error={hours !== '' && !hoursValid}
+            />
           )}
-          <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, minHeight: 18 }} aria-live="polite">
+          <Box
+            sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, minHeight: 18 }}
+            aria-live="polite"
+          >
             {error ? (
               <Box component="span" sx={{ color: tokens.tone.danger.text }}>
                 {problemText(error)}
@@ -206,27 +289,58 @@ export function SleepStepsCard({ date, day, loading }: { date: string; day: DayV
   )
 }
 
-const SOURCE_LABEL: Record<HealthSource, string> = { watch_webhook: 'Apple Watch', import: 'Imported', manual: 'By hand' }
+const SOURCE_LABEL: Record<HealthSource, string> = {
+  watch_webhook: 'Apple Watch',
+  import: 'Imported',
+  manual: 'By hand',
+}
 
 /**
  * One of the two panel-tint tiles: 12 px label, 22/600 value with its unit (2a draws 20; the type scale's nearest step),
  * 11 px caption. `value` null: a placeholder in the value's line while the day loads.
  */
-function Tile({ label, value, unit, caption }: { label: string; value: string | null; unit?: string; caption?: string }) {
+function Tile({
+  label,
+  value,
+  unit,
+  caption,
+}: {
+  label: string
+  value: string | null
+  unit?: string
+  caption?: string
+}) {
   return (
     <Box sx={{ ...wellSurface, px: 3, py: '10px', minWidth: 0 }}>
       <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>{label}</Box>
       <Box sx={{ mt: '2px', ...statValue('small'), lineHeight: 1.3 }}>
         {value ?? <Skeleton variant="text" width={64} sx={{ display: 'inline-block' }} />}
         {unit && (
-          <Box component="span" sx={{ fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.body, color: tokens.ink.secondary, letterSpacing: 0 }}>
+          <Box
+            component="span"
+            sx={{
+              fontSize: tokens.font.size.caption,
+              fontWeight: tokens.font.weight.body,
+              color: tokens.ink.secondary,
+              letterSpacing: 0,
+            }}
+          >
             {' '}
             {unit}
           </Box>
         )}
       </Box>
       {/* The caption's line is kept when there is none, so the tile doesn't change height once the day loads. */}
-      <Box sx={{ minHeight: '1.5em', fontSize: tokens.font.size.micro, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{caption}</Box>
+      <Box
+        sx={{
+          minHeight: '1.5em',
+          fontSize: tokens.font.size.micro,
+          color: tokens.ink.secondary,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {caption}
+      </Box>
     </Box>
   )
 }

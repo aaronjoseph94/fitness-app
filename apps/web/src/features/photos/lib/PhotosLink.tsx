@@ -35,15 +35,49 @@ export function PhotosLink() {
         '&:hover': { bgcolor: tokens.ink.panel },
       }}
     >
-      <Box sx={{ width: 36, height: 48, flex: 'none', borderRadius: `${tokens.radius.inner}px`, overflow: 'hidden', bgcolor: tokens.ink.fill, display: 'grid', placeItems: 'center' }}>
-        {latest ? <PhotoImage photo={latest} /> : <PhotoCameraOutlined sx={{ fontSize: 18, color: tokens.accent.main }} />}
+      <Box
+        sx={{
+          width: 36,
+          height: 48,
+          flex: 'none',
+          borderRadius: `${tokens.radius.inner}px`,
+          overflow: 'hidden',
+          bgcolor: tokens.ink.fill,
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        {latest ? (
+          <PhotoImage photo={latest} />
+        ) : (
+          <PhotoCameraOutlined sx={{ fontSize: 18, color: tokens.accent.main }} />
+        )}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontWeight: tokens.font.weight.heading, fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body, color: tokens.ink.text }}>Progress photos</Box>
-        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary, display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <Box
+          sx={{
+            fontWeight: tokens.font.weight.heading,
+            fontSize: tokens.font.size.body,
+            lineHeight: tokens.font.leading.body,
+            color: tokens.ink.text,
+          }}
+        >
+          Progress photos
+        </Box>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.secondary,
+            display: 'flex',
+            gap: '6px',
+            flexWrap: 'wrap',
+          }}
+        >
           {latest ? (
             <>
-              {count} {count === 1 ? 'photo' : 'photos'} · last {POSE_LABEL[latest.pose].toLowerCase()} {formatShortDate(latest.date)}
+              {count} {count === 1 ? 'photo' : 'photos'} · last {POSE_LABEL[latest.pose].toLowerCase()}{' '}
+              {formatShortDate(latest.date)}
               <TrendWeight kg={latest.weight_kg} size={tokens.font.size.caption} />
             </>
           ) : (

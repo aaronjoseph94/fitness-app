@@ -36,7 +36,9 @@ const REST_PRESETS = [60, 90, 120, 180] as const
 const PRESET_CHIP = { [COARSE_POINTER_QUERY]: { minWidth: tokens.tapTarget } } as const
 
 /** "3 × 8–12 · 40 kg · 90 s rest". */
-export function prescription(e: Pick<TemplateExerciseInput, 'sets' | 'rep_min' | 'rep_max' | 'target_load_kg' | 'rest_sec'>): string {
+export function prescription(
+  e: Pick<TemplateExerciseInput, 'sets' | 'rep_min' | 'rep_max' | 'target_load_kg' | 'rest_sec'>,
+): string {
   const reps = e.rep_min === e.rep_max ? `${e.rep_min}` : `${e.rep_min}–${e.rep_max}`
   const load = e.target_load_kg !== null ? ` · ${formatNumber(e.target_load_kg, 1)} kg` : ''
   return `${e.sets} × ${reps}${load} · ${e.rest_sec} s rest`
@@ -62,7 +64,9 @@ function NumberBox({
 }) {
   const [text, setText] = useState(value === null ? '' : String(value))
   useEffect(() => {
-    setText((t) => (Number(t.replace(',', '.')) === value && t !== '' ? t : value === null ? '' : String(value)))
+    setText((t) =>
+      Number(t.replace(',', '.')) === value && t !== '' ? t : value === null ? '' : String(value),
+    )
   }, [value])
   return (
     <TextField
@@ -79,8 +83,21 @@ function NumberBox({
       onFocus={(e) => e.target.select()}
       sx={{ width, flex: 'none', '& input': { textAlign: 'center', fontVariantNumeric: 'tabular-nums' } }}
       slotProps={{
-        htmlInput: { inputMode: integer ? 'numeric' : 'decimal', pattern: integer ? '[0-9]*' : '[0-9]*[.,]?[0-9]*', 'aria-label': ariaLabel ?? label, enterKeyHint: 'done' },
-        input: unit ? { endAdornment: <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ml: 0.5 }}>{unit}</Box> } : undefined,
+        htmlInput: {
+          inputMode: integer ? 'numeric' : 'decimal',
+          pattern: integer ? '[0-9]*' : '[0-9]*[.,]?[0-9]*',
+          'aria-label': ariaLabel ?? label,
+          enterKeyHint: 'done',
+        },
+        input: unit
+          ? {
+              endAdornment: (
+                <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ml: 0.5 }}>
+                  {unit}
+                </Box>
+              ),
+            }
+          : undefined,
       }}
     />
   )
@@ -98,8 +115,19 @@ export interface ExerciseCardProps {
   onInfo: () => void
 }
 
-export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChange, onRemove, onSwap, onInfo }: ExerciseCardProps) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.key })
+export function ExerciseCard({
+  item,
+  exercise,
+  index,
+  expanded,
+  onToggle,
+  onChange,
+  onRemove,
+  onSwap,
+  onInfo,
+}: ExerciseCardProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.key })
   const [menu, setMenu] = useState<HTMLElement | null>(null)
   const [noteOpen, setNoteOpen] = useState(item.note !== null && item.note !== '')
   const name = exercise?.name ?? 'Unknown exercise'
@@ -127,14 +155,31 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
           size="small"
           aria-label={`Reorder ${name} (position ${index + 1})`}
           // The glyph alone identifies the control, so it takes the 3:1 control grey, not the faint glyph grey.
-          sx={{ touchAction: 'none', cursor: isDragging ? 'grabbing' : 'grab', color: tokens.ink.control, flex: 'none' }}
+          sx={{
+            touchAction: 'none',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            color: tokens.ink.control,
+            flex: 'none',
+          }}
         >
           <DragIndicatorRounded sx={{ fontSize: 18 }} />
         </IconButton>
         <ButtonBase
           onClick={onToggle}
           aria-expanded={expanded}
-          sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '12px', p: '2px', justifyContent: 'flex-start', textAlign: 'left', borderRadius: `${tokens.radius.control}px`, font: 'inherit', color: 'inherit' }}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            p: '2px',
+            justifyContent: 'flex-start',
+            textAlign: 'left',
+            borderRadius: `${tokens.radius.control}px`,
+            font: 'inherit',
+            color: 'inherit',
+          }}
         >
           <ExerciseThumb exercise={exercise} size={44} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -153,16 +198,39 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
             >
               {index + 1} · {name}
             </Box>
-            <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: repsInvalid || hidden ? tokens.status.flag : tokens.ink.secondary, mt: '2px', fontVariantNumeric: 'tabular-nums' }}>
-              {hidden ? 'Hidden now: swap or remove it' : repsInvalid ? 'Rep min is above max' : prescription(item)}
+            <Box
+              sx={{
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: repsInvalid || hidden ? tokens.status.flag : tokens.ink.secondary,
+                mt: '2px',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {hidden
+                ? 'Hidden now: swap or remove it'
+                : repsInvalid
+                  ? 'Rep min is above max'
+                  : prescription(item)}
             </Box>
           </Box>
           <ExpandMoreRounded
             aria-hidden
-            sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none', transform: expanded ? 'rotate(180deg)' : 'none', transition: transitionOf('transform', tokens.motion.duration.fast) }}
+            sx={{
+              fontSize: 18,
+              color: tokens.ink.faint,
+              flex: 'none',
+              transform: expanded ? 'rotate(180deg)' : 'none',
+              transition: transitionOf('transform', tokens.motion.duration.fast),
+            }}
           />
         </ButtonBase>
-        <IconButton size="small" aria-label={`More for ${name}`} onClick={(e) => setMenu(e.currentTarget)} sx={{ ...outlinedIconButton, flex: 'none' }}>
+        <IconButton
+          size="small"
+          aria-label={`More for ${name}`}
+          onClick={(e) => setMenu(e.currentTarget)}
+          sx={{ ...outlinedIconButton, flex: 'none' }}
+        >
           <MoreHorizRounded sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
@@ -183,27 +251,72 @@ export function ExerciseCard({ item, exercise, index, expanded, onToggle, onChan
         >
           <Box sx={{ display: 'flex', alignItems: 'center', columnGap: 4, rowGap: 3, flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton size="small" aria-label="One set fewer" disabled={item.sets <= 1} onClick={() => onChange({ sets: item.sets - 1 })} sx={outlinedIconButton}>
+              <IconButton
+                size="small"
+                aria-label="One set fewer"
+                disabled={item.sets <= 1}
+                onClick={() => onChange({ sets: item.sets - 1 })}
+                sx={outlinedIconButton}
+              >
                 <RemoveRounded sx={{ fontSize: 18 }} />
               </IconButton>
               <Box sx={{ width: 44, textAlign: 'center' }}>
-                <Box sx={{ fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.number, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }} aria-live="polite">
+                <Box
+                  sx={{
+                    fontSize: tokens.font.size.sectionTitle,
+                    fontWeight: tokens.font.weight.number,
+                    fontVariantNumeric: 'tabular-nums',
+                    lineHeight: 1.1,
+                  }}
+                  aria-live="polite"
+                >
                   {item.sets}
                 </Box>
                 <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>sets</Box>
               </Box>
-              <IconButton size="small" aria-label="One more set" disabled={item.sets >= 10} onClick={() => onChange({ sets: item.sets + 1 })} sx={outlinedIconButton}>
+              <IconButton
+                size="small"
+                aria-label="One more set"
+                disabled={item.sets >= 10}
+                onClick={() => onChange({ sets: item.sets + 1 })}
+                sx={outlinedIconButton}
+              >
                 <AddRounded sx={{ fontSize: 18 }} />
               </IconButton>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <NumberBox label="Min" ariaLabel="Minimum reps" value={item.rep_min} width={64} onChange={(v) => v !== null && v >= 1 && v <= 50 && onChange({ rep_min: v })} />
+              <NumberBox
+                label="Min"
+                ariaLabel="Minimum reps"
+                value={item.rep_min}
+                width={64}
+                onChange={(v) => v !== null && v >= 1 && v <= 50 && onChange({ rep_min: v })}
+              />
               <Box sx={{ color: tokens.ink.secondary }}>–</Box>
-              <NumberBox label="Max" ariaLabel="Maximum reps" value={item.rep_max} width={64} onChange={(v) => v !== null && v >= 1 && v <= 50 && onChange({ rep_max: v })} />
+              <NumberBox
+                label="Max"
+                ariaLabel="Maximum reps"
+                value={item.rep_max}
+                width={64}
+                onChange={(v) => v !== null && v >= 1 && v <= 50 && onChange({ rep_max: v })}
+              />
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <NumberBox label="Load" unit="kg" integer={false} width={108} value={item.target_load_kg} onChange={(v) => (v === null || v <= 1000) && onChange({ target_load_kg: v })} />
-              <NumberBox label="Rest" unit="s" width={88} value={item.rest_sec} onChange={(v) => v !== null && v <= 600 && onChange({ rest_sec: v })} />
+              <NumberBox
+                label="Load"
+                unit="kg"
+                integer={false}
+                width={108}
+                value={item.target_load_kg}
+                onChange={(v) => (v === null || v <= 1000) && onChange({ target_load_kg: v })}
+              />
+              <NumberBox
+                label="Rest"
+                unit="s"
+                width={88}
+                value={item.rest_sec}
+                onChange={(v) => v !== null && v <= 600 && onChange({ rest_sec: v })}
+              />
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

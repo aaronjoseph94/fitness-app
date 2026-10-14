@@ -14,17 +14,35 @@ const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
 /** Monday 2026-10-05 09:00 MDT. */
 const NOW = '2026-10-05T15:00:00.000Z'
-const at = (now = NOW): Deps => ({ db, env, now: () => new Date(now), actor: 'user', waitUntil: (p) => void pending.push(p.catch(() => undefined)) })
+const at = (now = NOW): Deps => ({
+  db,
+  env,
+  now: () => new Date(now),
+  actor: 'user',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+})
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
 
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
-const todayTargets = async () => (await db.select().from(daily_targets).where(eq(daily_targets.date, '2026-10-05')))[0]
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
+const todayTargets = async () =>
+  (await db.select().from(daily_targets).where(eq(daily_targets.date, '2026-10-05')))[0]
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -41,7 +59,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -63,10 +92,20 @@ describe('fasts', () => {
   it('a planned fast nobody ended stops blocking a new fast after 2 × 24 h, and can be removed as skipped', async () => {
     const skipped = crypto.randomUUID()
     // Planned for Thursday 2026-10-01 19:00 MDT; never ended.
-    await db.insert(fast_logs).values({ id: skipped, started_at: '2026-10-02T01:00:00.000Z', start_date: '2026-10-01', planned: true })
+    await db
+      .insert(fast_logs)
+      .values({
+        id: skipped,
+        started_at: '2026-10-02T01:00:00.000Z',
+        start_date: '2026-10-01',
+        planned: true,
+      })
 
     const now = crypto.randomUUID()
-    await expect(startFast(at(), { id: now, started_at: NOW })).resolves.toMatchObject({ id: now, ended_at: null })
+    await expect(startFast(at(), { id: now, started_at: NOW })).resolves.toMatchObject({
+      id: now,
+      ended_at: null,
+    })
 
     await cancelFast(at(), skipped)
     expect((await listFasts(at(), {})).map((f) => f.id)).toEqual([now])
@@ -96,7 +135,10 @@ describe('the day card follows the fast', () => {
     await cancelFast(at('2026-10-08T17:00:00.000Z'), id)
     await settle()
     // The day is a 1,400 kcal training day again, nothing eaten.
-    expect(await latestCard('2026-10-08')).toMatchObject({ note: '1400 kcal and 130 g protein left today.', remaining: { kcal: 1400 } })
+    expect(await latestCard('2026-10-08')).toMatchObject({
+      note: '1400 kcal and 130 g protein left today.',
+      remaining: { kcal: 1400 },
+    })
   })
 
   it('ending a fast as a mis-tap replaces its "Fast day" card with a fresh one', async () => {
@@ -108,6 +150,9 @@ describe('the day card follows the fast', () => {
 
     await endFast(at('2026-10-09T15:00:30.000Z'), id, { ended_at: '2026-10-09T15:00:30.000Z' }) // no fast day now
     await settle()
-    expect(await latestCard('2026-10-09')).toMatchObject({ note: '1400 kcal and 130 g protein left today.', remaining: { kcal: 1400 } })
+    expect(await latestCard('2026-10-09')).toMatchObject({
+      note: '1400 kcal and 130 g protein left today.',
+      remaining: { kcal: 1400 },
+    })
   })
 })

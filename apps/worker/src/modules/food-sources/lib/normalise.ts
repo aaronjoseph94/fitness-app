@@ -82,7 +82,12 @@ export function fromOff(p: OffProduct): FoodDraft | null {
     fat_g: num(n.fat_100g) ?? 0,
     fibre_g: num(n.fiber_100g) ?? 0,
     sugar_g: num(n.sugars_100g),
-    sodium_mg: sodium !== null ? round(sodium * 1000, 1) : salt !== null ? round(salt * SODIUM_MG_PER_G_SALT, 1) : null,
+    sodium_mg:
+      sodium !== null
+        ? round(sodium * 1000, 1)
+        : salt !== null
+          ? round(salt * SODIUM_MG_PER_G_SALT, 1)
+          : null,
     raw: p,
   })
 }

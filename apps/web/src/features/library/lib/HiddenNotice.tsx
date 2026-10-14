@@ -16,9 +16,14 @@ import { sentence } from './labels'
 import { useRefreshLibrary } from './useExercises'
 
 /** Library rule 3 (Worker): equipment 'body only', or none at all, is outside the allowed set whatever Aaron un-hides. */
-const isRail = (e: Pick<ExerciseSummary, 'equipment'>) => (e.equipment ?? 'body only').toLowerCase() === 'body only'
+const isRail = (e: Pick<ExerciseSummary, 'equipment'>) =>
+  (e.equipment ?? 'body only').toLowerCase() === 'body only'
 
-export function HiddenNotice({ exercise }: { exercise: Pick<ExerciseSummary, 'id' | 'name' | 'equipment' | 'excluded_reason'> }) {
+export function HiddenNotice({
+  exercise,
+}: {
+  exercise: Pick<ExerciseSummary, 'id' | 'name' | 'equipment' | 'excluded_reason'>
+}) {
   const refresh = useRefreshLibrary()
   const unhide = useApiMutation(endpoints.training.deleteExclusion)
   const [queued, setQueued] = useState(false)
@@ -28,7 +33,10 @@ export function HiddenNotice({ exercise }: { exercise: Pick<ExerciseSummary, 'id
     // 2a's warning banner: why it is hidden on the first line, the way back as small buttons under it.
     <Banner tone="warning" title="Hidden" testId="hidden-notice">
       <Stack spacing={2} sx={{ mt: '2px' }}>
-        <Box>{sentence((exercise.excluded_reason ?? 'outside your allowed exercise set').replace(/\.$/, ''))}. The picker and the AI leave it out.</Box>
+        <Box>
+          {sentence((exercise.excluded_reason ?? 'outside your allowed exercise set').replace(/\.$/, ''))}.
+          The picker and the AI leave it out.
+        </Box>
         {unhide.error && <Box sx={{ color: tokens.status.flag }}>{problemText(unhide.error)}</Box>}
         {queued && <Box>Un-hides when you&apos;re back online.</Box>}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>

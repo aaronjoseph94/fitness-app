@@ -36,9 +36,12 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
 
   const stepsValue = steps.trim() === '' ? null : Number(steps.replace(/[\s,]/g, ''))
   const hoursValue = hours.trim() === '' ? null : Number(hours.replace(',', '.'))
-  const stepsInvalid = stepsValue !== null && (!Number.isInteger(stepsValue) || stepsValue < 0 || stepsValue > 200_000)
-  const hoursInvalid = hoursValue !== null && (!Number.isFinite(hoursValue) || hoursValue <= 0 || hoursValue > 24)
-  const canSave = !busy && (stepsValue !== null || hoursValue !== null) && !stepsInvalid && !hoursInvalid && day !== ''
+  const stepsInvalid =
+    stepsValue !== null && (!Number.isInteger(stepsValue) || stepsValue < 0 || stepsValue > 200_000)
+  const hoursInvalid =
+    hoursValue !== null && (!Number.isFinite(hoursValue) || hoursValue <= 0 || hoursValue > 24)
+  const canSave =
+    !busy && (stepsValue !== null || hoursValue !== null) && !stepsInvalid && !hoursInvalid && day !== ''
 
   const reset = () => {
     setSteps('')
@@ -51,10 +54,14 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
     setError(null)
     try {
       const outcomes = await Promise.all([
-        stepsValue === null ? null : stepsWrite.mutateAsync({ body: { id: crypto.randomUUID(), date: day, steps: stepsValue } }),
+        stepsValue === null
+          ? null
+          : stepsWrite.mutateAsync({ body: { id: crypto.randomUUID(), date: day, steps: stepsValue } }),
         hoursValue === null
           ? null
-          : sleepWrite.mutateAsync({ body: { id: crypto.randomUUID(), date: day, asleep_min: Math.round(hoursValue * 60) } }),
+          : sleepWrite.mutateAsync({
+              body: { id: crypto.randomUUID(), date: day, asleep_min: Math.round(hoursValue * 60) },
+            }),
       ])
       onDone(outcomes.some((o) => o?.status === 'queued') ? 'queued' : 'saved')
       reset()
@@ -65,7 +72,13 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
   }
 
   return (
-    <Dialog open={open} onClose={busy ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="health-dialog-title">
+    <Dialog
+      open={open}
+      onClose={busy ? undefined : onClose}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="health-dialog-title"
+    >
       <DialogTitle id="health-dialog-title">Steps and sleep</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'grid', gap: 4, pt: 1 }}>
@@ -86,7 +99,9 @@ export function HealthDialog({ open, date, onClose, onDone }: HealthDialogProps)
             error={stepsInvalid}
             helperText={stepsInvalid ? 'A whole number up to 200,000' : ' '}
             autoFocus
-            slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*', 'data-testid': 'health-steps' } }}
+            slotProps={{
+              htmlInput: { inputMode: 'numeric', pattern: '[0-9]*', 'data-testid': 'health-steps' },
+            }}
           />
           <TextField
             label="Hours asleep"

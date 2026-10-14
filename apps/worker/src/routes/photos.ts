@@ -6,7 +6,12 @@ import { route } from '../lib/route'
 import { listPhotos, removePhoto, uploadPhoto } from '../modules/photos'
 
 export function mountPhotosRoutes(app: App): void {
-  route(app, endpoints.photos.upload, ({ query, body }, deps) => uploadPhoto(deps, { ...query, image: body }), { status: 201 })
+  route(
+    app,
+    endpoints.photos.upload,
+    ({ query, body }, deps) => uploadPhoto(deps, { ...query, image: body }),
+    { status: 201 },
+  )
   route(app, endpoints.photos.list, ({ query }, deps) => listPhotos(deps, query))
   route(app, endpoints.photos.remove, ({ params }, deps) => removePhoto(deps, params.id))
 }

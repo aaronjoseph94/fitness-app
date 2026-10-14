@@ -51,8 +51,10 @@ export const MEAL_CARD_PX = 120
 const gutter = { px: `${tokens.pad.card.x}px` } as const
 
 const canActOn = (meal: MealView) => meal.meal !== null && meal.pending !== 'create'
-const aiAnalysed = (meal: MealView) => meal.inputMethod === 'text' || meal.inputMethod === 'voice' || meal.inputMethod === 'photo'
-const analysisFailed = (meal: MealView) => meal.status === 'review' && aiAnalysed(meal) && meal.items.length === 0
+const aiAnalysed = (meal: MealView) =>
+  meal.inputMethod === 'text' || meal.inputMethod === 'voice' || meal.inputMethod === 'photo'
+const analysisFailed = (meal: MealView) =>
+  meal.status === 'review' && aiAnalysed(meal) && meal.items.length === 0
 
 /** The meal's kcal as its header shows it: nothing while analysing or after a failed analysis with no items yet. */
 export function mealKcal(meal: MealView): string {
@@ -71,13 +73,29 @@ export function MealActions({ meal, onEdit, onFavourite, onDelete }: MealActions
   }
   return (
     <>
-      {meal.pending && (meal.queued || meal.pending === 'create') && <PendingBadge label={meal.pending === 'edit' ? 'Edit pending' : 'Pending'} />}
+      {meal.pending && (meal.queued || meal.pending === 'create') && (
+        <PendingBadge label={meal.pending === 'edit' ? 'Edit pending' : 'Pending'} />
+      )}
       <StatusChip tone={status.tone} label={status.label} />
       {kcal && (
-        <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{kcal}</Box>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.heading,
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {kcal}
+        </Box>
       )}
       {canActOn(meal) && (
-        <IconButton size="small" aria-label="Meal actions" onClick={(e) => setMenu(e.currentTarget)} sx={{ color: tokens.ink.secondary }}>
+        <IconButton
+          size="small"
+          aria-label="Meal actions"
+          onClick={(e) => setMenu(e.currentTarget)}
+          sx={{ color: tokens.ink.secondary }}
+        >
           <MoreHorizRounded sx={{ fontSize: 18 }} />
         </IconButton>
       )}
@@ -110,29 +128,57 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
               component="img"
               src={src}
               alt=""
-              sx={{ width: 48, height: 48, objectFit: 'cover', borderRadius: `${tokens.radius.control}px`, border: `1px solid ${tokens.ink.border}` }}
+              sx={{
+                width: 48,
+                height: 48,
+                objectFit: 'cover',
+                borderRadius: `${tokens.radius.control}px`,
+                border: `1px solid ${tokens.ink.border}`,
+              }}
             />
           ))}
         </Box>
       )}
 
       {meal.rawText && (meal.items.length === 0 || meal.status !== 'confirmed') && (
-        <Box sx={{ ...gutter, pb: 3, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>“{meal.rawText}”</Box>
+        <Box
+          sx={{
+            ...gutter,
+            pb: 3,
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.body,
+          }}
+        >
+          “{meal.rawText}”
+        </Box>
       )}
 
       {meal.status === 'parsing' && (
-        <Box sx={{ ...gutter, pb: 4, display: 'flex', alignItems: 'center', gap: 3 }} data-testid="meal-analysing-row">
+        <Box
+          sx={{ ...gutter, pb: 4, display: 'flex', alignItems: 'center', gap: 3 }}
+          data-testid="meal-analysing-row"
+        >
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {canAct ? (
               <>
                 <LinearProgress
                   aria-label="Analysing"
-                  sx={{ height: 6, borderRadius: `${tokens.radius.pill}px`, bgcolor: tokens.ink.fill, '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories } }}
+                  sx={{
+                    height: 6,
+                    borderRadius: `${tokens.radius.pill}px`,
+                    bgcolor: tokens.ink.fill,
+                    '& .MuiLinearProgress-bar': { bgcolor: tokens.metric.calories },
+                  }}
                 />
-                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 2 }}>The AI is working out the items.</Box>
+                <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 2 }}>
+                  The AI is working out the items.
+                </Box>
               </>
             ) : (
-              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>Saved on this device. It's analysed once it syncs.</Box>
+              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
+                Saved on this device. It's analysed once it syncs.
+              </Box>
             )}
           </Box>
           {canAct && (
@@ -144,8 +190,18 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
       )}
 
       {failed && canAct && (
-        <Box sx={{ ...gutter, pb: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 3 }} data-testid="meal-analysis-failed">
-          <Box sx={{ flex: '1 1 200px', fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
+        <Box
+          sx={{ ...gutter, pb: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 3 }}
+          data-testid="meal-analysis-failed"
+        >
+          <Box
+            sx={{
+              flex: '1 1 200px',
+              fontSize: tokens.font.size.small,
+              color: tokens.ink.secondary,
+              lineHeight: tokens.font.leading.small,
+            }}
+          >
             The AI couldn't read this one. Add the items yourself.
           </Box>
           <Button variant="contained" size="dense" onClick={onReview}>
@@ -157,7 +213,16 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
       {meal.items.length > 0 && <ItemTable meal={meal} />}
 
       {meal.status === 'review' && canAct && !failed && (
-        <Box sx={{ ...gutter, py: 3, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, borderTop: `1px solid ${tokens.ink.hairline}` }}>
+        <Box
+          sx={{
+            ...gutter,
+            py: 3,
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 2,
+            borderTop: `1px solid ${tokens.ink.hairline}`,
+          }}
+        >
           <Button variant="outlined" onClick={onReview} data-testid="meal-review-open">
             Review
           </Button>
@@ -171,7 +236,10 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
         </Box>
       )}
       {confirm.isError && (
-        <Box role="alert" sx={{ ...gutter, pb: 3, color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
+        <Box
+          role="alert"
+          sx={{ ...gutter, pb: 3, color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}
+        >
           {problemText(confirm.error)}
         </Box>
       )}
@@ -183,9 +251,32 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
 export function MealCard({ meal, ...actions }: MealActionsProps & MealBodyProps) {
   return (
     <Box data-testid="meal-card" sx={{ borderTop: `1px solid ${tokens.ink.border}` }}>
-      <Box sx={{ ...gutter, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', py: '10px' }}>
-        <Box sx={{ flex: 1, fontSize: tokens.font.size.small, color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{formatClock(meal.eatenAt)}</Box>
-        <MealActions meal={meal} onEdit={actions.onEdit} onFavourite={actions.onFavourite} onDelete={actions.onDelete} />
+      <Box
+        sx={{
+          ...gutter,
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '6px 10px',
+          py: '10px',
+        }}
+      >
+        <Box
+          sx={{
+            flex: 1,
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {formatClock(meal.eatenAt)}
+        </Box>
+        <MealActions
+          meal={meal}
+          onEdit={actions.onEdit}
+          onFavourite={actions.onFavourite}
+          onDelete={actions.onDelete}
+        />
       </Box>
       <MealBody meal={meal} onReview={actions.onReview} />
     </Box>
@@ -242,7 +333,15 @@ function ItemTable({ meal }: { meal: MealView }) {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                     <FoodGlyph name={item.description} />
                     {/* The chip drops under the name rather than splitting it, when the column is narrow. */}
-                    <Box sx={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 6px' }}>
+                    <Box
+                      sx={{
+                        minWidth: 0,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: '2px 6px',
+                      }}
+                    >
                       <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                         {item.description}
                       </Box>
@@ -253,7 +352,9 @@ function ItemTable({ meal }: { meal: MealView }) {
                 <TableCell align="right" sx={{ color: tokens.ink.label, whiteSpace: 'nowrap' }}>
                   {item.grams > 0 ? `${formatNumber(item.grams)} g` : '—'}
                 </TableCell>
-                <TableCell align="right">{item.nutrients ? formatNumber(item.nutrients.kcal) : '—'}</TableCell>
+                <TableCell align="right">
+                  {item.nutrients ? formatNumber(item.nutrients.kcal) : '—'}
+                </TableCell>
                 <TableCell align="right" className="item-protein" sx={{ whiteSpace: 'nowrap' }}>
                   {item.nutrients ? `${formatNumber(item.nutrients.protein_g)} g` : '—'}
                 </TableCell>

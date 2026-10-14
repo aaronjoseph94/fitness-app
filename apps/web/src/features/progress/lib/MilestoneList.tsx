@@ -21,7 +21,13 @@ interface MilestoneListProps {
 }
 
 function Mark({ state }: { state: MilestoneItem['state'] }) {
-  if (state === 'done') return <CheckCircleRounded aria-hidden sx={{ fontSize: MARK, color: tokens.tone.success.solid, flex: 'none' }} />
+  if (state === 'done')
+    return (
+      <CheckCircleRounded
+        aria-hidden
+        sx={{ fontSize: MARK, color: tokens.tone.success.solid, flex: 'none' }}
+      />
+    )
   const next = state === 'next'
   return (
     <Box
@@ -44,7 +50,17 @@ function Mark({ state }: { state: MilestoneItem['state'] }) {
 
 const STATE_TEXT = { done: 'Reached', next: 'Next', later: 'Not reached yet' } as const
 
-function Row({ state, label, detail, when }: { state: MilestoneItem['state']; label: string; detail?: string; when: string }) {
+function Row({
+  state,
+  label,
+  detail,
+  when,
+}: {
+  state: MilestoneItem['state']
+  label: string
+  detail?: string
+  when: string
+}) {
   return (
     <Box
       component="li"
@@ -71,7 +87,16 @@ function Row({ state, label, detail, when }: { state: MilestoneItem['state']; la
           </Box>
         )}
       </Box>
-      <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{when}</Box>
+      <Box
+        sx={{
+          flex: 'none',
+          color: tokens.ink.secondary,
+          fontVariantNumeric: 'tabular-nums',
+          textAlign: 'right',
+        }}
+      >
+        {when}
+      </Box>
     </Box>
   )
 }
@@ -79,7 +104,13 @@ function Row({ state, label, detail, when }: { state: MilestoneItem['state']; la
 export function MilestoneList({ items, start, whrNow }: MilestoneListProps) {
   return (
     <Box component="ol" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-      {start && <Row state="done" label={`Plan started · ${formatNumber(start.kg, 1)} kg`} when={formatShortDate(start.date)} />}
+      {start && (
+        <Row
+          state="done"
+          label={`Plan started · ${formatNumber(start.kg, 1)} kg`}
+          when={formatShortDate(start.date)}
+        />
+      )}
       {items.map((m) => (
         <Row
           key={m.label}

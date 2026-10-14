@@ -45,7 +45,12 @@ export function timeToDate(time: number): string {
 const shortDate = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 const monthOnly = new Intl.DateTimeFormat('en-CA', { month: 'short', timeZone: 'UTC' })
 const weekdayShort = new Intl.DateTimeFormat('en-CA', { weekday: 'short', timeZone: 'UTC' })
-const longDate = new Intl.DateTimeFormat('en-CA', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })
+const longDate = new Intl.DateTimeFormat('en-CA', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
 
 /** "2026-10-04" → "Oct 4" (axis ticks and compact labels; full ISO dates elsewhere). */
 export function formatShortDate(date: string | number): string {
@@ -75,7 +80,12 @@ export function formatLongDate(date: string | number): string {
 
 // en-US, not en-CA: en-CA writes "p.m.".
 const clock = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, hour: 'numeric', minute: '2-digit' })
-const weekdayClock = new Intl.DateTimeFormat('en-US', { timeZone: TIMEZONE, weekday: 'short', hour: 'numeric', minute: '2-digit' })
+const weekdayClock = new Intl.DateTimeFormat('en-US', {
+  timeZone: TIMEZONE,
+  weekday: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+})
 
 /** "2026-10-07T20:02:00Z" → "2:02 PM" (Edmonton). */
 export function formatClock(instant: string): string {
@@ -84,7 +94,9 @@ export function formatClock(instant: string): string {
 
 /** "2:02 PM" when the instant is from today (Edmonton), else "Tue 4:31 PM". */
 export function formatRecentTime(instant: string, now: number = Date.now()): string {
-  return localDate(instant) === today(now) ? formatClock(instant) : weekdayClock.format(new Date(instant)).replace(',', '')
+  return localDate(instant) === today(now)
+    ? formatClock(instant)
+    : weekdayClock.format(new Date(instant)).replace(',', '')
 }
 
 /** A stored Edmonton time "16:30" → "4:30 PM". */

@@ -17,7 +17,10 @@ async function thisWeek(page: Page) {
   const card = page.getByRole('region', { name: 'This week', exact: true })
   await expect(card).toBeVisible()
   // A chip's name is the weekday, with ", today" on today's chip.
-  const chip = (weekday: string) => card.getByRole('group', { name: 'Training days' }).getByRole('button', { name: new RegExp(`^${weekday}`) })
+  const chip = (weekday: string) =>
+    card
+      .getByRole('group', { name: 'Training days' })
+      .getByRole('button', { name: new RegExp(`^${weekday}`) })
   return {
     card,
     days: card.getByRole('list', { name: 'Your training days' }).getByRole('listitem'),
@@ -31,11 +34,15 @@ test('Train shows the seeded week: Mon Upper A, Tue Lower A, Thu Full body', asy
 
   await expect(days).toHaveText(SEEDED)
   await expect(preview).toHaveText(SEEDED_PREVIEW)
-  for (const weekday of ['Monday', 'Tuesday', 'Thursday']) await expect(chip(weekday), weekday).toHaveAttribute('aria-pressed', 'true')
-  for (const weekday of ['Wednesday', 'Friday', 'Saturday', 'Sunday']) await expect(chip(weekday), weekday).toHaveAttribute('aria-pressed', 'false')
+  for (const weekday of ['Monday', 'Tuesday', 'Thursday'])
+    await expect(chip(weekday), weekday).toHaveAttribute('aria-pressed', 'true')
+  for (const weekday of ['Wednesday', 'Friday', 'Saturday', 'Sunday'])
+    await expect(chip(weekday), weekday).toHaveAttribute('aria-pressed', 'false')
 })
 
-test('picking Wednesday previews the four-day split, and unpicking it restores three (nothing saved)', async ({ page }) => {
+test('picking Wednesday previews the four-day split, and unpicking it restores three (nothing saved)', async ({
+  page,
+}) => {
   const { days, chip, preview } = await thisWeek(page)
 
   await chip('Wednesday').click()

@@ -19,7 +19,13 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { memo, useEffect, useState } from 'react'
-import { cardSurface, formatNumber, highlightSurface, outlinedIconButton, StatusChip } from '../../../components'
+import {
+  cardSurface,
+  formatNumber,
+  highlightSurface,
+  outlinedIconButton,
+  StatusChip,
+} from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { ExerciseThumb } from '../../library'
@@ -48,9 +54,9 @@ export interface ExerciseLogCardProps {
 /** "Lats, biceps": the main muscles and the first helper (three labels at most, so the line stays short), sentence case. */
 function musclesText(info: ExerciseSummary | undefined): string | null {
   if (!info) return null
-  const labels = [...info.primary_muscles, ...info.secondary_muscles.slice(0, 1)].slice(0, 3).map((m, i) =>
-    i === 0 ? MUSCLE_LABELS[m] : MUSCLE_LABELS[m].toLowerCase(),
-  )
+  const labels = [...info.primary_muscles, ...info.secondary_muscles.slice(0, 1)]
+    .slice(0, 3)
+    .map((m, i) => (i === 0 ? MUSCLE_LABELS[m] : MUSCLE_LABELS[m].toLowerCase()))
   return labels.length ? labels.join(', ') : null
 }
 
@@ -120,7 +126,10 @@ function ExerciseLogCardInner({
         sx={{
           display: 'grid',
           gridTemplateColumns: '44px minmax(0, 1fr) auto',
-          gridTemplateAreas: { xs: '"thumb title actions" "meta meta meta"', sm: '"thumb title actions" "thumb meta actions"' },
+          gridTemplateAreas: {
+            xs: '"thumb title actions" "meta meta meta"',
+            sm: '"thumb title actions" "thumb meta actions"',
+          },
           alignItems: 'center',
           columnGap: '12px',
           rowGap: { xs: 1, sm: 0 },
@@ -137,11 +146,27 @@ function ExerciseLogCardInner({
         >
           <ExerciseThumb exercise={info} size={44} />
         </ButtonBase>
-        <Box sx={{ gridArea: 'title', alignSelf: { sm: 'end' }, display: 'flex', alignItems: 'center', flexWrap: 'wrap', columnGap: 2, rowGap: 0.5, minWidth: 0 }}>
+        <Box
+          sx={{
+            gridArea: 'title',
+            alignSelf: { sm: 'end' },
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            columnGap: 2,
+            rowGap: 0.5,
+            minWidth: 0,
+          }}
+        >
           <Box
             component="h2"
             id={`exercise-${id}`}
-            sx={{ m: 0, fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading, lineHeight: 1.35 }}
+            sx={{
+              m: 0,
+              fontSize: tokens.font.size.itemTitle,
+              fontWeight: tokens.font.weight.heading,
+              lineHeight: 1.35,
+            }}
           >
             <ButtonBase
               onClick={() => onAbout(id)}
@@ -164,7 +189,16 @@ function ExerciseLogCardInner({
           ) : null}
           {recoveryConflict && !done && <StatusChip size="small" tone="warning" label="Recovery conflict" />}
         </Box>
-        <Box sx={{ gridArea: 'meta', alignSelf: { sm: 'start' }, fontSize: tokens.font.size.small, lineHeight: 1.5, color: tokens.ink.muted, minWidth: 0 }}>
+        <Box
+          sx={{
+            gridArea: 'meta',
+            alignSelf: { sm: 'start' },
+            fontSize: tokens.font.size.small,
+            lineHeight: 1.5,
+            color: tokens.ink.muted,
+            minWidth: 0,
+          }}
+        >
           {meta}
         </Box>
         <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -179,13 +213,24 @@ function ExerciseLogCardInner({
               >
                 About
               </Button>
-              <IconButton aria-label={`More for ${name}`} onClick={(e) => setMenu(e.currentTarget)} sx={ICON_BUTTON_SX}>
+              <IconButton
+                aria-label={`More for ${name}`}
+                onClick={(e) => setMenu(e.currentTarget)}
+                sx={ICON_BUTTON_SX}
+              >
                 <MoreHorizRounded sx={{ fontSize: 18 }} />
               </IconButton>
             </>
           ) : (
             <>
-              <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.caption,
+                  color: tokens.ink.muted,
+                  whiteSpace: 'nowrap',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {doneCount} of {exercise.sets.length} sets
               </Box>
               <IconButton
@@ -226,7 +271,9 @@ function ExerciseLogCardInner({
             <span data-col="previous">Previous</span>
             <span>kg</span>
             <span>Reps</span>
-            <Box component="span" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>RPE</Box>
+            <Box component="span" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+              RPE
+            </Box>
             <span>Done</span>
           </Box>
           <div>
@@ -256,7 +303,13 @@ function ExerciseLogCardInner({
               borderTop: `1px solid ${tokens.ink.hairline}`,
             }}
           >
-            <Button variant="outlined" size="tiny" startIcon={<AddRounded />} onClick={() => actions.addSet(id)} data-testid="add-set">
+            <Button
+              variant="outlined"
+              size="tiny"
+              startIcon={<AddRounded />}
+              onClick={() => actions.addSet(id)}
+              data-testid="add-set"
+            >
               Add set
             </Button>
             {copyTarget >= 0 && (
@@ -300,7 +353,8 @@ function ExerciseLogCardInner({
                     component="span"
                     sx={{
                       fontWeight: tokens.font.weight.heading,
-                      color: exercise.suggestion.kind === 'increase' ? tokens.tone.success.text : tokens.ink.text,
+                      color:
+                        exercise.suggestion.kind === 'increase' ? tokens.tone.success.text : tokens.ink.text,
                     }}
                   >
                     {hint} ·{' '}

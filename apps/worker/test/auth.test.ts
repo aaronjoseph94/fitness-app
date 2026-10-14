@@ -56,10 +56,18 @@ const weighIn = () => ({
 describe('a real Cloudflare Access JWT', () => {
   it('accepts a token for our AUD and rejects one for another application', async () => {
     stubJwks()
-    const ok = await app.request(`${HOST}/api/health`, withAccess(await accessToken({ email: 'aaron@example.com' })), accessEnv())
+    const ok = await app.request(
+      `${HOST}/api/health`,
+      withAccess(await accessToken({ email: 'aaron@example.com' })),
+      accessEnv(),
+    )
     expect(ok.status).toBe(200)
 
-    const other = await app.request(`${HOST}/api/health`, withAccess(await accessToken({ email: 'aaron@example.com' }, 'another-app')), accessEnv())
+    const other = await app.request(
+      `${HOST}/api/health`,
+      withAccess(await accessToken({ email: 'aaron@example.com' }, 'another-app')),
+      accessEnv(),
+    )
     expect(other.status).toBe(401)
   })
 
@@ -103,7 +111,8 @@ describe('a real Cloudflare Access JWT', () => {
       .setAudience(AUD)
       .setExpirationTime('5m')
       .sign(new TextEncoder().encode(JSON.stringify(jwk)))
-    const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+    const b64 = (o: object) =>
+      btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
     const unsigned = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({ email: 'aaron@example.com', iss: TEAM, aud: AUD, exp: 9_999_999_999 })}.`
     for (const token of [expired, forged, hs256, unsigned]) {
       const res = await app.request(`${HOST}/api/health`, withAccess(token), accessEnv())
@@ -126,7 +135,11 @@ describe('a real Cloudflare Access JWT', () => {
   it('the PDF service token may read (GET) but never write', async () => {
     stubJwks()
     const service = await accessToken({ common_name: SERVICE_ID, sub: '' })
-    const read = await app.request(`${HOST}/api/health`, withAccess(service), accessEnv({ ACCESS_EMAIL: 'aaron@example.com' }))
+    const read = await app.request(
+      `${HOST}/api/health`,
+      withAccess(service),
+      accessEnv({ ACCESS_EMAIL: 'aaron@example.com' }),
+    )
     expect(read.status).toBe(200)
 
     const write = await app.request(`${HOST}/api/weights`, withAccess(service, weighIn()), accessEnv())
@@ -160,7 +173,12 @@ describe('Access on /api', () => {
     expect(remote.status).toBe(401)
 
     // Hosts that only look local are not local.
-    for (const host of ['http://localhost.evil.example', 'http://127.0.0.1.nip.io', 'http://0.0.0.0:8787', 'http://[::ffff:127.0.0.1]'])
+    for (const host of [
+      'http://localhost.evil.example',
+      'http://127.0.0.1.nip.io',
+      'http://0.0.0.0:8787',
+      'http://[::ffff:127.0.0.1]',
+    ])
       expect((await app.request(`${host}/api/health`, {}, env)).status, host).toBe(401)
   })
 })
@@ -175,7 +193,11 @@ describe('POST /api/ingest/health (iOS Shortcut)', () => {
   const send = (token: string) =>
     app.request(
       'https://fitness.example.workers.dev/api/ingest/health',
-      { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
       noBypass,
     )
 
@@ -188,9 +210,16 @@ describe('POST /api/ingest/health (iOS Shortcut)', () => {
   it('stores steps by date and sleep by wake date, and sending the same day twice changes nothing', async () => {
     const first = await send(env.HEALTH_WEBHOOK_TOKEN!)
     expect(first.status).toBe(200)
-    const a = (await first.json()) as { steps: { id: string; steps: number; active_kcal: number }; sleep: { id: string; date: string } }
+    const a = (await first.json()) as {
+      steps: { id: string; steps: number; active_kcal: number }
+      sleep: { id: string; date: string }
+    }
     expect(a.steps).toMatchObject({ steps: 8432, active_kcal: 412, source: 'watch_webhook' })
-    expect(a.sleep).toMatchObject({ date: '2026-10-05', asleep_min: 412, woke_at: '2026-10-05T12:10:00.000Z' })
+    expect(a.sleep).toMatchObject({
+      date: '2026-10-05',
+      asleep_min: 412,
+      woke_at: '2026-10-05T12:10:00.000Z',
+    })
 
     const second = await send(env.HEALTH_WEBHOOK_TOKEN!)
     expect(second.status).toBe(200)

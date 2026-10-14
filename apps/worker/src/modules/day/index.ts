@@ -23,7 +23,11 @@ const spineEnd = (deps: Deps) => addDays(today(deps.now()), SPINE_AHEAD_DAYS)
 
 export async function getDay(deps: Deps, date: string): Promise<DayView> {
   await ensureTargetsThrough(deps, spineEnd(deps))
-  const [core, proposals, note] = await Promise.all([buildDay(deps, date), pendingProposals(deps, date), activeNote(deps)])
+  const [core, proposals, note] = await Promise.all([
+    buildDay(deps, date),
+    pendingProposals(deps, date),
+    activeNote(deps),
+  ])
   return { ...core, proposals, note }
 }
 

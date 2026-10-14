@@ -24,7 +24,13 @@ import { formatDateTime } from '../../quick-log'
 import { actorLabel, diffRows, forecastText, targetsDiff, type DiffRow } from './plan-view'
 
 /** What a restore makes stale: the plan, the versions list, the day (targets) and the event feed. */
-const RESTORE_REFRESHES = [endpoints.plan.versions, endpoints.plan.get, endpoints.day.get, endpoints.day.range, endpoints.day.events]
+const RESTORE_REFRESHES = [
+  endpoints.plan.versions,
+  endpoints.plan.get,
+  endpoints.day.get,
+  endpoints.day.range,
+  endpoints.day.events,
+]
 
 interface VersionCardProps {
   version: PlanVersion
@@ -44,37 +50,99 @@ export function VersionCard({ version, active, onRestored }: VersionCardProps) {
       data-active={version.active}
       sx={{ ...(version.active ? highlightSurface : cardSurface), overflow: 'hidden', minWidth: 0 }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px 12px', pt: `${tokens.pad.header.top}px`, px: `${tokens.pad.header.x}px`, pb: '12px' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '8px 12px',
+          pt: `${tokens.pad.header.top}px`,
+          px: `${tokens.pad.header.x}px`,
+          pb: '12px',
+        }}
+      >
         <Box sx={{ flex: '1 1 0%', minWidth: 'min(200px, 100%)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Box component="h3" id={headingId} sx={{ m: 0, fontSize: tokens.font.size.cardTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.cardTitle }}>
+            <Box
+              component="h3"
+              id={headingId}
+              sx={{
+                m: 0,
+                fontSize: tokens.font.size.cardTitle,
+                fontWeight: tokens.font.weight.heading,
+                lineHeight: tokens.font.leading.cardTitle,
+              }}
+            >
               Version {version.version}
             </Box>
             {version.active && <StatusChip tone="success" label="Active" testId="active-badge" />}
           </Box>
-          <Box sx={{ mt: '3px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary, ...tabularNums }}>
+          <Box
+            sx={{
+              mt: '3px',
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+              ...tabularNums,
+            }}
+          >
             By {actorLabel(version.created_by)} · {formatDateTime(version.created_at)}
           </Box>
         </Box>
         {!version.active && active && (
-          <Button variant="outlined" size="small" startIcon={<RestoreRounded />} onClick={() => setConfirming(true)} sx={{ ml: 'auto' }} data-testid="restore-version">
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<RestoreRounded />}
+            onClick={() => setConfirming(true)}
+            sx={{ ml: 'auto' }}
+            data-testid="restore-version"
+          >
             Restore
           </Button>
         )}
       </Box>
 
       {version.reason && (
-        <Box sx={{ px: `${tokens.pad.card.x}px`, pb: '14px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.body }}>{version.reason}</Box>
+        <Box
+          sx={{
+            px: `${tokens.pad.card.x}px`,
+            pb: '14px',
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.body,
+          }}
+        >
+          {version.reason}
+        </Box>
       )}
 
       {rows.length > 0 ? (
         <DiffTable rows={rows} />
       ) : (
-        <Box sx={{ px: `${tokens.pad.card.x}px`, pb: '14px', fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Starting targets, no change.</Box>
+        <Box
+          sx={{
+            px: `${tokens.pad.card.x}px`,
+            pb: '14px',
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+          }}
+        >
+          Starting targets, no change.
+        </Box>
       )}
 
       {version.forecast && (
-        <Box sx={{ borderTop: `1px solid ${tokens.ink.border}`, px: `${tokens.pad.card.x}px`, py: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+        <Box
+          sx={{
+            borderTop: `1px solid ${tokens.ink.border}`,
+            px: `${tokens.pad.card.x}px`,
+            py: '12px',
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.secondary,
+          }}
+        >
           <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
             Forecast:{' '}
           </Box>
@@ -82,7 +150,14 @@ export function VersionCard({ version, active, onRestored }: VersionCardProps) {
         </Box>
       )}
 
-      {confirming && active && <RestoreDialog version={version} active={active} onClose={() => setConfirming(false)} onRestored={onRestored} />}
+      {confirming && active && (
+        <RestoreDialog
+          version={version}
+          active={active}
+          onClose={() => setConfirming(false)}
+          onRestored={onRestored}
+        />
+      )}
     </Box>
   )
 }
@@ -119,7 +194,10 @@ function DiffTable({ rows }: { rows: readonly DiffRow[] }) {
               <TableCell align="right" sx={{ fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}>
                 {r.to}
               </TableCell>
-              <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' }, color: tokens.ink.secondary }}>
+              <TableCell
+                align="right"
+                sx={{ display: { xs: 'none', sm: 'table-cell' }, color: tokens.ink.secondary }}
+              >
                 {r.delta ?? '—'}
               </TableCell>
             </TableRow>
@@ -153,11 +231,26 @@ function RestoreDialog({
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth aria-labelledby="restore-title">
       <DialogTitle id="restore-title">Restore version {version.version}?</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 2 }}>
-        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: tokens.font.leading.small }}>
-          This makes a new version with version {version.version}'s targets. Nothing is deleted; you can restore version {active.version} the same way.
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.secondary,
+            lineHeight: tokens.font.leading.small,
+          }}
+        >
+          This makes a new version with version {version.version}'s targets. Nothing is deleted; you can
+          restore version {active.version} the same way.
         </Box>
-        {rows.length > 0 ? <DiffList rows={rows} /> : <Box sx={{ fontSize: tokens.font.size.small }}>The targets are the same as now.</Box>}
-        {!online && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>Restoring needs a connection.</Box>}
+        {rows.length > 0 ? (
+          <DiffList rows={rows} />
+        ) : (
+          <Box sx={{ fontSize: tokens.font.size.small }}>The targets are the same as now.</Box>
+        )}
+        {!online && (
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
+            Restoring needs a connection.
+          </Box>
+        )}
         {restore.isError && (
           <Box role="alert" sx={{ color: tokens.tone.danger.text, fontSize: tokens.font.size.small }}>
             {problemText(restore.error)}

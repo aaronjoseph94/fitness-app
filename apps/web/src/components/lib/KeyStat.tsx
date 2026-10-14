@@ -67,7 +67,15 @@ export function KeyStat({
   const small = px <= SIZES.sm
   return (
     <Box data-testid={testId} sx={{ minWidth: 0 }}>
-      <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>{label}</Box>
+      <Box
+        sx={{
+          fontSize: tokens.font.size.caption,
+          lineHeight: tokens.font.leading.caption,
+          color: tokens.ink.secondary,
+        }}
+      >
+        {label}
+      </Box>
       <Box
         sx={{
           mt: '4px',
@@ -82,7 +90,16 @@ export function KeyStat({
       >
         {countUp && numeric ? <CountUp value={value} precision={precision} /> : display}
         {unit && value !== null && (
-          <Box component="span" sx={{ ml: '4px', fontSize: small ? tokens.font.size.caption : tokens.font.size.small, fontWeight: tokens.font.weight.body, letterSpacing: 0, color: tokens.ink.secondary }}>
+          <Box
+            component="span"
+            sx={{
+              ml: '4px',
+              fontSize: small ? tokens.font.size.caption : tokens.font.size.small,
+              fontWeight: tokens.font.weight.body,
+              letterSpacing: 0,
+              color: tokens.ink.secondary,
+            }}
+          >
             {unit}
           </Box>
         )}
@@ -142,10 +159,19 @@ export interface KeyStatGridProps {
 }
 
 /** A row of KeyStats with rules between them; each child is a cell padded 14 × 20 (12 × 20 dense). */
-export function KeyStatGrid({ children, columns = 4, ruleAbove = false, rule = 'border', dense = false, testId }: KeyStatGridProps) {
-  const cells: CellsPerBreakpoint = typeof columns === 'number' ? { xs: Math.min(2, columns), md: columns } : columns
+export function KeyStatGrid({
+  children,
+  columns = 4,
+  ruleAbove = false,
+  rule = 'border',
+  dense = false,
+  testId,
+}: KeyStatGridProps) {
+  const cells: CellsPerBreakpoint =
+    typeof columns === 'number' ? { xs: Math.min(2, columns), md: columns } : columns
   const template: Partial<Record<keyof CellsPerBreakpoint, string>> = {}
-  for (const bp of ['xs', 'sm', 'md', 'lg'] as const) if (cells[bp]) template[bp] = `repeat(${cells[bp]}, minmax(0, 1fr))`
+  for (const bp of ['xs', 'sm', 'md', 'lg'] as const)
+    if (cells[bp]) template[bp] = `repeat(${cells[bp]}, minmax(0, 1fr))`
   const divider = `1px solid ${rule === 'hairline' ? tokens.ink.hairline : tokens.ink.border}`
   return (
     <Box

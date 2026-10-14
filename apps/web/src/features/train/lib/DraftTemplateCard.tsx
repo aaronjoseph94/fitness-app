@@ -29,7 +29,11 @@ import { useProposalDecision } from '../../proposals'
 import type { KeptDraft } from './useTrainData'
 
 /** "Open the template" after Keep: a text link, 44 px tall on touch. */
-const OPEN_LINK = { display: 'inline-flex', alignItems: 'center', [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget } } as const
+const OPEN_LINK = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+} as const
 
 /** Dismiss is drawn at 26 px and pulled into the 20 px title line, so it adds no height there (the text sits where a
  * TemplateCard's does); on touch the drawn box stays 26 px and its hit area is 44 × 44 around it. */
@@ -67,7 +71,10 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
   const [undo, setUndo] = useState<UndoState>({ kind: 'idle' })
   const d = useProposalDecision(
     kept ? 'accepted' : 'pending',
-    (decision) => call(decision === 'accepted' ? endpoints.plan.acceptProposal : endpoints.plan.rejectProposal, { params: { id: draft.id } }),
+    (decision) =>
+      call(decision === 'accepted' ? endpoints.plan.acceptProposal : endpoints.plan.rejectProposal, {
+        params: { id: draft.id },
+      }),
     (decision, result) => {
       if (decision === 'accepted') onKept(draft, result)
     },
@@ -96,7 +103,11 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
     .map(([m]) => MUSCLE_LABELS[m].toLowerCase())
 
   return (
-    <Box data-testid="draft-template" data-status={d.status} sx={{ ...cardSurface, display: 'flex', gap: '14px', p: 4, minWidth: 0 }}>
+    <Box
+      data-testid="draft-template"
+      data-status={d.status}
+      sx={{ ...cardSurface, display: 'flex', gap: '14px', p: 4, minWidth: 0 }}
+    >
       <Box sx={{ width: 92, flex: 'none' }}>
         <MuscleMap levels={muscleLevels(scores)} size={92} title={`Muscles in ${name}`} />
       </Box>
@@ -128,14 +139,22 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
             </IconButton>
           )}
         </Box>
-        <Box sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}>
+        <Box
+          sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}
+        >
           {workout.exercises.length} exercises · {sets} sets · AI draft
           {top.length > 0 && ` · ${top.join(', ')}`}
         </Box>
         {d.status === 'pending' && replaces && (
           <Box
             data-testid="draft-replaces"
-            sx={{ mt: 1, fontSize: tokens.font.size.caption, lineHeight: 'normal', fontWeight: tokens.font.weight.label, color: tokens.ink.label }}
+            sx={{
+              mt: 1,
+              fontSize: tokens.font.size.caption,
+              lineHeight: 'normal',
+              fontWeight: tokens.font.weight.label,
+              color: tokens.ink.label,
+            }}
           >
             Replaces your {replaces}
           </Box>
@@ -167,7 +186,15 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
         ) : (
           <Box
             data-testid="draft-outcome"
-            sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: '10px', fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 2,
+              mt: '10px',
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.label,
+            }}
           >
             {d.status === 'rejected' ? (
               <Box component="span" role="status" sx={{ color: tokens.ink.label }}>
@@ -175,7 +202,11 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
               </Box>
             ) : (
               <>
-                <Box component="span" role="status" sx={{ color: undo.kind === 'done' ? tokens.ink.label : tokens.tone.success.text }}>
+                <Box
+                  component="span"
+                  role="status"
+                  sx={{ color: undo.kind === 'done' ? tokens.ink.label : tokens.tone.success.text }}
+                >
                   {undo.kind === 'done'
                     ? `Undone: your ${kept?.replaced ?? name} is back`
                     : kept?.replaced
@@ -183,7 +214,12 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
                       : 'Saved as a template'}
                 </Box>
                 {templateId && (
-                  <Link component={RouterLink} to={`/train/builder/${templateId}`} sx={OPEN_LINK} data-testid="draft-open-template">
+                  <Link
+                    component={RouterLink}
+                    to={`/train/builder/${templateId}`}
+                    sx={OPEN_LINK}
+                    data-testid="draft-open-template"
+                  >
                     Open the template
                   </Link>
                 )}

@@ -113,15 +113,21 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
         '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
       }}
     >
-      <Box sx={{ fontWeight: tokens.font.weight.heading, color: tokens.ink.text, fontVariantNumeric: 'tabular-nums' }}>{n}</Box>
+      <Box
+        sx={{
+          fontWeight: tokens.font.weight.heading,
+          color: tokens.ink.text,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {n}
+      </Box>
       <ButtonBase
         data-col="previous"
         onClick={onCopyPrevious}
         disabled={!previous}
         aria-label={
-          previous
-            ? `Copy last session's set ${n}: ${liftText(previous)}`
-            : `No set ${n} last session`
+          previous ? `Copy last session's set ${n}: ${liftText(previous)}` : `No set ${n} last session`
         }
         sx={{
           justifyContent: 'flex-start',
@@ -239,7 +245,12 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
           id={problemId}
           role="alert"
           data-testid="set-problem"
-          sx={{ gridColumn: '1 / -1', fontSize: tokens.font.size.caption, color: tokens.status.flag, lineHeight: 1.4 }}
+          sx={{
+            gridColumn: '1 / -1',
+            fontSize: tokens.font.size.caption,
+            color: tokens.status.flag,
+            lineHeight: 1.4,
+          }}
         >
           {problem}
         </Box>
@@ -253,7 +264,10 @@ export function SetRow({ position, set, previous, hint, onValues, onCopyPrevious
  * Previous column's heading.
  */
 export function liftText(set: Pick<LastSet, 'reps' | 'load_kg'>, withUnit = true): string {
-  const load = set.load_kg === null ? '–' : `${formatNumber(set.load_kg, set.load_kg % 1 ? 1 : 0)}${withUnit ? ' kg' : ''}`
+  const load =
+    set.load_kg === null
+      ? '–'
+      : `${formatNumber(set.load_kg, set.load_kg % 1 ? 1 : 0)}${withUnit ? ' kg' : ''}`
   return `${load} × ${set.reps ?? '–'}`
 }
 

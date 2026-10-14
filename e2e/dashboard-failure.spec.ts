@@ -5,7 +5,9 @@
 // were the same condition and the error card (the only place "Sign in again" / "Try again" live) was unreachable.
 import { expect, test } from './support'
 
-test('a dashboard whose essentials cannot be read shows the error card, not an endless skeleton', async ({ page }) => {
+test('a dashboard whose essentials cannot be read shows the error card, not an endless skeleton', async ({
+  page,
+}) => {
   // The two essentials never answer. The rest of the page's reads do, so the failure is theirs alone.
   await page.route(/\/api\/days/, (route) => route.abort('failed'))
   await page.route(/\/api\/trend/, (route) => route.abort('failed'))

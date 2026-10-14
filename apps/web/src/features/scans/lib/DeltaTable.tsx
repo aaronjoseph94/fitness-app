@@ -29,23 +29,52 @@ const ROWS: { key: ScanMetricField; label: string; unit: string; dp: number; goo
 ]
 
 function Delta({ value, dp, good }: { value: number | undefined; dp: number; good: Good }) {
-  if (value === undefined) return <Box component="span" sx={{ color: tokens.ink.muted }}>—</Box>
+  if (value === undefined)
+    return (
+      <Box component="span" sx={{ color: tokens.ink.muted }}>
+        —
+      </Box>
+    )
   const flat = Math.abs(value) < 10 ** -dp / 2
   return (
-    <Box component="span" sx={{ color: tokens.tone[deltaTone({ value, good }, dp)].text, fontWeight: tokens.font.weight.label }}>
+    <Box
+      component="span"
+      sx={{ color: tokens.tone[deltaTone({ value, good }, dp)].text, fontWeight: tokens.font.weight.label }}
+    >
       {flat ? formatNumber(0, dp) : formatSigned(value, dp)}
     </Box>
   )
 }
 
-export function DeltaTable({ record, previous, baseline }: { record: ScanRecord; previous: ScanChange | null; baseline: ScanChange | null }) {
+export function DeltaTable({
+  record,
+  previous,
+  baseline,
+}: {
+  record: ScanRecord
+  previous: ScanChange | null
+  baseline: ScanChange | null
+}) {
   const showBaseline = baseline !== null && baseline.scan_id !== previous?.scan_id
-  const row = (label: string, value: number, unit: string, dp: number, good: Good, prev: number | undefined, base: number | undefined) => (
+  const row = (
+    label: string,
+    value: number,
+    unit: string,
+    dp: number,
+    good: Good,
+    prev: number | undefined,
+    base: number | undefined,
+  ) => (
     <TableRow key={label}>
       <TableCell>{label}</TableCell>
       <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
         {formatNumber(value, dp)}
-        {unit && <Box component="span" sx={{ color: tokens.ink.muted }}> {unit}</Box>}
+        {unit && (
+          <Box component="span" sx={{ color: tokens.ink.muted }}>
+            {' '}
+            {unit}
+          </Box>
+        )}
       </TableCell>
       <TableCell align="right">
         <Delta value={prev} dp={dp} good={good} />
@@ -63,15 +92,35 @@ export function DeltaTable({ record, previous, baseline }: { record: ScanRecord;
         <TableRow>
           <TableCell>Metric</TableCell>
           <TableCell align="right">This scan</TableCell>
-          <TableCell align="right">{previous ? `vs ${formatShortDate(previous.date)}` : 'vs previous'}</TableCell>
+          <TableCell align="right">
+            {previous ? `vs ${formatShortDate(previous.date)}` : 'vs previous'}
+          </TableCell>
           {showBaseline && <TableCell align="right">vs baseline</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {ROWS.map((r) => row(r.label, record[r.key], r.unit, r.dp, r.good, previous?.deltas[r.key], baseline?.deltas[r.key]))}
+        {ROWS.map((r) =>
+          row(r.label, record[r.key], r.unit, r.dp, r.good, previous?.deltas[r.key], baseline?.deltas[r.key]),
+        )}
         {SEGMENTS.flatMap((s) => [
-          row(`${SEGMENT_LABEL[s]} fat`, record.segments[s].fat_kg, 'kg', 2, 'down', previous?.segments[s]?.fat_kg, baseline?.segments[s]?.fat_kg),
-          row(`${SEGMENT_LABEL[s]} lean`, record.segments[s].lean_kg, 'kg', 2, 'up', previous?.segments[s]?.lean_kg, baseline?.segments[s]?.lean_kg),
+          row(
+            `${SEGMENT_LABEL[s]} fat`,
+            record.segments[s].fat_kg,
+            'kg',
+            2,
+            'down',
+            previous?.segments[s]?.fat_kg,
+            baseline?.segments[s]?.fat_kg,
+          ),
+          row(
+            `${SEGMENT_LABEL[s]} lean`,
+            record.segments[s].lean_kg,
+            'kg',
+            2,
+            'up',
+            previous?.segments[s]?.lean_kg,
+            baseline?.segments[s]?.lean_kg,
+          ),
         ])}
       </TableBody>
     </Table>

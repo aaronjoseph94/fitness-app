@@ -18,7 +18,11 @@ export function parsingPollMs(meals: readonly Meal[] | undefined, now = Date.now
 
 /** The day's meals, polled while one is being analysed. Shared by the Log tab and the review (same query). */
 export function useDayMealsLive(date: string) {
-  return useApiQuery(endpoints.nutrition.listMeals, { query: { date } }, { refetchInterval: (query) => parsingPollMs(query.state.data) })
+  return useApiQuery(
+    endpoints.nutrition.listMeals,
+    { query: { date } },
+    { refetchInterval: (query) => parsingPollMs(query.state.data) },
+  )
 }
 
 export type AnalysisState =
@@ -34,8 +38,10 @@ export type AnalysisState =
 
 export function analysisState(meal: Meal, now = Date.now()): AnalysisState {
   if (meal.status === 'confirmed') return 'confirmed'
-  if (meal.status === 'parsing') return now - Date.parse(meal.created_at) > SLOW_AFTER_MS ? 'slow' : 'analysing'
-  const analysed = meal.input_method === 'text' || meal.input_method === 'voice' || meal.input_method === 'photo'
+  if (meal.status === 'parsing')
+    return now - Date.parse(meal.created_at) > SLOW_AFTER_MS ? 'slow' : 'analysing'
+  const analysed =
+    meal.input_method === 'text' || meal.input_method === 'voice' || meal.input_method === 'photo'
   return analysed && meal.items.length === 0 ? 'failed' : 'ready'
 }
 

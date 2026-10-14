@@ -104,7 +104,12 @@ export function Panel({
             pt: `${headerTop}px`,
             px: `${padding === 'dense' ? pad.x : tokens.pad.header.x}px`,
             // Flush rows bring their own hairline 12 px under the header; a header-only card closes at its top padding.
-            pb: !hasBody && !caption && !footer ? `${headerTop}px` : padding === 'none' ? `${tokens.pad.header.bottom}px` : 0,
+            pb:
+              !hasBody && !caption && !footer
+                ? `${headerTop}px`
+                : padding === 'none'
+                  ? `${tokens.pad.header.bottom}px`
+                  : 0,
           }}
         >
           {/* Basis 0 with a 140 px floor: the title takes what the actions leave and only wraps them under it when
@@ -160,7 +165,12 @@ export function Panel({
           sx={
             padding === 'none'
               ? { minWidth: 0, '&:has(table)': { overflowX: 'auto' } }
-              : { px: `${pad.x}px`, pt: hasHeader ? '14px' : `${pad.y}px`, pb: caption ? 0 : `${pad.y}px`, minWidth: 0 }
+              : {
+                  px: `${pad.x}px`,
+                  pt: hasHeader ? '14px' : `${pad.y}px`,
+                  pb: caption ? 0 : `${pad.y}px`,
+                  minWidth: 0,
+                }
           }
         >
           {children}
@@ -199,7 +209,14 @@ export interface PanelRowProps {
 }
 
 /** A 13 px label / value row; consecutive rows are separated by a hairline. */
-export function PanelRow({ label, value, leading, trailing, hairline = tokens.ink.hairline, testId }: PanelRowProps) {
+export function PanelRow({
+  label,
+  value,
+  leading,
+  trailing,
+  hairline = tokens.ink.hairline,
+  testId,
+}: PanelRowProps) {
   return (
     <Box
       data-testid={testId}
@@ -215,9 +232,20 @@ export function PanelRow({ label, value, leading, trailing, hairline = tokens.in
       }}
     >
       {leading}
-      <Box sx={{ flex: 1, minWidth: 0, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>{label}</Box>
+      <Box sx={{ flex: 1, minWidth: 0, fontWeight: tokens.font.weight.label, color: tokens.ink.text }}>
+        {label}
+      </Box>
       {value !== undefined && value !== null && (
-        <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{value}</Box>
+        <Box
+          sx={{
+            flex: 'none',
+            color: tokens.ink.secondary,
+            fontVariantNumeric: 'tabular-nums',
+            textAlign: 'right',
+          }}
+        >
+          {value}
+        </Box>
       )}
       {trailing}
     </Box>

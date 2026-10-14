@@ -24,9 +24,19 @@ interface TrainingDaysDialogProps {
 export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: TrainingDaysDialogProps) {
   const [picked, setPicked] = useState<Weekday[]>([...days])
   const ordered = WEEKDAYS.filter((d) => picked.includes(d.key)).map((d) => d.key)
-  const unchanged = ordered.join() === WEEKDAYS.filter((d) => days.includes(d.key)).map((d) => d.key).join()
+  const unchanged =
+    ordered.join() ===
+    WEEKDAYS.filter((d) => days.includes(d.key))
+      .map((d) => d.key)
+      .join()
   return (
-    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="xs" aria-labelledby="training-days-title">
+    <Dialog
+      open
+      onClose={saving ? undefined : onClose}
+      fullWidth
+      maxWidth="xs"
+      aria-labelledby="training-days-title"
+    >
       <DialogTitle id="training-days-title">Training days</DialogTitle>
       <DialogContent>
         <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, lineHeight: 1.5, mb: 3 }}>
@@ -42,7 +52,11 @@ export function TrainingDaysDialog({ days, saving, error, onSave, onClose }: Tra
             // Several days are on at once, so a picked day is dark (the kit's dark segment, like the row's day tiles)
             // rather than the white-on-track that only marks the one choice of a single-select.
             '& .MuiToggleButton-root': {
-              '&.Mui-selected, &.Mui-selected:hover': { bgcolor: tokens.dark.bg, color: tokens.dark.text, boxShadow: 'none' },
+              '&.Mui-selected, &.Mui-selected:hover': {
+                bgcolor: tokens.dark.bg,
+                color: tokens.dark.text,
+                boxShadow: 'none',
+              },
             },
           }}
         >

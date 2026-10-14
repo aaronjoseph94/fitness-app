@@ -12,7 +12,9 @@ import { tokens } from '../../../../theme'
 
 const IconIndex = z.object({
   fallback: z.string(),
-  icons: z.array(z.object({ icon: z.string(), src: z.string().startsWith('/'), keywords: z.array(z.string()) })),
+  icons: z.array(
+    z.object({ icon: z.string(), src: z.string().startsWith('/'), keywords: z.array(z.string()) }),
+  ),
 })
 type IconIndex = z.infer<typeof IconIndex>
 
@@ -47,7 +49,9 @@ export function foodIconMatcher(index: IconIndex): FoodIconMatcher {
       const better =
         !best ||
         (inHead && !best.inHead) ||
-        (inHead === best.inHead && (rule.length > best.rule.length || (rule.length === best.rule.length && rule.order < best.rule.order)))
+        (inHead === best.inHead &&
+          (rule.length > best.rule.length ||
+            (rule.length === best.rule.length && rule.order < best.rule.order)))
       if (better) best = { rule, inHead }
     }
     const src = best?.rule.src ?? fallback
@@ -96,7 +100,13 @@ export function FoodIcon({ name, size = 32 }: { name: string; size?: number }) {
       }}
     >
       {src && failed !== src ? (
-        <Box component="img" src={src} alt="" onError={() => setFailed(src)} sx={{ width: size * 0.66, height: size * 0.66 }} />
+        <Box
+          component="img"
+          src={src}
+          alt=""
+          onError={() => setFailed(src)}
+          sx={{ width: size * 0.66, height: size * 0.66 }}
+        />
       ) : (
         <RestaurantRounded sx={{ fontSize: size * 0.55, color: tokens.ink.secondary }} />
       )}

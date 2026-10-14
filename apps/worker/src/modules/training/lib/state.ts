@@ -51,7 +51,9 @@ export async function readinessOn(deps: Deps, date: string, exclude: string = NO
   const night = sleep[0]
   const sleep_min =
     night?.asleep_min ??
-    (night?.in_bed_at && night.woke_at ? Math.max(0, (Date.parse(night.woke_at) - Date.parse(night.in_bed_at)) / 60_000) : null)
+    (night?.in_bed_at && night.woke_at
+      ? Math.max(0, (Date.parse(night.woke_at) - Date.parse(night.in_bed_at)) / 60_000)
+      : null)
   const yesterday = addDays(date, -1)
   return readiness({
     sleep_min,
@@ -76,7 +78,12 @@ export async function neighbourSessions(
   const days = [addDays(date, -1), addDays(date, 1)]
   const [sessions, done] = await db.batch([
     db
-      .select({ id: workout_sessions.id, date: workout_sessions.date, plan: workout_sessions.plan, readiness: workout_sessions.readiness })
+      .select({
+        id: workout_sessions.id,
+        date: workout_sessions.date,
+        plan: workout_sessions.plan,
+        readiness: workout_sessions.readiness,
+      })
       .from(workout_sessions)
       .where(and(inArray(workout_sessions.date, days), ne(workout_sessions.id, exclude))),
     db
@@ -86,7 +93,13 @@ export async function neighbourSessions(
       .innerJoin(exercises, eq(exercises.id, session_sets.exercise_id))
       .where(and(inArray(workout_sessions.date, days), eq(session_sets.completed, true))),
   ])
-  const planIds = unique(sessions.flatMap((s) => (done.some((d) => d.session_id === s.id) ? [] : (startPlan(s)?.exercises ?? []).map((p) => p.exercise_id))))
+  const planIds = unique(
+    sessions.flatMap((s) =>
+      done.some((d) => d.session_id === s.id)
+        ? []
+        : (startPlan(s)?.exercises ?? []).map((p) => p.exercise_id),
+    ),
+  )
   const planTags = planIds.length ? await primariesOf(deps, planIds) : new Map<string, Muscle[]>()
   return sessions.map((s) => {
     const logged = done.filter((d) => d.session_id === s.id).flatMap((d) => d.primary)
@@ -98,7 +111,10 @@ export async function neighbourSessions(
 async function primariesOf(deps: Deps, ids: readonly string[]): Promise<Map<string, Muscle[]>> {
   const out = new Map<string, Muscle[]>()
   for (const part of chunk(ids, 90)) {
-    const rows = await deps.db.select({ id: exercises.id, p: exercises.primary_muscles }).from(exercises).where(inArray(exercises.id, part))
+    const rows = await deps.db
+      .select({ id: exercises.id, p: exercises.primary_muscles })
+      .from(exercises)
+      .where(inArray(exercises.id, part))
     for (const r of rows) out.set(r.id, r.p)
   }
   return out
@@ -115,9 +131,13 @@ export function recoveryFor(
   const notes: string[] = []
   for (const n of neighbours) {
     const hit = conflicts.filter((m) => n.primary_muscles.includes(m))
-    if (hit.length) notes.push(`${hit.join(', ')} ${hit.length > 1 ? 'are' : 'is'} also a primary target ${n.date < date ? 'the day before' : 'the day after'}`)
+    if (hit.length)
+      notes.push(
+        `${hit.join(', ')} ${hit.length > 1 ? 'are' : 'is'} also a primary target ${n.date < date ? 'the day before' : 'the day after'}`,
+      )
   }
-  if (r.sleep_h !== null && r.sleep_h < 5) notes.push(`Under 5 h sleep last night (${r.sleep_h} h): reduced volume suggested`)
+  if (r.sleep_h !== null && r.sleep_h < 5)
+    notes.push(`Under 5 h sleep last night (${r.sleep_h} h): reduced volume suggested`)
   else if (r.reduced_volume) notes.push(`Readiness ${r.score}/100: reduced volume suggested`)
   // Several sessions on one neighbouring day say the same thing: once is enough.
   return { conflicts, reduced_volume: r.reduced_volume, notes: unique(notes) }
@@ -136,7 +156,12 @@ export async function deloadOn(deps: Deps, date: string, exclude: string = NONE)
   const from = addDays(date, -DELOAD_WINDOW_DAYS)
   const [rows, firstRows] = await db.batch([
     db
-      .select({ id: workout_sessions.id, date: workout_sessions.date, plan: workout_sessions.plan, readiness: workout_sessions.readiness })
+      .select({
+        id: workout_sessions.id,
+        date: workout_sessions.date,
+        plan: workout_sessions.plan,
+        readiness: workout_sessions.readiness,
+      })
       .from(workout_sessions)
       .where(and(between(workout_sessions.date, from, date), ne(workout_sessions.id, exclude)))
       .orderBy(asc(workout_sessions.date), asc(workout_sessions.started_at)),
@@ -158,14 +183,28 @@ export async function deloadOn(deps: Deps, date: string, exclude: string = NONE)
     const next = dates[i] ?? date
     if (daysBetween(dates[i - 1]!, next) >= BREAK_DAYS) breakStart = addDays(dates[i - 1]!, 1)
   }
-  const last_deload_on = [deloadStart, breakStart].filter((d): d is string => d !== null).sort().at(-1) ?? null
+  const last_deload_on =
+    [deloadStart, breakStart]
+      .filter((d): d is string => d !== null)
+      .sort()
+      .at(-1) ?? null
 
   const recent = rows.slice(-4)
   const sets = recent.length
     ? await db
-        .select({ session_id: session_sets.session_id, exercise_id: session_sets.exercise_id, reps: session_sets.reps, completed: session_sets.completed })
+        .select({
+          session_id: session_sets.session_id,
+          exercise_id: session_sets.exercise_id,
+          reps: session_sets.reps,
+          completed: session_sets.completed,
+        })
         .from(session_sets)
-        .where(inArray(session_sets.session_id, recent.map((r) => r.id)))
+        .where(
+          inArray(
+            session_sets.session_id,
+            recent.map((r) => r.id),
+          ),
+        )
     : []
   const check = deloadCheck({
     as_of: date,
@@ -209,7 +248,13 @@ export async function pastSessions(
       .select({ set: session_sets, date: workout_sessions.date, started_at: workout_sessions.started_at })
       .from(session_sets)
       .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
-      .where(and(inArray(session_sets.exercise_id, part), lt(workout_sessions.started_at, before), eq(session_sets.completed, true)))
+      .where(
+        and(
+          inArray(session_sets.exercise_id, part),
+          lt(workout_sessions.started_at, before),
+          eq(session_sets.completed, true),
+        ),
+      )
       .orderBy(desc(workout_sessions.started_at), asc(session_sets.set_index))
       .limit(PAST_SET_LIMIT)
     for (const r of rows) {

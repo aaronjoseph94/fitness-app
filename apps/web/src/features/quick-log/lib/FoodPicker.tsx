@@ -34,7 +34,13 @@ export function pickedFromFood(food: Food): PickedFood {
   return {
     id: food.id,
     name: food.brand ? `${food.name} (${food.brand})` : food.name,
-    per100: { kcal_per_100g: food.kcal_per_100g, protein_g: food.protein_g, carbs_g: food.carbs_g, fat_g: food.fat_g, fibre_g: food.fibre_g },
+    per100: {
+      kcal_per_100g: food.kcal_per_100g,
+      protein_g: food.protein_g,
+      carbs_g: food.carbs_g,
+      fat_g: food.fat_g,
+      fibre_g: food.fibre_g,
+    },
     servingG: food.serving_g,
   }
 }
@@ -50,11 +56,21 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced
 }
 
-export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: PickedFood, notice?: LogNotice) => void; autoFocus?: boolean }) {
+export function FoodPicker({
+  onPick,
+  autoFocus = false,
+}: {
+  onPick: (food: PickedFood, notice?: LogNotice) => void
+  autoFocus?: boolean
+}) {
   const [text, setText] = useState('')
   const [creating, setCreating] = useState(false)
   const q = useDebounced(text.trim(), 250)
-  const search = useApiQuery(endpoints.nutrition.searchFoods, { query: { q } }, { enabled: q.length >= 2, staleTime: 5 * 60_000 })
+  const search = useApiQuery(
+    endpoints.nutrition.searchFoods,
+    { query: { q } },
+    { enabled: q.length >= 2, staleTime: 5 * 60_000 },
+  )
   const results = (search.data ?? []).slice(0, RESULTS_MAX)
 
   if (creating) {
@@ -98,33 +114,63 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
         }}
       />
       {q.length >= 2 && search.isError && (
-        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: 'text.secondary',
+          }}
+        >
           {problemText(search.error)} You can add it as a new food, or describe the meal instead.
         </Box>
       )}
       {q.length >= 2 && search.isSuccess && results.length === 0 && (
-        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>No foods match “{q}”. Add it as a new food.</Box>
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }}>
+          No foods match “{q}”. Add it as a new food.
+        </Box>
       )}
       {results.length > 0 && (
         <List
           dense
           disablePadding
           aria-label="Search results"
-          sx={{ border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.control}px`, overflow: 'hidden' }}
+          sx={{
+            border: `1px solid ${tokens.ink.border}`,
+            borderRadius: `${tokens.radius.control}px`,
+            overflow: 'hidden',
+          }}
         >
           {results.map((food) => (
             // Each button sits in a list item: a list may hold only list items.
-            <ListItem key={food.id} disablePadding sx={{ '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}>
+            <ListItem
+              key={food.id}
+              disablePadding
+              sx={{ '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }}
+            >
               <ListItemButton
                 onClick={() => onPick(pickedFromFood(food))}
-                sx={{ minHeight: tokens.tapTarget, px: 3, borderRadius: 0, '&:hover': { bgcolor: tokens.ink.panel } }}
+                sx={{
+                  minHeight: tokens.tapTarget,
+                  px: 3,
+                  borderRadius: 0,
+                  '&:hover': { bgcolor: tokens.ink.panel },
+                }}
               >
                 <ListItemText
                   primary={food.brand ? `${food.name} · ${food.brand}` : food.name}
                   secondary={`${formatNumber(food.kcal_per_100g)} kcal · ${formatNumber(food.protein_g, 1)} g protein per 100 g`}
                   slotProps={{
-                    primary: { noWrap: true, sx: { color: 'text.primary', fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label } },
-                    secondary: { sx: { fontSize: tokens.font.size.caption, fontVariantNumeric: 'tabular-nums' } },
+                    primary: {
+                      noWrap: true,
+                      sx: {
+                        color: 'text.primary',
+                        fontSize: tokens.font.size.body,
+                        fontWeight: tokens.font.weight.label,
+                      },
+                    },
+                    secondary: {
+                      sx: { fontSize: tokens.font.size.caption, fontVariantNumeric: 'tabular-nums' },
+                    },
                   }}
                 />
                 <AddRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.label, ml: 2 }} />
@@ -133,7 +179,12 @@ export function FoodPicker({ onPick, autoFocus = false }: { onPick: (food: Picke
           ))}
         </List>
       )}
-      <Button variant="text" startIcon={<AddRounded />} onClick={() => setCreating(true)} sx={{ justifySelf: 'start' }}>
+      <Button
+        variant="text"
+        startIcon={<AddRounded />}
+        onClick={() => setCreating(true)}
+        sx={{ justifySelf: 'start' }}
+      >
         New food
       </Button>
     </Box>
@@ -160,17 +211,35 @@ function NewFoodForm({
   onCreated: (food: PickedFood, notice: LogNotice) => void
 }) {
   const [name, setName] = useState(initialName)
-  const [values, setValues] = useState<Record<MacroKey, string>>({ kcal: '', protein: '', carbs: '', fat: '', fibre: '' })
+  const [values, setValues] = useState<Record<MacroKey, string>>({
+    kcal: '',
+    protein: '',
+    carbs: '',
+    fat: '',
+    fibre: '',
+  })
   const create = useLogMutation(endpoints.nutrition.createFood)
-  const n = Object.fromEntries(MACROS.map(({ key }) => [key, parseNumber(values[key])])) as Record<MacroKey, number | null>
+  const n = Object.fromEntries(MACROS.map(({ key }) => [key, parseNumber(values[key])])) as Record<
+    MacroKey,
+    number | null
+  >
   const required: MacroKey[] = ['kcal', 'protein', 'carbs', 'fat']
   const valid =
-    name.trim().length > 0 && required.every((k) => n[k] !== null && n[k] >= 0) && (n.fibre === null || n.fibre >= 0) && (n.kcal ?? 0) <= 900
+    name.trim().length > 0 &&
+    required.every((k) => n[k] !== null && n[k] >= 0) &&
+    (n.fibre === null || n.fibre >= 0) &&
+    (n.kcal ?? 0) <= 900
 
   const submit = () => {
     if (!valid) return
     const id = crypto.randomUUID()
-    const per100: Per100g = { kcal_per_100g: n.kcal ?? 0, protein_g: n.protein ?? 0, carbs_g: n.carbs ?? 0, fat_g: n.fat ?? 0, fibre_g: n.fibre }
+    const per100: Per100g = {
+      kcal_per_100g: n.kcal ?? 0,
+      protein_g: n.protein ?? 0,
+      carbs_g: n.carbs ?? 0,
+      fat_g: n.fat ?? 0,
+      fibre_g: n.fibre,
+    }
     create.mutate(
       {
         body: {
@@ -183,7 +252,10 @@ function NewFoodForm({
           fibre_g: n.fibre ?? undefined,
         },
       },
-      { onSuccess: (o) => onCreated({ id, name: name.trim(), per100, servingG: null }, noticeFor(o, `Saved ${name.trim()}`)) },
+      {
+        onSuccess: (o) =>
+          onCreated({ id, name: name.trim(), per100, servingG: null }, noticeFor(o, `Saved ${name.trim()}`)),
+      },
     )
   }
 
@@ -198,8 +270,22 @@ function NewFoodForm({
       sx={{ display: 'grid', gap: 3 }}
       data-testid="new-food-form"
     >
-      <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: 'text.secondary' }}>New food. Values per 100 g, as on the label.</Box>
-      <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus slotProps={{ htmlInput: { maxLength: 200 } }} />
+      <Box
+        sx={{
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: 'text.secondary',
+        }}
+      >
+        New food. Values per 100 g, as on the label.
+      </Box>
+      <TextField
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+        slotProps={{ htmlInput: { maxLength: 200 } }}
+      />
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
         {MACROS.map(({ key, label, unit }) => (
           <NumberField

@@ -5,11 +5,28 @@
 // anything. Each split draft must reach its day's body groups (engine focusGroups): a reply that misses one gains the
 // best allowed candidate for it (3 sets). trainingWeek shows each day's template, draft and job, whether its last draft
 // failed, and the body groups no template reaches yet. Mon 2026-10-12 noon in Edmonton.
-import { DEFAULT_REMINDER_PREFS, PlanWeekResult, TrainingWeek, type SplitSlot, type TemplateExerciseInput } from '@fitness/shared/schemas'
+import {
+  DEFAULT_REMINDER_PREFS,
+  PlanWeekResult,
+  TrainingWeek,
+  type SplitSlot,
+  type TemplateExerciseInput,
+} from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { ai_events, ai_jobs, createDb, exercises, plan_versions, profile, settings, template_exercises, workout_templates, type NewRow } from '../src/db'
+import {
+  ai_events,
+  ai_jobs,
+  createDb,
+  exercises,
+  plan_versions,
+  profile,
+  settings,
+  template_exercises,
+  workout_templates,
+  type NewRow,
+} from '../src/db'
 import type { Env } from '../src/env'
 import type { Deps } from '../src/lib/deps'
 import type { LlmRouter } from '../src/modules/llm'
@@ -24,7 +41,15 @@ afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
 /** Every provider key unset (app_secrets is empty too), so no model can answer. */
-const MODEL_KEYS = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_PAID_API_KEY', 'GEMINI_API_KEY', 'ZAI_API_KEY', 'OPENROUTER_API_KEY', 'GROQ_API_KEY'] as const
+const MODEL_KEYS = [
+  'ANTHROPIC_API_KEY',
+  'OPENAI_API_KEY',
+  'GEMINI_PAID_API_KEY',
+  'GEMINI_API_KEY',
+  'ZAI_API_KEY',
+  'OPENROUTER_API_KEY',
+  'GROQ_API_KEY',
+] as const
 const noKeys: Env = { ...env, ...Object.fromEntries(MODEL_KEYS.map((k) => [k, undefined])) }
 /**
  * Deps at NOW. A fake Groq key unless `keys: false`. The invocation's fetch tally is spent (limit 0), so queued jobs wait
@@ -40,7 +65,12 @@ const at = (actor: Deps['actor'], opts: { keys?: boolean } = {}): Deps => ({
 })
 
 type Ex = NewRow<typeof exercises> & { id: string }
-const ex = (slug: string, primary: Ex['primary_muscles'], equipment: string, mechanic: 'compound' | 'isolation' = 'compound'): Ex => ({
+const ex = (
+  slug: string,
+  primary: Ex['primary_muscles'],
+  equipment: string,
+  mechanic: 'compound' | 'isolation' = 'compound',
+): Ex => ({
   id: crypto.randomUUID(),
   slug,
   name: slug,
@@ -68,7 +98,16 @@ const library = [bench, pulldown, row, press, curl, pushdown, legPress, legCurl,
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -85,7 +124,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
     ...library.map((e) => db.insert(exercises).values(e)), // one row per statement: ≤ 100 bound parameters
   ])
@@ -103,7 +153,15 @@ beforeEach(async () => {
 })
 
 const sets = (n: number, ...list: Ex[]): TemplateExerciseInput[] =>
-  list.map((e) => ({ exercise_id: e.id, sets: n, rep_min: 8, rep_max: 12, target_load_kg: null, rest_sec: 90, note: null }))
+  list.map((e) => ({
+    exercise_id: e.id,
+    sets: n,
+    rep_min: 8,
+    rep_max: 12,
+    target_load_kg: null,
+    rest_sec: 90,
+    note: null,
+  }))
 const template = async (name: string, list: TemplateExerciseInput[]) => {
   const id = crypto.randomUUID()
   await createTemplate(at('user'), { id, name, origin: 'custom', exercises: list })
@@ -114,13 +172,35 @@ const jobsOf = async (ids: readonly string[]) => {
   const rows = await db.select().from(ai_jobs)
   return ids.map((id) => rows.find((r) => r.id === id)!)
 }
-const slotNames = (rows: { payload: unknown }[]) => rows.map((r) => (r.payload as { slot: SplitSlot }).slot.name)
+const slotNames = (rows: { payload: unknown }[]) =>
+  rows.map((r) => (r.payload as { slot: SplitSlot }).slot.name)
 /** A fake router answering these picks of 4 sets × 8–12 reps, 90 s rest. */
-const llm = (slugs: string[], onPrompt: (prompt: string) => void = () => undefined): Pick<LlmRouter, 'complete'> => ({
+const llm = (
+  slugs: string[],
+  onPrompt: (prompt: string) => void = () => undefined,
+): Pick<LlmRouter, 'complete'> => ({
   complete: async (req) => {
     onPrompt(req.messages.map((m) => m.content).join('\n'))
-    const data = { exercises: slugs.map((exercise_id) => ({ exercise_id, sets: 4, rep_min: 8, rep_max: 12, load_kg: null, rest_sec: 90 })), rationale: 'A split day.' }
-    return { data: data as never, provider: 'fake', model: 'fake', latency_ms: 1, tokens_in: 1, tokens_out: 1, attempts: 1 }
+    const data = {
+      exercises: slugs.map((exercise_id) => ({
+        exercise_id,
+        sets: 4,
+        rep_min: 8,
+        rep_max: 12,
+        load_kg: null,
+        rest_sec: 90,
+      })),
+      rationale: 'A split day.',
+    }
+    return {
+      data: data as never,
+      provider: 'fake',
+      model: 'fake',
+      latency_ms: 1,
+      tokens_in: 1,
+      tokens_out: 1,
+      attempts: 1,
+    }
   },
 })
 
@@ -138,7 +218,9 @@ describe('planTrainingWeek', () => {
     expect(out.skipped).toEqual([])
     const jobs = await jobsOf(out.job_ids)
     expect(slotNames(jobs)).toEqual(['Upper A', 'Lower A', 'Full body'])
-    expect(jobs.map((j) => [j.type, j.status, j.priority, (j.payload as { replace?: boolean }).replace ?? false])).toEqual([
+    expect(
+      jobs.map((j) => [j.type, j.status, j.priority, (j.payload as { replace?: boolean }).replace ?? false]),
+    ).toEqual([
       ['workout_template', 'queued', 10, true],
       ['workout_template', 'queued', 10, false],
       ['workout_template', 'queued', 10, false],
@@ -164,7 +246,9 @@ describe('planTrainingWeek', () => {
   })
 
   it('with no model key: 409 no_model_key, and nothing is queued or proposed', async () => {
-    await expect(planTrainingWeek(at('ai', { keys: false }), { training_days: ['mon', 'tue', 'thu'] })).rejects.toMatchObject({
+    await expect(
+      planTrainingWeek(at('ai', { keys: false }), { training_days: ['mon', 'tue', 'thu'] }),
+    ).rejects.toMatchObject({
       status: 409,
       code: 'no_model_key',
     })
@@ -176,7 +260,10 @@ describe('planTrainingWeek', () => {
 describe('split drafts that cover the body', () => {
   it('an Upper A reply with chest, back and shoulders but no arms gains the best arms candidate, 3 sets', async () => {
     let prompt = ''
-    const reply = llm(['barbell-bench-press', 'wide-grip-lat-pulldown', 'seated-cable-rows', 'dumbbell-shoulder-press'], (p) => (prompt = p))
+    const reply = llm(
+      ['barbell-bench-press', 'wide-grip-lat-pulldown', 'seated-cable-rows', 'dumbbell-shoulder-press'],
+      (p) => (prompt = p),
+    )
     const slot: SplitSlot = { weekday: 'mon', name: 'Upper A', focus: 'upper' }
 
     const out = await draftWorkout(at('ai'), reply, { mode: 'generate', slot, priority: 'user' })
@@ -196,15 +283,29 @@ describe('split drafts that cover the body', () => {
     await template('Full body', sets(3, bench, row, press, legPress, legCurl, hipThrust))
     await proposeTrainingDays(at('ai'), { training_days: ['mon', 'tue', 'thu'] })
     let prompt = ''
-    const reply = llm(['barbell-bench-press', 'seated-cable-rows', 'dumbbell-shoulder-press', 'leg-press', 'lying-leg-curls', 'barbell-hip-thrust'], (p) => (prompt = p))
+    const reply = llm(
+      [
+        'barbell-bench-press',
+        'seated-cable-rows',
+        'dumbbell-shoulder-press',
+        'leg-press',
+        'lying-leg-curls',
+        'barbell-hip-thrust',
+      ],
+      (p) => (prompt = p),
+    )
     const slot: SplitSlot = { weekday: 'thu', name: 'Full body', focus: 'full' }
 
     await draftWorkout(at('ai'), reply, { mode: 'generate', slot, replace: true, priority: 'user' })
 
     expect(prompt).toContain('Full body: every major muscle group, 12–28 sets')
     expect(prompt).toContain('chest, back, shoulders, quads, hamstrings, glutes')
-    expect(prompt).toContain('Already in Upper A: barbell-bench-press, wide-grip-lat-pulldown, dumbbell-shoulder-press, dumbbell-bicep-curl')
-    expect(prompt).toContain('Already in Lower A: leg-press, lying-leg-curls, barbell-hip-thrust, standing-calf-raises')
+    expect(prompt).toContain(
+      'Already in Upper A: barbell-bench-press, wide-grip-lat-pulldown, dumbbell-shoulder-press, dumbbell-bicep-curl',
+    )
+    expect(prompt).toContain(
+      'Already in Lower A: leg-press, lying-leg-curls, barbell-hip-thrust, standing-calf-raises',
+    )
     expect(prompt).toContain(
       'The current Full body: barbell-bench-press, seated-cable-rows, dumbbell-shoulder-press, leg-press, lying-leg-curls, barbell-hip-thrust',
     )
@@ -221,10 +322,27 @@ describe('trainingWeek', () => {
       kind: 'proposal',
       actor: 'ai',
       summary: 'Draft for Lower A',
-      body: { kind: 'workout', mode: 'generate', date: null, workout: { name: 'Lower A', exercises: sets(4, legPress, legCurl, hipThrust, calfRaise), rationale: '' }, muscle_scores: {} },
+      body: {
+        kind: 'workout',
+        mode: 'generate',
+        date: null,
+        workout: {
+          name: 'Lower A',
+          exercises: sets(4, legPress, legCurl, hipThrust, calfRaise),
+          rationale: '',
+        },
+        muscle_scores: {},
+      },
       proposal_status: 'pending',
     })
-    await db.insert(ai_jobs).values({ type: 'workout_template', status: 'queued', priority: 10, payload: { slot: { weekday: 'thu', name: 'Full body', focus: 'full' } } })
+    await db
+      .insert(ai_jobs)
+      .values({
+        type: 'workout_template',
+        status: 'queued',
+        priority: 10,
+        payload: { slot: { weekday: 'thu', name: 'Full body', focus: 'full' } },
+      })
 
     const week = await trainingWeek(at('user'))
 
@@ -235,9 +353,22 @@ describe('trainingWeek', () => {
       ['tue', 'Lower A', 'lower'],
       ['thu', 'Full body', 'full'],
     ])
-    expect(week.slots[0]).toMatchObject({ template: { id: upper, name: 'Upper A', exercise_count: 4, sets: 16 }, draft: null, drafting: false })
-    expect(week.slots[0]!.template!.muscle_scores).toMatchObject({ chest: 4, lats: 4, shoulders: 4, biceps: 4 })
-    expect(week.slots[1]).toMatchObject({ template: null, draft: { proposal_id: lowerDraft, replaces_template_id: null }, drafting: false })
+    expect(week.slots[0]).toMatchObject({
+      template: { id: upper, name: 'Upper A', exercise_count: 4, sets: 16 },
+      draft: null,
+      drafting: false,
+    })
+    expect(week.slots[0]!.template!.muscle_scores).toMatchObject({
+      chest: 4,
+      lats: 4,
+      shoulders: 4,
+      biceps: 4,
+    })
+    expect(week.slots[1]).toMatchObject({
+      template: null,
+      draft: { proposal_id: lowerDraft, replaces_template_id: null },
+      drafting: false,
+    })
     expect(week.slots[2]).toMatchObject({ template: null, draft: null, drafting: true })
     expect(week.uncovered).toEqual(['quads', 'hamstrings', 'glutes', 'calves'])
     expect(week.week_plan_sessions).toBeNull()
@@ -247,8 +378,21 @@ describe('trainingWeek', () => {
     await db.update(settings).set({ training_days: ['mon', 'tue', 'thu'] })
     const lowerA = { slot: { weekday: 'tue', name: 'Lower A', focus: 'lower' } }
     await db.insert(ai_jobs).values([
-      { type: 'workout_template', status: 'done', priority: 10, payload: lowerA, created_at: '2026-10-12T16:00:00.000Z' },
-      { type: 'workout_template', status: 'failed', priority: 10, payload: lowerA, error: 'no provider', created_at: '2026-10-12T17:00:00.000Z' },
+      {
+        type: 'workout_template',
+        status: 'done',
+        priority: 10,
+        payload: lowerA,
+        created_at: '2026-10-12T16:00:00.000Z',
+      },
+      {
+        type: 'workout_template',
+        status: 'failed',
+        priority: 10,
+        payload: lowerA,
+        error: 'no provider',
+        created_at: '2026-10-12T17:00:00.000Z',
+      },
     ])
 
     expect((await trainingWeek(at('user'))).slots.map((s) => s.failed)).toEqual([false, true, false])
@@ -257,7 +401,17 @@ describe('trainingWeek', () => {
       kind: 'proposal',
       actor: 'ai',
       summary: 'Draft for Lower A',
-      body: { kind: 'workout', mode: 'generate', date: null, workout: { name: 'Lower A', exercises: sets(4, legPress, legCurl, hipThrust, calfRaise), rationale: '' }, muscle_scores: {} },
+      body: {
+        kind: 'workout',
+        mode: 'generate',
+        date: null,
+        workout: {
+          name: 'Lower A',
+          exercises: sets(4, legPress, legCurl, hipThrust, calfRaise),
+          rationale: '',
+        },
+        muscle_scores: {},
+      },
       proposal_status: 'pending',
       created_at: '2026-10-12T17:30:00.000Z',
     })

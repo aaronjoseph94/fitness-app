@@ -47,9 +47,22 @@ const kg = (key: NumericKey, label: string): FieldSpec => ({ key, label, unit: '
 export const GROUPS: FieldGroup[] = [
   {
     title: 'Body composition',
-    fields: [kg('weight_kg', 'Weight'), kg('lean_body_mass_kg', 'Lean body mass'), kg('skeletal_muscle_mass_kg', 'Skeletal muscle mass'), kg('protein_kg', 'Protein'), kg('mineral_kg', 'Mineral')],
+    fields: [
+      kg('weight_kg', 'Weight'),
+      kg('lean_body_mass_kg', 'Lean body mass'),
+      kg('skeletal_muscle_mass_kg', 'Skeletal muscle mass'),
+      kg('protein_kg', 'Protein'),
+      kg('mineral_kg', 'Mineral'),
+    ],
   },
-  { title: 'Body water', fields: [kg('total_body_water_kg', 'Total body water'), kg('icf_kg', 'Intracellular fluid'), kg('ecf_kg', 'Extracellular fluid')] },
+  {
+    title: 'Body water',
+    fields: [
+      kg('total_body_water_kg', 'Total body water'),
+      kg('icf_kg', 'Intracellular fluid'),
+      kg('ecf_kg', 'Extracellular fluid'),
+    ],
+  },
   {
     title: 'Fat',
     fields: [
@@ -125,7 +138,13 @@ export function timeOfDay(time: string): ScanConditions['time_of_day'] {
 export function formFrom(input: {
   record?: ScanRecord | null
   draft?: ScanDraft | null
-  fallback: { date: string; time: string; height_cm?: number | null; age?: number | null; sex?: 'male' | 'female' | null }
+  fallback: {
+    date: string
+    time: string
+    height_cm?: number | null
+    age?: number | null
+    sex?: 'male' | 'female' | null
+  }
 }): ScanForm {
   const source: Readable = input.record ?? input.draft ?? {}
   const at = source.scanned_at ?? null
@@ -141,7 +160,10 @@ export function formFrom(input: {
     source_units: input.record?.source_units ?? input.draft?.source_units ?? 'lb',
     values,
     segments: Object.fromEntries(
-      SEGMENTS.map((s) => [s, { lean_kg: text(source.segments?.[s]?.lean_kg), fat_kg: text(source.segments?.[s]?.fat_kg) }]),
+      SEGMENTS.map((s) => [
+        s,
+        { lean_kg: text(source.segments?.[s]?.lean_kg), fat_kg: text(source.segments?.[s]?.fat_kg) },
+      ]),
     ) as ScanForm['segments'],
     conditions: {
       time_of_day: c?.time_of_day ?? timeOfDay(time),
@@ -165,7 +187,9 @@ export const LOW_CONFIDENCE = 0.7
 export type FormErrors = Partial<Record<string, string>>
 
 /** The record the form confirms, or the fields to fix (keyed like the form: "weight_kg", "segments.torso.fat_kg"). */
-export function recordFrom(form: ScanForm): { record: ScanRecord; errors: null } | { record: null; errors: FormErrors } {
+export function recordFrom(
+  form: ScanForm,
+): { record: ScanRecord; errors: null } | { record: null; errors: FormErrors } {
   const errors: FormErrors = {}
   const num = (key: string, raw: string, integer = false): number | null => {
     const n = parseNumber(raw)
@@ -176,10 +200,20 @@ export function recordFrom(form: ScanForm): { record: ScanRecord; errors: null }
   const specs = [...PROFILE_FIELDS, ...GROUPS.flatMap((g) => g.fields)]
   const values = Object.fromEntries(specs.map((f) => [f.key, num(f.key, form.values[f.key], f.integer)]))
   const segments = Object.fromEntries(
-    SEGMENTS.map((s) => [s, { lean_kg: num(`segments.${s}.lean_kg`, form.segments[s].lean_kg), fat_kg: num(`segments.${s}.fat_kg`, form.segments[s].fat_kg) }]),
+    SEGMENTS.map((s) => [
+      s,
+      {
+        lean_kg: num(`segments.${s}.lean_kg`, form.segments[s].lean_kg),
+        fat_kg: num(`segments.${s}.fat_kg`, form.segments[s].fat_kg),
+      },
+    ]),
   )
-  const hours = form.conditions.hours_since_training.trim() === '' ? null : parseNumber(form.conditions.hours_since_training)
-  if (form.conditions.hours_since_training.trim() !== '' && (hours === null || hours < 0)) errors['conditions.hours_since_training'] = 'Hours, 0 or more'
+  const hours =
+    form.conditions.hours_since_training.trim() === ''
+      ? null
+      : parseNumber(form.conditions.hours_since_training)
+  if (form.conditions.hours_since_training.trim() !== '' && (hours === null || hours < 0))
+    errors['conditions.hours_since_training'] = 'Hours, 0 or more'
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) errors.date = 'Pick the scan date'
   if (!/^\d{2}:\d{2}$/.test(form.time)) errors.time = 'Pick the scan time'
   if (Object.keys(errors).length > 0) return { record: null, errors }

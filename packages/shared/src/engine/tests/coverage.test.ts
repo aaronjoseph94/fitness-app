@@ -17,7 +17,15 @@ describe('body-group coverage', () => {
 
   test('a week that trains everything but the calves is missing calves', () => {
     expect(
-      missingGroups(BODY_GROUPS, ['chest', 'middle back', 'shoulders', 'triceps', 'quadriceps', 'hamstrings', 'glutes']),
+      missingGroups(BODY_GROUPS, [
+        'chest',
+        'middle back',
+        'shoulders',
+        'triceps',
+        'quadriceps',
+        'hamstrings',
+        'glutes',
+      ]),
     ).toEqual(['calves'])
   })
 
@@ -26,19 +34,57 @@ describe('body-group coverage', () => {
   })
 
   test('groups come back unique and in group order; each focus lists its groups', () => {
-    expect(bodyGroupsOf(['triceps', 'biceps', 'quadriceps', 'lats', 'middle back'])).toEqual(['back', 'arms', 'quads'])
+    expect(bodyGroupsOf(['triceps', 'biceps', 'quadriceps', 'lats', 'middle back'])).toEqual([
+      'back',
+      'arms',
+      'quads',
+    ])
     expect(focusGroups('lower')).toEqual(['quads', 'hamstrings', 'glutes', 'calves'])
     expect(focusGroups('full')).toEqual(['chest', 'back', 'shoulders', 'quads', 'hamstrings', 'glutes'])
-    expect(BODY_GROUPS).toEqual(['chest', 'back', 'shoulders', 'arms', 'quads', 'hamstrings', 'glutes', 'calves'])
+    expect(BODY_GROUPS).toEqual([
+      'chest',
+      'back',
+      'shoulders',
+      'arms',
+      'quads',
+      'hamstrings',
+      'glutes',
+      'calves',
+    ])
   })
 
   test('a full-body day of an all-full-body week also takes the groups no other day requires: all eight', () => {
-    expect(requiredGroups(fullA, [fullA, fullB])).toEqual(['chest', 'back', 'shoulders', 'arms', 'quads', 'hamstrings', 'glutes', 'calves'])
-    expect(requiredGroups(full, [full])).toEqual(['chest', 'back', 'shoulders', 'arms', 'quads', 'hamstrings', 'glutes', 'calves'])
+    expect(requiredGroups(fullA, [fullA, fullB])).toEqual([
+      'chest',
+      'back',
+      'shoulders',
+      'arms',
+      'quads',
+      'hamstrings',
+      'glutes',
+      'calves',
+    ])
+    expect(requiredGroups(full, [full])).toEqual([
+      'chest',
+      'back',
+      'shoulders',
+      'arms',
+      'quads',
+      'hamstrings',
+      'glutes',
+      'calves',
+    ])
   })
 
   test('Full body beside Upper A and Lower A keeps its six groups; Upper A keeps its four', () => {
-    expect(requiredGroups(full, [upper, lower, full])).toEqual(['chest', 'back', 'shoulders', 'quads', 'hamstrings', 'glutes'])
+    expect(requiredGroups(full, [upper, lower, full])).toEqual([
+      'chest',
+      'back',
+      'shoulders',
+      'quads',
+      'hamstrings',
+      'glutes',
+    ])
     expect(requiredGroups(upper, [upper, lower])).toEqual(['chest', 'back', 'shoulders', 'arms'])
   })
 })

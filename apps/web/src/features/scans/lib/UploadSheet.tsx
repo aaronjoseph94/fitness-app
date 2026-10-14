@@ -33,7 +33,15 @@ type Step =
   | { kind: 'mask'; sheet: HTMLCanvasElement; name: string; id: string }
   | { kind: 'uploading' }
 
-export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onClose: () => void; onUploaded: (result: ScanUploaded) => void }) {
+export function UploadSheet({
+  open,
+  onClose,
+  onUploaded,
+}: {
+  open: boolean
+  onClose: () => void
+  onUploaded: (result: ScanUploaded) => void
+}) {
   const fullScreen = useMediaQuery(`(max-width: ${tokens.layout.phoneWidth + 210}px)`)
   const [step, setStep] = useState<Step>({ kind: 'pick' })
   const [box, setBox] = useState<MaskBox>(DEFAULT_MASK)
@@ -99,13 +107,21 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
       sx={fullScreen ? { '& .MuiDialog-paper': { borderRadius: 0, border: 0 } } : undefined}
     >
       <DialogTitle id="scan-upload-title" sx={{ display: 'flex', alignItems: 'center', gap: 2, pr: 2 }}>
-        <Box sx={{ flex: 1 }}>{step.kind === 'mask' || step.kind === 'uploading' ? 'Hide your name' : 'Upload a scan sheet'}</Box>
+        <Box sx={{ flex: 1 }}>
+          {step.kind === 'mask' || step.kind === 'uploading' ? 'Hide your name' : 'Upload a scan sheet'}
+        </Box>
         <IconButton aria-label="Close" onClick={close} disabled={step.kind === 'uploading'}>
           <CloseRounded fontSize="small" />
         </IconButton>
       </DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 3, alignContent: 'start' }}>
-        <input ref={input} type="file" accept={ACCEPT} hidden data-testid="scan-file-input" onChange={(e) => {
+        <input
+          ref={input}
+          type="file"
+          accept={ACCEPT}
+          hidden
+          data-testid="scan-file-input"
+          onChange={(e) => {
             const file = e.target.files?.[0]
             e.target.value = '' // picking the same file again still fires
             void pick(file)
@@ -114,46 +130,122 @@ export function UploadSheet({ open, onClose, onUploaded }: { open: boolean; onCl
         {error && <Alert severity="error">{error}</Alert>}
 
         {step.kind === 'pick' && (
-          <Box sx={{ ...dashedSurface, display: 'grid', justifyItems: 'center', gap: 3, px: 5, py: 7, textAlign: 'center' }}>
+          <Box
+            sx={{
+              ...dashedSurface,
+              display: 'grid',
+              justifyItems: 'center',
+              gap: 3,
+              px: 5,
+              py: 7,
+              textAlign: 'center',
+            }}
+          >
             <Box
               aria-hidden
-              sx={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: `${tokens.radius.control}px`, bgcolor: tokens.accent.soft, color: tokens.accent.main }}
+              sx={{
+                width: 40,
+                height: 40,
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: `${tokens.radius.control}px`,
+                bgcolor: tokens.accent.soft,
+                color: tokens.accent.main,
+              }}
             >
               <UploadFileOutlined fontSize="small" />
             </Box>
-            <Box sx={{ maxWidth: 400, color: tokens.ink.muted, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
-              Share the result sheet from the Evolt Active app, or save it from app.evoltactive.com. You'll hide your name before anything
-              is uploaded.
+            <Box
+              sx={{
+                maxWidth: 400,
+                color: tokens.ink.muted,
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+              }}
+            >
+              Share the result sheet from the Evolt Active app, or save it from app.evoltactive.com. You'll
+              hide your name before anything is uploaded.
             </Box>
-            <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => input.current?.click()} data-testid="scan-pick">
+            <Button
+              variant="contained"
+              startIcon={<UploadFileOutlined />}
+              onClick={() => input.current?.click()}
+              data-testid="scan-pick"
+            >
               Choose the sheet (PDF, PNG or JPG)
             </Button>
           </Box>
         )}
 
         {step.kind === 'rendering' && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center', color: tokens.ink.muted, fontSize: tokens.font.size.small }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              py: 6,
+              justifyContent: 'center',
+              color: tokens.ink.muted,
+              fontSize: tokens.font.size.small,
+            }}
+          >
             <CircularProgress size={24} /> Opening {step.name}…
           </Box>
         )}
 
         {(step.kind === 'mask' || step.kind === 'uploading') && (
           <>
-            <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted, lineHeight: tokens.font.leading.small }}>
-              Drag the black box over your name; drag a corner to resize it. Only the masked image is uploaded and read.
+            <Box
+              sx={{
+                fontSize: tokens.font.size.small,
+                color: tokens.ink.muted,
+                lineHeight: tokens.font.leading.small,
+              }}
+            >
+              Drag the black box over your name; drag a corner to resize it. Only the masked image is uploaded
+              and read.
             </Box>
             {step.kind === 'mask' ? (
               <MaskEditor sheet={step.sheet} box={box} onChange={setBox} />
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 6, justifyContent: 'center', color: tokens.ink.muted, fontSize: tokens.font.size.small }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  py: 6,
+                  justifyContent: 'center',
+                  color: tokens.ink.muted,
+                  fontSize: tokens.font.size.small,
+                }}
+              >
                 <CircularProgress size={24} /> Uploading…
               </Box>
             )}
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', position: 'sticky', bottom: 0, bgcolor: tokens.ink.card, py: 3 }}>
-              <Button variant="outlined" onClick={() => input.current?.click()} disabled={step.kind === 'uploading'}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                justifyContent: 'flex-end',
+                position: 'sticky',
+                bottom: 0,
+                bgcolor: tokens.ink.card,
+                py: 3,
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={() => input.current?.click()}
+                disabled={step.kind === 'uploading'}
+              >
                 Another file
               </Button>
-              <Button variant="contained" onClick={() => void upload()} disabled={step.kind === 'uploading'} data-testid="scan-upload">
+              <Button
+                variant="contained"
+                onClick={() => void upload()}
+                disabled={step.kind === 'uploading'}
+                data-testid="scan-upload"
+              >
                 Upload and read
               </Button>
             </Box>

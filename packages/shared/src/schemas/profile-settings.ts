@@ -77,14 +77,23 @@ export type Rails = z.infer<typeof Rails>
 /** Partial settings edit; when both kcal rails are given the floor must not exceed the ceiling. */
 export const SettingsPatch = Settings.omit({ id: true, created_at: true, updated_at: true })
   .partial()
-  .refine((p) => p.calorie_floor === undefined || p.calorie_ceiling === undefined || p.calorie_floor <= p.calorie_ceiling, {
-    message: 'calorie_floor must not exceed calorie_ceiling',
-    path: ['calorie_ceiling'],
-  })
+  .refine(
+    (p) =>
+      p.calorie_floor === undefined ||
+      p.calorie_ceiling === undefined ||
+      p.calorie_floor <= p.calorie_ceiling,
+    {
+      message: 'calorie_floor must not exceed calorie_ceiling',
+      path: ['calorie_ceiling'],
+    },
+  )
 export type SettingsPatch = z.infer<typeof SettingsPatch>
 
 /** Body of PATCH /api/settings. */
-export const SettingsUpdate = z.object({ settings: SettingsPatch.optional(), profile: ProfilePatch.optional() })
+export const SettingsUpdate = z.object({
+  settings: SettingsPatch.optional(),
+  profile: ProfilePatch.optional(),
+})
 export type SettingsUpdate = z.infer<typeof SettingsUpdate>
 
 /** Response of GET/PATCH /api/settings. */

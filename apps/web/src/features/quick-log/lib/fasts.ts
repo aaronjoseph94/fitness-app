@@ -74,12 +74,26 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
     const stamp = (at: string) => ({ created_at: at, updated_at: at })
     for (const p of plans) {
       if (byId.has(p.body.id)) continue
-      byId.set(p.body.id, { id: p.body.id, started_at: p.body.started_at, ended_at: null, planned: true, note: p.body.note ?? null, pending: true, ...stamp(p.at) })
+      byId.set(p.body.id, {
+        id: p.body.id,
+        started_at: p.body.started_at,
+        ended_at: null,
+        planned: true,
+        note: p.body.note ?? null,
+        pending: true,
+        ...stamp(p.at),
+      })
     }
     for (const p of starts) {
       const existing = byId.get(p.body.id)
       byId.set(p.body.id, {
-        ...(existing ?? { id: p.body.id, planned: false, note: p.body.note ?? null, ended_at: null, ...stamp(p.at) }),
+        ...(existing ?? {
+          id: p.body.id,
+          planned: false,
+          note: p.body.note ?? null,
+          ended_at: null,
+          ...stamp(p.at),
+        }),
         started_at: p.body.started_at ?? p.at,
         pending: true,
       })
@@ -100,14 +114,23 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
 
     const fasts = [...byId.values()].map((f): FastView => {
       const start = Date.parse(f.started_at)
-      const view = { id: f.id, startedAt: f.started_at, endedAt: f.ended_at, planned: f.planned, note: f.note, pending: f.pending === true }
+      const view = {
+        id: f.id,
+        startedAt: f.started_at,
+        endedAt: f.ended_at,
+        planned: f.planned,
+        note: f.note,
+        pending: f.pending === true,
+      }
       if (f.ended_at) {
         const hours = (Date.parse(f.ended_at) - start) / HOUR_MS
         return { ...view, hours, status: hours >= fastHours * COMPLETE_SHARE ? 'completed' : 'partial' }
       }
-      if (start > now || (f.id === scheduledId && !pendingStarted.has(f.id))) return { ...view, hours: null, status: 'planned' }
+      if (start > now || (f.id === scheduledId && !pendingStarted.has(f.id)))
+        return { ...view, hours: null, status: 'planned' }
       const hours = (now - start) / HOUR_MS
-      const running = f.id === activeId || pendingStarted.has(f.id) || hours < RUNNING_WINDOW_FASTS * fastHours
+      const running =
+        f.id === activeId || pendingStarted.has(f.id) || hours < RUNNING_WINDOW_FASTS * fastHours
       return { ...view, hours: running ? hours : null, status: running ? 'active' : 'missed' }
     })
     fasts.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
@@ -121,7 +144,19 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
       error: list.error,
       refetch: () => void list.refetch(),
     }
-  }, [list.data, list.isLoading, list.error, list.refetch, today.data, starts, ends, plans, cancels, fastHours, now])
+  }, [
+    list.data,
+    list.isLoading,
+    list.error,
+    list.refetch,
+    today.data,
+    starts,
+    ends,
+    plans,
+    cancels,
+    fastHours,
+    now,
+  ])
 }
 
 /**
@@ -130,5 +165,7 @@ export function useFasts(range: { from: string; to: string }, now = Date.now()):
  */
 export function fastsInMonth(fasts: readonly FastView[], date: string, fastHours: number): number {
   const month = date.slice(0, 7)
-  return fasts.filter((f) => fastDay({ started_at: f.startedAt, ended_at: f.endedAt }, fastHours)?.slice(0, 7) === month).length
+  return fasts.filter(
+    (f) => fastDay({ started_at: f.startedAt, ended_at: f.endedAt }, fastHours)?.slice(0, 7) === month,
+  ).length
 }

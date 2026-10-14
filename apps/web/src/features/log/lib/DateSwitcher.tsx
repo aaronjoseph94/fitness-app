@@ -36,7 +36,8 @@ export function DateSwitcher({
   const previous = shiftDate(date, -1)
   const next = shiftDate(date, 1)
   const relative = relativeDay(date, today)
-  const label = relative === 'Today' || relative === 'Yesterday' ? `${relative} · ${dayLabel(date)}` : dayLabel(date)
+  const label =
+    relative === 'Today' || relative === 'Yesterday' ? `${relative} · ${dayLabel(date)}` : dayLabel(date)
   return (
     <Box
       data-testid="date-switcher"
@@ -51,7 +52,12 @@ export function DateSwitcher({
         bgcolor: tokens.ink.card,
       }}
     >
-      <IconButton size="small" aria-label="Previous day" onClick={() => onChange(previous)} sx={{ borderRadius: `${tokens.radius.inner}px` }}>
+      <IconButton
+        size="small"
+        aria-label="Previous day"
+        onClick={() => onChange(previous)}
+        sx={{ borderRadius: `${tokens.radius.inner}px` }}
+      >
         <ChevronLeftRounded sx={{ fontSize: 18 }} />
       </IconButton>
       <Button variant="text" color="inherit" size="tiny" onClick={() => onChange(previous)} sx={neighbourSx}>
@@ -108,14 +114,32 @@ export function DateSwitcher({
           }}
         />
       </Box>
-      <Button variant="text" color="inherit" size="tiny" onClick={() => onChange(next)} disabled={isToday} sx={neighbourSx}>
+      <Button
+        variant="text"
+        color="inherit"
+        size="tiny"
+        onClick={() => onChange(next)}
+        disabled={isToday}
+        sx={neighbourSx}
+      >
         {shortDayLabel(next)}
       </Button>
-      <IconButton size="small" aria-label="Next day" onClick={() => onChange(next)} disabled={isToday} sx={{ borderRadius: `${tokens.radius.inner}px` }}>
+      <IconButton
+        size="small"
+        aria-label="Next day"
+        onClick={() => onChange(next)}
+        disabled={isToday}
+        sx={{ borderRadius: `${tokens.radius.inner}px` }}
+      >
         <ChevronRightRounded sx={{ fontSize: 18 }} />
       </IconButton>
       {!isToday && (
-        <Button size="tiny" variant="text" onClick={() => onChange(today)} sx={{ fontSize: tokens.font.size.small }}>
+        <Button
+          size="tiny"
+          variant="text"
+          onClick={() => onChange(today)}
+          sx={{ fontSize: tokens.font.size.small }}
+        >
           Today
         </Button>
       )}

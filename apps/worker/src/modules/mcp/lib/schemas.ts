@@ -41,5 +41,7 @@ export function inputSchemaFor(tool: ToolDefinition): StandardSchemaWithJSON<Too
 try {
   for (const tool of allTools()) inputSchemaFor(tool)
 } catch (err) {
-  console.error(JSON.stringify({ level: 'error', msg: 'mcp: tool JSON Schema warm-up failed', error: String(err) }))
+  console.error(
+    JSON.stringify({ level: 'error', msg: 'mcp: tool JSON Schema warm-up failed', error: String(err) }),
+  )
 }

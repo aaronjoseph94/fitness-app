@@ -105,7 +105,16 @@ export function ProposalCard({
       >
         {title}
       </Box>
-      <Box sx={{ mt: '4px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{summary}</Box>
+      <Box
+        sx={{
+          mt: '4px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: tokens.ink.secondary,
+        }}
+      >
+        {summary}
+      </Box>
 
       {changes && changes.length > 0 && (
         <Box sx={{ mt: '10px' }}>
@@ -113,20 +122,45 @@ export function ProposalCard({
         </Box>
       )}
 
-      {children && <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>{children}</Box>}
+      {children && (
+        <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
+          {children}
+        </Box>
+      )}
 
       {decided ? (
-        <Box sx={{ mt: '12px', fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.label, color: decided.color }}>{decided.text}</Box>
+        <Box
+          sx={{
+            mt: '12px',
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.label,
+            color: decided.color,
+          }}
+        >
+          {decided.text}
+        </Box>
       ) : (
         <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: '12px' }}>
-          <Button variant="contained" color="dark" size="dense" onClick={onAccept} disabled={busy || !onAccept}>
+          <Button
+            variant="contained"
+            color="dark"
+            size="dense"
+            onClick={onAccept}
+            disabled={busy || !onAccept}
+          >
             Accept
           </Button>
           <Button variant="outlined" size="dense" onClick={onReject} disabled={busy || !onReject}>
             Reject
           </Button>
           {onWhy && (
-            <Button variant="text" size="dense" onClick={onWhy} disabled={busy} sx={{ ml: 'auto', px: '8px', mr: '-8px' }}>
+            <Button
+              variant="text"
+              size="dense"
+              onClick={onWhy}
+              disabled={busy}
+              sx={{ ml: 'auto', px: '8px', mr: '-8px' }}
+            >
               Why?
             </Button>
           )}

@@ -21,7 +21,9 @@ export function draftMuscleLevels(
 ): DraftTraining {
   const tagged = exercises.flatMap((e) => {
     const x = byId.get(e.exercise_id)
-    return x ? [{ sets: e.sets, primary_muscles: x.primary_muscles, secondary_muscles: x.secondary_muscles }] : []
+    return x
+      ? [{ sets: e.sets, primary_muscles: x.primary_muscles, secondary_muscles: x.secondary_muscles }]
+      : []
   })
   const scores = muscleScores(tagged)
   const totalSets = exercises.reduce((n, e) => n + e.sets, 0)
@@ -29,7 +31,14 @@ export function draftMuscleLevels(
     .filter(([, s]) => s > 0)
     .sort((a, b) => b[1] - a[1])
     .map(([m]) => m)
-  const outsideRail = totalSets === 0 ? null : totalSets < SESSION_SETS.min ? 'under' : totalSets > SESSION_SETS.max ? 'over' : null
+  const outsideRail =
+    totalSets === 0
+      ? null
+      : totalSets < SESSION_SETS.min
+        ? 'under'
+        : totalSets > SESSION_SETS.max
+          ? 'over'
+          : null
   return { scores, levels: muscleLevels(scores), totalSets, top, outsideRail }
 }
 

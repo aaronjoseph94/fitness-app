@@ -1,7 +1,16 @@
 // Owns: favourites — one-tap repeats: a food with default grams, or a recipe (foods with grams) — with the nutrition of
 // one default portion and the named foods in it, their sort order, deleting one, and the meal items it expands to.
 import { sumNutrients } from '@fitness/shared/engine'
-import type { Favourite, FavouriteCreate, FavouriteItem, FavouritePatch, MealItemInput, Nutrients, Ok, RecipeItem } from '@fitness/shared/schemas'
+import type {
+  Favourite,
+  FavouriteCreate,
+  FavouriteItem,
+  FavouritePatch,
+  MealItemInput,
+  Nutrients,
+  Ok,
+  RecipeItem,
+} from '@fitness/shared/schemas'
 import { asc, eq, max } from 'drizzle-orm'
 import { favorites, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -11,7 +20,8 @@ import { foodLabel, foodsByIds, type FoodRow } from './foods'
 
 type FavouriteRow = Row<typeof favorites>
 
-const foodIdsOf = (r: Pick<FavouriteRow, 'food_id' | 'recipe'>) => (r.food_id ? [r.food_id] : (r.recipe ?? []).map((i) => i.food_id))
+const foodIdsOf = (r: Pick<FavouriteRow, 'food_id' | 'recipe'>) =>
+  r.food_id ? [r.food_id] : (r.recipe ?? []).map((i) => i.food_id)
 
 /**
  * Row → Favourite; totals = nutrition of one default portion (food × default_grams, or Σ recipe items); `items` names
@@ -24,9 +34,20 @@ function toFavourite(r: FavouriteRow, foodMap: Map<string, FoodRow>): Favourite 
   }
   const item = (food_id: string, grams: number): FavouriteItem => {
     const food = foodMap.get(food_id)
-    return { food_id, name: food ? foodLabel(food) : 'Unknown food', grams, kcal: portion(food_id, grams).kcal }
+    return {
+      food_id,
+      name: food ? foodLabel(food) : 'Unknown food',
+      grams,
+      kcal: portion(food_id, grams).kcal,
+    }
   }
-  const base = { id: r.id, created_at: r.created_at, updated_at: r.updated_at, label: r.label, sort_order: r.sort_order }
+  const base = {
+    id: r.id,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    label: r.label,
+    sort_order: r.sort_order,
+  }
   if (r.food_id && r.default_grams)
     return {
       ...base,
@@ -59,7 +80,10 @@ async function present(deps: Deps, row: FavouriteRow): Promise<Favourite> {
 }
 
 export async function listFavourites(deps: Deps): Promise<Favourite[]> {
-  const rows = await deps.db.select().from(favorites).orderBy(asc(favorites.sort_order), asc(favorites.created_at))
+  const rows = await deps.db
+    .select()
+    .from(favorites)
+    .orderBy(asc(favorites.sort_order), asc(favorites.created_at))
   const foodMap = await foodsByIds(deps, rows.flatMap(foodIdsOf))
   return rows.map((r) => toFavourite(r, foodMap)).filter((f): f is Favourite => f !== null)
 }
@@ -94,9 +118,15 @@ export async function updateFavourite(deps: Deps, id: string, patch: FavouritePa
   const row = await favouriteRow(deps, id)
   if (!row) throw notFound('Favourite')
   const isRecipe = row.food_id === null
-  if (patch.default_grams !== undefined && isRecipe) throw badRequest('default_grams applies to food favourites only')
+  if (patch.default_grams !== undefined && isRecipe)
+    throw badRequest('default_grams applies to food favourites only')
   if (patch.recipe !== undefined && !isRecipe) throw badRequest('recipe applies to recipe favourites only')
-  if (patch.recipe) await foodsByIds(deps, patch.recipe.map((i) => i.food_id), { require: true })
+  if (patch.recipe)
+    await foodsByIds(
+      deps,
+      patch.recipe.map((i) => i.food_id),
+      { require: true },
+    )
   await deps.db
     .update(favorites)
     .set({
@@ -120,7 +150,10 @@ export async function deleteFavourite(deps: Deps, id: string): Promise<Ok> {
 export async function favouriteItemInputs(deps: Deps, id: string, scale: number): Promise<MealItemInput[]> {
   const row = await favouriteRow(deps, id)
   if (!row) throw badRequest(`Unknown favourite: ${id}`)
-  const parts = row.food_id && row.default_grams ? [{ food_id: row.food_id, grams: row.default_grams }] : (row.recipe ?? [])
+  const parts =
+    row.food_id && row.default_grams
+      ? [{ food_id: row.food_id, grams: row.default_grams }]
+      : (row.recipe ?? [])
   if (parts.length === 0) throw badRequest('Favourite has neither a food nor a recipe')
   return parts.map((p) => ({ id: crypto.randomUUID(), food_id: p.food_id, grams: p.grams * scale }))
 }

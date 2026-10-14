@@ -12,7 +12,13 @@ import type { Deps } from '../src/lib/deps'
 import { importTablePage } from '../src/modules/export'
 
 const db = createDb(env.DB)
-const deps: Deps = { db, env, now: () => new Date('2026-10-05T18:00:00.000Z'), actor: 'user', waitUntil: () => undefined }
+const deps: Deps = {
+  db,
+  env,
+  now: () => new Date('2026-10-05T18:00:00.000Z'),
+  actor: 'user',
+  waitUntil: () => undefined,
+}
 const STAMP = '2026-10-05T17:00:00.000Z'
 
 /** One page of `table`, as the browser's restore sends it (overwrite: this instance may already hold rows). */
@@ -39,7 +45,12 @@ describe('restore refuses cells their column cannot hold, in every table', () =>
 
     await expect(refused).rejects.toMatchObject({ status: 422, code: 'invalid_rows' })
     await expect(refused).rejects.toThrow(/weight_logs row 2 .*weight_kg/)
-    expect(await db.select().from(weight_logs).where(inArray(weight_logs.id, [String(good.id), String(bad.id)]))).toEqual([])
+    expect(
+      await db
+        .select()
+        .from(weight_logs)
+        .where(inArray(weight_logs.id, [String(good.id), String(bad.id)])),
+    ).toEqual([])
   })
 
   it('refuses null in a NOT NULL column, a missing required column, 2 in a 0/1 column, bad JSON, an unknown enum value and a number in a text column', async () => {
@@ -70,7 +81,10 @@ describe('restore refuses cells their column cannot hold, in every table', () =>
     } satisfies ExportRow
 
     const cases: [() => Promise<unknown>, RegExp][] = [
-      [() => restore('weight_logs', [{ ...weighIn('2026-09-03', 92), date: null }]), /weight_logs row 1 .*date/],
+      [
+        () => restore('weight_logs', [{ ...weighIn('2026-09-03', 92), date: null }]),
+        /weight_logs row 1 .*date/,
+      ],
       [() => restore('weight_logs', [noWeight]), /weight_logs.*weight_kg/],
       [() => restore('weight_logs', [{ ...weighIn('2026-09-03', 92), note: 5 }]), /weight_logs row 1 .*note/],
       [() => restore('fast_logs', [{ ...fast, planned: 2 }]), /fast_logs row 1 .*planned/],
@@ -100,7 +114,12 @@ describe('restore refuses cells their column cannot hold, in every table', () =>
     const stored = await db
       .select({ date: weight_logs.date, kg: weight_logs.weight_kg })
       .from(weight_logs)
-      .where(inArray(weight_logs.id, rows.map((r) => String(r.id))))
+      .where(
+        inArray(
+          weight_logs.id,
+          rows.map((r) => String(r.id)),
+        ),
+      )
       .orderBy(weight_logs.date)
     expect(stored).toEqual([
       { date: '2026-08-01', kg: 94.2 },

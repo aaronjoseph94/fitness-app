@@ -29,7 +29,13 @@ export interface DashboardSectionProps {
   children: ReactNode
 }
 
-export function DashboardSection({ id, title, subtitle, defaultOpen = false, children }: DashboardSectionProps) {
+export function DashboardSection({
+  id,
+  title,
+  subtitle,
+  defaultOpen = false,
+  children,
+}: DashboardSectionProps) {
   const theme = useTheme()
   const desktop = useMediaQuery(theme.breakpoints.up('md'))
 
@@ -68,12 +74,27 @@ export function DashboardSection({ id, title, subtitle, defaultOpen = false, chi
           <Box
             component="span"
             id={`${id}-title`}
-            sx={{ display: 'block', fontSize: tokens.font.size.sectionTitle, fontWeight: tokens.font.weight.heading, lineHeight: tokens.font.leading.sectionTitle, color: tokens.ink.text }}
+            sx={{
+              display: 'block',
+              fontSize: tokens.font.size.sectionTitle,
+              fontWeight: tokens.font.weight.heading,
+              lineHeight: tokens.font.leading.sectionTitle,
+              color: tokens.ink.text,
+            }}
           >
             {title}
           </Box>
           {subtitle && (
-            <Box component="span" sx={{ display: 'block', mt: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>
+            <Box
+              component="span"
+              sx={{
+                display: 'block',
+                mt: '2px',
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: tokens.ink.secondary,
+              }}
+            >
               {subtitle}
             </Box>
           )}

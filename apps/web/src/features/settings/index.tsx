@@ -47,7 +47,12 @@ import { SectionNav, type NavSection } from './lib/SectionNav'
 import { TrainingDaysDialog } from './lib/TrainingDaysDialog'
 import { useSettings, useUpdateSettings, type SettingsChange } from './lib/useSettings'
 
-type Editing = { kind: 'number'; field: NumberField } | { kind: 'profile'; field: ProfileField } | { kind: 'training-days' } | { kind: 'auto-apply' } | null
+type Editing =
+  | { kind: 'number'; field: NumberField }
+  | { kind: 'profile'; field: ProfileField }
+  | { kind: 'training-days' }
+  | { kind: 'auto-apply' }
+  | null
 
 const saveError = (error: unknown) => problemText(error, 'Settings changes need a connection.')
 
@@ -71,8 +76,19 @@ const cardDelay = (index: number) => staggerDelay(index, tokens.motion.stagger.s
  * title when the data lands: nothing moves (no CLS) and the title fades in once.
  */
 const NAV_WIDTH = 200
-const pageSx = { display: 'grid', gridTemplateColumns: { md: `${NAV_WIDTH}px minmax(0, 1fr)` }, gap: '28px', alignItems: 'start', pb: { xs: 4, md: 0 } } as const
-const columnSx = { display: 'grid', gap: `${tokens.rhythm.section}px`, maxWidth: tokens.layout.readingMax, minWidth: 0 } as const
+const pageSx = {
+  display: 'grid',
+  gridTemplateColumns: { md: `${NAV_WIDTH}px minmax(0, 1fr)` },
+  gap: '28px',
+  alignItems: 'start',
+  pb: { xs: 4, md: 0 },
+} as const
+const columnSx = {
+  display: 'grid',
+  gap: `${tokens.rhythm.section}px`,
+  maxWidth: tokens.layout.readingMax,
+  minWidth: 0,
+} as const
 
 export function SettingsPage() {
   const query = useSettings()
@@ -98,7 +114,12 @@ export function SettingsPage() {
         <Box sx={columnSx}>
           {header}
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} variant="rounded" height={160} sx={{ borderRadius: `${tokens.radius.card}px` }} />
+            <Skeleton
+              key={i}
+              variant="rounded"
+              height={160}
+              sx={{ borderRadius: `${tokens.radius.card}px` }}
+            />
           ))}
         </Box>
       </Box>
@@ -126,7 +147,9 @@ export function SettingsPage() {
               )
             }
           >
-            {offline ? 'You’re offline and settings haven’t been loaded on this device yet.' : `Couldn't load settings. ${problemText(query.error)}`}
+            {offline
+              ? 'You’re offline and settings haven’t been loaded on this device yet.'
+              : `Couldn't load settings. ${problemText(query.error)}`}
           </Alert>
         </Box>
       </Box>
@@ -202,7 +225,11 @@ export function SettingsPage() {
         </Reveal>
 
         <Reveal delay={cardDelay(1)}>
-          <SettingsGroup id="targets" title="Daily targets" subtitle="A change writes a new plan version and rebuilds today’s targets.">
+          <SettingsGroup
+            id="targets"
+            title="Daily targets"
+            subtitle="A change writes a new plan version and rebuilds today’s targets."
+          >
             {TARGET_FIELDS.map(numberRow)}
           </SettingsGroup>
         </Reveal>
@@ -227,7 +254,11 @@ export function SettingsPage() {
               help="Meal suggestions, exercise swaps within the same muscle, and reminder times. Target changes always wait for a tap."
               checked={settings.auto_apply_safe}
               disabled={locked}
-              onChange={(on) => (on ? setEditing({ kind: 'auto-apply' }) : toggle({ auto_apply_safe: false }, 'Every AI change waits for a tap.'))}
+              onChange={(on) =>
+                on
+                  ? setEditing({ kind: 'auto-apply' })
+                  : toggle({ auto_apply_safe: false }, 'Every AI change waits for a tap.')
+              }
               testId="setting-auto_apply_safe"
             />
             {/* The former "AI" group was this one row; 2a folds it into "App and AI", so the row keeps the group's id. */}
@@ -242,7 +273,11 @@ export function SettingsPage() {
         </Reveal>
 
         <Reveal delay={cardDelay(4)}>
-          <SettingsGroup id="profile" title="Profile" subtitle="The goal and the start weight drive the forecast and every milestone date.">
+          <SettingsGroup
+            id="profile"
+            title="Profile"
+            subtitle="The goal and the start weight drive the forecast and every milestone date."
+          >
             <RowGrid>
               {PROFILE_FIELDS.map((field) => {
                 const value = formatProfileValue(field, profile)
@@ -250,7 +285,15 @@ export function SettingsPage() {
                   <ValueRow
                     key={field.key}
                     label={field.label}
-                    value={profile[field.key] === null ? <Box component="span" sx={{ color: tokens.ink.muted }}>{value}</Box> : value}
+                    value={
+                      profile[field.key] === null ? (
+                        <Box component="span" sx={{ color: tokens.ink.muted }}>
+                          {value}
+                        </Box>
+                      ) : (
+                        value
+                      )
+                    }
                     onClick={() => setEditing({ kind: 'profile', field })}
                     disabled={locked}
                     testId={`profile-${field.key}`}
@@ -287,7 +330,10 @@ export function SettingsPage() {
           error={error}
           onClose={close}
           onSave={(value) =>
-            void save({ [editing.field.key]: value } as Partial<Settings>, `${editing.field.label} set to ${formatValue(editing.field, value)}.`)
+            void save(
+              { [editing.field.key]: value } as Partial<Settings>,
+              `${editing.field.label} set to ${formatValue(editing.field, value)}.`,
+            )
           }
         />
       )}
@@ -308,16 +354,24 @@ export function SettingsPage() {
           saving={update.isPending}
           error={error}
           onClose={close}
-          onSave={(days: Weekday[]) => void save({ training_days: days }, `Training days: ${formatDays(days)}.`)}
+          onSave={(days: Weekday[]) =>
+            void save({ training_days: days }, `Training days: ${formatDays(days)}.`)
+          }
         />
       )}
       {editing?.kind === 'auto-apply' && (
-        <Dialog open onClose={update.isPending ? undefined : close} fullWidth maxWidth="xs" aria-labelledby="auto-apply-title">
+        <Dialog
+          open
+          onClose={update.isPending ? undefined : close}
+          fullWidth
+          maxWidth="xs"
+          aria-labelledby="auto-apply-title"
+        >
           <DialogTitle id="auto-apply-title">Apply safe AI changes?</DialogTitle>
           <DialogContent>
             <Box sx={{ fontSize: tokens.font.size.emphasis, lineHeight: 1.55 }}>
-              Meal suggestions, exercise swaps within the same muscle and reminder times will apply without a tap. Target
-              changes still wait for you, and every change can be reverted in one tap.
+              Meal suggestions, exercise swaps within the same muscle and reminder times will apply without a
+              tap. Target changes still wait for you, and every change can be reverted in one tap.
             </Box>
             {error && (
               <Box role="alert" sx={{ mt: 3, fontSize: tokens.font.size.small, color: tokens.status.flag }}>
@@ -340,7 +394,12 @@ export function SettingsPage() {
         </Dialog>
       )}
 
-      <Snackbar open={notice !== null} autoHideDuration={3000} onClose={() => setNotice(null)} message={notice} />
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={3000}
+        onClose={() => setNotice(null)}
+        message={notice}
+      />
     </Box>
   )
 }

@@ -17,9 +17,11 @@ test('the equipment screen lists the machines of his club by area', async ({ pag
   await page.goto('/train/equipment')
   await expect(page.getByRole('heading', { name: 'Machines', level: 2 })).toBeVisible()
 
-  const group = (name: string) => page.getByTestId('equipment-area').filter({ has: page.getByRole('heading', { name, level: 2 }) })
+  const group = (name: string) =>
+    page.getByTestId('equipment-area').filter({ has: page.getByRole('heading', { name, level: 2 }) })
   await expect(page.getByTestId('equipment-area')).toHaveCount(AREAS.length)
-  for (const [name, count] of AREAS) await expect(group(name).getByTestId('equipment-row'), `${name} rows`).toHaveCount(count)
+  for (const [name, count] of AREAS)
+    await expect(group(name).getByTestId('equipment-row'), `${name} rows`).toHaveCount(count)
 
   // A machine he has, with the note that says what it stands in for; and the machines the club lacks, with a reason.
   await expect(group('Hammer Strength').getByText('V-squat')).toBeVisible()
@@ -34,13 +36,18 @@ test('the equipment screen lists the machines of his club by area', async ({ pag
 
 test("a machine he dislikes or can't use stays under its area: it is still at the gym", async ({ page }) => {
   await page.goto('/train/equipment')
-  const group = (name: string) => page.getByTestId('equipment-area').filter({ has: page.getByRole('heading', { name, level: 2 }) })
+  const group = (name: string) =>
+    page.getByTestId('equipment-area').filter({ has: page.getByRole('heading', { name, level: 2 }) })
   // By its status control's name: neither the pending badge nor an absence's note ("…on the V-Squat.") can match it.
   const vSquat = (area: string) =>
-    group(area).getByTestId('equipment-row').filter({ has: page.getByRole('group', { name: 'Status of v-squat', exact: true }) })
+    group(area)
+      .getByTestId('equipment-row')
+      .filter({ has: page.getByRole('group', { name: 'Status of v-squat', exact: true }) })
   const choose = async (status: string) => {
     await vSquat('Hammer Strength').getByRole('button', { name: status, exact: true }).click()
-    await expect(vSquat('Hammer Strength').getByRole('button', { name: status, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      vSquat('Hammer Strength').getByRole('button', { name: status, exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
     await expect(vSquat('Hammer Strength').getByTestId('pending-badge')).toHaveCount(0) // saved, not just shown
     await expect(vSquat('Not at your gym')).toHaveCount(0)
   }

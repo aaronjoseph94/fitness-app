@@ -52,7 +52,9 @@ export function ChartCard({
   headingComponent = 'h3',
 }: ChartCardProps) {
   const emptyProps: Omit<EmptyStateProps, 'compact'> | null =
-    empty === true ? { title: 'Nothing to show yet', body: 'Log a few days and this chart fills in.' } : empty || null
+    empty === true
+      ? { title: 'Nothing to show yet', body: 'Log a few days and this chart fills in.' }
+      : empty || null
   return (
     <Panel
       component="div"

@@ -15,7 +15,9 @@ const STATUS_TONE = { active: 'success', proposed: 'info', superseded: 'neutral'
 /** 2a's status chip: "Active" in success green, "Proposed" in the info blue, "Superseded" neutral. Who wrote the plan
  * is in the card's description. */
 export function PlanBadge({ plan }: { plan: Pick<WeekPlan, 'status' | 'author'> }) {
-  return <StatusChip tone={STATUS_TONE[plan.status]} label={STATUS_LABEL[plan.status]} testId="week-plan-badge" />
+  return (
+    <StatusChip tone={STATUS_TONE[plan.status]} label={STATUS_LABEL[plan.status]} testId="week-plan-badge" />
+  )
 }
 
 export interface PlanDayRow {
@@ -46,5 +48,15 @@ export function planDays(plan: WeekPlan): PlanDayRow[] {
 
 /** Small grey label above a value. */
 export function Label({ children }: { children: ReactNode }) {
-  return <Box sx={{ fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.secondary }}>{children}</Box>
+  return (
+    <Box
+      sx={{
+        fontSize: tokens.font.size.label,
+        fontWeight: tokens.font.weight.label,
+        color: tokens.ink.secondary,
+      }}
+    >
+      {children}
+    </Box>
+  )
 }

@@ -7,11 +7,19 @@ const day = { date: '2026-10-07', weight_kg: 94.8, meals_logged: 2, is_fast_day:
 
 describe('adherence', () => {
   test('a fast day with a weigh-in and water and no meals is adherent', () => {
-    expect(dayAdherence({ ...day, meals_logged: 0, is_fast_day: true })).toMatchObject({ meals_or_fast: true, score: 1, adherent: true })
+    expect(dayAdherence({ ...day, meals_logged: 0, is_fast_day: true })).toMatchObject({
+      meals_or_fast: true,
+      score: 1,
+      adherent: true,
+    })
   })
 
   test('one meal (not a fast day) is two of three checks: not adherent', () => {
-    expect(dayAdherence({ ...day, meals_logged: 1 })).toMatchObject({ meals_or_fast: false, score: 2 / 3, adherent: false })
+    expect(dayAdherence({ ...day, meals_logged: 1 })).toMatchObject({
+      meals_or_fast: false,
+      score: 2 / 3,
+      adherent: false,
+    })
   })
 
   test('over a 7-day window, days without a row count as not adherent: 3 rows → 3 / 7', () => {

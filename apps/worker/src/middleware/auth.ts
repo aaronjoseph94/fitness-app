@@ -30,7 +30,8 @@ export function auth(): MiddlewareHandler<AppEnv> {
       // A bearer token is never sent by a browser on its own, so these paths need no cross-site check.
       await checkBearer(c.req.header('authorization'), bearerSecret(c.env))
     } else {
-      if (!SAFE_METHODS.has(c.req.method)) refuseCrossSite(c.req.header('sec-fetch-site'), c.req.header('origin'), url.origin)
+      if (!SAFE_METHODS.has(c.req.method))
+        refuseCrossSite(c.req.header('sec-fetch-site'), c.req.header('origin'), url.origin)
       if (!(c.env.DEV_AUTH_BYPASS === '1' && LOCAL_HOSTS.has(url.hostname))) {
         const identity = await verifyAccess(c.req.header('cf-access-jwt-assertion'), c.env)
         if (identity === 'service' && !SAFE_METHODS.has(c.req.method))
@@ -50,7 +51,8 @@ export function auth(): MiddlewareHandler<AppEnv> {
  * Browsers too old to send it still send Origin on a POST: it must be ours. Server-to-server callers send neither.
  */
 function refuseCrossSite(site: string | undefined, origin: string | undefined, ours: string): void {
-  const foreign = site !== undefined ? site !== 'same-origin' && site !== 'none' : origin !== undefined && origin !== ours
+  const foreign =
+    site !== undefined ? site !== 'same-origin' && site !== 'none' : origin !== undefined && origin !== ours
   if (foreign) throw new HttpError(403, 'cross_site', 'Changes can only be made from the app itself')
 }
 
@@ -60,12 +62,14 @@ function refuseCrossSite(site: string | undefined, origin: string | undefined, o
 let jwks: { issuer: string; keys: ReturnType<typeof createRemoteJWKSet> } | null = null
 
 function keysFor(issuer: string) {
-  if (jwks?.issuer !== issuer) jwks = { issuer, keys: createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`)) }
+  if (jwks?.issuer !== issuer)
+    jwks = { issuer, keys: createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`)) }
   return jwks.keys
 }
 
 /** "team.cloudflareaccess.com" or "https://team.cloudflareaccess.com/" → "https://team.cloudflareaccess.com". */
-const teamOrigin = (domain: string) => (/^https?:\/\//.test(domain) ? domain : `https://${domain}`).replace(/\/+$/, '')
+const teamOrigin = (domain: string) =>
+  (/^https?:\/\//.test(domain) ? domain : `https://${domain}`).replace(/\/+$/, '')
 
 /**
  * Verify `Cf-Access-Jwt-Assertion`: RS256 signature against the team JWKS, iss = team domain, aud ∈ ACCESS_AUD
@@ -100,7 +104,8 @@ async function verifyAccess(token: string | undefined, env: Env): Promise<'user'
 
 async function checkBearer(header: string | undefined, secret: string | undefined): Promise<void> {
   const token = /^Bearer\s+(\S+)\s*$/i.exec(header ?? '')?.[1]
-  if (!secret || !token || !(await constantTimeEqual(token, secret))) throw unauthorized('Missing or invalid bearer token')
+  if (!secret || !token || !(await constantTimeEqual(token, secret)))
+    throw unauthorized('Missing or invalid bearer token')
 }
 
 /** Compare SHA-256(a) with SHA-256(b) in constant time (equal-length digests, so neither length nor content leaks). */

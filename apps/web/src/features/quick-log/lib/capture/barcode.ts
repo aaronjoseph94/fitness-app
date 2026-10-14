@@ -20,7 +20,10 @@ export function loadBarcodeReader(): Promise<BarcodeReader> {
   reader ??= (async () => {
     const { BarcodeDetector, prepareZXingModule } = await import('barcode-detector/ponyfill')
     await prepareZXingModule({
-      overrides: { locateFile: (path: string, prefix: string) => (path.endsWith('.wasm') ? ZXING_WASM_URL : prefix + path) },
+      overrides: {
+        locateFile: (path: string, prefix: string) =>
+          path.endsWith('.wasm') ? ZXING_WASM_URL : prefix + path,
+      },
       fireImmediately: true,
     })
     return new BarcodeDetector({ formats: [...FORMATS] })
@@ -48,7 +51,11 @@ export function stopStream(stream: MediaStream | null): void {
  * Read `video` every ~180 ms until a code is found (then calls `onCode` once and stops) or the returned stop function
  * runs. Frames that fail to decode are skipped.
  */
-export function scanVideo(video: HTMLVideoElement, detector: BarcodeReader, onCode: (code: string) => void): () => void {
+export function scanVideo(
+  video: HTMLVideoElement,
+  detector: BarcodeReader,
+  onCode: (code: string) => void,
+): () => void {
   let stopped = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const tick = async () => {

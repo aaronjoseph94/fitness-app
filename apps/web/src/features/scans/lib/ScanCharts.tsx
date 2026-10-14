@@ -5,7 +5,15 @@ import Box from '@mui/material/Box'
 import { BodyCompositionChart, BodyFatVisceralChart, Gauge, SegmentalFatChart } from '../../../charts'
 import { ChartCard, formatNumber } from '../../../components'
 import { scanDay } from './format'
-import { BODY_FAT_GAUGE, compositionSeries, fatSeries, segmentalFat, TARGETS, VISCERAL_GAUGE, type ConfirmedScan } from './series'
+import {
+  BODY_FAT_GAUGE,
+  compositionSeries,
+  fatSeries,
+  segmentalFat,
+  TARGETS,
+  VISCERAL_GAUGE,
+  type ConfirmedScan,
+} from './series'
 
 interface ScanChartsProps {
   /** Confirmed scans, oldest first. */
@@ -20,14 +28,29 @@ interface ScanChartsProps {
   headingComponent?: 'h2' | 'h3'
 }
 
-export function ScanCharts({ scans, focus, compact = false, stacked = false, width, headingComponent = 'h3' }: ScanChartsProps) {
+export function ScanCharts({
+  scans,
+  focus,
+  compact = false,
+  stacked = false,
+  width,
+  headingComponent = 'h3',
+}: ScanChartsProps) {
   const latest = focus ?? scans.at(-1)
   const baseline = scans[0]
   if (!latest || !baseline) return null
   const shown = scans.filter((s) => s.record.scanned_at <= latest.record.scanned_at)
   const gauge = compact ? 150 : 170
   return (
-    <Box sx={{ display: 'grid', gap: 4, alignItems: 'start', gridTemplateColumns: { xs: '1fr', md: compact || stacked ? '1fr' : '1fr 1fr' }, minWidth: 0 }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gap: 4,
+        alignItems: 'start',
+        gridTemplateColumns: { xs: '1fr', md: compact || stacked ? '1fr' : '1fr 1fr' },
+        minWidth: 0,
+      }}
+    >
       <ChartCard
         title="Fat and lean mass"
         subtitle={`Per scan; fat target ${formatNumber(TARGETS.fatMassKg, 1)} kg at goal`}
@@ -35,7 +58,12 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
         headingComponent={headingComponent}
         testId="scan-chart-composition"
       >
-        <BodyCompositionChart scans={compositionSeries(shown)} fatTarget={TARGETS.fatMassKg} width={width} height={compact ? 180 : 220} />
+        <BodyCompositionChart
+          scans={compositionSeries(shown)}
+          fatTarget={TARGETS.fatMassKg}
+          width={width}
+          height={compact ? 180 : 220}
+        />
       </ChartCard>
       <ChartCard
         title="Body fat and visceral level"
@@ -45,8 +73,22 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
         testId="scan-chart-fat-visceral"
       >
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2, mb: 3 }}>
-          <Gauge {...BODY_FAT_GAUGE} value={latest.record.body_fat_pct} label="Body fat" unit="%" precision={1} size={gauge} testId="scan-gauge-body-fat" />
-          <Gauge {...VISCERAL_GAUGE} value={latest.record.visceral_fat_level} label="Visceral level" size={gauge} testId="scan-gauge-visceral" />
+          <Gauge
+            {...BODY_FAT_GAUGE}
+            value={latest.record.body_fat_pct}
+            label="Body fat"
+            unit="%"
+            precision={1}
+            size={gauge}
+            testId="scan-gauge-body-fat"
+          />
+          <Gauge
+            {...VISCERAL_GAUGE}
+            value={latest.record.visceral_fat_level}
+            label="Visceral level"
+            size={gauge}
+            testId="scan-gauge-visceral"
+          />
         </Box>
         <BodyFatVisceralChart
           scans={fatSeries(shown)}
@@ -64,7 +106,12 @@ export function ScanCharts({ scans, focus, compact = false, stacked = false, wid
           headingComponent={headingComponent}
           testId="scan-chart-segments"
         >
-          <SegmentalFatChart segments={segmentalFat(baseline.record, latest.record)} baselineLabel={scanDay(baseline.date)} latestLabel={scanDay(latest.date)} width={width} />
+          <SegmentalFatChart
+            segments={segmentalFat(baseline.record, latest.record)}
+            baselineLabel={scanDay(baseline.date)}
+            latestLabel={scanDay(latest.date)}
+            width={width}
+          />
         </ChartCard>
       )}
     </Box>

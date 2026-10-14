@@ -16,7 +16,14 @@ import { addDays, daysBetween, isoWeek, isoWeekRange, weekdayOf } from '@fitness
 import type { PushNotification, ReminderKind, ReminderPrefs, Weekday } from '@fitness/shared/schemas'
 import { DEFAULT_REMINDER_PREFS } from '@fitness/shared/schemas'
 import { and, eq, gt, isNull, lte, sum } from 'drizzle-orm'
-import { daily_targets, fast_logs, water_logs, weekly_reviews, weight_logs, workout_sessions } from '../../../db'
+import {
+  daily_targets,
+  fast_logs,
+  water_logs,
+  weekly_reviews,
+  weight_logs,
+  workout_sessions,
+} from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import type { PushDelivery } from '../../push'
 import { scanSchedule } from '../../scans'
@@ -48,10 +55,16 @@ const REVIEW_FROM = '20:00'
 const litres = (ml: number) => `${(ml / 1000).toFixed(1)} L`
 
 /** The time a clock reminder fires at: its own, else the default (e.g. scan due 09:00). */
-const timeFor = (tick: Tick, kind: ReminderKind) => tick.prefs[kind]?.time ?? DEFAULT_REMINDER_PREFS[kind].time
+const timeFor = (tick: Tick, kind: ReminderKind) =>
+  tick.prefs[kind]?.time ?? DEFAULT_REMINDER_PREFS[kind].time
 
 /** Claim a clock reminder's period, then run its check; a check that throws releases the claim and rethrows. */
-async function claimThenCheck(tick: Tick, kind: ReminderKind, period_key: string, check: () => Promise<Due[]>): Promise<Due[]> {
+async function claimThenCheck(
+  tick: Tick,
+  kind: ReminderKind,
+  period_key: string,
+  check: () => Promise<Due[]>,
+): Promise<Due[]> {
   if (!(await claim(tick.deps, kind, period_key))) return []
   try {
     return await check()
@@ -63,7 +76,11 @@ async function claimThenCheck(tick: Tick, kind: ReminderKind, period_key: string
 
 async function todaysTargets(tick: Tick) {
   const [row] = await tick.deps.db
-    .select({ water_ml: daily_targets.water_ml, is_fast_day: daily_targets.is_fast_day, training_planned: daily_targets.training_planned })
+    .select({
+      water_ml: daily_targets.water_ml,
+      is_fast_day: daily_targets.is_fast_day,
+      training_planned: daily_targets.training_planned,
+    })
     .from(daily_targets)
     .where(eq(daily_targets.date, tick.date))
     .limit(1)
@@ -74,13 +91,22 @@ export async function weighIn(tick: Tick): Promise<Due[]> {
   const at = timeFor(tick, 'weigh_in')
   if (!at || !slotDue(tick.time, at)) return []
   return claimThenCheck(tick, 'weigh_in', tick.date, async () => {
-    const [logged] = await tick.deps.db.select({ id: weight_logs.id }).from(weight_logs).where(eq(weight_logs.date, tick.date)).limit(1)
+    const [logged] = await tick.deps.db
+      .select({ id: weight_logs.id })
+      .from(weight_logs)
+      .where(eq(weight_logs.date, tick.date))
+      .limit(1)
     if (logged) return []
     return [
       {
         kind: 'weigh_in',
         period_key: tick.date,
-        notification: { title: 'Weigh-in', body: 'Step on the scale before breakfast: same time, same conditions.', url: '/', tag: 'weigh_in' },
+        notification: {
+          title: 'Weigh-in',
+          body: 'Step on the scale before breakfast: same time, same conditions.',
+          url: '/',
+          tag: 'weigh_in',
+        },
         delivery: { ttl_s: 3 * HOUR_S },
       },
     ]
@@ -93,9 +119,15 @@ export async function workout(tick: Tick): Promise<Due[]> {
   return claimThenCheck(tick, 'workout', tick.date, async () => {
     const [targets, [session]] = await Promise.all([
       todaysTargets(tick),
-      tick.deps.db.select({ id: workout_sessions.id }).from(workout_sessions).where(eq(workout_sessions.date, tick.date)).limit(1),
+      tick.deps.db
+        .select({ id: workout_sessions.id })
+        .from(workout_sessions)
+        .where(eq(workout_sessions.date, tick.date))
+        .limit(1),
     ])
-    const planned = targets ? targets.training_planned : tick.settings.training_days.includes(weekdayOf(tick.date))
+    const planned = targets
+      ? targets.training_planned
+      : tick.settings.training_days.includes(weekdayOf(tick.date))
     if (!planned || session) return []
     return [
       {
@@ -103,7 +135,9 @@ export async function workout(tick: Tick): Promise<Due[]> {
         period_key: tick.date,
         notification: {
           title: 'Training day',
-          body: targets?.is_fast_day ? 'Fast day: keep today’s session light.' : 'Today’s session is planned. Start it when you get to the gym.',
+          body: targets?.is_fast_day
+            ? 'Fast day: keep today’s session light.'
+            : 'Today’s session is planned. Start it when you get to the gym.',
           url: '/train',
           tag: 'workout',
         },
@@ -130,7 +164,12 @@ export async function scanDue(tick: Tick): Promise<Due[]> {
       {
         kind: 'scan_due',
         period_key: tick.date,
-        notification: { title: due === tick.date ? 'Scan due' : 'Scan overdue', body, url: '/scans', tag: 'scan_due' },
+        notification: {
+          title: due === tick.date ? 'Scan due' : 'Scan overdue',
+          body,
+          url: '/scans',
+          tag: 'scan_due',
+        },
         delivery: { ttl_s: 12 * HOUR_S },
       },
     ]
@@ -142,7 +181,10 @@ export async function water(tick: Tick): Promise<Due[]> {
   const { db } = tick.deps
   const [targets, [logged]] = await Promise.all([
     todaysTargets(tick),
-    db.select({ ml: sum(water_logs.amount_ml).mapWith(Number) }).from(water_logs).where(eq(water_logs.date, tick.date)),
+    db
+      .select({ ml: sum(water_logs.amount_ml).mapWith(Number) })
+      .from(water_logs)
+      .where(eq(water_logs.date, tick.date)),
   ])
   const fastDay = targets?.is_fast_day ?? false
   const slot = dueWaterSlot(tick.time, fastDay)
@@ -218,7 +260,12 @@ export async function fasts(tick: Tick, now: Date): Promise<Due[]> {
     out.push({
       kind: 'fast',
       period_key: `${f.id}:end`,
-      notification: { title: 'Fast complete', body: `${hours} h done. Tap to end the fast, then log your first meal.`, url: '/', tag: 'fast' },
+      notification: {
+        title: 'Fast complete',
+        body: `${hours} h done. Tap to end the fast, then log your first meal.`,
+        url: '/',
+        tag: 'fast',
+      },
       delivery: { ttl_s: HOUR_S },
     })
   }
@@ -227,7 +274,12 @@ export async function fasts(tick: Tick, now: Date): Promise<Due[]> {
 
 export async function reviewReady(tick: Tick): Promise<Due[]> {
   const weekday = weekdayOf(tick.date)
-  const sunday = weekday === 'sun' && tick.time >= REVIEW_FROM ? tick.date : weekday === 'mon' ? addDays(tick.date, -1) : null
+  const sunday =
+    weekday === 'sun' && tick.time >= REVIEW_FROM
+      ? tick.date
+      : weekday === 'mon'
+        ? addDays(tick.date, -1)
+        : null
   if (!sunday) return []
   const week = isoWeek(sunday)
   const [review] = await tick.deps.db

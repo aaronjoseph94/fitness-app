@@ -38,7 +38,11 @@ const DASH_WIDTH = 1.5
 export function DayStrip({ cells, label, startLabel, endLabel, mark, testId }: DayStripProps) {
   const rows = Math.max(1, Math.ceil(cells.length / PER_ROW))
   const columns = Math.max(1, Math.ceil(cells.length / rows))
-  const grid = { display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, columnGap: '4px' } as const
+  const grid = {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    columnGap: '4px',
+  } as const
   const oneRow = rows === 1
   return (
     <Box data-testid={testId} role="img" aria-label={label} sx={{ minWidth: 0 }}>
@@ -59,13 +63,21 @@ export function DayStrip({ cells, label, startLabel, endLabel, mark, testId }: D
       {(startLabel || endLabel) && (
         <Box
           aria-hidden
-          sx={{ ...(oneRow && mark ? grid : { display: 'flex', justifyContent: 'space-between' }), mt: '6px', fontSize: tokens.font.size.micro, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}
+          sx={{
+            ...(oneRow && mark ? grid : { display: 'flex', justifyContent: 'space-between' }),
+            mt: '6px',
+            fontSize: tokens.font.size.micro,
+            color: tokens.ink.secondary,
+            whiteSpace: 'nowrap',
+          }}
         >
           {oneRow && mark ? (
             <>
               <Box sx={{ gridColumn: 1, gridRow: 1, justifySelf: 'start' }}>{startLabel}</Box>
               {/* Kept clear of the end labels: at least one cell between them. */}
-              {mark.index > 1 && mark.index < cells.length - 2 && <Box sx={{ gridColumn: mark.index + 1, gridRow: 1, justifySelf: 'center' }}>{mark.label}</Box>}
+              {mark.index > 1 && mark.index < cells.length - 2 && (
+                <Box sx={{ gridColumn: mark.index + 1, gridRow: 1, justifySelf: 'center' }}>{mark.label}</Box>
+              )}
               <Box sx={{ gridColumn: cells.length, gridRow: 1, justifySelf: 'end' }}>{endLabel}</Box>
             </>
           ) : (

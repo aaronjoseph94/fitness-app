@@ -58,7 +58,11 @@ export const Milestone = Row.extend({
 export type Milestone = z.infer<typeof Milestone>
 
 /** One day of the weight chart: the raw weigh-in (null on a gap) and the trend (EWMA α = 0.25, carried over gaps). */
-export const TrendPoint = z.object({ date: LocalDate, weight_kg: BodyWeightKg.nullable(), trend_kg: BodyWeightKg.nullable() })
+export const TrendPoint = z.object({
+  date: LocalDate,
+  weight_kg: BodyWeightKg.nullable(),
+  trend_kg: BodyWeightKg.nullable(),
+})
 export type TrendPoint = z.infer<typeof TrendPoint>
 
 /** Response of GET /api/trend: daily points, the 7-day trend change, measurements, the forecast and milestones. */

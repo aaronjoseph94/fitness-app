@@ -37,7 +37,11 @@ export function RecentActivity({ events }: { events: readonly AiEvent[] }) {
           sx={{
             fontSize: tokens.font.size.small,
             fontWeight: tokens.font.weight.label,
-            [COARSE_POINTER_QUERY]: { display: 'inline-flex', alignItems: 'center', minHeight: tokens.tapTarget },
+            [COARSE_POINTER_QUERY]: {
+              display: 'inline-flex',
+              alignItems: 'center',
+              minHeight: tokens.tapTarget,
+            },
           }}
         >
           View log
@@ -45,13 +49,23 @@ export function RecentActivity({ events }: { events: readonly AiEvent[] }) {
       }
     >
       {rows.length === 0 ? (
-        <Box sx={{ px: `${tokens.pad.card.x}px`, pb: `${tokens.pad.card.y}px`, fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+        <Box
+          sx={{
+            px: `${tokens.pad.card.x}px`,
+            pb: `${tokens.pad.card.y}px`,
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.muted,
+          }}
+        >
           Day adjustments, proposals and notes from the AI show here.
         </Box>
       ) : (
         // Time and value keep their own width (an empty value takes none); the event takes the rest and wraps. On a
         // phone the value moves under the event, which needs the width.
-        <Table aria-label="Recent activity" sx={{ '& tbody tr:last-of-type td': { pb: '12px' }, '& td': { verticalAlign: 'top' } }}>
+        <Table
+          aria-label="Recent activity"
+          sx={{ '& tbody tr:last-of-type td': { pb: '12px' }, '& td': { verticalAlign: 'top' } }}
+        >
           <TableHead>
             <TableRow>
               <TableCell sx={{ whiteSpace: 'nowrap' }}>Time</TableCell>
@@ -64,17 +78,38 @@ export function RecentActivity({ events }: { events: readonly AiEvent[] }) {
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
-                <TableCell sx={{ color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', lineHeight: '22px' }}>{r.when}</TableCell>
+                <TableCell
+                  sx={{
+                    color: tokens.ink.muted,
+                    fontVariantNumeric: 'tabular-nums',
+                    whiteSpace: 'nowrap',
+                    lineHeight: '22px',
+                  }}
+                >
+                  {r.when}
+                </TableCell>
                 <TableCell sx={EVENT_CELL}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, minWidth: 0 }}>
                     <StatusChip tone={r.ai ? 'info' : 'outline'} label={r.who} />
                     <Box sx={{ minWidth: 0, lineHeight: '22px', overflowWrap: 'anywhere' }}>
                       {r.text}
-                      {r.value && <Box sx={{ display: { sm: 'none' }, fontWeight: tokens.font.weight.label }}>{r.value}</Box>}
+                      {r.value && (
+                        <Box sx={{ display: { sm: 'none' }, fontWeight: tokens.font.weight.label }}>
+                          {r.value}
+                        </Box>
+                      )}
                     </Box>
                   </Box>
                 </TableCell>
-                <TableCell align="right" sx={{ ...HIDE_ON_PHONE, fontWeight: tokens.font.weight.label, whiteSpace: 'nowrap', lineHeight: '22px' }}>
+                <TableCell
+                  align="right"
+                  sx={{
+                    ...HIDE_ON_PHONE,
+                    fontWeight: tokens.font.weight.label,
+                    whiteSpace: 'nowrap',
+                    lineHeight: '22px',
+                  }}
+                >
                   {r.value}
                 </TableCell>
               </TableRow>

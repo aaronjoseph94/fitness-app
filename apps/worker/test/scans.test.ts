@@ -8,10 +8,31 @@ import { env } from 'cloudflare:workers'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import seed from '../../../seed/scans/2026-09-26.json'
-import { ai_events, ai_jobs, createDb, milestones, plan_versions, profile, scan_segments, scans, settings, weight_logs } from '../src/db'
+import {
+  ai_events,
+  ai_jobs,
+  createDb,
+  milestones,
+  plan_versions,
+  profile,
+  scan_segments,
+  scans,
+  settings,
+  weight_logs,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import type { CompleteRequest } from '../src/modules/llm'
-import { analyseScan, confirmScan, deleteScan, extractScan, getScan, noteScanDue, scanSchedule, uploadScan, type ScanJobDeps } from '../src/modules/scans'
+import {
+  analyseScan,
+  confirmScan,
+  deleteScan,
+  extractScan,
+  getScan,
+  noteScanDue,
+  scanSchedule,
+  uploadScan,
+  type ScanJobDeps,
+} from '../src/modules/scans'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
@@ -29,7 +50,9 @@ const settle = async () => {
 }
 
 /** A fake router: `answer` returns the model's JSON (validated with the caller's schema) or an Error to throw. */
-function fakeRouter(answer: (req: CompleteRequest<unknown>) => unknown): ScanJobDeps['router'] & { calls: CompleteRequest<unknown>[] } {
+function fakeRouter(
+  answer: (req: CompleteRequest<unknown>) => unknown,
+): ScanJobDeps['router'] & { calls: CompleteRequest<unknown>[] } {
   const calls: CompleteRequest<unknown>[] = []
   return {
     calls,
@@ -37,7 +60,15 @@ function fakeRouter(answer: (req: CompleteRequest<unknown>) => unknown): ScanJob
       calls.push(req as CompleteRequest<unknown>)
       const out = answer(req as CompleteRequest<unknown>)
       if (out instanceof Error) throw out
-      return { data: req.schema.parse(out), provider: 'fake', model: 'fake-1', latency_ms: 1, tokens_in: 1, tokens_out: 1, attempts: 1 }
+      return {
+        data: req.schema.parse(out),
+        provider: 'fake',
+        model: 'fake-1',
+        latency_ms: 1,
+        tokens_in: 1,
+        tokens_out: 1,
+        attempts: 1,
+      }
     },
   }
 }
@@ -61,7 +92,9 @@ const lb = (kg: number) => Math.round((kg / 0.4536) * 10) / 10
 
 /** SPEC §2 baseline as a confirmed record (UTC scanned_at, hydration/matches_baseline defaulted). */
 const BASELINE = ScanRecord.parse(seed)
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 /** A confirmed scan row + its five segments, written directly (no analysis job). */
 async function insertConfirmed(record: ScanRecord, date: string): Promise<string> {
@@ -69,7 +102,9 @@ async function insertConfirmed(record: ScanRecord, date: string): Promise<string
   const { segments, ...columns } = record
   await db.batch([
     db.insert(scans).values({ ...columns, id, date, confirmed: true }),
-    db.insert(scan_segments).values(SEGMENTS.map((segment) => ({ scan_id: id, segment, ...segments[segment] }))),
+    db
+      .insert(scan_segments)
+      .values(SEGMENTS.map((segment) => ({ scan_id: id, segment, ...segments[segment] }))),
   ])
   return id
 }
@@ -90,7 +125,16 @@ const LEAN_LOSS_SCAN = ScanRecord.parse({
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -108,7 +152,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 118.75,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
     db.insert(milestones).values([
       { kind: 'body_fat_pct', target_value: 30, label: 'Body fat under 30 %' },
@@ -157,7 +212,12 @@ function pngSheet(...extra: [type: string, data: string][]): ArrayBuffer {
 describe('scan extraction', () => {
   it('refuses a PNG sheet that still carries a text chunk, and stores nothing', async () => {
     const id = crypto.randomUUID()
-    await expect(uploadScan(deps, { query: { id, content_type: 'image/png' }, body: pngSheet(['tEXt', 'Author\0Phone']) })).rejects.toMatchObject({
+    await expect(
+      uploadScan(deps, {
+        query: { id, content_type: 'image/png' },
+        body: pngSheet(['tEXt', 'Author\0Phone']),
+      }),
+    ).rejects.toMatchObject({
       status: 422,
       code: 'exif_present',
     })
@@ -177,7 +237,12 @@ describe('scan extraction', () => {
       confirmed: false,
       extracted: null,
       sheet_url: expect.stringMatching(/^\/api\/files\/scan-sheets%2F/),
-      extraction: { job_id: uploaded.job_id, status: 'failed', attempts: 1, error: expect.stringMatching(/No AI provider is set up.*enter the values by hand.*no_key/s) },
+      extraction: {
+        job_id: uploaded.job_id,
+        status: 'failed',
+        attempts: 1,
+        error: expect.stringMatching(/No AI provider is set up.*enter the values by hand.*no_key/s),
+      },
     })
 
     const printed: ScanExtractOutput = {
@@ -186,7 +251,12 @@ describe('scan extraction', () => {
       sex: 'male',
       units: 'lb',
       ...Object.fromEntries(MASS.map((k) => [k, lb(seed[k])])),
-      segments: Object.fromEntries(SEGMENTS.map((s) => [s, { lean_kg: lb(seed.segments[s].lean_kg), fat_kg: lb(seed.segments[s].fat_kg) }])) as ScanExtractOutput['segments'],
+      segments: Object.fromEntries(
+        SEGMENTS.map((s) => [
+          s,
+          { lean_kg: lb(seed.segments[s].lean_kg), fat_kg: lb(seed.segments[s].fat_kg) },
+        ]),
+      ) as ScanExtractOutput['segments'],
       confidence: [
         { field: 'weight_kg', confidence: 0.98 },
         { field: 'segments.torso.fat_kg', confidence: 0.55 },
@@ -201,10 +271,25 @@ describe('scan extraction', () => {
     expect(draft.source_units).toBe('lb')
     for (const k of MASS) expect(Math.abs(draft[k]! - seed[k]), k).toBeLessThanOrEqual(0.05)
     for (const s of SEGMENTS) {
-      expect(Math.abs(draft.segments[s].lean_kg! - seed.segments[s].lean_kg), `${s} lean`).toBeLessThanOrEqual(0.05)
-      expect(Math.abs(draft.segments[s].fat_kg! - seed.segments[s].fat_kg), `${s} fat`).toBeLessThanOrEqual(0.05)
+      expect(
+        Math.abs(draft.segments[s].lean_kg! - seed.segments[s].lean_kg),
+        `${s} lean`,
+      ).toBeLessThanOrEqual(0.05)
+      expect(Math.abs(draft.segments[s].fat_kg! - seed.segments[s].fat_kg), `${s} fat`).toBeLessThanOrEqual(
+        0.05,
+      )
     }
-    expect(draft).toMatchObject({ weight_kg: 95.12, body_fat_pct: 37.3, visceral_fat_area_cm2: 188, visceral_fat_level: 16, bmr_kcal: 1657, tee_kcal: 2551, waist_hip_ratio: 1.02, bio_age: 38, bwi_score: 5.4 })
+    expect(draft).toMatchObject({
+      weight_kg: 95.12,
+      body_fat_pct: 37.3,
+      visceral_fat_area_cm2: 188,
+      visceral_fat_level: 16,
+      bmr_kcal: 1657,
+      tee_kcal: 2551,
+      waist_hip_ratio: 1.02,
+      bio_age: 38,
+      bwi_score: 5.4,
+    })
     expect(draft.confidence).toContainEqual({ field: 'segments.torso.fat_kg', confidence: 0.55 })
     expect(draft.scanned_at).toBe('2026-09-26T16:13:00.000Z') // SPEC §2: 2026-09-26 10:13 in Edmonton (MDT)
 
@@ -212,7 +297,14 @@ describe('scan extraction', () => {
     const record = ScanRecord.parse({
       ...draft,
       source: 'evolt360',
-      conditions: { time_of_day: 'morning', fasted: true, hours_since_training: 40, hydration: 'normal', matches_baseline: true, notes: null },
+      conditions: {
+        time_of_day: 'morning',
+        fasted: true,
+        hours_since_training: 40,
+        hydration: 'normal',
+        matches_baseline: true,
+        notes: null,
+      },
     })
     const confirmed = await confirmScan(deps, id, { record })
     await settle()
@@ -227,7 +319,12 @@ describe('scan extraction time', () => {
     const id = crypto.randomUUID()
     await uploadScan(deps, { query: { id, content_type: 'image/png' }, body: pngSheet() })
     await settle()
-    const printed = { ...ScanRecord.parse(seed), scanned_at: '2026-11-20T07:15:00Z', units: 'lb' as const, confidence: [] }
+    const printed = {
+      ...ScanRecord.parse(seed),
+      scanned_at: '2026-11-20T07:15:00Z',
+      units: 'lb' as const,
+      confidence: [],
+    }
     const router = fakeRouter(() => printed)
 
     await extractScan({ ...deps, router }, { scan_id: id })
@@ -242,7 +339,9 @@ describe('scan confirm', () => {
     await insertConfirmed(BASELINE, '2026-09-26')
     const id = crypto.randomUUID()
 
-    await expect(confirmScan(deps, id, { record: { ...LEAN_LOSS_SCAN, scanned_at: '2026-11-20T14:00:00.000Z' } })).rejects.toMatchObject({ status: 400 })
+    await expect(
+      confirmScan(deps, id, { record: { ...LEAN_LOSS_SCAN, scanned_at: '2026-11-20T14:00:00.000Z' } }),
+    ).rejects.toMatchObject({ status: 400 })
 
     expect(await db.select().from(scans).where(eq(scans.id, id))).toEqual([])
     expect((await scanSchedule(deps)).last_scan_date).toBe('2026-09-26')
@@ -256,15 +355,19 @@ describe('deleting a confirmed scan', () => {
     await uploadScan(deps, { query: { id, content_type: 'image/png' }, body: pngSheet() })
     await settle()
     // A wrong scan: 29 % body fat and visceral level 9 (two milestones), and lean −1.5 of −3.0 kg (the lean-loss guard).
-    const wrong = ScanRecord.parse({ ...LEAN_LOSS_SCAN, scanned_at: '2026-10-05T09:00:00-06:00', body_fat_pct: 29, visceral_fat_level: 9 })
+    const wrong = ScanRecord.parse({
+      ...LEAN_LOSS_SCAN,
+      scanned_at: '2026-10-05T09:00:00-06:00',
+      body_fat_pct: 29,
+      visceral_fat_level: 9,
+    })
     await confirmScan(deps, id, { record: wrong })
     await settle()
     const { analysis } = await getScan(deps, id)
     expect(analysis!.proposal_ids).toHaveLength(1)
-    expect((await db.select().from(milestones).where(eq(milestones.scan_id, id))).map((m) => m.label).sort()).toEqual([
-      'Body fat under 30 %',
-      'Visceral fat level 9 or lower',
-    ])
+    expect(
+      (await db.select().from(milestones).where(eq(milestones.scan_id, id))).map((m) => m.label).sort(),
+    ).toEqual(['Body fat under 30 %', 'Visceral fat level 9 or lower'])
 
     expect(await deleteScan(deps, id)).toEqual({ ok: true })
 
@@ -287,7 +390,9 @@ describe('scan analysis', () => {
   it('flags the lean-loss guard and stores the engine debrief when no LLM answers; the protein proposal passes the guards', async () => {
     await insertConfirmed(BASELINE, '2026-09-26')
     const id = crypto.randomUUID()
-    await db.insert(scans).values({ id, scanned_at: '2026-10-24T15:05:00.000Z', date: '2026-10-24', confirmed: false })
+    await db
+      .insert(scans)
+      .values({ id, scanned_at: '2026-10-24T15:05:00.000Z', date: '2026-10-24', confirmed: false })
     await confirmScan(at('2026-10-24T18:00:00.000Z'), id, { record: LEAN_LOSS_SCAN })
     await settle() // the real handler runs: no LLM keys → the engine's plain debrief
 
@@ -297,18 +402,32 @@ describe('scan analysis', () => {
     expect(analysis!.vs_previous!.fat_vs_lean.weight_kg).toBeCloseTo(-3.0, 6)
     expect(analysis!.vs_previous!.segments.torso!.fat_kg).toBeCloseTo(-0.7, 6)
     expect(analysis!.flags.map((f) => f.code)).toEqual(['lean_loss'])
-    expect(analysis).toMatchObject({ status: 'done', narrative_by: 'engine', narrative: expect.stringContaining('Since 2026-09-26 (28 days)') })
+    expect(analysis).toMatchObject({
+      status: 'done',
+      narrative_by: 'engine',
+      narrative: expect.stringContaining('Since 2026-09-26 (28 days)'),
+    })
     expect(analysis!.proposal_ids).toHaveLength(1)
 
     const [proposal] = await db.select().from(ai_events).where(eq(ai_events.id, analysis!.proposal_ids[0]!))
     expect(proposal).toMatchObject({ kind: 'proposal', actor: 'ai', proposal_status: 'pending' })
-    expect(proposal!.body).toMatchObject({ kind: 'plan_change', changes: [{ field: 'protein_g', from: 130, to: 140 }] })
+    expect(proposal!.body).toMatchObject({
+      kind: 'plan_change',
+      changes: [{ field: 'protein_g', from: 130, to: 140 }],
+    })
   })
 
   it('takes the narrative and proposals from the LLM, but the guards drop a 1,300 kcal target and `from` is the plan’s', async () => {
     await insertConfirmed(BASELINE, '2026-09-26')
     const id = await insertConfirmed(
-      ScanRecord.parse({ ...seed, scanned_at: '2026-10-24T09:05:00-06:00', weight_kg: 91.5, body_fat_mass_kg: 26.9, body_fat_pct: 29.4, lean_body_mass_kg: 64.6 }),
+      ScanRecord.parse({
+        ...seed,
+        scanned_at: '2026-10-24T09:05:00-06:00',
+        weight_kg: 91.5,
+        body_fat_mass_kg: 26.9,
+        body_fat_pct: 29.4,
+        lean_body_mass_kg: 64.6,
+      }),
       '2026-10-24',
     )
     const router = fakeRouter(() => ({
@@ -322,20 +441,39 @@ describe('scan analysis', () => {
 
     expect(router.calls[0]!.messages[0]!.content).toContain('"lean_loss_guard":"ok"')
     expect(output.narrative).toBe('Body fat is under 30 % for the first time.')
-    expect(output.proposals).toEqual([{ field: 'steps', weekday: null, from: 8000, to: 9000, reason: 'More walking' }])
-    const [bodyFat] = await db.select().from(milestones).where(and(eq(milestones.kind, 'body_fat_pct'), eq(milestones.target_value, 30)))
+    expect(output.proposals).toEqual([
+      { field: 'steps', weekday: null, from: 8000, to: 9000, reason: 'More walking' },
+    ])
+    const [bodyFat] = await db
+      .select()
+      .from(milestones)
+      .where(and(eq(milestones.kind, 'body_fat_pct'), eq(milestones.target_value, 30)))
     expect(bodyFat).toMatchObject({ reached_on: '2026-10-24', scan_id: id })
-    expect((await getScan(deps, id)).analysis).toMatchObject({ narrative_by: 'ai', milestone_updates: [{ label: 'Body fat under 30 %', reached_on: '2026-10-24' }] })
+    expect((await getScan(deps, id)).analysis).toMatchObject({
+      narrative_by: 'ai',
+      milestone_updates: [{ label: 'Body fat under 30 %', reached_on: '2026-10-24' }],
+    })
   })
 })
 
 describe('scan due', () => {
   it('notes a due scan once on the due date (last scan + 28 days), not before and not twice', async () => {
     await insertConfirmed(BASELINE, '2026-09-26')
-    expect(await noteScanDue(at('2026-10-23T14:00:00.000Z'), '2026-10-23')).toEqual({ due: '2026-10-24', noted: false })
-    expect(await noteScanDue(at('2026-10-24T14:00:00.000Z'), '2026-10-24')).toEqual({ due: '2026-10-24', noted: true })
-    expect(await noteScanDue(at('2026-10-25T14:00:00.000Z'), '2026-10-25')).toEqual({ due: '2026-10-24', noted: false })
+    expect(await noteScanDue(at('2026-10-23T14:00:00.000Z'), '2026-10-23')).toEqual({
+      due: '2026-10-24',
+      noted: false,
+    })
+    expect(await noteScanDue(at('2026-10-24T14:00:00.000Z'), '2026-10-24')).toEqual({
+      due: '2026-10-24',
+      noted: true,
+    })
+    expect(await noteScanDue(at('2026-10-25T14:00:00.000Z'), '2026-10-25')).toEqual({
+      due: '2026-10-24',
+      noted: false,
+    })
     const notes = await db.select().from(ai_events).where(eq(ai_events.kind, 'note'))
-    expect(notes.map((n) => n.summary)).toEqual([expect.stringContaining('Evolt scan due today (last 2026-09-26, every 28 days)')])
+    expect(notes.map((n) => n.summary)).toEqual([
+      expect.stringContaining('Evolt scan due today (last 2026-09-26, every 28 days)'),
+    ])
   })
 })

@@ -35,7 +35,11 @@ const NO_EXERCISE = '00000000-0000-4000-8000-000000000000'
 export function TrainingSection({ data }: { data: DashboardData }) {
   const index = useExerciseIndex()
   return (
-    <DashboardSection id="training" title="Training" subtitle="Volume per week by muscle group, and where it landed">
+    <DashboardSection
+      id="training"
+      title="Training"
+      subtitle="Volume per week by muscle group, and where it landed"
+    >
       <Columns md={2} lg={WIDE_ROW.tracks} align="stretch">
         <Column span={WIDE_ROW.wide} mdSpan={2}>
           <VolumeCard sessions={data.sessions} index={index} from={data.from} to={data.to} />
@@ -59,9 +63,15 @@ interface CardProps {
 }
 
 function VolumeCard({ sessions, index, from, to }: CardProps) {
-  const weeks = useMemo(() => sessionVolumeWeeks(sessions, index.all, from, to), [sessions, index.all, from, to])
+  const weeks = useMemo(
+    () => sessionVolumeWeeks(sessions, index.all, from, to),
+    [sessions, index.all, from, to],
+  )
   const lifted = weeks.some((w) => Object.values(w.volume).some((kg) => kg > 0))
-  const total = useMemo(() => weeks.reduce((sum, w) => sum + Object.values(w.volume).reduce((s, kg) => s + kg, 0), 0), [weeks])
+  const total = useMemo(
+    () => weeks.reduce((sum, w) => sum + Object.values(w.volume).reduce((s, kg) => s + kg, 0), 0),
+    [weeks],
+  )
   const count = sessions.length
   return (
     <ChartCard
@@ -69,7 +79,14 @@ function VolumeCard({ sessions, index, from, to }: CardProps) {
       fill
       title="Weekly volume"
       subtitle={`kg lifted (sets × reps × load), stacked by muscle group · ${count} ${count === 1 ? 'session' : 'sessions'}, ${formatNumber(total)} kg in this window`}
-      empty={lifted ? null : { title: 'No sets logged yet', body: 'Finish a session with loads and reps and its week fills in.' }}
+      empty={
+        lifted
+          ? null
+          : {
+              title: 'No sets logged yet',
+              body: 'Finish a session with loads and reps and its week fills in.',
+            }
+      }
       testId="dashboard-volume"
     >
       <TrainingVolumeChart weeks={weeks} groups={VOLUME_GROUPS} height={CHART_HEIGHT} />
@@ -84,7 +101,10 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
   const endOffset = Math.min(span, offset ?? span)
   const end = addDays(from, endOffset)
   const start = addDays(end, -(WINDOW_DAYS - 1)) < from ? from : addDays(end, -(WINDOW_DAYS - 1))
-  const volume = useMemo(() => volumeBetween(sessions, index.all, start, end), [sessions, index.all, start, end])
+  const volume = useMemo(
+    () => volumeBetween(sessions, index.all, start, end),
+    [sessions, index.all, start, end],
+  )
   const levels = muscleLevels(volume.volume_by_muscle)
   return (
     <ChartCard
@@ -95,7 +115,12 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
       testId="dashboard-volume-map"
     >
       <Stack spacing={2} sx={{ alignItems: 'center' }}>
-        <MuscleMap levels={levels} size={MAP_SIZE} body="light" title={`Weekly volume per muscle, ${start} to ${end}`} />
+        <MuscleMap
+          levels={levels}
+          size={MAP_SIZE}
+          body="light"
+          title={`Weekly volume per muscle, ${start} to ${end}`}
+        />
         <MuscleMapLegend dense />
         {span > 0 && (
           <WindowSlider
@@ -116,11 +141,15 @@ function VolumeMapCard({ sessions, index, from, to }: CardProps) {
 
 function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>) {
   const options = useMemo(
-    () => exercisesByUse(sessions).slice(0, PICKER_SIZE).map((e) => ({ ...e, name: index.byId.get(e.exercise_id)?.name ?? 'Exercise' })),
+    () =>
+      exercisesByUse(sessions)
+        .slice(0, PICKER_SIZE)
+        .map((e) => ({ ...e, name: index.byId.get(e.exercise_id)?.name ?? 'Exercise' })),
     [sessions, index.byId],
   )
   const [picked, setPicked] = useState<string | null>(null)
-  const id = picked && options.some((o) => o.exercise_id === picked) ? picked : (options[0]?.exercise_id ?? null)
+  const id =
+    picked && options.some((o) => o.exercise_id === picked) ? picked : (options[0]?.exercise_id ?? null)
   const history = useApiQuery(
     endpoints.training.exerciseHistory,
     { params: { id: id ?? NO_EXERCISE } },
@@ -135,7 +164,10 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
       subtitle="Top set load and estimated 1RM (Epley), per session"
       empty={
         options.length === 0
-          ? { title: 'No loaded sets yet', body: 'Each exercise gets its load and e1RM line once sets are logged.' }
+          ? {
+              title: 'No loaded sets yet',
+              body: 'Each exercise gets its load and e1RM line once sets are logged.',
+            }
           : history.data && points.length === 0
             ? { title: 'No loaded sets yet', body: 'This exercise has no set with a load yet.' }
             : null
@@ -166,7 +198,11 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
           ))}
         </TextField>
       )}
-      {history.data ? <StrengthChart sessions={points} height={CHART_HEIGHT} /> : <EmptyHistory loading={history.isPending} />}
+      {history.data ? (
+        <StrengthChart sessions={points} height={CHART_HEIGHT} />
+      ) : (
+        <EmptyHistory loading={history.isPending} />
+      )}
     </ChartCard>
   )
 }

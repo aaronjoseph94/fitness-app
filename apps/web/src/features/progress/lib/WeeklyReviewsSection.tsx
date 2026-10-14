@@ -14,23 +14,44 @@ import type { WeeklyReview } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { useApiQuery } from '../../../api'
-import { EmptyState, formatNumber, formatShortDate, formatSigned, isQueryLoading, Panel, QueryStateCard, StatusChip } from '../../../components'
+import {
+  EmptyState,
+  formatNumber,
+  formatShortDate,
+  formatSigned,
+  isQueryLoading,
+  Panel,
+  QueryStateCard,
+  StatusChip,
+} from '../../../components'
 import { tokens } from '../../../theme'
 
 /** Claude's review supersedes the app's own draft for the same week (WeeklyReview). */
-const AUTHOR = { claude_mcp: { label: 'Claude', tone: 'info' }, gemini: { label: 'AI draft', tone: 'neutral' } } as const
+const AUTHOR = {
+  claude_mcp: { label: 'Claude', tone: 'info' },
+  gemini: { label: 'AI draft', tone: 'neutral' },
+} as const
 /** Rows shown before "Show all". */
 const FIRST_ROWS = 8
 
 const gutter = { px: { xs: '16px', sm: '18px' } } as const
-const note = { fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary } as const
+const note = {
+  fontSize: tokens.font.size.small,
+  lineHeight: tokens.font.leading.small,
+  color: tokens.ink.secondary,
+} as const
 
 export function WeeklyReviewsSection() {
   const reviews = useApiQuery(endpoints.reviews.list, {})
   const [all, setAll] = useState(false)
   const rows = reviews.data ?? []
   return (
-    <Panel title="Weekly reviews" description="Each opens its report page and PDF" padding="none" testId="progress-weekly-reviews">
+    <Panel
+      title="Weekly reviews"
+      description="Each opens its report page and PDF"
+      padding="none"
+      testId="progress-weekly-reviews"
+    >
       {isQueryLoading(reviews) ? (
         <Box sx={{ ...gutter, pt: '4px', pb: '16px', ...note }}>Loading reviews…</Box>
       ) : reviews.isError || !reviews.data ? (
@@ -39,7 +60,11 @@ export function WeeklyReviewsSection() {
         </Box>
       ) : rows.length === 0 ? (
         <Box sx={{ ...gutter, pb: '16px' }}>
-          <EmptyState compact title="No reviews yet" body="The first weekly review is drafted on Sunday at 20:00, or when Claude runs your coach review." />
+          <EmptyState
+            compact
+            title="No reviews yet"
+            body="The first weekly review is drafted on Sunday at 20:00, or when Claude runs your coach review."
+          />
         </Box>
       ) : (
         <>
@@ -49,7 +74,11 @@ export function WeeklyReviewsSection() {
             ))}
           </Box>
           {!all && rows.length > FIRST_ROWS && (
-            <Button fullWidth onClick={() => setAll(true)} sx={{ borderTop: `1px solid ${tokens.ink.hairline}`, borderRadius: 0 }}>
+            <Button
+              fullWidth
+              onClick={() => setAll(true)}
+              sx={{ borderTop: `1px solid ${tokens.ink.hairline}`, borderRadius: 0 }}
+            >
               Show all {rows.length}
             </Button>
           )}
@@ -106,7 +135,17 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
         to={`/reports/week/${r.week}`}
         underline="none"
         color="inherit"
-        sx={{ ...gutter, flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, py: '12px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}
+        sx={{
+          ...gutter,
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          py: '12px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+        }}
       >
         <Box
           aria-hidden
@@ -124,17 +163,35 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
           <DescriptionOutlined sx={{ fontSize: 20 }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '6px',
+              fontWeight: tokens.font.weight.heading,
+              color: tokens.ink.text,
+            }}
+          >
             Week of {formatShortDate(r.week_start)}
             <StatusChip tone={author.tone} size="small" label={author.label} />
           </Box>
           {summary && <Box sx={{ color: tokens.ink.secondary }}>{summary}</Box>}
         </Box>
-        <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>{formatShortDate(localDate(r.created_at))}</Box>
+        <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
+          {formatShortDate(localDate(r.created_at))}
+        </Box>
         <ChevronRightRounded aria-hidden sx={{ flex: 'none', fontSize: 18, color: tokens.ink.faint }} />
       </Link>
       {r.pdf_url && (
-        <Button variant="text" size="tiny" href={r.pdf_url} target="_blank" rel="noopener" sx={{ flex: 'none', mr: { xs: '8px', sm: '10px' } }}>
+        <Button
+          variant="text"
+          size="tiny"
+          href={r.pdf_url}
+          target="_blank"
+          rel="noopener"
+          sx={{ flex: 'none', mr: { xs: '8px', sm: '10px' } }}
+        >
           PDF
         </Button>
       )}

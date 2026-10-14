@@ -64,7 +64,9 @@ export const Count = z.number().int().nonnegative()
  * A non-negative integer in a query string. Callers pass a number (or digits); the server receives digits and gets a
  * number back. (z.coerce alone would type the caller's input as `unknown`.)
  */
-export const QueryInt = z.union([z.number().int(), z.string().regex(/^\d+$/)]).pipe(z.coerce.number<string | number>().int().nonnegative())
+export const QueryInt = z
+  .union([z.number().int(), z.string().regex(/^\d+$/)])
+  .pipe(z.coerce.number<string | number>().int().nonnegative())
 
 // ── Rows and responses ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -126,5 +128,13 @@ export type Weekday = z.infer<typeof Weekday>
  * Schema an LLM sees lists every day.
  */
 export function byWeekday<T extends z.ZodType>(schema: T) {
-  return z.object({ mon: schema, tue: schema, wed: schema, thu: schema, fri: schema, sat: schema, sun: schema })
+  return z.object({
+    mon: schema,
+    tue: schema,
+    wed: schema,
+    thu: schema,
+    fri: schema,
+    sat: schema,
+    sun: schema,
+  })
 }

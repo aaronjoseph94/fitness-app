@@ -41,7 +41,14 @@ interface PhotoSelectProps {
 function PhotoSelect({ label, value, photos, onPick }: PhotoSelectProps) {
   const mixed = new Set(photos.map((p) => p.pose)).size > 1
   return (
-    <TextField select label={label} value={value} onChange={(e) => onPick(e.target.value)} size="small" sx={{ flex: 1, minWidth: 0 }}>
+    <TextField
+      select
+      label={label}
+      value={value}
+      onChange={(e) => onPick(e.target.value)}
+      size="small"
+      sx={{ flex: 1, minWidth: 0 }}
+    >
       {photos.map((p) => (
         <MenuItem key={p.id} value={p.id}>
           {optionLabel(p, mixed)}
@@ -53,7 +60,9 @@ function PhotoSelect({ label, value, photos, onPick }: PhotoSelectProps) {
 
 /** "−2.4 kg trend over 41 days" (or just the days when either photo has no trend weight). */
 function changeText(before: ProgressPhoto, after: ProgressPhoto): string {
-  const days = Math.round(Math.abs(Date.parse(`${after.date}T00:00:00Z`) - Date.parse(`${before.date}T00:00:00Z`)) / DAY_MS)
+  const days = Math.round(
+    Math.abs(Date.parse(`${after.date}T00:00:00Z`) - Date.parse(`${before.date}T00:00:00Z`)) / DAY_MS,
+  )
   const span = days === 0 ? 'same day' : `${days} ${days === 1 ? 'day' : 'days'} apart`
   if (before.weight_kg === null || after.weight_kg === null) return span
   return `${formatSigned(after.weight_kg - before.weight_kg, 1)} kg trend · ${span}`
@@ -64,7 +73,10 @@ export function CompareView({ photos, before, after, mode, onChange }: CompareVi
     <Panel
       title="Compare two photos"
       description={
-        <Box component="span" sx={{ color: tokens.ink.label, fontWeight: tokens.font.weight.label, ...tabularNums }}>
+        <Box
+          component="span"
+          sx={{ color: tokens.ink.label, fontWeight: tokens.font.weight.label, ...tabularNums }}
+        >
           {changeText(before, after)}
         </Box>
       }
@@ -85,14 +97,32 @@ export function CompareView({ photos, before, after, mode, onChange }: CompareVi
     >
       <Stack spacing={4}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-          <PhotoSelect label="Before" value={before.id} photos={photos} onPick={(id) => onChange({ before: id })} />
-          <PhotoSelect label="After" value={after.id} photos={photos} onPick={(id) => onChange({ after: id })} />
+          <PhotoSelect
+            label="Before"
+            value={before.id}
+            photos={photos}
+            onPick={(id) => onChange({ before: id })}
+          />
+          <PhotoSelect
+            label="After"
+            value={after.id}
+            photos={photos}
+            onPick={(id) => onChange({ after: id })}
+          />
         </Stack>
         {mode === 'side' ? (
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
             {[before, after].map((p, i) => (
               <Box key={`${i}-${p.id}`} sx={{ minWidth: 0 }}>
-                <Box sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill }}>
+                <Box
+                  sx={{
+                    aspectRatio: '3 / 4',
+                    borderRadius: `${tokens.radius.control}px`,
+                    overflow: 'hidden',
+                    border: `1px solid ${tokens.ink.border}`,
+                    bgcolor: tokens.ink.fill,
+                  }}
+                >
                   <PhotoImage photo={p} eager />
                 </Box>
                 <PhotoFacts photo={p} showPose />
@@ -128,7 +158,18 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
     dragging.current = false
   }
 
-  const label = { position: 'absolute', top: 8, px: 2, py: '3px', borderRadius: `${tokens.radius.badge}px`, fontSize: tokens.font.size.caption, fontWeight: tokens.font.weight.label, bgcolor: withAlpha(tokens.ink.card, 0.9), color: tokens.ink.text, pointerEvents: 'none' } as const
+  const label = {
+    position: 'absolute',
+    top: 8,
+    px: 2,
+    py: '3px',
+    borderRadius: `${tokens.radius.badge}px`,
+    fontSize: tokens.font.size.caption,
+    fontWeight: tokens.font.weight.label,
+    bgcolor: withAlpha(tokens.ink.card, 0.9),
+    color: tokens.ink.text,
+    pointerEvents: 'none',
+  } as const
 
   return (
     <Stack spacing={2} data-testid="photo-compare-slider">
@@ -159,7 +200,18 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
         <Box sx={{ position: 'absolute', inset: 0, clipPath: `inset(0 ${100 - split}% 0 0)` }}>
           <PhotoImage photo={before} eager />
         </Box>
-        <Box sx={{ position: 'absolute', top: 0, bottom: 0, left: `${split}%`, width: 2, ml: '-1px', bgcolor: tokens.ink.card, pointerEvents: 'none' }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${split}%`,
+            width: 2,
+            ml: '-1px',
+            bgcolor: tokens.ink.card,
+            pointerEvents: 'none',
+          }}
+        >
           <Box
             sx={{
               position: 'absolute',
@@ -178,7 +230,14 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
         <Box sx={{ ...label, right: 8 }}>After · {after.date}</Box>
       </Box>
       <Box sx={{ px: 2, maxWidth: 480, width: '100%', mx: 'auto' }}>
-        <Slider value={split} onChange={(_, v) => setSplit(v as number)} aria-label="Divider position" step={1} min={0} max={100} />
+        <Slider
+          value={split}
+          onChange={(_, v) => setSplit(v as number)}
+          aria-label="Divider position"
+          step={1}
+          min={0}
+          max={100}
+        />
       </Box>
     </Stack>
   )

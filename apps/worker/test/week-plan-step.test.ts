@@ -8,7 +8,16 @@ import { ReminderKind, Weekday, type ReminderPrefs, type WeekPlanContentInput } 
 import { env } from 'cloudflare:workers'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ai_events, createDb, daily_targets, fast_logs, plan_versions, profile, settings, week_plans } from '../src/db'
+import {
+  ai_events,
+  createDb,
+  daily_targets,
+  fast_logs,
+  plan_versions,
+  profile,
+  settings,
+  week_plans,
+} from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { getDay } from '../src/modules/day'
 import { cancelFast, planFast } from '../src/modules/fasting'
@@ -31,10 +40,20 @@ afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
 
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
-const kcal = (from: number, to: number) => ({ field: 'kcal' as const, weekday: null, from, to, reason: 'Coach' })
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
+const kcal = (from: number, to: number) => ({
+  field: 'kcal' as const,
+  weekday: null,
+  from,
+  to,
+  reason: 'Coach',
+})
 const week = (k: number): WeekPlanContentInput => ({
-  targets: Object.fromEntries(Weekday.options.map((w) => [w, { kcal: k, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }])) as WeekPlanContentInput['targets'],
+  targets: Object.fromEntries(
+    Weekday.options.map((w) => [w, { kcal: k, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }]),
+  ) as WeekPlanContentInput['targets'],
   sessions: { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
   water_ml: 3000,
   steps: 8000,
@@ -56,7 +75,16 @@ beforeEach(async () => {
     db.delete(profile),
   ])
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -74,7 +102,18 @@ beforeEach(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
       created_at: '2026-09-21T15:00:00.000Z',
       updated_at: '2026-09-21T15:00:00.000Z',
     }),
@@ -92,7 +131,10 @@ beforeEach(async () => {
     is_fast_day: false,
     training_planned: i < 4,
   }))
-  await db.batch([db.insert(daily_targets).values(lastWeek.slice(0, 4)), db.insert(daily_targets).values(lastWeek.slice(4))])
+  await db.batch([
+    db.insert(daily_targets).values(lastWeek.slice(0, 4)),
+    db.insert(daily_targets).values(lastWeek.slice(4)),
+  ])
 })
 
 describe('an mcp week plan for this week after an mcp plan change today', () => {
@@ -103,7 +145,9 @@ describe('an mcp week plan for this week after an mcp plan change today', () => 
     const proposed = await proposeWeekPlan(at('mcp'), { week_start: THIS_MONDAY, plan: week(1700) })
 
     expect(proposed.week_plan?.plan.targets.mon.kcal).toBe(1550)
-    expect(proposed.adjusted).toEqual(expect.arrayContaining([expect.objectContaining({ where: 'mon.kcal', rule: 'kcal_step' })]))
+    expect(proposed.adjusted).toEqual(
+      expect.arrayContaining([expect.objectContaining({ where: 'mon.kcal', rule: 'kcal_step' })]),
+    )
     await applyWeekPlan(at('mcp'), proposed.week_plan!.id)
     expect(await todayKcal()).toBe(1550)
   })
@@ -122,14 +166,19 @@ describe("an mcp plan change carried into this week's mcp week plan", () => {
       .select()
       .from(ai_events)
       .where(and(eq(ai_events.kind, 'change'), eq(ai_events.plan_version_id, result.plan_version!.id)))
-    expect(change!.body).toMatchObject({ week_plans_clamped: expect.arrayContaining(['2026-10-05 kcal 1700 → 1550']) })
+    expect(change!.body).toMatchObject({
+      week_plans_clamped: expect.arrayContaining(['2026-10-05 kcal 1700 → 1550']),
+    })
   })
 })
 
 describe("an mcp week plan's targets on a fast day", () => {
   it('are guarded too: 2,500 kcal on the fast Thursday is stored as last week’s, so cancelling the fast never lifts it past the rails', async () => {
     // Wednesday 2026-10-14 19:00 MDT → Thursday 19:00: Thursday 2026-10-15 is the fast day.
-    const fast = await planFast(at('user'), { id: crypto.randomUUID(), started_at: '2026-10-15T01:00:00.000Z' })
+    const fast = await planFast(at('user'), {
+      id: crypto.randomUUID(),
+      started_at: '2026-10-15T01:00:00.000Z',
+    })
     const plan = week(1400)
     plan.targets.thu = { kcal: 2500, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 }
     plan.fast_dates = ['2026-10-15']
@@ -137,7 +186,9 @@ describe("an mcp week plan's targets on a fast day", () => {
     const proposed = await proposeWeekPlan(at('mcp'), { week_start: '2026-10-12', plan })
 
     expect(proposed.week_plan?.plan.targets.thu.kcal).toBe(1400)
-    expect(proposed.adjusted).toEqual(expect.arrayContaining([expect.objectContaining({ where: 'thu.kcal', rule: 'fast_day_targets' })]))
+    expect(proposed.adjusted).toEqual(
+      expect.arrayContaining([expect.objectContaining({ where: 'thu.kcal', rule: 'fast_day_targets' })]),
+    )
     await applyWeekPlan(at('mcp'), proposed.week_plan!.id)
     await cancelFast(at('user'), fast.id)
     expect((await getDay(at(), '2026-10-15')).targets?.kcal).toBe(1400)

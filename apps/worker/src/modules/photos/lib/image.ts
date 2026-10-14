@@ -102,5 +102,10 @@ export function checkPhotoBytes(image: ArrayBuffer, type: CheckedImageType): voi
     if (e instanceof Malformed) throw notAnImage()
     throw e
   }
-  if (found) throw new HttpError(422, 'exif_present', 'The image still carries EXIF or other metadata; re-encode it in the browser first')
+  if (found)
+    throw new HttpError(
+      422,
+      'exif_present',
+      'The image still carries EXIF or other metadata; re-encode it in the browser first',
+    )
 }

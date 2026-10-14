@@ -5,7 +5,15 @@ import { endpoints } from '@fitness/shared/api'
 import type { PushResult } from '@fitness/shared/schemas'
 import { useCallback, useEffect, useState } from 'react'
 import { call, isApiError, problemText, useApiQuery } from '../../../api'
-import { currentSubscription, disablePush, enablePush, permission, pushSupport, syncPush, type PushSupport } from './push-client'
+import {
+  currentSubscription,
+  disablePush,
+  enablePush,
+  permission,
+  pushSupport,
+  syncPush,
+  type PushSupport,
+} from './push-client'
 
 export interface PushDevice {
   /** null while the first check runs. */
@@ -89,12 +97,16 @@ export function usePushDevice(): PushDevice {
         if (!publicKey) return 'Push isn’t set up on the server (VAPID keys missing).'
         const result = await enablePush(publicKey)
         if (result === 'granted') return 'Notifications are on for this device.'
-        return result === 'denied' ? 'Notifications are blocked for this app.' : 'Notifications were not allowed.'
+        return result === 'denied'
+          ? 'Notifications are blocked for this app.'
+          : 'Notifications were not allowed.'
       }),
     test: () =>
       run(async () => {
         const subscription = await currentSubscription()
-        return testOutcome(await call(endpoints.push.test, { body: subscription ? { endpoint: subscription.endpoint } : {} }))
+        return testOutcome(
+          await call(endpoints.push.test, { body: subscription ? { endpoint: subscription.endpoint } : {} }),
+        )
       }),
     disable: () =>
       run(async () => {

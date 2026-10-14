@@ -135,7 +135,8 @@ export function FastingStrip({ fasts, from, to, width, legend = true }: FastingS
                   const look = f ? fastLook(f.status) : undefined
                   // A planned slot is cleared to the card so its outline reads; a missed one keeps the day's fill.
                   const fill =
-                    look?.fill ?? (f?.status === 'planned' ? tokens.ink.card : date === now ? TODAY : tokens.chart.grid)
+                    look?.fill ??
+                    (f?.status === 'planned' ? tokens.ink.card : date === now ? TODAY : tokens.chart.grid)
                   let stroke = look?.dashed ?? 'none'
                   let dash = look?.dashed ? DASH : undefined
                   if (f && date === now) {

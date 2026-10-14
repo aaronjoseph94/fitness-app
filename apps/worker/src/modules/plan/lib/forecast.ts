@@ -42,7 +42,10 @@ type StoredForecast = Forecast & { tdee_as_of?: string; tdee_before?: number }
  *   intake     = meanPlannedIntake(daily_targets as_of + 1 … as_of + 28), else the active default kcal
  *   forecast   = forecast({ as_of, tdee_est, intake, trend, goal_kg })  → active plan_versions.forecast
  */
-export async function reforecast(deps: Deps, input: { as_of: string; reestimate?: boolean }): Promise<Forecast> {
+export async function reforecast(
+  deps: Deps,
+  input: { as_of: string; reestimate?: boolean },
+): Promise<Forecast> {
   const { as_of } = input
   const ctx = await loadPlanContext(deps)
   const profile = ctx.profile
@@ -114,7 +117,10 @@ export async function reforecast(deps: Deps, input: { as_of: string; reestimate?
     tdee_est: Math.round(tdee_est),
     ...(reestimate
       ? { tdee_as_of: as_of, tdee_before: Math.round(previous) }
-      : active?.tdee_as_of !== undefined && { tdee_as_of: active.tdee_as_of, tdee_before: active.tdee_before }),
+      : active?.tdee_as_of !== undefined && {
+          tdee_as_of: active.tdee_as_of,
+          tdee_before: active.tdee_before,
+        }),
   }
   await deps.db
     .update(plan_versions)

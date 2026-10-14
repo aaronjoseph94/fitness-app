@@ -46,7 +46,9 @@ export function Segmented<T extends string | number>({
   testId,
 }: SegmentedProps<T>) {
   const framed = tone === 'outline'
-  const selected = framed ? { bgcolor: tokens.ink.fill, color: tokens.ink.text, boxShadow: `inset 0 0 0 1px ${tokens.ink.control}` } : {}
+  const selected = framed
+    ? { bgcolor: tokens.ink.fill, color: tokens.ink.text, boxShadow: `inset 0 0 0 1px ${tokens.ink.control}` }
+    : {}
   return (
     <ToggleButtonGroup
       value={value}
@@ -72,7 +74,13 @@ export function Segmented<T extends string | number>({
       }}
     >
       {options.map((o) => (
-        <ToggleButton key={String(o.value)} value={o.value} disabled={o.disabled} aria-label={o.ariaLabel} data-testid={o.testId}>
+        <ToggleButton
+          key={String(o.value)}
+          value={o.value}
+          disabled={o.disabled}
+          aria-label={o.ariaLabel}
+          data-testid={o.testId}
+        >
           {o.label}
         </ToggleButton>
       ))}

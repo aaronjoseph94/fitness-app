@@ -44,28 +44,48 @@ beforeAll(async () => {
       reason: 'Baseline',
       diff: [],
       targets: {
-        defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 },
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
         overrides: {},
       },
-      forecast: { finish_date: '2027-04-16', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      forecast: {
+        finish_date: '2027-04-16',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
   ])
 })
 
 describe('updateSettings', () => {
   it('stores training days once each, in week order (a repeated day would count its session twice)', async () => {
-    const view = await updateSettings(deps('mcp'), { settings: { training_days: ['thu', 'mon', 'mon', 'tue', 'thu'] } })
+    const view = await updateSettings(deps('mcp'), {
+      settings: { training_days: ['thu', 'mon', 'mon', 'tue', 'thu'] },
+    })
     expect(view.settings.training_days).toEqual(['mon', 'tue', 'thu'])
   })
 
   it('refuses a clock reminder in the quiet hours (it would never fire), for every actor, and keeps the stored time', async () => {
     for (const actor of ['user', 'mcp'] as const) {
       const reminders = { ...DEFAULT_REMINDER_PREFS, weigh_in: { enabled: true, time: '03:00' } }
-      await expect(updateSettings(deps(actor), { settings: { reminders } })).rejects.toMatchObject({ status: 400, code: 'invalid_request' })
+      await expect(updateSettings(deps(actor), { settings: { reminders } })).rejects.toMatchObject({
+        status: 400,
+        code: 'invalid_request',
+      })
     }
     expect((await getSettings(deps())).settings.reminders.weigh_in).toEqual({ enabled: true, time: '07:00' })
     // In the waking day it saves.
     const ok = { ...DEFAULT_REMINDER_PREFS, weigh_in: { enabled: true, time: '21:55' } }
-    expect((await updateSettings(deps('mcp'), { settings: { reminders: ok } })).settings.reminders.weigh_in.time).toBe('21:55')
+    expect(
+      (await updateSettings(deps('mcp'), { settings: { reminders: ok } })).settings.reminders.weigh_in.time,
+    ).toBe('21:55')
   })
 })

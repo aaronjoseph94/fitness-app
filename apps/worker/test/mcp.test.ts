@@ -26,7 +26,12 @@ interface RpcResponse<T = Record<string, unknown>> {
 
 let nextId = 1
 /** One JSON-RPC request over Streamable HTTP; the stateless server answers with one SSE `message` event (or JSON). */
-async function rpc<T = Record<string, unknown>>(method: string, params: unknown, token: string, origin = HOST) {
+async function rpc<T = Record<string, unknown>>(
+  method: string,
+  params: unknown,
+  token: string,
+  origin = HOST,
+) {
   const res = await app.request(
     `${origin}/mcp`,
     {
@@ -44,7 +49,10 @@ async function rpc<T = Record<string, unknown>>(method: string, params: unknown,
   expect(res.status, await res.clone().text()).toBe(200)
   const text = await res.text()
   const json = res.headers.get('content-type')?.includes('text/event-stream')
-    ? text.split('\n').find((l) => l.startsWith('data: '))!.slice('data: '.length)
+    ? text
+        .split('\n')
+        .find((l) => l.startsWith('data: '))!
+        .slice('data: '.length)
     : text
   return JSON.parse(json) as RpcResponse<T>
 }
@@ -81,7 +89,9 @@ beforeAll(async () => {
       fibre_target_g: 30,
       water_target_ml: 3000,
       training_days: ['mon', 'tue', 'wed', 'thu'],
-      reminders: Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs,
+      reminders: Object.fromEntries(
+        ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+      ) as ReminderPrefs,
     }),
     db.insert(plan_versions).values({
       version: 1,
@@ -90,10 +100,23 @@ beforeAll(async () => {
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
       targets: {
-        defaults: { kcal: 1400, protein_g: 130, carbs_g: 118.75, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 },
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 118.75,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
         overrides: {},
       },
-      forecast: { finish_date: '2027-06-17', weekly_rate_kg: 1.046, band: { low: 0.837, high: 1.256 }, tdee_est: 2551 },
+      forecast: {
+        finish_date: '2027-06-17',
+        weekly_rate_kg: 1.046,
+        band: { low: 0.837, high: 1.256 },
+        tdee_est: 2551,
+      },
     }),
     db.insert(weight_logs).values({ date: '2026-09-26', weight_kg: 95.1 }),
   ])
@@ -106,7 +129,11 @@ describe('MCP auth', () => {
     const challenge = res.headers.get('WWW-Authenticate') ?? ''
     expect(challenge).toContain(`resource_metadata="${HOST}/.well-known/oauth-protected-resource/mcp"`)
 
-    const wrong = await app.request(`${HOST}/mcp`, { method: 'POST', headers: { Authorization: 'Bearer nope' }, body: '{}' }, noBypass)
+    const wrong = await app.request(
+      `${HOST}/mcp`,
+      { method: 'POST', headers: { Authorization: 'Bearer nope' }, body: '{}' },
+      noBypass,
+    )
     expect(wrong.status).toBe(401)
     expect(wrong.headers.get('WWW-Authenticate')).toContain('error="invalid_token"')
 
@@ -137,7 +164,14 @@ describe('MCP over the static bearer', () => {
 
     const { result } = await rpc<{ tools: ListedTool[] }>('tools/list', {}, token)
     const tools = new Map(result!.tools.map((t) => [t.name, t]))
-    for (const name of ['get_today', 'get_review_bundle', 'apply_review', 'propose_week_plan', 'apply_week_plan', 'get_procedure'])
+    for (const name of [
+      'get_today',
+      'get_review_bundle',
+      'apply_review',
+      'propose_week_plan',
+      'apply_week_plan',
+      'get_procedure',
+    ])
       expect(tools.has(name), name).toBe(true)
     for (const t of result!.tools) {
       expect(t.inputSchema.type, t.name).toBe('object')
@@ -148,13 +182,30 @@ describe('MCP over the static bearer', () => {
     expect(tools.get('apply_review')!.annotations).toMatchObject({ readOnlyHint: false })
 
     const prompts = await rpc<{ prompts: { name: string }[] }>('prompts/list', {}, token)
-    expect(prompts.result!.prompts.map((p) => p.name).sort()).toEqual(['coach_review', 'plateau_check', 'program_design', 'scan_debrief'])
-    const review = await rpc<{ messages: { content: { text: string } }[] }>('prompts/get', { name: 'coach_review' }, token)
+    expect(prompts.result!.prompts.map((p) => p.name).sort()).toEqual([
+      'coach_review',
+      'plateau_check',
+      'program_design',
+      'scan_debrief',
+    ])
+    const review = await rpc<{ messages: { content: { text: string } }[] }>(
+      'prompts/get',
+      { name: 'coach_review' },
+      token,
+    )
     expect(review.result!.messages[0]!.content.text).toContain('propose_week_plan')
 
-    const templates = await rpc<{ resourceTemplates: { uriTemplate: string }[] }>('resources/templates/list', {}, token)
+    const templates = await rpc<{ resourceTemplates: { uriTemplate: string }[] }>(
+      'resources/templates/list',
+      {},
+      token,
+    )
     expect(templates.result!.resourceTemplates.map((t) => t.uriTemplate)).toEqual(['fitness://week/{week}'])
-    const plan = await rpc<{ contents: { text: string }[] }>('resources/read', { uri: 'fitness://plan' }, token)
+    const plan = await rpc<{ contents: { text: string }[] }>(
+      'resources/read',
+      { uri: 'fitness://plan' },
+      token,
+    )
     expect(JSON.parse(plan.result!.contents[0]!.text)).toMatchObject({ rails: { calorie_floor: 1400 } })
   })
 
@@ -173,17 +224,20 @@ describe('MCP over the static bearer', () => {
       expect(JSON.stringify(text.result), procedure).not.toMatch(name)
     }
     // Text Aaron typed himself reaches the coach without his name too.
-    await rpc('tools/call', { name: 'set_dashboard_note', arguments: { text: "Aaron's week: protein first" } }, token)
+    await rpc(
+      'tools/call',
+      { name: 'set_dashboard_note', arguments: { text: "Aaron's week: protein first" } },
+      token,
+    )
     const today = await rpc('tools/call', { name: 'get_today', arguments: {} }, token)
     expect(JSON.stringify(today.result)).toContain("the user's week: protein first")
   })
 
   it('tools/call get_today returns the day as structured content and JSON text; bad input is a tool error', async () => {
-    const { result } = await rpc<{ structuredContent: { date: string; targets: { kcal: number } }; content: { text: string }[] }>(
-      'tools/call',
-      { name: 'get_today', arguments: { date: '2026-09-26' } },
-      token,
-    )
+    const { result } = await rpc<{
+      structuredContent: { date: string; targets: { kcal: number } }
+      content: { text: string }[]
+    }>('tools/call', { name: 'get_today', arguments: { date: '2026-09-26' } }, token)
     expect(result!.structuredContent).toMatchObject({ date: '2026-09-26', targets: { kcal: 1400 } })
     expect(JSON.parse(result!.content[0]!.text)).toMatchObject({ date: '2026-09-26' })
 
@@ -201,7 +255,10 @@ describe('MCP writes over the transport', () => {
   const token = env.MCP_BEARER_TOKEN!
 
   it('apply_review with a +100 kcal target change makes a new plan version that GET /api/plan serves', async () => {
-    const { result } = await rpc<{ isError?: boolean; structuredContent: { plan_version: { version: number } | null } }>(
+    const { result } = await rpc<{
+      isError?: boolean
+      structuredContent: { plan_version: { version: number } | null }
+    }>(
       'tools/call',
       {
         name: 'apply_review',
@@ -219,7 +276,12 @@ describe('MCP writes over the transport', () => {
 
     const plan = await app.request('http://localhost/api/plan', {}, env)
     expect(plan.status).toBe(200)
-    expect(await plan.json()).toMatchObject({ version: 2, active: true, created_by: 'mcp', targets: { defaults: { kcal: 1500 } } })
+    expect(await plan.json()).toMatchObject({
+      version: 2,
+      active: true,
+      created_by: 'mcp',
+      targets: { defaults: { kcal: 1500 } },
+    })
   })
 
   it('propose_week_plan with a 1,350 kcal day is refused naming calorie_floor, and stores nothing', async () => {
@@ -234,13 +296,14 @@ describe('MCP writes over the transport', () => {
       scan_date: null,
       focus_note: 'Protein first.',
     }
-    const { result } = await rpc<{ content: { text: string }[]; structuredContent: { week_plan: unknown; rejected: { rule: string; where: string }[] } }>(
-      'tools/call',
-      { name: 'propose_week_plan', arguments: { week_start: monday, plan } },
-      token,
-    )
+    const { result } = await rpc<{
+      content: { text: string }[]
+      structuredContent: { week_plan: unknown; rejected: { rule: string; where: string }[] }
+    }>('tools/call', { name: 'propose_week_plan', arguments: { week_start: monday, plan } }, token)
     expect(result!.structuredContent.week_plan).toBeNull()
-    expect(result!.structuredContent.rejected).toEqual(expect.arrayContaining([expect.objectContaining({ where: 'wed.kcal', rule: 'calorie_floor' })]))
+    expect(result!.structuredContent.rejected).toEqual(
+      expect.arrayContaining([expect.objectContaining({ where: 'wed.kcal', rule: 'calorie_floor' })]),
+    )
     expect(result!.content[0]!.text).toContain('calorie_floor')
   })
 })
@@ -261,7 +324,9 @@ describe('Dynamic Client Registration', () => {
 
   it('refuses a client whose callbacks are not Claude’s or loopback, and writes nothing to KV', async () => {
     const before = await kvKeys()
-    expect(await (await register(['https://evil.example/cb'])).json()).toMatchObject({ error: 'invalid_redirect_uri' })
+    expect(await (await register(['https://evil.example/cb'])).json()).toMatchObject({
+      error: 'invalid_redirect_uri',
+    })
     for (const uris of [
       ['https://evil.example/cb'],
       ['https://claude.ai/api/mcp/auth_callback', 'https://evil.example/cb'],
@@ -272,7 +337,9 @@ describe('Dynamic Client Registration', () => {
       const res = await register(uris)
       expect(res.status, uris.join(' ')).toBe(400)
       // Ours (invalid_redirect_uri), or the library's own check for a non-https, non-loopback URI.
-      expect(['invalid_redirect_uri', 'invalid_client_metadata']).toContain(((await res.json()) as { error: string }).error)
+      expect(['invalid_redirect_uri', 'invalid_client_metadata']).toContain(
+        ((await res.json()) as { error: string }).error,
+      )
     }
     expect(await kvKeys()).toBe(before)
   })
@@ -297,12 +364,21 @@ describe('consent errors', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_name: 'Claude', redirect_uris: [redirect], token_endpoint_auth_method: 'none' }),
+        body: JSON.stringify({
+          client_name: 'Claude',
+          redirect_uris: [redirect],
+          token_endpoint_auth_method: 'none',
+        }),
       },
       env,
     )
     const { client_id } = (await reg.json()) as { client_id: string }
-    const query = new URLSearchParams({ response_type: 'code', client_id, redirect_uri: redirect, state: 'abc' })
+    const query = new URLSearchParams({
+      response_type: 'code',
+      client_id,
+      redirect_uri: redirect,
+      state: 'abc',
+    })
     const res = await app.request(`${origin}/authorize?${query}`, {}, env)
     expect(res.status).toBe(302)
     const location = new URL(res.headers.get('Location')!)
@@ -336,7 +412,11 @@ describe('MCP over OAuth 2.1', () => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_name: 'Claude', redirect_uris: [redirect], token_endpoint_auth_method: 'none' }),
+        body: JSON.stringify({
+          client_name: 'Claude',
+          redirect_uris: [redirect],
+          token_endpoint_auth_method: 'none',
+        }),
       },
       env,
     )
@@ -345,7 +425,10 @@ describe('MCP over OAuth 2.1', () => {
 
     const verifier = 'a'.repeat(20) + crypto.randomUUID()
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)))
-    const challenge = btoa(String.fromCharCode(...digest)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const challenge = btoa(String.fromCharCode(...digest))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
     const query = new URLSearchParams({
       response_type: 'code',
       client_id,
@@ -361,7 +444,10 @@ describe('MCP over OAuth 2.1', () => {
     const html = await consent.text()
     expect(html).toContain('Allow Claude to read and change your fitness data within the rails')
     const handle = /name="handle" value="([^"]+)"/.exec(html)![1]!
-    const cookie = consent.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ')
+    const cookie = consent.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ')
 
     const approved = await app.request(
       `${origin}/authorize?${query}`,

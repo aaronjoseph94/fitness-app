@@ -19,7 +19,13 @@ import { formatDateTime } from '../quick-log'
 import { copyText } from './lib/copy'
 import { CopyRow, ReadOnlyRow, SettingsGroup, ValueRow } from './lib/rows'
 import { SecretDialog } from './lib/SecretDialog'
-import { isConfigured, MODEL_SECRET_NAMES, PAID_SECRET_NAMES, SECRET_FIELDS, sourceLabel } from './lib/secrets'
+import {
+  isConfigured,
+  MODEL_SECRET_NAMES,
+  PAID_SECRET_NAMES,
+  SECRET_FIELDS,
+  sourceLabel,
+} from './lib/secrets'
 import { useConnection, useSecretMutations, useSecrets } from './lib/useSecrets'
 
 const saveError = (error: unknown) => problemText(error, 'Setting a key needs a connection.')
@@ -87,14 +93,18 @@ export function AiSettingsPage() {
             )
           }
         >
-          {offline ? 'You’re offline and the key list hasn’t been loaded on this device yet.' : `Couldn't load the key list. ${problemText(secrets.error)}`}
+          {offline
+            ? 'You’re offline and the key list hasn’t been loaded on this device yet.'
+            : `Couldn't load the key list. ${problemText(secrets.error)}`}
         </Alert>
       </Stack>
     )
   }
 
   const statuses = new Map(secrets.data.secrets.map((s) => [s.name, s]))
-  const modelKeysSet = [...PAID_SECRET_NAMES, ...MODEL_SECRET_NAMES].filter((name) => isConfigured(statuses.get(name)))
+  const modelKeysSet = [...PAID_SECRET_NAMES, ...MODEL_SECRET_NAMES].filter((name) =>
+    isConfigured(statuses.get(name)),
+  )
   const locked = !online || update.saving
   const mcpUrl = connection.data?.mcp_url ?? ''
 
@@ -157,8 +167,8 @@ export function AiSettingsPage() {
       )}
       {modelKeysSet.length === 0 && (
         <Alert severity="warning" data-testid="ai-not-set-up">
-          No model key is set, so the AI paths are off: logged meals wait for you to itemise them and weekly reviews come
-          from the engine alone. Add the OpenRouter key, or a paid one, to turn them back on.
+          No model key is set, so the AI paths are off: logged meals wait for you to itemise them and weekly
+          reviews come from the engine alone. Add the OpenRouter key, or a paid one, to turn them back on.
         </Alert>
       )}
 
@@ -220,11 +230,16 @@ export function AiSettingsPage() {
             <ReadOnlyRow
               label="Last change from Claude"
               help="Every write Claude makes is versioned and revertible."
-              value={connection.data.last_write_at ? formatDateTime(connection.data.last_write_at) : 'Never yet'}
+              value={
+                connection.data.last_write_at ? formatDateTime(connection.data.last_write_at) : 'Never yet'
+              }
             />
           </>
         ) : (
-          <ReadOnlyRow label="Connector" value={connection.isPending ? 'Loading…' : `Couldn't load. ${problemText(connection.error)}`} />
+          <ReadOnlyRow
+            label="Connector"
+            value={connection.isPending ? 'Loading…' : `Couldn't load. ${problemText(connection.error)}`}
+          />
         )}
       </SettingsGroup>
 
@@ -233,12 +248,13 @@ export function AiSettingsPage() {
           <li>In Claude, open Settings → Connectors → Add custom connector.</li>
           <li>Paste the connector URL above.</li>
           <li>
-            When Claude asks you to sign in, approve the consent page (it is behind your Cloudflare login). If your client
-            asks for a token header instead, generate one in the row above and paste it there.
+            When Claude asks you to sign in, approve the consent page (it is behind your Cloudflare login). If
+            your client asks for a token header instead, generate one in the row above and paste it there.
           </li>
           <li>
-            Then ask Claude to “run my coach review”. It follows the coach procedure the server ships, reads the same
-            numbers the app computes, and every change it applies is a plan version you can revert in one tap.
+            Then ask Claude to “run my coach review”. It follows the coach procedure the server ships, reads
+            the same numbers the app computes, and every change it applies is a plan version you can revert in
+            one tap.
           </li>
         </Box>
       </SettingsGroup>
@@ -246,15 +262,17 @@ export function AiSettingsPage() {
       <SettingsGroup id="key-storage" title="Where these keys live">
         <Box component="ul" sx={listSx}>
           <li>
-            In this app’s own Cloudflare D1 database, written only through your signed-in session. They never enter the web
-            bundle or the offline cache, and the API only ever returns whether a key is set, where it came from and its
-            last four characters.
+            In this app’s own Cloudflare D1 database, written only through your signed-in session. They never
+            enter the web bundle or the offline cache, and the API only ever returns whether a key is set,
+            where it came from and its last four characters.
           </li>
           <li>
-            A key set here wins over a Worker secret of the same name. Clear it here and a <code>wrangler secret put</code>{' '}
-            value takes over again.
+            A key set here wins over a Worker secret of the same name. Clear it here and a{' '}
+            <code>wrangler secret put</code> value takes over again.
           </li>
-          <li>Every change is recorded as one event carrying the key’s name and the action, never the value.</li>
+          <li>
+            Every change is recorded as one event carrying the key’s name and the action, never the value.
+          </li>
         </Box>
       </SettingsGroup>
 
@@ -262,7 +280,15 @@ export function AiSettingsPage() {
         <SecretDialog
           key={editing}
           field={SECRET_FIELDS[editing]}
-          status={statuses.get(editing) ?? { name: editing, source: 'none', hint: null, env_set: false, updated_at: null }}
+          status={
+            statuses.get(editing) ?? {
+              name: editing,
+              source: 'none',
+              hint: null,
+              env_set: false,
+              updated_at: null,
+            }
+          }
           saving={update.saving}
           error={error}
           onSave={(value) => void save(editing, value)}
@@ -274,7 +300,12 @@ export function AiSettingsPage() {
         />
       )}
 
-      <Snackbar open={notice !== null} autoHideDuration={3000} onClose={() => setNotice(null)} message={notice} />
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={3000}
+        onClose={() => setNotice(null)}
+        message={notice}
+      />
     </Stack>
   )
 }

@@ -36,10 +36,19 @@ function config(tag: string): ProvidersConfig {
     checked: '2026-10-05',
     background_share: 0.8,
     retry: { max_retries: 0, base_ms: 1, max_wait_ms: 10 },
-    providers: { gemini: { api: 'gemini', base_url: 'https://gemini.test/v1beta', key_env: 'GEMINI_API_KEY' } },
+    providers: {
+      gemini: { api: 'gemini', base_url: 'https://gemini.test/v1beta', key_env: 'GEMINI_API_KEY' },
+    },
     quotas: { [`gemini-${tag}`]: { rpm: 1000, rpd: null, tpm: null, tpd: null, day_tz: 'UTC' } },
     models: {
-      'gemini-flash': { provider: 'gemini', model: 'gemini-3.8-flash', quota: `gemini-${tag}`, vision: false, tools: false, json: 'native' },
+      'gemini-flash': {
+        provider: 'gemini',
+        model: 'gemini-3.8-flash',
+        quota: `gemini-${tag}`,
+        vision: false,
+        tools: false,
+        json: 'native',
+      },
     },
     chains: { text: ['gemini-flash'], vision: ['gemini-flash'] },
   }
@@ -50,10 +59,19 @@ describe('secrets', () => {
     const fromWorker = { ...env, ZAI_API_KEY: 'zai-from-a-worker-secret' }
 
     // Not set anywhere.
-    expect(await statusOf('USDA_FDC_API_KEY')).toMatchObject({ source: 'none', hint: null, env_set: false, updated_at: null })
+    expect(await statusOf('USDA_FDC_API_KEY')).toMatchObject({
+      source: 'none',
+      hint: null,
+      env_set: false,
+      updated_at: null,
+    })
 
     // Set only as a Worker secret: named as such, and not hinted (only what Aaron stored here is hinted).
-    expect(await statusOf('ZAI_API_KEY', fromWorker)).toMatchObject({ source: 'env', hint: null, env_set: true })
+    expect(await statusOf('ZAI_API_KEY', fromWorker)).toMatchObject({
+      source: 'env',
+      hint: null,
+      env_set: true,
+    })
   })
 
   it('stores a key, hints its last four characters, and never returns it', async () => {
@@ -70,8 +88,14 @@ describe('secrets', () => {
   })
 
   it('refuses any actor but Aaron', async () => {
-    await expect(setSecret(deps('mcp'), 'GROQ_API_KEY', 'gsk_a-key-from-a-tool')).rejects.toMatchObject({ status: 403, code: 'user_only' })
-    await expect(clearSecret(deps('ai'), 'GROQ_API_KEY')).rejects.toMatchObject({ status: 403, code: 'user_only' })
+    await expect(setSecret(deps('mcp'), 'GROQ_API_KEY', 'gsk_a-key-from-a-tool')).rejects.toMatchObject({
+      status: 403,
+      code: 'user_only',
+    })
+    await expect(clearSecret(deps('ai'), 'GROQ_API_KEY')).rejects.toMatchObject({
+      status: 403,
+      code: 'user_only',
+    })
   })
 
   it('prefers the app-stored value over a Worker secret, and falls back to env once cleared', async () => {
@@ -131,7 +155,11 @@ describe('secrets', () => {
             jsonrpc: '2.0',
             id: 1,
             method: 'initialize',
-            params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'vitest', version: '1' } },
+            params: {
+              protocolVersion: '2025-06-18',
+              capabilities: {},
+              clientInfo: { name: 'vitest', version: '1' },
+            },
           }),
         },
         noBypass,

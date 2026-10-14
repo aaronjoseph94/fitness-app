@@ -28,10 +28,23 @@ export function ProposedBanner({ plan }: { plan: WeekPlan }) {
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            fontWeight: tokens.font.weight.heading,
+            color: tokens.ink.text,
+          }}
+        >
           New plan for {range}
         </Box>
-        <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.secondary,
+          }}
+        >
           Proposed by {AUTHOR[plan.author]}
         </Box>
       </Box>

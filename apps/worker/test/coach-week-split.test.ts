@@ -11,15 +11,32 @@ import { getSettings } from '../src/modules/settings'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
-const deps: Deps = { db, env, now: () => new Date('2026-10-05T15:00:00.000Z'), actor: 'mcp', waitUntil: (p) => void pending.push(p.catch(() => undefined)) }
+const deps: Deps = {
+  db,
+  env,
+  now: () => new Date('2026-10-05T15:00:00.000Z'),
+  actor: 'mcp',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+}
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -36,7 +53,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -51,6 +79,8 @@ describe('apply_review week_split', () => {
     })
 
     expect((await getSettings(deps)).settings.training_days).toEqual(['mon', 'thu'])
-    expect(result.applied).toEqual([expect.objectContaining({ kind: 'week_split', summary: 'training days mon, thu' })])
+    expect(result.applied).toEqual([
+      expect.objectContaining({ kind: 'week_split', summary: 'training days mon, thu' }),
+    ])
   })
 })

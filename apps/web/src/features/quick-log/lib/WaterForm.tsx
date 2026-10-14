@@ -7,7 +7,17 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { formatNumber, formatShortDate, MetricRing, NumberField, outlinedIconButton, parseNumber, PendingBadge, statValue, tabularNums } from '../../../components'
+import {
+  formatNumber,
+  formatShortDate,
+  MetricRing,
+  NumberField,
+  outlinedIconButton,
+  parseNumber,
+  PendingBadge,
+  statValue,
+  tabularNums,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { instantOnDate, todayLocal } from './dates'
 import { useWater } from './reads'
@@ -74,7 +84,15 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
         <Box sx={{ minWidth: 0 }}>
           <Box sx={{ ...statValue('standard'), lineHeight: 1.1 }}>
             {water.known ? formatNumber(water.totalMl) : '—'}
-            <Box component="span" sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, letterSpacing: 0, color: 'text.secondary' }}>
+            <Box
+              component="span"
+              sx={{
+                fontSize: tokens.font.size.small,
+                fontWeight: tokens.font.weight.body,
+                letterSpacing: 0,
+                color: 'text.secondary',
+              }}
+            >
               {' '}
               / {formatNumber(water.targetMl)} ml
             </Box>
@@ -95,11 +113,22 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr)) auto', gap: 2 }}>
         {QUICK_ML.map((ml) => (
-          <Button key={ml} variant="outlined" onClick={() => log(ml)} data-testid={`water-${ml}`} sx={{ px: 1, minWidth: 0, whiteSpace: 'nowrap', ...tabularNums }}>
+          <Button
+            key={ml}
+            variant="outlined"
+            onClick={() => log(ml)}
+            data-testid={`water-${ml}`}
+            sx={{ px: 1, minWidth: 0, whiteSpace: 'nowrap', ...tabularNums }}
+          >
             +{ml} ml
           </Button>
         ))}
-        <IconButton aria-label="Custom amount" aria-pressed={customOpen} onClick={() => setCustomOpen((o) => !o)} sx={{ ...outlinedIconButton, ...(customOpen && { bgcolor: tokens.ink.fill }) }}>
+        <IconButton
+          aria-label="Custom amount"
+          aria-pressed={customOpen}
+          onClick={() => setCustomOpen((o) => !o)}
+          sx={{ ...outlinedIconButton, ...(customOpen && { bgcolor: tokens.ink.fill }) }}
+        >
           <EditOutlined fontSize="small" />
         </IconButton>
       </Box>
@@ -124,7 +153,17 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
         </Box>
       )}
 
-      <Box sx={{ minHeight: 24, display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.small, color: 'text.secondary' }} aria-live="polite">
+      <Box
+        sx={{
+          minHeight: 24,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          fontSize: tokens.font.size.small,
+          color: 'text.secondary',
+        }}
+        aria-live="polite"
+      >
         {add.isError || remove.isError ? (
           <Box component="span" sx={{ color: 'error.main' }}>
             {problemText(add.error ?? remove.error)}
@@ -133,7 +172,13 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
           <>
             Added {formatNumber(last.ml)} ml
             {last.queued && <PendingBadge />}
-            <Button size="small" onClick={undo} disabled={remove.isPending} sx={{ ml: 'auto' }} data-testid="water-undo">
+            <Button
+              size="small"
+              onClick={undo}
+              disabled={remove.isPending}
+              sx={{ ml: 'auto' }}
+              data-testid="water-undo"
+            >
               Undo
             </Button>
           </>

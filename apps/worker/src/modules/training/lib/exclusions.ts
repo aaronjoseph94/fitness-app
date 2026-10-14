@@ -13,7 +13,8 @@ import { HttpError } from '../../../lib/http-error'
  * id is a no-op. Only Aaron (403 otherwise).
  */
 export async function deleteExclusion(deps: Deps, id: string): Promise<Ok> {
-  if (deps.actor !== 'user') throw new HttpError(403, 'user_only', 'Only Aaron changes which exercises are hidden')
+  if (deps.actor !== 'user')
+    throw new HttpError(403, 'user_only', 'Only Aaron changes which exercises are hidden')
   await unhideStatement(deps, id)
   return { ok: true }
 }
@@ -27,5 +28,10 @@ export function unhideStatement(deps: Deps, id: string) {
   return deps.db
     .update(exercise_exclusions)
     .set({ removed_at: now, actor: deps.actor, updated_at: now })
-    .where(and(or(eq(exercise_exclusions.id, id), eq(exercise_exclusions.exercise_id, id)), isNull(exercise_exclusions.removed_at)))
+    .where(
+      and(
+        or(eq(exercise_exclusions.id, id), eq(exercise_exclusions.exercise_id, id)),
+        isNull(exercise_exclusions.removed_at),
+      ),
+    )
 }

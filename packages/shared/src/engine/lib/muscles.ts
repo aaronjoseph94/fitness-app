@@ -36,7 +36,10 @@ export function muscleLevels(scores: MuscleValues): Record<Muscle, MuscleLevel> 
   const levels = {} as Record<Muscle, MuscleLevel>
   for (const m of Muscle.options) {
     const s = scores[m] ?? 0
-    levels[m] = s > 0 ? (Math.max(1, Math.ceil((4 * trained.filter((t) => t <= s).length) / trained.length)) as MuscleLevel) : 0
+    levels[m] =
+      s > 0
+        ? (Math.max(1, Math.ceil((4 * trained.filter((t) => t <= s).length) / trained.length)) as MuscleLevel)
+        : 0
   }
   return levels
 }
@@ -47,7 +50,12 @@ export function e1rm(load_kg: number, reps: number): number {
 }
 
 /** A set as logged (structurally a subset of `SessionSet`). */
-export type SessionSetLike = { exercise_id: string; reps: number | null; load_kg: number | null; completed: boolean }
+export type SessionSetLike = {
+  exercise_id: string
+  reps: number | null
+  load_kg: number | null
+  completed: boolean
+}
 
 /** Structurally a `PersonalRecord`. */
 export type PrRecord = {
@@ -109,7 +117,8 @@ export function sessionSummary(input: SessionSummaryInput): SessionTotals {
     if (t) addWeighted(volume_by_muscle, t, l.reps * l.load_kg)
   }
   const setsPerExercise = new Map<string, number>()
-  for (const s of input.sets) if (s.completed) setsPerExercise.set(s.exercise_id, (setsPerExercise.get(s.exercise_id) ?? 0) + 1)
+  for (const s of input.sets)
+    if (s.completed) setsPerExercise.set(s.exercise_id, (setsPerExercise.get(s.exercise_id) ?? 0) + 1)
   const muscle_scores = muscleScores(
     [...setsPerExercise].flatMap(([id, sets]) => {
       const t = tags.get(id)
@@ -142,20 +151,39 @@ function detectPrs(today: readonly Lift[], history: readonly Lift[], date: Local
     const seenReps = new Set<number>()
     for (const l of now) {
       if (seenReps.has(l.reps)) continue
-      const dominated = now.some((o) => o !== l && o.reps >= l.reps && o.load_kg >= l.load_kg && (o.reps > l.reps || o.load_kg > l.load_kg))
+      const dominated = now.some(
+        (o) =>
+          o !== l && o.reps >= l.reps && o.load_kg >= l.load_kg && (o.reps > l.reps || o.load_kg > l.load_kg),
+      )
       const best = now.filter((o) => o.reps === l.reps).reduce((m, o) => Math.max(m, o.load_kg), 0)
       if (dominated || l.load_kg < best) continue
       seenReps.add(l.reps)
       const atLeast = past.filter((p) => p.reps >= l.reps)
       const previous = atLeast.length ? Math.max(...atLeast.map((p) => p.load_kg)) : null
       if (previous === null || l.load_kg > previous)
-        prs.push({ exercise_id, kind: 'best_load_at_reps', reps: l.reps, load_kg: l.load_kg, e1rm_kg: e1rm(l.load_kg, l.reps), previous_best_kg: previous, date })
+        prs.push({
+          exercise_id,
+          kind: 'best_load_at_reps',
+          reps: l.reps,
+          load_kg: l.load_kg,
+          e1rm_kg: e1rm(l.load_kg, l.reps),
+          previous_best_kg: previous,
+          date,
+        })
     }
 
     const top = now.reduce((a, b) => (e1rm(b.load_kg, b.reps) > e1rm(a.load_kg, a.reps) ? b : a))
     const previousE1rm = Math.max(...past.map((p) => e1rm(p.load_kg, p.reps)))
     if (e1rm(top.load_kg, top.reps) > previousE1rm)
-      prs.push({ exercise_id, kind: 'best_e1rm', reps: top.reps, load_kg: top.load_kg, e1rm_kg: e1rm(top.load_kg, top.reps), previous_best_kg: previousE1rm, date })
+      prs.push({
+        exercise_id,
+        kind: 'best_e1rm',
+        reps: top.reps,
+        load_kg: top.load_kg,
+        e1rm_kg: e1rm(top.load_kg, top.reps),
+        previous_best_kg: previousE1rm,
+        date,
+      })
   }
   return prs
 }

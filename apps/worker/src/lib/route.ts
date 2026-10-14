@@ -31,7 +31,8 @@ const isBinary = (schema: z.ZodType | undefined) =>
   !!schema && schema.safeParse(new ArrayBuffer(1)).success && !schema.safeParse({}).success
 
 /** The media type of the request without parameters ("application/json; charset=utf-8" → "application/json"). */
-const mediaType = (c: Context<AppEnv>) => (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+const mediaType = (c: Context<AppEnv>) =>
+  (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
 
 const unsupported = (expected: string) =>
   new HttpError(415, 'unsupported_media_type', `Send this request body as ${expected}`)
@@ -67,14 +68,29 @@ function parse<T extends z.ZodType | undefined>(schema: T, value: unknown, part:
     r = schema.safeParse(value)
   } catch (err) {
     // A schema step that throws on a value it cannot read (e.g. an unparseable instant) is still the caller's input.
-    throw new HttpError(400, 'invalid_request', `Invalid ${part}: a value could not be read (${err instanceof Error ? err.message : String(err)})`)
+    throw new HttpError(
+      400,
+      'invalid_request',
+      `Invalid ${part}: a value could not be read (${err instanceof Error ? err.message : String(err)})`,
+    )
   }
-  if (!r.success) throw new HttpError(400, 'invalid_request', `Invalid ${part}: ${z.prettifyError(r.error)}`, r.error.issues)
+  if (!r.success)
+    throw new HttpError(
+      400,
+      'invalid_request',
+      `Invalid ${part}: ${z.prettifyError(r.error)}`,
+      r.error.issues,
+    )
   return r.data as Parsed<T>
 }
 
 /** Register `endpoint` on `app`. The handler returns the response body (validated in dev) or a raw Response. */
-export function route<E extends Endpoint>(app: App, endpoint: E, handler: RouteHandler<E>, opts: { status?: 200 | 201 } = {}) {
+export function route<E extends Endpoint>(
+  app: App,
+  endpoint: E,
+  handler: RouteHandler<E>,
+  opts: { status?: 200 | 201 } = {},
+) {
   const method = endpoint.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete'
   app[method](endpoint.path, async (c) => {
     // Hono has already percent-decoded each param once (a file key's %2F is a slash here); decoding again breaks "%".
@@ -88,7 +104,12 @@ export function route<E extends Endpoint>(app: App, endpoint: E, handler: RouteH
     // Validate outputs locally (cheap insurance against contract drift); skipped in production to save CPU.
     if (c.env.DEV_AUTH_BYPASS === '1') {
       const r = endpoint.response.safeParse(out)
-      if (!r.success) throw new HttpError(500, 'invalid_response', `Response for ${endpoint.method} ${endpoint.path} broke the contract: ${z.prettifyError(r.error)}`)
+      if (!r.success)
+        throw new HttpError(
+          500,
+          'invalid_response',
+          `Response for ${endpoint.method} ${endpoint.path} broke the contract: ${z.prettifyError(r.error)}`,
+        )
     }
     return c.json(out as object, opts.status ?? 200)
   })

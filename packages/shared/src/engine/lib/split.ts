@@ -58,7 +58,9 @@ export function splitSlots(training_days: readonly Weekday[]): SplitSlot[] {
       return placed++ === 0 ? upperLower(weekday, 'upper', 'A') : upperLower(weekday, 'lower', 'A')
     })
   }
-  return days.map((weekday, i) => upperLower(weekday, i % 2 === 0 ? 'upper' : 'lower', LETTERS[Math.floor(i / 2)]!))
+  return days.map((weekday, i) =>
+    upperLower(weekday, i % 2 === 0 ? 'upper' : 'lower', LETTERS[Math.floor(i / 2)]!),
+  )
 }
 
 /** The weekday's slot in splitSlots(training_days); null when it is not a training day. */
@@ -80,12 +82,16 @@ export function splitNameKey(name: string): string {
  * (ISO instants compare as strings), ties by the smaller id; null when none has the name. One rule for the worker (the
  * week, Keep, a redraft) and the web, so a second template of the same name never takes the day.
  */
-export function splitTemplateFor<T extends { id: string; name: string; created_at: string }>(templates: readonly T[], name: string): T | null {
+export function splitTemplateFor<T extends { id: string; name: string; created_at: string }>(
+  templates: readonly T[],
+  name: string,
+): T | null {
   const key = splitNameKey(name)
   let best: T | null = null
   for (const t of templates) {
     if (splitNameKey(t.name) !== key) continue
-    if (!best || t.created_at < best.created_at || (t.created_at === best.created_at && t.id < best.id)) best = t
+    if (!best || t.created_at < best.created_at || (t.created_at === best.created_at && t.id < best.id))
+      best = t
   }
   return best
 }

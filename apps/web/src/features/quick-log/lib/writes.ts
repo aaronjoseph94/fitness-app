@@ -58,7 +58,8 @@ export function useLogMutation<E extends Endpoint>(endpoint: E) {
 }
 
 /** The request body an endpoint takes, as the caller writes it (optional `body` stripped of its `undefined`). */
-type BodyOf<E extends Endpoint> = NonNullable<E['body']> extends z.ZodType ? z.input<NonNullable<E['body']>> : never
+type BodyOf<E extends Endpoint> =
+  NonNullable<E['body']> extends z.ZodType ? z.input<NonNullable<E['body']>> : never
 
 /** A write not yet reflected in server data: in flight ('saving') or in the offline queue ('queued'). */
 export interface PendingLog<B> {
@@ -79,7 +80,10 @@ interface LooseInput {
 export function usePendingLogs<E extends Endpoint>(endpoint: E): PendingLog<BodyOf<E>>[] {
   const inflight = useMutationState({
     filters: { mutationKey: logMutationKey(endpoint), status: 'pending' },
-    select: (mutation) => ({ input: mutation.state.variables as LooseInput | undefined, at: mutation.state.submittedAt }),
+    select: (mutation) => ({
+      input: mutation.state.variables as LooseInput | undefined,
+      at: mutation.state.submittedAt,
+    }),
   })
   const queued = usePendingWrites(endpoint)
   return useMemo(() => {
@@ -93,7 +97,12 @@ export function usePendingLogs<E extends Endpoint>(endpoint: E): PendingLog<Body
       out.push(log)
     }
     for (const write of queued) {
-      add({ path: write.path.split('?')[0] ?? write.path, body: write.body as BodyOf<E>, queued: true, at: write.created_at })
+      add({
+        path: write.path.split('?')[0] ?? write.path,
+        body: write.body as BodyOf<E>,
+        queued: true,
+        at: write.created_at,
+      })
     }
     for (const { input, at } of inflight) {
       if (!input) continue

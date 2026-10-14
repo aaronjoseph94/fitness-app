@@ -12,10 +12,30 @@ export function FoodGlyph({ name, size = 22 }: { name: string; size?: number }) 
   const [failed, setFailed] = useState<string | null>(null)
   if (!src || failed === src) {
     return (
-      <Box aria-hidden sx={{ width: size, height: size, flex: 'none', display: 'grid', placeItems: 'center', color: tokens.ink.faint }}>
+      <Box
+        aria-hidden
+        sx={{
+          width: size,
+          height: size,
+          flex: 'none',
+          display: 'grid',
+          placeItems: 'center',
+          color: tokens.ink.faint,
+        }}
+      >
         <RestaurantRounded sx={{ fontSize: size * 0.75 }} />
       </Box>
     )
   }
-  return <Box component="img" src={src} alt="" width={size} height={size} onError={() => setFailed(src)} sx={{ flex: 'none', display: 'block' }} />
+  return (
+    <Box
+      component="img"
+      src={src}
+      alt=""
+      width={size}
+      height={size}
+      onError={() => setFailed(src)}
+      sx={{ flex: 'none', display: 'block' }}
+    />
+  )
 }

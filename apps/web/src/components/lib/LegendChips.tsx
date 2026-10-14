@@ -25,9 +25,15 @@ function Key({ color, mark = 'bar', dense }: { color: string; mark?: LegendMark;
   const w = mark === 'line' || mark === 'dashed' ? (dense ? 10 : 12) : 8
   return (
     <svg width={w} height={8} viewBox={`0 0 ${w} 8`} aria-hidden focusable="false" style={{ flex: 'none' }}>
-      {(mark === 'bar' || mark === 'band') && <rect x="0" y="0" width="8" height="8" rx={tokens.radius.bar} fill={color} />}
-      {mark === 'line' && <line x1="0.75" y1="4" x2={w - 0.75} y2="4" stroke={color} strokeWidth="2" strokeLinecap="round" />}
-      {mark === 'dashed' && <line x1="0" y1="4" x2={w} y2="4" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />}
+      {(mark === 'bar' || mark === 'band') && (
+        <rect x="0" y="0" width="8" height="8" rx={tokens.radius.bar} fill={color} />
+      )}
+      {mark === 'line' && (
+        <line x1="0.75" y1="4" x2={w - 0.75} y2="4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      )}
+      {mark === 'dashed' && (
+        <line x1="0" y1="4" x2={w} y2="4" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
+      )}
       {mark === 'dot' && <circle cx="4" cy="4" r="4" fill={color} />}
       {mark === 'ring' && <circle cx="4" cy="4" r="3.25" fill="none" stroke={color} strokeWidth="1.5" />}
     </svg>

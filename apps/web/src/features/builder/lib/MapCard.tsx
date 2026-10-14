@@ -24,7 +24,12 @@ export function MapCard({ levels, mapTitle, caption, testId, children }: MapCard
   return (
     <Box
       data-testid={testId}
-      sx={{ ...cardSurface, display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) 260px' }, minWidth: 0 }}
+      sx={{
+        ...cardSurface,
+        display: 'grid',
+        gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) 260px' },
+        minWidth: 0,
+      }}
     >
       <Box sx={{ minWidth: 0, px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px` }}>{children}</Box>
       <Box
@@ -45,7 +50,16 @@ export function MapCard({ levels, mapTitle, caption, testId, children }: MapCard
         <MuscleMap levels={levels} size={200} title={mapTitle} />
         <MuscleMapLegend dense />
         {caption && (
-          <Box sx={{ fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary, textAlign: 'center' }}>{caption}</Box>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.caption,
+              lineHeight: tokens.font.leading.caption,
+              color: tokens.ink.secondary,
+              textAlign: 'center',
+            }}
+          >
+            {caption}
+          </Box>
         )}
       </Box>
     </Box>

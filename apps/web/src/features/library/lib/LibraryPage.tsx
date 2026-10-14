@@ -59,17 +59,29 @@ export function LibraryPage() {
     )
 
   const equipment = useMemo(() => equipmentValues(index.all), [index.all])
-  const results = useMemo(() => filterExercises(index.all, { ...filter, q: query, includeHidden }), [index.all, filter, query, includeHidden])
+  const results = useMemo(
+    () => filterExercises(index.all, { ...filter, q: query, includeHidden }),
+    [index.all, filter, query, includeHidden],
+  )
 
   const loaded = !index.isLoading && !index.paused && index.all.length > 0
   return (
     <Stack spacing={5} data-testid="library-page">
       <PageHeader
         title="Exercise library"
-        subtitle={loaded ? `${index.allowed.length} allowed of ${index.all.length} · the picker and the AI use only the allowed set` : 'Machines and free weights at your gym'}
+        subtitle={
+          loaded
+            ? `${index.allowed.length} allowed of ${index.all.length} · the picker and the AI use only the allowed set`
+            : 'Machines and free weights at your gym'
+        }
         action={
           <>
-            <Button component={RouterLink} to="/train/equipment" variant="outlined" startIcon={<TuneRounded />}>
+            <Button
+              component={RouterLink}
+              to="/train/equipment"
+              variant="outlined"
+              startIcon={<TuneRounded />}
+            >
               Equipment
             </Button>
             <Button variant="outlined" startIcon={<AddRounded />} onClick={() => setCreating(true)}>
@@ -84,7 +96,9 @@ export function LibraryPage() {
           q={q}
           onQ={(next) => update({ q: next })}
           filter={filter}
-          onFilter={(f) => update({ muscle: f.muscle, equipment: f.equipment, category: f.category, level: f.level })}
+          onFilter={(f) =>
+            update({ muscle: f.muscle, equipment: f.equipment, category: f.category, level: f.level })
+          }
           equipment={equipment}
           extra={
             <Chip
@@ -96,8 +110,21 @@ export function LibraryPage() {
             />
           }
         />
-        <Box component="p" sx={{ m: 0, mt: 3, fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>
-          {index.isLoading ? 'Loading…' : index.paused ? 'Offline' : `${results.length} of ${includeHidden ? index.all.length : index.allowed.length} ${includeHidden ? 'exercises' : 'allowed exercises'}`}
+        <Box
+          component="p"
+          sx={{
+            m: 0,
+            mt: 3,
+            fontSize: tokens.font.size.small,
+            lineHeight: tokens.font.leading.small,
+            color: tokens.ink.muted,
+          }}
+        >
+          {index.isLoading
+            ? 'Loading…'
+            : index.paused
+              ? 'Offline'
+              : `${results.length} of ${includeHidden ? index.all.length : index.allowed.length} ${includeHidden ? 'exercises' : 'allowed exercises'}`}
         </Box>
       </Reveal>
       <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
@@ -108,7 +135,10 @@ export function LibraryPage() {
         ) : index.error && index.all.length === 0 ? (
           <LoadProblem what="The exercise library" error={index.error} onRetry={index.refetch} />
         ) : index.paused ? (
-          <EmptyState title="Not loaded yet" body="The library isn't on this device yet — connect once to load it." />
+          <EmptyState
+            title="Not loaded yet"
+            body="The library isn't on this device yet — connect once to load it."
+          />
         ) : results.length === 0 ? (
           <EmptyState title="No exercise matches" body="Try fewer words or clear a filter." />
         ) : (
@@ -141,9 +171,20 @@ export function ExercisePage() {
         ) : index.error && index.all.length === 0 ? (
           <LoadProblem what="The exercise" error={index.error} onRetry={index.refetch} />
         ) : index.paused ? (
-          <EmptyState title="Not loaded yet" body="The library isn't on this device yet — connect once to load it." />
+          <EmptyState
+            title="Not loaded yet"
+            body="The library isn't on this device yet — connect once to load it."
+          />
         ) : (
-          <EmptyState title="Exercise not found" body="It may have been removed from the library." action={<Button component={RouterLink} to="/train/library" variant="outlined">Open the library</Button>} />
+          <EmptyState
+            title="Exercise not found"
+            body="It may have been removed from the library."
+            action={
+              <Button component={RouterLink} to="/train/library" variant="outlined">
+                Open the library
+              </Button>
+            }
+          />
         )}
       </Stack>
     )

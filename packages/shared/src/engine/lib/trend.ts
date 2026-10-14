@@ -32,7 +32,8 @@ export function trendWeights(
   for (const date of eachDate(first, to)) {
     const raw = byDate.get(date) ?? null
     if (raw !== null) trend = trend === null ? raw : trend + TREND_ALPHA * (raw - trend)
-    if (trend !== null && (range.from === undefined || date >= range.from)) out.push({ date, weight_kg: raw, trend_kg: trend })
+    if (trend !== null && (range.from === undefined || date >= range.from))
+      out.push({ date, weight_kg: raw, trend_kg: trend })
   }
   return out
 }

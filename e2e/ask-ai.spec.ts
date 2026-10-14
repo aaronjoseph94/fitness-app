@@ -30,7 +30,9 @@ test('a chat can be deleted, and deleting the open one starts a new chat', async
   await page.goto('/ai')
   await page.getByRole('textbox', { name: 'Message' }).fill(question)
   await page.getByRole('button', { name: 'Send' }).click()
-  await expect(page.getByTestId('ask-ai-turn').last().getByTestId('ask-ai-reply')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('ask-ai-turn').last().getByTestId('ask-ai-reply')).toBeVisible({
+    timeout: 30_000,
+  })
 
   await test.step('the chat is in the past-chats list with a delete on its row', async () => {
     await page.getByRole('button', { name: 'Past chats' }).click()

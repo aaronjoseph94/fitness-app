@@ -63,7 +63,15 @@ export function greetingFor(hour: number): string {
   return 'Good evening'
 }
 
-export function PageHeader({ eyebrow, title, pageName, subtitle, action, delay = 0, testId }: PageHeaderProps) {
+export function PageHeader({
+  eyebrow,
+  title,
+  pageName,
+  subtitle,
+  action,
+  delay = 0,
+  testId,
+}: PageHeaderProps) {
   const { entered, reduced } = useEntrance()
   return (
     <Box
@@ -85,17 +93,52 @@ export function PageHeader({ eyebrow, title, pageName, subtitle, action, delay =
     >
       <Box sx={{ flex: '1 1 280px', minWidth: 0 }}>
         {eyebrow && (
-          <Box sx={{ mb: '2px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{eyebrow}</Box>
+          <Box
+            sx={{
+              mb: '2px',
+              fontSize: tokens.font.size.small,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.secondary,
+            }}
+          >
+            {eyebrow}
+          </Box>
         )}
-        <Typography component="h1" variant="h1" sx={{ m: 0, color: 'text.primary', overflowWrap: 'anywhere' }}>
+        <Typography
+          component="h1"
+          variant="h1"
+          sx={{ m: 0, color: 'text.primary', overflowWrap: 'anywhere' }}
+        >
           {title}
           {pageName && <Box component="span" sx={visuallyHidden}>{` · ${pageName}`}</Box>}
         </Typography>
         {subtitle && (
-          <Box sx={{ mt: '4px', fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body, color: tokens.ink.secondary }}>{subtitle}</Box>
+          <Box
+            sx={{
+              mt: '4px',
+              fontSize: tokens.font.size.body,
+              lineHeight: tokens.font.leading.body,
+              color: tokens.ink.secondary,
+            }}
+          >
+            {subtitle}
+          </Box>
         )}
       </Box>
-      {action && <Box sx={{ flex: 'none', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, maxWidth: '100%' }}>{action}</Box>}
+      {action && (
+        <Box
+          sx={{
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+            maxWidth: '100%',
+          }}
+        >
+          {action}
+        </Box>
+      )}
     </Box>
   )
 }

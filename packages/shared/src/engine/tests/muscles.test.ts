@@ -39,7 +39,11 @@ describe('e1RM and PRs', () => {
     })
 
     // volume 8 × 62.5 + 8 × 62.5 + 7 × 62.5 = 1,437.5 kg; chest 3 sets × 1.0, triceps 3 × 0.5
-    expect(summary).toMatchObject({ duration_min: 61, total_volume_kg: 1437.5, muscle_scores: { chest: 3, triceps: 1.5 } })
+    expect(summary).toMatchObject({
+      duration_min: 61,
+      total_volume_kg: 1437.5,
+      muscle_scores: { chest: 3, triceps: 1.5 },
+    })
     // e1RM 62.5 × (1 + 8/30) = 79.17 < 60 × (1 + 10/30) = 80.0; best load at ≥ 8 reps 62.5 > 60 (7 × 62.5 is dominated)
     expect(summary.prs.map((p) => [p.kind, p.reps, p.load_kg])).toEqual([['best_load_at_reps', 8, 62.5]])
   })

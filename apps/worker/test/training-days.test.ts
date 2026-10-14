@@ -13,7 +13,13 @@ import { acceptProposal, materialiseTargets } from '../src/modules/plan'
 import { getSettings, proposeTrainingDays } from '../src/modules/settings'
 
 const db = createDb(env.DB)
-const deps = (actor: Deps['actor']): Deps => ({ db, env, now: () => new Date('2026-10-12T18:00:00.000Z'), actor, waitUntil: () => undefined })
+const deps = (actor: Deps['actor']): Deps => ({
+  db,
+  env,
+  now: () => new Date('2026-10-12T18:00:00.000Z'),
+  actor,
+  waitUntil: () => undefined,
+})
 const MON_THU = ['mon', 'tue', 'wed', 'thu'] as const
 /** The Wednesday after Mon 2026-10-12. */
 const WEDNESDAY = '2026-10-14'
@@ -44,7 +50,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -63,13 +80,21 @@ describe('proposeTrainingDays', () => {
     expect(out).toMatchObject({ status: 'proposed', training_days: ['mon', 'tue', 'thu'] })
     const [row] = await proposals()
     expect(row).toMatchObject({ id: out.proposal_id, actor: 'ai', proposal_status: 'pending' })
-    expect(row!.body).toEqual({ kind: 'training_days', training_days: ['mon', 'tue', 'thu'], before: ['mon', 'tue', 'wed', 'thu'] })
+    expect(row!.body).toEqual({
+      kind: 'training_days',
+      training_days: ['mon', 'tue', 'thu'],
+      before: ['mon', 'tue', 'wed', 'thu'],
+    })
     expect((await getSettings(deps('user'))).settings.training_days).toEqual(['mon', 'tue', 'wed', 'thu'])
   })
 
   it('accepting it saves Mon, Tue, Thu and the next Wednesday is no longer a training day', async () => {
     await materialiseTargets(deps('user'), { from: '2026-10-12' })
-    const wednesday = () => db.select({ training_planned: daily_targets.training_planned }).from(daily_targets).where(eq(daily_targets.date, WEDNESDAY))
+    const wednesday = () =>
+      db
+        .select({ training_planned: daily_targets.training_planned })
+        .from(daily_targets)
+        .where(eq(daily_targets.date, WEDNESDAY))
     expect(await wednesday()).toEqual([{ training_planned: true }])
     const { proposal_id } = await proposeTrainingDays(deps('ai'), { training_days: ['thu', 'mon', 'tue'] })
 

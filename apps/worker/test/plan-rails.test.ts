@@ -28,16 +28,35 @@ const at = (actor: Deps['actor'] = 'user', now = NOW): Deps => ({
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const reminders = Object.fromEntries(ReminderKind.options.map((k) => [k, { enabled: true, time: null }])) as ReminderPrefs
-const kcal = (from: number, to: number) => ({ field: 'kcal' as const, weekday: null, from, to, reason: 'Coach' })
+const reminders = Object.fromEntries(
+  ReminderKind.options.map((k) => [k, { enabled: true, time: null }]),
+) as ReminderPrefs
+const kcal = (from: number, to: number) => ({
+  field: 'kcal' as const,
+  weekday: null,
+  from,
+  to,
+  reason: 'Coach',
+})
 const status = async (id: string) => (await getProposalRow(at(), id))?.proposal_status
-const proposalCount = async () => (await db.select().from(ai_events).where(eq(ai_events.kind, 'proposal'))).length
+const proposalCount = async () =>
+  (await db.select().from(ai_events).where(eq(ai_events.kind, 'proposal'))).length
 /** Aaron sets daily kcal himself: his own edit is where the next ai/mcp week of steps is measured from. */
-const aaronSets = (to: number, now = NOW) => createVersion(at('user', now), { changes: [kcal(0, to)], reason: 'Aaron' })
+const aaronSets = (to: number, now = NOW) =>
+  createVersion(at('user', now), { changes: [kcal(0, to)], reason: 'Aaron' })
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -54,7 +73,18 @@ beforeAll(async () => {
       created_by: 'user',
       reason: 'Baseline rails from doctor and dietitian',
       diff: [],
-      targets: { defaults: { kcal: 1400, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30, water_ml: 3000, steps: 8000 }, overrides: {} },
+      targets: {
+        defaults: {
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+          water_ml: 3000,
+          steps: 8000,
+        },
+        overrides: {},
+      },
     }),
   ])
 })
@@ -63,7 +93,9 @@ describe('a plan change carried into the active week plan', () => {
   it('stops at the 1,700 kcal ceiling: Saturday 1,700 + an accepted +150 stays 1,700 (not 1,850)', async () => {
     const day = (k: number) => ({ kcal: k, protein_g: 130, carbs_g: 119, fat_g: 45, fibre_g: 30 })
     const week: WeekPlanContentInput = {
-      targets: Object.fromEntries(Weekday.options.map((w) => [w, day(w === 'sat' ? 1700 : 1400)])) as WeekPlanContentInput['targets'],
+      targets: Object.fromEntries(
+        Weekday.options.map((w) => [w, day(w === 'sat' ? 1700 : 1400)]),
+      ) as WeekPlanContentInput['targets'],
       sessions: { mon: null, tue: null, wed: null, thu: null, fri: null, sat: null, sun: null },
       water_ml: 3000,
       steps: 8000,
@@ -74,7 +106,10 @@ describe('a plan change carried into the active week plan', () => {
     const { week_plan } = await proposeWeekPlan(at('user'), { week_start: '2026-10-05', plan: week })
     await applyWeekPlan(at('user'), week_plan!.id)
 
-    const asked = await propose(at('mcp'), { changes: [kcal(1400, 1550)], reason: 'More energy for training' })
+    const asked = await propose(at('mcp'), {
+      changes: [kcal(1400, 1550)],
+      reason: 'More energy for training',
+    })
     const decision = await acceptProposal(at('user'), asked.proposal!.id)
 
     expect((await getDay(at(), '2026-10-09')).targets?.kcal).toBe(1550)
@@ -93,7 +128,12 @@ describe('the 150 kcal step over a rolling 7 days (ai/mcp)', () => {
     const result = await createVersion(at('mcp'), { changes: [kcal(1550, 1700)], reason: 'Again' })
 
     expect(result.plan_version).toBeNull()
-    expect(result.scheduled).toEqual([expect.objectContaining({ due: '2026-10-12', change: expect.objectContaining({ from: 1550, to: 1700 }) })])
+    expect(result.scheduled).toEqual([
+      expect.objectContaining({
+        due: '2026-10-12',
+        change: expect.objectContaining({ from: 1550, to: 1700 }),
+      }),
+    ])
     expect((await getActivePlan(at())).targets.defaults.kcal).toBe(1550)
     expect(await status(result.scheduled[0]!.proposal_id)).toBe('pending')
   })
@@ -104,7 +144,9 @@ describe('the 150 kcal step over a rolling 7 days (ai/mcp)', () => {
     const second = await createVersion(at('mcp'), { changes: [kcal(1550, 1400)], reason: 'Down again' })
 
     expect(second.plan_version).toBeNull()
-    expect(second.scheduled.map((s) => [s.change.from, s.change.to, s.due])).toEqual([[1550, 1400, '2026-10-12']])
+    expect(second.scheduled.map((s) => [s.change.from, s.change.to, s.due])).toEqual([
+      [1550, 1400, '2026-10-12'],
+    ])
     expect((await getActivePlan(at())).targets.defaults.kcal).toBe(1550)
   })
 })
@@ -128,7 +170,9 @@ describe('a split kcal move is one series', () => {
     await acceptProposal(at('user', '2026-10-07T15:00:00.000Z'), asked.proposal!.id)
     const before = await proposalCount()
 
-    await expect(acceptProposal(at('user', '2026-10-12T15:00:00.000Z'), step2.proposal_id)).rejects.toMatchObject({
+    await expect(
+      acceptProposal(at('user', '2026-10-12T15:00:00.000Z'), step2.proposal_id),
+    ).rejects.toMatchObject({
       status: 409,
       code: 'not_due',
       message: expect.stringContaining('2026-10-14'),
@@ -150,7 +194,9 @@ describe('a split kcal move is one series', () => {
     })) as ApplyReviewResult
     expect(applied.scheduled).toHaveLength(1)
 
-    const reverted = (await callTool(sunday, 'revert_review', { review_id: applied.review_id })) as RevertReviewResult
+    const reverted = (await callTool(sunday, 'revert_review', {
+      review_id: applied.review_id,
+    })) as RevertReviewResult
 
     expect(reverted.plan_version).not.toBeNull()
     expect(await status(applied.scheduled[0]!.proposal_id)).toBe('rejected')

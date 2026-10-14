@@ -25,7 +25,9 @@ export async function syncFastDates(deps: Deps): Promise<void> {
   const rows = await deps.db
     .select()
     .from(week_plans)
-    .where(and(inArray(week_plans.status, ['active', 'proposed']), gte(week_plans.week_start, addDays(date, -6))))
+    .where(
+      and(inArray(week_plans.status, ['active', 'proposed']), gte(week_plans.week_start, addDays(date, -6))),
+    )
   const byWeek = new Map<string, string[]>()
   for (const plan of rows.flatMap((r) => toWeekPlan(r) ?? [])) {
     if (!byWeek.has(plan.week_start)) byWeek.set(plan.week_start, await weekFastDates(deps, plan.week_start))
@@ -35,7 +37,10 @@ export async function syncFastDates(deps: Deps): Promise<void> {
 
     const content: WeekPlanContent = { ...plan.plan, fast_dates }
     const now = deps.now().toISOString()
-    const update = deps.db.update(week_plans).set({ plan: content, updated_at: now }).where(eq(week_plans.id, plan.id))
+    const update = deps.db
+      .update(week_plans)
+      .set({ plan: content, updated_at: now })
+      .where(eq(week_plans.id, plan.id))
     if (plan.status !== 'active') {
       await update
       continue

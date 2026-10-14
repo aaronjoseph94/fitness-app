@@ -37,7 +37,16 @@ export interface ExercisePickerProps {
   title?: string
 }
 
-export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscleAs, keepOpen = false, pickedIds, title }: ExercisePickerProps) {
+export function ExercisePicker({
+  open,
+  onClose,
+  onPick,
+  initialFilter,
+  sameMuscleAs,
+  keepOpen = false,
+  pickedIds,
+  title,
+}: ExercisePickerProps) {
   const index = useExerciseIndex()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<ExerciseFilter>({})
@@ -58,7 +67,10 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
   const target = sameMuscleAs ? index.byId.get(sameMuscleAs) : undefined
   const swap = sameMuscleAs !== undefined
   // Swap mode: the candidates before any search or chip, so the equipment chip offers only what they use.
-  const pool = useMemo(() => (swap && target ? sameMuscleCandidates(index.all, target, pickedIds) : []), [swap, target, index.all, pickedIds])
+  const pool = useMemo(
+    () => (swap && target ? sameMuscleCandidates(index.all, target, pickedIds) : []),
+    [swap, target, index.all, pickedIds],
+  )
   const equipment = useMemo(() => equipmentValues(swap ? pool : index.allowed), [swap, pool, index.allowed])
 
   const results = useMemo(() => {
@@ -116,12 +128,20 @@ export function ExercisePicker({ open, onClose, onPick, initialFilter, sameMuscl
         ) : index.error && index.all.length === 0 ? (
           <LoadProblem what="The exercise library" error={index.error} onRetry={index.refetch} />
         ) : index.paused ? (
-          <EmptyState compact title="Not loaded yet" body="The library isn't on this device yet — connect once to load it." />
+          <EmptyState
+            compact
+            title="Not loaded yet"
+            body="The library isn't on this device yet — connect once to load it."
+          />
         ) : results.length === 0 ? (
           <EmptyState
             compact
             title={swap ? 'No other exercise for that muscle' : 'No exercise matches'}
-            body={swap ? 'Your equipment profile, exclusions and the exercises already picked leave nothing else here.' : 'Try fewer words or clear a filter.'}
+            body={
+              swap
+                ? 'Your equipment profile, exclusions and the exercises already picked leave nothing else here.'
+                : 'Try fewer words or clear a filter.'
+            }
           />
         ) : (
           // Full-bleed in the sheet: the rows bring their own 20 px gutter, so thumbs line up with the search box.

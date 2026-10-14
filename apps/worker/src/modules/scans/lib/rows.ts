@@ -21,9 +21,15 @@ export function toRecord(row: ScanRow, segments: readonly SegmentRow[]): ScanRec
     sex: row.sex,
     ...Object.fromEntries(METRIC_KEYS.map((k) => [k, row[k]])),
     segments: Object.fromEntries(segments.map((s) => [s.segment, { lean_kg: s.lean_kg, fat_kg: s.fat_kg }])),
-    conditions: row.conditions ?? { time_of_day: 'morning', fasted: null, hours_since_training: null, notes: null },
+    conditions: row.conditions ?? {
+      time_of_day: 'morning',
+      fasted: null,
+      hours_since_training: null,
+      notes: null,
+    },
   })
-  if (!parsed.success) console.warn(`scan ${row.id} is confirmed but does not match ScanRecord; shown unconfirmed`)
+  if (!parsed.success)
+    console.warn(`scan ${row.id} is confirmed but does not match ScanRecord; shown unconfirmed`)
   return parsed.success ? parsed.data : null
 }
 
@@ -35,7 +41,9 @@ export function toDraft(row: ScanRow): ScanDraft | null {
 }
 
 /** Columns of `scans` a confirmed record sets (metrics, identity, conditions; date = Edmonton date of scanned_at). */
-export function recordColumns(record: ScanRecord): Partial<NewRow<typeof scans>> & { conditions: ScanConditions } {
+export function recordColumns(
+  record: ScanRecord,
+): Partial<NewRow<typeof scans>> & { conditions: ScanConditions } {
   const { segments: _segments, ...columns } = record
   return { ...columns, date: localDate(record.scanned_at), confirmed: true }
 }

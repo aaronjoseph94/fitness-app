@@ -21,7 +21,15 @@ function moved(d: Drag, dx: number, dy: number): MaskBox {
   return { x, y, w: b.x + b.w - x, h: b.y + b.h - y }
 }
 
-export function MaskEditor({ sheet, box, onChange }: { sheet: HTMLCanvasElement; box: MaskBox; onChange: (box: MaskBox) => void }) {
+export function MaskEditor({
+  sheet,
+  box,
+  onChange,
+}: {
+  sheet: HTMLCanvasElement
+  box: MaskBox
+  onChange: (box: MaskBox) => void
+}) {
   const view = useRef<HTMLCanvasElement>(null)
   const frame = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
@@ -39,7 +47,13 @@ export function MaskEditor({ sheet, box, onChange }: { sheet: HTMLCanvasElement;
     e.preventDefault()
     e.stopPropagation()
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    drag.current = { mode, startX: e.clientX, startY: e.clientY, start: box, rect: frame.current.getBoundingClientRect() }
+    drag.current = {
+      mode,
+      startX: e.clientX,
+      startY: e.clientY,
+      start: box,
+      rect: frame.current.getBoundingClientRect(),
+    }
   }
   const move = (e: ReactPointerEvent<HTMLElement>) => {
     const d = drag.current
@@ -71,8 +85,25 @@ export function MaskEditor({ sheet, box, onChange }: { sheet: HTMLCanvasElement;
   )
 
   return (
-    <Box ref={frame} data-testid="scan-mask-editor" sx={{ position: 'relative', width: '100%', userSelect: 'none', border: `1px solid ${tokens.ink.border}`, borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', touchAction: 'pan-y' }}>
-      <Box component="canvas" ref={view} aria-label="The result sheet" sx={{ display: 'block', width: '100%', height: 'auto' }} />
+    <Box
+      ref={frame}
+      data-testid="scan-mask-editor"
+      sx={{
+        position: 'relative',
+        width: '100%',
+        userSelect: 'none',
+        border: `1px solid ${tokens.ink.border}`,
+        borderRadius: `${tokens.radius.control}px`,
+        overflow: 'hidden',
+        touchAction: 'pan-y',
+      }}
+    >
+      <Box
+        component="canvas"
+        ref={view}
+        aria-label="The result sheet"
+        sx={{ display: 'block', width: '100%', height: 'auto' }}
+      />
       <Box
         data-testid="scan-mask-box"
         aria-label="Black box hiding the name: drag to move, drag a corner to resize"

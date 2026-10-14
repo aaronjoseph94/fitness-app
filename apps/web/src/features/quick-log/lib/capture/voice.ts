@@ -21,7 +21,10 @@ type RecognitionConstructor = new () => Recognition
 
 function recognitionConstructor(): RecognitionConstructor | null {
   if (typeof window === 'undefined') return null
-  const w = window as unknown as { SpeechRecognition?: RecognitionConstructor; webkitSpeechRecognition?: RecognitionConstructor }
+  const w = window as unknown as {
+    SpeechRecognition?: RecognitionConstructor
+    webkitSpeechRecognition?: RecognitionConstructor
+  }
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 

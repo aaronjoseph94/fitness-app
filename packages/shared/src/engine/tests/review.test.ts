@@ -41,12 +41,22 @@ describe('weeklyMetrics', () => {
   })
 
   test('intake averages the 6 logged days with the fast day at 0 kcal: 5 × 1,400 / 6 = 1,167 kcal', () => {
-    expect(week).toMatchObject({ days_logged: 6, intake_avg: { kcal: 1167, protein_g: 112.5 }, protein_adherence: 1 })
+    expect(week).toMatchObject({
+      days_logged: 6,
+      intake_avg: { kcal: 1167, protein_g: 112.5 },
+      protein_adherence: 1,
+    })
   })
 
   test('trend 95.0 (the Sunday before) → 94.3 kg; 6 of 7 days adherent; 4 of 4 sessions', () => {
     expect(week.trend_change_kg).toBeCloseTo(-0.7, 10)
-    expect(week).toMatchObject({ logging_adherence: 6 / 7, sessions_done: 4, sessions_planned: 4, steps_avg: 8000, water_avg_ml: 3000 })
+    expect(week).toMatchObject({
+      logging_adherence: 6 / 7,
+      sessions_done: 4,
+      sessions_planned: 4,
+      steps_avg: 8000,
+      water_avg_ml: 3000,
+    })
   })
 
   test('a 23 h fast of 24 is completed (≥ 95 %), 20 h is partial, one with no end is active', () => {

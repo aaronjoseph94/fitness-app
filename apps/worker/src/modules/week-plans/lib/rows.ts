@@ -1,7 +1,14 @@
 // Owns: week_plans rows ↔ the WeekPlan contract (the plan JSON parsed with its schema on read, since MCP and the LLM
 // feed it), the reads every operation starts from, and the author ↔ actor mapping.
 import { addDays, today } from '@fitness/shared/engine'
-import { WeekPlanContent, type Actor, type DailyTargets, type WeekPlan, type WeekPlanAuthor, type WeekPlanQuery } from '@fitness/shared/schemas'
+import {
+  WeekPlanContent,
+  type Actor,
+  type DailyTargets,
+  type WeekPlan,
+  type WeekPlanAuthor,
+  type WeekPlanQuery,
+} from '@fitness/shared/schemas'
 import { and, asc, between, desc, eq, type SQL } from 'drizzle-orm'
 import { daily_targets, week_plans, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -18,7 +25,11 @@ export const AUTHOR_OF: Record<Actor, WeekPlanAuthor> = { mcp: 'claude_mcp', ai:
 /** The actor whose guards a plan passes (the ±150 kcal step binds ai and mcp, not Aaron). */
 export const ACTOR_OF: Record<WeekPlanAuthor, Actor> = { claude_mcp: 'mcp', gemini: 'ai', user: 'user' }
 /** In event summaries and tool output, which an LLM may read: never Aaron's name, and never a provider's either. */
-export const AUTHOR_LABEL: Record<WeekPlanAuthor, string> = { claude_mcp: 'Claude', gemini: 'the AI', user: 'you' }
+export const AUTHOR_LABEL: Record<WeekPlanAuthor, string> = {
+  claude_mcp: 'Claude',
+  gemini: 'the AI',
+  user: 'you',
+}
 
 /** Row → contract, or null when the stored plan no longer matches its schema (skipped, logged). */
 export function toWeekPlan(row: WeekPlanRow): WeekPlan | null {
@@ -68,9 +79,15 @@ export async function listPlans(deps: Deps, query: WeekPlanQuery): Promise<WeekP
 }
 
 /** The week's active plan and its plans still proposed (newest first). */
-export async function weekState(deps: Deps, week_start: string): Promise<{ active: WeekPlan | null; proposed: WeekPlan[] }> {
+export async function weekState(
+  deps: Deps,
+  week_start: string,
+): Promise<{ active: WeekPlan | null; proposed: WeekPlan[] }> {
   const plans = await listPlans(deps, { week_start })
-  return { active: plans.find((p) => p.status === 'active') ?? null, proposed: plans.filter((p) => p.status === 'proposed') }
+  return {
+    active: plans.find((p) => p.status === 'active') ?? null,
+    proposed: plans.filter((p) => p.status === 'proposed'),
+  }
 }
 
 /** The week's stored daily targets from today on (past days are history). */

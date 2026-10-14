@@ -22,7 +22,15 @@ import {
 } from '@fitness/shared/schemas'
 import { and, between, count, desc, eq, inArray, isNotNull, lte } from 'drizzle-orm'
 import * as z from 'zod'
-import { daily_targets, exercises, scan_segments, scans, session_sets, workout_sessions, type Row } from '../../../db'
+import {
+  daily_targets,
+  exercises,
+  scan_segments,
+  scans,
+  session_sets,
+  workout_sessions,
+  type Row,
+} from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { days } from '../../day'
 import { listFasts } from '../../fasting'
@@ -35,7 +43,9 @@ const FLAG_LOOKBACK_DAYS = 22
 const round = (x: number, dp: number) => Math.round(x * 10 ** dp) / 10 ** dp
 const roundOrNull = (x: number | null, dp: number) => (x === null ? null : round(x, dp))
 const roundValues = <K extends string>(r: Partial<Record<K, number>>, dp: number) =>
-  Object.fromEntries(Object.entries(r).map(([k, v]) => [k, round(v as number, dp)])) as Partial<Record<K, number>>
+  Object.fromEntries(Object.entries(r).map(([k, v]) => [k, round(v as number, dp)])) as Partial<
+    Record<K, number>
+  >
 
 const StoredPrs = z.array(PersonalRecord)
 
@@ -75,13 +85,23 @@ export async function buildWeeklyMetrics(deps: Deps, week_start: string): Promis
     now,
   })
   const week = series.filter((d) => d.date >= week_start && d.date <= week_end)
-  const targeted = week.filter((d): d is DaySummary & { targets: NonNullable<DaySummary['targets']> } => !d.is_fast_day && d.targets !== null)
+  const targeted = week.filter(
+    (d): d is DaySummary & { targets: NonNullable<DaySummary['targets']> } =>
+      !d.is_fast_day && d.targets !== null,
+  )
   const meanOf = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null)
 
-  const flags: ReviewFlag[] = safetyFlags({ as_of: week_end, days: series }).map((f) => ({ kind: f.kind, message: f.message }))
+  const flags: ReviewFlag[] = safetyFlags({ as_of: week_end, days: series }).map((f) => ({
+    kind: f.kind,
+    message: f.message,
+  }))
   if (scan?.lean_loss === 'lean_loss') {
-    const share = scan.lean_share_of_loss === null ? '' : ` (${Math.round(scan.lean_share_of_loss * 100)} % of the loss)`
-    flags.push({ kind: 'lean_loss', message: `Lean mass made up more than 25 % of the weight lost since the last scan${share}` })
+    const share =
+      scan.lean_share_of_loss === null ? '' : ` (${Math.round(scan.lean_share_of_loss * 100)} % of the loss)`
+    flags.push({
+      kind: 'lean_loss',
+      message: `Lean mass made up more than 25 % of the weight lost since the last scan${share}`,
+    })
   }
 
   return {
@@ -138,17 +158,37 @@ async function loadTraining(deps: Deps, from: string, to: string) {
       .from(session_sets)
       .innerJoin(workout_sessions, eq(workout_sessions.id, session_sets.session_id))
       .innerJoin(exercises, eq(exercises.id, session_sets.exercise_id))
-      .where(and(between(workout_sessions.date, from, to), isNotNull(workout_sessions.ended_at), eq(session_sets.completed, true))),
+      .where(
+        and(
+          between(workout_sessions.date, from, to),
+          isNotNull(workout_sessions.ended_at),
+          eq(session_sets.completed, true),
+        ),
+      ),
   ])
 
-  const tags = new Map(setRows.map((s) => [s.exercise_id, { id: s.exercise_id, primary_muscles: s.primary_muscles, secondary_muscles: s.secondary_muscles }]))
+  const tags = new Map(
+    setRows.map((s) => [
+      s.exercise_id,
+      { id: s.exercise_id, primary_muscles: s.primary_muscles, secondary_muscles: s.secondary_muscles },
+    ]),
+  )
   const names = new Map(setRows.map((s) => [s.exercise_id, s.name]))
   // One summary over the whole week: muscle scores and volume are sums over sets, so this equals Σ per session.
-  const summary = sessionSummary({ date: from, started_at: from, ended_at: from, sets: setRows, exercises: [...tags.values()], history: [] })
+  const summary = sessionSummary({
+    date: from,
+    started_at: from,
+    ended_at: from,
+    sets: setRows,
+    exercises: [...tags.values()],
+    history: [],
+  })
 
   const prs: ReviewPr[] = sessionRows.flatMap((s) => {
     const parsed = StoredPrs.safeParse(s.prs ?? [])
-    return parsed.success ? parsed.data.map((p) => ({ ...p, exercise_name: names.get(p.exercise_id) ?? 'Exercise' })) : []
+    return parsed.success
+      ? parsed.data.map((p) => ({ ...p, exercise_name: names.get(p.exercise_id) ?? 'Exercise' }))
+      : []
   })
   return {
     planned: planned[0]?.n ?? 0,
@@ -166,14 +206,24 @@ type SegmentRow = Row<typeof scan_segments>
 
 function scanLike(row: ScanRow, segments: readonly SegmentRow[]): ScanLike | null {
   const { weight_kg, lean_body_mass_kg, body_fat_mass_kg, total_body_water_kg } = row
-  if (weight_kg === null || lean_body_mass_kg === null || body_fat_mass_kg === null || total_body_water_kg === null) return null
+  if (
+    weight_kg === null ||
+    lean_body_mass_kg === null ||
+    body_fat_mass_kg === null ||
+    total_body_water_kg === null
+  )
+    return null
   return {
     ...row,
     weight_kg,
     lean_body_mass_kg,
     body_fat_mass_kg,
     total_body_water_kg,
-    segments: Object.fromEntries(segments.filter((s) => s.scan_id === row.id).map((s) => [s.segment, { lean_kg: s.lean_kg, fat_kg: s.fat_kg }])),
+    segments: Object.fromEntries(
+      segments
+        .filter((s) => s.scan_id === row.id)
+        .map((s) => [s.segment, { lean_kg: s.lean_kg, fat_kg: s.fat_kg }]),
+    ),
   }
 }
 
@@ -189,7 +239,10 @@ async function loadScanDelta(deps: Deps, from: string, to: string): Promise<Revi
     .orderBy(desc(scans.scanned_at))
     .limit(2)
   if (!latest || !previous || latest.date < from) return null
-  const segments = await db.select().from(scan_segments).where(inArray(scan_segments.scan_id, [latest.id, previous.id]))
+  const segments = await db
+    .select()
+    .from(scan_segments)
+    .where(inArray(scan_segments.scan_id, [latest.id, previous.id]))
   const a = scanLike(previous, segments)
   const b = scanLike(latest, segments)
   if (!a || !b) return null
@@ -215,7 +268,15 @@ async function loadScanDelta(deps: Deps, from: string, to: string): Promise<Revi
       const before = a.segments?.[segment]
       const after = b.segments?.[segment]
       return before && after
-        ? [{ segment, fat_from: before.fat_kg, fat_to: after.fat_kg, lean_from: before.lean_kg, lean_to: after.lean_kg }]
+        ? [
+            {
+              segment,
+              fat_from: before.fat_kg,
+              fat_to: after.fat_kg,
+              lean_from: before.lean_kg,
+              lean_to: after.lean_kg,
+            },
+          ]
         : []
     }),
     milestones_reached: c.milestones_reached.map((m) => m.label),

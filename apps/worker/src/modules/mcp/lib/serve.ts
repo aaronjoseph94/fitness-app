@@ -7,7 +7,10 @@ import { buildServer } from './server'
 
 export function serveMcp(request: Request, deps: Deps): Promise<Response> {
   const handler = createMcpHandler(() => buildServer(deps), {
-    onerror: (err) => console.warn(JSON.stringify({ level: 'warn', msg: 'mcp: request rejected or failed', error: err.message })),
+    onerror: (err) =>
+      console.warn(
+        JSON.stringify({ level: 'warn', msg: 'mcp: request rejected or failed', error: err.message }),
+      ),
   })
   return handler.fetch(request)
 }

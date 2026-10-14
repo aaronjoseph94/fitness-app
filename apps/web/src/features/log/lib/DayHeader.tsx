@@ -11,7 +11,19 @@ import type SvgIcon from '@mui/material/SvgIcon'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import type { ReactNode } from 'react'
-import { cardSurface, CountUp, formatNumber, formatShortDate, formatSigned, LoadProblem, MeterRow, PendingBadge, ProgressBar, statValue, StatusChip } from '../../../components'
+import {
+  cardSurface,
+  CountUp,
+  formatNumber,
+  formatShortDate,
+  formatSigned,
+  LoadProblem,
+  MeterRow,
+  PendingBadge,
+  ProgressBar,
+  statValue,
+  StatusChip,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, usePendingLogs, visibleSlots } from '../../quick-log'
 
@@ -36,7 +48,11 @@ const BORDER = `1px solid ${tokens.ink.border}`
 const cardSx = {
   ...cardSurface,
   display: 'grid',
-  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'minmax(0, 1.1fr) minmax(0, 2fr) minmax(0, 1fr)' },
+  gridTemplateColumns: {
+    xs: 'minmax(0, 1fr)',
+    md: 'repeat(2, minmax(0, 1fr))',
+    lg: 'minmax(0, 1.1fr) minmax(0, 2fr) minmax(0, 1fr)',
+  },
   minWidth: 0,
 } as const
 const partSx = { px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px`, minWidth: 0 } as const
@@ -53,9 +69,27 @@ const macrosSx = {
 const weighInSx = { ...partSx, borderTop: { xs: BORDER, md: 0 } } as const
 
 /** A part's label: 13/500 secondary with a 16 px faint glyph (2a "Eaten today", "Weigh-in"). */
-function PartLabel({ icon: Icon, children, extra }: { icon?: typeof SvgIcon; children: ReactNode; extra?: ReactNode }) {
+function PartLabel({
+  icon: Icon,
+  children,
+  extra,
+}: {
+  icon?: typeof SvgIcon
+  children: ReactNode
+  extra?: ReactNode
+}) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 20, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        minHeight: 20,
+        fontSize: tokens.font.size.label,
+        fontWeight: tokens.font.weight.label,
+        color: tokens.ink.label,
+      }}
+    >
       {Icon && <Icon aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint }} />}
       <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
         {children}
@@ -69,10 +103,7 @@ function PartLabel({ icon: Icon, children, extra }: { icon?: typeof SvgIcon; chi
 function BigValue({ value, unit }: { value: ReactNode; unit: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '6px', mt: '10px', flexWrap: 'wrap' }}>
-      <Box
-        component="span"
-        sx={{ ...statValue('medium'), lineHeight: 1 }}
-      >
+      <Box component="span" sx={{ ...statValue('medium'), lineHeight: 1 }}>
         {value}
       </Box>
       <Box component="span" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
@@ -82,10 +113,23 @@ function BigValue({ value, unit }: { value: ReactNode; unit: ReactNode }) {
   )
 }
 
-const captionSx = { fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary } as const
+const captionSx = {
+  fontSize: tokens.font.size.caption,
+  lineHeight: tokens.font.leading.caption,
+  color: tokens.ink.secondary,
+} as const
 const strongSx = { fontWeight: tokens.font.weight.heading, color: tokens.ink.text } as const
 
-export function DayHeader({ date, isToday, day, isLoading, error, onRetry, pendingMeals, onWeighIn }: DayHeaderProps) {
+export function DayHeader({
+  date,
+  isToday,
+  day,
+  isLoading,
+  error,
+  onRetry,
+  pendingMeals,
+  onWeighIn,
+}: DayHeaderProps) {
   if (isLoading && !day) return <DayHeaderSkeleton isToday={isToday} />
   if (!day) return <LoadProblem what={`The day ${date}`} error={error} onRetry={onRetry} />
 
@@ -113,9 +157,17 @@ export function DayHeader({ date, isToday, day, isLoading, error, onRetry, pendi
         >
           {isToday ? 'Eaten today' : 'Eaten'}
         </PartLabel>
-        <BigValue value={<CountUp value={eaten.kcal} delay={300} />} unit={t ? `/ ${formatNumber(t.kcal)} kcal` : 'kcal'} />
+        <BigValue
+          value={<CountUp value={eaten.kcal} delay={300} />}
+          unit={t ? `/ ${formatNumber(t.kcal)} kcal` : 'kcal'}
+        />
         <Box sx={{ mt: '12px' }}>
-          <ProgressBar value={t && t.kcal > 0 ? eaten.kcal / t.kcal : null} metric="calories" label="Calories against the day's target" delay={300} />
+          <ProgressBar
+            value={t && t.kcal > 0 ? eaten.kcal / t.kcal : null}
+            metric="calories"
+            label="Calories against the day's target"
+            delay={300}
+          />
         </Box>
         <Box sx={{ ...captionSx, mt: 2 }}>
           <Box component="span" sx={strongSx}>
@@ -128,18 +180,44 @@ export function DayHeader({ date, isToday, day, isLoading, error, onRetry, pendi
                   : `${formatNumber(-left)} kcal over the target`}
           </Box>
           {` · ${loggedSlots} of ${slots.length} slots logged`}
-          {nextSlot && nextPlanned !== null && ` · ${SLOT_LABEL[nextSlot].toLowerCase()} planned ${formatNumber(nextPlanned)}`}
+          {nextSlot &&
+            nextPlanned !== null &&
+            ` · ${SLOT_LABEL[nextSlot].toLowerCase()} planned ${formatNumber(nextPlanned)}`}
         </Box>
       </Box>
 
       <Box sx={macrosSx}>
         <PartLabel>Macros against {isToday ? 'today’s' : 'the day’s'} targets</PartLabel>
         <MacroGrid>
-          <MacroBar label="Protein" color={tokens.metric.protein} value={eaten.protein_g} target={t?.protein_g ?? null} kind="priority" />
-          <MacroBar label="Carbs" color={tokens.metric.carbs} value={eaten.carbs_g} target={t?.carbs_g ?? null} kind="limit" />
-          <MacroBar label="Fat" color={tokens.metric.fat} value={eaten.fat_g} target={t?.fat_g ?? null} kind="minimum" />
+          <MacroBar
+            label="Protein"
+            color={tokens.metric.protein}
+            value={eaten.protein_g}
+            target={t?.protein_g ?? null}
+            kind="priority"
+          />
+          <MacroBar
+            label="Carbs"
+            color={tokens.metric.carbs}
+            value={eaten.carbs_g}
+            target={t?.carbs_g ?? null}
+            kind="limit"
+          />
+          <MacroBar
+            label="Fat"
+            color={tokens.metric.fat}
+            value={eaten.fat_g}
+            target={t?.fat_g ?? null}
+            kind="minimum"
+          />
           {/* No fibre colour in the metric palette: 2a's fibre green is the success tone's solid. */}
-          <MacroBar label="Fibre" color={tokens.tone.success.solid} value={eaten.fibre_g} target={t?.fibre_g ?? null} kind="limit" />
+          <MacroBar
+            label="Fibre"
+            color={tokens.tone.success.solid}
+            value={eaten.fibre_g}
+            target={t?.fibre_g ?? null}
+            kind="limit"
+          />
         </MacroGrid>
       </Box>
 
@@ -173,7 +251,9 @@ function MacroGrid({ children }: { children: ReactNode }) {
 const MACROS = ['Protein', 'Carbs', 'Fat', 'Fibre'] as const
 
 /** A value still loading: a text-line placeholder in the value's own font, so the line keeps its height. */
-const pendingValue = (width: number) => <Skeleton variant="text" width={width} sx={{ display: 'inline-block' }} />
+const pendingValue = (width: number) => (
+  <Skeleton variant="text" width={width} sx={{ display: 'inline-block' }} />
+)
 
 /** The card while the day loads, part for part the loaded card's boxes. */
 function DayHeaderSkeleton({ isToday }: { isToday: boolean }) {
@@ -196,7 +276,17 @@ function DayHeaderSkeleton({ isToday }: { isToday: boolean }) {
         <PartLabel>Macros against {isToday ? 'today’s' : 'the day’s'} targets</PartLabel>
         <MacroGrid>
           {MACROS.map((label) => (
-            <MeterRow key={label} label={label} value={null} target={null} unit="g" color={tokens.ink.fill} caption={null} loading delay={400} />
+            <MeterRow
+              key={label}
+              label={label}
+              value={null}
+              target={null}
+              unit="g"
+              color={tokens.ink.fill}
+              caption={null}
+              loading
+              delay={400}
+            />
           ))}
         </MacroGrid>
       </Box>
@@ -217,15 +307,39 @@ function DayHeaderSkeleton({ isToday }: { isToday: boolean }) {
  */
 type MacroKind = 'priority' | 'minimum' | 'limit'
 
-function macroCaption(kind: MacroKind, value: number, target: number): { text: string; tone: 'warning' | 'success' | 'muted' } {
+function macroCaption(
+  kind: MacroKind,
+  value: number,
+  target: number,
+): { text: string; tone: 'warning' | 'success' | 'muted' } {
   const gap = Math.round(target - value)
-  if (kind === 'priority') return gap > 0 ? { text: `${formatNumber(gap)} g to go`, tone: 'warning' } : { text: 'Target met', tone: 'success' }
-  if (kind === 'minimum') return gap > 0 ? { text: `${formatNumber(gap)} g to the minimum`, tone: 'muted' } : { text: 'Minimum met', tone: 'success' }
-  return gap >= 0 ? { text: `${formatNumber(gap)} g left`, tone: 'muted' } : { text: `${formatNumber(-gap)} g over`, tone: 'muted' }
+  if (kind === 'priority')
+    return gap > 0
+      ? { text: `${formatNumber(gap)} g to go`, tone: 'warning' }
+      : { text: 'Target met', tone: 'success' }
+  if (kind === 'minimum')
+    return gap > 0
+      ? { text: `${formatNumber(gap)} g to the minimum`, tone: 'muted' }
+      : { text: 'Minimum met', tone: 'success' }
+  return gap >= 0
+    ? { text: `${formatNumber(gap)} g left`, tone: 'muted' }
+    : { text: `${formatNumber(-gap)} g over`, tone: 'muted' }
 }
 
 /** One macro against its target, with how its gap reads under the bar. */
-function MacroBar({ label, color, value, target, kind }: { label: string; color: string; value: number; target: number | null; kind: MacroKind }) {
+function MacroBar({
+  label,
+  color,
+  value,
+  target,
+  kind,
+}: {
+  label: string
+  color: string
+  value: number
+  target: number | null
+  kind: MacroKind
+}) {
   const caption = target !== null ? macroCaption(kind, value, target) : null
   return (
     <MeterRow
@@ -243,7 +357,9 @@ function MacroBar({ label, color, value, target, kind }: { label: string; color:
 }
 
 function WeighIn({ date, day, onWeighIn }: { date: string; day: DayView; onWeighIn: () => void }) {
-  const pending = usePendingLogs(endpoints.body.createWeight).filter((p) => p.body.date === date).at(-1)
+  const pending = usePendingLogs(endpoints.body.createWeight)
+    .filter((p) => p.body.date === date)
+    .at(-1)
   const raw = pending?.body.weight_kg ?? day.weight.raw_kg
   const { trend_kg: trend, change_7d_kg: change } = day.weight
   return (
@@ -264,7 +380,13 @@ function WeighIn({ date, day, onWeighIn }: { date: string; day: DayView; onWeigh
             {change !== null && (
               <>
                 {' · '}
-                <Box component="span" sx={{ fontWeight: tokens.font.weight.heading, color: change < 0 ? tokens.tone.success.text : tokens.ink.label }}>
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: tokens.font.weight.heading,
+                    color: change < 0 ? tokens.tone.success.text : tokens.ink.label,
+                  }}
+                >
                   {formatSigned(change, 1)} kg
                 </Box>{' '}
                 over 7 days

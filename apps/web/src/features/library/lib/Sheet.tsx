@@ -23,7 +23,17 @@ export interface SheetProps {
   nested?: boolean
 }
 
-export function Sheet({ open, onClose, title, subtitle, header, footer, children, testId, nested = false }: SheetProps) {
+export function Sheet({
+  open,
+  onClose,
+  title,
+  subtitle,
+  header,
+  footer,
+  children,
+  testId,
+  nested = false,
+}: SheetProps) {
   return (
     <Drawer
       anchor="bottom"
@@ -47,20 +57,51 @@ export function Sheet({ open, onClose, title, subtitle, header, footer, children
         } as object,
       }}
     >
-      <Box sx={{ width: 36, height: 4, borderRadius: tokens.radius.chip, bgcolor: 'divider', mx: 'auto', mt: 2, flex: 'none' }} />
+      <Box
+        sx={{
+          width: 36,
+          height: 4,
+          borderRadius: tokens.radius.chip,
+          bgcolor: 'divider',
+          mx: 'auto',
+          mt: 2,
+          flex: 'none',
+        }}
+      />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pl: 5, pr: 2, pt: 1, flex: 'none' }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="sectionTitle" component="h2" sx={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          <Typography
+            variant="sectionTitle"
+            component="h2"
+            sx={{
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}
+          >
             {title}
           </Typography>
-          {subtitle && <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.25 }}>{subtitle}</Box>}
+          {subtitle && (
+            <Box sx={{ fontSize: tokens.font.size.label, color: tokens.ink.secondary, mt: 0.25 }}>
+              {subtitle}
+            </Box>
+          )}
         </Box>
         <IconButton aria-label="Close" onClick={onClose}>
           <CloseRounded />
         </IconButton>
       </Box>
       {header && <Box sx={{ px: 5, pt: 2, pb: 2, flex: 'none' }}>{header}</Box>}
-      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 5, pb: footer ? 2 : `calc(${tokens.space(6)}px + env(safe-area-inset-bottom, 0px))` }}>
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          px: 5,
+          pb: footer ? 2 : `calc(${tokens.space(6)}px + env(safe-area-inset-bottom, 0px))`,
+        }}
+      >
         {children}
       </Box>
       {footer && (

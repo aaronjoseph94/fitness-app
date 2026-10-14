@@ -3,12 +3,29 @@
 // Edmonton after 2026-11-01 differs between tz databases (2025b: back to MST −07:00 each winter; 2026c: UTC−6 all
 // year), so tests after that date assert what holds under either rule instead of a fixed offset.
 import { describe, expect, test } from 'vitest'
-import { addDays, daysBetween, eachDate, isoWeek, isoWeekRange, localDate, localMidnight, localTime, weekdayOf, weekStart } from '../index'
+import {
+  addDays,
+  daysBetween,
+  eachDate,
+  isoWeek,
+  isoWeekRange,
+  localDate,
+  localMidnight,
+  localTime,
+  weekdayOf,
+  weekStart,
+} from '../index'
 
 describe('local date and time of an instant', () => {
   test('in summer (MDT, UTC−6) the Edmonton day starts at 06:00Z', () => {
-    expect([localDate('2026-10-05T05:59:59.000Z'), localTime('2026-10-05T05:59:59.000Z')]).toEqual(['2026-10-04', '23:59'])
-    expect([localDate('2026-10-05T06:00:00.000Z'), localTime('2026-10-05T06:00:00.000Z')]).toEqual(['2026-10-05', '00:00'])
+    expect([localDate('2026-10-05T05:59:59.000Z'), localTime('2026-10-05T05:59:59.000Z')]).toEqual([
+      '2026-10-04',
+      '23:59',
+    ])
+    expect([localDate('2026-10-05T06:00:00.000Z'), localTime('2026-10-05T06:00:00.000Z')]).toEqual([
+      '2026-10-05',
+      '00:00',
+    ])
   })
 
   test('spring forward on 2026-03-08: 01:59 MST is followed by 03:00 MDT', () => {
@@ -23,14 +40,19 @@ describe('local date and time of an instant', () => {
 })
 
 describe('localMidnight', () => {
-  test.each(['2026-03-08', '2026-10-31', '2026-11-01', '2026-11-02', '2027-03-14', '2027-03-15', '2028-02-29'])(
-    '%s starts at 00:00 local, and the instant before it is the previous date',
-    (date) => {
-      const start = localMidnight(date)
-      expect([localDate(start), localTime(start)]).toEqual([date, '00:00'])
-      expect(localDate(start - 1)).toBe(addDays(date, -1))
-    },
-  )
+  test.each([
+    '2026-03-08',
+    '2026-10-31',
+    '2026-11-01',
+    '2026-11-02',
+    '2027-03-14',
+    '2027-03-15',
+    '2028-02-29',
+  ])('%s starts at 00:00 local, and the instant before it is the previous date', (date) => {
+    const start = localMidnight(date)
+    expect([localDate(start), localTime(start)]).toEqual([date, '00:00'])
+    expect(localDate(start - 1)).toBe(addDays(date, -1))
+  })
 
   test('a summer day starts at 06:00Z', () => {
     expect(new Date(localMidnight('2026-10-05')).toISOString()).toBe('2026-10-05T06:00:00.000Z')
@@ -39,7 +61,11 @@ describe('localMidnight', () => {
 
 describe('calendar arithmetic', () => {
   test('the 2028 leap day: 28 Feb + 1 = 29 Feb (a Tuesday), + 2 = 1 Mar; February 2028 has 29 days', () => {
-    expect([addDays('2028-02-28', 1), addDays('2028-02-28', 2), addDays('2028-02-29', 365)]).toEqual(['2028-02-29', '2028-03-01', '2029-02-28'])
+    expect([addDays('2028-02-28', 1), addDays('2028-02-28', 2), addDays('2028-02-29', 365)]).toEqual([
+      '2028-02-29',
+      '2028-03-01',
+      '2029-02-28',
+    ])
     expect(daysBetween('2028-02-01', '2028-03-01')).toBe(29)
     expect(weekdayOf('2028-02-29')).toBe('tue')
   })

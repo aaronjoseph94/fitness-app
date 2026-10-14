@@ -16,7 +16,13 @@ import { problemText, useApiMutation } from '../../../api'
 import { useMarkHidden, useRefreshLibrary } from './useExercises'
 import { tokens } from '../../../theme'
 
-const REASONS = ['Hurts / aggravates an injury', "My gym doesn't have it", "Don't like it", 'Floor exercise', 'Too technical'] as const
+const REASONS = [
+  'Hurts / aggravates an injury',
+  "My gym doesn't have it",
+  "Don't like it",
+  'Floor exercise',
+  'Too technical',
+] as const
 
 export interface HideForeverDialogProps {
   exercise: Pick<Exercise, 'id' | 'name'>
@@ -46,7 +52,14 @@ export function HideForeverDialog({ exercise, onClose, onHidden }: HideForeverDi
   }
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs" sx={{ zIndex: (t) => t.zIndex.modal + 2 }} aria-labelledby="hide-forever-title">
+    <Dialog
+      open
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      sx={{ zIndex: (t) => t.zIndex.modal + 2 }}
+      aria-labelledby="hide-forever-title"
+    >
       <DialogTitle id="hide-forever-title">Hide {exercise.name}?</DialogTitle>
       <DialogContent>
         <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', mb: 3 }}>
@@ -54,7 +67,13 @@ export function HideForeverDialog({ exercise, onClose, onHidden }: HideForeverDi
         </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 3 }}>
           {REASONS.map((r) => (
-            <Chip key={r} label={r} onClick={() => setReason(r)} color={reason === r ? 'primary' : 'default'} variant={reason === r ? 'filled' : 'outlined'} />
+            <Chip
+              key={r}
+              label={r}
+              onClick={() => setReason(r)}
+              color={reason === r ? 'primary' : 'default'}
+              variant={reason === r ? 'filled' : 'outlined'}
+            />
           ))}
         </Box>
         <TextField
@@ -72,7 +91,13 @@ export function HideForeverDialog({ exercise, onClose, onHidden }: HideForeverDi
       </DialogContent>
       <DialogActions sx={{ px: 6, pb: 4 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" color="error" disabled={!text || hide.isPending} onClick={submit} data-testid="hide-confirm">
+        <Button
+          variant="contained"
+          color="error"
+          disabled={!text || hide.isPending}
+          onClick={submit}
+          data-testid="hide-confirm"
+        >
           Hide forever
         </Button>
       </DialogActions>

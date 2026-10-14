@@ -18,11 +18,27 @@ export function MealReviewDialog({ meal, onClose }: { meal: MealView; onClose: (
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const [notice, setNotice] = useState<LogNotice | null>(null)
   return (
-    <Dialog open onClose={onClose} fullScreen={fullScreen} fullWidth maxWidth="sm" aria-labelledby="meal-review-title" data-testid="meal-review-dialog">
+    <Dialog
+      open
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="meal-review-title"
+      data-testid="meal-review-dialog"
+    >
       <DialogTitle id="meal-review-title" sx={{ display: 'flex', alignItems: 'center', gap: 2, pr: 2 }}>
         <Box sx={{ flex: 1 }}>
           Review {SLOT_LABEL[meal.slot].toLowerCase()}
-          <Box component="span" sx={{ ml: 2, fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.body, color: 'text.secondary' }}>
+          <Box
+            component="span"
+            sx={{
+              ml: 2,
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.body,
+              color: 'text.secondary',
+            }}
+          >
             {clockOf(meal.eatenAt)}
           </Box>
         </Box>

@@ -22,7 +22,15 @@ afterEach(async () => {
 })
 
 /** A Canadian Nutrient File row as build-seed.ts inserts it (values from seed/foods/cnf.json). */
-const cnf = (code: number, name: string, kcal: number, protein: number, carbs: number, fat: number, fibre: number): NewRow<typeof foods> => ({
+const cnf = (
+  code: number,
+  name: string,
+  kcal: number,
+  protein: number,
+  carbs: number,
+  fat: number,
+  fibre: number,
+): NewRow<typeof foods> => ({
   source: 'cnf',
   source_id: String(code),
   name,
@@ -63,7 +71,9 @@ describe('food sources', () => {
       sodium_mg: 43,
     })
     expect(calls).toHaveLength(1)
-    expect(calls[0]!.url).toContain('fields=code,product_name,brands,serving_size,nutriments,image_front_small_url')
+    expect(calls[0]!.url).toContain(
+      'fields=code,product_name,brands,serving_size,nutriments,image_front_small_url',
+    )
     expect(calls[0]!.userAgent).toBe('FitnessTracker/1.0 (personal, non-commercial)')
     // Open Food Facts needs no key, so none travels (a key in a request would end up in a log line).
     expect(calls[0]!.apiKey).toBeNull()
@@ -74,11 +84,13 @@ describe('food sources', () => {
   })
 
   it('matches "eggs" from the cache with zero external calls', async () => {
-    await db.insert(foods).values([
-      cnf(83, 'Egg, chicken, dried, whole', 592, 48.05, 1.13, 43.9, 0),
-      cnf(125, 'Egg, chicken, whole, fresh or frozen, raw', 152, 12.27, 0.79, 10.61, 0),
-      cnf(127, 'Egg, chicken, yolk, fresh or frozen, raw', 351, 16.47, 1.1, 30.43, 0),
-    ])
+    await db
+      .insert(foods)
+      .values([
+        cnf(83, 'Egg, chicken, dried, whole', 592, 48.05, 1.13, 43.9, 0),
+        cnf(125, 'Egg, chicken, whole, fresh or frozen, raw', 152, 12.27, 0.79, 10.61, 0),
+        cnf(127, 'Egg, chicken, yolk, fresh or frozen, raw', 351, 16.47, 1.1, 30.43, 0),
+      ])
     const { fetch, calls } = fakeFetch(REMOTE)
 
     const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'eggs', grams: 100 })
@@ -91,10 +103,23 @@ describe('food sources', () => {
   })
 
   it('prefers the Canadian Nutrient File over a branded Open Food Facts product for a generic "banana 120 g"', async () => {
-    await db.insert(foods).values([
-      cnf(1704, 'Banana, raw', 89, 1.09, 22.84, 0.33, 1.7),
-      { source: 'off', source_id: '01129441', barcode: '01129441', name: 'Banana', brand: 'fairtrade', kcal_per_100g: 89, protein_g: 1.1, carbs_g: 23, fat_g: 0.3, fibre_g: 2.6 },
-    ])
+    await db
+      .insert(foods)
+      .values([
+        cnf(1704, 'Banana, raw', 89, 1.09, 22.84, 0.33, 1.7),
+        {
+          source: 'off',
+          source_id: '01129441',
+          barcode: '01129441',
+          name: 'Banana',
+          brand: 'fairtrade',
+          kcal_per_100g: 89,
+          protein_g: 1.1,
+          carbs_g: 23,
+          fat_g: 0.3,
+          fibre_g: 2.6,
+        },
+      ])
     const { fetch, calls } = fakeFetch(REMOTE)
 
     const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'banana', grams: 120 })
@@ -109,13 +134,23 @@ describe('food sources', () => {
 
     const match = await createFoodSources(deps, { fetch }).matchItem({ name: 'Oikos Pro yogurt', grams: 200 })
 
-    expect(match?.food).toMatchObject({ source: 'off', source_id: '0056800100237', name: 'Oikos Pro Yogurt', brand: 'Oikos', kcal_per_100g: 90, protein_g: 15 })
+    expect(match?.food).toMatchObject({
+      source: 'off',
+      source_id: '0056800100237',
+      name: 'Oikos Pro Yogurt',
+      brand: 'Oikos',
+      kcal_per_100g: 90,
+      protein_g: 15,
+    })
     expect(match?.nutrients).toEqual({ kcal: 180, protein_g: 30, carbs_g: 10.6, fat_g: 4.6, fibre_g: 0 })
     expect(hosts(calls)).toEqual(['search.openfoodfacts.org'])
     expect(calls[0]!.apiKey).toBeNull()
 
     // The hit is cached, so the second lookup is local (a fresh instance shares the recording fetch).
-    const cached = await createFoodSources(deps, { fetch }).matchItem({ name: 'Oikos Pro yogurt', grams: 200 })
+    const cached = await createFoodSources(deps, { fetch }).matchItem({
+      name: 'Oikos Pro yogurt',
+      grams: 200,
+    })
     expect(cached?.food.id).toBe(match!.food.id)
     expect(calls).toHaveLength(1)
   })

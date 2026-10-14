@@ -35,7 +35,13 @@ const MAX_TOKENS = 3000
 
 export type DraftOutcome =
   | { status: 'skipped'; reason: 'claude_review'; review: WeeklyReview | null; output: WeeklyReviewOutput }
-  | { status: 'written'; source: 'llm' | 'engine'; review: WeeklyReview; output: WeeklyReviewOutput; meta: CallMeta | null }
+  | {
+      status: 'written'
+      source: 'llm' | 'engine'
+      review: WeeklyReview
+      output: WeeklyReviewOutput
+      meta: CallMeta | null
+    }
 
 export async function findReviewRow(deps: Deps, week_start: string): Promise<ReviewRow | null> {
   const [row] = await deps.db.select().from(weekly_reviews).where(eq(weekly_reviews.week_start, week_start))
@@ -111,8 +117,18 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
     meta = rest
   } catch (e) {
     source = 'engine'
-    console.warn(JSON.stringify({ level: 'warn', msg: 'weekly_review: router failed; writing the engine review', week_start, error: e instanceof Error ? e.message : String(e) }))
-    const engine = engineReview(metrics, 'The AI narrative was unavailable this time, so this is the engine summary; nothing was proposed.')
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        msg: 'weekly_review: router failed; writing the engine review',
+        week_start,
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    )
+    const engine = engineReview(
+      metrics,
+      'The AI narrative was unavailable this time, so this is the engine summary; nothing was proposed.',
+    )
     output = {
       narrative: engine.narrative.slice(0, MAX_NARRATIVE),
       highlights: clip(engine.highlights),
@@ -123,13 +139,22 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
   }
 
   // A redraft replaces the earlier AI draft: its proposals still pending are withdrawn (rejected) in the batch below.
-  const withdrawn = existing ? storedProposals(existing).filter((p) => p.event_id && p.status === 'pending').map((p) => p.event_id!) : []
+  const withdrawn = existing
+    ? storedProposals(existing)
+        .filter((p) => p.event_id && p.status === 'pending')
+        .map((p) => p.event_id!)
+    : []
   const statuses = withdrawn.length ? await proposalStatuses(ai, withdrawn) : new Map()
-  const withdraw = withdrawn.filter((id) => statuses.get(id) === 'pending').map((id) => proposalDecisionUpdate(ai, id, { status: 'rejected' }))
+  const withdraw = withdrawn
+    .filter((id) => statuses.get(id) === 'pending')
+    .map((id) => proposalDecisionUpdate(ai, id, { status: 'rejected' }))
 
   const week = isoWeek(week_start)
   const proposed = output.proposals.length
-    ? await proposalStatements(ai, { changes: output.proposals, reason: proposalReason(week, output.proposals) })
+    ? await proposalStatements(ai, {
+        changes: output.proposals,
+        reason: proposalReason(week, output.proposals),
+      })
     : null
   const proposals = proposed ? reviewProposals(proposed) : []
 
@@ -146,8 +171,16 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
     pdf_path: null,
     updated_at: now,
   }
-  const trend = metrics.trend_change_kg === null ? '' : `: trend ${metrics.trend_change_kg > 0 ? '+' : ''}${metrics.trend_change_kg.toFixed(1)} kg`
-  const event = eventInsert(ai, { kind: 'review', summary: `Weekly review ${week}${trend}`, body: { review_id: id, week_start }, date: addDays(week_start, 6) })
+  const trend =
+    metrics.trend_change_kg === null
+      ? ''
+      : `: trend ${metrics.trend_change_kg > 0 ? '+' : ''}${metrics.trend_change_kg.toFixed(1)} kg`
+  const event = eventInsert(ai, {
+    kind: 'review',
+    summary: `Weekly review ${week}${trend}`,
+    body: { review_id: id, week_start },
+    date: addDays(week_start, 6),
+  })
   await runBatch(ai.db, [
     ...withdraw,
     ...(proposed?.statements ?? []),
@@ -155,7 +188,11 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
       .insert(weekly_reviews)
       .values({ id, week_start, ...fields, created_at: now })
       // Never overwrite a Claude review written while this draft ran.
-      .onConflictDoUpdate({ target: weekly_reviews.week_start, set: fields, setWhere: sql`${weekly_reviews.author} = 'gemini'` }),
+      .onConflictDoUpdate({
+        target: weekly_reviews.week_start,
+        set: fields,
+        setWhere: sql`${weekly_reviews.author} = 'gemini'`,
+      }),
     event.statement,
   ])
 
@@ -165,7 +202,12 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
   if (row.author === 'gemini') {
     // The current targets, water and steps carried forward: the model's proposals are pending proposals, not the plan.
     const carried = fallbackPlan()
-    const drafted = { ...output.week_plan, targets: carried.targets, water_ml: carried.water_ml, steps: carried.steps }
+    const drafted = {
+      ...output.week_plan,
+      targets: carried.targets,
+      water_ml: carried.water_ml,
+      steps: carried.steps,
+    }
     await storeDraftPlan(ai, { week_start: next_start, review_id: row.id, plans: [drafted, carried] })
   }
   return { status: 'written', source, review, output, meta }
@@ -176,15 +218,37 @@ export async function draftReview(deps: Deps, llm: LlmRouter, week_start: string
  * a plan by Claude or Aaron is never replaced). The first candidate that passes the guards is kept — the model's plan,
  * else the carried-forward one. A failure here never fails the review.
  */
-async function storeDraftPlan(ai: Deps, input: { week_start: string; review_id: string; plans: WeekPlanContent[] }): Promise<void> {
+async function storeDraftPlan(
+  ai: Deps,
+  input: { week_start: string; review_id: string; plans: WeekPlanContent[] },
+): Promise<void> {
   try {
     for (const plan of input.plans) {
-      const r = await proposeWeekPlan(ai, { week_start: input.week_start, plan, author: 'gemini', review_id: input.review_id })
+      const r = await proposeWeekPlan(ai, {
+        week_start: input.week_start,
+        plan,
+        author: 'gemini',
+        review_id: input.review_id,
+      })
       if (r.week_plan || r.note) return
-      console.warn(JSON.stringify({ level: 'warn', msg: 'weekly_review: week plan draft rejected', week_start: input.week_start, rejected: r.rejected }))
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          msg: 'weekly_review: week plan draft rejected',
+          week_start: input.week_start,
+          rejected: r.rejected,
+        }),
+      )
     }
   } catch (e) {
-    console.warn(JSON.stringify({ level: 'warn', msg: 'weekly_review: week plan draft not stored', week_start: input.week_start, error: e instanceof Error ? e.message : String(e) }))
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        msg: 'weekly_review: week plan draft not stored',
+        week_start: input.week_start,
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    )
   }
 }
 
@@ -199,15 +263,29 @@ function reviewProposals(result: ProposalStatements): ReviewProposal[] {
   const same = (a: PlanChange, b: PlanChange) => a.field === b.field && a.weekday === b.weekday
   const out: ReviewProposal[] = []
   for (const change of result.accepted) {
-    const later = result.scheduled.filter((s) => same(s.change, change)).sort((a, b) => a.week_offset - b.week_offset)
+    const later = result.scheduled
+      .filter((s) => same(s.change, change))
+      .sort((a, b) => a.week_offset - b.week_offset)
     const steps = later.length + 1
-    out.push({ ...change, status: 'pending', event_id: result.proposal_id, note: steps > 1 ? `Step 1 of ${steps}` : null })
+    out.push({
+      ...change,
+      status: 'pending',
+      event_id: result.proposal_id,
+      note: steps > 1 ? `Step 1 of ${steps}` : null,
+    })
     for (const s of later)
-      out.push({ ...s.change, status: 'pending', event_id: s.proposal_id, note: `Step ${s.week_offset + 1} of ${steps}, due ${s.due}` })
+      out.push({
+        ...s.change,
+        status: 'pending',
+        event_id: s.proposal_id,
+        note: `Step ${s.week_offset + 1} of ${steps}, due ${s.due}`,
+      })
   }
   // A kcal move with nothing to apply this week (the rolling 150 kcal week): only its scheduled steps.
   const waiting = result.scheduled.filter((s) => !result.accepted.some((c) => same(c, s.change)))
-  for (const s of waiting) out.push({ ...s.change, status: 'pending', event_id: s.proposal_id, note: `Due ${s.due}` })
-  for (const r of result.rejected) out.push({ ...r.change, status: 'rejected', event_id: null, note: r.reason })
+  for (const s of waiting)
+    out.push({ ...s.change, status: 'pending', event_id: s.proposal_id, note: `Due ${s.due}` })
+  for (const r of result.rejected)
+    out.push({ ...r.change, status: 'rejected', event_id: null, note: r.reason })
   return out
 }

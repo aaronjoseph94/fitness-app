@@ -179,49 +179,54 @@ export function useSheetDrag({ onDismiss, dismissDistance = 96 }: SheetDragOptio
     g.paper.style.transform = `translateY(${offset}px)`
   }, [])
 
-  const onPointerUp = useCallback((event: ReactPointerEvent<HTMLElement>) => {
-    const g = gesture.current
-    if (g.pointerId !== event.pointerId) return
-    const { paper, active } = g
-    gesture.current = IDLE
-    if (!paper) return
-    if (!active) {
-      // It was a tap on the grabber: nothing was cancelled, so a settle that was already running simply carries on.
-      setDragging(false)
-      return
-    }
+  const onPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const g = gesture.current
+      if (g.pointerId !== event.pointerId) return
+      const { paper, active } = g
+      gesture.current = IDLE
+      if (!paper) return
+      if (!active) {
+        // It was a tap on the grabber: nothing was cancelled, so a settle that was already running simply carries on.
+        setDragging(false)
+        return
+      }
 
-    const height = paper.offsetHeight || 480
-    const offset = presentationOffset(paper)
-    const velocity = velocityFrom(g.samples)
-    // Apple decides dismiss-or-return from the velocity's *direction* when the release is a flick, and from the
-    // projected resting place when it is a slow let-go. Position alone is never the test.
-    const flicked = Math.abs(velocity) > FLICK_VELOCITY
-    const dismiss = flicked ? velocity > 0 : offset + projectMomentum(velocity) > Math.max(dismissDistance, height * 0.25)
-    // Overshoot only where the gesture itself carried momentum into the release.
-    const spring = Math.abs(velocity) > MOMENTUM_VELOCITY ? SPRING_MOMENTUM : SPRING_DEFAULT
-    const { frames, duration } = springFrames(spring, offset, dismiss ? height : 0, velocity)
-    const animation = paper.animate(frames, { duration, easing: 'linear', fill: 'forwards' })
-    settle.current = animation
-    setDragging(false)
-    animation.finished
-      .then(() => {
-        // Hand the element back to CSS before dismissing, so MUI's own exit starts from a clean state and a stale
-        // filling animation can never pin a reopened sheet off-screen.
-        settle.current = null
-        if (dismiss) {
-          paper.style.transform = `translateY(${height}px)`
-          animation.cancel()
-          dismissRef.current()
-        } else {
-          paper.style.removeProperty('transform')
-          animation.cancel()
-        }
-      })
-      .catch(() => {
-        // Interrupted: a new grab owns the transform from here, so there is nothing to clean up.
-      })
-  }, [dismissDistance])
+      const height = paper.offsetHeight || 480
+      const offset = presentationOffset(paper)
+      const velocity = velocityFrom(g.samples)
+      // Apple decides dismiss-or-return from the velocity's *direction* when the release is a flick, and from the
+      // projected resting place when it is a slow let-go. Position alone is never the test.
+      const flicked = Math.abs(velocity) > FLICK_VELOCITY
+      const dismiss = flicked
+        ? velocity > 0
+        : offset + projectMomentum(velocity) > Math.max(dismissDistance, height * 0.25)
+      // Overshoot only where the gesture itself carried momentum into the release.
+      const spring = Math.abs(velocity) > MOMENTUM_VELOCITY ? SPRING_MOMENTUM : SPRING_DEFAULT
+      const { frames, duration } = springFrames(spring, offset, dismiss ? height : 0, velocity)
+      const animation = paper.animate(frames, { duration, easing: 'linear', fill: 'forwards' })
+      settle.current = animation
+      setDragging(false)
+      animation.finished
+        .then(() => {
+          // Hand the element back to CSS before dismissing, so MUI's own exit starts from a clean state and a stale
+          // filling animation can never pin a reopened sheet off-screen.
+          settle.current = null
+          if (dismiss) {
+            paper.style.transform = `translateY(${height}px)`
+            animation.cancel()
+            dismissRef.current()
+          } else {
+            paper.style.removeProperty('transform')
+            animation.cancel()
+          }
+        })
+        .catch(() => {
+          // Interrupted: a new grab owns the transform from here, so there is nothing to clean up.
+        })
+    },
+    [dismissDistance],
+  )
 
   const onPointerCancel = useCallback(() => {
     const g = gesture.current

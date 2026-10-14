@@ -27,7 +27,9 @@ export function useUpdateSettings() {
       if (previous) {
         queryClient.setQueryData<SettingsView>(SETTINGS_KEY, {
           profile: input.body.profile ? { ...previous.profile, ...input.body.profile } : previous.profile,
-          settings: input.body.settings ? { ...previous.settings, ...input.body.settings } : previous.settings,
+          settings: input.body.settings
+            ? { ...previous.settings, ...input.body.settings }
+            : previous.settings,
         })
       }
       return previous

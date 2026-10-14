@@ -5,7 +5,17 @@
 // (print) draw it on the first render instead. If Recharts can't be fetched (offline before the service worker cached
 // it), the slot says so (2a's dashed empty slot) and the rest of the page stays.
 import Box from '@mui/material/Box'
-import { createContext, Suspense, use, useContext, useDeferredValue, useEffect, useState, type ReactNode, type RefObject } from 'react'
+import {
+  createContext,
+  Suspense,
+  use,
+  useContext,
+  useDeferredValue,
+  useEffect,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { LoadBoundary } from '../../components'
 import { preloadCharts, type RechartsModule } from '../preload'
 import { plotSlot, useWidth } from './frame'
@@ -30,9 +40,12 @@ function useNearViewport(ref: RefObject<HTMLDivElement | null>, skip: boolean): 
       setNear(true)
       return
     }
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) setNear(true)
-    }, { rootMargin: NEAR_VIEWPORT })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setNear(true)
+      },
+      { rootMargin: NEAR_VIEWPORT },
+    )
     observer.observe(el)
     return () => observer.disconnect()
   }, [ref, skip, near])

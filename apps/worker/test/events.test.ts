@@ -10,16 +10,24 @@ import { listEvents, recordEvent } from '../src/modules/events'
 
 const db = createDb(env.DB)
 const pending: Promise<unknown>[] = []
-const at = (now: string): Deps => ({ db, env, now: () => new Date(now), actor: 'ai', waitUntil: (p) => void pending.push(p.catch(() => undefined)) })
+const at = (now: string): Deps => ({
+  db,
+  env,
+  now: () => new Date(now),
+  actor: 'ai',
+  waitUntil: (p) => void pending.push(p.catch(() => undefined)),
+})
 afterEach(async () => {
   await Promise.all(pending.splice(0))
 })
-const note = (now: string, text: string) => recordEvent(at(now), { kind: 'note', summary: text, body: { text } })
+const note = (now: string, text: string) =>
+  recordEvent(at(now), { kind: 'note', summary: text, body: { text } })
 
 describe('listEvents since', () => {
   it('a full page of 200 continues from its last event, so the 5 newer ones arrive on the next poll', async () => {
     const ids: string[] = []
-    for (let i = 0; i < 205; i++) ids.push(await note(new Date(Date.parse('2026-10-05T14:00:00.000Z') + i * 1000).toISOString(), `n${i}`))
+    for (let i = 0; i < 205; i++)
+      ids.push(await note(new Date(Date.parse('2026-10-05T14:00:00.000Z') + i * 1000).toISOString(), `n${i}`))
 
     const first = await listEvents(at('2026-10-05T15:00:00.000Z'), { since: '2026-10-05T13:00:00.000Z' })
     const second = await listEvents(at('2026-10-05T15:00:00.000Z'), { since: first.server_time })
@@ -43,18 +51,28 @@ describe('listEvents latest', () => {
     const step = await recordEvent(at('2026-09-28T15:00:00.000Z'), {
       kind: 'proposal',
       summary: 'daily kcal 1550 → 1700 (step 2, due 2026-10-05)',
-      body: { kind: 'plan_change', changes: [{ field: 'kcal', weekday: null, from: 1550, to: 1700, reason: 'Coach' }] },
+      body: {
+        kind: 'plan_change',
+        changes: [{ field: 'kcal', weekday: null, from: 1550, to: 1700, reason: 'Coach' }],
+      },
       date: '2026-10-05',
       proposal_status: 'pending',
     })
     const later = await recordEvent(at('2026-09-28T15:00:00.000Z'), {
       kind: 'proposal',
       summary: 'daily kcal 1700 → 1850 (step 3, due 2026-10-12)',
-      body: { kind: 'plan_change', changes: [{ field: 'kcal', weekday: null, from: 1550, to: 1700, reason: 'Coach' }] },
+      body: {
+        kind: 'plan_change',
+        changes: [{ field: 'kcal', weekday: null, from: 1550, to: 1700, reason: 'Coach' }],
+      },
       date: '2026-10-12',
       proposal_status: 'pending',
     })
-    for (let i = 0; i < 60; i++) await note(new Date(Date.parse('2026-09-29T14:00:00.000Z') + i * 60_000).toISOString(), `meal note ${i}`)
+    for (let i = 0; i < 60; i++)
+      await note(
+        new Date(Date.parse('2026-09-29T14:00:00.000Z') + i * 60_000).toISOString(),
+        `meal note ${i}`,
+      )
 
     const { events } = await listEvents(at('2026-10-05T15:00:00.000Z'), {})
 

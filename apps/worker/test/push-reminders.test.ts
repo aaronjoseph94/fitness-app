@@ -36,7 +36,16 @@ const kinds = (run: Awaited<ReturnType<typeof dispatchReminders>>) => run.sent.m
 
 beforeAll(async () => {
   await db.batch([
-    db.insert(profile).values({ height_cm: 165.1, sex: 'male', goal_weight_kg: 65, goal_date: '2027-08-04', start_weight_kg: 95.1, start_date: '2026-09-26' }),
+    db
+      .insert(profile)
+      .values({
+        height_cm: 165.1,
+        sex: 'male',
+        goal_weight_kg: 65,
+        goal_date: '2027-08-04',
+        start_weight_kg: 95.1,
+        start_date: '2026-09-26',
+      }),
     db.insert(settings).values({
       protein_min_g: 130,
       fat_min_g: 45,
@@ -65,25 +74,38 @@ describe('reminders dispatcher', () => {
     expect((await dispatchReminders(at('2026-10-06T13:05:00.000Z'))).sent).toEqual([]) // 07:05: already sent today
     expect(kinds(await dispatchReminders(at('2026-10-07T13:00:00.000Z')))).toEqual(['weigh_in']) // Wed 07:00
     expect(delivered).toHaveLength(2)
-    expect(delivered[0]).toMatchObject({ endpoint: ENDPOINT, notification: { title: 'Weigh-in', url: '/', tag: 'weigh_in' } })
+    expect(delivered[0]).toMatchObject({
+      endpoint: ENDPOINT,
+      notification: { title: 'Weigh-in', url: '/', tag: 'weigh_in' },
+    })
   })
 
   it('sends the water reminder only when behind pace', async () => {
     // Thu 13:00: 6 of 15 waking hours gone → expected 3,000 × 0.4 = 1,200 ml. 500 ml logged is 700 ml behind.
-    await db.insert(water_logs).values({ date: '2026-10-08', logged_at: '2026-10-08T15:00:00.000Z', amount_ml: 500 })
+    await db
+      .insert(water_logs)
+      .values({ date: '2026-10-08', logged_at: '2026-10-08T15:00:00.000Z', amount_ml: 500 })
     const behind = await dispatchReminders(at('2026-10-08T19:00:00.000Z'))
-    expect(behind.sent).toMatchObject([{ kind: 'water', period_key: '2026-10-08T13:00', result: { sent: 1 } }])
-    expect(delivered[0]?.notification.body).toBe('0.5 L of 3.0 L so far, about 0.7 L behind pace. Have a glass now.')
+    expect(behind.sent).toMatchObject([
+      { kind: 'water', period_key: '2026-10-08T13:00', result: { sent: 1 } },
+    ])
+    expect(delivered[0]?.notification.body).toBe(
+      '0.5 L of 3.0 L so far, about 0.7 L behind pace. Have a glass now.',
+    )
 
     // Fri 13:00 with 1,500 ml logged: ahead of the 1,200 ml pace → nothing.
-    await db.insert(water_logs).values({ date: '2026-10-09', logged_at: '2026-10-09T16:00:00.000Z', amount_ml: 1500 })
+    await db
+      .insert(water_logs)
+      .values({ date: '2026-10-09', logged_at: '2026-10-09T16:00:00.000Z', amount_ml: 1500 })
     expect((await dispatchReminders(at('2026-10-09T19:00:00.000Z'))).sent).toEqual([])
     // Fri 12:00 is not a 2-hourly slot (09, 11, 13 …) → nothing either.
     expect((await dispatchReminders(at('2026-10-09T18:00:00.000Z'))).sent).toEqual([])
   })
 
   it('stays quiet when the kind is off', async () => {
-    await db.update(settings).set({ reminders: { ...DEFAULT_REMINDER_PREFS, weigh_in: { enabled: false, time: '07:00' } } })
+    await db
+      .update(settings)
+      .set({ reminders: { ...DEFAULT_REMINDER_PREFS, weigh_in: { enabled: false, time: '07:00' } } })
     expect((await dispatchReminders(at('2026-10-10T13:00:00.000Z'))).sent).toEqual([])
     await db.update(settings).set({ reminders: DEFAULT_REMINDER_PREFS })
   })
@@ -92,8 +114,15 @@ describe('reminders dispatcher', () => {
 describe('push', () => {
   it('drops a subscription the push service reports gone (410)', async () => {
     status = 410
-    expect(await sendTest(at('2026-10-06T18:00:00.000Z'))).toEqual({ configured: true, sent: 0, failed: 0, removed: 1 })
-    expect(await db.select().from(push_subscriptions).where(eq(push_subscriptions.endpoint, ENDPOINT))).toEqual([])
+    expect(await sendTest(at('2026-10-06T18:00:00.000Z'))).toEqual({
+      configured: true,
+      sent: 0,
+      failed: 0,
+      removed: 1,
+    })
+    expect(
+      await db.select().from(push_subscriptions).where(eq(push_subscriptions.endpoint, ENDPOINT)),
+    ).toEqual([])
   })
 
   it('sends nothing without VAPID keys or an adapter', async () => {

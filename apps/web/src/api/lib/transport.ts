@@ -49,7 +49,8 @@ export async function send(request: WireRequest, options: SendOptions = {}): Pro
     })
   } catch (cause) {
     if (options.signal?.aborted) throw cause
-    if (timeout.aborted) throw new ApiError({ kind: 'network', request: label, message: 'The server took too long to answer' })
+    if (timeout.aborted)
+      throw new ApiError({ kind: 'network', request: label, message: 'The server took too long to answer' })
     throw await classifyNoResponse(label)
   }
   if (isAccessBounce(response)) throw authExpired(label)
@@ -78,8 +79,12 @@ export async function fetchFile(url: string, options: { signal?: AbortSignal } =
 
 function encodeBody(body: unknown): { headers: Record<string, string>; body: BodyInit | undefined } {
   if (body === undefined) return { headers: { Accept: 'application/json' }, body: undefined }
-  if (isBinaryBody(body)) return { headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream' }, body }
-  return { headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  if (isBinaryBody(body))
+    return { headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream' }, body }
+  return {
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }
 }
 
 function isAccessBounce(response: Response): boolean {

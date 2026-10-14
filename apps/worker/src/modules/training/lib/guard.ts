@@ -15,10 +15,18 @@ import type { Library } from './library'
  * Guard context for workout / exercise_swap changes. `planned_fast_dates` is empty because these batches never carry
  * a fast change; the rails and plan are the real ones so the context stays valid for any change kind.
  */
-export async function guardContext(deps: Deps, library: Library, actor: Actor = deps.actor): Promise<GuardContext> {
+export async function guardContext(
+  deps: Deps,
+  library: Library,
+  actor: Actor = deps.actor,
+): Promise<GuardContext> {
   const [[s], [p]] = await deps.db.batch([
     deps.db.select().from(settings).limit(1),
-    deps.db.select({ targets: plan_versions.targets }).from(plan_versions).where(eq(plan_versions.active, true)).limit(1),
+    deps.db
+      .select({ targets: plan_versions.targets })
+      .from(plan_versions)
+      .where(eq(plan_versions.active, true))
+      .limit(1),
   ])
   if (!s || !p) throw notFound('Settings or the active plan version (seed the database)')
   return {
@@ -39,7 +47,10 @@ export async function guardContext(deps: Deps, library: Library, actor: Actor = 
 }
 
 /** One workout through the guards (allowed ids, no excluded category, 12–28 sets). */
-export function guardWorkout(ctx: GuardContext, exercises: readonly { exercise_id: string; sets: number }[]): GuardResult<WorkoutChange> {
+export function guardWorkout(
+  ctx: GuardContext,
+  exercises: readonly { exercise_id: string; sets: number }[],
+): GuardResult<WorkoutChange> {
   return applyGuards<WorkoutChange>([{ kind: 'workout', exercises }], ctx)
 }
 
@@ -49,12 +60,17 @@ export async function loadWorkoutProposal(deps: Deps, id: string): Promise<Propo
   if (!row) throw notFound('Proposal')
   const proposal = toProposal(row)
   if (!proposal || proposal.body.kind !== 'workout')
-    throw new HttpError(422, 'not_a_workout_proposal', 'Only a workout proposal can become a template or a session')
+    throw new HttpError(
+      422,
+      'not_a_workout_proposal',
+      'Only a workout proposal can become a template or a session',
+    )
   return proposal as ProposalOf<'workout'>
 }
 
 /** Mark a pending workout proposal accepted (no-op when already resolved), inside the caller's db.batch. */
-export const acceptStatement = (deps: Deps, proposal_id: string) => proposalDecisionUpdate(deps, proposal_id, { status: 'accepted' })
+export const acceptStatement = (deps: Deps, proposal_id: string) =>
+  proposalDecisionUpdate(deps, proposal_id, { status: 'accepted' })
 
 /** Rewrite a proposal's body (and touch it for the since-poll) when `when` holds, inside the caller's db.batch. */
 export function proposalBodyUpdate(deps: Deps, id: string, body: ProposalBody, when: SQL) {

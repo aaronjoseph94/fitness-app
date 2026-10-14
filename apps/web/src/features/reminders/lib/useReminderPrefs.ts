@@ -2,7 +2,13 @@
 // added later still shows). A change is one PATCH /api/settings with the whole map, shown at once and rolled back if
 // the Worker refuses. Not queued offline (settings writes need a connection).
 import { endpoints } from '@fitness/shared/api'
-import { DEFAULT_REMINDER_PREFS, type Reminder, type ReminderKind, type ReminderPrefs, type SettingsView } from '@fitness/shared/schemas'
+import {
+  DEFAULT_REMINDER_PREFS,
+  type Reminder,
+  type ReminderKind,
+  type ReminderPrefs,
+  type SettingsView,
+} from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiQueryKey, useApiMutation, useApiQuery } from '../../../api'
 
@@ -17,7 +23,11 @@ export function useReminderPrefs() {
       await queryClient.cancelQueries({ queryKey: SETTINGS_KEY })
       const previous = queryClient.getQueryData<SettingsView>(SETTINGS_KEY)
       const reminders = input.body.settings?.reminders
-      if (previous && reminders) queryClient.setQueryData<SettingsView>(SETTINGS_KEY, { ...previous, settings: { ...previous.settings, reminders } })
+      if (previous && reminders)
+        queryClient.setQueryData<SettingsView>(SETTINGS_KEY, {
+          ...previous,
+          settings: { ...previous.settings, reminders },
+        })
       return previous
     },
     onError: (_error, _input, previous) => {
@@ -27,7 +37,10 @@ export function useReminderPrefs() {
       if (outcome.status === 'saved') queryClient.setQueryData(SETTINGS_KEY, outcome.data)
     },
   })
-  const prefs: ReminderPrefs | undefined = query.data && { ...DEFAULT_REMINDER_PREFS, ...query.data.settings.reminders }
+  const prefs: ReminderPrefs | undefined = query.data && {
+    ...DEFAULT_REMINDER_PREFS,
+    ...query.data.settings.reminders,
+  }
   return {
     query,
     prefs,

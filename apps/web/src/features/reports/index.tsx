@@ -21,7 +21,9 @@ import { WeeklyReport } from './lib/WeeklyReport'
 
 /** True between the browser's beforeprint and afterprint, applied synchronously so the printout gets fixed widths. */
 function usePrinting(): boolean {
-  const [printing, setPrinting] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('print').matches)
+  const [printing, setPrinting] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('print').matches,
+  )
   useEffect(() => {
     const before = () => flushSync(() => setPrinting(true))
     const after = () => setPrinting(false)

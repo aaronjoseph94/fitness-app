@@ -3,7 +3,8 @@
 import { describe, expect, test } from 'vitest'
 import { deloadCheck, nextProgression, recoveryConflicts } from '../index'
 
-const sets = (reps: readonly number[], load_kg: number) => reps.map((r) => ({ reps: r, load_kg, completed: true }))
+const sets = (reps: readonly number[], load_kg: number) =>
+  reps.map((r) => ({ reps: r, load_kg, completed: true }))
 
 describe('double progression', () => {
   test('adds 2.5 kg to a dumbbell press after two sessions with every set at rep_max', () => {
@@ -46,14 +47,22 @@ describe('double progression', () => {
 
 describe('double progression: two sessions on one date', () => {
   test('started_at orders them: the later one is last session, whatever order the history comes in', () => {
-    const base = { exercise: { primary_muscles: ['shoulders'] as const, equipment: 'dumbbell' }, rep_min: 8, rep_max: 12, sets: 3 }
+    const base = {
+      exercise: { primary_muscles: ['shoulders'] as const, equipment: 'dumbbell' },
+      rep_min: 8,
+      rep_max: 12,
+      sets: 3,
+    }
     // Newest first, as a database read returns them: 08:00 at 20 kg, 16:30 at 25 kg, both on Mon 2026-11-02.
     const history = [
       { date: '2026-11-02', started_at: '2026-11-02T23:30:00.000Z', sets: sets([10, 10, 10], 25) },
       { date: '2026-11-02', started_at: '2026-11-02T15:00:00.000Z', sets: sets([10, 10, 10], 20) },
     ]
     expect(nextProgression({ ...base, history })).toMatchObject({ kind: 'hold', load_kg: 25 })
-    expect(nextProgression({ ...base, history: [...history].reverse() })).toMatchObject({ kind: 'hold', load_kg: 25 })
+    expect(nextProgression({ ...base, history: [...history].reverse() })).toMatchObject({
+      kind: 'hold',
+      load_kg: 25,
+    })
   })
 
   test('two same-day sessions at the top of the range count as two sessions running (+2.5 kg)', () => {
@@ -61,7 +70,15 @@ describe('double progression: two sessions on one date', () => {
       { date: '2026-11-02', started_at: '2026-11-02T23:30:00.000Z', sets: sets([12, 12, 12], 20) },
       { date: '2026-11-02', started_at: '2026-11-02T15:00:00.000Z', sets: sets([12, 12, 12], 20) },
     ]
-    expect(nextProgression({ exercise: { primary_muscles: ['shoulders'], equipment: 'dumbbell' }, rep_min: 8, rep_max: 12, sets: 3, history })).toMatchObject({ kind: 'increase', load_kg: 22.5 })
+    expect(
+      nextProgression({
+        exercise: { primary_muscles: ['shoulders'], equipment: 'dumbbell' },
+        rep_min: 8,
+        rep_max: 12,
+        sets: 3,
+        history,
+      }),
+    ).toMatchObject({ kind: 'increase', load_kg: 22.5 })
   })
 })
 
@@ -73,36 +90,74 @@ describe('double progression: increments', () => {
 
   test('an upper-body barbell lift adds 2.5 kg; an upper-body machine (chest press, stack) adds 5 kg', () => {
     const base = { rep_min: 6, rep_max: 10, sets: 3, history: topped }
-    expect(nextProgression({ ...base, exercise: { primary_muscles: ['chest'], equipment: 'barbell' } })).toMatchObject({ kind: 'increase', load_kg: 62.5 })
-    expect(nextProgression({ ...base, exercise: { primary_muscles: ['chest'], equipment: 'machine' } })).toMatchObject({ kind: 'increase', load_kg: 65 })
+    expect(
+      nextProgression({ ...base, exercise: { primary_muscles: ['chest'], equipment: 'barbell' } }),
+    ).toMatchObject({ kind: 'increase', load_kg: 62.5 })
+    expect(
+      nextProgression({ ...base, exercise: { primary_muscles: ['chest'], equipment: 'machine' } }),
+    ).toMatchObject({ kind: 'increase', load_kg: 65 })
   })
 
   test('the top of the range at a lower load last time is not two sessions at the same load: hold', () => {
     const history = [topped[0]!, { date: '2026-10-08', sets: sets([10, 10, 10], 57.5) }]
-    expect(nextProgression({ rep_min: 6, rep_max: 10, sets: 3, history, exercise: { primary_muscles: ['chest'], equipment: 'dumbbell' } })).toMatchObject({ kind: 'hold', load_kg: 57.5 })
+    expect(
+      nextProgression({
+        rep_min: 6,
+        rep_max: 10,
+        sets: 3,
+        history,
+        exercise: { primary_muscles: ['chest'], equipment: 'dumbbell' },
+      }),
+    ).toMatchObject({ kind: 'hold', load_kg: 57.5 })
   })
 })
 
 describe('deload', () => {
   test('a deload week keeps 60 % of the sets at the same load: 5 → 3, 4 → 2 (2.4), 3 → 2 (1.8)', () => {
     const at = (n: number) =>
-      nextProgression({ exercise: { primary_muscles: ['chest'], equipment: 'dumbbell' }, rep_min: 8, rep_max: 12, sets: n, deload_week: true, history: [{ date: '2026-10-05', sets: sets([10, 10], 20) }] })
-    expect([at(5), at(4), at(3)].map((p) => [p.kind, p.sets, p.load_kg])).toEqual([['deload', 3, 20], ['deload', 2, 20], ['deload', 2, 20]])
+      nextProgression({
+        exercise: { primary_muscles: ['chest'], equipment: 'dumbbell' },
+        rep_min: 8,
+        rep_max: 12,
+        sets: n,
+        deload_week: true,
+        history: [{ date: '2026-10-05', sets: sets([10, 10], 20) }],
+      })
+    expect([at(5), at(4), at(3)].map((p) => [p.kind, p.sets, p.load_kg])).toEqual([
+      ['deload', 3, 20],
+      ['deload', 2, 20],
+      ['deload', 2, 20],
+    ])
   })
 
   test('scheduled 6 weeks after the block began (41 days is 5 weeks: not yet)', () => {
     const base = { last_deload_on: null, training_started_on: '2026-10-05', recent_sessions: [] }
     expect(deloadCheck({ ...base, as_of: '2026-11-15' })).toMatchObject({ due: false, weeks_since: 5 })
-    expect(deloadCheck({ ...base, as_of: '2026-11-16' })).toMatchObject({ due: true, reason: 'scheduled', weeks_since: 6, sets_factor: 0.6 })
+    expect(deloadCheck({ ...base, as_of: '2026-11-16' })).toMatchObject({
+      due: true,
+      reason: 'scheduled',
+      weeks_since: 6,
+      sets_factor: 0.6,
+    })
   })
 
   test('two sessions running that miss the rep minimum on most sets propose a deload', () => {
-    const miss = (date: string) => ({ date, sets: [6, 6, 9].map((reps) => ({ reps, rep_min: 8, completed: true })) })
-    const hit = (date: string) => ({ date, sets: [8, 6, 9].map((reps) => ({ reps, rep_min: 8, completed: true })) })
+    const miss = (date: string) => ({
+      date,
+      sets: [6, 6, 9].map((reps) => ({ reps, rep_min: 8, completed: true })),
+    })
+    const hit = (date: string) => ({
+      date,
+      sets: [8, 6, 9].map((reps) => ({ reps, rep_min: 8, completed: true })),
+    })
     const base = { as_of: '2026-10-20', last_deload_on: null, training_started_on: '2026-10-05' }
 
-    expect(deloadCheck({ ...base, recent_sessions: [miss('2026-10-15'), miss('2026-10-19')] })).toMatchObject({ due: true, reason: 'missed_reps' })
-    expect(deloadCheck({ ...base, recent_sessions: [miss('2026-10-15'), hit('2026-10-19')] })).toMatchObject({ due: false })
+    expect(deloadCheck({ ...base, recent_sessions: [miss('2026-10-15'), miss('2026-10-19')] })).toMatchObject(
+      { due: true, reason: 'missed_reps' },
+    )
+    expect(deloadCheck({ ...base, recent_sessions: [miss('2026-10-15'), hit('2026-10-19')] })).toMatchObject({
+      due: false,
+    })
   })
 })
 

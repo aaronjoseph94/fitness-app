@@ -10,7 +10,17 @@ import { useUiStore } from '../../../app/ui-store'
 import { CalendarHeatmap, SleepChart, StepsChart, WaistWhrChart, WaterChart } from '../../../charts'
 import { ChartCard, Column, Columns, formatNumber, SectionHeader } from '../../../components'
 import { PhotosLink } from '../../photos'
-import { hasAny, latestTargets, loggingAdherence, proteinAdherence, SLEEP_TARGET_H, sleepNights, stepsDays, waistPoints, waterDays } from './series'
+import {
+  hasAny,
+  latestTargets,
+  loggingAdherence,
+  proteinAdherence,
+  SLEEP_TARGET_H,
+  sleepNights,
+  stepsDays,
+  waistPoints,
+  waterDays,
+} from './series'
 
 /** SPEC §3: waist-to-hip ratio under 0.90. */
 const WHR_TARGET = 0.9
@@ -33,7 +43,11 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
 
   return (
     <Box component="section" aria-labelledby="progress-detail-title">
-      <SectionHeader id="progress-detail" title="Measurements and adherence" subtitle="Tape, photos, water, steps, sleep and the daily calendars" />
+      <SectionHeader
+        id="progress-detail"
+        title="Measurements and adherence"
+        subtitle="Tape, photos, water, steps, sleep and the daily calendars"
+      />
       <Columns md={2}>
         <Column>
           <Box sx={{ display: 'grid', gap: 4 }}>
@@ -45,7 +59,10 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
                 empty={
                   waist.length
                     ? undefined
-                    : { title: 'No tape measurements in this range', body: 'Measure waist and hips once a week and both lines start here.' }
+                    : {
+                        title: 'No tape measurements in this range',
+                        body: 'Measure waist and hips once a week and both lines start here.',
+                      }
                 }
               >
                 <WaistWhrChart points={waist} whrTarget={WHR_TARGET} />
@@ -60,7 +77,11 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
               <ChartCard
                 title="Protein adherence"
                 titleSize="card"
-                subtitle={proteinTarget ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank` : 'Share of the protein target'}
+                subtitle={
+                  proteinTarget
+                    ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank`
+                    : 'Share of the protein target'
+                }
                 empty={meals ? undefined : { title: 'No meals logged in this range' }}
               >
                 <CalendarHeatmap
@@ -68,16 +89,28 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
                   metric="protein"
                   label="Protein adherence"
                   testId="chart-protein-adherence"
-                  describe={(v) => (v === null ? 'No meals logged or a fast day' : v >= 1 ? 'At or above target' : `${Math.round(v * 100)} % of target`)}
+                  describe={(v) =>
+                    v === null
+                      ? 'No meals logged or a fast day'
+                      : v >= 1
+                        ? 'At or above target'
+                        : `${Math.round(v * 100)} % of target`
+                  }
                 />
               </ChartCard>
-              <ChartCard title="Logging adherence" titleSize="card" subtitle="Weigh-in, two meals or a fast, and water: share of the three">
+              <ChartCard
+                title="Logging adherence"
+                titleSize="card"
+                subtitle="Weigh-in, two meals or a fast, and water: share of the three"
+              >
                 <CalendarHeatmap
                   days={loggingAdherence(rows)}
                   metric="weight"
                   label="Logging adherence"
                   testId="chart-logging-adherence"
-                  describe={(v) => (v === null ? 'No data' : v >= 1 ? 'All three logged' : `${Math.round(v * 3)} of 3 logged`)}
+                  describe={(v) =>
+                    v === null ? 'No data' : v >= 1 ? 'All three logged' : `${Math.round(v * 3)} of 3 logged`
+                  }
                 />
               </ChartCard>
             </Box>
@@ -112,11 +145,18 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
                 title="Steps"
                 titleSize="card"
                 fill
-                subtitle={targets ? `Per day with the 14-day median; target ${formatNumber(targets.steps)}` : 'Per day with the 14-day median'}
+                subtitle={
+                  targets
+                    ? `Per day with the 14-day median; target ${formatNumber(targets.steps)}`
+                    : 'Per day with the 14-day median'
+                }
                 empty={
                   hasAny(steps, (d) => d.steps)
                     ? undefined
-                    : { title: 'No steps in this range', body: 'Steps arrive from the Apple Watch Shortcut or the manual form.' }
+                    : {
+                        title: 'No steps in this range',
+                        body: 'Steps arrive from the Apple Watch Shortcut or the manual form.',
+                      }
                 }
               >
                 <StepsChart days={steps} target={targets?.steps} />
@@ -131,7 +171,10 @@ export function DetailSection({ trend, days }: DetailSectionProps) {
                 empty={
                   hasAny(sleep, (n) => n.hours)
                     ? undefined
-                    : { title: 'No sleep in this range', body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.' }
+                    : {
+                        title: 'No sleep in this range',
+                        body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.',
+                      }
                 }
               >
                 <SleepChart nights={sleep} target={SLEEP_TARGET_H} />

@@ -14,9 +14,13 @@ export interface ExclusionRules {
 }
 
 /** Why `ex` is outside the allowed exercise set, or null when nothing in `rules` excludes it. */
-export function exclusionReason(ex: Pick<LibraryExercise, 'name' | 'category' | 'equipment'>, rules: ExclusionRules): string | null {
+export function exclusionReason(
+  ex: Pick<LibraryExercise, 'name' | 'category' | 'equipment'>,
+  rules: ExclusionRules,
+): string | null {
   for (const r of rules.name_patterns) {
-    if (new RegExp(r.pattern, 'i').test(ex.name) && !r.except_equipment.includes(ex.equipment)) return r.reason
+    if (new RegExp(r.pattern, 'i').test(ex.name) && !r.except_equipment.includes(ex.equipment))
+      return r.reason
   }
   return (
     rules.categories.find((c) => c.category === ex.category)?.reason ??

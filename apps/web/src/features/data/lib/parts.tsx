@@ -30,7 +30,17 @@ export function DataCard({
 
 /** A 13 px muted line inside a card body (a status, a caveat). */
 export function Help({ children }: { children: ReactNode }) {
-  return <Box sx={{ fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.secondary }}>{children}</Box>
+  return (
+    <Box
+      sx={{
+        fontSize: tokens.font.size.small,
+        lineHeight: tokens.font.leading.small,
+        color: tokens.ink.secondary,
+      }}
+    >
+      {children}
+    </Box>
+  )
 }
 
 export function ProgressLine({
@@ -50,8 +60,27 @@ export function ProgressLine({
   return (
     <Box data-testid={testId}>
       <ProgressBar value={value} label={label} />
-      <Box sx={{ mt: 2, display: 'flex', gap: 2, fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
-        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
+      <Box
+        sx={{
+          mt: 2,
+          display: 'flex',
+          gap: 2,
+          fontSize: tokens.font.size.caption,
+          lineHeight: tokens.font.leading.caption,
+          color: tokens.ink.secondary,
+        }}
+      >
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            color: tokens.ink.text,
+            fontWeight: tokens.font.weight.label,
+          }}
+        >
           {label}
         </Box>
         <Box sx={{ ...tabularNums, whiteSpace: 'nowrap' }}>

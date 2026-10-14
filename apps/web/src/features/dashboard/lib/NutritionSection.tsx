@@ -22,7 +22,9 @@ export function NutritionSection({ data }: { data: DashboardData }) {
   const proteinTarget = targets?.protein_g
   // A window with no meals and no fast days has nothing to plot: say so instead of drawing empty axes.
   const hasMeals = rows.some((d) => d.meals_logged > 0 || d.is_fast_day)
-  const noMeals = hasMeals ? null : { title: 'No meals logged in this window', body: 'Each meal you log stacks into its slot here.' }
+  const noMeals = hasMeals
+    ? null
+    : { title: 'No meals logged in this window', body: 'Each meal you log stacks into its slot here.' }
 
   // The rails are the whole point of this section: the AI may move targets, but never below these.
   const { settings } = data
@@ -33,7 +35,11 @@ export function NutritionSection({ data }: { data: DashboardData }) {
   ].filter(Boolean)
 
   return (
-    <DashboardSection id="nutrition" title="Nutrition" subtitle="What went in against the targets and the rails">
+    <DashboardSection
+      id="nutrition"
+      title="Nutrition"
+      subtitle="What went in against the targets and the rails"
+    >
       <Columns md={2} lg={WIDE_ROW.tracks} align="stretch">
         <Column span={WIDE_ROW.wide} mdSpan={2}>
           <ChartCard
@@ -41,7 +47,11 @@ export function NutritionSection({ data }: { data: DashboardData }) {
             fill
             title="Calories per day, by meal"
             subtitle={rails.length ? rails.join(' · ') : 'kcal per day by meal slot'}
-            empty={noMeals ? { ...noMeals, action: { label: 'Log a meal', onClick: () => openQuickLog('meal') } } : null}
+            empty={
+              noMeals
+                ? { ...noMeals, action: { label: 'Log a meal', onClick: () => openQuickLog('meal') } }
+                : null
+            }
             testId="dashboard-calories"
           >
             <CaloriesChart days={caloriesDays(rows)} target={targets?.kcal} height={CALORIES_HEIGHT} />
@@ -57,7 +67,11 @@ export function NutritionSection({ data }: { data: DashboardData }) {
             titleSize="card"
             fill
             title="Protein adherence"
-            subtitle={proteinTarget ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank` : 'Share of the protein target'}
+            subtitle={
+              proteinTarget
+                ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank`
+                : 'Share of the protein target'
+            }
             empty={noMeals}
             testId="dashboard-protein"
           >
@@ -66,7 +80,13 @@ export function NutritionSection({ data }: { data: DashboardData }) {
               metric="protein"
               label="Protein adherence"
               testId="chart-protein-adherence"
-              describe={(v) => (v === null ? 'No meals logged or a fast day' : v >= 1 ? 'At or above target' : `${Math.round(v * 100)} % of target`)}
+              describe={(v) =>
+                v === null
+                  ? 'No meals logged or a fast day'
+                  : v >= 1
+                    ? 'At or above target'
+                    : `${Math.round(v * 100)} % of target`
+              }
             />
           </ChartCard>
         </Column>
@@ -75,7 +95,12 @@ export function NutritionSection({ data }: { data: DashboardData }) {
   )
 }
 
-const MACROS: readonly { key: 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'; label: string; color: string; floor?: true }[] = [
+const MACROS: readonly {
+  key: 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'
+  label: string
+  color: string
+  floor?: true
+}[] = [
   { key: 'protein_g', label: 'Protein', color: tokens.metric.protein },
   { key: 'carbs_g', label: 'Carbs', color: tokens.metric.carbs },
   // Fat's target is a minimum (settings.fat_min_g), not an amount to land on.
@@ -88,9 +113,18 @@ const MACROS: readonly { key: 'protein_g' | 'carbs_g' | 'fat_g' | 'fibre_g'; lab
  * 2a's "Macros, daily average": the mean grams of each macro over the days with meals logged (fast days excluded),
  * each as a 6 px bar against the latest target, and how many of those days fell short of the protein target.
  */
-function MacrosCard({ rows, targets, empty }: { rows: readonly DaySummary[]; targets: TargetValues | null; empty: { title: string; body: string } | null }) {
+function MacrosCard({
+  rows,
+  targets,
+  empty,
+}: {
+  rows: readonly DaySummary[]
+  targets: TargetValues | null
+  empty: { title: string; body: string } | null
+}) {
   const eaten = rows.filter((d) => d.meals_logged > 0 && !d.is_fast_day)
-  const avg = (key: (typeof MACROS)[number]['key']) => (eaten.length ? eaten.reduce((sum, d) => sum + d.intake[key], 0) / eaten.length : null)
+  const avg = (key: (typeof MACROS)[number]['key']) =>
+    eaten.length ? eaten.reduce((sum, d) => sum + d.intake[key], 0) / eaten.length : null
   const short = eaten.filter((d) => d.targets && d.intake.protein_g < d.targets.protein_g).length
   return (
     <ChartCard
@@ -99,7 +133,11 @@ function MacrosCard({ rows, targets, empty }: { rows: readonly DaySummary[]; tar
       title="Macros, daily average"
       subtitle={targets ? 'Grams against the targets' : 'Grams per day'}
       empty={empty}
-      caption={targets && eaten.length ? `Protein was short on ${short} of ${eaten.length} ${eaten.length === 1 ? 'day' : 'days'}.` : undefined}
+      caption={
+        targets && eaten.length
+          ? `Protein was short on ${short} of ${eaten.length} ${eaten.length === 1 ? 'day' : 'days'}.`
+          : undefined
+      }
       testId="dashboard-macros"
     >
       <Box sx={{ display: 'grid', gap: 3 }}>

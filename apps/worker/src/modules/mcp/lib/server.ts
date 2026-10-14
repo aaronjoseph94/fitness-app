@@ -60,13 +60,21 @@ export function buildServer(deps: Deps): McpServer {
   server.registerResource(
     'today',
     'fitness://today',
-    { title: 'Today', description: 'Today in Edmonton, exactly as get_today returns it.', mimeType: 'application/json' },
+    {
+      title: 'Today',
+      description: 'Today in Edmonton, exactly as get_today returns it.',
+      mimeType: 'application/json',
+    },
     async (uri) => json(uri, await callTool(deps, 'get_today', {})),
   )
   server.registerResource(
     'plan',
     'fitness://plan',
-    { title: 'Active plan', description: 'The active plan version with the rails, exactly as get_plan returns it.', mimeType: 'application/json' },
+    {
+      title: 'Active plan',
+      description: 'The active plan version with the rails, exactly as get_plan returns it.',
+      mimeType: 'application/json',
+    },
     async (uri) => json(uri, await callTool(deps, 'get_plan', {})),
   )
   server.registerResource(
@@ -76,12 +84,19 @@ export function buildServer(deps: Deps): McpServer {
       list: () => {
         const thisWeek = isoWeek(today(deps.now()))
         const nextWeek = isoWeek(addDays(isoWeekRange(thisWeek).from, 7))
-        return { resources: [thisWeek, nextWeek].map((w) => ({ uri: `fitness://week/${w}`, name: `Week ${w}`, mimeType: 'application/json' })) }
+        return {
+          resources: [thisWeek, nextWeek].map((w) => ({
+            uri: `fitness://week/${w}`,
+            name: `Week ${w}`,
+            mimeType: 'application/json',
+          })),
+        }
       },
     }),
     {
       title: 'Week plan',
-      description: "One ISO week's plan (YYYY-Www) with last week's actuals beside it, exactly as get_week_plan returns it.",
+      description:
+        "One ISO week's plan (YYYY-Www) with last week's actuals beside it, exactly as get_week_plan returns it.",
       mimeType: 'application/json',
     },
     async (uri, variables) => {
@@ -90,7 +105,10 @@ export function buildServer(deps: Deps): McpServer {
       try {
         monday = isoWeekRange(week).from
       } catch {
-        throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Not an ISO week: "${week}" (expected YYYY-Www, e.g. 2026-W41)`)
+        throw new ProtocolError(
+          ProtocolErrorCode.InvalidParams,
+          `Not an ISO week: "${week}" (expected YYYY-Www, e.g. 2026-W41)`,
+        )
       }
       return json(uri, await callTool(deps, 'get_week_plan', { week_start: monday }))
     },
@@ -100,10 +118,13 @@ export function buildServer(deps: Deps): McpServer {
 }
 
 function json(uri: URL, value: unknown): ReadResourceResult {
-  return { contents: [{ uri: uri.href, mimeType: 'application/json', text: redactName(JSON.stringify(value)) }] }
+  return {
+    contents: [{ uri: uri.href, mimeType: 'application/json', text: redactName(JSON.stringify(value)) }],
+  }
 }
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** Run one tool: the result as structuredContent plus the same JSON as text; any failure as an MCP tool error. */
 async function runTool(deps: Deps, name: string, args: ToolArgs): Promise<CallToolResult> {
@@ -125,15 +146,34 @@ function toolError(name: string, err: unknown, started: number): CallToolResult 
   if (err instanceof HttpError) {
     log(err.status >= 500 ? 'error' : 'warn', name, started, `${err.code}: ${err.message}`)
     const details = err.details === undefined ? '' : `\n${JSON.stringify(err.details)}`
-    return { isError: true, content: [{ type: 'text', text: redactName(`${err.code}: ${err.message}${details}`) }] }
+    return {
+      isError: true,
+      content: [{ type: 'text', text: redactName(`${err.code}: ${err.message}${details}`) }],
+    }
   }
   const message = err instanceof Error ? err.message : String(err)
   log('error', name, started, message, err instanceof Error ? err.stack : undefined)
-  return { isError: true, content: [{ type: 'text', text: `internal: ${name} failed on the server (${message})` }] }
+  return {
+    isError: true,
+    content: [{ type: 'text', text: `internal: ${name} failed on the server (${message})` }],
+  }
 }
 
-function log(level: 'info' | 'warn' | 'error', tool: string, started: number, error?: string, stack?: string) {
-  const line = JSON.stringify({ level, msg: 'mcp tool', tool, ms: Date.now() - started, ...(error && { error }), ...(stack && { stack }) })
+function log(
+  level: 'info' | 'warn' | 'error',
+  tool: string,
+  started: number,
+  error?: string,
+  stack?: string,
+) {
+  const line = JSON.stringify({
+    level,
+    msg: 'mcp tool',
+    tool,
+    ms: Date.now() - started,
+    ...(error && { error }),
+    ...(stack && { stack }),
+  })
   if (level === 'error') console.error(line)
   else if (level === 'warn') console.warn(line)
   else console.log(line)

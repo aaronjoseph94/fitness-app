@@ -10,14 +10,25 @@ import { minutesInBed } from './rows'
 const CLOCK_SKEW_MS = 5 * 60_000
 
 type StepRow = { id: string; date: string; steps: number; active_kcal: number | null }
-type SleepRow = { id: string; date: string; in_bed_at: string | null; woke_at: string | null; asleep_min: number }
+type SleepRow = {
+  id: string
+  date: string
+  in_bed_at: string | null
+  woke_at: string | null
+  asleep_min: number
+}
 
 /**
  * Upsert by date. A row with `steps` upserts that date's steps (active_kcal kept when the row has none); a row with
  * asleep minutes (given, or woke − in bed) upserts that night's sleep (date = the row's date, the wake date); a row
  * with neither, or dated after today, is skipped. Several rows for one date: the last wins.
  */
-export async function upsertImport(db: Db, actor: Actor, now: string, input: HealthImport): Promise<HealthImportResult> {
+export async function upsertImport(
+  db: Db,
+  actor: Actor,
+  now: string,
+  input: HealthImport,
+): Promise<HealthImportResult> {
   const steps = new Map<string, StepRow>()
   const sleep = new Map<string, SleepRow>()
   let skipped = 0
@@ -30,7 +41,12 @@ export async function upsertImport(db: Db, actor: Actor, now: string, input: Hea
     }
     const asleep = r.asleep_min ?? minutesInBed(r.in_bed_at, r.woke_at)
     if (r.steps !== undefined)
-      steps.set(r.date, { id: crypto.randomUUID(), date: r.date, steps: r.steps, active_kcal: r.active_kcal ?? null })
+      steps.set(r.date, {
+        id: crypto.randomUUID(),
+        date: r.date,
+        steps: r.steps,
+        active_kcal: r.active_kcal ?? null,
+      })
     if (asleep !== null)
       sleep.set(r.date, {
         id: crypto.randomUUID(),

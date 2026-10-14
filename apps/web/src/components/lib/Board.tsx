@@ -107,4 +107,3 @@ export function Column({ span = 1, mdSpan, xsSpan, smSpan, rowSpan, children }: 
     </Box>
   )
 }
-

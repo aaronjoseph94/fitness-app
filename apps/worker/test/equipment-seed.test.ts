@@ -19,7 +19,8 @@ const rules = toRules([], seed.equipment)
 
 /** Why this exercise is outside the allowed set, exactly as the app decides it (seed rules first, then the statuses). */
 const excludedBecause = (ex: (typeof library)[number]) =>
-  seedReason(ex, seed.exclusions) ?? exclusionReason({ id: '', name: ex.name, category: ex.category, equipment: ex.equipment }, rules)
+  seedReason(ex, seed.exclusions) ??
+  exclusionReason({ id: '', name: ex.name, category: ex.category, equipment: ex.equipment }, rules)
 
 const allowed = library.filter((ex) => excludedBecause(ex) === null)
 const byName = (name: string) => library.find((ex) => ex.name === name)!
@@ -112,14 +113,17 @@ describe("Aaron's equipment profile", () => {
       'elliptical',
     ])
     // Every absence explains itself: the reason is what the prompt's "Do not use" list and the library show.
-    for (const row of seed.equipment.filter((e) => e.status !== 'have')) expect(row.note, row.equipment).toBeTruthy()
+    for (const row of seed.equipment.filter((e) => e.status !== 'have'))
+      expect(row.note, row.equipment).toBeTruthy()
     expect(new Set(seed.equipment.map((e) => e.equipment)).size).toBe(seed.equipment.length)
   })
 
   it('allows exactly the exercises his floor can perform', () => {
     expect(library).toHaveLength(876)
     expect(allowed).toHaveLength(463) // 466, less the three kettlebell moves with no pictures (2026-10-09)
-    expect(allowed.filter((e) => e.category === 'strength' || e.category === 'powerlifting')).toHaveLength(418) // 421 less the same three
+    expect(allowed.filter((e) => e.category === 'strength' || e.category === 'powerlifting')).toHaveLength(
+      418,
+    ) // 421 less the same three
 
     // Machines he has: the Hammer Strength line files under the generic 'machine' in free-exercise-db, so the named
     // machines above are the only thing standing between these and the allowed set.

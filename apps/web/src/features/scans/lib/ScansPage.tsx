@@ -72,25 +72,64 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
       : scans > 0
         ? `Every ${interval} days from the ${scans === 1 ? 'baseline' : 'last scan'}.`
         : `The first scan is the baseline; then one every ${interval} days.`
-  const checks = ['Morning, before breakfast', 'Fasted, normal hydration', due ? `No training on ${formatShortDate(shiftDate(due, -1))}` : 'No training the day before']
+  const checks = [
+    'Morning, before breakfast',
+    'Fasted, normal hydration',
+    due ? `No training on ${formatShortDate(shiftDate(due, -1))}` : 'No training the day before',
+  ]
   return (
-    <Box component="section" aria-labelledby="scan-due-title" data-testid="scan-due" sx={{ ...panelSurface, px: '22px', py: '20px', minWidth: 0 }}>
+    <Box
+      component="section"
+      aria-labelledby="scan-due-title"
+      data-testid="scan-due"
+      sx={{ ...panelSurface, px: '22px', py: '20px', minWidth: 0 }}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: tokens.ink.label }}>
         <EventOutlined aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint }} />
-        <Box component="h2" id="scan-due-title" sx={{ m: 0, fontSize: tokens.font.size.label, fontWeight: tokens.font.weight.label, lineHeight: tokens.font.leading.label }}>
+        <Box
+          component="h2"
+          id="scan-due-title"
+          sx={{
+            m: 0,
+            fontSize: tokens.font.size.label,
+            fontWeight: tokens.font.weight.label,
+            lineHeight: tokens.font.leading.label,
+          }}
+        >
           Next scan
         </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '6px 10px', mt: '10px' }}>
-        <Box sx={{ ...statValue('standard'), lineHeight: 1 }}>
-          {due ? weekdayDay(due) : '—'}
-        </Box>
-        <StatusChip shape="pill" tone={status.left !== null && status.left <= 0 ? 'warning' : 'outline'} label={status.text} />
+        <Box sx={{ ...statValue('standard'), lineHeight: 1 }}>{due ? weekdayDay(due) : '—'}</Box>
+        <StatusChip
+          shape="pill"
+          tone={status.left !== null && status.left <= 0 ? 'warning' : 'outline'}
+          label={status.text}
+        />
       </Box>
-      <Box sx={{ mt: '10px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small, color: tokens.ink.muted }}>
+      <Box
+        sx={{
+          mt: '10px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: tokens.ink.muted,
+        }}
+      >
         {why} The coach can move it; the reminder fires that day with the conditions checklist.
       </Box>
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, mt: '14px', p: 0, display: 'grid', gap: '6px', fontSize: tokens.font.size.small, lineHeight: tokens.font.leading.small }}>
+      <Box
+        component="ul"
+        sx={{
+          listStyle: 'none',
+          m: 0,
+          mt: '14px',
+          p: 0,
+          display: 'grid',
+          gap: '6px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+        }}
+      >
         {checks.map((c) => (
           <Box component="li" key={c} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <CheckCircleOutlineRounded aria-hidden sx={{ fontSize: 16, color: tokens.tone.success.solid }} />
@@ -98,9 +137,18 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
           </Box>
         ))}
       </Box>
-      <Box sx={{ mt: 4, pt: '14px', borderTop: `1px solid ${tokens.ink.border}`, fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.muted }}>
-        Upload the sheet as PDF, PNG or JPG. Your name is masked on this device before anything leaves it; the values are read for you to check and
-        confirm.
+      <Box
+        sx={{
+          mt: 4,
+          pt: '14px',
+          borderTop: `1px solid ${tokens.ink.border}`,
+          fontSize: tokens.font.size.caption,
+          lineHeight: tokens.font.leading.caption,
+          color: tokens.ink.muted,
+        }}
+      >
+        Upload the sheet as PDF, PNG or JPG. Your name is masked on this device before anything leaves it; the
+        values are read for you to check and confirm.
       </Box>
     </Box>
   )
@@ -133,8 +181,22 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
     <Panel
       title="Every scan"
       // Right of the title on a wider screen (2a); under it on a phone, where it has to wrap.
-      description={<Box component="span" sx={{ display: { sm: 'none' } }}>{about}</Box>}
-      actions={<Box sx={{ display: { xs: 'none', sm: 'block' }, fontSize: tokens.font.size.small, color: tokens.ink.muted }}>{about}</Box>}
+      description={
+        <Box component="span" sx={{ display: { sm: 'none' } }}>
+          {about}
+        </Box>
+      }
+      actions={
+        <Box
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            fontSize: tokens.font.size.small,
+            color: tokens.ink.muted,
+          }}
+        >
+          {about}
+        </Box>
+      }
       padding="none"
       testId="scan-history"
     >
@@ -167,11 +229,21 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
               <TableCell sx={{ color: tokens.ink.muted, whiteSpace: 'nowrap' }}>
                 <TableDate date={due} />
               </TableCell>
-              <TableCell sx={{ ...wide, color: tokens.ink.muted }}>Scheduled · reminder {formatShortDate(due)}</TableCell>
-              <TableCell align="right" sx={dash}>—</TableCell>
-              <TableCell align="right" sx={{ ...wide, ...dash }}>—</TableCell>
-              <TableCell align="right" sx={dash}>—</TableCell>
-              <TableCell align="right" sx={dash}>—</TableCell>
+              <TableCell sx={{ ...wide, color: tokens.ink.muted }}>
+                Scheduled · reminder {formatShortDate(due)}
+              </TableCell>
+              <TableCell align="right" sx={dash}>
+                —
+              </TableCell>
+              <TableCell align="right" sx={{ ...wide, ...dash }}>
+                —
+              </TableCell>
+              <TableCell align="right" sx={dash}>
+                —
+              </TableCell>
+              <TableCell align="right" sx={dash}>
+                —
+              </TableCell>
               <TableCell align="right">
                 {left !== null && left < 0 ? (
                   <StatusChip size="small" tone="warning" label="Overdue" />
@@ -186,7 +258,12 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
           {[...scans].reverse().map((s) => {
             const p = s.analysis?.vs_previous ?? null
             return (
-              <TableRow key={s.id} hover onClick={() => void navigate(`/scans/${s.id}`)} sx={{ cursor: 'pointer' }}>
+              <TableRow
+                key={s.id}
+                hover
+                onClick={() => void navigate(`/scans/${s.id}`)}
+                sx={{ cursor: 'pointer' }}
+              >
                 <TableCell sx={{ fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}>
                   <Box
                     component={RouterLink}
@@ -196,19 +273,31 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
                       color: 'inherit',
                       textDecoration: 'none',
                       '&:hover': { textDecoration: 'underline' },
-                      '&:focus-visible': { outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`, outlineOffset: `${tokens.focusRing.offset}px`, borderRadius: `${tokens.radius.bar}px` },
+                      '&:focus-visible': {
+                        outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+                        outlineOffset: `${tokens.focusRing.offset}px`,
+                        borderRadius: `${tokens.radius.bar}px`,
+                      },
                     }}
                   >
                     <TableDate date={s.date} />
                   </Box>
                 </TableCell>
-                <TableCell sx={{ ...wide, color: tokens.ink.label }}>{conditionsLine(s.record.conditions, !p)}</TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{formatNumber(s.record.weight_kg, 1)} kg</TableCell>
+                <TableCell sx={{ ...wide, color: tokens.ink.label }}>
+                  {conditionsLine(s.record.conditions, !p)}
+                </TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  {formatNumber(s.record.weight_kg, 1)} kg
+                </TableCell>
                 <TableCell align="right" sx={{ ...wide, whiteSpace: 'nowrap' }}>
                   {formatNumber(s.record.body_fat_pct, 1)} %
                 </TableCell>
-                <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>{p ? formatSigned(p.fat_vs_lean.fat_kg, 1) : '—'}</TableCell>
-                <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>{p ? formatSigned(p.fat_vs_lean.lean_kg, 1) : '—'}</TableCell>
+                <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>
+                  {p ? formatSigned(p.fat_vs_lean.fat_kg, 1) : '—'}
+                </TableCell>
+                <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>
+                  {p ? formatSigned(p.fat_vs_lean.lean_kg, 1) : '—'}
+                </TableCell>
                 <TableCell align="right">
                   <GuardChip change={p} size="small" />
                 </TableCell>
@@ -217,7 +306,19 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
           })}
         </TableBody>
       </Table>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', px: `${tokens.pad.card.x}px`, pt: '12px', pb: '14px', borderTop: `1px solid ${tokens.ink.hairline}`, fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px 16px',
+          px: `${tokens.pad.card.x}px`,
+          pt: '12px',
+          pb: '14px',
+          borderTop: `1px solid ${tokens.ink.hairline}`,
+          fontSize: tokens.font.size.caption,
+          color: tokens.ink.muted,
+        }}
+      >
         <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
           <StatusChip size="small" tone="danger" label="Lean loss" />
           lean is over 25 % of the loss between scans
@@ -231,9 +332,18 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
 }
 
 /** Row 1 (2a): the next-scan panel beside the latest scan, 1 : 2 from `md`; stacked below. */
-const row1 = { display: 'grid', gap: 4, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 2fr)' } } as const
+const row1 = {
+  display: 'grid',
+  gap: 4,
+  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 2fr)' },
+} as const
 /** Row 2: fat and lean mass beside segments + water, 1.3 : 1 from `lg`. */
-const row2 = { display: 'grid', gap: 4, alignItems: 'start', gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.3fr) minmax(0, 1fr)' } } as const
+const row2 = {
+  display: 'grid',
+  gap: 4,
+  alignItems: 'start',
+  gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.3fr) minmax(0, 1fr)' },
+} as const
 /** A Reveal that is a grid item and lets its card fill the row. */
 const cell = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 } as const
 /** The page's single column, which never grows past the viewport to fit a table or a chart. */
@@ -246,7 +356,8 @@ export function ScansPage() {
   const [uploading, setUploading] = useState(false)
 
   const title = 'Evolt 360 scans'
-  const subtitle = 'Body composition every 4–6 weeks, same conditions each time: morning, fasted, no training the day before'
+  const subtitle =
+    'Body composition every 4–6 weeks, same conditions each time: morning, fasted, no training the day before'
 
   // While the list loads or fails, only the title: Upload and Enter by hand appear with the list, as they always have.
   if (isQueryLoading(scans))
@@ -280,10 +391,19 @@ export function ScansPage() {
         subtitle={subtitle}
         action={
           <>
-            <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => void navigate('/scans/new')}>
+            <Button
+              variant="outlined"
+              startIcon={<EditOutlined />}
+              onClick={() => void navigate('/scans/new')}
+            >
               Enter by hand
             </Button>
-            <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => setUploading(true)} data-testid="scan-upload-open">
+            <Button
+              variant="contained"
+              startIcon={<UploadFileOutlined />}
+              onClick={() => setUploading(true)}
+              data-testid="scan-upload-open"
+            >
               Upload sheet
             </Button>
           </>
@@ -294,7 +414,12 @@ export function ScansPage() {
         <Reveal delay={staggerDelay(0, tokens.motion.stagger.card, 150)}>
           <Panel title="Waiting for review" padding="none">
             {waiting.map((s) => (
-              <ListRow key={s.id} label={`Uploaded ${scanDay(s.date)}`} help={pendingLabel(s)} onClick={() => void navigate(`/scans/${s.id}`)} />
+              <ListRow
+                key={s.id}
+                label={`Uploaded ${scanDay(s.date)}`}
+                help={pendingLabel(s)}
+                onClick={() => void navigate(`/scans/${s.id}`)}
+              />
             ))}
           </Panel>
         </Reveal>
@@ -308,7 +433,10 @@ export function ScansPage() {
           {latest ? (
             <LatestScanCard scan={latest} />
           ) : (
-            <EmptyState title="No scans yet" body="Upload the Evolt 360 sheet; the values are read for you to check." />
+            <EmptyState
+              title="No scans yet"
+              body="Upload the Evolt 360 sheet; the values are read for you to check."
+            />
           )}
         </Reveal>
       </Box>

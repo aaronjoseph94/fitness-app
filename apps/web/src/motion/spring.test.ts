@@ -54,7 +54,8 @@ describe('springStep', () => {
     }
     // Under-damped: the flick's momentum carries it past the target, which is the whole point of the bounce.
     let peak = 0
-    for (let i = 0; i <= 120; i += 1) peak = Math.max(peak, springStep(SPRING_MOMENTUM, i / 120, 0, 100).value)
+    for (let i = 0; i <= 120; i += 1)
+      peak = Math.max(peak, springStep(SPRING_MOMENTUM, i / 120, 0, 100).value)
     expect(peak).toBeGreaterThan(101)
   })
 })
@@ -98,16 +99,23 @@ describe('rubberband', () => {
 
 describe('velocityFrom', () => {
   it('measures the pointer over the recent window', () => {
-    expect(velocityFrom([{ position: 0, time: 0 }, { position: 100, time: 100 }])).toBeCloseTo(1000, 6)
+    expect(
+      velocityFrom([
+        { position: 0, time: 0 },
+        { position: 100, time: 100 },
+      ]),
+    ).toBeCloseTo(1000, 6)
     // One sample is not a velocity.
     expect(velocityFrom([{ position: 40, time: 0 }])).toBe(0)
     expect(velocityFrom([])).toBe(0)
     // Samples older than the window do not dilute a flick into nothing.
-    expect(velocityFrom([
-      { position: 0, time: 0 },
-      { position: 50, time: 50 },
-      { position: 200, time: 200 },
-    ])).toBeCloseTo(1000, 6)
+    expect(
+      velocityFrom([
+        { position: 0, time: 0 },
+        { position: 50, time: 50 },
+        { position: 200, time: 200 },
+      ]),
+    ).toBeCloseTo(1000, 6)
   })
 })
 

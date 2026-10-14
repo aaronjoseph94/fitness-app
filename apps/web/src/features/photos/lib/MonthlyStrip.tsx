@@ -12,7 +12,15 @@ import { PhotoImage, TrendWeight } from './PhotoParts'
 
 const CELL_WIDTH = 104
 
-export function MonthlyStrip({ photos, poses, onOpen }: { photos: readonly ProgressPhoto[]; poses: readonly Pose[]; onOpen: (photo: ProgressPhoto) => void }) {
+export function MonthlyStrip({
+  photos,
+  poses,
+  onOpen,
+}: {
+  photos: readonly ProgressPhoto[]
+  poses: readonly Pose[]
+  onOpen: (photo: ProgressPhoto) => void
+}) {
   const rows = monthlyStrip(photos, poses)
   const scroller = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -29,28 +37,70 @@ export function MonthlyStrip({ photos, poses, onOpen }: { photos: readonly Progr
       <Box sx={{ display: 'grid', gap: 5, width: 'max-content' }}>
         {rows.map((row) => (
           <Box key={row.pose}>
-            <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.heading, color: tokens.ink.text, mb: 2, position: 'sticky', left: 0, width: 'max-content' }}>
+            <Box
+              sx={{
+                fontSize: tokens.font.size.body,
+                fontWeight: tokens.font.weight.heading,
+                color: tokens.ink.text,
+                mb: 2,
+                position: 'sticky',
+                left: 0,
+                width: 'max-content',
+              }}
+            >
               {POSE_LABEL[row.pose]}
             </Box>
             <Box sx={{ display: 'flex', gap: 3 }}>
               {row.cells.map(({ month, photo }) => (
                 <Box key={month} sx={{ width: CELL_WIDTH, flex: 'none' }}>
                   {photo ? (
-                    <ButtonBase onClick={() => onOpen(photo)} aria-label={`Open ${row.pose} photo from ${photo.date}`} sx={{ display: 'block', width: '100%', borderRadius: `${tokens.radius.control}px` }}>
-                      <Box sx={{ aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', border: `1px solid ${tokens.ink.border}`, bgcolor: tokens.ink.fill }}>
+                    <ButtonBase
+                      onClick={() => onOpen(photo)}
+                      aria-label={`Open ${row.pose} photo from ${photo.date}`}
+                      sx={{ display: 'block', width: '100%', borderRadius: `${tokens.radius.control}px` }}
+                    >
+                      <Box
+                        sx={{
+                          aspectRatio: '3 / 4',
+                          borderRadius: `${tokens.radius.control}px`,
+                          overflow: 'hidden',
+                          border: `1px solid ${tokens.ink.border}`,
+                          bgcolor: tokens.ink.fill,
+                        }}
+                      >
                         <PhotoImage photo={photo} />
                       </Box>
                     </ButtonBase>
                   ) : (
                     <Box
                       aria-label={`No ${row.pose} photo in ${monthLabel(month)}`}
-                      sx={{ ...dashedSurface, aspectRatio: '3 / 4', borderRadius: `${tokens.radius.control}px`, display: 'grid', placeItems: 'center', color: tokens.ink.secondary, fontSize: tokens.font.size.small }}
+                      sx={{
+                        ...dashedSurface,
+                        aspectRatio: '3 / 4',
+                        borderRadius: `${tokens.radius.control}px`,
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: tokens.ink.secondary,
+                        fontSize: tokens.font.size.small,
+                      }}
                     >
                       —
                     </Box>
                   )}
-                  <Box sx={{ pt: '6px', fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                    <Box component="span" sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}>
+                  <Box
+                    sx={{
+                      pt: '6px',
+                      fontSize: tokens.font.size.caption,
+                      lineHeight: tokens.font.leading.caption,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                    }}
+                  >
+                    <Box
+                      component="span"
+                      sx={{ color: tokens.ink.text, fontWeight: tokens.font.weight.label }}
+                    >
                       {monthLabel(month, 'short')}
                     </Box>
                     {photo && <TrendWeight kg={photo.weight_kg} size={12} />}

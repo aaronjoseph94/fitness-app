@@ -38,8 +38,14 @@ export function BarcodePane({ busy, onSave }: BarcodePaneProps) {
   const [code, setCode] = useState<string | null>(null)
   const [typing, setTyping] = useState(false)
   const [searching, setSearching] = useState(false)
-  const lookup = useApiQuery(endpoints.nutrition.searchFoods, { query: { barcode: code ?? '00000000' } }, { enabled: code !== null, staleTime: 60 * 60_000 })
-  const found: Food | null = code ? (lookup.data?.find((f) => f.barcode === code) ?? lookup.data?.[0] ?? null) : null
+  const lookup = useApiQuery(
+    endpoints.nutrition.searchFoods,
+    { query: { barcode: code ?? '00000000' } },
+    { enabled: code !== null, staleTime: 60 * 60_000 },
+  )
+  const found: Food | null = code
+    ? (lookup.data?.find((f) => f.barcode === code) ?? lookup.data?.[0] ?? null)
+    : null
   const [picked, setPicked] = useState<PickedFood | null>(null)
   const food = picked ?? (found ? pickedFromFood(found) : null)
 
@@ -50,14 +56,26 @@ export function BarcodePane({ busy, onSave }: BarcodePaneProps) {
     setTyping(false)
   }
 
-  if (food) return <FoundFood key={food.id} food={food} code={code} busy={busy} onSave={onSave} onRescan={rescan} />
+  if (food)
+    return <FoundFood key={food.id} food={food} code={code} busy={busy} onSave={onSave} onRescan={rescan} />
 
   if (code !== null) {
     return (
       <Box sx={{ display: 'grid', gap: 3 }} data-testid="barcode-lookup">
-        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>Barcode {code}</Box>
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: 'text.secondary',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          Barcode {code}
+        </Box>
         {lookup.isLoading ? (
-          <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.body }}>
+          <Box
+            role="status"
+            sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: tokens.font.size.body }}
+          >
             <CircularProgress size={18} aria-hidden /> Looking it up…
           </Box>
         ) : lookup.isError ? (
@@ -65,7 +83,9 @@ export function BarcodePane({ busy, onSave }: BarcodePaneProps) {
             {problemText(lookup.error)}
           </Box>
         ) : (
-          <Box sx={{ fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body }}>Not in Open Food Facts yet. Find it by name, or add it as a new food.</Box>
+          <Box sx={{ fontSize: tokens.font.size.body, lineHeight: tokens.font.leading.body }}>
+            Not in Open Food Facts yet. Find it by name, or add it as a new food.
+          </Box>
         )}
         {!lookup.isLoading && (searching ? <FoodPicker autoFocus onPick={setPicked} /> : null)}
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -87,7 +107,11 @@ export function BarcodePane({ busy, onSave }: BarcodePaneProps) {
     )
   }
 
-  return typing ? <TypedCode onCode={setCode} onCamera={() => setTyping(false)} /> : <Scanner onCode={setCode} onType={() => setTyping(true)} />
+  return typing ? (
+    <TypedCode onCode={setCode} onCamera={() => setTyping(false)} />
+  ) : (
+    <Scanner onCode={setCode} onType={() => setTyping(true)} />
+  )
 }
 
 function Scanner({ onCode, onType }: { onCode: (code: string) => void; onType: () => void }) {
@@ -122,7 +146,13 @@ function Scanner({ onCode, onType }: { onCode: (code: string) => void; onType: (
       } catch (e) {
         if (cancelled) return
         const name = e instanceof DOMException ? e.name : e instanceof Error ? e.message : ''
-        setProblem(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : name === 'no-reader' ? 'no-reader' : 'no-camera')
+        setProblem(
+          name === 'NotAllowedError' || name === 'SecurityError'
+            ? 'denied'
+            : name === 'no-reader'
+              ? 'no-reader'
+              : 'no-camera',
+        )
       }
     })()
     return () => {
@@ -134,17 +164,35 @@ function Scanner({ onCode, onType }: { onCode: (code: string) => void; onType: (
 
   if (problem) {
     const text = {
-      denied: 'Camera access is off for this app. Allow it in Settings, or type the numbers under the barcode.',
+      denied:
+        'Camera access is off for this app. Allow it in Settings, or type the numbers under the barcode.',
       'no-camera': "There's no camera available here. Type the numbers under the barcode instead.",
-      'no-reader': "The scanner didn't load (it needs a connection the first time). Type the numbers instead.",
+      'no-reader':
+        "The scanner didn't load (it needs a connection the first time). Type the numbers instead.",
     }[problem]
     return <TypedCode note={text} onCode={onCode} />
   }
 
   return (
     <Box sx={{ display: 'grid', gap: 3 }} data-testid="barcode-scanner">
-      <Box sx={{ position: 'relative', aspectRatio: '4 / 3', borderRadius: `${tokens.radius.control}px`, overflow: 'hidden', bgcolor: tokens.ink.text }}>
-        <Box component="video" ref={video} playsInline muted autoPlay aria-label="Camera" sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      <Box
+        sx={{
+          position: 'relative',
+          aspectRatio: '4 / 3',
+          borderRadius: `${tokens.radius.control}px`,
+          overflow: 'hidden',
+          bgcolor: tokens.ink.text,
+        }}
+      >
+        <Box
+          component="video"
+          ref={video}
+          playsInline
+          muted
+          autoPlay
+          aria-label="Camera"
+          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
         {/* Viewfinder: a clear window, the rest dimmed. */}
         <Box
           aria-hidden
@@ -159,17 +207,38 @@ function Scanner({ onCode, onType }: { onCode: (code: string) => void; onType: (
             boxShadow: `0 0 0 999px ${alpha(tokens.ink.text, 0.45)}`,
           }}
         >
-          <Box sx={{ position: 'absolute', left: 12, right: 12, top: '50%', height: 2, bgcolor: alpha(tokens.accent.bright, 0.9), borderRadius: `${tokens.radius.bar}px` }} />
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              top: '50%',
+              height: 2,
+              bgcolor: alpha(tokens.accent.bright, 0.9),
+              borderRadius: `${tokens.radius.bar}px`,
+            }}
+          />
         </Box>
         {!ready && (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: tokens.ink.card, fontSize: tokens.font.size.small }}>
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              display: 'grid',
+              placeItems: 'center',
+              color: tokens.ink.card,
+              fontSize: tokens.font.size.small,
+            }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <CircularProgress size={18} sx={{ color: tokens.ink.card }} aria-hidden /> Starting the camera…
             </Box>
           </Box>
         )}
       </Box>
-      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', textAlign: 'center' }}>Line the barcode up inside the frame.</Box>
+      <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', textAlign: 'center' }}>
+        Line the barcode up inside the frame.
+      </Box>
       <Button variant="text" startIcon={<KeyboardRounded />} onClick={onType} sx={{ justifySelf: 'center' }}>
         Type the numbers instead
       </Button>
@@ -177,7 +246,15 @@ function Scanner({ onCode, onType }: { onCode: (code: string) => void; onType: (
   )
 }
 
-function TypedCode({ note, onCode, onCamera }: { note?: string; onCode: (code: string) => void; onCamera?: () => void }) {
+function TypedCode({
+  note,
+  onCode,
+  onCamera,
+}: {
+  note?: string
+  onCode: (code: string) => void
+  onCamera?: () => void
+}) {
   const [text, setText] = useState('')
   const digits = text.replace(/\D/g, '')
   const lengthOk = digits.length >= 8 && digits.length <= 14
@@ -193,15 +270,23 @@ function TypedCode({ note, onCode, onCamera }: { note?: string; onCode: (code: s
       sx={{ display: 'grid', gap: 3 }}
       data-testid="barcode-typed"
     >
-      {note && <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: 1.5 }}>{note}</Box>}
+      {note && (
+        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', lineHeight: 1.5 }}>{note}</Box>
+      )}
       <TextField
         label="Barcode number"
         value={text}
         onChange={(e) => setText(e.target.value)}
         autoFocus
         autoComplete="off"
-        helperText={lengthOk && !checkOk ? "The last digit doesn't check out; look it up anyway or retype it." : '8 to 14 digits, under the bars.'}
-        slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9 ]*', maxLength: 18, enterKeyHint: 'search' } }}
+        helperText={
+          lengthOk && !checkOk
+            ? "The last digit doesn't check out; look it up anyway or retype it."
+            : '8 to 14 digits, under the bars.'
+        }
+        slotProps={{
+          htmlInput: { inputMode: 'numeric', pattern: '[0-9 ]*', maxLength: 18, enterKeyHint: 'search' },
+        }}
       />
       <Box sx={{ display: 'flex', gap: 2 }}>
         {onCamera && (
@@ -235,22 +320,48 @@ function FoundFood({
   const grams = parseNumber(gramsText)
   const valid = grams !== null && grams > 0 && grams <= 5000
   const n = valid ? portion(food.per100, grams) : null
-  const presets = [...new Set([food.servingG ? Math.round(food.servingG) : null, 100].filter((g): g is number => g !== null && g > 0))]
+  const presets = [
+    ...new Set(
+      [food.servingG ? Math.round(food.servingG) : null, 100].filter((g): g is number => g !== null && g > 0),
+    ),
+  ]
 
   return (
     <Box sx={{ display: 'grid', gap: 3 }} data-testid="barcode-found">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <FoodIcon name={food.name} size={44} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: tokens.font.size.body, fontWeight: tokens.font.weight.label, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{food.name}</Box>
-          <Box sx={{ fontSize: tokens.font.size.caption, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-            {formatNumber(food.per100.kcal_per_100g)} kcal · {formatNumber(food.per100.protein_g, 1)} g protein per 100 g
-            {code ? ` · ${code}` : ''}
+          <Box
+            sx={{
+              fontSize: tokens.font.size.body,
+              fontWeight: tokens.font.weight.label,
+              lineHeight: 1.3,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {food.name}
+          </Box>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.caption,
+              color: 'text.secondary',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatNumber(food.per100.kcal_per_100g)} kcal · {formatNumber(food.per100.protein_g, 1)} g
+            protein per 100 g{code ? ` · ${code}` : ''}
           </Box>
         </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <NumberField label="Grams" value={gramsText} onChange={setGramsText} unit="g" error={!valid} sx={{ width: 140 }} />
+        <NumberField
+          label="Grams"
+          value={gramsText}
+          onChange={setGramsText}
+          unit="g"
+          error={!valid}
+          sx={{ width: 140 }}
+        />
         {presets.map((g) => (
           <Chip
             key={g}
@@ -261,8 +372,15 @@ function FoundFood({
         ))}
       </Box>
       {n && (
-        <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-          {formatNumber(n.protein_g)} g protein · {formatNumber(n.carbs_g)} g carbs · {formatNumber(n.fat_g)} g fat
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: 'text.secondary',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {formatNumber(n.protein_g)} g protein · {formatNumber(n.carbs_g)} g carbs · {formatNumber(n.fat_g)}{' '}
+          g fat
         </Box>
       )}
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 2 }}>
@@ -273,7 +391,11 @@ function FoundFood({
           variant="contained"
           size="large"
           disabled={!valid || busy}
-          onClick={() => valid && n && onSave({ id: crypto.randomUUID(), food_id: food.id, grams, description: food.name }, n.kcal)}
+          onClick={() =>
+            valid &&
+            n &&
+            onSave({ id: crypto.randomUUID(), food_id: food.id, grams, description: food.name }, n.kcal)
+          }
           data-testid="barcode-log"
         >
           {busy ? 'Saving…' : n ? `Log · ${formatNumber(n.kcal)} kcal` : 'Log'}

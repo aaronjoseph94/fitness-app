@@ -16,7 +16,10 @@ export function DataPage() {
   const online = useOnline()
   return (
     <Stack spacing={`${tokens.rhythm.section}px`} data-testid="data-page">
-      <PageHeader title="Export and restore" subtitle="Everything you logged is yours: take it as one zip, or write an export into a fresh instance." />
+      <PageHeader
+        title="Export and restore"
+        subtitle="Everything you logged is yours: take it as one zip, or write an export into a fresh instance."
+      />
       {!online && (
         <Alert severity="info" data-testid="data-offline">
           You’re offline. Export and restore need a connection.
@@ -32,8 +35,9 @@ export function DataPage() {
           tone="panel"
           description={
             <>
-              On the 1st of every month the server also saves each table as JSON in your private storage (reports/backup/YYYY-MM/), one table every five
-              minutes. Photos are not copied there: keep an export for those.
+              On the 1st of every month the server also saves each table as JSON in your private storage
+              (reports/backup/YYYY-MM/), one table every five minutes. Photos are not copied there: keep an
+              export for those.
             </>
           }
         />

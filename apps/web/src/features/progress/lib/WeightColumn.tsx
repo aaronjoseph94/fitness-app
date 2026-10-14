@@ -10,11 +10,29 @@ import { Link as RouterLink } from 'react-router'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
 import { frameHeight, WeeklyLossChart, WeightTrendChart } from '../../../charts'
-import { ChartCard, formatNumber, formatShortDate, formatSigned, isQueryLoading, QueryStateCard, SectionHeader } from '../../../components'
+import {
+  ChartCard,
+  formatNumber,
+  formatShortDate,
+  formatSigned,
+  isQueryLoading,
+  QueryStateCard,
+  SectionHeader,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { MilestoneList } from './MilestoneList'
 import type { RangeKey } from './range'
-import { effectiveRate, forecastBandDates, forecastPath, lastTrend, milestoneList, waistPoints, weeklyLoss, weightMilestones, weightPoints } from './series'
+import {
+  effectiveRate,
+  forecastBandDates,
+  forecastPath,
+  lastTrend,
+  milestoneList,
+  waistPoints,
+  weeklyLoss,
+  weightMilestones,
+  weightPoints,
+} from './series'
 
 interface WeightColumnProps {
   trend: UseQueryResult<TrendSeries, ApiError>
@@ -28,7 +46,8 @@ interface WeightColumnProps {
 /** "2027-04-09" → "Apr 9, 2027". */
 const withYear = (date: LocalDate) => `${formatShortDate(date)}, ${date.slice(0, 4)}`
 /** "2027-01-03" → "Jan 3", with the year only when it is not `year`. */
-const inYear = (date: LocalDate, year: string) => (date.startsWith(year) ? formatShortDate(date) : withYear(date))
+const inYear = (date: LocalDate, year: string) =>
+  date.startsWith(year) ? formatShortDate(date) : withYear(date)
 /** "2026-W40" → "40". */
 const weekNumber = (date: LocalDate) => String(Number(isoWeek(date).slice(6)))
 
@@ -52,7 +71,12 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
   const rate = data.forecast?.weekly_rate_kg ?? null
   const forecast =
     last && data.forecast
-      ? forecastPath({ from: last, forecast: data.forecast, goalKg, horizonDays: range === 'all' ? undefined : rangeLength })
+      ? forecastPath({
+          from: last,
+          forecast: data.forecast,
+          goalKg,
+          horizonDays: range === 'all' ? undefined : rangeLength,
+        })
       : []
   const weighed = data.points.some((p) => p.weight_kg !== null)
   const weeks = weeklyLoss(data.points, rate)
@@ -60,7 +84,10 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
   const milestones = milestoneList(data.milestones, last, chartRate)
   const next = milestones.find((m) => m.state === 'next')
   const band = last && data.forecast ? forecastBandDates(last, data.forecast, goalKg) : null
-  const bandPct = data.forecast && data.forecast.weekly_rate_kg > 0 ? Math.round((data.forecast.band.high / data.forecast.weekly_rate_kg - 1) * 100) : null
+  const bandPct =
+    data.forecast && data.forecast.weekly_rate_kg > 0
+      ? Math.round((data.forecast.band.high / data.forecast.weekly_rate_kg - 1) * 100)
+      : null
   const finish = data.forecast?.finish_date ?? null
   const year = (finish ?? band?.late ?? '').slice(0, 4)
   const whrNow = waistPoints(data.measurements).at(-1)?.whr ?? null
@@ -102,23 +129,49 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
             }}
           >
             <FooterStat label="Finish" value={finish ? withYear(finish) : '—'} />
-            <FooterStat label={bandPct !== null ? `Band ±${bandPct} %` : 'Forecast band'} value={band ? `${inYear(band.early, year)} – ${inYear(band.late, year)}` : '—'} />
-            <FooterStat label="Next milestone" value={next ? `${next.label}${next.expectedOn ? ` · ${formatShortDate(next.expectedOn)}` : ''}` : 'All reached'} />
+            <FooterStat
+              label={bandPct !== null ? `Band ±${bandPct} %` : 'Forecast band'}
+              value={band ? `${inYear(band.early, year)} – ${inYear(band.late, year)}` : '—'}
+            />
+            <FooterStat
+              label="Next milestone"
+              value={
+                next
+                  ? `${next.label}${next.expectedOn ? ` · ${formatShortDate(next.expectedOn)}` : ''}`
+                  : 'All reached'
+              }
+            />
           </Box>
         </ChartCard>
 
         <ChartCard
           title="Weekly loss vs expected"
           titleSize="card"
-          subtitle={rate === null ? 'Trend change per ISO week' : `Trend change per ISO week · expected ${formatSigned(-rate, 2)} kg`}
+          subtitle={
+            rate === null
+              ? 'Trend change per ISO week'
+              : `Trend change per ISO week · expected ${formatSigned(-rate, 2)} kg`
+          }
           action={
             weeks.length > 0 ? (
-              <Box component="span" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
-                {weeks.length === 1 ? `Week ${weekNumber(weeks[0]!.week)}` : `Weeks ${weekNumber(weeks[0]!.week)}–${weekNumber(weeks.at(-1)!.week)}`}
+              <Box
+                component="span"
+                sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, whiteSpace: 'nowrap' }}
+              >
+                {weeks.length === 1
+                  ? `Week ${weekNumber(weeks[0]!.week)}`
+                  : `Weeks ${weekNumber(weeks[0]!.week)}–${weekNumber(weeks.at(-1)!.week)}`}
               </Box>
             ) : undefined
           }
-          empty={weeks.length ? undefined : { title: 'No full week yet', body: 'A full Monday–Sunday week of weigh-ins draws the first bar.' }}
+          empty={
+            weeks.length
+              ? undefined
+              : {
+                  title: 'No full week yet',
+                  body: 'A full Monday–Sunday week of weigh-ins draws the first bar.',
+                }
+          }
         >
           <WeeklyLossChart weeks={weeks} height={150} />
         </ChartCard>
@@ -144,7 +197,14 @@ export function WeightColumn({ trend, range, rangeLength, goalKg, start }: Weigh
 /** 2a's weight-trend footer cell: a 12 px muted label over a 14/600 value (the kit's KeyStat starts at 16 px). */
 function FooterStat({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ minWidth: 0, fontSize: tokens.font.size.caption, lineHeight: tokens.font.leading.caption, color: tokens.ink.secondary }}>
+    <Box
+      sx={{
+        minWidth: 0,
+        fontSize: tokens.font.size.caption,
+        lineHeight: tokens.font.leading.caption,
+        color: tokens.ink.secondary,
+      }}
+    >
       {label}
       <Box
         sx={{
