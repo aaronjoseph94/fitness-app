@@ -17,14 +17,16 @@ const rulesFor = (root) => {
   return [
     {
       name: `entrypoint-boundary-from-outside:${root}`,
-      comment: 'Code outside a module may import its entry points (root files), never anything inside its subfolders.',
+      comment:
+        'Code outside a module may import its entry points (root files), never anything inside its subfolders.',
       severity: 'error',
       from: { pathNot: `^${R}/` },
       to: { path: INTERNALS },
     },
     {
       name: `entrypoint-boundary-across-modules:${root}`,
-      comment: "A module's own files import each other freely; other modules only through their entry points.",
+      comment:
+        "A module's own files import each other freely; other modules only through their entry points.",
       severity: 'error',
       from: { path: `^${R}/([^/]+)/`, pathNot: `^${R}/[^/]+/tests/` },
       to: { path: INTERNALS, pathNot: `^${R}/$1/` },
@@ -52,7 +54,8 @@ module.exports = {
     },
     {
       name: 'web-never-imports-worker',
-      comment: 'The web bundle must never pull in Worker code (secrets, DB). Share through @fitness/shared only.',
+      comment:
+        'The web bundle must never pull in Worker code (secrets, DB). Share through @fitness/shared only.',
       severity: 'error',
       from: { path: '^apps/web/' },
       to: { path: '^apps/worker/' },
