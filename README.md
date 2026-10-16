@@ -15,7 +15,7 @@ A deterministic engine owns the numbers (trend weight, expenditure, forecast, ta
 - **Pick the days, tap Generate:** Aaron chooses his training days on Train and the AI drafts one workout per day. The split adapts to the days (Mon, Tue, Thu gives Upper A, Lower A, Full body), every body group is checked, and **Keep all** accepts the drafts.
 - **Ask AI:** a chat panel on every tab that reads any data and can change anything in Train (templates, training days, equipment, hidden exercises, a session), each behind a tap with Undo.
 - **Scans, photos and reviews:** Evolt 360 scan extraction and comparison, progress photos (never sent to any LLM), a weekly review with a printable report and PDF archive, week plans, Web Push reminders, and export and import.
-- **Claude connector (MCP):** the same tools as Ask AI, plus the coach procedures (`coach_review`, `scan_debrief`, `program_design`, `plateau_check`).
+- **Claude and Meta Muse connectors (MCP):** Claude gets the same tools as Ask AI, plus the coach procedures (`coach_review`, `scan_debrief`, `program_design`, `plateau_check`). Meta Muse gets read + log: it reads the data and logs meals, weight, water, steps, sleep, fasts and sets ("2 eggs and toast for breakfast").
 
 ## Rails
 

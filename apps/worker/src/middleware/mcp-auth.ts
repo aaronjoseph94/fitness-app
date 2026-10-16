@@ -1,11 +1,12 @@
-// Owns: who may call /mcp (SPEC §8 "MCP connector") and the OAuth 2.1 endpoints Claude's connector discovers.
-// Two ways in, both acting as actor 'mcp':
+// Owns: who may call /mcp (SPEC §8 "MCP connector"), at which access level, and the OAuth 2.1 endpoints the Claude and
+// Meta Muse connectors discover. Two ways in, both acting as actor 'mcp':
 //   1. Static bearer: `Authorization: Bearer <MCP_BEARER_TOKEN>` (Claude Code; Claude when Request headers exist),
-//      compared in constant time.
+//      compared in constant time. Full access.
 //   2. OAuth 2.1 (@cloudflare/workers-oauth-provider, KV OAUTH_KV): RFC 8414 metadata, Dynamic Client Registration
-//      (/register, only for Claude's callbacks and loopback ports: an unauthenticated endpoint must not fill KV),
-//      Client ID Metadata Documents, /token (+ revocation), and /authorize — a one-button consent page behind
-//      Cloudflare Access (app.ts runs the Access check first) that grants the single owner.
+//      (/register, only for Claude's callbacks, Meta Muse's exact callback and loopback ports: an unauthenticated
+//      endpoint must not fill KV), Client ID Metadata Documents, /token (+ revocation), and /authorize — a one-button
+//      consent page behind Cloudflare Access (app.ts runs the Access check first) that grants the single owner. The
+//      grant's access level comes from where its codes go: Meta Muse's callback → 'log' (read + log), else 'full'.
 // /mcp answers 401 with `WWW-Authenticate: Bearer resource_metadata=…` (RFC 9728) and publishes that metadata at
 // /.well-known/oauth-protected-resource/mcp (and the bare path as an alias for clients that probe it).
 // Issuer and resource are the request's own origin, so workers.dev, a custom domain and wrangler dev all work.
@@ -16,22 +17,25 @@ import {
   OAuthResourceServer,
   type OAuthResourceContext,
   type OAuthResourceTokenValidation,
+  type AuthRequest,
+  type OAuthHelpers,
 } from '@cloudflare/workers-oauth-provider'
 import type { Context } from 'hono'
 import { createDb } from '../db'
 import type { App, AppEnv, Env } from '../env'
 import { depsFromContext, type Deps } from '../lib/deps'
 import { HttpError } from '../lib/http-error'
+import type { McpAccess } from '../modules/mcp'
 import { resolveSecret } from '../modules/secrets'
 import { constantTimeEqual } from './auth'
 import { consentPage, errorPage } from './consent-page'
 
-/** Serves one authenticated MCP request (modules/mcp serveMcp). */
-export type McpServe = (request: Request, deps: Deps) => Promise<Response>
+/** Serves one authenticated MCP request at the caller's access level (modules/mcp serveMcp). */
+export type McpServe = (request: Request, deps: Deps, access: McpAccess) => Promise<Response>
 
 /** The one user this single-user app grants. Not a name: it ends up inside issued tokens. */
 const OWNER = 'owner'
-/** One scope: full access within the rails. Advertised so clients ask for it; the consent page grants it. */
+/** One scope for every grant (what it reaches is the grant's access level). Advertised so clients ask for it. */
 const SCOPE = 'fitness'
 const DAY = 86_400
 
@@ -45,10 +49,25 @@ const CLAUDE_CALLBACKS = new Set([
 const isLoopback = (url: URL) =>
   url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
 
-/** True when `uri` is one of Claude's callbacks or a loopback URL. */
+/** True when `uri` parses as a loopback URL. */
+function isLoopbackUri(uri: string): boolean {
+  try {
+    return isLoopback(new URL(uri))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Where Meta Muse sends the code back. Community-sourced (not in Meta's docs), so it is matched exactly: no sub-path,
+ * query, other scheme or host. A refused registration is logged below, so a changed callback shows in `wrangler tail`.
+ */
+const MUSE_CALLBACK = 'https://agent.meta.ai/api/hatch/oauth/callback'
+
+/** True when `uri` is one of Claude's callbacks, Meta Muse's callback or a loopback URL. */
 function isAllowedRedirect(uri: unknown): boolean {
   if (typeof uri !== 'string') return false
-  if (CLAUDE_CALLBACKS.has(uri)) return true
+  if (CLAUDE_CALLBACKS.has(uri) || uri === MUSE_CALLBACK) return true
   try {
     const url = new URL(uri)
     return isLoopback(url) && !url.username && !url.password
@@ -58,26 +77,128 @@ function isAllowedRedirect(uri: unknown): boolean {
 }
 
 /**
- * DCR gate, run before the client is stored: every redirect URI must be allowed, or the registration is refused and
+ * A client's callbacks are allowed when there is at least one, each is allowed, and Meta Muse's callback stands alone:
+ * a client mixing it with Claude's or loopback could straddle the 'log' and 'full' access levels.
+ */
+function allowedRedirects(uris: unknown): uris is string[] {
+  if (!Array.isArray(uris) || uris.length === 0 || !uris.every(isAllowedRedirect)) return false
+  return !uris.includes(MUSE_CALLBACK) || uris.every((uri) => uri === MUSE_CALLBACK)
+}
+
+/**
+ * DCR gate, run before the client is stored: the redirect URIs must be allowed, or the registration is refused and
  * nothing is written (each registration is a KV write, and the free plan has 1,000 a day).
  */
 function checkRegistration({ clientMetadata }: { clientMetadata: Record<string, unknown> }) {
   const uris = clientMetadata.redirect_uris
-  if (Array.isArray(uris) && uris.length > 0 && uris.every(isAllowedRedirect)) return undefined
+  if (allowedRedirects(uris)) return undefined
+  logRefusal('registration', uris)
   return {
     code: 'invalid_redirect_uri',
-    description: 'Only Claude (claude.ai / claude.com) and loopback callbacks can register with this server',
+    description:
+      'Only Claude (claude.ai / claude.com), Meta Muse (agent.meta.ai, on its own) and loopback callbacks can register with this server',
     status: 400,
   }
+}
+
+/** At most this many refusals are logged per isolate per minute: /register and /authorize are open to anyone. */
+const REFUSAL_LOGS_PER_MINUTE = 10
+const refusals = { windowStart: 0, logged: 0 }
+
+/** A URI as scheme, host and path only (no userinfo, query or fragment, which can carry secrets), cut to 200 chars. */
+function shownUri(uri: unknown): string {
+  if (typeof uri !== 'string') return '(not a string)'
+  try {
+    const url = new URL(uri)
+    return `${url.protocol}//${url.host}${url.pathname}`.slice(0, 200)
+  } catch {
+    return '(not a URL)'
+  }
+}
+
+/**
+ * Log a refused client, throttled: its redirect URIs (at most 5, as shownUri), and at /authorize the requested one and,
+ * for a Client ID Metadata Document client, its client ID (an https URL, shown the same way). Nothing else from the
+ * request is logged.
+ */
+function logRefusal(step: 'registration' | 'authorization', uris: unknown, request?: AuthRequest) {
+  const now = Date.now()
+  if (now - refusals.windowStart >= 60_000) Object.assign(refusals, { windowStart: now, logged: 0 })
+  if (refusals.logged >= REFUSAL_LOGS_PER_MINUTE) return
+  refusals.logged++
+  const list = Array.isArray(uris) ? uris : []
+  const clientUrl = request?.clientId.startsWith('https://') ? shownUri(request.clientId) : undefined
+  console.warn(
+    JSON.stringify({
+      level: 'warn',
+      msg: `mcp: ${step} refused (redirect URIs not allowed)`,
+      redirect_uris: list.slice(0, 5).map(shownUri),
+      count: list.length,
+      ...(request && { redirect_uri: shownUri(request.redirectUri) }),
+      ...(clientUrl && { client_id: clientUrl }),
+    }),
+  )
+}
+
+/**
+ * The access a grant gets, decided by where its codes go (never by the self-reported client name), or null when the
+ * client may not connect. The callbacks the client registered — or published in its Client ID Metadata Document,
+ * which skips /register and so checkRegistration — must pass allowedRedirects, and the request's own must be allowed
+ * and still one of them (a loopback one on any port, as the library matches it). Meta Muse's callback stands alone
+ * (allowedRedirects), so it means 'log'; Claude's callbacks or loopback mean 'full'.
+ */
+async function accessFor(oauth: OAuthHelpers, request: AuthRequest): Promise<McpAccess | null> {
+  const client = await oauth.lookupClient(request.clientId)
+  const registered = client?.redirectUris ?? []
+  const asked = request.redirectUri
+  const listed = registered.includes(asked) || isLoopbackUri(asked)
+  if (!client || !allowedRedirects(registered) || !isAllowedRedirect(asked) || !listed) {
+    logRefusal('authorization', registered, request)
+    return null
+  }
+  return asked === MUSE_CALLBACK ? 'log' : 'full'
+}
+
+/**
+ * The local page for a client that may not connect: never a redirect, which would go to the client's own URI. After
+ * Allow it keeps the consent step's headers (the cleared consent cookie, no-store).
+ */
+function notAllowed(after?: Headers): Response {
+  const page = errorPage('This app is not allowed to connect.')
+  for (const cookie of after?.getSetCookie() ?? []) page.headers.append('Set-Cookie', cookie)
+  if (after) page.headers.set('Cache-Control', 'no-store')
+  return page
 }
 
 /** What a validated token carries into the MCP handler (ctx.props). */
 interface McpProps {
   via: 'bearer' | 'oauth'
+  access: McpAccess
+}
+
+/** A grant's stored props: grants made before access levels existed carry no `access`. */
+type GrantProps = Omit<McpProps, 'access'> & { access?: unknown }
+
+/** Where Claude publishes its Client ID Metadata Documents (a client ID is its document's URL). */
+const CLAUDE_ORIGINS = new Set(['https://claude.ai', 'https://claude.com'])
+
+/**
+ * A grant's access level; anything unknown is 'log'. A grant from before access levels has none: it keeps 'full' when
+ * its client registered (/register already took only Claude's and loopback callbacks) or is Claude's metadata
+ * document, and gets 'log' when it is any other metadata-document client (those callbacks were never checked).
+ */
+function grantedAccess(props: GrantProps | undefined, clientId: string): McpAccess {
+  if (props?.access !== undefined) return props.access === 'full' ? 'full' : 'log'
+  if (!clientId.startsWith('https://')) return 'full'
+  try {
+    return CLAUDE_ORIGINS.has(new URL(clientId).origin) ? 'full' : 'log'
+  } catch {
+    return 'log'
+  }
 }
 
 /** The execution context handed to the resource server: ours, per request, carrying the MCP call to make. */
-type McpContext = ExecutionContext & { serve: (request: Request) => Promise<Response> }
+type McpContext = ExecutionContext & { serve: (request: Request, access: McpAccess) => Promise<Response> }
 
 interface OAuthServers {
   authorization: OAuthAuthorizationServer<Env>
@@ -127,12 +248,17 @@ function build(origin: string): OAuthServers {
       // indexed row) so a token Aaron rotates in the app takes effect at once, with no cache to go stale.
       const bearer = await resolveSecret(createDb(env.DB), env, 'MCP_BEARER_TOKEN')
       if (bearer && (await constantTimeEqual(token, bearer))) {
-        return { props: { via: 'bearer' }, audience: forResource, scope: [SCOPE], userId: OWNER }
+        return {
+          props: { via: 'bearer', access: 'full' },
+          audience: forResource,
+          scope: [SCOPE],
+          userId: OWNER,
+        }
       }
-      const t = await authorization.validateToken<McpProps>(forResource, token, env)
+      const t = await authorization.validateToken<GrantProps>(forResource, token, env)
       if (!t) return null
       const valid: OAuthResourceTokenValidation<McpProps> = {
-        props: { via: 'oauth' },
+        props: { via: 'oauth', access: grantedAccess(t.props, t.clientId) },
         audience: t.audience,
         expiresAt: t.expiresAt,
         scope: t.scope,
@@ -143,14 +269,15 @@ function build(origin: string): OAuthServers {
     },
     handler: {
       fetch: (request, _env, ctx: OAuthResourceContext<McpProps>) =>
-        (ctx as unknown as McpContext).serve(request),
+        // validateToken already set access; were it ever missing here, fail closed to 'log'.
+        (ctx as unknown as McpContext).serve(request, ctx.props?.access === 'full' ? 'full' : 'log'),
     },
   })
   return { authorization, resource: resourceServer }
 }
 
 /** A fresh execution context per request (the provider writes props/auth onto it); waitUntil goes through deps. */
-function contextFor(deps: Deps, serve?: (request: Request) => Promise<Response>): McpContext {
+function contextFor(deps: Deps, serve?: McpContext['serve']): McpContext {
   const ctx = {
     waitUntil: (p: Promise<unknown>) => deps.waitUntil(p),
     passThroughOnException: () => undefined,
@@ -163,8 +290,8 @@ function contextFor(deps: Deps, serve?: (request: Request) => Promise<Response>)
 const mcpDeps = (c: Context<AppEnv>): Deps => depsFromContext(c, 'mcp')
 
 /**
- * Mount /mcp and the OAuth endpoints. /authorize must already be behind the Access check (app.use('/authorize', auth())),
- * and /mcp, /token, /register and /.well-known/* must stay outside Cloudflare Access (docs/DEPLOY.md §6).
+ * Mount /mcp and the OAuth endpoints. /authorize must already be behind the Access check
+ * (app.use('/authorize', auth())), and /mcp, /token, /register and /.well-known/* must stay outside Cloudflare Access (docs/DEPLOY.md §6).
  */
 export function mountMcp(app: App, serve: McpServe): void {
   // Authorization server: RFC 8414 metadata, DCR, token exchange / refresh / revocation.
@@ -188,7 +315,7 @@ export function mountMcp(app: App, serve: McpServe): void {
     return serversFor(c.req.url).resource.fetch(
       c.req.raw,
       c.env,
-      contextFor(deps, (request) => serve(request, deps)),
+      contextFor(deps, (request, access) => serve(request, deps, access)),
     )
   })
 
@@ -197,10 +324,13 @@ export function mountMcp(app: App, serve: McpServe): void {
     consentStep(async () => {
       const oauth = serversFor(c.req.url).authorization.getOAuthApi(c.env)
       const request = await oauth.parseAuthRequest(c.req.raw)
-      const details = await oauth.describeConsent(request) // first: a failed lookup leaves nothing in KV
+      // Both before beginConsent: a refused client or a failed lookup leaves nothing in KV.
+      const access = await accessFor(oauth, request)
+      if (!access) return notAllowed()
+      const details = await oauth.describeConsent(request)
       const consent = await oauth.beginConsent(request)
       consent.headers.set('Content-Type', 'text/html; charset=utf-8')
-      return new Response(consentPage(details, consent.handle), { headers: consent.headers })
+      return new Response(consentPage(details, consent.handle, access), { headers: consent.headers })
     }),
   )
   app.post('/authorize', (c) =>
@@ -213,12 +343,15 @@ export function mountMcp(app: App, serve: McpServe): void {
         return new Response(null, { status: 302, headers: denied.headers })
       }
       const approved = await oauth.approveConsent(c.req.raw, handle, { scope: [SCOPE] })
+      // Again on the stored request: a Client ID Metadata Document can change between the page and Allow.
+      const access = await accessFor(oauth, approved.request)
+      if (!access) return notAllowed(approved.headers)
       const { redirectTo } = await oauth.completeAuthorization({
         request: approved.request, // from storage, not from the form
         userId: OWNER,
         metadata: {},
         scope: [SCOPE],
-        props: { via: 'oauth' } satisfies McpProps,
+        props: { via: 'oauth', access } satisfies McpProps,
       })
       approved.headers.set('Location', redirectTo)
       return new Response(null, { status: 302, headers: approved.headers })
@@ -227,19 +360,36 @@ export function mountMcp(app: App, serve: McpServe): void {
 }
 
 /**
- * Expected consent failures: redirect to the client only when the library validated where to; else render locally.
- * The redirect is built with mutable headers (not Response.redirect, whose headers are immutable): the security-headers
- * middleware still has to add its headers to it.
+ * Expected consent failures: redirect to the client only when the library validated where to and it is an allowed
+ * callback (a Client ID Metadata Document client can name any https URI); else render locally. The redirect is built
+ * with mutable headers (not Response.redirect, whose headers are immutable): the security-headers middleware still has
+ * to add its headers to it.
  */
 async function consentStep(step: () => Promise<Response>): Promise<Response> {
   try {
     return await step()
   } catch (err) {
-    if (err instanceof AuthorizationError && err.redirectTo)
+    if (
+      err instanceof AuthorizationError &&
+      err.redirectTo &&
+      isAllowedRedirect(withoutQuery(err.redirectTo))
+    )
       return new Response(null, { status: 302, headers: { Location: err.redirectTo } })
     if (err instanceof AuthorizationError) return errorPage(err.description)
     if (err instanceof CimdFetchError)
       return errorPage('This app could not be verified (its client metadata could not be fetched).')
     throw err
+  }
+}
+
+/** An error redirect's target without the query and fragment the library added (error, state, iss). */
+function withoutQuery(uri: string): string {
+  try {
+    const url = new URL(uri)
+    url.search = ''
+    url.hash = ''
+    return url.href
+  } catch {
+    return ''
   }
 }

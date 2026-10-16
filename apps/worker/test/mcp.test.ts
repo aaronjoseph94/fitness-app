@@ -2,13 +2,16 @@
 // RFC 9728 resource metadata, the static bearer (initialize, tools/list with annotations, tools/call get_today with
 // structured content, a tool error), writes over the transport (apply_review makes a plan version the app serves; a
 // week plan under the calorie floor is refused), prompts and resources, Dynamic Client Registration only for Claude's
-// callbacks and loopback (anything else writes nothing to KV), consent errors (a refused /authorize redirects back to
-// the client with the OAuth error; a cross-site POST is 403), and the OAuth 2.1 path end to end (DCR → consent →
-// code + PKCE → token → /mcp).
+// callbacks, Meta Muse's exact callback and loopback (anything else writes nothing to KV), consent errors (a refused
+// /authorize redirects back to the client with the OAuth error; a cross-site POST is 403; a Client ID Metadata Document
+// client, which skips registration, is refused at /authorize unless its callbacks are allowed), and the OAuth 2.1 path end
+// to end (DCR → consent → code + PKCE → token → /mcp): Claude gets full access, Meta Muse (known by its callback, not
+// its name) read + log only, and a grant made before access levels existed keeps full access.
+import { OAuthAuthorizationServer } from '@cloudflare/workers-oauth-provider'
 import { addDays, today, weekStart } from '@fitness/shared/engine'
 import { ReminderKind, Weekday, type ReminderPrefs } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../src/app'
 import { createDb, plan_versions, profile, settings, weight_logs } from '../src/db'
 
@@ -171,6 +174,7 @@ describe('MCP over the static bearer', () => {
       'propose_week_plan',
       'apply_week_plan',
       'get_procedure',
+      'propose_plan_change',
     ])
       expect(tools.has(name), name).toBe(true)
     for (const t of result!.tools) {
@@ -353,6 +357,30 @@ describe('Dynamic Client Registration', () => {
     ])
       expect((await register(uris)).status, uris.join(' ')).toBe(201)
   })
+
+  it('registers Meta Muse at its exact callback only, on its own; a sub-path, query, http, look-alike host, muse.ai or a mix with other callbacks is refused', async () => {
+    const muse = 'https://agent.meta.ai/api/hatch/oauth/callback'
+    expect((await register([muse])).status).toBe(201)
+
+    const before = await kvKeys()
+    for (const uris of [
+      ['https://agent.meta.ai/api/hatch/oauth/callback/x'],
+      ['https://agent.meta.ai/api/hatch/oauth/callback?x=1'],
+      ['https://agent.meta.ai.evil.com/api/hatch/oauth/callback'],
+      ['https://muse.ai/api/hatch/oauth/callback'],
+      [muse, 'https://claude.ai/api/mcp/auth_callback'],
+      [muse, 'http://localhost:53682/callback'],
+    ]) {
+      const res = await register(uris)
+      expect(res.status, uris.join(' ')).toBe(400)
+      expect(await res.json(), uris.join(' ')).toMatchObject({ error: 'invalid_redirect_uri' })
+    }
+    // http: the library refuses a non-https, non-loopback URI before our check runs.
+    const http = await register(['http://agent.meta.ai/api/hatch/oauth/callback'])
+    expect(http.status).toBe(400)
+    expect(await http.json()).toMatchObject({ error: 'invalid_client_metadata' })
+    expect(await kvKeys()).toBe(before)
+  })
 })
 
 describe('consent errors', () => {
@@ -388,6 +416,72 @@ describe('consent errors', () => {
     expect(res.headers.get('X-Frame-Options')).toBe('DENY')
   })
 
+  it('a Client ID Metadata Document client (no registration) is refused at /authorize unless its callbacks are allowed, on GET and again on POST, with a local page', async () => {
+    const origin = 'http://localhost:8787'
+    const clientId = 'https://evil.example/oauth/client.json'
+    const claude = 'https://claude.ai/api/mcp/auth_callback'
+    let redirectUris = ['https://evil.example/cb']
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (url !== clientId) throw new Error(`unexpected fetch ${url}`)
+      return Response.json({
+        client_id: clientId,
+        client_name: 'Claude',
+        redirect_uris: redirectUris,
+        token_endpoint_auth_method: 'none',
+      })
+    })
+    const authorize = (redirect: string) =>
+      `${origin}/authorize?${new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirect,
+        code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        code_challenge_method: 'S256',
+        state: 'abc',
+        scope: 'fitness',
+        resource: `${origin}/mcp`,
+      })}`
+    try {
+      const refused = await app.request(authorize('https://evil.example/cb'), {}, env)
+      expect(refused.status).toBe(400)
+      expect(refused.headers.get('Location')).toBeNull()
+      expect(await refused.text()).toContain('This app is not allowed to connect.')
+      // A request the library refuses (no PKCE) is not bounced to that client's callback either.
+      const noPkce = new URL(authorize('https://evil.example/cb'))
+      noPkce.searchParams.delete('code_challenge')
+      noPkce.searchParams.delete('code_challenge_method')
+      const bounced = await app.request(noPkce.href, {}, env)
+      expect(bounced.status).toBe(400)
+      expect(bounced.headers.get('Location')).toBeNull()
+
+      // Allowed when the page is shown; the document changes before Allow is pressed.
+      redirectUris = [claude]
+      const consent = await app.request(authorize(claude), {}, env)
+      expect(consent.status).toBe(200)
+      const handle = /name="handle" value="([^"]+)"/.exec(await consent.text())![1]!
+      const cookie = consent.headers
+        .getSetCookie()
+        .map((c) => c.split(';')[0])
+        .join('; ')
+      redirectUris = ['https://evil.example/cb']
+      const approved = await app.request(
+        authorize(claude),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: cookie },
+          body: new URLSearchParams({ handle, decision: 'approve' }).toString(),
+        },
+        env,
+      )
+      expect(approved.status).toBe(400)
+      expect(approved.headers.get('Location')).toBeNull()
+      expect(await approved.text()).toContain('This app is not allowed to connect.')
+    } finally {
+      vi.restoreAllMocks()
+    }
+  })
+
   it('a cross-site POST to the consent page is refused before anything is approved', async () => {
     const res = await app.request(
       'http://localhost:8787/authorize',
@@ -404,16 +498,18 @@ describe('consent errors', () => {
 })
 
 describe('MCP over OAuth 2.1', () => {
-  it('registers a client, shows consent, exchanges the code (PKCE) and calls /mcp with the access token', async () => {
-    const origin = 'http://localhost:8787' // loopback: http allowed, and DEV_AUTH_BYPASS stands in for Access
-    const redirect = 'https://claude.ai/api/mcp/auth_callback'
+  const origin = 'http://localhost:8787' // loopback: http allowed, and DEV_AUTH_BYPASS stands in for Access
+  const CLAUDE = 'https://claude.ai/api/mcp/auth_callback'
+  const MUSE = 'https://agent.meta.ai/api/hatch/oauth/callback'
+
+  async function registerClient(redirect: string, clientName: string): Promise<string> {
     const reg = await app.request(
       `${origin}/register`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_name: 'Claude',
+          client_name: clientName,
           redirect_uris: [redirect],
           token_endpoint_auth_method: 'none',
         }),
@@ -421,14 +517,44 @@ describe('MCP over OAuth 2.1', () => {
       env,
     )
     expect(reg.status).toBe(201)
-    const { client_id } = (await reg.json()) as { client_id: string }
+    return ((await reg.json()) as { client_id: string }).client_id
+  }
 
+  async function pkce() {
     const verifier = 'a'.repeat(20) + crypto.randomUUID()
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)))
     const challenge = btoa(String.fromCharCode(...digest))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '')
+    return { verifier, challenge }
+  }
+
+  async function exchange(code: string, redirect: string, client_id: string, verifier: string) {
+    const tokenRes = await app.request(
+      `${origin}/token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: redirect,
+          client_id,
+          code_verifier: verifier,
+          resource: `${origin}/mcp`,
+        }).toString(),
+      },
+      env,
+    )
+    expect(tokenRes.status).toBe(200)
+    return ((await tokenRes.json()) as { access_token: string }).access_token
+  }
+
+  /** A connector's sign-in: DCR → consent page → Allow → code + PKCE → access token. */
+  async function connect(redirect: string, clientName: string) {
+    const client_id = await registerClient(redirect, clientName)
+    const { verifier, challenge } = await pkce()
     const query = new URLSearchParams({
       response_type: 'code',
       client_id,
@@ -442,7 +568,6 @@ describe('MCP over OAuth 2.1', () => {
     const consent = await app.request(`${origin}/authorize?${query}`, {}, env)
     expect(consent.status).toBe(200)
     const html = await consent.text()
-    expect(html).toContain('Allow Claude to read and change your fitness data within the rails')
     const handle = /name="handle" value="([^"]+)"/.exec(html)![1]!
     const cookie = consent.headers
       .getSetCookie()
@@ -463,28 +588,155 @@ describe('MCP over OAuth 2.1', () => {
     expect(`${location.origin}${location.pathname}`).toBe(redirect)
     expect(location.searchParams.get('state')).toBe('xyz')
 
-    const tokenRes = await app.request(
-      `${origin}/token`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: location.searchParams.get('code')!,
-          redirect_uri: redirect,
-          client_id,
-          code_verifier: verifier,
-          resource: `${origin}/mcp`,
-        }).toString(),
-      },
-      env,
-    )
-    expect(tokenRes.status).toBe(200)
-    const { access_token } = (await tokenRes.json()) as { access_token: string }
+    const access_token = await exchange(location.searchParams.get('code')!, redirect, client_id, verifier)
+    return { html, access_token }
+  }
+
+  const toolNames = async (token: string) => {
+    const { result } = await rpc<{ tools: ListedTool[] }>('tools/list', {}, token, origin)
+    return result!.tools.map((t) => t.name)
+  }
+
+  it('registers a client, shows consent, exchanges the code (PKCE) and calls /mcp with the access token', async () => {
+    const { html, access_token } = await connect(CLAUDE, 'Claude')
+    expect(html).toContain('Allow Claude to read and change your fitness data within the rails')
+    expect(html).toContain('Only allow this if you just pressed Connect yourself.')
 
     const init = await initialize(access_token, origin)
     expect(init.result?.serverInfo.name).toBe('fitness')
-    const { result } = await rpc<{ tools: ListedTool[] }>('tools/list', {}, access_token, origin)
-    expect(result!.tools.some((t) => t.name === 'apply_review')).toBe(true)
+    expect(await toolNames(access_token)).toEqual(
+      expect.arrayContaining(['apply_review', 'propose_plan_change']),
+    )
+  })
+
+  it('Meta Muse, known by its callback (not its self-reported name), gets read + log only', async () => {
+    const { html, access_token } = await connect(MUSE, 'Claude')
+    expect(html).toContain(
+      'Allow Meta Muse to read your fitness data and log meals, weight, water, steps, sleep, fasts and sets?',
+    )
+    expect(html).not.toContain('read and change your fitness data')
+
+    const init = await initialize(access_token, origin)
+    expect(init.result?.instructions).toContain('log_meal')
+    expect(init.result?.instructions).not.toContain('get_procedure')
+    expect(init.result?.instructions).not.toMatch(/aaron/i)
+
+    // Pinned: a new write tool marked read-only by mistake would show up here. No propose_plan_change,
+    // apply_week_plan, set_training_days, update_template or any other plan, template or revert tool, and no
+    // get_procedure (the coach procedures direct plan writes).
+    expect((await toolNames(access_token)).sort()).toEqual([
+      'compare_scans',
+      'confirm_meal',
+      'end_fast',
+      'finish_session',
+      'get_equipment_profile',
+      'get_exercise',
+      'get_plan',
+      'get_review_bundle',
+      'get_scan',
+      'get_today',
+      'get_training_history',
+      'get_training_week',
+      'get_trend',
+      'get_week_plan',
+      'get_weekly_review',
+      'list_exercises',
+      'list_plan_versions',
+      'list_reviews',
+      'list_scans',
+      'list_templates',
+      'log_meal',
+      'log_measurement',
+      'log_set',
+      'log_sleep',
+      'log_steps',
+      'log_water',
+      'log_weight',
+      'query_metric',
+      'search_foods',
+      'start_fast',
+      'start_session',
+    ])
+
+    const refused = await rpc<{ isError?: boolean; content: { text: string }[] }>(
+      'tools/call',
+      { name: 'propose_plan_change', arguments: { reason: 'More food', changes: [] } },
+      access_token,
+      origin,
+    )
+    // Not registered for this access level, so the server refuses it before anything runs.
+    expect(refused.result).toBeUndefined()
+    expect(refused.error?.message).toBe('Tool propose_plan_change not found')
+
+    // start_session is listed, but starting from an AI draft would accept it: refused before anything runs.
+    const draft = await rpc<{ isError?: boolean; content: { text: string }[] }>(
+      'tools/call',
+      { name: 'start_session', arguments: { proposal_id: '00000000-0000-4000-8000-000000000001' } },
+      access_token,
+      origin,
+    )
+    expect(draft.result?.isError).toBe(true)
+    expect(draft.result!.content[0]!.text).toMatch(/^not_allowed: Starting from an AI draft accepts it/)
+
+    const meal = await rpc<{ isError?: boolean; structuredContent: { status: string; raw_text: string } }>(
+      'tools/call',
+      { name: 'log_meal', arguments: { slot: 'breakfast', text: '2 eggs and toast' } },
+      access_token,
+      origin,
+    )
+    expect(meal.result!.isError ?? false, JSON.stringify(meal.result)).toBe(false)
+    expect(meal.result!.structuredContent).toMatchObject({ status: 'parsing', raw_text: '2 eggs and toast' })
+
+    const plan = await rpc<{ contents: { text: string }[] }>(
+      'resources/read',
+      { uri: 'fitness://plan' },
+      access_token,
+      origin,
+    )
+    expect(JSON.parse(plan.result!.contents[0]!.text)).toMatchObject({ rails: { calorie_floor: 1400 } })
+  })
+
+  it('a grant made before access levels existed (props without access) keeps full access', async () => {
+    const client_id = await registerClient(CLAUDE, 'Claude')
+    const { verifier, challenge } = await pkce()
+    // The provider as it was configured before this change, granting { via: 'oauth' } alone.
+    const before = new OAuthAuthorizationServer({
+      issuer: origin,
+      resources: [`${origin}/mcp`],
+      authorizeEndpoint: '/authorize',
+      tokenEndpoint: '/token',
+      clientRegistrationEndpoint: '/register',
+      scopesSupported: ['fitness'],
+    })
+    const { redirectTo } = await before.getOAuthApi(env).completeAuthorization({
+      request: {
+        responseType: 'code',
+        clientId: client_id,
+        redirectUri: CLAUDE,
+        scope: ['fitness'],
+        state: 'old',
+        codeChallenge: challenge,
+        codeChallengeMethod: 'S256',
+        resource: `${origin}/mcp`,
+        issuer: origin,
+      },
+      userId: 'owner',
+      metadata: {},
+      scope: ['fitness'],
+      props: { via: 'oauth' },
+    })
+    const code = new URL(redirectTo).searchParams.get('code')!
+    const access_token = await exchange(code, CLAUDE, client_id, verifier)
+
+    expect(await toolNames(access_token)).toEqual(
+      expect.arrayContaining([
+        'propose_plan_change',
+        'apply_week_plan',
+        'set_training_days',
+        'update_template',
+      ]),
+    )
+    const prompts = await rpc<{ prompts: { name: string }[] }>('prompts/list', {}, access_token, origin)
+    expect(prompts.result!.prompts.map((p) => p.name)).toContain('coach_review')
   })
 })

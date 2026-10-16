@@ -108,7 +108,7 @@ Shortcuts → Automation → Time of Day 07:30 daily → Run immediately:
 
 The endpoint is idempotent by date, so a re-run just replaces the day. Set the request body to **JSON** (Shortcuts then sends `Content-Type: application/json`): the Worker answers 415 to a body of any other type.
 
-## 8. Claude connector (MCP)
+## 8. Claude and Meta Muse connectors (MCP)
 
 Claude → Settings → Connectors → Add custom connector → URL `https://<host>/mcp`.
 
@@ -117,6 +117,20 @@ Claude → Settings → Connectors → Add custom connector → URL `https://<ho
 - Claude Code: `claude mcp add --transport http fitness https://<host>/mcp --header "Authorization: Bearer <MCP_BEARER_TOKEN>"`.
 
 Then in any Claude chat with the connector on, say "run my coach review" — Claude calls `get_procedure("coach_review")`, reads `get_review_bundle`, discusses, and applies on your approval.
+
+### Connect Meta Muse (read + log)
+
+Muse connects to the same `/mcp` endpoint, but its grant is **read + log**: it can read everything and log meals, weigh-ins, measurements, water, steps, sleep, fasts and workout sets (a fast it starts makes that day a fast day, within the two-a-month rail). Plans, other targets, templates, training days, equipment, settings, accepting AI drafts and Undo stay in the app (and with Claude). Every write passes the same guards.
+
+1. Deploy first (no migration for this change).
+2. In Muse: Settings → Connectors → Add custom connector, and paste `https://<host>/mcp`. Or say it in a Muse chat: "add a custom connector: remote streamable HTTP, `https://<host>/mcp`, OAuth".
+3. Muse registers itself and opens the sign-in page: sign in through Cloudflare Access, then tap **Allow** on "Allow Meta Muse to read your fitness data and log meals, weight, water, steps, sleep, fasts and sets?". Only tap Allow right after you pressed Connect yourself; the consent page says so too.
+4. Try it: "log 2 eggs and toast for breakfast". The meal shows on Log as parsing, then ready to review, matched against the Canadian Nutrient File. "Change my calories to 1,600" should get a "do that in the app" answer.
+
+- The Worker accepts exactly one Muse callback, `https://agent.meta.ai/api/hatch/oauth/callback` (developer-reported; Meta doesn't publish it). If Muse ever shows "The provider rejected the automatic app registration", run `npx wrangler tail` while you retry: the refused callback's host and path are logged, and that value goes into `MUSE_CALLBACK` in `apps/worker/src/middleware/mcp-auth.ts`.
+- If Muse asks for an API key or a request header instead of signing in, `Authorization: Bearer <MCP_BEARER_TOKEN>` works, but that token is **full access** (the same as Claude's). Prefer the sign-in.
+- Privacy: whatever Muse reads goes to Meta, and Meta uses Muse conversations to train its models unless you opt out in Muse's privacy settings (on by default). The app still strips your name from every tool result; progress photos are never exposed through `/mcp`.
+- To disconnect: remove the connector in Muse. Its refresh token lapses after 60 days without use.
 
 ## 9. Install the PWA
 

@@ -357,6 +357,8 @@ Every workout, AI-built or custom, is a list of exercise IDs from one library, s
 
 - `/mcp` on the Worker, Streamable HTTP, `@modelcontextprotocol/server`, authenticated by `Authorization: Bearer <MCP_BEARER_TOKEN>` or, when the connector dialog has no header field, by OAuth 2.1 (the consent page sits behind Access; `docs/DEPLOY.md` §8). Add it in Claude as a custom connector; the server must be public HTTPS because Claude connects from Anthropic's cloud.
 - Exposes the same tools as Ask AI plus resources `fitness://today`, `fitness://plan`, `fitness://week/<YYYY-Www>`; writes through MCP are recorded with actor `mcp` and follow the same rails and proposal rules.
+- Two clients (2026-10-16). Claude has **full** access: every tool and the coach prompts below. Meta Muse (Meta's agent app; custom connectors are remote MCP servers it reaches from Meta's cloud over OAuth with dynamic client registration) has **read + log** access: the read-only tools (including `search_foods`, but not `get_procedure`), the three resources, and `log_meal`, `confirm_meal`, `log_weight`, `log_measurement`, `log_water`, `log_steps`, `log_sleep`, `start_fast`, `end_fast`, `start_session`, `log_set`, `finish_session`. It gets no prompts and no other tool, `start_session` from an AI draft is refused (starting it would accept the draft), a fast it starts makes that day a fast day as in the app, and its server instructions say to prefer `log_meal` with the user's own words and to change plans, targets and templates in the app. Muse writes are recorded with actor `mcp`, like Claude's, and pass the same guards.
+- Access is set per OAuth grant at `/authorize` from the client's registered callback, never its self-reported name: Muse's callback (`https://agent.meta.ai/api/hatch/oauth/callback`, exact match) gets read + log and its own consent text; Claude's callbacks and loopback get full; any other client (including one that arrives with a Client ID Metadata Document, which skips registration) is refused at `/authorize`, and a client may not mix Muse's callback with another. The static bearer is full. A grant issued before 2026-10-16 carries no access level and counts as full.
 
 **Coach reviews through MCP (Claude as the senior coach)**
 
@@ -453,7 +455,7 @@ Claude is in the paid table, not this one: without an Anthropic key the Worker n
 
 ## 10. API and the shared tools layer
 
-The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src/modules/tools`) that both Ask AI (function calling on the model chain) and the MCP server expose, so Claude and the in-app assistant can do exactly the same things.
+The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src/modules/tools`) that both Ask AI (function calling on the model chain) and the MCP server expose, so Claude and the in-app assistant can do exactly the same things. Meta Muse, on the same MCP server with read + log access (2026-10-16, section 8), gets only the read-only tools and the log tools.
 
 **REST (`/api`, JSON, Cloudflare Access JWT)**
 
@@ -511,7 +513,7 @@ The REST API serves the PWA; the tools layer is a typed module (`apps/worker/src
 | `apply_week_plan(id)` · `revert_week_plan(id)` | Activates a proposed plan (rebuilds `daily_targets` for those seven days, sets the Train tab's planned sessions) or restores the previous active one. |
 | Prompts `coach_review`, `scan_debrief`, `program_design`, `plateau_check` | Server-shipped procedures: what to read, what to check, what may change, how to present it before applying. |
 
-All changes through `apply_review` and `apply_week_plan` pass the guardrails in section 9; a change that fails a rail is dropped from the batch and reported back, the rest applies. MCP resources `fitness://today`, `fitness://plan`, `fitness://week/<YYYY-Www>` return the same JSON as the matching tools. All write tools record `actor` (user, ai, mcp) and go through the guardrails; none can change `settings` rails.
+All changes through `apply_review` and `apply_week_plan` pass the guardrails in section 9; a change that fails a rail is dropped from the batch and reported back, the rest applies. MCP resources `fitness://today`, `fitness://plan`, `fitness://week/<YYYY-Www>` return the same JSON as the matching tools, for both MCP clients. All write tools record `actor` (user, ai, mcp; `mcp` covers Claude and Meta Muse alike) and go through the guardrails; none can change `settings` rails.
 
 ## 11. UI, charts and print
 

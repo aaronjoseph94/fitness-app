@@ -5,7 +5,8 @@
 ## People and authority
 
 - **Aaron**: the one user. Every write is attributed to an **Actor**.
-- **Actor**: who made a change: `user` (Aaron in the app), `ai` (a job run by the model chain), `mcp` (Claude through the connector). Stored on every write and event.
+- **Actor**: who made a change: `user` (Aaron in the app), `ai` (a job run by the model chain), `mcp` (Claude or Meta Muse through the connector). Stored on every write and event.
+- **Access** (MCP): what an MCP client's OAuth grant allows, set at `/authorize` from its registered callback. `full`: every tool and the coach prompts (Claude, the static bearer, grants from before 2026-10-16). `log`, shown as **read + log**: the read-only tools (not `get_procedure`), the resources and the log tools only, never starting a session from an AI draft (Meta Muse).
 - **Coach**: Claude via MCP doing judgement work (weekly review, scan debrief, program design, plateau check). The **Clerk** is the free-tier LLM doing per-log work (meal parsing, day adjustment, scan extraction) — or, with a paid key set, the same paid model does the clerk work in the Worker.
 
 ## Rails and plans

@@ -27,7 +27,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 - **Exercises** (`packages/exercises`): the normalised free-exercise-db library (typed muscles, slugs, video links) for scripts and the seed, plus exercise images and GIFs served as static assets.
 - **Seed** (`seed/`): `scans/2026-09-26.json`, `foods/cnf.json` (the Canadian Nutrient File foods), `equipment/anytime-fitness.json` — his floor: the 47 machines at Anytime Fitness Lacombe, each with the part of the gym it is in, plus the club's absences. A generated workout may only pull from it.
 - **Tests**: Vitest (engine and schemas; Worker routes via `@cloudflare/vitest-plugin`), Playwright against the local Worker.
-- **LLMs**: free tiers by default (Groq → OpenRouter `:free` → Z.ai GLM → Gemini Flash), all via plain `fetch`. Paid models are optional: a key set under Settings → AI puts that model first in every chain (Claude Opus 5.5 → GPT-6.1 Sol → Gemini 3.1 Pro), capped by the app at 200 requests a day per provider. Claude also reaches the app through the MCP connector from Aaron's own Claude chats.
+- **LLMs**: free tiers by default (Groq → OpenRouter `:free` → Z.ai GLM → Gemini Flash), all via plain `fetch`. Paid models are optional: a key set under Settings → AI puts that model first in every chain (Claude Opus 5.5 → GPT-6.1 Sol → Gemini 3.1 Pro), capped by the app at 200 requests a day per provider. Claude also reaches the app through the MCP connector from Aaron's own Claude chats, and Meta Muse reaches it too, with read + log access.
 
 ## Commands
 
