@@ -1,7 +1,8 @@
-// Owns: Today's "Recent activity" table (2a) — the newest events of the live AI feed (day adjustments, proposals,
-// reviews, notes, changes) as rows of time, who (a blue chip for the AI or the Coach, an outline one for Aaron) with
-// what happened (wrapping, never cut), and the figure that goes with it (under the event on a phone); "View log" opens
-// the Log tab. The page shows it once the feed has answered (a placeholder or the failed-read banner before that).
+// Owns: Today's "Recent activity" table (the panel's last card) — the newest events of the live AI feed (day
+// adjustments, proposals, reviews, notes, changes) as rows of time, who (an info chip for the AI or the Coach, an
+// outline one for Aaron) with what happened (wrapping, never cut), and the figure that goes with it (under the event
+// on a phone); "View log" opens the Log tab. The page shows it once the feed has answered (a placeholder or the
+// failed-read banner before that).
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Table from '@mui/material/Table'

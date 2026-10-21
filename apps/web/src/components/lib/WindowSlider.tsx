@@ -1,5 +1,6 @@
-// Owns: the 2a week slider (Dashboard and Progress volume maps) — a 4 px grey track for the whole range with the days
-// on show drawn blue, the range's first and last dates at its ends, and a 14 px white knob with a 2 px blue ring that
+// Owns: the week slider (Dashboard and Progress volume maps) — a 4 px lilac track for the whole range with the days
+// on show drawn in the accent violet, the range's first and last dates at its ends, and a 14 px white knob with a 2 px
+// violet ring that
 // picks the window's last day. The slider names itself, says "7 days to 2026-10-07" to assistive tech, and is 44 px
 // tall for touch (SPEC §11).
 import Box from '@mui/material/Box'

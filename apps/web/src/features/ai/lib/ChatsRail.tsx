@@ -1,13 +1,15 @@
-// Owns: 2a's chats rail on a wide Ask AI page — "Chats" with "+ New", every past thread (its opening words and when;
-// the open one marked) to switch to, and the card at its foot saying what the AI may do. Opening, starting and the
-// list are the same thread store and history query the past-chats menu uses; deleting stays in that menu.
+// Owns: the chats rail on a wide Ask AI page (1d) — a white card with "Chats" and "+ New", every past thread (its
+// opening words and when; the open one in a warm well with the gold ring) to switch to, and the coach-gradient "Rails
+// on" card at its foot. Opening, starting and the list are the same thread store and history query the past-chats menu
+// uses; deleting stays in that menu.
 import AddRounded from '@mui/icons-material/AddRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Skeleton from '@mui/material/Skeleton'
-import { QueryStateCard } from '../../../components'
-import { tokens } from '../../../theme'
+import { cardSurface, displayTitle, QueryStateCard } from '../../../components'
+import { tokens, transitionOf } from '../../../theme'
+import { RailsCard } from './PendingProposals'
 import { useThreadStore } from './thread-store'
 import { useThreads } from './useChat'
 import { chatWhen } from './when'
@@ -16,7 +18,16 @@ import { chatWhen } from './when'
 export const shorten = (text: string, n: number) =>
   text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text
 
-const noteSx = { px: '10px', py: '9px', fontSize: tokens.font.size.caption, color: tokens.ink.muted } as const
+const noteSx = {
+  px: '12px',
+  py: '10px',
+  fontSize: tokens.font.size.caption,
+  fontWeight: tokens.font.weight.body,
+  color: tokens.ink.muted,
+} as const
+
+/** The active chat: a warm well inside the 2 px gold ring (1d's "current" mark). */
+const activeRing = `inset 0 0 0 2px ${tokens.summit.gold.main}`
 
 export function ChatsRail() {
   const threads = useThreads()
@@ -25,23 +36,17 @@ export function ChatsRail() {
     <Box
       component="nav"
       aria-labelledby="ask-ai-chats-title"
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
-        bgcolor: tokens.ink.panel,
-        borderRight: `1px solid ${tokens.ink.border}`,
-      }}
+      sx={{ ...cardSurface, display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', px: '14px', pt: '14px', pb: '10px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', px: '20px', pt: '20px', pb: '12px' }}>
         <Box
           component="h2"
           id="ask-ai-chats-title"
           sx={{
             m: 0,
             flex: 1,
-            fontSize: tokens.font.size.small,
-            fontWeight: tokens.font.weight.heading,
+            ...displayTitle('card'),
+            fontSize: tokens.font.size.subtitle,
             color: tokens.ink.text,
           }}
         >
@@ -49,10 +54,11 @@ export function ChatsRail() {
         </Box>
         <Button
           variant="outlined"
-          size="tiny"
+          size="small"
           startIcon={<AddRounded />}
           onClick={startNew}
           aria-label="New chat"
+          sx={{ borderRadius: `${tokens.radius.inner}px`, px: '12px' }}
         >
           New
         </Button>
@@ -61,21 +67,21 @@ export function ChatsRail() {
         component="ul"
         sx={{
           m: 0,
-          px: '8px',
-          py: 0,
+          px: '12px',
+          py: '2px',
           listStyle: 'none',
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1fr)',
           alignContent: 'start',
-          gap: '2px',
-          flex: 1,
-          minHeight: 0,
+          gap: '4px',
+          // A long history scrolls inside the rail rather than stretching the row past the thread.
+          maxHeight: 'max(280px, calc(100dvh - 360px))',
           overflowY: 'auto',
         }}
       >
         {threads.isPending &&
           [0, 1, 2].map((i) => (
-            <Box component="li" key={i} sx={{ px: '10px', py: '9px' }}>
+            <Box component="li" key={i} sx={{ px: '12px', py: '10px' }}>
               <Skeleton width="80%" height={18} />
               <Skeleton width="40%" height={16} />
             </Box>
@@ -107,19 +113,16 @@ export function ChatsRail() {
                   display: 'block',
                   width: '100%',
                   textAlign: 'left',
-                  px: '10px',
-                  py: '9px',
-                  borderRadius: `${tokens.radius.control}px`,
-                  // A bare <button> takes the browser's font; the rows read in the theme's Geist like the rest.
+                  px: '12px',
+                  py: '10px',
+                  borderRadius: `${tokens.summit.radius.wellSmall}px`,
+                  // A bare <button> takes the browser's font; the rows read in the theme's face like the rest.
                   font: 'inherit',
-                  bgcolor: 'transparent',
-                  boxShadow: active ? `inset 0 0 0 1px ${tokens.ink.border}` : 'none',
+                  bgcolor: active ? tokens.ink.panel : 'transparent',
+                  boxShadow: active ? activeRing : 'none',
                   color: tokens.ink.text,
-                  // On the `ink.fill` background the time line steps up to `ink.label` (`ink.muted` there is 4.39:1, under AA).
-                  '&:hover, &[aria-current]': {
-                    bgcolor: tokens.ink.fill,
-                    '& .chat-when': { color: tokens.ink.label },
-                  },
+                  transition: transitionOf('background-color', tokens.motion.duration.instant),
+                  '&:hover': { bgcolor: tokens.ink.panel },
                   // Inset, like the kit's flush rows: the scrolling list would clip a ring drawn outside the row.
                   '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width },
                 }}
@@ -128,9 +131,9 @@ export function ChatsRail() {
                   component="span"
                   sx={{
                     display: 'block',
-                    fontSize: tokens.font.size.small,
-                    fontWeight: active ? tokens.font.weight.heading : tokens.font.weight.label,
-                    lineHeight: 'normal',
+                    fontSize: tokens.font.size.body,
+                    fontWeight: active ? tokens.font.weight.heading : tokens.font.weight.body,
+                    lineHeight: tokens.font.leading.label,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -140,11 +143,11 @@ export function ChatsRail() {
                 </Box>
                 <Box
                   component="span"
-                  className="chat-when"
                   sx={{
                     display: 'block',
                     fontSize: tokens.font.size.caption,
-                    lineHeight: 'normal',
+                    fontWeight: tokens.font.weight.body,
+                    lineHeight: tokens.font.leading.caption,
                     color: tokens.ink.muted,
                   }}
                 >
@@ -155,20 +158,9 @@ export function ChatsRail() {
           )
         })}
       </Box>
-      <Box
-        sx={{
-          m: '12px',
-          p: '12px',
-          borderRadius: `${tokens.radius.panel}px`,
-          border: `1px solid ${tokens.ink.border}`,
-          bgcolor: tokens.ink.card,
-          fontSize: tokens.font.size.caption,
-          lineHeight: tokens.font.leading.small,
-          color: tokens.ink.label,
-        }}
-      >
-        <Box sx={{ fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>Free-tier models</Box>
-        Numbers come from your data; every change passes the rails and waits for your tap.
+      <Box sx={{ flex: 1 }} />
+      <Box sx={{ m: '14px' }}>
+        <RailsCard />
       </Box>
     </Box>
   )

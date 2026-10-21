@@ -1,14 +1,17 @@
-// Owns: the session logger screen (SPEC §7 session logging; 2a) — the title row ("← Train", origin and "In progress"
-// chips, the session's name as the page h1, a stat strip: running clock, sets ticked, volume, readiness), the start
-// notes banner (recovery conflicts, deload week, low readiness, planned exercises left out for being outside the
-// allowed set), one card per exercise (the one in hand highlighted; once a session is under way the exercises still to
-// come open folded), one picker to add an exercise mid-session or swap one for another with the same primary muscle,
-// finish with a confirm, "Delete session", the rail beside the list from `lg` (progress ring and per-exercise bars,
-// last time's sets and volume, the readiness chip with its details), the snackbar (a write problem, or a swap
-// refused; at the top, as the quick-log notice), and the edit mode of a finished session (its duration fixed, "Save
-// changes" finishes it again with the same end time).
+// Owns: the session logger screen (SPEC §7 session logging; 1d Summit "Session") — the sky hero ("← Train", origin and
+// "In progress" pills, the session's name as the page h1, when it started and how many exercises, and the glass stat
+// strip: running clock, sets ticked, volume, readiness), the start notes in a violet well (recovery conflicts, deload
+// week, low readiness, planned exercises left out for being outside the allowed set), one card per exercise (the one in
+// hand gold-ringed; once a session is under way the exercises still to come open folded), one picker to add an exercise
+// mid-session or swap one for another with the same primary muscle, Add exercise, the coral Finish session with a
+// confirm, the red "Delete session", the rail beside the list at 1fr : 320 px, wrapping under it (progress ring and
+// per-exercise bars, the deep-sky "Last time" with its sets and volume, the readiness chip with its details), the
+// snackbar (a write problem, or a swap refused; at the top, as the quick-log notice), and the edit mode of a finished
+// session (its duration fixed, "Save changes" finishes it again with the same end time). No rest timer (removed
+// 2026-10-14): planned rest stays as text on each exercise.
 import AddRounded from '@mui/icons-material/AddRounded'
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import FlagRounded from '@mui/icons-material/FlagRounded'
 import SpeedRounded from '@mui/icons-material/SpeedRounded'
 import Box from '@mui/material/Box'
@@ -19,24 +22,27 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Snackbar from '@mui/material/Snackbar'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import {
-  Banner,
+  cardSurface,
+  deepSkyWell,
+  displayTitle,
   EmptyState,
+  eyebrow,
+  fixedCol,
+  formatClock,
   formatNumber,
   formatShortDate,
   formatWeekday,
-  KeyStat,
+  GlassPill,
   MetricRing,
   PageHeader,
-  Panel,
-  panelSurface,
   PendingBadge,
   Reveal,
-  StatusChip,
   staggerDelay,
   wellSurface,
+  WrapRow,
 } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
@@ -144,74 +150,127 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
 
   const clock = elapsed(session.started_at, edited ? Date.parse(edited.ended_at) : now)
 
+  const currentSetId = currentId
+    ? (session.exercises.find((e) => e.exercise_id === currentId)?.sets.find((x) => !x.done)?.id ?? null)
+    : null
+
   return (
     <>
-      <Box data-testid="session-logger">
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 320px' },
-            gap: '20px',
-            alignItems: 'start',
-          }}
-        >
-          <Box sx={{ display: 'grid', gap: 4, minWidth: 0 }}>
-            <PageHeader
-              eyebrow={
-                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: '4px' }}>
-                  <ButtonBase
-                    component={RouterLink}
-                    to="/train"
-                    sx={{
-                      gap: '2px',
-                      fontSize: tokens.font.size.small,
-                      color: tokens.ink.muted,
-                      borderRadius: `${tokens.radius.inner}px`,
-                      '&:hover': { color: tokens.ink.text },
-                      [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
-                    }}
-                  >
-                    <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
-                    Train
-                  </ButtonBase>
-                  <StatusChip
-                    tone="info"
-                    label={
-                      edited ? `Editing · ${formatShortDate(session.date)}` : ORIGIN_LABEL[session.origin]
-                    }
-                  />
-                  {!edited && <StatusChip tone="success" dot label="In progress" />}
-                  {session.start === 'pending' && <PendingBadge label="Starting…" />}
-                </Box>
-              }
-              title={session.name ?? 'Workout'}
-              action={
+      <PageHeader
+        eyebrow={
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px 10px',
+              textTransform: 'none',
+              letterSpacing: 0,
+            }}
+          >
+            <ButtonBase
+              component={RouterLink}
+              to="/train"
+              sx={{
+                gap: '2px',
+                fontSize: 14,
+                fontWeight: tokens.font.weight.heading,
+                borderRadius: `${tokens.radius.inner}px`,
+                '&.Mui-focusVisible': {
+                  outline: `${tokens.focusRing.width}px solid ${tokens.summit.onSky.text}`,
+                  outlineOffset: tokens.focusRing.offset,
+                },
+                [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+              }}
+            >
+              <ArrowBackRounded aria-hidden sx={{ fontSize: 18 }} />
+              Train
+            </ButtonBase>
+            <GlassPill size="small">
+              {edited ? `Editing · ${formatShortDate(session.date)}` : ORIGIN_LABEL[session.origin]}
+            </GlassPill>
+            {!edited && (
+              <GlassPill tone="teal" size="small">
                 <Box
+                  component="span"
+                  aria-hidden
                   sx={{
-                    ...panelSurface,
-                    display: 'flex',
-                    gap: { xs: '20px', sm: '28px' },
-                    py: { xs: '10px', sm: '12px' },
-                    px: { xs: '14px', sm: '18px' },
+                    display: 'inline-block',
+                    width: 7,
+                    height: 7,
+                    mr: '6px',
+                    borderRadius: '50%',
+                    bgcolor: tokens.summit.onSky.text,
+                    verticalAlign: '1px',
                   }}
-                >
-                  <KeyStat size="md" label="Time" value={clock} testId="session-clock" />
-                  <KeyStat size="md" label="Sets" value={`${counts.done}/${counts.planned}`} />
-                  <KeyStat size="md" label="Volume" value={counts.volume_kg} unit="kg" />
-                  {session.readiness && (
-                    <KeyStat size="md" label="Readiness" value={session.readiness.score} />
-                  )}
-                </Box>
-              }
-            />
-
+                />
+                In progress
+              </GlassPill>
+            )}
+            {session.start === 'pending' && <PendingBadge label="Starting…" />}
+          </Box>
+        }
+        title={session.name ?? 'Workout'}
+        subtitle={`Started ${formatClock(session.started_at)} · ${session.exercises.length} exercise${session.exercises.length === 1 ? '' : 's'}`}
+        action={
+          <StatStrip>
+            <Stat label="Time" testId="session-clock">
+              {clock}
+            </Stat>
+            <Stat label="Sets">
+              {counts.done}
+              <StatUnit> / {counts.planned}</StatUnit>
+            </Stat>
+            <Stat label="Volume">
+              {formatNumber(counts.volume_kg)}
+              <StatUnit> kg</StatUnit>
+            </Stat>
+            {session.readiness && (
+              <Stat label="Readiness" colour={tokens.tone.success.light}>
+                {session.readiness.score}
+              </Stat>
+            )}
+          </StatStrip>
+        }
+      />
+      <Box data-testid="session-logger">
+        <WrapRow align="flex-start">
+          <Box
+            sx={{
+              flex: '100 1 280px',
+              minWidth: 0,
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr)',
+              gap: `${tokens.summit.space.gap.tile}px`,
+            }}
+          >
             {notes.length > 0 && (
               <Reveal delay={100}>
-                <Banner tone="info">
-                  {notes.map((n) => (
-                    <div key={n}>{n}</div>
-                  ))}
-                </Banner>
+                <Box
+                  data-testid="session-notes"
+                  sx={{
+                    display: 'flex',
+                    gap: '12px',
+                    px: '20px',
+                    py: '16px',
+                    borderRadius: `${tokens.summit.radius.small}px`,
+                    bgcolor: tokens.accent.soft,
+                    color: tokens.summit.ink.deep,
+                    fontSize: tokens.font.size.body,
+                    fontWeight: tokens.font.weight.body,
+                    lineHeight: tokens.font.leading.body,
+                  }}
+                >
+                  <AutoAwesomeRounded
+                    aria-hidden
+                    sx={{ fontSize: 22, color: tokens.accent.deep, flex: 'none' }}
+                  />
+                  <Box sx={{ minWidth: 0 }}>
+                    {notes.map((n) => (
+                      <div key={n}>{n}</div>
+                    ))}
+                  </Box>
+                </Box>
               </Reveal>
             )}
 
@@ -238,6 +297,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                       onAbout={setAbout}
                       onSwap={openSwap}
                       current={e.exercise_id === currentId}
+                      activeSetId={e.exercise_id === currentId ? currentSetId : null}
                       defaultOpen={!folded.has(e.exercise_id)}
                       recoveryConflict={!!info?.primary_muscles.some((m) => conflicts.includes(m))}
                     />
@@ -246,10 +306,11 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               })
             )}
 
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', mt: '6px' }}>
               {session.exercises.length > 0 && (
                 <Button
                   variant="outlined"
+                  size="large"
                   startIcon={<AddRounded />}
                   onClick={openAdd}
                   data-testid="add-exercise"
@@ -261,6 +322,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               {edited ? (
                 <Button
                   variant="contained"
+                  size="large"
                   disabled={finishing}
                   onClick={() => void saveEdits()}
                   data-testid="save-edits"
@@ -271,6 +333,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               ) : (
                 <Button
                   variant="contained"
+                  size="large"
                   startIcon={<FlagRounded />}
                   onClick={() => setConfirm(true)}
                   data-testid="finish-session"
@@ -283,7 +346,12 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                 color="error"
                 onClick={() => setDeleting(true)}
                 data-testid="delete-session"
-                sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
+                sx={{
+                  ml: 'auto',
+                  mr: '-12px',
+                  fontWeight: tokens.font.weight.heading,
+                  '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+                }}
               >
                 Delete session
               </Button>
@@ -294,21 +362,18 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
             component="aside"
             aria-label="This session"
             sx={{
+              ...fixedCol(320),
               display: 'grid',
-              gap: 4,
-              gridTemplateColumns: {
-                xs: 'minmax(0, 1fr)',
-                sm: 'repeat(2, minmax(0, 1fr))',
-                lg: 'minmax(0, 1fr)',
-              },
-              alignItems: 'start',
+              gridTemplateColumns: 'minmax(0, 1fr)',
+              gap: `${tokens.summit.space.gap.tile}px`,
+              alignContent: 'start',
             }}
           >
             <ProgressPanel session={session} done={counts.done} planned={counts.planned} now={now} />
             <LastTimePanel session={session} done={counts.done} volume={counts.volume_kg} />
             {session.readiness && <ReadinessPanel readiness={session.readiness} />}
           </Box>
-        </Box>
+        </WrapRow>
       </Box>
 
       <ExercisePicker
@@ -381,14 +446,141 @@ const railDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 
 
 const RAIL_TEXT_SX = {
   fontSize: tokens.font.size.small,
+  fontWeight: tokens.font.weight.body,
   lineHeight: tokens.font.leading.small,
-  color: tokens.ink.label,
+  color: tokens.ink.secondary,
 } as const
 const STRONG_SX = { color: tokens.ink.text, fontWeight: tokens.font.weight.heading } as const
 
+const { summit } = tokens
+
 /**
- * Progress: a 56 px ring of sets ticked, the time left at this pace (minutes so far ÷ sets ticked × sets still open),
- * and one 6 px bar per exercise filled by its share of sets ticked.
+ * The glass stat strip on the sky (README §5.5): dark glass, cells split by white hairlines, wrapping on a phone. Each
+ * cell draws its rule on its left a pixel outside itself, and the inner row clips it, so a cell that starts a line
+ * shows none.
+ */
+function StatStrip({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        p: '8px',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        borderRadius: `${summit.radius.tabBar}px`,
+        bgcolor: summit.glass.card,
+        border: `1px solid ${summit.glass.cardBorder}`,
+        backdropFilter: `blur(${summit.glass.cardBlur}px)`,
+      }}
+    >
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', rowGap: '6px', overflow: 'hidden' }}>{children}</Box>
+    </Box>
+  )
+}
+
+/** One cell: an 11/600 uppercase label over an Outfit 22 value (tabular). */
+function Stat({
+  label,
+  colour = summit.onSky.text,
+  testId,
+  children,
+}: {
+  label: string
+  colour?: string
+  testId?: string
+  children: ReactNode
+}) {
+  return (
+    <Box
+      data-testid={testId}
+      sx={{
+        flex: '1 0 auto',
+        px: '18px',
+        py: '10px',
+        ml: '-1px',
+        textAlign: 'center',
+        borderLeft: `1px solid ${summit.glass.cardBorder}`,
+      }}
+    >
+      <Box
+        sx={{
+          fontSize: tokens.font.size.micro,
+          fontWeight: tokens.font.weight.heading,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: summit.onSky.muted,
+        }}
+      >
+        {label}
+      </Box>
+      <Box
+        sx={{
+          mt: '2px',
+          fontFamily: tokens.font.display,
+          fontSize: tokens.font.size.bigNumberSmall,
+          fontWeight: tokens.font.weight.number,
+          lineHeight: 1.2,
+          color: colour,
+          fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </Box>
+    </Box>
+  )
+}
+
+/** A unit after a stat (DM Sans 14, white .55-ish). */
+function StatUnit({ children }: { children: ReactNode }) {
+  return (
+    <Box component="span" sx={{ fontFamily: tokens.font.family, fontSize: 14, color: summit.onSky.muted }}>
+      {children}
+    </Box>
+  )
+}
+
+/** A rail card: white radius 30, padded 22 × 24, with an Outfit 17 title (or a deep-sky one for "Last time"). */
+function RailCard({
+  title,
+  deep = false,
+  children,
+}: {
+  title?: ReactNode
+  deep?: boolean
+  children: ReactNode
+}) {
+  return (
+    <Box
+      component="section"
+      sx={{
+        ...(deep
+          ? {
+              background: summit.deepSky.bg,
+              color: summit.deepSky.text,
+              boxShadow: summit.deepSky.shadow,
+              borderRadius: `${summit.radius.large}px`,
+            }
+          : cardSurface),
+        position: 'relative',
+        overflow: 'hidden',
+        minWidth: 0,
+        px: '24px',
+        py: '22px',
+      }}
+    >
+      {title && (
+        <Box component="h2" sx={{ m: 0, mb: '14px', ...displayTitle('card'), fontSize: 17 }}>
+          {title}
+        </Box>
+      )}
+      {children}
+    </Box>
+  )
+}
+
+/**
+ * Progress: a 64 px ring of sets ticked, the time left at this pace (minutes so far ÷ sets ticked × sets still open),
+ * and one 8 px bar per exercise filled by its share of sets ticked.
  */
 function ProgressPanel({
   session,
@@ -416,66 +608,66 @@ function ProgressPanel({
           : `About ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'} left at this pace`
   return (
     <Reveal delay={railDelay(0)} sx={{ minWidth: 0 }}>
-      <Panel title="Progress" titleSize="card" padding="dense">
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <RailCard>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <MetricRing
             value={done}
             target={Math.max(1, planned)}
-            metric="weight"
+            metric="steps"
             color={tokens.accent.main}
             trackColor={tokens.ink.fill}
-            size={56}
-            thickness={6}
+            size={64}
+            thickness={7}
             centre={`${pct}%`}
             label="Sets ticked"
             unit="sets"
           />
-          <Box sx={RAIL_TEXT_SX}>
-            <Box component="strong" sx={STRONG_SX}>
-              {done} of {planned} sets
-            </Box>{' '}
-            ticked
-            {pace && (
-              <>
-                <br />
-                {pace}
-              </>
-            )}
+          <Box sx={{ minWidth: 0 }}>
+            <Box component="h2" sx={{ m: 0, ...displayTitle('card'), fontSize: 17 }}>
+              Progress
+            </Box>
+            <Box sx={{ ...RAIL_TEXT_SX, mt: '2px' }}>
+              <Box component="strong" sx={STRONG_SX}>
+                {done} of {planned} sets
+              </Box>{' '}
+              ticked
+              {pace && (
+                <>
+                  <br />
+                  {pace}
+                </>
+              )}
+            </Box>
           </Box>
         </Box>
         {session.exercises.length > 0 && (
-          <Box
-            aria-hidden
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${session.exercises.length}, minmax(0, 1fr))`,
-              gap: '4px',
-              mt: '14px',
-            }}
-          >
+          <Box aria-hidden sx={{ display: 'flex', gap: '4px', mt: '16px' }}>
             {session.exercises.map((e) => {
               const share = e.sets.length ? (e.sets.filter((x) => x.done).length / e.sets.length) * 100 : 0
               return (
                 <Box
                   key={e.exercise_id}
                   sx={{
-                    height: 6,
+                    flex: 1,
+                    minWidth: 0,
+                    height: 8,
                     borderRadius: `${tokens.radius.pill}px`,
-                    background: `linear-gradient(90deg, ${tokens.tone.success.solid} ${share}%, ${tokens.ink.border} ${share}%)`,
+                    background: `linear-gradient(90deg, ${tokens.accent.main} ${share}%, ${tokens.ink.fill} ${share}%)`,
                   }}
                 />
               )
             })}
           </Box>
         )}
-      </Panel>
+      </RailCard>
     </Reveal>
   )
 }
 
 /**
- * Last time: each exercise's sets from the last session that logged it (the greyed "Previous" column), summed — sets
- * against this session's plan and volume (Σ reps × kg) — with the volume to beat and today's so far.
+ * Last time (the deep-sky card): each exercise's sets from the last session that logged it (the greyed "Previous"
+ * column), summed — sets against this session's plan and volume (Σ reps × kg) — with the volume to beat and today's
+ * so far.
  */
 function LastTimePanel({ session, done, volume }: { session: LoggerSession; done: number; volume: number }) {
   const withLast = session.exercises.filter((e) => e.last && e.last.sets.length > 0)
@@ -488,49 +680,66 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
     .at(-1)!
   const planned = session.exercises.reduce((n, e) => n + e.sets.length, 0)
   const started = session.exercises.filter((e) => e.sets.some((x) => x.done)).length
+  const strong = { color: summit.deepSky.text, fontWeight: tokens.font.weight.heading } as const
   return (
     <Reveal delay={railDelay(1)} sx={{ minWidth: 0 }}>
-      <Panel
-        title="Last time"
-        titleSize="card"
-        padding="dense"
-        actions={
-          <Box component="span" sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
-            {formatWeekday(date)}, {formatShortDate(date)}
-          </Box>
-        }
-      >
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
+      <RailCard deep title={`Last time · ${formatWeekday(date)}, ${formatShortDate(date)}`}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
           {[
-            ['Sets', `${sets.length}/${planned}`],
-            ['Volume', `${formatNumber(lastVolume)} kg`],
-          ].map(([label, value]) => (
-            <Box key={label} sx={{ ...wellSurface, p: '10px' }}>
-              <Box sx={{ fontSize: tokens.font.size.micro, color: tokens.ink.muted }}>{label}</Box>
+            ['sets', String(sets.length), `/${planned}`],
+            ['kg', formatNumber(lastVolume), ''],
+          ].map(([label, value, of]) => (
+            <Box key={label} sx={{ ...deepSkyWell, px: '6px', py: '10px', textAlign: 'center' }}>
               <Box
                 sx={{
-                  fontSize: tokens.font.size.sectionTitle,
+                  fontFamily: tokens.font.display,
+                  fontSize: 17,
                   fontWeight: tokens.font.weight.number,
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
                 {value}
+                {of && (
+                  <Box
+                    component="span"
+                    sx={{ fontSize: tokens.font.size.micro, color: summit.deepSky.muted }}
+                  >
+                    {of}
+                  </Box>
+                )}
+              </Box>
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.micro,
+                  fontWeight: tokens.font.weight.body,
+                  color: summit.deepSky.muted,
+                }}
+              >
+                {label}
               </Box>
             </Box>
           ))}
         </Box>
-        <Box sx={{ ...RAIL_TEXT_SX, mt: 3 }}>
+        <Box
+          sx={{
+            mt: '12px',
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.body,
+            lineHeight: tokens.font.leading.body,
+            color: summit.coach.muted,
+          }}
+        >
           {session.finished ? (
             <>
               This session:{' '}
-              <Box component="strong" sx={STRONG_SX}>
+              <Box component="strong" sx={strong}>
                 {formatNumber(volume)} kg
               </Box>
               .
             </>
           ) : volume > lastVolume ? (
             <>
-              <Box component="strong" sx={STRONG_SX}>
+              <Box component="strong" sx={strong}>
                 {formatNumber(volume)} kg
               </Box>{' '}
               so far: {formatNumber(volume - lastVolume)} kg more than last time.
@@ -538,7 +747,7 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
           ) : (
             <>
               Beat it today:{' '}
-              <Box component="strong" sx={STRONG_SX}>
+              <Box component="strong" sx={strong}>
                 {formatNumber(lastVolume + 1)} kg
               </Box>
               .
@@ -547,14 +756,14 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
             </>
           )}
         </Box>
-      </Panel>
+      </RailCard>
     </Reveal>
   )
 }
 
 /**
  * Readiness at the start: the readiness chip (score and volume verdict; tap for its details), then what it is made of
- * (sleep, steps, rest days) in words.
+ * (sleep, steps, rest days) in words, in a warm well.
  */
 function ReadinessPanel({ readiness }: { readiness: NonNullable<LoggerSession['readiness']> }) {
   const sleep = readiness.sleep_h === null ? 'not logged' : `${formatNumber(readiness.sleep_h, 1)} h of 7.5 h`
@@ -568,33 +777,30 @@ function ReadinessPanel({ readiness }: { readiness: NonNullable<LoggerSession['r
       : `${readiness.days_since_last_session} day${readiness.days_since_last_session === 1 ? '' : 's'}`
   return (
     <Reveal delay={railDelay(2)} sx={{ minWidth: 0 }}>
-      <Panel
-        title={
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-            <SpeedRounded aria-hidden sx={{ fontSize: 18, color: tokens.accent.main }} />
-            Readiness
-          </Box>
-        }
-        titleSize="card"
-        padding="dense"
-      >
+      <RailCard>
+        <Box component="h2" sx={{ ...eyebrow, m: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <SpeedRounded aria-hidden sx={{ fontSize: 18, color: summit.plum }} />
+          Readiness
+        </Box>
         <Box
           sx={{
+            mt: '12px',
             display: 'grid',
-            gap: 2,
-            fontSize: tokens.font.size.small,
-            lineHeight: tokens.font.leading.small,
+            gap: '10px',
+            fontSize: tokens.font.size.body,
+            fontWeight: tokens.font.weight.body,
+            lineHeight: tokens.font.leading.body,
             color: tokens.ink.body,
           }}
         >
           <Box>
             <ReadinessChip readiness={readiness} />
           </Box>
-          <Box sx={{ ...wellSurface, px: 3, py: '10px' }}>
+          <Box sx={{ ...wellSurface, borderRadius: `${summit.radius.wellSmall}px`, px: '14px', py: '12px' }}>
             Sleep last night: {sleep}. Steps yesterday: {steps}. Since your last session: {days}.
           </Box>
         </Box>
-      </Panel>
+      </RailCard>
     </Reveal>
   )
 }

@@ -1,8 +1,9 @@
-// Owns: the 2a stat card (Today's five across, the Dashboard tiles, Progress' summary cards): `padding 18 × 20 × 16`;
-// a 13/500 `ink.label` label with a 16 px `ink.faint` glyph right-aligned; a 28/600 tabular value with its unit
-// ("/ 1,400 kcal") in 13 px muted; an optional signed delta at the right of the value (a tinted pill, or plain
-// coloured text); an optional 6 px progress bar in the metric colour; a slot for a sparkline (`MiniBars`); and a 12 px
-// muted caption whose <strong> is the 500 ink key figure. The value can count up once on mount.
+// Owns: the 1d stat card (Today's five across, the Dashboard tiles, Progress' summary cards): a white radius-30 card,
+// `padding 24 × 26 × 20`; a 13/500 `ink.label` label with a 16 px `ink.faint` glyph right-aligned; a 30 px Outfit 400
+// tabular value with its unit ("/ 1,400 kcal") in 13 px muted; an optional signed delta at the right of the value (a
+// status pill, or plain coloured text); an optional progress bar in the metric's ramp; a slot for a sparkline
+// (`MiniBars`); and a 12 px muted caption whose <strong> is the 500 ink key figure. The value can count up once on
+// mount.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -45,7 +46,7 @@ export interface StatCardProps {
   footnote?: ReactNode
   /** Right of the label, e.g. a <PendingBadge/>. */
   badge?: ReactNode
-  /** Big-number size. `hero` (40 px) is the one per view. Default `standard` (28 px). */
+  /** Big-number size. `hero` (52 px) is the one per view. Default `standard` (30 px). */
   emphasis?: 'standard' | 'hero'
   /** Count a numeric value up once on mount (~1.6 s; never under reduced motion). */
   countUp?: boolean
@@ -131,7 +132,7 @@ export function StatCard({
         sx={{
           px: `${tokens.pad.card.x}px`,
           pt: `${tokens.pad.card.y}px`,
-          pb: '16px',
+          pb: '20px',
           width: '100%',
           textAlign: 'left',
           minWidth: 0,

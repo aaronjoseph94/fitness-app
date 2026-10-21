@@ -1,15 +1,36 @@
 // Owns: the Export and restore page (/settings/data) — "Export everything", what the monthly backup keeps, and
 // "Restore from export". Both actions need a connection; nothing here goes through the offline queue.
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import Alert from '@mui/material/Alert'
+import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
+import { Link as RouterLink } from 'react-router'
 import { PageHeader, Reveal, staggerDelay } from '../../../components'
 import { useOnline } from '../../../offline'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { ExportCard } from './ExportCard'
 import { DataCard } from './parts'
 import { RestoreCard } from './RestoreCard'
 
-/** 2a's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
+/** The eyebrow's way back to Settings (1d's nav has no breadcrumb; a phone also has its back circle). */
+const crumb = (
+  <Link
+    component={RouterLink}
+    to="/settings"
+    underline="hover"
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+    }}
+  >
+    <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
+    Settings
+  </Link>
+)
+
+/** 1d's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
 const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.section)
 
 export function DataPage() {
@@ -17,6 +38,7 @@ export function DataPage() {
   return (
     <Stack spacing={`${tokens.rhythm.section}px`} data-testid="data-page">
       <PageHeader
+        eyebrow={crumb}
         title="Export and restore"
         subtitle="Everything you logged is yours: take it as one zip, or write an export into a fresh instance."
       />

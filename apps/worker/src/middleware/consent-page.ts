@@ -2,9 +2,12 @@
 // connecting app to read and change the fitness data within the rails ('full', Claude), or to read it and log entries
 // ('log', Meta Muse: middleware/mcp-auth.ts knows it by its callback, never by its self-reported name). Everything
 // that came from the client (name, domain, redirect host, scopes) is escaped. The Worker serves this page itself (no
-// SPA, no /api round trip), so the colours, radii and the brand tile below are literal copies of apps/web/src/theme.ts
-// tokens and the app's BrandTile (2a: zinc ink and muted text, #FAFAFA page, white card with a #E4E4E7 hairline,
-// accent, danger text).
+// SPA, no /api round trip), so the colours, radii, shadows and the brand mark below are literal 1d Summit values
+// (docs/design/design_handoff_fitness_1d/README.md §2, the tokens apps/web/src/theme.ts carries, and the Summit nav's
+// logo mark): an inner-page sky band over the cream page, a white card with the card shadow, a deep-sky brand tile,
+// ink and body text. Two deliberate departures for contrast: Allow runs #9A3A8E → #6A33D6 instead of the coral CTA
+// (white on its #FF7569 end is 2.6:1; this one is ≥ 6.2:1) and the warning text is #A65A00 (5.1:1 on white; #C26A00 is
+// 3.9:1). The CSP allows no web fonts, so a system stack stands in for Outfit and DM Sans.
 import type { ConsentDescription } from '@cloudflare/workers-oauth-provider'
 import type { McpAccess } from '../modules/mcp'
 
@@ -13,21 +16,30 @@ const escape = (value: string) => value.replace(/[&<>"']/g, (ch) => `&#${ch.char
 const STYLE = `
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; background: #FAFAFA; color: #09090B;
-  font: 400 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; }
-main { width: 100%; max-width: 440px; padding: 32px 16px; }
-.card { background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 12px; padding: 24px 20px; }
-h1 { font-size: 22px; font-weight: 600; line-height: 1.3; margin: 0 0 12px; }
-p { margin: 0 0 12px; color: #71717A; }
-p strong { color: #09090B; font-weight: 500; }
-ul { margin: 0 0 16px; padding-left: 20px; color: #71717A; }
-li { margin-bottom: 4px; }
-.warn { color: #B91C1C; }
-button { width: 100%; min-height: 48px; border-radius: 8px; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer; }
-.allow { background: #166FE5; color: #FFFFFF; border: 0; margin-top: 8px; }
-.deny { background: transparent; color: #52525B; border: 0; margin-top: 4px; }
-.mark { width: 40px; height: 40px; border-radius: 8px; background: #166FE5; color: #FFFFFF;
-  display: grid; place-items: center; margin-bottom: 16px; }`
+body { margin: 0; min-height: 100vh; position: relative; color: #1F1033;
+  background: linear-gradient(180deg, #1A0A42 0%, #3E1A73 38%, #9A3A8E 74%, #FF7569 100%) top / 100% 160px no-repeat, #FFF8EE;
+  font: 400 16px/1.5 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; }
+body::before { content: ''; position: absolute; z-index: -1; top: 116px; right: 0; bottom: 0; left: 0;
+  background: #FFF8EE; border-radius: 44px 44px 0 0; box-shadow: 0 -20px 50px rgba(43,15,79,.18); }
+main { width: 100%; max-width: 440px; padding: 64px 16px 32px; }
+.card { background: #FFFFFF; border-radius: 30px; box-shadow: 0 18px 50px rgba(74,28,120,.10); padding: 28px 24px; }
+h1 { font-family: Outfit, 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 24px;
+  font-weight: 500; line-height: 1.25; letter-spacing: -.01em; color: #1F1033; margin: 0 0 12px; }
+p { margin: 0 0 12px; color: #4E4063; }
+p:last-child { margin-bottom: 0; }
+p strong { color: #1F1033; font-weight: 600; }
+ul { margin: 0 0 20px; padding-left: 20px; color: #4E4063; }
+li { margin-bottom: 6px; }
+li::marker { color: #7A6B8E; }
+.warn { color: #A65A00; font-weight: 500; }
+button { width: 100%; min-height: 50px; border-radius: 16px; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer; }
+button:focus-visible { outline: 3px solid #7B3FE4; outline-offset: 2px; }
+.allow { background: linear-gradient(135deg, #9A3A8E, #6A33D6); color: #FFFFFF; border: 0; margin-top: 8px;
+  box-shadow: 0 10px 26px rgba(106,51,214,.30); }
+.deny { background: #F3ECFA; color: #1F1033; border: 0; margin-top: 10px; }
+.deny:hover { background: #EEE6FF; }
+.mark { width: 46px; height: 46px; border-radius: 15px; background: linear-gradient(170deg, #2B0F4F, #1A0A33);
+  display: grid; place-items: center; margin-bottom: 18px; }`
 
 function page(title: string, body: string): string {
   return `<!doctype html>
@@ -86,7 +98,7 @@ export function consentPage(details: ConsentDescription, handle: string, access:
   return page(
     title,
     `<div class="card">
-  <div class="mark" aria-hidden="true"><svg viewBox="0 0 512 512" width="22" height="22"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="currentColor" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/><circle cx="398" cy="178" r="46" fill="currentColor"/></svg></div>
+  <div class="mark" aria-hidden="true"><svg viewBox="0 0 512 512" width="26" height="26"><polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/><circle cx="398" cy="178" r="44" fill="#FFD27A"/></svg></div>
   <h1>${heading}</h1>
   <p>${who} Access is sent to <strong>${escape(details.redirectHost)}</strong>.</p>
   ${caution}

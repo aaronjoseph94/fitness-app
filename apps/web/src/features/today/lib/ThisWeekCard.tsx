@@ -1,16 +1,20 @@
-// Owns: Today's "This week" card (2a) — the week's dates and whose plan it is ("Oct 5 – 11 · Coach plan"), one 34 px
-// cell per day Monday to Sunday (a session done: green check; today: blue; a session planned: dashed; a fast: amber
-// timer; rest: plain; the scan day ringed beside its weekday), and the legend, with the fast day's hours and water
-// target and the plan's status. Under it the plan's focus note, any proposed plan for this week or later (the week
-// module's banner: Review → Accept), today's carbs, fat and fibre targets (the stat cards carry the rest), and what
-// the plan changed from last week. Days come from the week view's actuals and plan; without a week plan, today's
-// targets and the settings' training days.
+// Owns: Today's "This week" card (1d README §5.1: the screen's deep-sky card) — the title with the week's dates and
+// whose plan it is ("Oct 5 – 11 · Coach plan"), then one column per day Monday to Sunday on a line with a gold stretch
+// up to today: the weekday, a dot (a session done: gold with a check; today: white and glowing, pinging; a session
+// planned: ringed; a missed one: ringed dim; a fast: coral with a timer; rest: a small dim dot) and what the day holds
+// (the session's name, "Rest", "Fast"), the scan day marked beside its weekday. Under it, as wells: the week's fast
+// (its day, hours and that day's water) and "Next Evolt scan" with its date (the scan schedule's due date — the coach's
+// or the week plan's scheduled day, else the interval after the last scan — or the plan's scan day before the schedule
+// answers; "overdue" once it has passed); then the plan's focus note, any
+// proposed plan for this week or later (the week module's banner: Review → Accept), the plan's status, today's carbs,
+// fat and fibre targets (the gauges carry the rest), and what the plan changed from last week. Days come from the week
+// view's actuals and plan; without a week plan, today's targets and the settings' training days.
 import CheckRounded from '@mui/icons-material/CheckRounded'
-import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
+import DonutLargeRounded from '@mui/icons-material/DonutLargeRounded'
 import TimerRounded from '@mui/icons-material/TimerRounded'
-import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import { keyframes } from '@mui/material/styles'
 import { addDays, eachDate, FAST_DAY_EXTRA_WATER_ML, weekdayOf, weekStart } from '@fitness/shared/engine'
 import type {
   DayView,
@@ -20,18 +24,24 @@ import type {
   WeekPlanAuthor,
   WeekPlanView,
 } from '@fitness/shared/schemas'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router'
 import {
+  deepSkyRule,
+  deepSkyWell,
+  DeepSkyCard,
+  displayTitle,
   formatDayRange,
   formatNumber,
   formatShortDate,
   formatWeekday,
-  LegendChips,
-  Panel,
-  type LegendItem,
+  useEntrance,
 } from '../../../components'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, enterEasing, tokens } from '../../../theme'
 import { PlanBadge, ProposedBanner } from '../../week'
+
+const { summit, font } = tokens
+const sky = summit.deepSky
 
 interface ThisWeekCardProps {
   date: LocalDate
@@ -43,11 +53,16 @@ interface ThisWeekCardProps {
   /** Settings: a fast's length and the everyday water target (a fast day adds to it). */
   fastHours: number | null
   waterTargetMl: number
+  /** When the next Evolt scan is due (GET /api/scans/schedule), null before it answers or with no scan yet. */
+  scanDue: LocalDate | null
 }
 
 /** Lines of "what changed" shown before "and N more"; proposed plans shown. */
 const CHANGES_SHOWN = 4
 const PROPOSED_SHOWN = 2
+/** The day dot's size, and a rest day's. */
+const DOT = 28
+const REST_DOT = 14
 
 type Mark = 'done' | 'fast' | 'planned' | 'missed' | 'rest'
 
@@ -65,12 +80,10 @@ const MARK_TEXT: Record<Mark, string> = {
   rest: 'rest',
 }
 
-const GLYPH: Partial<Record<Mark, SvgIconComponent>> = {
-  done: CheckRounded,
-  fast: TimerRounded,
-  planned: FitnessCenterRounded,
-  missed: FitnessCenterRounded,
-}
+const ping = keyframes`
+  0% { opacity: 0.9; transform: scale(1); }
+  80%, 100% { opacity: 0; transform: scale(1.9); }
+`
 
 /** What one day of the week shows. Today's own day view knows best (a fast day drops training). */
 function markOf(
@@ -99,51 +112,182 @@ function markOf(
   return d < date ? 'missed' : 'planned'
 }
 
-function cellSx(mark: Mark, isToday: boolean) {
-  if (isToday) return { bgcolor: tokens.accent.main, color: tokens.ink.card }
+/** The words under a day's dot: the planned session's name, else what the day is. */
+function dayCaption(mark: Mark, session: string | null): string {
+  if (mark === 'fast') return 'Fast'
+  if (mark === 'rest') return 'Rest'
+  return session ?? 'Training'
+}
+
+/** One day's dot. */
+function Dot({ mark, isToday }: { mark: Mark; isToday: boolean }) {
+  const round = { width: DOT, height: DOT, borderRadius: '50%', boxSizing: 'border-box', mx: 'auto' } as const
+  if (isToday && mark !== 'done' && mark !== 'fast')
+    return (
+      <Box sx={{ position: 'relative', ...round }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            border: `2px solid ${summit.gold.main}`,
+            boxSizing: 'border-box',
+            animation: `${ping} 2400ms ease-out infinite`,
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            bgcolor: sky.text,
+            boxShadow: `0 0 18px ${summit.gold.main}`,
+          }}
+        />
+      </Box>
+    )
   switch (mark) {
     case 'done':
-      return { bgcolor: tokens.tone.success.bg, color: tokens.tone.success.text }
+      return (
+        <Box
+          sx={{
+            ...round,
+            bgcolor: summit.gold.main,
+            color: summit.ink.deep,
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          <CheckRounded sx={{ fontSize: 18 }} />
+        </Box>
+      )
     case 'fast':
-      return { bgcolor: tokens.tone.warning.bg, color: tokens.tone.warning.text }
+      return (
+        <Box
+          sx={{
+            ...round,
+            bgcolor: summit.coral.main,
+            color: sky.text,
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          <TimerRounded sx={{ fontSize: 17 }} />
+        </Box>
+      )
     case 'planned':
     case 'missed':
-      return { border: `1px dashed ${tokens.ink.dashed}`, color: tokens.ink.muted }
+      return (
+        <Box
+          sx={{
+            ...round,
+            bgcolor: summit.ink.deep,
+            border: `2px solid ${mark === 'planned' ? sky.muted : sky.hairline}`,
+          }}
+        />
+      )
     case 'rest':
-      return { bgcolor: tokens.ink.panel }
+      return (
+        <Box
+          sx={{
+            width: REST_DOT,
+            height: REST_DOT,
+            borderRadius: '50%',
+            mx: 'auto',
+            my: `${(DOT - REST_DOT) / 2}px`,
+            bgcolor: summit.glass.border,
+          }}
+        />
+      )
   }
 }
 
-/** The hairline section's small lines: 12 px muted. */
-const SMALL = {
-  fontSize: tokens.font.size.caption,
-  lineHeight: tokens.font.leading.caption,
-  color: tokens.ink.muted,
-} as const
+/** The line behind the dots and its gold stretch up to today (grows from 0 on mount). */
+function WeekLine({ todayIndex }: { todayIndex: number }) {
+  const { entered, reduced } = useEntrance()
+  const inset = 'calc(100% / 14)'
+  const line = { position: 'absolute', left: inset, height: 2, top: `calc(18px + ${DOT / 2 - 1}px)` } as const
+  return (
+    <>
+      <Box aria-hidden sx={{ ...line, right: inset, bgcolor: summit.glass.border }} />
+      {todayIndex > 0 && (
+        <Box
+          aria-hidden
+          sx={{
+            ...line,
+            width: `calc((100% - 100% / 7) * ${todayIndex / 6})`,
+            bgcolor: summit.gold.main,
+            transformOrigin: 'left',
+            transform: entered ? 'none' : 'scaleX(0)',
+            transition: reduced ? 'none' : `transform 1000ms ${enterEasing()} 600ms`,
+          }}
+        />
+      )}
+    </>
+  )
+}
 
 /** "Changed from last week": the first CHANGES_SHOWN lines, then "and N more". */
 function Changes({ changes }: { changes: readonly string[] }) {
   const [all, setAll] = useState(false)
   return (
     <Box data-testid="week-changes">
-      <Box sx={{ ...SMALL, fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>
-        Changed from last week
-      </Box>
+      <Box sx={{ fontWeight: font.weight.heading, color: sky.text }}>Changed from last week</Box>
       {changes.length === 0 ? (
-        <Box sx={SMALL}>Same targets and sessions as last week.</Box>
+        <Box>Same targets and sessions as last week.</Box>
       ) : (
         <>
-          <Box component="ul" sx={{ ...SMALL, m: 0, mt: '2px', pl: '18px' }}>
+          <Box component="ul" sx={{ m: 0, mt: '2px', pl: '18px' }}>
             {(all ? changes : changes.slice(0, CHANGES_SHOWN)).map((c) => (
               <li key={c}>{c}</li>
             ))}
           </Box>
           {!all && changes.length > CHANGES_SHOWN && (
-            <Button variant="text" size="tiny" onClick={() => setAll(true)} sx={{ mt: '2px', ml: '-8px' }}>
+            <Button
+              variant="text"
+              size="tiny"
+              onClick={() => setAll(true)}
+              sx={{
+                mt: '2px',
+                ml: '-8px',
+                color: sky.text,
+                '&:hover': { bgcolor: sky.well, color: sky.text },
+              }}
+            >
               and {changes.length - CHANGES_SHOWN} more
             </Button>
           )}
         </>
+      )}
+    </Box>
+  )
+}
+
+/** A well row on the deep sky: a glyph, the fact, and its figure on the right. */
+function WellRow({ icon, children, value }: { icon: ReactNode; children: ReactNode; value?: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        ...deepSkyWell,
+        borderRadius: `${summit.radius.wellSmall}px`,
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '4px 10px',
+        minHeight: tokens.tapTarget,
+        boxSizing: 'border-box',
+        px: '14px',
+        py: '11px',
+        fontSize: font.size.body,
+        fontWeight: font.weight.body,
+        minWidth: 0,
+      }}
+    >
+      {icon}
+      <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>{children}</Box>
+      {value && (
+        <Box sx={{ flex: 'none', color: sky.muted, fontVariantNumeric: 'tabular-nums' }}>{value}</Box>
       )}
     </Box>
   )
@@ -157,128 +301,173 @@ export function ThisWeekCard({
   trainingDays,
   fastHours,
   waterTargetMl,
+  scanDue,
 }: ThisWeekCardProps) {
   const monday = weekStart(date)
   const sunday = addDays(monday, 6)
   const plan = week?.active ?? null
-  const days = eachDate(monday, sunday).map((d) => ({
-    date: d,
-    mark: markOf(d, date, day, week, trainingDays),
-    scan: plan?.plan.scan_date === d,
-  }))
+  // One next scan: the schedule's due date, else the week plan's scan day.
+  const nextScan = scanDue ?? plan?.plan.scan_date ?? null
+  const days = eachDate(monday, sunday).map((d) => {
+    const mark = markOf(d, date, day, week, trainingDays)
+    const session =
+      plan?.plan.sessions[weekdayOf(d)]?.name ?? (d === date ? (day?.planned_session?.name ?? null) : null)
+    return { date: d, mark, caption: dayCaption(mark, session), scan: nextScan === d }
+  })
+  const todayIndex = days.findIndex((d) => d.date === date)
   const range = formatDayRange(monday, sunday)
   const fastWater = (plan?.plan.water_ml ?? waterTargetMl) + FAST_DAY_EXTRA_WATER_ML
-  const legend: LegendItem[] = [
-    { label: 'Done', color: tokens.tone.success.text },
-    { label: 'Today', color: tokens.accent.main },
-  ]
-  if (days.some((d) => d.mark === 'fast'))
-    legend.push({
-      label: `${fastHours ? `${fastHours} h fast` : 'Fast'} · water ${formatNumber(fastWater / 1000, 1)} L`,
-      color: tokens.tone.warning.text,
-    })
-  if (days.some((d) => d.scan)) legend.push({ label: 'Scan', color: tokens.metric.lean, mark: 'ring' })
+  const fasts = days.filter((d) => d.mark === 'fast')
   // Today's materialised targets know best; else the plan's for this weekday. Calories, protein, water and steps are on
-  // the stat cards, so the card adds the other three.
+  // the gauges, so the card adds the other three.
   const t = day?.targets ?? plan?.plan.targets[weekdayOf(date)] ?? null
   const fastToday = days.find((d) => d.date === date)?.mark === 'fast'
+  const small = { fontSize: font.size.small, lineHeight: font.leading.small, color: sky.muted } as const
 
   return (
-    <Panel
-      title="This week"
-      testId="this-week"
-      actions={
-        <Box
-          component="span"
-          sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.muted, whiteSpace: 'nowrap' }}
-        >
-          {range} · {plan ? PLAN_NAME[plan.author] : 'Daily targets'}
-        </Box>
-      }
-    >
+    <DeepSkyCard testId="this-week" ariaLabel="This week">
       <Box
-        component="ol"
-        aria-label="This week’s days"
         sx={{
-          listStyle: 'none',
-          m: 0,
-          p: 0,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-          gap: '6px',
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '4px 12px',
         }}
       >
-        {days.map(({ date: d, mark, scan }) => {
-          const isToday = d === date
-          const Glyph = GLYPH[mark]
-          return (
-            <Box
-              component="li"
-              key={d}
-              aria-current={isToday ? 'date' : undefined}
-              aria-label={`${formatWeekday(d)} ${formatShortDate(d)}${isToday ? ', today' : ''}: ${MARK_TEXT[mark]}${scan ? ', Evolt scan' : ''}`}
-              sx={{ minWidth: 0, textAlign: 'center' }}
-            >
-              <Box
-                aria-hidden
-                sx={{
-                  height: 34,
-                  borderRadius: `${tokens.radius.segment}px`,
-                  display: 'grid',
-                  placeItems: 'center',
-                  ...cellSx(mark, isToday),
-                }}
-              >
-                {Glyph && <Glyph sx={{ fontSize: 16 }} />}
-              </Box>
-              <Box
-                aria-hidden
-                sx={{
-                  mt: '6px',
-                  fontSize: tokens.font.size.micro,
-                  fontWeight: isToday ? tokens.font.weight.heading : tokens.font.weight.label,
-                  color: isToday ? tokens.ink.text : tokens.ink.muted,
-                }}
-              >
-                {formatWeekday(d)}
-                {scan && (
-                  <Box
-                    component="span"
-                    sx={{
-                      display: 'inline-block',
-                      ml: '3px',
-                      width: 6,
-                      height: 6,
-                      borderRadius: `${tokens.radius.pill}px`,
-                      border: `1.5px solid ${tokens.metric.lean}`,
-                    }}
-                  />
-                )}
-              </Box>
-            </Box>
-          )
-        })}
-      </Box>
-      {/* The plan's status sits at the end of the legend row: beside the dates it would push them under the title. */}
-      <Box sx={{ mt: '12px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-        <LegendChips items={legend} />
-        {plan && (
-          <Box sx={{ ml: 'auto' }}>
-            <PlanBadge plan={plan} />
-          </Box>
-        )}
+        <Box component="h2" sx={{ ...displayTitle('section'), m: 0, minWidth: 0 }}>
+          This week
+        </Box>
+        <Box
+          component="span"
+          sx={{ fontSize: font.size.small, fontWeight: font.weight.body, color: sky.muted }}
+        >
+          {range}
+          {plan ? ` · ${PLAN_NAME[plan.author]}` : ''}
+        </Box>
       </Box>
 
-      {plan?.plan.focus_note && (
+      <Box sx={{ position: 'relative', mt: '24px' }}>
+        <WeekLine todayIndex={todayIndex} />
         <Box
-          data-testid="week-focus"
+          component="ol"
+          aria-label="This week’s days"
           sx={{
-            mt: '12px',
-            fontSize: tokens.font.size.small,
-            lineHeight: tokens.font.leading.small,
-            color: tokens.ink.muted,
+            position: 'relative',
+            listStyle: 'none',
+            m: 0,
+            p: 0,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+            textAlign: 'center',
           }}
         >
+          {days.map(({ date: d, mark, caption, scan: isScan }) => {
+            const isToday = d === date
+            return (
+              <Box
+                component="li"
+                key={d}
+                aria-current={isToday ? 'date' : undefined}
+                aria-label={`${formatWeekday(d)} ${formatShortDate(d)}${isToday ? ', today' : ''}: ${MARK_TEXT[mark]}${isScan ? ', Evolt scan' : ''}`}
+                sx={{ minWidth: 0 }}
+              >
+                <Box
+                  aria-hidden
+                  sx={{
+                    height: 18,
+                    fontSize: font.size.caption,
+                    fontWeight: font.weight.heading,
+                    color: isToday ? summit.gold.main : mark === 'fast' ? summit.coral.main : sky.muted,
+                  }}
+                >
+                  {formatWeekday(d)}
+                  {isScan && (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        ml: '3px',
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        border: `1.5px solid ${tokens.tone.success.light}`,
+                      }}
+                    />
+                  )}
+                </Box>
+                <Box aria-hidden sx={{ mt: '8px' }}>
+                  <Dot mark={mark} isToday={isToday} />
+                </Box>
+                <Box
+                  aria-hidden
+                  sx={{
+                    mt: '8px',
+                    px: '1px',
+                    fontSize: font.size.micro,
+                    lineHeight: 1.25,
+                    fontWeight: isToday || mark === 'fast' ? font.weight.heading : font.weight.body,
+                    color: isToday ? sky.text : mark === 'fast' ? summit.coral.main : sky.muted,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {caption}
+                </Box>
+              </Box>
+            )
+          })}
+        </Box>
+      </Box>
+
+      {(fasts.length > 0 || nextScan) && (
+        <Box sx={{ mt: '18px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '8px' }}>
+          {fasts.map((f) => (
+            <WellRow
+              key={f.date}
+              icon={
+                <TimerRounded aria-hidden sx={{ fontSize: 20, color: summit.coral.main, flex: 'none' }} />
+              }
+              value={`water ${formatNumber(fastWater / 1000, 1)} L`}
+            >
+              {formatWeekday(f.date)} · {fastHours ? `${fastHours} h fast` : 'Fast'}
+            </WellRow>
+          ))}
+          {nextScan && (
+            <WellRow
+              icon={
+                <DonutLargeRounded
+                  aria-hidden
+                  sx={{ fontSize: 20, color: tokens.tone.success.light, flex: 'none' }}
+                />
+              }
+              value={
+                <Box component="span" data-testid="today-next-scan">
+                  {nextScan < date ? `overdue · ${formatShortDate(nextScan)}` : formatShortDate(nextScan)}
+                </Box>
+              }
+            >
+              <Box
+                component={RouterLink}
+                to="/scans"
+                sx={{
+                  color: sky.text,
+                  '&:hover': { color: sky.text, textDecoration: 'underline' },
+                  [COARSE_POINTER_QUERY]: {
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    minHeight: tokens.tapTarget,
+                  },
+                }}
+              >
+                Next Evolt scan
+              </Box>
+            </WellRow>
+          )}
+        </Box>
+      )}
+
+      {plan?.plan.focus_note && (
+        <Box data-testid="week-focus" sx={{ ...small, mt: '14px' }}>
           {plan.plan.focus_note}
         </Box>
       )}
@@ -289,26 +478,21 @@ export function ThisWeekCard({
         </Box>
       ))}
 
-      <Box
-        sx={{
-          mt: '14px',
-          pt: '12px',
-          borderTop: `1px solid ${tokens.ink.hairline}`,
-          display: 'grid',
-          gap: '10px',
-        }}
-      >
-        <Box sx={SMALL}>
-          <Box component="span" sx={{ fontWeight: tokens.font.weight.label, color: tokens.ink.label }}>
-            Today’s targets{fastToday ? ' · fast day' : ''}
+      <Box sx={{ ...small, mt: '14px', pt: '12px', borderTop: deepSkyRule, display: 'grid', gap: '10px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px' }}>
+          <Box sx={{ flex: '1 1 160px', minWidth: 0 }}>
+            <Box component="span" sx={{ fontWeight: font.weight.heading, color: sky.text }}>
+              Today’s targets{fastToday ? ' · fast day' : ''}
+            </Box>
+            {' · '}
+            {t
+              ? `${formatNumber(t.carbs_g)} g carbs · ${formatNumber(t.fat_g)} g fat · ${formatNumber(t.fibre_g)} g fibre`
+              : 'none yet; they come from the active plan'}
           </Box>
-          {' · '}
-          {t
-            ? `${formatNumber(t.carbs_g)} g carbs · ${formatNumber(t.fat_g)} g fat · ${formatNumber(t.fibre_g)} g fibre`
-            : 'none yet; they come from the active plan'}
+          {plan && <PlanBadge plan={plan} />}
         </Box>
         {plan && <Changes changes={week?.changes.active ?? []} />}
       </Box>
-    </Panel>
+    </DeepSkyCard>
   )
 }

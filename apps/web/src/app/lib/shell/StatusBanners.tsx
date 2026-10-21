@@ -1,6 +1,6 @@
 // Owns: the shell's banners — the expired Access session ("Sign in again", queued entries are kept), a new build waiting
 // to be taken ("Reload"), and queued entries the Worker refused (shown until dismissed, so nothing is lost silently) —
-// as 2a's banners (the themed Alert), at the top of the content column.
+// as the themed banners (the Alert), on the sky under the nav, in the page gutter.
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
@@ -22,7 +22,7 @@ export function StatusBanners() {
       spacing={2}
       sx={{
         ...shellColumnSx,
-        pt: { xs: `${tokens.space(4)}px`, md: `${tokens.layout.mainPadding.top}px` },
+        pt: `${tokens.space(2)}px`,
         displayPrint: 'none',
       }}
     >

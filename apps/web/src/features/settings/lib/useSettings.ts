@@ -1,6 +1,7 @@
 // Owns: reading and changing settings — GET /api/settings, and PATCH /api/settings applied optimistically (the screen
-// shows the new value at once and rolls back if the Worker refuses), then the day, plan and settings refetch. The same
-// call edits the profile, so `saveProfile` is the profile half of one PATCH.
+// shows the new value at once and rolls back if the Worker refuses), then the day, plan, settings and scan schedule
+// refetch. The same call edits the profile, so `saveProfile` is the profile half of one PATCH. Also when the next scan
+// is due (GET /api/scans/schedule, the read the Scans page makes), for the scan interval's help line and the More card.
 // Settings writes are not queued offline (endpoints.settings.update has no offline flag), so they need a connection.
 import { endpoints } from '@fitness/shared/api'
 import type { ProfilePatch, Settings, SettingsView } from '@fitness/shared/schemas'
@@ -17,10 +18,22 @@ export function useSettings() {
   return useApiQuery(endpoints.settings.get, {})
 }
 
+/** The next scan's due date (a local date), null before the first scan, undefined while it loads or offline. */
+export function useScanDue(): string | null | undefined {
+  return useApiQuery(endpoints.scans.schedule, {}).data?.due
+}
+
 export function useUpdateSettings() {
   const queryClient = useQueryClient()
   const mutation = useApiMutation(endpoints.settings.update, {
-    invalidates: [endpoints.settings.get, endpoints.day.get, endpoints.day.range, endpoints.plan.get],
+    // The scan interval moves the next scan's due date, which the Settings and Scans pages both show.
+    invalidates: [
+      endpoints.settings.get,
+      endpoints.day.get,
+      endpoints.day.range,
+      endpoints.plan.get,
+      endpoints.scans.schedule,
+    ],
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: SETTINGS_KEY })
       const previous = queryClient.getQueryData<SettingsView>(SETTINGS_KEY)

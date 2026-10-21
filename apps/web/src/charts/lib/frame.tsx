@@ -1,14 +1,16 @@
-// Owns: what every chart shares — the 2a frame (testid, a top row with the unit caption left and the legend keys
-// right, the dashed empty slot, responsive vs fixed print width, the line/area draw-in), the 2a mark styling from
-// `tokens.chart` (horizontal-only `grid` lines, a `baseline` rule under bars, 11 px axis labels, the 2.5 px trend
-// line over a fading area, white weigh-in dots with a grey ring, the ringed current point, dashed targets and
-// forecasts), the dark 2a tooltip (12 px, radius 8, 8 × 8 keys), and the text that names a chart for screen readers
-// (its label and a one-line summary, never its tick numbers).
+// Owns: what every chart shares — the 1d "Summit" frame (testid, a top row with the unit caption left and the legend
+// keys right — or the keys under the plot — the dashed empty slot, responsive vs fixed print width, the line/area
+// draw-in) and the Summit mark styling from `tokens.chart`: horizontal hairline grids, a lilac baseline under bars,
+// 11/500 axis labels in the muted axis ink, the 3 px trend line over an area fading to 0, white weigh-in dots ringed in
+// faint lilac, the current point (a white dot in a gold halo, or a filled dot in its own colour's halo), bar fills as a
+// metric's ramp (a vertical gradient, low → high), wide bars with 14 px tops and 6 px feet, dashed targets, the dashed
+// gold plan / expected line; the dark deep-ink tooltip (12 px, radius 14, 8 × 12, 8 × 8 keys); and the text that names
+// a chart for screen readers (its label and a one-line summary, never its tick numbers).
 import Box from '@mui/material/Box'
 import { keyframes } from '@mui/material/styles'
 import { useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { dashedSurface, formatShortDate, LegendChips, type LegendItem } from '../../components'
-import { prefersReducedMotion, tokens } from '../../theme'
+import { metricRamp, prefersReducedMotion, tokens, withAlpha, type MetricKey } from '../../theme'
 
 /** Size props shared by every chart. */
 export interface ChartSizeProps {
@@ -45,7 +47,11 @@ export function barMotion(width: number | undefined) {
 
 export const MARGIN = { top: 8, right: 8, bottom: 0, left: 0 } as const
 
-const tick = { fontSize: tokens.chart.axisFontSize, fill: tokens.chart.axis }
+const tick = {
+  fontSize: tokens.chart.axisFontSize,
+  fill: tokens.chart.axis,
+  fontWeight: tokens.font.weight.label,
+} as const
 
 export const xAxisStyle = { axisLine: false, tickLine: false, tick, tickMargin: 8, minTickGap: 18 } as const
 /** An x-axis under bars: the same labels over a 1 px `tokens.chart.baseline` rule. */
@@ -113,14 +119,16 @@ export const lineStyle = {
   strokeLinejoin: 'round',
   type: 'monotone',
 } as const
-/** The hero trend line (2a: 2.5 px). */
-export const TREND_WIDTH = tokens.chart.lineWidth + 0.5
+/** The hero trend line (1d: 3 px). */
+export const TREND_WIDTH = tokens.chart.lineWidth
 /** The forecast's mid line: dashed "5 5", 1.5 px. */
 export const FORECAST_WIDTH = 1.5
 /** Widest bar, px: a day bar in a 12-day chart (2a draws them ~36 px wide with a 6–8 px gap). */
 export const BAR_MAX = 40
-/** Widest bar in a per-week chart (two to four weeks across a card). */
-export const WEEK_BAR_MAX = 64
+/** Widest bar in a per-week chart (1d: up to 120 px, two to four weeks across a card). */
+export const WEEK_BAR_MAX = 120
+/** 1d's wide bar (a week of loss, a week of volume): 14 px rounded top, 6 px rounded foot. */
+export const WEEK_BAR_RADIUS = { top: 14, foot: 6 } as const
 /** Top corners rounded (2a radius 3–4), baseline square. */
 export const BAR_RADIUS: [number, number, number, number] = [
   tokens.chart.barRadius,
@@ -128,7 +136,7 @@ export const BAR_RADIUS: [number, number, number, number] = [
   0,
   0,
 ]
-export const barCursor = { fill: tokens.chart.grid } as const
+export const barCursor = { fill: tokens.chart.grid, radius: tokens.chart.barRadius * 2 } as const
 export const lineCursor = { stroke: tokens.ink.border, strokeWidth: 1 } as const
 /**
  * `color` at `alpha` over the card, as an opaque hex: 2a's lighter steps of a metric (a meal stack's lunch and dinner,
@@ -160,13 +168,13 @@ export function dotStyle(color: string, r = 4) {
   return { r, fill: color, stroke: tokens.ink.card, strokeWidth: 2 } as const
 }
 /**
- * 2a's measurement dot: white with a 1.5 px ring (8 px across at r = 3.25). The weigh-ins ring grey; a line's
+ * 1d's measurement dot: white with a 2 px ring (9 px across at r = 3.5). The weigh-ins ring in faint lilac; a line's
  * points ring in the line's colour. `small` (dense series, < 10 px between points) shrinks it to 5 px.
  */
 export function ringDot(color: string = tokens.chart.dotRing, small = false) {
   return small
     ? ({ r: 2, fill: tokens.ink.card, stroke: color, strokeWidth: 1 } as const)
-    : ({ r: 3.25, fill: tokens.ink.card, stroke: color, strokeWidth: 1.5 } as const)
+    : ({ r: 3.5, fill: tokens.ink.card, stroke: color, strokeWidth: 2 } as const)
 }
 
 interface DotShapeProps {
@@ -175,19 +183,78 @@ interface DotShapeProps {
 }
 
 /**
- * 2a's current point: a 10 px dot in `color` with a 2 px white ring and a 1.5 px `color` ring outside it.
- * Returns a Recharts `shape` / `dot` renderer.
+ * 1d's current point, as a Recharts `shape` / `dot` renderer. `color` given: a 12 px dot in that colour with a 2 px
+ * white ring inside a 4 px halo of the colour at 25 % (the strength line's latest session). No colour: "you are here" —
+ * a 14 px white dot in a 4 px gold halo at 70 % (the weight trend's latest day, the Dashboard sparkline).
  */
-export function currentPoint(color: string) {
+export function currentPoint(color?: string) {
   return function CurrentPoint({ cx, cy }: DotShapeProps) {
     if (cx === undefined || cy === undefined || !Number.isFinite(cx) || !Number.isFinite(cy)) return <g />
+    if (!color)
+      return (
+        <g data-chart="current-point">
+          <circle cx={cx} cy={cy} r={9} fill={withAlpha(tokens.summit.gold.main, 0.7)} />
+          <circle cx={cx} cy={cy} r={7} fill={tokens.ink.card} />
+        </g>
+      )
+    // A series colour may already carry an alpha (`withAlpha(…, .6)`): the halo is the opaque colour at 25 %.
+    const halo = withAlpha(color.length === 9 ? color.slice(0, 7) : color, 0.25)
     return (
       <g data-chart="current-point">
-        <circle cx={cx} cy={cy} r={5.75} fill={tokens.ink.card} stroke={color} strokeWidth={1.5} />
-        <circle cx={cx} cy={cy} r={3} fill={color} />
+        <circle cx={cx} cy={cy} r={10} fill={halo} />
+        <circle cx={cx} cy={cy} r={6} fill={color} stroke={tokens.ink.card} strokeWidth={2} />
       </g>
     )
   }
+}
+
+/**
+ * A metric's ramp as a vertical SVG gradient (README §2 "Metric ramps": a bar is `from` at its foot and `to` at its
+ * top), or any two token colours. Put the returned <linearGradient> inside a chart's <defs> and fill with `url(#id)`.
+ */
+export function rampGradient(id: string, ramp: MetricKey | { from: string; to: string }) {
+  const r = typeof ramp === 'string' ? metricRamp(ramp) : ramp
+  return (
+    <linearGradient key={id} id={id} x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stopColor={r.from} />
+      <stop offset="1" stopColor={r.to} />
+    </linearGradient>
+  )
+}
+
+/**
+ * The dashed gold plan line (the base camp → summit line, a week's expected loss): `tokens.chart.plan` on white (the
+ * README gold deepened to 3:1), 2 px, dashes 6 / 8.
+ */
+export const planLine = {
+  stroke: tokens.chart.plan,
+  strokeWidth: 2,
+  strokeDasharray: tokens.chart.planDash,
+} as const
+
+/**
+ * Path for 1d's wide bar: `top` px corners at its data end and `foot` px at the baseline. `up` = the bar grows upward
+ * from its baseline. Radii shrink to fit a short or narrow bar.
+ */
+export function wideBarPath(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  up: boolean,
+  top: number = WEEK_BAR_RADIUS.top,
+  foot: number = WEEK_BAR_RADIUS.foot,
+) {
+  const yTop = Math.min(y, y + h)
+  const height = Math.abs(h)
+  if (height === 0 || w <= 0) return ''
+  const rt = Math.max(0, Math.min(top, w / 2, height / 2))
+  const rf = Math.max(0, Math.min(foot, w / 2, height - rt))
+  // Corner radii at the visual top (a) and bottom (b) edges.
+  const a = up ? rt : rf
+  const b = up ? rf : rt
+  const yb = yTop + height
+  return `M${x},${yTop + a}Q${x},${yTop} ${x + a},${yTop}H${x + w - a}Q${x + w},${yTop} ${x + w},${yTop + a}V${yb - b}Q${x + w},${yb} ${x + w - b},${yb}H${x + b}Q${x},${yb} ${x},${yb - b}Z`
 }
 
 /**
@@ -314,10 +381,10 @@ function drawIn(width: number | undefined) {
   }
 }
 
-/** A plot-sized message slot (no data yet, couldn't load): 2a's dashed empty slot, radius 8 inside the card. */
+/** A plot-sized message slot (no data yet, couldn't load): 1d's dashed empty slot, a radius-18 well inside the card. */
 export const plotSlot = {
   ...dashedSurface,
-  borderRadius: `${tokens.radius.control}px`,
+  borderRadius: `${tokens.summit.radius.wellLarge}px`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -338,11 +405,25 @@ export interface ChartFrameProps {
   empty?: boolean
   /** Placeholder height when empty. */
   height: number
+  /** Where the legend keys sit: the top row's right end (default) or a row under the plot, packed left (1d cards). */
+  legendPlacement?: 'top' | 'bottom'
   children: ReactNode
 }
 
-export function ChartFrame({ testId, label, legend, unit, width, empty, height, children }: ChartFrameProps) {
+export function ChartFrame({
+  testId,
+  label,
+  legend,
+  unit,
+  width,
+  empty,
+  height,
+  legendPlacement = 'top',
+  children,
+}: ChartFrameProps) {
+  const below = legendPlacement === 'bottom'
   const hasLegend = !!legend && legend.length > 0
+  const legendTop = hasLegend && !below
   const caption = unit && !empty ? unit : null
   return (
     <Box
@@ -358,7 +439,7 @@ export function ChartFrame({ testId, label, legend, unit, width, empty, height, 
         ...drawIn(width),
       }}
     >
-      {(hasLegend || caption) && (
+      {(legendTop || caption) && (
         <Box
           sx={{
             display: 'flex',
@@ -369,7 +450,7 @@ export function ChartFrame({ testId, label, legend, unit, width, empty, height, 
           }}
         >
           <AxisCaption inline>{caption}</AxisCaption>
-          {hasLegend && (
+          {legendTop && (
             <Box sx={{ minWidth: 0, flex: '0 1 auto' }}>
               <LegendChips items={legend!} dense align="end" />
             </Box>
@@ -377,6 +458,11 @@ export function ChartFrame({ testId, label, legend, unit, width, empty, height, 
         </Box>
       )}
       {empty ? <Box sx={{ ...plotSlot, height }}>No data yet</Box> : children}
+      {hasLegend && below && !empty && (
+        <Box sx={{ mt: '14px', minWidth: 0 }}>
+          <LegendChips items={legend!} dense />
+        </Box>
+      )}
     </Box>
   )
 }
@@ -437,22 +523,48 @@ export function readableDates(text: string): string {
   )
 }
 
-/** A tooltip key: 2a's 8 × 8 radius-2 square, or a short dashed stroke for a target. */
-function TipKey({ color, dashed }: { color: string; dashed?: boolean }) {
+/**
+ * A key colour as the deep-ink tooltip can show it: a mark darker than ~10 % relative luminance (the ink target line,
+ * the volume stack's deep step) would vanish on it, so it is drawn in the tooltip's own white instead.
+ * L = 0.2126 R + 0.7152 G + 0.0722 B over the linearised sRGB channels.
+ */
+function onTooltip(color: string): string {
+  if (!/^#[0-9a-fA-F]{6}/.test(color)) return color
+  const lin = (i: number) => {
+    const c = parseInt(color.slice(i, i + 2), 16) / 255
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  const luminance = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5)
+  return luminance < 0.1 ? tokens.chart.tooltip.text : color
+}
+
+/**
+ * A tooltip key: an 8 × 8 radius-2 square, or a short dashed stroke for a target. On the deep-ink tooltip a dark key
+ * (the volume stack's deep ink, a total in ink) would vanish, so every square carries a faint white ring.
+ */
+function TipKey({ color: given, dashed }: { color: string; dashed?: boolean }) {
+  const color = onTooltip(given)
   return dashed ? (
     <Box aria-hidden sx={{ width: 10, height: 0, borderTop: `1.5px dashed ${color}`, flex: 'none' }} />
   ) : (
     <Box
       aria-hidden
-      sx={{ width: 8, height: 8, borderRadius: `${tokens.radius.bar}px`, bgcolor: color, flex: 'none' }}
+      sx={{
+        width: 8,
+        height: 8,
+        borderRadius: `${tokens.radius.bar}px`,
+        bgcolor: color,
+        boxShadow: `0 0 0 1px ${tokens.summit.glass.tileBorder}`,
+        flex: 'none',
+      }}
     />
   )
 }
 
 /**
- * Tooltip content (2a): a dark `tokens.chart.tooltip` card, 12 px, radius 8, padding 6 × 10, the tooltip shadow; the title (dates as
- * "Oct 7") in the muted grey, then one entry per series — key, name, value in 600. Two entries sit side by side, more
- * stack.
+ * Tooltip content (1d): a deep-ink `tokens.chart.tooltip` card, 12/500, radius 14, padding 8 × 12, the tooltip shadow;
+ * the title (dates as "Oct 7") in white at 65 %, then one entry per series — key, name, value in 600. Two entries sit
+ * side by side, more stack.
  */
 export function tooltip<Row>(title: (row: Row) => string, lines: readonly TipLine<Row>[]) {
   return function ChartTip({ active, payload }: TipProps) {
@@ -468,11 +580,12 @@ export function tooltip<Row>(title: (row: Row) => string, lines: readonly TipLin
         sx={{
           bgcolor: tokens.chart.tooltip.bg,
           color: tokens.chart.tooltip.text,
-          borderRadius: `${tokens.radius.control}px`,
+          borderRadius: `${tokens.summit.radius.wellSmall}px`,
           boxShadow: tokens.elevation.tooltip,
-          px: '10px',
-          py: '6px',
+          px: '12px',
+          py: '8px',
           fontFamily: tokens.font.family,
+          fontWeight: tokens.font.weight.body,
           fontSize: tokens.font.size.caption,
           lineHeight: tokens.font.leading.caption,
           fontVariantNumeric: 'tabular-nums',
@@ -600,7 +713,7 @@ export function niceScale(
   return { domain: [start, end] as [number, number], ticks }
 }
 
-/** The 12 px muted line under a custom-SVG chart (2a caption): what was tapped, or a summary when nothing is. */
+/** The 12 px muted line under a custom-SVG chart (1d caption): what was tapped, or a summary when nothing is. */
 export function TapCaption({ children }: { children: ReactNode }) {
   return (
     <Box

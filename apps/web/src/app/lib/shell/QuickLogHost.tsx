@@ -12,8 +12,8 @@ const loadSheet = () => import('../../../features/quick-log/sheet')
 
 const QuickLogSheet = lazy(() => loadSheet().then((m) => ({ default: m.QuickLogSheet })))
 
-/** Start loading the sheet's code ahead of a likely open (the quick-log button is hovered, focused or touched). */
-export function preloadQuickLog(): void {
+/** Start loading the sheet's code right after the first render, so it is in memory before the network can drop. */
+function preloadQuickLog(): void {
   // A failed preload (offline) is not an error yet: opening the sheet tries again and shows it.
   loadSheet().catch(() => undefined)
 }

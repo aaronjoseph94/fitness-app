@@ -1,4 +1,4 @@
-// Owns: the one hook behind every entrance animation (2a: cards rise and fade, bars grow, rings draw) — it reports
+// Owns: the one hook behind every entrance animation (1d: cards rise and fade, bars grow, rings draw) — it reports
 // whether the resting state has been painted, so a component can render its resting state and then transition to the
 // final one. Without that first paint the browser coalesces both styles and the element simply appears with no motion,
 // which is why the frame is asked for at all.

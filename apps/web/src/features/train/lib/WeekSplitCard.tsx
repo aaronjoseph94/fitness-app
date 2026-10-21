@@ -1,17 +1,21 @@
-// Owns: the Train tab's "This week" card (2a: a full-width card, the week's muscle map in a tinted panel on the right)
-// over GET /api/ai/week — seven day chips (preset to his training days, today marked) with a live preview of the split
-// those days give (engine splitSlots: "Mon Upper A · Tue Lower A · Thu Full body"); Generate (POST /api/ai/week with the
-// chosen days, which become his training days and get one AI draft each; it asks first when a chosen day already has a
-// template, says where to add a model key when none is set, and re-reads everything even when it fails, since the
-// days may have been saved); each training day with its template, "No workout yet" or, when its last draft failed,
-// "Couldn't draft — Generate to retry", and "Drafting…" / "Draft waiting"; Keep all (accepts the week's pending split
-// drafts in turn, with progress and any refusal); whether the week's templates cover every major muscle group; the
-// week plan line; the combined map.
+// Owns: the Train tab's "This week" card (1d Summit: the screen's deep-sky card) over GET /api/ai/week — the week's dates
+// and day count, Keep all and Generate as glass buttons; the seven days as a row of tiles that scrolls sideways when
+// narrow (README §4: grid-auto-columns minmax(128px, 1fr)) — each a toggle that picks it as a training day (preset to his
+// training days), named by the split those days give (engine splitSlots, live as he picks), done days gold-outlined with
+// their sets and volume, today white, a picked day ahead dashed, a fast day coral, rest dim; the live preview of the split
+// ("Mon Upper A · Tue Lower A · Thu Full body"); Generate (POST /api/ai/week with the chosen days, which become his
+// training days and get one AI draft each; it asks first when a chosen day already has a template, says where to add a
+// model key when none is set, and re-reads everything even when it fails, since the days may have been saved); each saved
+// training day with its template, "No workout yet" or, when its last draft failed, "Couldn't draft — Generate to retry",
+// and "Drafting…" / "Draft waiting"; Keep all (accepts the week's pending split drafts in turn, with progress and any
+// refusal); whether the week's templates cover every major muscle group; the week plan line; the combined map.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded'
 import DoneAllRounded from '@mui/icons-material/DoneAllRounded'
 import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
+import PlayCircleRounded from '@mui/icons-material/PlayCircleRounded'
+import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -22,7 +26,15 @@ import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
-import { muscleLevels, splitNameKey, splitSlots, weekdayOf, type MuscleValues } from '@fitness/shared/engine'
+import {
+  addDays,
+  muscleLevels,
+  splitNameKey,
+  splitSlots,
+  weekdayOf,
+  weekStart,
+  type MuscleValues,
+} from '@fitness/shared/engine'
 import type {
   LocalDate,
   Muscle,
@@ -37,10 +49,22 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { apiQueryKey, call, isApiError, problemText } from '../../../api'
-import { cardSurface, StatusChip } from '../../../components'
+import {
+  deepSkyWell,
+  displayTitle,
+  eyebrow,
+  fixedCol,
+  formatDayRange,
+  formatNumber,
+  StatusChip,
+  wrapCol,
+} from '../../../components'
 import { MuscleMap } from '../../../muscle-map'
-import { tokens } from '../../../theme'
+import { tokens, withAlpha } from '../../../theme'
 import { pendingWorkoutOf, type PendingWorkout } from '../../builder'
+import type { DayWork } from './RecentSessions'
+
+const { summit } = tokens
 
 const DAYS: readonly { key: Weekday; short: string; long: string }[] = [
   { key: 'mon', short: 'Mon', long: 'Monday' },
@@ -62,33 +86,65 @@ const inWeekOrder = (days: readonly Weekday[]): Weekday[] =>
 const splitLine = (slots: readonly SplitSlot[]) =>
   slots.map((s) => `${SHORT[s.weekday]} ${s.name}`).join(' · ')
 
-const hairline = `1px solid ${tokens.ink.hairline}`
-
 /** A line under the controls: what Generate or Keep all did, or why not. */
 type Note = { tone: 'info' | 'success' | 'error'; text: ReactNode }
 
+/** On the deep sky: white for news, light teal for done, coral for a refusal (each ≥ 6:1 on the card). */
 const NOTE_COLOUR = {
-  info: tokens.ink.label,
-  success: tokens.tone.success.text,
-  error: tokens.status.flag,
+  info: summit.onSky.subtitle,
+  success: tokens.tone.success.light,
+  error: summit.coral.main,
 } as const
 
 const NO_MODEL_KEY = (
   <>
     Add a model key in{' '}
-    <Link component={RouterLink} to="/settings/ai">
+    <Link
+      component={RouterLink}
+      to="/settings/ai"
+      sx={{ color: summit.gold.main, textDecoration: 'underline', '&:hover': { color: summit.onSky.text } }}
+    >
       Settings → AI
     </Link>{' '}
     first.
   </>
 )
 
+/** The keyboard ring on the deep sky: gold (the theme's violet would not read). */
+const goldFocus = {
+  '&.Mui-focusVisible': {
+    outline: `${tokens.focusRing.width}px solid ${summit.gold.main}`,
+    outlineOffset: tokens.focusRing.offset,
+  },
+} as const
+
+/** A glass button on the deep sky: white on white .1 with a white .3 edge, radius 12, 38 px (44 on touch). */
+const glassButtonSx = {
+  minHeight: 38,
+  px: '14px',
+  border: `1px solid ${summit.glass.controlBorder}`,
+  bgcolor: summit.glass.fill,
+  color: summit.onSky.text,
+  fontSize: tokens.font.size.small,
+  '&:hover': { bgcolor: summit.glass.fillHover },
+  '&.Mui-disabled': {
+    bgcolor: summit.deepSky.well,
+    color: summit.onSky.disabled,
+    border: `1px solid ${summit.deepSky.hairline}`,
+  },
+  ...goldFocus,
+} as const
+
 export interface WeekSplitCardProps {
   week: TrainingWeek
-  /** Today (Edmonton): its chip is marked. */
+  /** Today (Edmonton): its tile is marked. */
   date: LocalDate
   /** The templates: Generate asks first when a chosen day already has one. */
   templates: readonly Template[]
+  /** Finished work this week by date (a done day's tile shows its sets and volume). */
+  done?: ReadonlyMap<LocalDate, DayWork>
+  /** Fast days this week (planned or kept), by date. */
+  fastDays?: ReadonlySet<LocalDate>
   /**
    * Called with each draft Keep all kept (read from the Worker's answer) and that answer, so its card shows the outcome
    * (and Undo).
@@ -98,7 +154,15 @@ export interface WeekSplitCardProps {
   onGenerate: () => void
 }
 
-export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: WeekSplitCardProps) {
+export function WeekSplitCard({
+  week,
+  date,
+  templates,
+  done,
+  fastDays,
+  onKept,
+  onGenerate,
+}: WeekSplitCardProps) {
   const queryClient = useQueryClient()
   // null = follow his saved training days; a pick previews a new split until Generate saves it.
   const [picked, setPicked] = useState<Weekday[] | null>(null)
@@ -109,6 +173,7 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
   const chosen = inWeekOrder(picked ?? week.training_days)
   const preview = splitSlots(chosen)
   const todayKey = weekdayOf(date)
+  const monday = weekStart(date)
   const waiting = week.slots.flatMap((s) => (s.draft ? [{ id: s.draft.proposal_id, name: s.name }] : []))
   // Generate asks first when a chosen day's slot already has a template (its draft would replace it on Keep).
   const redraws = preview.some((s) => templates.some((t) => splitNameKey(t.name) === splitNameKey(s.name)))
@@ -182,214 +247,232 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
       aria-labelledby="week-split-title"
       data-testid="week-split"
       sx={{
-        ...cardSurface,
+        position: 'relative',
         overflow: 'hidden',
-        display: 'grid',
-        gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) 260px' },
+        minWidth: 0,
+        px: { xs: '22px', sm: '28px' },
+        py: '24px',
+        borderRadius: `${summit.radius.large}px`,
+        background: summit.deepSky.bg,
+        color: summit.deepSky.text,
+        boxShadow: summit.deepSky.shadow,
       }}
     >
-      <Box sx={{ minWidth: 0, px: { xs: 4, sm: '22px' }, py: 5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box
-              component="h2"
-              id="week-split-title"
-              sx={{
-                m: 0,
-                fontSize: tokens.font.size.cardTitle,
-                fontWeight: tokens.font.weight.heading,
-                lineHeight: tokens.font.leading.cardTitle,
-              }}
-            >
-              This week
-            </Box>
-            <Box
-              sx={{
-                mt: '2px',
-                fontSize: tokens.font.size.small,
-                lineHeight: tokens.font.leading.small,
-                color: tokens.ink.muted,
-              }}
-            >
-              Pick the days you train and generate a workout for each. The days you pick become your training
-              days.
-            </Box>
-          </Box>
-          {waiting.length > 0 && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<DoneAllRounded />}
-              onClick={() => void keepAll()}
-              disabled={busy !== null}
-              data-testid="keep-all"
-              sx={{ flex: 'none' }}
-            >
-              Keep all
-            </Button>
-          )}
-        </Box>
-
-        <Box sx={{ mt: 4, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3 }}>
-          <ToggleButtonGroup
-            value={chosen}
-            onChange={(_, next: Weekday[]) => setPicked(inWeekOrder(next))}
-            aria-label="Training days"
-            disabled={busy !== null}
-            sx={{
-              flex: '1 1 300px',
-              maxWidth: 420,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-              // Several days are on at once, so a picked day is dark (as in Settings' training days dialog).
-              '& .MuiToggleButton-root': {
-                px: 0,
-                '&.Mui-selected, &.Mui-selected:hover': {
-                  bgcolor: tokens.dark.bg,
-                  color: tokens.dark.text,
-                  boxShadow: 'none',
-                },
-              },
-            }}
-          >
-            {DAYS.map((d) => (
-              <ToggleButton
-                key={d.key}
-                value={d.key}
-                aria-label={d.key === todayKey ? `${d.long}, today` : d.long}
-                data-testid="day-chip"
-              >
-                {d.short}
-                {d.key === todayKey && (
-                  // Today: a 4 px dot under the label, in the label's own colour (white on a picked day).
-                  <Box
-                    component="span"
-                    aria-hidden
-                    sx={{
-                      position: 'absolute',
-                      bottom: 3,
-                      left: '50%',
-                      width: 4,
-                      height: 4,
-                      ml: '-2px',
-                      borderRadius: `${tokens.radius.pill}px`,
-                      bgcolor: 'currentColor',
-                    }}
-                  />
-                )}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-          <Button
-            variant="contained"
-            startIcon={<AutoAwesomeRounded />}
-            onClick={() => (redraws ? setConfirming(true) : void generate())}
-            disabled={n === 0 || busy !== null}
-            aria-describedby="week-preview"
-            data-testid="generate-week"
-            // Wide enough for "Generating…", so the label change does not move the row.
-            sx={{ minWidth: 136 }}
-          >
-            {busy === 'generate' ? 'Generating…' : 'Generate'}
-          </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 12px' }}>
+        <Box
+          component="h2"
+          id="week-split-title"
+          sx={{ m: 0, flex: '1 1 160px', minWidth: 0, ...displayTitle('card'), fontSize: 22 }}
+        >
+          This week
         </Box>
         <Box
-          id="week-preview"
-          aria-live="polite"
-          data-testid="week-preview"
           sx={{
-            mt: 2,
             fontSize: tokens.font.size.small,
-            lineHeight: tokens.font.leading.small,
-            color: tokens.ink.label,
+            fontWeight: tokens.font.weight.body,
+            color: summit.deepSky.muted,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {n > 0 ? splitLine(preview) : 'Pick at least one day.'}
+          {formatDayRange(monday, addDays(monday, 6))} · {n} training day{n === 1 ? '' : 's'}
         </Box>
-        {note && (
-          <Box
-            role={note.tone === 'error' ? 'alert' : 'status'}
-            data-testid="week-note"
-            sx={{
-              mt: 2,
-              fontSize: tokens.font.size.small,
-              lineHeight: tokens.font.leading.small,
-              color: NOTE_COLOUR[note.tone],
-            }}
+        {waiting.length > 0 && (
+          <Button
+            startIcon={<DoneAllRounded />}
+            onClick={() => void keepAll()}
+            disabled={busy !== null}
+            data-testid="keep-all"
+            sx={glassButtonSx}
           >
-            {note.text}
-          </Box>
+            Keep all
+          </Button>
         )}
-
-        <Box
-          component="ul"
-          aria-label="Your training days"
-          aria-live="polite"
-          sx={{ listStyle: 'none', p: 0, m: 0, mt: 4, borderTop: hairline }}
+        <Button
+          startIcon={<AutoAwesomeRounded sx={{ color: summit.gold.main }} />}
+          onClick={() => (redraws ? setConfirming(true) : void generate())}
+          disabled={n === 0 || busy !== null}
+          aria-describedby="week-preview"
+          data-testid="generate-week"
+          // Wide enough for "Generating…", so the label change does not move the row.
+          sx={{ ...glassButtonSx, minWidth: 136 }}
         >
-          {week.slots.length > 0 ? (
-            week.slots.map((slot) => <DayRow key={slot.weekday} slot={slot} />)
-          ) : (
-            <Box
-              component="li"
-              sx={{
-                py: 3,
-                fontSize: tokens.font.size.small,
-                color: tokens.ink.muted,
-                borderBottom: hairline,
-              }}
-            >
-              No training days yet. Pick them above, then Generate.
-            </Box>
-          )}
-        </Box>
-
-        <Coverage uncovered={week.uncovered} />
-        {week.week_plan_sessions && (
-          <Box
-            data-testid="week-plan-line"
-            sx={{
-              mt: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: tokens.font.size.small,
-              color: tokens.ink.label,
-            }}
-          >
-            <EventNoteOutlined aria-hidden sx={{ fontSize: 16, color: tokens.accent.main }} />
-            This week follows your week plan
-          </Box>
-        )}
+          {busy === 'generate' ? 'Generating…' : 'Generate'}
+        </Button>
       </Box>
-
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 2,
-          p: 4,
-          bgcolor: tokens.ink.panel,
-          borderTop: { xs: `1px solid ${tokens.ink.border}`, md: 'none' },
-          borderLeft: { md: `1px solid ${tokens.ink.border}` },
+          mt: '6px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: summit.deepSky.muted,
         }}
       >
-        <Box data-testid="week-muscles">
-          <MuscleMap levels={levels} size={200} title="Muscles your week's templates train" />
-        </Box>
-        <Box
+        Pick the days you train and generate a workout for each. The days you pick become your training days.
+      </Box>
+
+      {/* The seven days scroll sideways inside the card when they no longer fit (README §4). */}
+      <Box
+        sx={{
+          mt: '18px',
+          mx: { xs: '-22px', sm: '-28px' },
+          px: { xs: '22px', sm: '28px' },
+          pb: '6px',
+          overflowX: 'auto',
+          overscrollBehaviorX: 'contain',
+          scrollbarWidth: 'thin',
+          scrollbarColor: `${summit.glass.border} transparent`,
+        }}
+      >
+        <ToggleButtonGroup
+          value={chosen}
+          onChange={(_, next: Weekday[]) => setPicked(inWeekOrder(next))}
+          aria-label="Training days"
+          disabled={busy !== null}
           sx={{
-            fontSize: tokens.font.size.caption,
-            lineHeight: tokens.font.leading.caption,
-            color: tokens.ink.muted,
-            textAlign: 'center',
+            display: 'grid',
+            gridAutoFlow: 'column',
+            gridAutoColumns: 'minmax(128px, 1fr)',
+            gap: '10px',
+            p: 0,
+            borderRadius: 0,
+            bgcolor: 'transparent',
           }}
         >
-          {weekTemplates.length > 0
-            ? `${weekTemplates.length} template${weekTemplates.length === 1 ? '' : 's'} combined`
-            : 'No templates for these days yet'}
+          {DAYS.map((d, i) => {
+            const day = addDays(monday, i)
+            const slot = preview.find((s) => s.weekday === d.key) ?? null
+            const saved = week.slots.find((s) => s.weekday === d.key) ?? null
+            return (
+              <DayTile
+                key={d.key}
+                value={d.key}
+                short={d.short}
+                long={d.long}
+                today={d.key === todayKey}
+                slot={slot}
+                saved={saved && slot && splitNameKey(saved.name) === splitNameKey(slot.name) ? saved : null}
+                work={done?.get(day) ?? null}
+                fast={fastDays?.has(day) ?? false}
+                past={day < date}
+              />
+            )
+          })}
+        </ToggleButtonGroup>
+      </Box>
+      <Box
+        id="week-preview"
+        aria-live="polite"
+        data-testid="week-preview"
+        sx={{
+          mt: '10px',
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.label,
+          lineHeight: tokens.font.leading.small,
+          color: summit.onSky.subtitle,
+        }}
+      >
+        {n > 0 ? splitLine(preview) : 'Pick at least one day.'}
+      </Box>
+      {note && (
+        <Box
+          role={note.tone === 'error' ? 'alert' : 'status'}
+          data-testid="week-note"
+          sx={{
+            mt: '8px',
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.label,
+            lineHeight: tokens.font.leading.small,
+            color: NOTE_COLOUR[note.tone],
+          }}
+        >
+          {note.text}
+        </Box>
+      )}
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '18px', mt: '18px', alignItems: 'flex-start' }}>
+        <Box sx={{ ...wrapCol(2), display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ ...eyebrow, fontSize: tokens.font.size.caption, color: summit.deepSky.muted }}>
+            Your training days
+          </Box>
+          <Box
+            component="ul"
+            aria-label="Your training days"
+            aria-live="polite"
+            sx={{
+              listStyle: 'none',
+              p: 0,
+              m: 0,
+              mt: '10px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}
+          >
+            {week.slots.length > 0 ? (
+              week.slots.map((slot) => <DayRow key={slot.weekday} slot={slot} />)
+            ) : (
+              <Box
+                component="li"
+                sx={{
+                  ...deepSkyWell,
+                  flex: '1 1 100%',
+                  px: '14px',
+                  py: '12px',
+                  fontSize: tokens.font.size.small,
+                  color: summit.deepSky.muted,
+                }}
+              >
+                No training days yet. Pick them above, then Generate.
+              </Box>
+            )}
+          </Box>
+
+          <Coverage uncovered={week.uncovered} />
+          {week.week_plan_sessions && (
+            <Box
+              data-testid="week-plan-line"
+              sx={{
+                mt: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: tokens.font.size.small,
+                color: summit.onSky.subtitle,
+              }}
+            >
+              <EventNoteOutlined aria-hidden sx={{ fontSize: 16, color: summit.gold.main }} />
+              This week follows your week plan
+            </Box>
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            ...fixedCol(180),
+            ...deepSkyWell,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            p: '14px',
+          }}
+        >
+          <Box data-testid="week-muscles">
+            <MuscleMap levels={levels} size={120} title="Muscles your week's templates train" />
+          </Box>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.caption,
+              lineHeight: tokens.font.leading.caption,
+              color: summit.deepSky.muted,
+              textAlign: 'center',
+            }}
+          >
+            {weekTemplates.length > 0
+              ? `${weekTemplates.length} template${weekTemplates.length === 1 ? '' : 's'} combined`
+              : 'No templates for these days yet'}
+          </Box>
         </Box>
       </Box>
 
@@ -422,9 +505,183 @@ export function WeekSplitCard({ week, date, templates, onKept, onGenerate }: Wee
   )
 }
 
+/** What a day tile looks like: done (gold), today (white), a picked day ahead (dashed), fast (coral), rest (dim). */
+function tileLook({
+  picked,
+  today,
+  done,
+  fast,
+}: {
+  picked: boolean
+  today: boolean
+  done: boolean
+  fast: boolean
+}) {
+  if (today)
+    return {
+      bg: summit.avatar.bg,
+      border: picked ? `1px solid ${summit.avatar.bg}` : `1px dashed ${summit.plum}`,
+      text: summit.ink.deep,
+      label: summit.plum,
+      meta: tokens.ink.secondary,
+      glow: `0 0 24px ${withAlpha(summit.gold.main, 0.45)}`,
+    }
+  if (done)
+    return {
+      bg: withAlpha(summit.gold.main, 0.16),
+      border: `1px solid ${withAlpha(summit.gold.main, picked ? 0.4 : 0.2)}`,
+      text: summit.deepSky.text,
+      label: summit.gold.main,
+      meta: summit.deepSky.muted,
+      glow: 'none',
+    }
+  if (fast)
+    return {
+      bg: withAlpha(summit.coral.main, 0.2),
+      border: `1px ${picked ? 'dashed' : 'solid'} ${withAlpha(summit.coral.main, 0.5)}`,
+      text: summit.deepSky.text,
+      label: summit.coral.main,
+      meta: summit.deepSky.muted,
+      glow: 'none',
+    }
+  if (picked)
+    return {
+      bg: 'transparent',
+      border: `1px dashed ${summit.onSky.disabled}`,
+      text: summit.deepSky.text,
+      label: summit.onSky.subtitle,
+      meta: summit.deepSky.muted,
+      glow: 'none',
+    }
+  return {
+    bg: summit.deepSky.well,
+    border: '1px solid transparent',
+    text: summit.onSky.subtitle,
+    label: summit.deepSky.muted,
+    meta: summit.deepSky.muted,
+    glow: 'none',
+  }
+}
+
 /**
- * One training day: the weekday, its slot name, its template's size, "No workout yet" or (its last draft failed)
- * "Couldn't draft — Generate to retry" in the warning tone, and a drafting / draft chip.
+ * One weekday as a toggle (pressed = a training day): its short name and a glyph (done, today, fast), the split's name
+ * for it as picked (or "Rest" / "Fast day"), and a line of what it holds — the work done, the saved day's template, its
+ * draft state, or "Generate to draft" for a day picked but not saved yet. ToggleButtonGroup clones its value props in.
+ */
+function DayTile({
+  value,
+  short,
+  long,
+  today,
+  slot,
+  saved,
+  work,
+  fast,
+  past,
+  ...group
+}: {
+  value: Weekday
+  short: string
+  long: string
+  today: boolean
+  slot: SplitSlot | null
+  saved: TrainingWeekSlot | null
+  work: DayWork | null
+  fast: boolean
+  past: boolean
+}) {
+  const picked = slot !== null
+  const look = tileLook({ picked, today, done: work !== null, fast })
+  const Glyph = work ? CheckCircleOutlineRounded : today ? PlayCircleRounded : fast ? TimerOutlined : null
+  const name = slot ? slot.name : fast ? 'Fast day' : 'Rest'
+  const meta = work
+    ? `${work.sets} set${work.sets === 1 ? '' : 's'} · ${formatNumber(work.volume_kg)} kg`
+    : !slot
+      ? fast
+        ? 'planned fast'
+        : ''
+      : saved?.drafting
+        ? 'Drafting…'
+        : saved?.template
+          ? `${saved.template.sets} sets · ${today ? 'today' : past ? 'missed' : 'planned'}`
+          : saved
+            ? 'No workout yet'
+            : 'Generate to draft'
+  const surface = { bgcolor: look.bg, color: look.text, border: look.border, boxShadow: look.glow }
+  return (
+    <ToggleButton
+      {...group}
+      value={value}
+      aria-label={today ? `${long}, today` : long}
+      data-testid="day-chip"
+      sx={{
+        // Three classes deep, to outrank the theme's segmented-control look on a grouped button.
+        '&&&': {
+          ...surface,
+          display: 'block',
+          minWidth: 0,
+          minHeight: 96,
+          p: '14px',
+          borderRadius: `${summit.radius.wellLarge}px`,
+          textAlign: 'left',
+          textTransform: 'none',
+          lineHeight: 1.3,
+          '&:hover': { ...surface, filter: 'brightness(1.12)' },
+          '&.Mui-disabled': { opacity: 0.6 },
+          ...goldFocus,
+        },
+      }}
+    >
+      <Box
+        component="span"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '6px',
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.heading,
+          color: look.label,
+        }}
+      >
+        <span>
+          {short}
+          {today && ' · today'}
+        </span>
+        {Glyph && <Glyph aria-hidden sx={{ fontSize: 18 }} />}
+      </Box>
+      <Box
+        component="span"
+        sx={{
+          display: 'block',
+          mt: '8px',
+          fontSize: tokens.font.size.emphasis,
+          fontWeight: tokens.font.weight.heading,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {name}
+      </Box>
+      <Box
+        component="span"
+        sx={{
+          display: 'block',
+          minHeight: '1.3em',
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.body,
+          color: look.meta,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {meta}
+      </Box>
+    </ToggleButton>
+  )
+}
+
+/**
+ * One saved training day, in a well: the weekday, its slot name, its template's size, "No workout yet" or (its last draft
+ * failed) "Couldn't draft — Generate to retry" in gold, and a drafting / draft chip.
  */
 function DayRow({ slot }: { slot: TrainingWeekSlot }) {
   const status = slot.drafting ? 'Drafting…' : slot.draft ? 'Draft waiting' : null
@@ -435,19 +692,22 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
       data-testid="week-day"
       data-weekday={slot.weekday}
       sx={{
+        ...deepSkyWell,
+        flex: '1 1 170px',
+        minWidth: 0,
         display: 'grid',
-        gridTemplateColumns: '36px minmax(0, 1fr) auto',
+        gridTemplateColumns: '34px minmax(0, 1fr) auto',
         alignItems: 'center',
-        columnGap: 3,
+        columnGap: '8px',
+        px: '12px',
         py: '10px',
-        borderBottom: hairline,
       }}
     >
       <Box
         sx={{
-          fontSize: tokens.font.size.small,
-          fontWeight: tokens.font.weight.label,
-          color: tokens.ink.label,
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.heading,
+          color: summit.deepSky.muted,
         }}
       >
         {SHORT[slot.weekday]}
@@ -457,7 +717,7 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
           sx={{
             fontSize: tokens.font.size.body,
             fontWeight: tokens.font.weight.heading,
-            lineHeight: tokens.font.leading.body,
+            lineHeight: tokens.font.leading.small,
             overflowWrap: 'anywhere',
           }}
         >
@@ -466,9 +726,9 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
         <Box
           data-testid={failed ? 'week-day-failed' : undefined}
           sx={{
-            fontSize: tokens.font.size.small,
-            lineHeight: tokens.font.leading.small,
-            color: failed ? tokens.tone.warning.text : tokens.ink.muted,
+            fontSize: tokens.font.size.caption,
+            lineHeight: tokens.font.leading.caption,
+            color: failed ? summit.gold.main : summit.deepSky.muted,
             fontVariantNumeric: 'tabular-nums',
           }}
         >
@@ -503,14 +763,14 @@ function Coverage({ uncovered }: { uncovered: TrainingWeek['uncovered'] }) {
     <Box
       data-testid="week-uncovered"
       sx={{
-        mt: 3,
+        mt: '12px',
         display: 'flex',
         alignItems: 'flex-start',
         gap: '6px',
         fontSize: tokens.font.size.small,
         lineHeight: tokens.font.leading.small,
         fontWeight: tokens.font.weight.label,
-        color: covered ? tokens.tone.success.text : tokens.tone.warning.text,
+        color: covered ? tokens.tone.success.light : summit.gold.main,
       }}
     >
       <Icon aria-hidden sx={{ fontSize: 16, mt: '2px', flex: 'none' }} />

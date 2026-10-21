@@ -1,4 +1,5 @@
-// Owns: the count-up number (2a: headline numbers count up over ~1.6 s on an exponential ease-out, once per mount).
+// Owns: the count-up number (README §6: headline numbers count up over ~1.8 s on an exponential ease-out, once per
+// mount).
 //
 // React renders the REAL value; on mount the component rewrites only its own text node's `nodeValue` frame by frame
 // and finishes on exactly the string React rendered, so the DOM, assistive tech and any test that waits on the text all

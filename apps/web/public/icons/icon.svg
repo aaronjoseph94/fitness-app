@@ -1,11 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Owns: the app icon — Facebook-blue rounded square, white dumbbell (a bar with two plates each side). Source of every PNG here (see SOURCE.md); the shell's BrandTile draws the same shapes. -->
-  <rect width="512" height="512" rx="112" fill="#166FE5"/>
-  <g fill="#FFFFFF">
-    <rect x="40" y="238" width="432" height="36" rx="18"/>
-    <rect x="84" y="150" width="52" height="212" rx="18"/>
-    <rect x="376" y="150" width="52" height="212" rx="18"/>
-    <rect x="150" y="186" width="44" height="140" rx="16"/>
-    <rect x="318" y="186" width="44" height="140" rx="16"/>
+  <!-- Owns: the app icon — 1d Summit deep-sky rounded square (#1A0A42 → #3E1A73 → #9A3A8E, top to bottom), the Summit mark: a white trend polyline and a gold sun. Source of every PNG here (see SOURCE.md); the Summit nav's logo tile draws the same mark. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A0A42"/>
+      <stop offset="0.51" stop-color="#3E1A73"/>
+      <stop offset="1" stop-color="#9A3A8E"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#sky)"/>
+  <g>
+    <polyline points="90,356 190,256 264,312 338,238" fill="none" stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="398" cy="178" r="44" fill="#FFD27A"/>
   </g>
 </svg>

@@ -152,6 +152,7 @@ export function AiWorkoutPage() {
               <Box>
                 <Button
                   variant="contained"
+                  size="large"
                   startIcon={<AutoAwesomeRounded />}
                   onClick={generate}
                   sx={{ width: { xs: '100%', sm: 'auto' } }}

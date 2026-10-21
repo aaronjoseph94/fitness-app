@@ -283,7 +283,9 @@ export function WeeklyReport(props: WeeklyReportProps) {
             testId="report-weekly-loss"
           >
             {losses.length ? (
-              <WeeklyLossChart weeks={losses} width={half} height={fixed ? 80 : 160} legend={!fixed} />
+              // 100 px on paper: 1d's loss bars carry their value above them, which needs the room (the milestones
+              // beside them set the row's height, so the page count does not move).
+              <WeeklyLossChart weeks={losses} width={half} height={fixed ? 100 : 160} legend={!fixed} />
             ) : (
               <Muted>No full week of weigh-ins yet.</Muted>
             )}

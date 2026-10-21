@@ -1,11 +1,12 @@
-// Owns: the Settings page's sticky section nav (2a, desktop only) — one link per card, the card under the header shown
-// active as the page scrolls (each of the last cards in turn as the page nears its end), and a click that scrolls its
-// card into view and moves focus to the card's heading. UI state only: it reads the page's own DOM, nothing else.
+// Owns: the Settings page's section nav (1d) — a white card of links, one per card, laid out
+// `repeat(auto-fill, minmax(140px, 1fr))` (two up on a phone), sticky beside the cards from 760 px (README §4) and in
+// the page's flow below that; the card under the top of the window shown active (a warm well inside the gold ring) as
+// the page scrolls (each of the last cards in turn as the page nears its end), and a click that scrolls its card into
+// view and moves focus to the card's heading. UI state only: it reads the page's own DOM, nothing else.
 import Box from '@mui/material/Box'
-import useMediaQuery from '@mui/material/useMediaQuery'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { Reveal, useEntrance } from '../../../components'
-import { COARSE_POINTER_QUERY, theme, tokens } from '../../../theme'
+import { cardSurface, fixedCol, Reveal, useEntrance } from '../../../components'
+import { COARSE_POINTER_QUERY, minWidth, tokens, transitionOf } from '../../../theme'
 
 export interface NavSection {
   /** The card's element id (its heading is `${id}-title`, as `Panel` names it). */
@@ -36,14 +37,12 @@ function currentSection(sections: readonly NavSection[]): string {
   return current
 }
 
-export function SectionNav({ sections, delay = 0 }: { sections: readonly NavSection[]; delay?: number }) {
-  // Mounted from `md` up rather than hidden with CSS: a `display: none` flicker (a resize, a full-page capture) would
-  // restart the entrance and leave the nav faded out.
-  const desktop = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true })
-  return desktop ? <Nav sections={sections} delay={delay} /> : null
-}
+/** README §4: the nav column's basis, px. */
+const NAV_PX = 220
+/** How far below the window's top the sticky nav rides, px. */
+const STICKY_TOP = 24
 
-function Nav({ sections, delay }: { sections: readonly NavSection[]; delay: number }) {
+export function SectionNav({ sections, delay = 0 }: { sections: readonly NavSection[]; delay?: number }) {
   const { reduced } = useEntrance()
   const [active, setActive] = useState(sections[0]!.id)
   /** A section just picked from the nav stays active until the reader scrolls by hand (a short card near the end can't reach the line). */
@@ -93,9 +92,24 @@ function Nav({ sections, delay }: { sections: readonly NavSection[]; delay: numb
   return (
     <Reveal
       delay={delay}
-      sx={{ position: 'sticky', top: tokens.layout.headerHeight + tokens.layout.mainPadding.top }}
+      sx={{
+        ...fixedCol(NAV_PX),
+        // Sticky beside the cards where they sit side by side; in the flow above them on a phone.
+        [minWidth(tokens.layout.settingsNav)]: { position: 'sticky', top: STICKY_TOP },
+      }}
     >
-      <Box component="nav" aria-label="Settings sections" sx={{ display: 'grid', gap: '2px' }}>
+      <Box
+        component="nav"
+        aria-label="Settings sections"
+        sx={{
+          ...cardSurface,
+          borderRadius: `${tokens.summit.radius.tabBar}px`,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gap: '4px',
+          p: '10px',
+        }}
+      >
         {sections.map((section) => {
           const on = section.id === active
           return (
@@ -106,22 +120,23 @@ function Nav({ sections, delay }: { sections: readonly NavSection[]; delay: numb
               aria-current={on ? 'location' : undefined}
               onClick={(event: MouseEvent) => go(event, section.id)}
               sx={{
-                px: '10px',
-                py: '7px',
-                borderRadius: `${tokens.radius.segment}px`,
-                fontSize: tokens.font.size.body,
-                // 2a's items sit 34 px apart: 7 px padding round the face's own line, 2 px between; 44 px on touch.
-                lineHeight: 'normal',
-                [COARSE_POINTER_QUERY]: {
-                  display: 'flex',
-                  alignItems: 'center',
-                  minHeight: tokens.tapTarget,
-                },
+                display: 'flex',
+                alignItems: 'center',
+                minWidth: 0,
+                px: '14px',
+                py: '10px',
+                borderRadius: `${tokens.summit.radius.wellSmall}px`,
+                fontSize: tokens.font.size.emphasis,
+                lineHeight: tokens.font.leading.label,
+                [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
                 fontWeight: on ? tokens.font.weight.heading : tokens.font.weight.body,
                 color: on ? tokens.ink.text : tokens.ink.label,
-                bgcolor: on ? tokens.ink.fill : 'transparent',
+                bgcolor: on ? tokens.ink.panel : 'transparent',
+                // The current section: 1d's gold ring, inside the link.
+                boxShadow: on ? `inset 0 0 0 2px ${tokens.summit.gold.main}` : 'none',
                 textDecoration: 'none',
-                '&:hover': { bgcolor: tokens.ink.fill, color: tokens.ink.text },
+                transition: transitionOf(['background-color', 'color'], tokens.motion.duration.instant),
+                '&:hover': { bgcolor: tokens.ink.panel, color: tokens.ink.text },
                 '&:focus-visible': {
                   outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
                   outlineOffset: tokens.focusRing.offset,

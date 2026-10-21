@@ -1,19 +1,18 @@
-// Owns: the top of the Log tab for one day (2a: one card in three parts) — kcal eaten against the day's target with
-// what is left and how many slots are logged; protein / carbs / fat / fibre bars against their targets (GET
-// /api/day/:date); the fast-day note; and the day's weigh-in with its trend, the 7-day change and an edit. While the day
-// loads the card keeps its parts with placeholders in the values, so the meals below never move.
-import LocalFireDepartmentOutlined from '@mui/icons-material/LocalFireDepartmentOutlined'
-import MonitorWeightOutlined from '@mui/icons-material/MonitorWeightOutlined'
+// Owns: the top of the Log tab for one day (1d Summit: one white card in three parts that wrap, never squeeze) — kcal
+// eaten against the day's target with what is left and the calorie floor; protein / carbs / fat / fibre bars against
+// their targets, two up from 150 px (GET /api/day/:date); the fast-day note; and the day's weigh-in with its trend, the
+// 7-day change and an edit. While the day loads the card keeps its parts with placeholders in the values, so the meals
+// below never move. `daySummary` is the hero's one line (kcal left, slots logged, the next slot's plan).
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
-import type SvgIcon from '@mui/material/SvgIcon'
 import { endpoints } from '@fitness/shared/api'
 import type { DayView } from '@fitness/shared/schemas'
 import type { ReactNode } from 'react'
 import {
   cardSurface,
   CountUp,
+  eyebrow,
   formatNumber,
   formatShortDate,
   formatSigned,
@@ -21,8 +20,8 @@ import {
   MeterRow,
   PendingBadge,
   ProgressBar,
-  statValue,
   StatusChip,
+  wrapCol,
 } from '../../../components'
 import { tokens } from '../../../theme'
 import { SLOT_LABEL, slotShare, usePendingLogs, visibleSlots } from '../../quick-log'
@@ -36,62 +35,41 @@ interface DayHeaderProps {
   onRetry: () => void
   /** Meals waiting to sync whose kcal is not in the server total yet. */
   pendingMeals: number
+  /** The calorie floor (settings rail), when known: the eaten part names it. */
+  floor: number | null
   onWeighIn: () => void
 }
 
-const BORDER = `1px solid ${tokens.ink.border}`
+/** README §4: the day header's parts wrap at X = 260 (1.1 : 1.3 : 1). */
+const BASIS = 260
+const HAIRLINE = tokens.ink.hairline
 
 /**
- * The three parts: one column on a phone; from `md` eaten | weigh-in over the macros; from `lg` 2a's
- * 1.1 : 2 : 1 row. Hairlines separate the parts in every arrangement.
+ * The card clips each part's outer hairlines at its own edges, so a rule shows only between parts: left of a part
+ * beside another, above a part that wrapped under one — in every arrangement, with no rule hanging off an edge.
  */
 const cardSx = {
   ...cardSurface,
-  display: 'grid',
-  gridTemplateColumns: {
-    xs: 'minmax(0, 1fr)',
-    md: 'repeat(2, minmax(0, 1fr))',
-    lg: 'minmax(0, 1.1fr) minmax(0, 2fr) minmax(0, 1fr)',
-  },
+  display: 'flex',
+  flexWrap: 'wrap',
+  overflow: 'hidden',
   minWidth: 0,
 } as const
-const partSx = { px: `${tokens.pad.card.x}px`, py: `${tokens.pad.card.y}px`, minWidth: 0 } as const
-const eatenSx = { ...partSx, borderRight: { md: BORDER } } as const
-const macrosSx = {
-  ...partSx,
-  // The macro grid picks its columns from this part's own width (see MacroGrid).
-  containerType: 'inline-size',
-  gridColumn: { md: '1 / -1', lg: 'auto' },
-  order: { md: 3, lg: 0 },
-  borderTop: { xs: BORDER, lg: 0 },
-  borderRight: { lg: BORDER },
+const partSx = {
+  px: '28px',
+  py: '24px',
+  minWidth: 0,
+  boxShadow: `-1px 0 0 0 ${HAIRLINE}, 0 -1px 0 0 ${HAIRLINE}`,
 } as const
-const weighInSx = { ...partSx, borderTop: { xs: BORDER, md: 0 } } as const
+const eatenSx = { ...partSx, ...wrapCol(1.1, BASIS) } as const
+const macrosSx = { ...partSx, ...wrapCol(1.3, BASIS) } as const
+const weighInSx = { ...partSx, ...wrapCol(1, BASIS) } as const
 
-/** A part's label: 13/500 secondary with a 16 px faint glyph (2a "Eaten today", "Weigh-in"). */
-function PartLabel({
-  icon: Icon,
-  children,
-  extra,
-}: {
-  icon?: typeof SvgIcon
-  children: ReactNode
-  extra?: ReactNode
-}) {
+/** A part's eyebrow (13/600 uppercase, +.12em, muted) with chips on its right. */
+function PartLabel({ children, extra }: { children: ReactNode; extra?: ReactNode }) {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        minHeight: 20,
-        fontSize: tokens.font.size.label,
-        fontWeight: tokens.font.weight.label,
-        color: tokens.ink.label,
-      }}
-    >
-      {Icon && <Icon aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint }} />}
-      <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 8px', minHeight: 20 }}>
+      <Box component="span" sx={{ ...eyebrow, flex: '1 1 auto', minWidth: 0 }}>
         {children}
       </Box>
       {extra}
@@ -99,26 +77,70 @@ function PartLabel({
   )
 }
 
-/** The part's big number (34/600, −.03em) and its unit (13 muted). */
+/** The part's big number (Outfit 300, 40 px, −.02em) and its unit (15/500 muted). */
 function BigValue({ value, unit }: { value: ReactNode; unit: ReactNode }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '6px', mt: '10px', flexWrap: 'wrap' }}>
-      <Box component="span" sx={{ ...statValue('medium'), lineHeight: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: '8px', mt: '8px', flexWrap: 'wrap' }}>
+      <Box
+        component="span"
+        sx={{
+          fontFamily: tokens.font.display,
+          fontSize: tokens.font.size.bigNumberMedium,
+          fontWeight: tokens.font.weight.display,
+          letterSpacing: tokens.font.em.title,
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
         {value}
       </Box>
-      <Box component="span" sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
+      <Box
+        component="span"
+        sx={{
+          fontSize: tokens.font.size.emphasis,
+          fontWeight: tokens.font.weight.body,
+          color: tokens.ink.secondary,
+        }}
+      >
         {unit}
       </Box>
     </Box>
   )
 }
 
-const captionSx = {
-  fontSize: tokens.font.size.caption,
-  lineHeight: tokens.font.leading.caption,
-  color: tokens.ink.secondary,
+const lineSx = {
+  fontSize: tokens.font.size.body,
+  fontWeight: tokens.font.weight.body,
+  lineHeight: tokens.font.leading.small,
+  color: tokens.ink.text,
 } as const
-const strongSx = { fontWeight: tokens.font.weight.heading, color: tokens.ink.text } as const
+const mutedSx = { color: tokens.ink.secondary } as const
+
+/** The slots logged and the next empty slot's planned share, as the hero's line and the eaten part read them. */
+export function daySummary(day: DayView): string {
+  const t = day.targets
+  const fastDay = day.fast.is_fast_day || t?.is_fast_day === true
+  const left = day.remaining?.kcal ?? (t ? t.kcal - day.intake.total.kcal : null)
+  const slots = visibleSlots()
+  const logged = slots.filter((s) => day.intake.by_slot[s] !== undefined).length
+  const next = slots.find((s) => day.intake.by_slot[s] === undefined)
+  const nextPlanned = next && t && !fastDay ? Math.round((t.kcal * slotShare(next)) / 10) * 10 : null
+  return [
+    fastDay
+      ? 'Fast day'
+      : left === null
+        ? null
+        : left >= 0
+          ? `${formatNumber(left)} kcal left`
+          : `${formatNumber(-left)} kcal over`,
+    `${logged} of ${slots.length} slots logged`,
+    next && nextPlanned !== null
+      ? `${SLOT_LABEL[next].toLowerCase()} planned at ${formatNumber(nextPlanned)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 export function DayHeader({
   date,
@@ -128,6 +150,7 @@ export function DayHeader({
   error,
   onRetry,
   pendingMeals,
+  floor,
   onWeighIn,
 }: DayHeaderProps) {
   if (isLoading && !day) return <DayHeaderSkeleton isToday={isToday} />
@@ -137,17 +160,11 @@ export function DayHeader({
   const eaten = day.intake.total
   const left = day.remaining?.kcal ?? (t ? t.kcal - eaten.kcal : null)
   const fastDay = day.fast.is_fast_day || t?.is_fast_day === true
-  const slots = visibleSlots()
-  const loggedSlots = slots.filter((s) => day.intake.by_slot[s] !== undefined).length
-  // The first slot with nothing in it yet, and its planned share of the day (as the slot cards below show it).
-  const nextSlot = slots.find((s) => day.intake.by_slot[s] === undefined)
-  const nextPlanned = nextSlot && t && !fastDay ? Math.round((t.kcal * slotShare(nextSlot)) / 10) * 10 : null
 
   return (
     <Box component="section" aria-label="The day so far" sx={cardSx} data-testid="day-totals">
       <Box sx={eatenSx}>
         <PartLabel
-          icon={LocalFireDepartmentOutlined}
           extra={
             <>
               {fastDay && <StatusChip tone="warning" size="small" label="Fast day" />}
@@ -161,33 +178,43 @@ export function DayHeader({
           value={<CountUp value={eaten.kcal} delay={300} />}
           unit={t ? `/ ${formatNumber(t.kcal)} kcal` : 'kcal'}
         />
-        <Box sx={{ mt: '12px' }}>
+        <Box sx={{ mt: '16px' }}>
           <ProgressBar
             value={t && t.kcal > 0 ? eaten.kcal / t.kcal : null}
             metric="calories"
             label="Calories against the day's target"
             delay={300}
+            height={12}
           />
         </Box>
-        <Box sx={{ ...captionSx, mt: 2 }}>
-          <Box component="span" sx={strongSx}>
-            {fastDay
-              ? 'Fast day: intake expected 0. Water target is up.'
-              : left === null
-                ? 'No targets for this day yet.'
-                : left >= 0
+        <Box sx={{ ...lineSx, mt: '10px' }}>
+          {fastDay ? (
+            <Box component="span" sx={{ color: tokens.tone.warning.text }}>
+              Fast day: intake expected 0. Water target is up.
+            </Box>
+          ) : left === null ? (
+            <Box component="span" sx={mutedSx}>
+              No targets for this day yet.
+            </Box>
+          ) : (
+            <>
+              <Box component="span" sx={{ color: tokens.tone.danger.text }}>
+                {left >= 0
                   ? `${formatNumber(left)} kcal left`
                   : `${formatNumber(-left)} kcal over the target`}
-          </Box>
-          {` · ${loggedSlots} of ${slots.length} slots logged`}
-          {nextSlot &&
-            nextPlanned !== null &&
-            ` · ${SLOT_LABEL[nextSlot].toLowerCase()} planned ${formatNumber(nextPlanned)}`}
+              </Box>
+              {floor !== null && (
+                <Box component="span" sx={mutedSx}>
+                  {` · floor ${formatNumber(floor)} · the AI never plans below it`}
+                </Box>
+              )}
+            </>
+          )}
         </Box>
       </Box>
 
       <Box sx={macrosSx}>
-        <PartLabel>Macros against {isToday ? 'today’s' : 'the day’s'} targets</PartLabel>
+        <PartLabel>Macros</PartLabel>
         <MacroGrid>
           <MacroBar
             label="Protein"
@@ -210,10 +237,10 @@ export function DayHeader({
             target={t?.fat_g ?? null}
             kind="minimum"
           />
-          {/* No fibre colour in the metric palette: 2a's fibre green is the success tone's solid. */}
+          {/* No fibre colour in the metric palette: 1d draws fibre on the water ramp (teal). */}
           <MacroBar
             label="Fibre"
-            color={tokens.tone.success.solid}
+            color={tokens.metric.water}
             value={eaten.fibre_g}
             target={t?.fibre_g ?? null}
             kind="limit"
@@ -226,21 +253,17 @@ export function DayHeader({
   )
 }
 
-/**
- * The macro columns: four across once the part is 500 px wide (2a at 1440, and the full-width row at `md`), else two (a
- * phone, and the narrow middle part at 1280). 12 px between columns (2a: 16), so "Protein 124 / 130 g" still fits one
- * line in a 1440 column; aligned on their bars, so a value that does wrap under its label lifts only its own label.
- */
+/** The macro bars: README §4 "macro bars 2-up at 150 px" — a wrapping row, one per line once 150 + 150 won't fit. */
 function MacroGrid({ children }: { children: ReactNode }) {
   return (
     <Box
       sx={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        '@container (min-width: 500px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' },
-        alignItems: 'end',
-        gap: '16px 12px',
-        mt: '10px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'flex-end',
+        gap: '12px 22px',
+        mt: '12px',
+        '& > *': { ...wrapCol(1, tokens.layout.wrapBasis.tile) },
       }}
     >
       {children}
@@ -260,20 +283,15 @@ function DayHeaderSkeleton({ isToday }: { isToday: boolean }) {
   return (
     <Box sx={cardSx} aria-busy="true" data-testid="day-totals-loading">
       <Box sx={eatenSx}>
-        <PartLabel icon={LocalFireDepartmentOutlined}>{isToday ? 'Eaten today' : 'Eaten'}</PartLabel>
+        <PartLabel>{isToday ? 'Eaten today' : 'Eaten'}</PartLabel>
         <BigValue value={pendingValue(90)} unit="" />
-        <Box sx={{ mt: '12px' }}>
-          <ProgressBar value={null} label="Calories against the day's target" />
+        <Box sx={{ mt: '16px' }}>
+          <ProgressBar value={null} metric="calories" label="Calories against the day's target" height={12} />
         </Box>
-        {/* Two lines, as the loaded caption wraps on a phone and at 1440. */}
-        <Box sx={{ ...captionSx, mt: 2 }}>
-          {pendingValue(180)}
-          <br />
-          {pendingValue(110)}
-        </Box>
+        <Box sx={{ ...lineSx, mt: '10px' }}>{pendingValue(200)}</Box>
       </Box>
       <Box sx={macrosSx}>
-        <PartLabel>Macros against {isToday ? 'today’s' : 'the day’s'} targets</PartLabel>
+        <PartLabel>Macros</PartLabel>
         <MacroGrid>
           {MACROS.map((label) => (
             <MeterRow
@@ -291,11 +309,11 @@ function DayHeaderSkeleton({ isToday }: { isToday: boolean }) {
         </MacroGrid>
       </Box>
       <Box sx={weighInSx}>
-        <PartLabel icon={MonitorWeightOutlined}>Weigh-in</PartLabel>
+        <PartLabel>Weigh-in</PartLabel>
         <BigValue value={pendingValue(80)} unit="" />
-        <Box sx={{ ...captionSx, mt: '12px' }}>{pendingValue(150)}</Box>
+        <Box sx={{ ...lineSx, mt: '12px' }}>{pendingValue(150)}</Box>
         {/* The "Edit weigh-in" button's place. */}
-        <Skeleton variant="rounded" width={110} height={30} sx={{ mt: '10px' }} />
+        <Skeleton variant="rounded" width={120} height={38} sx={{ mt: '12px', borderRadius: '12px' }} />
       </Box>
     </Box>
   )
@@ -364,40 +382,35 @@ function WeighIn({ date, day, onWeighIn }: { date: string; day: DayView; onWeigh
   const { trend_kg: trend, change_7d_kg: change } = day.weight
   return (
     <Box sx={weighInSx} data-testid="log-weigh-in">
-      <PartLabel icon={MonitorWeightOutlined} extra={pending && <PendingBadge />}>
-        Weigh-in
-      </PartLabel>
+      <PartLabel extra={pending && <PendingBadge />}>Weigh-in</PartLabel>
       <BigValue value={raw !== null ? formatNumber(raw, 1) : '—'} unit={raw !== null ? 'kg' : ''} />
-      <Box sx={{ ...captionSx, mt: '12px' }}>
+      <Box sx={{ ...lineSx, mt: '12px' }}>
         {raw === null ? (
-          `None for ${formatShortDate(date)}`
+          <Box component="span" sx={mutedSx}>
+            None for {formatShortDate(date)}
+          </Box>
         ) : trend !== null ? (
           <>
-            Trend{' '}
-            <Box component="b" sx={strongSx}>
-              {formatNumber(trend, 1)} kg
-            </Box>
+            Trend {formatNumber(trend, 1)} kg
             {change !== null && (
               <>
                 {' · '}
                 <Box
                   component="span"
-                  sx={{
-                    fontWeight: tokens.font.weight.heading,
-                    color: change < 0 ? tokens.tone.success.text : tokens.ink.label,
-                  }}
+                  sx={{ color: change < 0 ? tokens.tone.success.text : tokens.ink.label }}
                 >
-                  {formatSigned(change, 1)} kg
-                </Box>{' '}
-                over 7 days
+                  {formatSigned(change, 1)} kg over 7 days
+                </Box>
               </>
             )}
           </>
         ) : (
-          'No trend yet'
+          <Box component="span" sx={mutedSx}>
+            No trend yet
+          </Box>
         )}
       </Box>
-      <Button variant="outlined" size="tiny" onClick={onWeighIn} sx={{ mt: '10px' }}>
+      <Button variant="outlined" size="dense" onClick={onWeighIn} sx={{ mt: '12px' }}>
         {raw !== null ? 'Edit weigh-in' : 'Log weigh-in'}
       </Button>
     </Box>

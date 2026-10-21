@@ -1,7 +1,6 @@
-// Owns: the sync indicators — the phone bar's quiet chip ("Offline" and/or "N pending" while writes wait in the offline
-// queue; nothing when all is sent) and the desktop sidebar's account block (2a: avatar, "Aaron", and a dot with
-// "Synced" / "Offline" / "N pending"). When the oldest waiting write has failed, either one opens what went wrong, with
-// "Try now" and "Discard entry" (the only way a pending write is ever dropped).
+// Owns: the sync indicator — a compact glass chip in the Summit nav ("Offline" and/or "N pending" while writes wait in
+// the offline queue; nothing when all is sent), at every width. When the oldest waiting write has failed, it opens what
+// went wrong, with "Try now" and "Discard entry" (the only way a pending write is ever dropped).
 import CloudOffOutlined from '@mui/icons-material/CloudOffOutlined'
 import CloudSyncOutlined from '@mui/icons-material/CloudSyncOutlined'
 import Box from '@mui/material/Box'
@@ -9,9 +8,7 @@ import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
 import Popover from '@mui/material/Popover'
-import Tooltip from '@mui/material/Tooltip'
-import { useId, useRef, useState, type MouseEvent } from 'react'
-import { visuallyHidden } from '../../../components'
+import { useId, useState } from 'react'
 import {
   discardPendingWrite,
   flushNow,
@@ -23,8 +20,7 @@ import { tokens } from '../../../theme'
 
 const loggedAt = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
 
-/** Whose tracker this is (2a's brand row and account block). Shown on screen only; never sent anywhere. */
-export const OWNER = { name: 'Aaron', initial: 'A' } as const
+const { summit } = tokens
 
 interface SyncState {
   online: boolean
@@ -54,14 +50,11 @@ function SyncDetails({
   anchor,
   onClose,
   state,
-  beside,
 }: {
   id: string
   anchor: HTMLElement | null
   onClose: () => void
   state: SyncState
-  /** Open to the right of the anchor (the sidebar) rather than under it (the phone bar). */
-  beside?: boolean
 }) {
   const { failing, pending, online } = state
   if (!failing) return null
@@ -71,16 +64,14 @@ function SyncDetails({
       anchorEl={anchor}
       onClose={onClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      transformOrigin={
-        beside ? { vertical: 'bottom', horizontal: 'left' } : { vertical: 'top', horizontal: 'right' }
-      }
+      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       slotProps={{
         paper: {
           id,
           role: 'dialog',
           'aria-label': 'Waiting to send',
           'data-testid': 'sync-status-details',
-          sx: { p: 4, maxWidth: 320, ...(beside && { ml: 2 }) },
+          sx: { p: 5, mt: 2, maxWidth: 320 },
         } as object,
       }}
     >
@@ -135,7 +126,7 @@ function SyncDetails({
   )
 }
 
-/** The phone bar's chip: nothing while everything is sent. */
+/** The nav's glass chip: nothing while everything is sent. */
 export function SyncStatus() {
   const state = useSyncState()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -156,7 +147,19 @@ export function SyncStatus() {
         aria-haspopup={failing ? 'dialog' : undefined}
         aria-expanded={failing ? open : undefined}
         aria-controls={open ? detailsId : undefined}
-        sx={{ flex: 'none', '& .MuiChip-icon': { color: tokens.ink.muted } }}
+        sx={{
+          flex: 'none',
+          minHeight: 32,
+          px: '12px',
+          bgcolor: summit.glass.tile,
+          border: `1px solid ${summit.glass.tileBorder}`,
+          backdropFilter: `blur(${summit.glass.tileBlur}px)`,
+          color: summit.onSky.text,
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.heading,
+          '& .MuiChip-icon': { color: summit.onSky.subtitle, fontSize: 16 },
+          '&.MuiChip-clickable:hover': { bgcolor: summit.glass.fillHover },
+        }}
       />
       <SyncDetails
         id={detailsId}
@@ -165,168 +168,5 @@ export function SyncStatus() {
         state={state}
       />
     </>
-  )
-}
-
-/** The status dot: green when everything is sent, amber while something waits, red when a write keeps failing. */
-function dotColour({ synced, failing }: SyncState): string {
-  if (failing) return tokens.tone.danger.text
-  return synced ? tokens.tone.success.solid : tokens.tone.warning.text
-}
-
-/**
- * The sidebar's account block: avatar tile, name, and the sync state behind a coloured dot. Collapsed to the icon rail
- * it keeps the avatar with the dot on its corner (the words stay for assistive tech and in a tooltip). A failing write
- * makes the state a button that opens the details.
- */
-export function AccountStatus({ collapsed }: { collapsed: boolean }) {
-  const state = useSyncState()
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const detailsId = useId()
-  // The details open beside the whole block, clear of the sidebar, whichever part was pressed.
-  const block = useRef<HTMLDivElement>(null)
-  const { failing, synced } = state
-  const open = anchor !== null && failing !== null
-  const dot = dotColour(state)
-  // The test id marks the state only while there is something to say, as the chip always has.
-  const statusProps = {
-    'data-testid': synced ? undefined : 'sync-status',
-    ...(failing && {
-      'aria-haspopup': 'dialog' as const,
-      'aria-expanded': open,
-      'aria-controls': open ? detailsId : undefined,
-      onClick: (e: MouseEvent<HTMLElement>) => setAnchor(block.current ?? e.currentTarget),
-    }),
-  }
-
-  const avatar = (
-    <Box
-      sx={{
-        position: 'relative',
-        width: 32,
-        height: 32,
-        flex: 'none',
-        display: 'grid',
-        placeItems: 'center',
-        borderRadius: `${tokens.radius.control}px`,
-        bgcolor: tokens.ink.border,
-        color: tokens.ink.text,
-        fontSize: tokens.font.size.small,
-        fontWeight: tokens.font.weight.heading,
-      }}
-    >
-      <span aria-hidden>{OWNER.initial}</span>
-      {collapsed && (
-        <Box
-          aria-hidden
-          sx={{
-            position: 'absolute',
-            right: -3,
-            bottom: -3,
-            width: 10,
-            height: 10,
-            borderRadius: '50%',
-            bgcolor: dot,
-            border: `2px solid ${tokens.ink.card}`,
-          }}
-        />
-      )}
-    </Box>
-  )
-
-  if (collapsed) {
-    const name = `${OWNER.name} · ${state.label}${failing ? ' · not sent, show details' : ''}`
-    return (
-      <>
-        <Tooltip title={`${OWNER.name} · ${state.label}`} placement="right">
-          <Box
-            ref={block}
-            component={failing ? ButtonBase : 'div'}
-            aria-label={failing ? name : undefined}
-            {...statusProps}
-            sx={{
-              mt: 2,
-              mx: 'auto',
-              p: '9px',
-              display: 'grid',
-              placeItems: 'center',
-              borderRadius: `${tokens.radius.panel}px`,
-              border: `1px solid ${tokens.ink.border}`,
-              bgcolor: tokens.ink.card,
-            }}
-          >
-            {avatar}
-            {!failing && <Box sx={visuallyHidden}>{name}</Box>}
-          </Box>
-        </Tooltip>
-        {/* Outside the button: a click inside the (portalled) popover still bubbles through React to its parents. */}
-        <SyncDetails
-          id={detailsId}
-          anchor={open ? anchor : null}
-          onClose={() => setAnchor(null)}
-          state={state}
-          beside
-        />
-      </>
-    )
-  }
-
-  return (
-    <Box
-      ref={block}
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        mt: 2,
-        p: 2,
-        minWidth: 0,
-        borderRadius: `${tokens.radius.panel}px`,
-        border: `1px solid ${tokens.ink.border}`,
-        bgcolor: tokens.ink.card,
-      }}
-    >
-      {avatar}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box
-          sx={{ fontSize: tokens.font.size.small, fontWeight: tokens.font.weight.heading, lineHeight: 1.2 }}
-        >
-          {OWNER.name}
-        </Box>
-        <Box
-          component={failing ? ButtonBase : 'div'}
-          {...statusProps}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            maxWidth: '100%',
-            fontSize: tokens.font.size.caption,
-            lineHeight: tokens.font.leading.caption,
-            color: failing ? tokens.tone.danger.text : tokens.ink.muted,
-            borderRadius: `${tokens.radius.link}px`,
-            ...(failing && { textDecoration: 'underline', textUnderlineOffset: '2px' }),
-          }}
-        >
-          <Box aria-hidden sx={{ width: 6, height: 6, flex: 'none', borderRadius: '50%', bgcolor: dot }} />
-          <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {state.label}
-            {failing && (
-              <Box component="span" sx={visuallyHidden}>
-                {' '}
-                · not sent, show details
-              </Box>
-            )}
-          </Box>
-        </Box>
-      </Box>
-      <SyncDetails
-        id={detailsId}
-        anchor={open ? anchor : null}
-        onClose={() => setAnchor(null)}
-        state={state}
-        beside
-      />
-    </Box>
   )
 }

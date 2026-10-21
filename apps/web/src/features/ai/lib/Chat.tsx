@@ -1,8 +1,10 @@
 // Owns: the Ask AI chat surface shared by the AI tab and the slide-up panel — the thread header (past chats, new
-// chat, deleting a chat for good), the turns, the empty thread's note and starter chips, send and delete errors, and
-// the composer. On a desktop page it is 2a's full-height three columns (chats rail from 1,280 px, the thread, the
-// rail of proposals waiting for a tap and recent Train changes to undo); on a phone those sit above the turns and the
-// composer sticks above the bottom tabs; in the panel the turns scroll inside the sheet.
+// chat, deleting a chat for good), the turns, the empty thread's note, the starter chips (always on the page, on an
+// empty thread in the panel), send and delete errors, and the composer. On the page it is 1d's wrapping row of cards
+// (README §4: chats rail 260 px : thread : waiting-for-a-tap 340 px, each `1 1 Npx`, the thread `100 1 280px`): from
+// 900 px the chats rail shows and the thread's turns scroll inside its card; below that the rail gives way to the
+// past-chats menu in the thread header, the page scrolls, the composer sticks above the tab bar, and the proposals
+// waiting for a tap and recent Train changes wrap under the thread. In the panel the turns scroll inside the sheet.
 import AddCommentOutlined from '@mui/icons-material/AddCommentOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
@@ -23,11 +25,10 @@ import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
 import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useTheme } from '@mui/material/styles'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { Reveal } from '../../../components'
+import { cardSurface, displayTitle, fixedCol, Reveal, staggerDelay, wrapCol } from '../../../components'
 import { useOnline } from '../../../offline'
-import { COARSE_POINTER_QUERY, scrollBehavior, tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, minWidth, scrollBehavior, tokens } from '../../../theme'
 import { ChatsRail, shorten } from './ChatsRail'
 import { Composer } from './Composer'
 import { NothingWaiting, RailsCard, RecentTrainChanges } from './PendingProposals'
@@ -43,10 +44,15 @@ const SUGGESTIONS = [
   'Plan my week: Mon, Tue, Thu',
 ] as const
 
-/** Where the page has room for 2a's three columns (thread ≥ 440 px beside the 240 px sidebar and both rails). */
-const THREE_COLUMNS = '@media (min-width: 1280px)'
-/** Below 2a's 1,440 px the one-line thread header gives the title the room: the meta's "reads …" part steps aside. */
-const TIGHT_HEADER = '@media (max-width: 1439.95px)'
+/** README §4: the chats rail shows from 900 px (the page column); below it the past-chats menu switches chats. */
+const WITH_RAIL = minWidth(tokens.layout.aiRail)
+/** The fixed side columns' bases, px (README §4's table). */
+const RAIL_PX = 260
+const ASIDE_PX = 340
+/** The gap between the page's columns, px (1d's Ask AI: 22). */
+const COLUMN_GAP = 22
+/** The columns rise in left to right, a card's stagger apart, after the hero. */
+const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.card, 150)
 
 /**
  * A thread that scrolls on its own is a named, focusable region, so a keyboard alone can scroll back through replies
@@ -79,10 +85,9 @@ function readsLine(turns: readonly Turn[]): string | null {
 }
 
 /**
- * The thread header: the open chat's title and how many messages it holds, the past-chats menu (each row opens a chat
- * or deletes it for good) and new-chat. Deleting asks first, in a small dialog that names the chat it is about to
- * remove. Beside the chats rail (`rail`) it is 2a's one-line header: the menu is the "more" glyph and new-chat lives in
- * the rail.
+ * The thread header: the open chat's title (Outfit 17) and how many messages it holds, the past-chats menu (each row
+ * opens a chat or deletes it for good) and new-chat. Deleting asks first, in a small dialog that names the chat it is
+ * about to remove. Beside the chats rail (`rail`) the menu is the "more" glyph and new-chat lives in the rail.
  */
 function ThreadHeader({
   title,
@@ -110,75 +115,60 @@ function ThreadHeader({
   /** The chat the confirm is about: null while no confirm is on screen. */
   const [confirming, setConfirming] = useState<{ thread_id: string; label: string } | null>(null)
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', minWidth: 0 }}>
+      {/* The title keeps 160 px; the meta and the buttons wrap under it on a narrow thread (1d: a phone). */}
       <Box
+        component="h2"
         sx={{
-          flex: 1,
+          m: 0,
+          flex: '1 1 160px',
           minWidth: 0,
-          display: 'flex',
-          flexDirection: rail ? 'row' : 'column',
-          alignItems: rail ? 'center' : 'stretch',
-          gap: rail ? '10px' : '2px',
+          ...displayTitle('card'),
+          fontSize: tokens.font.size.subtitle,
+          color: tokens.ink.text,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}
       >
-        <Box
-          component="h2"
-          sx={{
-            m: 0,
-            flex: rail ? 1 : 'none',
-            minWidth: 0,
-            fontSize: tokens.font.size.itemTitle,
-            fontWeight: tokens.font.weight.heading,
-            lineHeight: tokens.font.leading.itemTitle,
-            color: tokens.ink.text,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {title}
-        </Box>
+        {title}
+      </Box>
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, maxWidth: '100%', ml: 'auto' }}
+      >
         {meta && (
           <Box
             sx={{
-              fontSize: tokens.font.size.caption,
-              lineHeight: tokens.font.leading.caption,
+              minWidth: 0,
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.body,
+              lineHeight: tokens.font.leading.small,
               color: tokens.ink.muted,
-              flex: 'none',
-              ...(rail && {
-                maxWidth: '50%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }),
             }}
           >
             {meta}
-            {reads && (
-              <Box component="span" sx={rail ? { [TIGHT_HEADER]: { display: 'none' } } : undefined}>
-                {` · ${reads}`}
-              </Box>
-            )}
+            {reads && ` · ${reads}`}
           </Box>
         )}
+        <IconButton
+          aria-label="Past chats"
+          size="small"
+          onClick={(e) => setAnchor(e.currentTarget)}
+          sx={{ flex: 'none' }}
+        >
+          {rail ? <MoreHorizRounded sx={{ fontSize: 20 }} /> : <HistoryRounded sx={{ fontSize: 20 }} />}
+        </IconButton>
+        {!rail && (
+          <IconButton aria-label="New chat" size="small" onClick={startNew} sx={{ flex: 'none' }}>
+            <AddCommentOutlined sx={{ fontSize: 20 }} />
+          </IconButton>
+        )}
+        {onClose && (
+          <IconButton aria-label="Close Ask AI" size="small" onClick={onClose} sx={{ flex: 'none' }}>
+            <CloseRounded sx={{ fontSize: 20 }} />
+          </IconButton>
+        )}
       </Box>
-      <IconButton
-        aria-label="Past chats"
-        size={rail ? 'small' : 'medium'}
-        onClick={(e) => setAnchor(e.currentTarget)}
-      >
-        {rail ? <MoreHorizRounded sx={{ fontSize: 18 }} /> : <HistoryRounded fontSize="small" />}
-      </IconButton>
-      {!rail && (
-        <IconButton aria-label="New chat" onClick={startNew}>
-          <AddCommentOutlined fontSize="small" />
-        </IconButton>
-      )}
-      {onClose && (
-        <IconButton aria-label="Close Ask AI" edge="end" onClick={onClose}>
-          <CloseRounded fontSize="small" />
-        </IconButton>
-      )}
       <Menu
         anchorEl={anchor}
         open={anchor !== null}
@@ -273,13 +263,15 @@ function ThreadHeader({
 /** An empty thread opens with the AI's note on what it can do, beside its sparkle tile like a reply. */
 function Intro() {
   return (
-    <Box sx={{ display: 'flex', gap: '12px', maxWidth: 720 }}>
+    <Box sx={{ display: 'flex', gap: '12px', maxWidth: 760 }}>
       <AiTile />
       <Box
         sx={{
-          fontSize: tokens.font.size.body,
-          lineHeight: tokens.font.leading.emphasis,
-          color: tokens.ink.text,
+          pt: '6px',
+          fontSize: tokens.font.size.emphasis,
+          fontWeight: tokens.font.weight.body,
+          lineHeight: 1.6,
+          color: tokens.ink.body,
         }}
       >
         Ask about anything you have logged, or ask for a change. Logs you mention are saved; plan changes come
@@ -289,10 +281,24 @@ function Intro() {
   )
 }
 
-/** 2a's starter chips above the composer: 30 px outline pills (44 px on touch); a tap sends that question. */
-function Starters({ onPick, disabled }: { onPick: (text: string) => void; disabled: boolean }) {
+/**
+ * 1d's starter chips above the composer: 34 px soft-violet pills (44 px on touch); a tap sends that question. `flush`
+ * drops the 12 px under them where the phone's sticky dock already starts with that space.
+ */
+function Starters({
+  onPick,
+  disabled,
+  flush = false,
+}: {
+  onPick: (text: string) => void
+  disabled: boolean
+  flush?: boolean
+}) {
   return (
-    <Box data-testid="ask-ai-suggestions" sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px', mb: '10px' }}>
+    <Box
+      data-testid="ask-ai-suggestions"
+      sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px', mb: flush ? 0 : '12px' }}
+    >
       {SUGGESTIONS.map((s) => (
         <Chip
           key={s}
@@ -301,11 +307,15 @@ function Starters({ onPick, disabled }: { onPick: (text: string) => void; disabl
           disabled={disabled}
           onClick={() => onPick(s)}
           sx={{
-            minHeight: 30,
-            px: '12px',
+            minHeight: 34,
+            px: '14px',
+            border: 0,
             borderRadius: `${tokens.radius.pill}px`,
+            bgcolor: tokens.summit.surface.soft,
             fontSize: tokens.font.size.small,
-            color: tokens.ink.text,
+            fontWeight: tokens.font.weight.label,
+            color: tokens.summit.ink.deep,
+            '&.MuiChip-clickable:hover': { bgcolor: tokens.summit.surface.softHover },
             '& .MuiChip-label': { whiteSpace: 'normal' },
             [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
           }}
@@ -318,19 +328,22 @@ function Starters({ onPick, disabled }: { onPick: (text: string) => void; disabl
 export interface ChatProps {
   variant: 'page' | 'panel'
   onClose?: () => void
-  /** Page only: the proposals waiting for a tap — the right-hand rail on a desktop, above the turns on a phone. */
+  /** Page only: the proposals waiting for a tap — the right-hand column, under the thread on a narrow page. */
   aside?: ReactNode
 }
+
+/** On a wide page the turns scroll inside the thread card, which stays within a window's height below the hero. */
+const TURNS_MAX_HEIGHT = 'max(360px, calc(100dvh - 300px))'
 
 export function Chat({ variant, onClose, aside }: ChatProps) {
   const chat = useChat()
   const online = useOnline()
-  const theme = useTheme()
   // Read before the panel's early return so the hook order never changes (rules of hooks).
-  const desktop = useMediaQuery(theme.breakpoints.up('md'))
-  const wide = useMediaQuery(THREE_COLUMNS)
+  const wide = useMediaQuery(WITH_RAIL)
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
+  /** The box the turns scroll in, where they have one (the panel, a wide page); null where the page scrolls. */
+  const scroller = useRef<HTMLDivElement>(null)
   const lastKey = chat.turns.at(-1)?.key
   const replied = chat.turns.at(-1)?.reply?.id
 
@@ -339,7 +352,12 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   }, [chat.failedText])
 
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end', behavior: lastKey ? scrollBehavior() : 'auto' })
+    const behavior = lastKey ? scrollBehavior() : 'auto'
+    // A thread that scrolls in its own box moves only that box, so the page under the hero stays put; otherwise the
+    // page brings the end of the thread into view.
+    const box = scroller.current
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior })
+    else end.current?.scrollIntoView({ block: 'end', behavior })
   }, [lastKey, replied, chat.threadId])
 
   const send = (value: string) => {
@@ -348,17 +366,17 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   const title = chat.turns.find((t) => t.question.content)?.question.content
   const empty = !chat.loading && chat.turns.length === 0
   const count = chat.turns.reduce((n, t) => n + (t.question.content ? 1 : 0) + (t.reply ? 1 : 0), 0)
-  const page = variant === 'page' && desktop
-  // An empty thread says what the AI may do, unless the chats rail's card beside it already does.
+  const page = variant === 'page'
+  // An empty thread says what the AI may do, unless the page's hero above it already does.
   const meta =
     count > 0
       ? `${count} ${count === 1 ? 'message' : 'messages'}`
-      : page && wide
+      : page
         ? null
         : 'Numbers come from your data; changes wait for your tap.'
   const reads = count > 0 ? readsLine(chat.turns) : null
-  // The phone's composer sticks above the bottom tabs, so the end of the thread scrolls clear of both.
-  const phonePage = variant === 'page' && !desktop
+  // A narrow page scrolls as a whole: its composer sticks above the tab bar, so the end of the thread scrolls clear.
+  const phonePage = page && !wide
   const dock = useRef<HTMLDivElement>(null)
   // While the phone's dock is up it is part of the bottom chrome: the page's bottom scroll padding grows to clear it,
   // so a proposal's Accept / Reject / Plan history never takes focus behind it (WCAG 2.4.11).
@@ -383,16 +401,24 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   const turnList = (
     <>
       {chat.loading && (
-        <Box sx={{ display: 'grid', gap: '18px' }}>
-          <Skeleton variant="rounded" height={44} sx={{ width: '60%', justifySelf: 'end' }} />
-          <Skeleton variant="rounded" height={72} />
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '20px' }}>
+          <Skeleton
+            variant="rounded"
+            height={48}
+            sx={{ width: '60%', justifySelf: 'end', borderRadius: `${tokens.radius.small}px` }}
+          />
+          <Skeleton variant="rounded" height={76} sx={{ borderRadius: `${tokens.radius.small}px` }} />
         </Box>
       )}
       {chat.loadError && <Alert severity="warning">{chat.loadError}</Alert>}
       {empty && <Intro />}
       {/* A log region: screen readers announce each new question and reply as it arrives (WCAG 4.1.3). */}
       <Box role="log" aria-live="polite" aria-label="Conversation">
-        <Box component="ol" data-testid="ask-ai-turns" sx={{ m: 0, p: 0, display: 'grid', gap: '18px' }}>
+        <Box
+          component="ol"
+          data-testid="ask-ai-turns"
+          sx={{ m: 0, p: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '20px' }}
+        >
           {chat.turns.map((t) => (
             <TurnView key={t.key} turn={t} />
           ))}
@@ -406,10 +432,15 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       <Box ref={end} sx={{ scrollMarginBottom: phonePage ? 180 : 16 }} />
     </>
   )
+  // The page always offers the starters above its composer (1d, at every width); the panel only on an empty thread.
+  // On a phone they sit in the page's flow just above the sticky dock, so the dock stays one composer tall.
+  const showStarters = empty || page
+  const starters = (flush = false) => (
+    <Starters onPick={send} disabled={!online || chat.sending} flush={flush} />
+  )
   const composer = (
     <>
-      {/* A desktop page always offers the starters (2a); a phone and the panel only on an empty thread. */}
-      {(empty || page) && <Starters onPick={send} disabled={!online || chat.sending} />}
+      {showStarters && !phonePage && starters()}
       <Composer
         value={text}
         onChange={setText}
@@ -420,8 +451,12 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       />
     </>
   )
-  /** The turns, bottom-aligned in their scroll area as a chat reads (2a: 18 px apart). */
-  const turns = <Box sx={{ mt: 'auto', display: 'grid', gap: '18px' }}>{turnList}</Box>
+  /** The turns, bottom-aligned in their area as a chat reads (1d: 20 px apart). */
+  const turns = (
+    <Box sx={{ mt: 'auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '20px' }}>
+      {turnList}
+    </Box>
+  )
 
   if (variant === 'panel')
     return (
@@ -429,7 +464,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
         data-testid="ask-ai-chat"
         sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
       >
-        <Box sx={{ px: 4, py: '12px', borderBottom: `1px solid ${tokens.ink.border}` }}>
+        <Box sx={{ px: 4, py: '14px', borderBottom: `1px solid ${tokens.ink.hairline}` }}>
           <ThreadHeader
             title={title ? shorten(title, 80) : 'Ask AI'}
             meta={meta}
@@ -441,6 +476,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
         </Box>
         <Box
           {...scrollRegion}
+          ref={scroller}
           sx={{
             ...scrollRegionSx,
             flex: 1,
@@ -460,7 +496,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
             px: 4,
             pt: '12px',
             pb: 'calc(12px + env(safe-area-inset-bottom, 0px))',
-            borderTop: `1px solid ${tokens.ink.border}`,
+            borderTop: `1px solid ${tokens.ink.hairline}`,
           }}
         >
           {composer}
@@ -468,125 +504,86 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       </Box>
     )
 
-  if (page) {
-    const pad = tokens.layout.mainPadding
-    return (
-      // 2a's Ask AI fills the window under the header: the page cancels `main`'s padding and the thread scrolls on
-      // its own, so the rails and the composer stay put. Three columns from 1,280 px; below that the chats rail gives
-      // way to the past-chats menu so the thread keeps a readable width beside the 340 px rail.
+  const gutter = { xs: '18px', sm: '24px' }
+  const thread = (
+    <Box
+      component="section"
+      aria-label="Thread"
+      data-testid="ask-ai-chat"
+      sx={{ ...cardSurface, flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}
+    >
+      <Box sx={{ px: gutter, py: '16px', borderBottom: `1px solid ${tokens.ink.hairline}` }}>
+        <ThreadHeader
+          title={title ? shorten(title, 80) : 'New chat'}
+          meta={meta}
+          reads={reads}
+          rail={wide}
+          onDelete={chat.remove}
+          deleting={chat.deleting}
+        />
+      </Box>
       <Box
+        {...(wide ? scrollRegion : {})}
+        ref={wide ? scroller : undefined}
         sx={{
-          mx: `-${pad.x}px`,
-          mt: `-${pad.top}px`,
-          mb: `-${pad.bottom}px`,
-          height: `calc(100dvh - ${tokens.layout.headerHeight}px)`,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) 340px',
-          [THREE_COLUMNS]: { gridTemplateColumns: '260px minmax(0, 1fr) 340px' },
-          // Past 2a's 1,440 px the content column is centred with room either side: close the block's edges.
-          '@media (min-width: 1500px)': {
-            borderLeft: `1px solid ${tokens.ink.border}`,
-            borderRight: `1px solid ${tokens.ink.border}`,
-          },
+          ...(wide && { ...scrollRegionSx, maxHeight: TURNS_MAX_HEIGHT, overflowY: 'auto' }),
+          flex: 1,
+          px: gutter,
+          py: '22px',
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
         }}
       >
-        {wide && <ChatsRail />}
-        <Box
-          component="section"
-          aria-label="Thread"
-          data-testid="ask-ai-chat"
-          sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}
-        >
-          <Box sx={{ px: '24px', py: '12px', borderBottom: `1px solid ${tokens.ink.border}` }}>
-            <ThreadHeader
-              title={title ? shorten(title, 80) : 'New chat'}
-              meta={meta}
-              reads={reads}
-              rail={wide}
-              onDelete={chat.remove}
-              deleting={chat.deleting}
-            />
-          </Box>
-          <Box
-            {...scrollRegion}
-            sx={{
-              ...scrollRegionSx,
-              flex: 1,
-              minHeight: 0,
-              overflowY: 'auto',
-              px: '24px',
-              py: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            {turns}
-          </Box>
-          <Box sx={{ px: '24px', pb: '20px' }}>{composer}</Box>
-        </Box>
-        <Box
-          component="aside"
-          aria-label="Proposals and rails"
-          sx={{
-            position: 'relative',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            p: '20px',
-            borderLeft: `1px solid ${tokens.ink.border}`,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
-          {aside ?? <NothingWaiting />}
-          <RecentTrainChanges />
-          <Box sx={{ flex: 1 }} />
-          <Reveal delay={300}>
-            <RailsCard />
-          </Reveal>
-        </Box>
-      </Box>
-    )
-  }
-
-  // A phone: the header, what waits for a tap, the turns, and the composer pinned above the bottom tabs.
-  return (
-    <Box
-      data-testid="ask-ai-chat"
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        minHeight: 'calc(100dvh - 200px)',
-        width: '100%',
-        maxWidth: 760,
-        mx: 'auto',
-      }}
-    >
-      <ThreadHeader
-        title={title ? shorten(title, 80) : 'New chat'}
-        meta={meta}
-        reads={reads}
-        onDelete={chat.remove}
-        deleting={chat.deleting}
-      />
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {aside}
-        <RecentTrainChanges />
         {turns}
       </Box>
+      {showStarters && phonePage && <Box sx={{ px: gutter }}>{starters(true)}</Box>}
       <Box
         ref={dock}
         sx={{
-          position: 'sticky',
-          bottom: `calc(${tokens.layout.bottomNavHeight + tokens.space(3)}px + env(safe-area-inset-bottom, 0px))`,
-          zIndex: 1,
-          pt: 2,
-          bgcolor: 'background.default',
+          px: gutter,
+          pb: '22px',
+          // A narrow page: the composer sticks above the tab bar while its thread is on screen.
+          ...(phonePage && {
+            position: 'sticky',
+            bottom: `calc(${tokens.layout.bottomNavHeight + tokens.space(3)}px + env(safe-area-inset-bottom, 0px))`,
+            zIndex: 1,
+            pt: '12px',
+            bgcolor: tokens.ink.card,
+            borderRadius: `0 0 ${tokens.radius.card}px ${tokens.radius.card}px`,
+          }),
         }}
       >
         {composer}
       </Box>
+    </Box>
+  )
+
+  // README §4: chats rail 260 px : thread (100 1 280px) : waiting for a tap 340 px, wrapping rather than squeezing.
+  return (
+    <Box
+      sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: `${COLUMN_GAP}px`, minWidth: 0 }}
+    >
+      {wide && (
+        <Reveal delay={enter(0)} sx={{ ...fixedCol(RAIL_PX), display: 'flex', flexDirection: 'column' }}>
+          <ChatsRail />
+        </Reveal>
+      )}
+      <Reveal delay={enter(1)} sx={{ ...wrapCol(1), display: 'flex', flexDirection: 'column' }}>
+        {thread}
+      </Reveal>
+      <Reveal delay={enter(2)} sx={{ ...fixedCol(ASIDE_PX), alignSelf: 'flex-start' }}>
+        <Box
+          component="aside"
+          aria-label="Proposals and rails"
+          sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '22px', alignContent: 'start' }}
+        >
+          {aside ?? (wide ? <NothingWaiting /> : null)}
+          <RecentTrainChanges />
+          {/* Without the chats rail, its rails card closes this column instead. */}
+          {!wide && <RailsCard />}
+        </Box>
+      </Reveal>
     </Box>
   )
 }

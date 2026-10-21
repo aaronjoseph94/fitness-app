@@ -1,22 +1,23 @@
-// Owns: the Dashboard's "Recovery and habits" section (2a) — water, steps and sleep as mini bars against their targets
-// (a bar per day, or per week on a long window), three to a row, then the fasting strip (past days, today, the days
-// ahead and the planned fast) beside the logging strip (each day's share of weigh-in, meals and water), drawn from the
-// window's v_day rows and fasts. On a phone the section folds away and opens on a tap.
+// Owns: the Dashboard's "Recovery and habits" section (1d) — water, steps and sleep as mini bars against their targets
+// (a bar per day, or per week on a long window), three to a wrapping row, then the fasting strip (past days, today, the
+// days ahead and the planned fast) beside the logging strip (each day's share of weigh-in, meals and water), drawn from
+// the window's v_day rows and fasts. On a phone the section folds away and opens on a tap.
 // Series mappings come from the progress module's shared entry point (../../progress/series), so these cards count
 // days exactly as the Progress tab does.
 import { addDays, dayAdherence, fastDay } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useUiStore } from '../../../app/ui-store'
 import { fastLook, type FastEntry, type FastStatus } from '../../../charts'
+import Box from '@mui/material/Box'
 import {
   ChartCard,
-  Column,
-  Columns,
   formatLongDate,
   formatNumber,
   formatShortDate,
   formatWeekday,
   MiniBars,
+  wrapCol,
+  WrapRow,
 } from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
 import {
@@ -115,124 +116,124 @@ export function RecoverySection({ data }: { data: DashboardData }) {
       title="Recovery and habits"
       subtitle="Water, steps, sleep, fasting and logging"
     >
-      {/* 2a draws four equal cards; with water as a card too, the three bar cards share a row and the two strips the
-          next, so no card is narrower than its title and target line. */}
-      <Columns xs={1} sm={2} md={6} lg={12} align="stretch">
-        <Column span={4} mdSpan={2}>
-          <ChartCard
-            titleSize="card"
-            fill
-            title="Water"
-            action={targets ? `target ${formatNumber(targets.water_ml)} ml` : undefined}
-            caption={[
-              hits(waterValues, targets?.water_ml),
-              avgWater !== null ? `average ${formatNumber(avgWater)} ml` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            testId="dashboard-water"
-            empty={
-              hasAny(water, (d) => d.ml)
-                ? null
-                : {
-                    title: 'No water logged in this window',
-                    body: 'Quick-add 250, 500 or 750 ml and the bars fill in.',
-                    action: { label: 'Log water', onClick: () => openQuickLog('water') },
-                  }
-            }
-          >
-            <Bars
-              values={waterValues}
-              metric="water"
-              target={targets?.water_ml}
-              label={`Water per day in this window${targets ? `; target ${formatNumber(targets.water_ml)} ml` : ''}`}
-              testId="chart-dashboard-water"
+      {/* The three bar cards share a row and the two strips the next; each row wraps rather than squeezing a card
+          narrower than its title and target line. */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: `${tokens.rhythm.section}px` }}>
+        <WrapRow>
+          <Box sx={wrapCol(1)}>
+            <ChartCard
+              fill
+              title="Water"
+              action={targets ? `target ${formatNumber(targets.water_ml)} ml` : undefined}
+              caption={[
+                hits(waterValues, targets?.water_ml),
+                avgWater !== null ? `average ${formatNumber(avgWater)} ml` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              testId="dashboard-water"
+              empty={
+                hasAny(water, (d) => d.ml)
+                  ? null
+                  : {
+                      title: 'No water logged in this window',
+                      body: 'Quick-add 250, 500 or 750 ml and the bars fill in.',
+                      action: { label: 'Log water', onClick: () => openQuickLog('water') },
+                    }
+              }
+            >
+              <Bars
+                values={waterValues}
+                metric="water"
+                target={targets?.water_ml}
+                label={`Water per day in this window${targets ? `; target ${formatNumber(targets.water_ml)} ml` : ''}`}
+                testId="chart-dashboard-water"
+              />
+            </ChartCard>
+          </Box>
+
+          <Box sx={wrapCol(1)}>
+            <ChartCard
+              fill
+              title="Steps"
+              action={targets ? `target ${formatNumber(targets.steps)}` : undefined}
+              caption={[
+                hits(stepsValues, targets?.steps),
+                bestSteps
+                  ? `best ${formatNumber(bestSteps.value)} on ${formatShortDate(bestSteps.date)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              testId="dashboard-steps"
+              empty={
+                hasAny(steps, (d) => d.steps)
+                  ? null
+                  : {
+                      title: 'No steps in this window',
+                      body: 'Steps arrive from the Apple Watch Shortcut or the manual form.',
+                    }
+              }
+            >
+              <Bars
+                values={stepsValues}
+                metric="steps"
+                target={targets?.steps}
+                label={`Steps per day in this window${targets ? `; target ${formatNumber(targets.steps)}` : ''}`}
+                testId="chart-dashboard-steps"
+              />
+            </ChartCard>
+          </Box>
+
+          <Box sx={wrapCol(1)}>
+            <ChartCard
+              fill
+              title="Sleep"
+              action={`target ${SLEEP_TARGET_H} h`}
+              caption={[
+                avgSleep !== null ? `Average ${formatNumber(avgSleep, 1)} h` : null,
+                bestSleep
+                  ? `${formatNumber(bestSleep.value, 1)} h best on ${formatShortDate(bestSleep.date)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              testId="dashboard-sleep"
+              empty={
+                hasAny(sleep, (n) => n.hours)
+                  ? null
+                  : {
+                      title: 'No sleep in this window',
+                      body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.',
+                    }
+              }
+            >
+              <Bars
+                values={sleepValues}
+                metric="sleep"
+                target={SLEEP_TARGET_H}
+                label={`Hours asleep per night in this window; target ${SLEEP_TARGET_H} h`}
+                testId="chart-dashboard-sleep"
+              />
+            </ChartCard>
+          </Box>
+        </WrapRow>
+        <WrapRow>
+          <Box sx={wrapCol(1)}>
+            <FastingCard
+              data={data}
+              entries={entries}
+              fastHours={fastHours}
+              today={today}
+              onStart={() => openQuickLog('fast')}
             />
-          </ChartCard>
-        </Column>
+          </Box>
 
-        <Column span={4} mdSpan={2}>
-          <ChartCard
-            titleSize="card"
-            fill
-            title="Steps"
-            action={targets ? `target ${formatNumber(targets.steps)}` : undefined}
-            caption={[
-              hits(stepsValues, targets?.steps),
-              bestSteps
-                ? `best ${formatNumber(bestSteps.value)} on ${formatShortDate(bestSteps.date)}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            testId="dashboard-steps"
-            empty={
-              hasAny(steps, (d) => d.steps)
-                ? null
-                : {
-                    title: 'No steps in this window',
-                    body: 'Steps arrive from the Apple Watch Shortcut or the manual form.',
-                  }
-            }
-          >
-            <Bars
-              values={stepsValues}
-              metric="steps"
-              target={targets?.steps}
-              label={`Steps per day in this window${targets ? `; target ${formatNumber(targets.steps)}` : ''}`}
-              testId="chart-dashboard-steps"
-            />
-          </ChartCard>
-        </Column>
-
-        <Column span={4} mdSpan={2}>
-          <ChartCard
-            titleSize="card"
-            fill
-            title="Sleep"
-            action={`target ${SLEEP_TARGET_H} h`}
-            caption={[
-              avgSleep !== null ? `Average ${formatNumber(avgSleep, 1)} h` : null,
-              bestSleep
-                ? `${formatNumber(bestSleep.value, 1)} h best on ${formatShortDate(bestSleep.date)}`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            testId="dashboard-sleep"
-            empty={
-              hasAny(sleep, (n) => n.hours)
-                ? null
-                : {
-                    title: 'No sleep in this window',
-                    body: 'Last night’s sleep arrives from the Apple Watch Shortcut or the manual form.',
-                  }
-            }
-          >
-            <Bars
-              values={sleepValues}
-              metric="sleep"
-              target={SLEEP_TARGET_H}
-              label={`Hours asleep per night in this window; target ${SLEEP_TARGET_H} h`}
-              testId="chart-dashboard-sleep"
-            />
-          </ChartCard>
-        </Column>
-
-        <Column span={6} mdSpan={3}>
-          <FastingCard
-            data={data}
-            entries={entries}
-            fastHours={fastHours}
-            today={today}
-            onStart={() => openQuickLog('fast')}
-          />
-        </Column>
-
-        <Column span={6} mdSpan={3} smSpan={2}>
-          <LoggingCard data={data} today={today} />
-        </Column>
-      </Columns>
+          <Box sx={wrapCol(1)}>
+            <LoggingCard data={data} today={today} />
+          </Box>
+        </WrapRow>
+      </Box>
     </DashboardSection>
   )
 }
@@ -299,7 +300,6 @@ function FastingCard({
   const perMonth = data.settings?.fasts_per_month
   return (
     <ChartCard
-      titleSize="card"
       fill
       title="Fasting"
       action={perMonth ? `${perMonth} × ${fastHours} h a month` : undefined}
@@ -362,7 +362,6 @@ function LoggingCard({ data, today }: { data: DashboardData; today: string }) {
     .join(' · ')
   return (
     <ChartCard
-      titleSize="card"
       fill
       title="Logging"
       action="weigh-in · meals · water"

@@ -3,9 +3,10 @@
 // reorder, per-exercise sets / rep range / load / rest / note), notes, "Fill with AI" into a preview, and a sticky
 // Start / Save bar, and "Delete template" (asks first; sessions started from it keep their sets). The fill's pending
 // workout proposal goes with the next create or start (accepting it). Leaving with unsaved changes asks first.
-// 2a: the page's h1 ("Workout builder", or "Edit template") with Duplicate / Delete on the right, a summary card in
-// Train's today-card idiom (name, notes and sets | the muscle map and what it trains on an `ink.panel` panel), the exercise
-// cards and the sticky bar (above the bottom tabs on a phone, at the bottom of the window from `md` up).
+// 1d Summit: the sky hero's h1 ("Workout builder", or "Edit template") with Duplicate / Delete as glass buttons, a
+// summary card in Train's today-card idiom (name, notes and sets | the muscle map and what it trains in a warm well),
+// the exercise cards and the sticky bar, a floating white bar (above the bottom tabs on a phone, 16 px off the window's
+// foot from `md` up).
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
@@ -423,16 +424,17 @@ export function BuilderPage() {
         sx={{
           position: 'sticky',
           // Above the bottom tabs on a phone; from `md` up there are none.
-          bottom: { xs: ABOVE_NAV, md: 0 },
+          bottom: { xs: `calc(${ABOVE_NAV} + 8px)`, md: '16px' },
           zIndex: 2,
           display: 'flex',
           justifyContent: 'flex-end',
-          gap: 2,
-          py: 3,
-          mx: { xs: -4, md: 0 },
-          px: { xs: 4, md: 0 },
-          bgcolor: tokens.ink.page,
-          borderTop: `1px solid ${tokens.ink.border}`,
+          gap: '10px',
+          // A floating white bar (1d): it rides over the cards as the page scrolls.
+          p: '12px',
+          mb: { md: '16px' },
+          borderRadius: `${tokens.summit.radius.small}px`,
+          bgcolor: tokens.ink.card,
+          boxShadow: tokens.elevation.overlay,
         }}
       >
         <Button

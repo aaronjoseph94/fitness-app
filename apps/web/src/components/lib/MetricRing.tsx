@@ -1,14 +1,14 @@
-// Owns: the SVG progress ring — value of target in one colour, round caps, one number in the centre (2a: the Dashboard's
-// 84 px goal ring with an 8 px stroke and a 16/600 centre, the session's 56 px ring with 6 px and 12/600). Past 100 % a
+// Owns: the SVG progress ring — value of target in one colour, round caps, one number in the centre in Outfit (the
+// Dashboard's 84 px goal ring with an 8 px stroke, the session's 56 px ring with 6 px, the readiness ring). Past 100 % a
 // second lap is drawn over the first with a surface-coloured ring so "over target" reads at a glance. The arc draws
-// from 0 on mount over 1.4 s on the entrance curve; under reduced motion it is simply there.
+// from 0 on mount over 1.6 s on the entrance curve; under reduced motion it is simply there.
 //
 // `color` overrides the metric's colour with any token colour, for a ring that is not a metric (the goal ring is the
-// accent). `trackColor` defaults to the arc colour's 16 % tint; 2a puts the neutral `ink.fill` on white and
-// `ink.border` on a panel.
+// accent). `trackColor` defaults to the metric's ramp track (or the arc colour's 16 % tint for a custom colour); on the
+// deep sky pass `tokens.summit.deepSky.well`.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
-import { enterEasing, tokens, withAlpha, type MetricKey } from '../../theme'
+import { enterEasing, metricTint, tokens, withAlpha, type MetricKey } from '../../theme'
 import { formatNumber } from './format'
 import { useEntrance } from './useEntrance'
 
@@ -78,7 +78,7 @@ export function MetricRing({
             cx={half}
             cy={half}
             r={r}
-            stroke={trackColor ?? withAlpha(color, 0.16)}
+            stroke={trackColor ?? (colorProp ? withAlpha(color, 0.16) : metricTint(metric))}
             strokeWidth={stroke}
           />
           {firstLap > 0 && (
@@ -132,8 +132,10 @@ export function MetricRing({
         <Box
           component="span"
           sx={{
+            fontFamily: tokens.font.display,
             fontSize: centreFont,
             fontWeight: tokens.font.weight.number,
+            letterSpacing: tokens.font.em.number,
             fontVariantNumeric: 'tabular-nums',
             color: tokens.ink.text,
             lineHeight: 1,

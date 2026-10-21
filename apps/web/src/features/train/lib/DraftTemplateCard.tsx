@@ -1,6 +1,6 @@
-// Owns: one AI draft of the split on the Train tab (2a) — a pending `workout` proposal with a name ("Upper A") shown
-// like a TemplateCard so it sits in the same grid: the 92 px muscle map from the draft's engine scores, the name,
-// "N exercises · M sets · AI draft" with its main muscles, "Replaces your Upper A" when a template already has its name,
+// Owns: one AI draft of the split on the Train tab (1d Summit) — a pending `workout` proposal with a name ("Upper A")
+// shown like a TemplateCard so it sits in the same row: the 84 px muscle map from the draft's engine scores, the name
+// with an "AI draft" chip, "N exercises · M sets" with its main muscles, "Replaces your Upper A" when a template already has its name,
 // and three actions — Keep (accept: the Worker makes the template, or replaces the one of that name in place), Preview
 // (the AI page on this draft, to swap or start) and Dismiss (reject). Keep and Dismiss go through the shared proposal
 // decision hook, so they wait offline and roll back with the reason if the Worker refuses. Once kept (here or by the
@@ -21,11 +21,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import { apiQueryKey, call, isApiError, problemText } from '../../../api'
-import { cardSurface, outlinedIconButton } from '../../../components'
+import { cardSurface, outlinedIconButton, StatusChip } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { pendingWorkoutPath, type PendingWorkout } from '../../builder'
 import { useProposalDecision } from '../../proposals'
+import { templateCardSx, templateLineSx, TemplateName } from './TemplateCard'
 import type { KeptDraft } from './useTrainData'
 
 /** "Open the template" after Keep: a text link, 44 px tall on touch. */
@@ -103,28 +104,14 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
     .map(([m]) => MUSCLE_LABELS[m].toLowerCase())
 
   return (
-    <Box
-      data-testid="draft-template"
-      data-status={d.status}
-      sx={{ ...cardSurface, display: 'flex', gap: '14px', p: 4, minWidth: 0 }}
-    >
-      <Box sx={{ width: 92, flex: 'none' }}>
-        <MuscleMap levels={muscleLevels(scores)} size={92} title={`Muscles in ${name}`} />
+    <Box data-testid="draft-template" data-status={d.status} sx={{ ...cardSurface, ...templateCardSx }}>
+      <Box sx={{ width: 84, flex: 'none' }}>
+        <MuscleMap levels={muscleLevels(scores)} size={84} title={`Muscles in ${name}`} />
       </Box>
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-          <Box
-            component="h3"
-            sx={{
-              m: 0,
-              fontSize: tokens.font.size.itemTitle,
-              fontWeight: tokens.font.weight.heading,
-              lineHeight: tokens.font.leading.itemTitle,
-              overflowWrap: 'anywhere',
-            }}
-          >
-            {name}
-          </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <TemplateName>{name}</TemplateName>
+          <StatusChip tone="info" size="small" label="AI draft" />
           {d.status === 'pending' && (
             // Dismiss sits where TemplateCard has its chip, so Keep and Preview fit one row at the grid's 300 px.
             <IconButton
@@ -139,31 +126,21 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
             </IconButton>
           )}
         </Box>
-        <Box
-          sx={{ mt: '2px', fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}
-        >
-          {workout.exercises.length} exercises · {sets} sets · AI draft
+        <Box sx={{ ...templateLineSx, mt: '4px' }}>
+          {workout.exercises.length} exercises · {sets} sets
           {top.length > 0 && ` · ${top.join(', ')}`}
         </Box>
         {d.status === 'pending' && replaces && (
-          <Box
-            data-testid="draft-replaces"
-            sx={{
-              mt: 1,
-              fontSize: tokens.font.size.caption,
-              lineHeight: 'normal',
-              fontWeight: tokens.font.weight.label,
-              color: tokens.ink.label,
-            }}
-          >
+          <Box data-testid="draft-replaces" sx={{ ...templateLineSx, mt: '2px', color: tokens.ink.label }}>
             Replaces your {replaces}
           </Box>
         )}
         <Box sx={{ flex: 1 }} />
         {d.status === 'pending' ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', mt: '10px' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', mt: '12px' }}>
             <Button
               variant="contained"
+              color="dark"
               size="small"
               startIcon={<BookmarkAddOutlined />}
               onClick={d.onAccept}
@@ -191,7 +168,7 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: 2,
-              mt: '10px',
+              mt: '12px',
               fontSize: tokens.font.size.small,
               fontWeight: tokens.font.weight.label,
             }}

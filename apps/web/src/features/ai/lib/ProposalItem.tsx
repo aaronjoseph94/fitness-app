@@ -1,6 +1,7 @@
-// Owns: one Ask AI proposal with its decision, in 2a's two forms — the compact card of the rail ("Waiting for your tap",
-// "Recent Train changes": source and time, title, before → after rows, "Why:", Accept / Reject, a Plan history link)
-// and the `ink.panel` strip under the chat reply that made it (with its "Why:" too). A proposal goes to POST
+// Owns: one Ask AI proposal with its decision, in 1d's two forms — the white card of the rail ("Waiting for your tap",
+// "Recent Train changes": source and time, title, before → after rows in warm wells, "Why:", Accept in deep ink /
+// Reject in soft violet, a Plan history link) and the deep-sky strip under the chat reply that made it (its changes
+// inline, the new value in gold, white Accept and an outlined Reject). A proposal goes to POST
 // /api/proposals/:id/accept|reject (the Worker decides per kind and says what accepting made, so the card can link to
 // it); a proposed week plan goes to POST /api/week-plans/:id/apply|reject. The card shows the decision at once, rolls
 // back if the server refuses, then the whole app refreshes. An applied Train change, or a workout that replaced a
@@ -16,7 +17,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { apiQueryKey, call, isApiError, problemText } from '../../../api'
-import { BeforeAfterList, formatRecentTime, type ProposalStatus } from '../../../components'
+import {
+  BeforeAfterList,
+  deepSkyRule,
+  formatRecentTime,
+  tabularNums,
+  visuallyHidden,
+  type ProposalStatus,
+} from '../../../components'
 import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { useProposalDecision, type Decision } from '../../proposals'
@@ -71,6 +79,26 @@ const STATUS_TEXT: Record<Exclude<ProposalStatus, 'pending'>, { text: string; co
 }
 const UNDONE_TEXT = { text: 'Undone', color: tokens.ink.label }
 
+const deepSky = tokens.summit.deepSky
+
+/** The strip's buttons: white with deep ink (Accept, 16.4:1) and a white-outlined ghost (Reject, Undo). */
+const onDarkSolid = {
+  bgcolor: tokens.dark.text,
+  color: tokens.dark.bg,
+  '&:hover': { bgcolor: tokens.summit.surface.soft },
+  '&.Mui-disabled': { bgcolor: tokens.summit.glass.fill, color: tokens.summit.onSky.disabled },
+} as const
+const onDarkGhost = {
+  bgcolor: 'transparent',
+  color: deepSky.text,
+  border: `1px solid ${tokens.summit.glass.tileBorder}`,
+  '&:hover': { bgcolor: tokens.summit.glass.fill, border: `1px solid ${tokens.summit.glass.tileBorder}` },
+  '&.Mui-disabled': {
+    color: tokens.summit.onSky.disabled,
+    border: `1px solid ${tokens.summit.glass.border}`,
+  },
+} as const
+
 interface UndoNote {
   text: string
   severity: 'error' | 'info'
@@ -119,8 +147,8 @@ function useUndo(id: string, alreadyUndone: boolean) {
 const linkSx = {
   display: 'inline-flex',
   alignItems: 'center',
-  fontSize: tokens.font.size.caption,
-  fontWeight: tokens.font.weight.label,
+  fontSize: tokens.font.size.small,
+  fontWeight: tokens.font.weight.heading,
   [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
 } as const
 
@@ -148,20 +176,25 @@ export function ProposalItem({
     (_, created) => setLink(created),
   )
   const u = useUndo(proposal.id, view.undone)
+  const strip = variant === 'strip'
   const status = view.replaced ? 'rejected' : d.status
   const decided = u.undone ? UNDONE_TEXT : status === 'pending' ? null : STATUS_TEXT[status]
   // Not while the accept is still in flight: the change may yet be refused and rolled back.
   const canUndo =
     view.revertible && !u.undone && !d.busy && (status === 'accepted' || status === 'auto_applied')
-  const strip = variant === 'strip'
 
   const decision = decided ? (
     <>
       <Box
         sx={{
-          fontSize: tokens.font.size.caption,
-          fontWeight: tokens.font.weight.label,
-          color: decided.color,
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.heading,
+          // On the deep sky: done in light teal, the rest in the sky's muted white.
+          color: strip
+            ? decided.color === tokens.tone.success.text
+              ? tokens.tone.success.light
+              : deepSky.muted
+            : decided.color,
         }}
       >
         {view.replaced ? 'Rejected or replaced by a newer plan' : decided.text}
@@ -169,10 +202,11 @@ export function ProposalItem({
       {canUndo && (
         <Button
           variant="outlined"
-          size="tiny"
+          size="dense"
           aria-label={`Undo: ${view.title}`}
           onClick={u.onUndo}
           disabled={d.busy || u.busy || !u.onUndo}
+          sx={strip ? onDarkGhost : undefined}
         >
           Undo
         </Button>
@@ -183,13 +217,20 @@ export function ProposalItem({
       <Button
         variant="contained"
         color="dark"
-        size="tiny"
+        size="dense"
         onClick={d.onAccept}
         disabled={d.busy || !d.onAccept}
+        sx={strip ? onDarkSolid : { px: '16px' }}
       >
         Accept
       </Button>
-      <Button variant="outlined" size="tiny" onClick={d.onReject} disabled={d.busy || !d.onReject}>
+      <Button
+        variant="outlined"
+        size="dense"
+        onClick={d.onReject}
+        disabled={d.busy || !d.onReject}
+        sx={strip ? onDarkGhost : undefined}
+      >
         Reject
       </Button>
     </>
@@ -199,7 +240,13 @@ export function ProposalItem({
   const after = (shownLink || d.notes || u.note) && (
     <Box sx={{ display: 'grid', gap: 2, mt: '8px', justifyItems: 'start' }}>
       {shownLink && (
-        <Link component={RouterLink} to={shownLink.to} sx={linkSx}>
+        <Link
+          component={RouterLink}
+          to={shownLink.to}
+          sx={
+            strip ? { ...linkSx, color: tokens.summit.gold.main, '&:hover': { color: deepSky.text } } : linkSx
+          }
+        >
           {shownLink.label}
         </Link>
       )}
@@ -216,10 +263,10 @@ export function ProposalItem({
       component="h3"
       sx={{
         m: 0,
-        fontSize: strip ? tokens.font.size.small : tokens.font.size.body,
+        fontSize: strip ? tokens.font.size.body : tokens.font.size.itemTitle,
         fontWeight: tokens.font.weight.heading,
-        lineHeight: tokens.font.leading.label,
-        color: tokens.ink.text,
+        lineHeight: tokens.font.leading.itemTitle,
+        color: strip ? deepSky.text : tokens.ink.text,
       }}
     >
       {view.title}
@@ -232,37 +279,78 @@ export function ProposalItem({
         data-testid="ask-ai-proposal"
         data-status={u.undone ? 'undone' : status}
         sx={{
-          px: '14px',
-          py: '12px',
-          borderRadius: `${tokens.radius.panel}px`,
-          border: `1px solid ${tokens.ink.border}`,
-          bgcolor: tokens.ink.panel,
+          px: '16px',
+          py: '14px',
+          borderRadius: `${tokens.summit.radius.wellLarge}px`,
+          background: deepSky.bg,
+          color: deepSky.text,
           fontSize: tokens.font.size.small,
           lineHeight: tokens.font.leading.small,
+          // A narrow thread (~300 px at 1,024): a long word breaks instead of running out of the strip.
+          overflowWrap: 'break-word',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <AutoAwesomeRounded aria-hidden sx={{ fontSize: 18, color: tokens.accent.main, flex: 'none' }} />
-          <Box sx={{ flex: '1 1 220px', minWidth: 0 }}>
-            {title}
-            {/* A short summary is already the title (planChangeHeading); don't say it twice. */}
-            {view.summary !== view.title && <Box sx={{ color: tokens.ink.muted }}>{view.summary}</Box>}
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 12px' }}>
+          {/* 220 px before the buttons wrap under the title: never squeezed to a word a line (NOTES). */}
+          <Box
+            sx={{ flex: '1 1 220px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: '12px' }}
+          >
+            <AutoAwesomeRounded
+              aria-hidden
+              sx={{ fontSize: 22, color: tokens.summit.gold.deep, flex: 'none', mt: '1px' }}
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              {title}
+              {/* A short summary is already the title (planChangeHeading); don't say it twice. */}
+              {view.summary !== view.title && (
+                <Box sx={{ fontWeight: tokens.font.weight.body, color: deepSky.muted }}>{view.summary}</Box>
+              )}
+              {view.changes.length > 0 && (
+                <Box
+                  component="dl"
+                  sx={{ m: 0, mt: '4px', display: 'grid', gap: '2px', fontWeight: tokens.font.weight.body }}
+                >
+                  {view.changes.map((c) => (
+                    <Box
+                      key={c.label}
+                      sx={{ display: 'flex', flexWrap: 'wrap', columnGap: '6px', color: deepSky.muted }}
+                    >
+                      <Box component="dt">{c.label}</Box>
+                      <Box component="dd" sx={{ m: 0, ...tabularNums }}>
+                        <s>{c.from}</s>
+                        <Box component="span" aria-hidden sx={{ mx: '5px' }}>
+                          →
+                        </Box>
+                        <Box component="span" sx={visuallyHidden}>
+                          , changes to{' '}
+                        </Box>
+                        <Box
+                          component="b"
+                          sx={{ fontWeight: tokens.font.weight.heading, color: tokens.summit.gold.main }}
+                        >
+                          {c.to}
+                        </Box>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', ml: 'auto' }}>{decision}</Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', ml: 'auto' }}>
+            {decision}
+          </Box>
         </Box>
-        {view.changes.length > 0 && (
-          <Box sx={{ mt: '10px' }}>
-            <BeforeAfterList changes={view.changes} background={tokens.ink.card} />
-          </Box>
-        )}
         {/* The reason, as on the rail card; a workout's rationale is already its summary line, so not twice. */}
         {view.why && view.why !== view.summary && (
           <Box
             sx={{
-              mt: '8px',
+              mt: '10px',
+              pt: '10px',
+              borderTop: deepSkyRule,
               fontSize: tokens.font.size.caption,
               lineHeight: tokens.font.leading.small,
-              color: tokens.ink.muted,
+              color: deepSky.muted,
             }}
           >
             Why: {view.why}
@@ -277,13 +365,13 @@ export function ProposalItem({
       data-testid="ask-ai-proposal"
       data-status={u.undone ? 'undone' : status}
       sx={{
-        px: '16px',
-        py: '14px',
-        borderRadius: `${tokens.radius.card}px`,
-        border: `1px solid ${tokens.ink.border}`,
+        px: '20px',
+        py: '18px',
+        borderRadius: `${tokens.radius.tile}px`,
         bgcolor: tokens.ink.card,
         boxShadow: tokens.elevation.card,
         minWidth: 0,
+        overflowWrap: 'break-word',
       }}
     >
       <Box
@@ -292,10 +380,11 @@ export function ProposalItem({
           alignItems: 'center',
           gap: '8px',
           fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.heading,
           color: tokens.ink.muted,
         }}
       >
-        <AutoAwesomeRounded aria-hidden sx={{ fontSize: 16, color: tokens.accent.main, flex: 'none' }} />
+        <AutoAwesomeRounded aria-hidden sx={{ fontSize: 16, color: tokens.summit.plum, flex: 'none' }} />
         <Box
           component="span"
           sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -311,16 +400,17 @@ export function ProposalItem({
       <Box sx={{ mt: '8px' }}>{title}</Box>
       {/* 2a's rail card says it with its before → after rows; the summary line stands in only where there are none. */}
       {view.changes.length > 0 ? (
-        <Box sx={{ mt: '8px' }}>
-          <BeforeAfterList size="small" changes={view.changes} />
+        <Box sx={{ mt: '10px' }}>
+          <BeforeAfterList changes={view.changes} />
         </Box>
       ) : (
         // A short summary is already the title; don't say it twice.
         view.summary !== view.title && (
           <Box
             sx={{
-              mt: '2px',
-              fontSize: tokens.font.size.caption,
+              mt: '4px',
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.body,
               lineHeight: tokens.font.leading.small,
               color: tokens.ink.muted,
             }}
@@ -332,16 +422,17 @@ export function ProposalItem({
       {view.why && (
         <Box
           sx={{
-            mt: '8px',
-            fontSize: tokens.font.size.caption,
-            lineHeight: tokens.font.leading.small,
+            mt: '10px',
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.body,
+            lineHeight: tokens.font.leading.body,
             color: tokens.ink.muted,
           }}
         >
           Why: {view.why}
         </Box>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', mt: '10px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', mt: '12px' }}>
         {decision}
         {!decided && proposal.type === 'proposal' && proposal.body.kind === 'plan_change' && (
           <Link component={RouterLink} to={PLAN_LINK.to} sx={{ ...linkSx, ml: 'auto' }}>

@@ -20,7 +20,14 @@ export function PrintLayout() {
       />
       <Box
         component="main"
-        sx={{ maxWidth: LETTER_WIDTH, mx: 'auto', p: 4, '@media print': { maxWidth: 'none', p: 0 } }}
+        sx={{
+          maxWidth: LETTER_WIDTH,
+          mx: 'auto',
+          p: 4,
+          // The installed app's status bar is translucent (index.html): keep the report's top clear of it.
+          pt: 'calc(16px + env(safe-area-inset-top, 0px))',
+          '@media print': { maxWidth: 'none', p: 0 },
+        }}
       >
         <Outlet />
       </Box>

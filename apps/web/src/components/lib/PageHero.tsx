@@ -1,14 +1,27 @@
-// Owns: `PageHeader`, the page title row every 2a page opens with — the page's single `h1` (26/600, −.02em), a 14 px
-// muted subtitle under it, and the page's own controls on the right (a segmented window, "+ Log", "Export"), wrapping
-// under the title on a phone. The shell sees this `h1` in `main` and drops its own fallback heading.
+// Owns: `PageHeader`, the page's hero content on the 1d sky (README §3) — an uppercase eyebrow (DM Sans 600, +.16em),
+// the page's single `h1` (Outfit 300, fluid 34–56 px; 32–48 on a compact sky), a one-line subtitle (17 px; Today's
+// 18), the page's controls (they wrap under the title on a phone and take the sky's glass look: a segmented control
+// becomes a glass track with a white selected segment, outline/text/icon buttons glass pills, the contained primary
+// button the gold CTA), an always-visible `primaryAction` slot, and a `extras` slot for what a page draws in its sky
+// (Today's mountain). Every button and link in it takes the white keyboard ring (the violet one is 1.09:1 on the
+// sky). While mounted it claims the shell's hero slot (`claim()`), so the shell drops its own fallback heading.
 //
-// It rises into place once on mount (2a: 26 px over 700 ms, expo-out; opacity + transform only, so no CLS). Under
-// `prefers-reduced-motion` it cross-fades in place instead.
+// It renders through the shell's hero slot (`HeroSlotProvider`): a page writes `<PageHeader>` wherever it likes and the
+// content lands on the sky above the cream panel, while the page's own cards stay in the panel. Outside the shell it
+// renders in place, on a sky of its own. Its entrance follows README §6: the eyebrow fades, the h1 de-blurs, the
+// subtitle fades and the controls rise (opacity, transform and filter only, so no CLS); under reduced motion it
+// cross-fades in place.
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { ReactNode } from 'react'
-import { enterDuration, enterEasing, reducedEntrance, tokens } from '../../theme'
+import { useLayoutEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { COARSE_POINTER_QUERY, enterEasing, reducedEntrance, tokens, type HeroVariant } from '../../theme'
+import { useHeroSlot } from './heroSlot'
+import { SkyHero } from './SkyHero'
+import { skyFocus, skyFocusWithin } from './surfaces'
 import { useEntrance } from './useEntrance'
+
+const { summit, font, motion, layout } = tokens
 
 /**
  * Rules that hide content from sight while leaving it in the accessibility tree: no size, clipped, and out of flow, so
@@ -33,8 +46,70 @@ export const visuallyHidden = {
   border: 0,
 } as const
 
+const glass = {
+  bgcolor: summit.glass.control,
+  border: `1px solid ${summit.glass.controlBorder}`,
+  color: summit.onSky.text,
+  backdropFilter: `blur(${summit.glass.blur}px)`,
+} as const
+
+/**
+ * The sky's look for the hero's own controls (direct children of the action row, so a composite control a page builds
+ * keeps its own look): glass pills 46 px tall, the contained primary button as the gold CTA, a segmented control as a
+ * glass track with a white selected segment (deep ink, 16.4:1), and the white keyboard ring on each. The glass is a
+ * dark tint so white text clears 4.5:1 however low on the sky the row wraps (theme.ts header).
+ */
+export const skyControls = {
+  '& > .MuiButton-root': {
+    minHeight: 46,
+    px: '18px',
+    borderRadius: `${summit.radius.pill}px`,
+    fontSize: font.size.emphasis,
+    ...skyFocus,
+  },
+  '& > .MuiButton-outlined, & > .MuiButton-text': {
+    ...glass,
+    '&:hover': { bgcolor: summit.glass.controlHover, border: `1px solid ${summit.glass.controlBorder}` },
+    '&.Mui-disabled': { ...glass, color: summit.onSky.disabled },
+  },
+  '& > .MuiButton-contained.MuiButton-colorPrimary': {
+    backgroundImage: summit.cta.gold.bg,
+    color: summit.cta.gold.text,
+    boxShadow: summit.cta.gold.shadow,
+    '&:hover': { backgroundImage: summit.cta.gold.bg, boxShadow: summit.cta.gold.shadowHover },
+  },
+  '& > .MuiIconButton-root': {
+    ...glass,
+    width: 46,
+    height: 46,
+    borderRadius: '50%',
+    '&:hover': { bgcolor: summit.glass.controlHover },
+    ...skyFocus,
+  },
+  '& > .MuiToggleButtonGroup-root': {
+    ...glass,
+    p: '5px',
+    gap: '4px',
+    '& .MuiToggleButton-root': {
+      px: '14px',
+      py: '8px',
+      fontSize: font.size.body,
+      fontWeight: font.weight.heading,
+      color: summit.onSky.subtitle,
+      '&:hover': { color: summit.onSky.text, bgcolor: summit.glass.fill },
+      '&.Mui-selected, &.Mui-selected:hover': {
+        bgcolor: summit.avatar.bg,
+        color: summit.avatar.text,
+        boxShadow: 'none',
+      },
+      [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+      ...skyFocus,
+    },
+  },
+} as const
+
 export interface PageHeaderProps {
-  /** A small 13 px line above the title (the session logger's ← Train link and chips). */
+  /** The uppercase line above the title ("Fuel log · Day 12"; the session logger's ← Train link and chips). */
   eyebrow?: ReactNode
   title: ReactNode
   /**
@@ -44,61 +119,100 @@ export interface PageHeaderProps {
   pageName?: string
   /** One dated or explanatory line under the title. */
   subtitle?: ReactNode
-  /** Right-hand controls, e.g. a `<Segmented>` window and a primary button. Wraps under the title on a phone. */
+  /** The page's controls, e.g. a `<Segmented>` window and a button. Wraps under the title on a phone. */
   action?: ReactNode
+  /**
+   * The hero's primary call to action, after `action` and shown at every width (Log: the gold "+ Log" that opens the
+   * quick-log sheet — `<Button variant="contained" color="gold">`; Today draws its own in the headline column, clear
+   * of the mountain).
+   */
+  primaryAction?: ReactNode
+  /**
+   * What a page draws in its sky beside or under the title row (Today's mountain): a flex item of the hero row (a
+   * wrapping flex row), positioned against the sky's content box; it brings its own entrance (`Reveal`).
+   */
+  extras?: ReactNode
+  /** The sky this page wants: `today`, `inner` or `compact`. Default: the route's (`RouteHandle.hero`). */
+  variant?: HeroVariant
   /** Entrance delay in ms, for a page that brings several groups on screen in order. */
   delay?: number
   testId?: string
 }
 
-/**
- * The salute for an hour of the local day (0–23). Pure, so the boundary hours are easy to pin in a test: morning
- * starts at 5 and afternoon at 12, evening at 18 — an hour-based split, which is what a person expects from a
- * greeting rather than a precise solar one.
- */
-export function greetingFor(hour: number): string {
-  if (hour < 5) return 'Good night'
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+/** One entrance step: fade (and rise, or de-blur) after `delay` ms; a cross-fade under reduced motion. */
+function step(
+  entered: boolean,
+  reduced: boolean,
+  delay: number,
+  kind: 'fade' | 'rise' | 'deblur',
+  duration = enterDurationFor(kind),
+) {
+  const resting =
+    kind === 'rise'
+      ? { transform: `translateY(${motion.rise}px)` }
+      : kind === 'deblur'
+        ? { transform: 'translateY(12px)', filter: `blur(${motion.blur}px)` }
+        : {}
+  const props = ['opacity', ...Object.keys(resting)]
+  return {
+    opacity: entered ? 1 : 0,
+    ...(entered ? { transform: 'none', filter: 'none' } : resting),
+    transition: reduced
+      ? 'none'
+      : props.map((p) => `${p} ${duration}ms ${enterEasing()} ${delay}ms`).join(', '),
+    animation: reducedEntrance(delay, reduced),
+  }
 }
 
-export function PageHeader({
+function enterDurationFor(kind: 'fade' | 'rise' | 'deblur'): number {
+  return kind === 'deblur' ? motion.duration.deblur : motion.duration.nav
+}
+
+/** The hero row: the title block, the controls, then the page's extras. */
+function HeroContent({
   eyebrow,
   title,
   pageName,
   subtitle,
   action,
+  primaryAction,
+  extras,
   delay = 0,
   testId,
-}: PageHeaderProps) {
+  sky,
+}: PageHeaderProps & { sky: HeroVariant }) {
   const { entered, reduced } = useEntrance()
+  const controls = action || primaryAction
+  const compact = sky === 'compact'
   return (
     <Box
       data-testid={testId}
       sx={{
+        ...skyFocusWithin,
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'flex-end',
-        columnGap: 4,
-        rowGap: 3,
+        gap: '20px',
         minWidth: 0,
-        opacity: entered ? 1 : 0,
-        transform: entered ? 'none' : `translateY(${tokens.motion.rise}px)`,
-        transition: reduced
-          ? 'none'
-          : `opacity ${enterDuration()}ms ${enterEasing()} ${delay}ms, transform ${enterDuration()}ms ${enterEasing()} ${delay}ms`,
-        animation: reducedEntrance(delay, reduced),
+        pt: `${compact ? 14 : layout.hero.padTop}px`,
       }}
     >
-      <Box sx={{ flex: '1 1 280px', minWidth: 0 }}>
+      {/* Basis = the copy's own width, so the controls drop under the title before the title is squeezed (§4). */}
+      <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
         {eyebrow && (
           <Box
             sx={{
-              mb: '2px',
-              fontSize: tokens.font.size.small,
-              lineHeight: tokens.font.leading.small,
-              color: tokens.ink.secondary,
+              ...step(entered, reduced, delay + 200, 'fade'),
+              mb: '8px',
+              fontSize: font.size.eyebrowHero,
+              fontWeight: font.weight.heading,
+              lineHeight: font.leading.label,
+              letterSpacing: font.em.eyebrowHero,
+              textTransform: 'uppercase',
+              color: summit.onSky.eyebrow,
+              // A link or button in the eyebrow (the session's ← Train) reads on the sky, not in the panel's ink.
+              '& a, & .MuiButtonBase-root': { color: summit.onSky.subtitle },
+              '& a:hover, & .MuiButtonBase-root:hover': { color: summit.onSky.text },
             }}
           >
             {eyebrow}
@@ -107,7 +221,13 @@ export function PageHeader({
         <Typography
           component="h1"
           variant="h1"
-          sx={{ m: 0, color: 'text.primary', overflowWrap: 'anywhere' }}
+          sx={{
+            ...step(entered, reduced, delay + 320, 'deblur'),
+            m: 0,
+            color: summit.onSky.text,
+            overflowWrap: 'break-word',
+            ...(compact && { fontSize: font.fluid.h1Compact }),
+          }}
         >
           {title}
           {pageName && <Box component="span" sx={visuallyHidden}>{` · ${pageName}`}</Box>}
@@ -115,30 +235,59 @@ export function PageHeader({
         {subtitle && (
           <Box
             sx={{
-              mt: '4px',
-              fontSize: tokens.font.size.body,
-              lineHeight: tokens.font.leading.body,
-              color: tokens.ink.secondary,
+              ...step(entered, reduced, delay + 560, 'fade'),
+              mt: '12px',
+              fontSize: sky === 'today' ? font.size.subtitleToday : font.size.subtitle,
+              fontWeight: font.weight.body,
+              lineHeight: font.leading.small,
+              color: summit.onSky.subtitle,
+              '& a': { color: summit.onSky.text, textDecoration: 'underline' },
             }}
           >
             {subtitle}
           </Box>
         )}
       </Box>
-      {action && (
+      {controls && (
         <Box
           sx={{
+            ...step(entered, reduced, delay + 500, 'rise'),
+            ...skyControls,
             flex: 'none',
             display: 'flex',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 2,
+            gap: '10px',
             maxWidth: '100%',
           }}
         >
           {action}
+          {primaryAction}
         </Box>
       )}
+      {extras}
     </Box>
   )
+}
+
+export function PageHeader(props: PageHeaderProps) {
+  const slot = useHeroSlot()
+  const { variant } = props
+  const claim = slot?.claim
+
+  // While this header is on screen the shell drops its fallback title and its sky takes the variant asked for.
+  useLayoutEffect(() => claim?.(variant ?? null), [claim, variant])
+
+  if (!slot) {
+    // Outside the shell: a sky of its own, in place.
+    return (
+      <SkyHero variant={variant}>
+        <Box sx={{ px: layout.gutter }}>
+          <HeroContent {...props} sky={variant ?? 'inner'} />
+        </Box>
+      </SkyHero>
+    )
+  }
+  if (!slot.target) return null
+  return createPortal(<HeroContent {...props} sky={slot.variant} />, slot.target)
 }

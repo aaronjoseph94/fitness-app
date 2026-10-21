@@ -1,4 +1,4 @@
-// Owns: the favourites on the Log tab (2a rail card) — the one-tap list in its order (icon, name and grams or a
+// Owns: the favourites on the Log tab (1d Summit rail card) — the list in its order (food icon, name and grams or a
 // "Recipe" chip, kcal), and behind "Manage" each one moved up or down (PATCH sort_order), renamed, a food's default
 // grams or a recipe's grams per food edited (PATCH /api/favorites/:id). New favourites come from a logged meal ("Save as
 // favourite" on a meal). Edits waiting to sync show as pending.
@@ -6,7 +6,6 @@ import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import StarRounded from '@mui/icons-material/StarRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -141,16 +140,21 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
   return (
     <LogCard
       title="Favourites"
-      icon={StarRounded}
       meta={
         rows.length > 0 && (
           <Button
             variant="text"
-            size="tiny"
+            size="small"
             aria-expanded={managing}
             aria-controls={listId}
             onClick={() => setManaging((m) => !m)}
-            sx={{ my: '-6px', mr: '-10px' }}
+            sx={{
+              my: '-8px',
+              mr: '-12px',
+              fontSize: tokens.font.size.body,
+              fontWeight: tokens.font.weight.heading,
+              '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+            }}
           >
             {managing ? 'Done' : 'Manage'}
           </Button>
@@ -163,7 +167,7 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
       ) : error != null && rows.length === 0 ? (
         <LoadProblem what="Favourites" error={error} onRetry={onRetry} />
       ) : rows.length === 0 ? (
-        <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>
+        <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
           None yet. On any logged meal, open its menu and choose “Save as favourite”; a meal with several
           foods becomes a recipe.
         </Box>
@@ -172,7 +176,14 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
           component="ol"
           id={listId}
           aria-label="Favourites, in the order the meal form shows them"
-          sx={{ listStyle: 'none', p: 0, m: 0, mt: '-6px' }}
+          sx={{
+            listStyle: 'none',
+            p: 0,
+            m: 0,
+            mt: '-6px',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+          }}
         >
           {rows.map(({ favourite: f, pending }, i) => (
             <Box
@@ -183,22 +194,28 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                minHeight: 42,
-                py: 1,
-                fontSize: tokens.font.size.small,
-                borderTop: `1px solid ${tokens.ink.hairline}`,
+                minHeight: 44,
+                py: '9px',
+                fontSize: tokens.font.size.body,
+                '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
               }}
             >
-              <FoodGlyph name={f.label} size={20} />
+              <FoodGlyph name={f.label} size={24} />
               <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Box
                   component="span"
-                  sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  sx={{
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontWeight: tokens.font.weight.label,
+                  }}
                 >
                   {f.label}
                   {f.kind === 'food' && ` · ${formatNumber(f.default_grams)} g`}
                 </Box>
-                {f.kind === 'recipe' && <StatusChip tone="outline" size="small" label="Recipe" />}
+                {f.kind === 'recipe' && <StatusChip tone="neutral" size="small" label="Recipe" />}
                 {pending && <PendingBadge />}
               </Box>
               {f.totals.kcal > 0 && (

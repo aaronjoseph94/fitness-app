@@ -1,29 +1,31 @@
-// Owns: the "Food, water and recovery" column of Progress (2a) — calories vs target with the calorie rails, macros
-// with the protein target, three small cards for water, steps and sleep (the last 12 days as mini bars, the average
-// and the days on target), and the fasting strip — from the range's v_day rows (GET /api/days), fasts (GET /api/fasts)
-// and the rails from settings. The full water, steps and sleep charts and the protein and logging adherence calendars
+// Owns: Progress's food and habit cards (1d), from the range's v_day rows (GET /api/days) and the rails from settings —
+// `FoodCards`, calories vs target (stacked by meal slot, the dashed target) beside the macros (stacked grams, the
+// dashed protein minimum in amber), two up in a row that wraps; and `HabitCounts`, three small cards for water, steps
+// and sleep over the range's last 12 days: the days on target out of the days logged in Outfit, what the target is,
+// and a ramp bar of the share. The fasting strip, the full water, steps and sleep charts and the adherence calendars
 // sit in the page's detail section.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import type { DaySummary, Fast, LocalDate } from '@fitness/shared/schemas'
+import type { DaySummary, LocalDate } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
-import { CaloriesChart, FastingStrip, frameHeight, MacrosChart } from '../../../charts'
+import { CaloriesChart, frameHeight, MacrosChart } from '../../../charts'
 import {
+  cardSurface,
   ChartCard,
   formatNumber,
   isQueryLoading,
-  MiniBars,
-  Panel,
+  ProgressBar,
   QueryStateCard,
-  SectionHeader,
+  staggerDelay,
+  wrapCol,
+  WrapRow,
 } from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
 import {
   caloriesDays,
-  fastEntries,
   latestTargets,
   macrosDays,
   SLEEP_TARGET_H,
@@ -32,44 +34,115 @@ import {
   waterDays,
 } from './series'
 
-/** The small cards' mini bars: the range's last 12 days (2a's sparkline length). */
+/** The small cards count the range's last 12 days (1d: "8 / 12 days at 3 L"). */
 const MINI_DAYS = 12
-const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four']
+/** The food charts' plot height (1d: 120 px of bars, plus the day axis). */
+const FOOD_HEIGHT = 160
 
-interface HabitsColumnProps {
-  days: UseQueryResult<DaySummary[], ApiError>
-  fasts: UseQueryResult<Fast[], ApiError>
-  from: LocalDate
+type Days = UseQueryResult<DaySummary[], ApiError>
+
+export function FoodCards({
+  days,
+  to,
+  rails,
+}: {
+  days: Days
+  /** The range's last day (today): a day still in progress is not counted as a full day. */
   to: LocalDate
-  fastHours: number
-  /** Fasts a month from settings; null while settings load. */
-  fastsPerMonth: number | null
   /** The calorie floor and ceiling from settings; null while settings load. */
   rails: { floor: number; ceiling: number } | null
-}
-
-export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, rails }: HabitsColumnProps) {
+}) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
-  const header = <SectionHeader title="Food, water and recovery" subtitle="Per day against the targets" />
   if (!days.data)
     return (
-      <Box>
-        {header}
-        <Box sx={{ display: 'grid', gap: 4 }}>
-          <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />
-          {isQueryLoading(days) && (
-            <QueryStateCard query={days} what="your days" height={frameHeight(220)} titleSize="card" />
-          )}
+      <WrapRow gap={tokens.summit.space.gap.tile}>
+        <Box sx={wrapCol(1)}>
+          <QueryStateCard query={days} what="your days" height={frameHeight(FOOD_HEIGHT)} titleSize="card" />
         </Box>
-      </Box>
+        {isQueryLoading(days) && (
+          <Box sx={wrapCol(1)}>
+            <QueryStateCard
+              query={days}
+              what="your days"
+              height={frameHeight(FOOD_HEIGHT)}
+              titleSize="card"
+            />
+          </Box>
+        )}
+      </WrapRow>
     )
 
   const rows = days.data
   const targets = latestTargets(rows)
   const meals = rows.some((d) => d.meals_logged > 0 || d.is_fast_day)
-  const entries = fasts.data ? fastEntries(fasts.data, Date.now(), fastHours) : []
-  const stripTo = entries.reduce((latest, f) => (f.date > latest ? f.date : latest), to)
   const proteinTarget = targets?.protein_g
+  // Full days: meals logged, not a fast, and not today (still in progress).
+  const full = rows.filter((d) => d.meals_logged > 0 && !d.is_fast_day && d.date !== to)
+  const kcalTarget = targets?.kcal ?? null
+  const atOrUnder = kcalTarget === null ? 0 : full.filter((d) => d.intake.kcal <= kcalTarget).length
+  const today = rows.find((d) => d.date === to)
+  const caloriesCaption =
+    kcalTarget !== null && full.length
+      ? `${atOrUnder} of ${full.length} full ${full.length === 1 ? 'day' : 'days'} at or under ${formatNumber(kcalTarget)}${today && today.meals_logged > 0 ? ' · today in progress' : ''}`
+      : undefined
+  const noMeals = {
+    title: 'No meals logged in this range',
+    body: 'Each meal you log stacks into its slot here.',
+    action: { label: 'Log a meal', onClick: () => openQuickLog('meal') },
+  }
+
+  return (
+    <Box data-testid="progress-habits">
+      <WrapRow gap={tokens.summit.space.gap.tile}>
+        <Box sx={wrapCol(1)}>
+          <ChartCard
+            fill
+            title="Calories vs target"
+            titleSize="card"
+            subtitle={
+              rails
+                ? `Per day by meal · floor ${formatNumber(rails.floor)} · ceiling ${formatNumber(rails.ceiling)}`
+                : targets
+                  ? `Per day by meal · target ${formatNumber(targets.kcal)} kcal`
+                  : 'kcal per day by meal slot'
+            }
+            empty={meals ? undefined : noMeals}
+            caption={caloriesCaption}
+          >
+            <CaloriesChart
+              days={caloriesDays(rows)}
+              target={targets?.kcal}
+              height={FOOD_HEIGHT}
+              legendPlacement="bottom"
+            />
+          </ChartCard>
+        </Box>
+        <Box sx={wrapCol(1)}>
+          <ChartCard
+            fill
+            title="Macros"
+            titleSize="card"
+            subtitle="Protein · carbs · fat, grams a day"
+            empty={meals ? undefined : { title: 'No meals logged in this range' }}
+          >
+            <MacrosChart
+              days={macrosDays(rows)}
+              proteinTarget={proteinTarget}
+              height={FOOD_HEIGHT}
+              legendPlacement="bottom"
+            />
+          </ChartCard>
+        </Box>
+      </WrapRow>
+    </Box>
+  )
+}
+
+export function HabitCounts({ days }: { days: Days }) {
+  const openQuickLog = useUiStore((s) => s.openQuickLog)
+  if (!days.data) return <QueryStateCard query={days} what="your days" height={110} titleSize="card" />
+  const rows = days.data
+  const targets = latestTargets(rows)
   const water = waterDays(rows)
     .slice(-MINI_DAYS)
     .map((d) => d.ml ?? null)
@@ -79,191 +152,161 @@ export function HabitsColumn({ days, fasts, from, to, fastHours, fastsPerMonth, 
   const sleep = sleepNights(rows)
     .slice(-MINI_DAYS)
     .map((n) => n.hours ?? null)
-  const litres = (ml: number) => `${formatNumber(ml / 1000, ml % 1000 === 0 ? 0 : 1)} L`
-  const fastsLine =
-    fastsPerMonth === null
-      ? `${fastHours} h fasts`
-      : `${COUNT_WORDS[fastsPerMonth] ?? fastsPerMonth} ${fastHours} h fasts a month`
-
+  const litres = (ml: number) => `${formatNumber(ml / 1000, ml % 1000 === 0 ? 0 : 1)} L`
   return (
-    <Box data-testid="progress-habits">
-      {header}
-      <Box sx={{ display: 'grid', gap: 4 }}>
-        <ChartCard
-          title="Calories vs target"
-          titleSize="card"
-          subtitle={
-            rails
-              ? `Rails: floor ${formatNumber(rails.floor)} · ceiling ${formatNumber(rails.ceiling)}`
-              : targets
-                ? `kcal per day by meal slot; target ${formatNumber(targets.kcal)} kcal`
-                : 'kcal per day by meal slot'
-          }
-          empty={
-            meals
-              ? undefined
-              : {
-                  title: 'No meals logged in this range',
-                  body: 'Each meal you log stacks into its slot here.',
-                  action: { label: 'Log a meal', onClick: () => openQuickLog('meal') },
-                }
-          }
-        >
-          <CaloriesChart days={caloriesDays(rows)} target={targets?.kcal} height={160} />
-        </ChartCard>
-
-        <ChartCard
-          title="Macros"
-          titleSize="card"
-          subtitle={
-            proteinTarget
-              ? `Grams per day, stacked · protein target ${formatNumber(proteinTarget)} g as the line`
-              : 'Grams per day, stacked'
-          }
-          empty={meals ? undefined : { title: 'No meals logged in this range' }}
-        >
-          <MacrosChart days={macrosDays(rows)} proteinTarget={proteinTarget} height={160} />
-        </ChartCard>
-
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 4,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
-          }}
-        >
-          <MiniCard
-            title="Water"
-            metric="water"
-            testId="chart-water-mini"
-            values={water}
-            target={targets?.water_ml ?? null}
-            average={(v) => `avg ${litres(Math.round(v))}`}
-            onTarget={(hit, n, t) => `${hit} of ${n} days at ${litres(t)}`}
-            empty={
-              <Button variant="text" size="tiny" onClick={() => openQuickLog('water')}>
-                Log water
-              </Button>
-            }
-          />
-          <MiniCard
-            title="Steps"
-            metric="steps"
-            testId="chart-steps-mini"
-            values={steps}
-            target={targets?.steps ?? null}
-            average={(v) => `avg ${formatNumber(v)}`}
-            onTarget={(hit, n, t) => `${hit} of ${n} days at ${formatNumber(t)}`}
-            empty="Steps arrive from the Apple Watch Shortcut or the manual form."
-          />
-          <MiniCard
-            title="Sleep"
-            metric="sleep"
-            testId="chart-sleep-mini"
-            values={sleep}
-            target={SLEEP_TARGET_H}
-            average={(v) => `avg ${formatNumber(v, 1)} h`}
-            onTarget={(hit, n, t) =>
-              `${hit} of ${n} ${n === 1 ? 'night' : 'nights'} at ${formatNumber(t, 1)} h`
-            }
-            empty="Last night’s sleep arrives from the Apple Watch Shortcut or the manual form."
-          />
-        </Box>
-
-        {!fasts.data ? (
-          <QueryStateCard query={fasts} what="your fasts" height={90} titleSize="card" />
-        ) : (
-          <ChartCard
-            title="Fasting"
-            titleSize="card"
-            subtitle={`${fastsLine} · planned, done, partial, missed`}
-          >
-            <FastingStrip fasts={entries} from={from} to={stripTo} />
-          </ChartCard>
-        )}
-      </Box>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: '12px',
+        minWidth: 0,
+      }}
+    >
+      <CountCard
+        index={0}
+        title="Water"
+        metric="water"
+        testId="chart-water-mini"
+        values={water}
+        target={targets?.water_ml ?? null}
+        unit="days"
+        at={(t) => `at ${litres(t)}`}
+        empty={
+          <Button variant="text" size="tiny" onClick={() => openQuickLog('water')}>
+            Log water
+          </Button>
+        }
+      />
+      <CountCard
+        index={1}
+        title="Steps"
+        metric="steps"
+        testId="chart-steps-mini"
+        values={steps}
+        target={targets?.steps ?? null}
+        unit="days"
+        at={(t) => `at ${formatNumber(t)}`}
+        empty="From the Apple Watch Shortcut or the form."
+      />
+      <CountCard
+        index={2}
+        title="Sleep"
+        metric="sleep"
+        testId="chart-sleep-mini"
+        values={sleep}
+        target={SLEEP_TARGET_H}
+        unit="nights"
+        at={(t) => `at ${formatNumber(t, 1)} h`}
+        empty="From the Apple Watch Shortcut or the form."
+      />
     </Box>
   )
 }
 
-interface MiniCardProps {
+interface CountCardProps {
+  index: number
   title: string
   metric: MetricKey
-  /** The mini bars' chart-level test id. */
+  /** The bar's test id. */
   testId: string
   /** One value per day, oldest first; null = nothing logged. */
   values: readonly (number | null)[]
   target: number | null
-  /** "avg 2.8 L" from the mean of the logged days. */
-  average: (mean: number) => string
-  /** "5 of 12 days at 3 L" from the days at or above the target, the logged days and the target. */
-  onTarget: (hit: number, logged: number, target: number) => string
+  /** "days" or "nights". */
+  unit: string
+  /** "at 3 L" for the target. */
+  at: (target: number) => string
   /** What the card says when none of its days has a value. */
   empty: ReactNode
 }
 
-/** A 2a small card: the 13/600 title with the average on the right, 56 px mini bars, the days on target under them. */
-function MiniCard({ title, metric, testId, values, target, average, onTarget, empty }: MiniCardProps) {
+/** A 1d small card (radius 22, 16 px in): 12/600 label, "8 / 12" in Outfit 18, "days at 3 L", an 8 px ramp bar. */
+function CountCard({ index, title, metric, testId, values, target, unit, at, empty }: CountCardProps) {
   const logged = values.filter((v): v is number => v !== null && v > 0)
-  const mean = logged.length ? logged.reduce((s, v) => s + v, 0) / logged.length : null
   const hit = target === null ? 0 : logged.filter((v) => v >= target).length
-  const caption = target !== null && logged.length ? onTarget(hit, logged.length, target) : null
+  const n = values.length
+  const mean = logged.length ? logged.reduce((s, v) => s + v, 0) / logged.length : null
   return (
-    <Panel padding="dense">
+    <Box
+      component="section"
+      aria-labelledby={`count-${metric}-title`}
+      sx={{
+        ...cardSurface,
+        borderRadius: `${tokens.radius.small}px`,
+        p: '16px',
+        minWidth: 0,
+      }}
+    >
       <Box
+        component="h3"
+        id={`count-${metric}-title`}
         sx={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          columnGap: 2,
-          mb: '12px',
-        }}
-      >
-        <Box
-          component="h3"
-          sx={{
-            m: 0,
-            fontSize: tokens.font.size.small,
-            lineHeight: tokens.font.leading.small,
-            fontWeight: tokens.font.weight.heading,
-          }}
-        >
-          {title}
-        </Box>
-        {mean !== null && (
-          <Box
-            component="span"
-            sx={{
-              fontSize: tokens.font.size.small,
-              lineHeight: tokens.font.leading.small,
-              color: tokens.ink.secondary,
-              fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {average(mean)}
-          </Box>
-        )}
-      </Box>
-      <MiniBars
-        values={values}
-        metric={metric}
-        target={target}
-        height={56}
-        testId={testId}
-        label={`${title}, last ${values.length} days${mean !== null ? `: ${average(mean)}` : ': nothing logged'}${caption ? `; ${caption}` : ''}`}
-      />
-      <Box
-        sx={{
-          mt: '8px',
-          fontSize: tokens.font.size.micro,
-          lineHeight: tokens.font.leading.caption,
+          m: 0,
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.heading,
           color: tokens.ink.secondary,
         }}
       >
-        {logged.length ? caption : empty}
+        {title}
       </Box>
-    </Panel>
+      {logged.length > 0 && target !== null ? (
+        <>
+          <Box
+            sx={{
+              mt: '4px',
+              fontFamily: tokens.font.display,
+              fontSize: 18,
+              fontWeight: tokens.font.weight.number,
+              lineHeight: 1.2,
+              color: tokens.ink.text,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {hit}
+            <Box
+              component="span"
+              sx={{
+                fontFamily: tokens.font.family,
+                fontSize: tokens.font.size.micro,
+                color: tokens.ink.secondary,
+              }}
+            >
+              {` / ${n}`}
+            </Box>
+          </Box>
+          <Box
+            sx={{
+              fontSize: tokens.font.size.micro,
+              fontWeight: tokens.font.weight.label,
+              lineHeight: tokens.font.leading.caption,
+              color: tokens.ink.secondary,
+            }}
+          >
+            {unit} {at(target)}
+          </Box>
+          <Box sx={{ mt: '10px' }}>
+            <ProgressBar
+              value={n ? hit / n : 0}
+              color={tokens.metric[metric]}
+              height={8}
+              delay={staggerDelay(index, 100, 900)}
+              label={`${title}: ${hit} of the last ${n} ${unit} ${at(target)}${mean !== null ? `; average ${formatNumber(mean, metric === 'sleep' ? 1 : 0)}` : ''}`}
+              testId={testId}
+            />
+          </Box>
+        </>
+      ) : (
+        <Box
+          sx={{
+            mt: '6px',
+            fontSize: tokens.font.size.micro,
+            lineHeight: tokens.font.leading.caption,
+            color: tokens.ink.secondary,
+          }}
+        >
+          {empty}
+        </Box>
+      )}
+    </Box>
   )
 }

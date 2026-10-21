@@ -1,7 +1,8 @@
-// Owns: the Apple Watch manual route (SPEC §8 route 1) on the Log tab — last night's sleep (the night that ended on
-// this date) and the day's steps as two tiles with where they came from, and "Enter by hand" opening the form: steps,
-// and sleep as in-bed and wake times or as hours asleep, prefilled from what is logged. Thirty seconds. POST /api/steps
-// and POST /api/sleep both upsert by date. Links to the file import (route 2) for many days at once.
+// Owns: the Apple Watch manual route (SPEC §8 route 1) on the Log tab (1d Summit rail card) — last night's sleep (the
+// night that ended on this date) and the day's steps as two tinted tiles (sleep indigo, steps violet) with where they
+// came from, and "Enter by hand" opening the form: steps, and sleep as in-bed and wake times or as hours asleep,
+// prefilled from what is logged. Thirty seconds. POST /api/steps and POST /api/sleep both upsert by date. Links to the
+// file import (route 2) for many days at once.
 import WatchOutlined from '@mui/icons-material/WatchOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -22,9 +23,8 @@ import {
   Segmented,
   StatusChip,
   statValue,
-  wellSurface,
 } from '../../../components'
-import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, metricTint, tokens } from '../../../theme'
 import { clockOf, instantAt, shiftDate, useLogMutation, usePendingLogs } from '../../quick-log'
 import { LogCard } from './LogCard'
 import { problemText } from '../../../api'
@@ -135,15 +135,13 @@ export function SleepStepsCard({
   return (
     <LogCard
       title="Sleep and steps"
-      icon={WatchOutlined}
-      iconColor={tokens.metric.sleep}
       meta={
         <>
           {pendingSteps.length + pendingSleep.length > 0 && <PendingBadge />}
           {serverSleep && (
             <StatusChip
-              tone="outline"
-              size="small"
+              tone="neutral"
+              icon={WatchOutlined}
               label={`${SOURCE_LABEL[serverSleep.source]} · ${formatClock(serverSleep.updated_at)}`}
             />
           )}
@@ -151,10 +149,11 @@ export function SleepStepsCard({
       }
       testId="log-sleep-steps"
     >
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
         {/* Until the day is known nothing is claimed: a placeholder while it loads, "—" if it failed. */}
         <Tile
-          label="Last night"
+          label="Sleep"
+          metric="sleep"
           value={serverSleep ? formatNumber(serverSleep.asleep_min / 60, 1) : !known && loading ? null : '—'}
           unit={serverSleep ? 'h' : undefined}
           caption={
@@ -169,6 +168,7 @@ export function SleepStepsCard({
         />
         <Tile
           label="Steps"
+          metric="steps"
           value={serverSteps !== null ? formatNumber(serverSteps) : !known && loading ? null : '—'}
           caption={
             stepsTarget !== null
@@ -181,11 +181,11 @@ export function SleepStepsCard({
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 12px', mt: '10px' }}>
         <Button
-          variant="outlined"
-          size="tiny"
+          variant="text"
           aria-expanded={open}
           aria-controls={formId}
           onClick={() => setOpen((o) => !o)}
+          sx={linkButtonSx}
         >
           Enter by hand
         </Button>
@@ -199,7 +199,7 @@ export function SleepStepsCard({
             alignItems: 'center',
             minHeight: tokens.space(6),
             [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
-            fontSize: tokens.font.size.caption,
+            fontSize: tokens.font.size.small,
             fontWeight: tokens.font.weight.label,
           }}
         >
@@ -289,6 +289,14 @@ export function SleepStepsCard({
   )
 }
 
+/** A text button that reads as a link (1d: violet 14/600, no fill), its padding hung outside the row's edge. */
+const linkButtonSx = {
+  px: '8px',
+  ml: '-8px',
+  fontWeight: tokens.font.weight.heading,
+  '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+} as const
+
 const SOURCE_LABEL: Record<HealthSource, string> = {
   watch_webhook: 'Apple Watch',
   import: 'Imported',
@@ -296,46 +304,54 @@ const SOURCE_LABEL: Record<HealthSource, string> = {
 }
 
 /**
- * One of the two panel-tint tiles: 12 px label, 22/600 value with its unit (2a draws 20; the type scale's nearest step),
- * 11 px caption. `value` null: a placeholder in the value's line while the day loads.
+ * One of the two tinted tiles (1d: sleep on the sleep tint, steps on the steps tint, radius 18): a 12/600 label in the
+ * metric's colour, the Outfit 22 value with its unit, a 12 px caption. `value` null: a placeholder in the value's line
+ * while the day loads.
  */
 function Tile({
   label,
+  metric,
   value,
   unit,
   caption,
 }: {
   label: string
+  metric: 'sleep' | 'steps'
   value: string | null
   unit?: string
   caption?: string
 }) {
   return (
-    <Box sx={{ ...wellSurface, px: 3, py: '10px', minWidth: 0 }}>
-      <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary }}>{label}</Box>
-      <Box sx={{ mt: '2px', ...statValue('small'), lineHeight: 1.3 }}>
-        {value ?? <Skeleton variant="text" width={64} sx={{ display: 'inline-block' }} />}
-        {unit && (
-          <Box
-            component="span"
-            sx={{
-              fontSize: tokens.font.size.caption,
-              fontWeight: tokens.font.weight.body,
-              color: tokens.ink.secondary,
-              letterSpacing: 0,
-            }}
-          >
-            {' '}
-            {unit}
-          </Box>
-        )}
-      </Box>
-      {/* The caption's line is kept when there is none, so the tile doesn't change height once the day loads. */}
+    <Box
+      sx={{
+        px: '16px',
+        py: '14px',
+        minWidth: 0,
+        borderRadius: `${tokens.summit.radius.wellLarge}px`,
+        bgcolor: metricTint(metric),
+      }}
+    >
       <Box
         sx={{
-          minHeight: '1.5em',
-          fontSize: tokens.font.size.micro,
-          color: tokens.ink.secondary,
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.heading,
+          color: tokens.metric[metric],
+        }}
+      >
+        {label}
+      </Box>
+      <Box sx={{ mt: '4px', ...statValue('small'), lineHeight: 1.2 }}>
+        {value ?? <Skeleton variant="text" width={64} sx={{ display: 'inline-block' }} />}
+        {unit && <Box component="span"> {unit}</Box>}
+      </Box>
+      {/* The caption's line is kept when there is none, so the tile doesn't change height once the day loads. Body
+          ink, not muted: muted is under 4.5:1 on these tints. */}
+      <Box
+        sx={{
+          minHeight: '1.4em',
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.body,
+          color: tokens.ink.label,
           fontVariantNumeric: 'tabular-nums',
         }}
       >

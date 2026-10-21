@@ -1,11 +1,10 @@
-// Owns: the 2a segmented control, built on MUI's ToggleButtonGroup (so keyboard, `aria-pressed` and the exclusive
+// Owns: the 1d segmented control, built on MUI's ToggleButtonGroup (so keyboard, `aria-pressed` and the exclusive
 // choice come from MUI) in two looks:
-//   • `default` — an `ink.fill` track 3 px in, radius 9; the selected segment white with a 1 px `ink.control` ring and
-//     the segment shadow, as the theme's ToggleButton draws it (page title rows: Dashboard's "30 / 90 / 180 days",
-//     Progress' "4 weeks / 12 weeks / All");
-//   • `outline` — a 1 px `ink.border` frame with no fill, 12 px segments, the selected one on `ink.fill` inside a
-//     1 px `ink.control` ring, so the choice reads at 3:1 and not by its fill alone (Photos' compare "Side by side /
-//     Slider").
+//   • `default` — a soft violet pill track 4 px in; the selected segment deep ink with white text, as the theme's
+//     ToggleButton draws it. In a page's hero (Dashboard's "30 / 90 / 180 days", Progress' "4 weeks / 12 weeks / All")
+//     `PageHeader` turns it into a glass track with a white selected segment;
+//   • `outline` — a white track inside a 1 px lilac frame (Photos' compare "Side by side / Slider"), the same deep ink
+//     selection.
 // Segments are 13/500 (12 small) and 44 px tall on a touch screen. A choice can never be cleared: clicking the
 // selected segment again does nothing, as a segmented control should.
 import ToggleButton from '@mui/material/ToggleButton'
@@ -46,9 +45,6 @@ export function Segmented<T extends string | number>({
   testId,
 }: SegmentedProps<T>) {
   const framed = tone === 'outline'
-  const selected = framed
-    ? { bgcolor: tokens.ink.fill, color: tokens.ink.text, boxShadow: `inset 0 0 0 1px ${tokens.ink.control}` }
-    : {}
   return (
     <ToggleButtonGroup
       value={value}
@@ -61,16 +57,8 @@ export function Segmented<T extends string | number>({
         if (next !== null && next !== value) onChange(next)
       }}
       sx={{
-        ...(framed && {
-          bgcolor: 'transparent',
-          border: `1px solid ${tokens.ink.border}`,
-          borderRadius: `${tokens.radius.control}px`,
-        }),
-        '& .MuiToggleButton-root': {
-          ...(framed && { borderRadius: `${tokens.radius.inner}px` }),
-          ...(fullWidth && { flex: 1 }),
-          '&.Mui-selected, &.Mui-selected:hover': selected,
-        },
+        ...(framed && { bgcolor: tokens.ink.card, border: `1px solid ${tokens.ink.border}` }),
+        '& .MuiToggleButton-root': { ...(fullWidth && { flex: 1 }) },
       }}
     >
       {options.map((o) => (

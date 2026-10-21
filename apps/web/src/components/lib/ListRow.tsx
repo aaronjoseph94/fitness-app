@@ -1,14 +1,15 @@
-// Owns: the 2a list row (Settings, "More", any card of rows) — a full-width row, 12 × 20 padding, an `ink.hairline`
+// Owns: the 1d list row (Settings, "More", any card of rows) — a full-width row, 14 × 26 padding, an `ink.hairline`
 // rule above it, a 14/500 label with an optional 12 px muted help line, the value on the right in `ink.label`
-// (tabular), and a chevron when the row goes somewhere; hover `ink.panel`. It is a button (`onClick`), a router link
+// (tabular), and a chevron when the row goes somewhere; hover the warm well. It is a button (`onClick`), a router link
 // (`component` + `to`) or, with neither, a plain row whose `trailing` slot holds its own control (a Switch).
-// `variant="card"` is the same content as a standalone bordered card (Train's tool cards).
+// `variant="card"` is the same content as a standalone white radius-30 card (Train's tool cards), its label in Outfit.
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import type { ElementType, ReactNode } from 'react'
 import { tokens, transitionOf } from '../../theme'
+import { cardSurface, displayTitle } from './surfaces'
 
 export interface ListRowProps {
   label: ReactNode
@@ -18,7 +19,7 @@ export interface ListRowProps {
   value?: ReactNode
   /** Replaces the value + chevron, e.g. a `<Switch>` (give it an accessible name) or a status chip. */
   trailing?: ReactNode
-  /** Leading 18 px glyph in muted ink; with `iconTile` it sits in a 36 px `ink.fill` tile in accent blue instead. */
+  /** Leading 18 px glyph in muted ink; with `iconTile` it sits in a 40 px violet-tint tile in violet instead. */
   icon?: SvgIconComponent
   iconTile?: boolean
   onClick?: () => void
@@ -56,14 +57,14 @@ export function ListRow({
           <Box
             aria-hidden
             sx={{
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               flex: 'none',
               display: 'grid',
               placeItems: 'center',
-              borderRadius: `${tokens.radius.control}px`,
-              bgcolor: tokens.ink.fill,
-              color: tokens.accent.main,
+              borderRadius: `${tokens.summit.radius.wellSmall}px`,
+              bgcolor: tokens.accent.soft,
+              color: tokens.accent.deep,
             }}
           >
             <Icon sx={{ fontSize: 20 }} />
@@ -77,7 +78,8 @@ export function ListRow({
           sx={{
             display: 'block',
             fontSize: tokens.font.size.body,
-            fontWeight: card ? tokens.font.weight.heading : tokens.font.weight.label,
+            fontWeight: tokens.font.weight.label,
+            ...(card && { ...displayTitle('card'), fontSize: 17 }),
             color: tokens.ink.text,
           }}
         >
@@ -126,19 +128,13 @@ export function ListRow({
     gap: '12px',
     width: '100%',
     minHeight: tokens.tapTarget,
-    px: card ? '16px' : `${tokens.pad.card.x}px`,
-    py: card ? '14px' : '12px',
+    px: card ? '20px' : `${tokens.pad.card.x}px`,
+    py: card ? '18px' : '14px',
     textAlign: 'left',
     font: 'inherit',
     color: tokens.ink.text,
     bgcolor: tokens.ink.card,
-    ...(card
-      ? {
-          border: `1px solid ${tokens.ink.border}`,
-          borderRadius: `${tokens.radius.card}px`,
-          boxShadow: tokens.elevation.card,
-        }
-      : { borderTop: `1px solid ${tokens.ink.hairline}` }),
+    ...(card ? cardSurface : { borderTop: `1px solid ${tokens.ink.hairline}` }),
     ...(interactive && {
       transition: transitionOf('background-color', tokens.motion.duration.instant),
       '@media (hover: hover)': { '&:hover': { bgcolor: tokens.ink.panel } },

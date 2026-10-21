@@ -1,7 +1,8 @@
-// Owns: rendering the muscle map (2a) — a light zinc body, each of the 17 muscles filled by its level (0 = the body
-// colour, 1–4 = the four blue steps, or the four rose steps for a scan's fat share), white separations, an accessible
-// <title> per muscle and one delegated click/keyboard handler. Front, back or both; 64 px (a scan segment) to 200 px
-// (a volume map) or the container's width. Levels come in already bucketed (quantile levelling is the engine's job).
+// Owns: rendering the muscle map (1d) — a lilac body, each of the 17 muscles filled by its level (0 = the body colour,
+// 1–4 = the four violet volume steps, or the four coral steps for a scan's fat share), white separations, an
+// accessible <title> per muscle and one delegated click/keyboard handler. Front, back or both; 64 px (a scan segment)
+// to 240 px (a volume map) or the container's width. Levels come in already bucketed (quantile levelling is the
+// engine's job). Colours are `tokens.muscleMap`; the geometry is vendored (source/) and never redrawn.
 import Box from '@mui/material/Box'
 import type { Muscle } from '@fitness/shared/schemas'
 import type { KeyboardEvent, MouseEvent } from 'react'
@@ -21,11 +22,11 @@ export interface MuscleMapProps {
   title?: string
   /** Outlines this muscle (e.g. the one being edited). */
   selected?: Muscle | null
-  /** The step colours: `volume` (blue, default) or `fat` (rose, a scan's fat share by segment). */
+  /** The step colours: `volume` (violet, default) or `fat` (coral, a scan's fat share by segment). */
   scale?: MuscleScale
   /**
-   * The untrained body: `standard` (`muscleMap.body`, default — reads on white and on an `ink.panel` panel) or
-   * `light` (`muscleMap.bodyAlt`, 2a's lighter figure for a map on a white card).
+   * The untrained body: `standard` (`muscleMap.body`, 1d's lilac, default — reads on white and on the warm well) or
+   * `light` (`muscleMap.bodyAlt`, a paler figure).
    */
   body?: 'standard' | 'light'
 }

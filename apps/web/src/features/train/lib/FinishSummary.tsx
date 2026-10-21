@@ -1,5 +1,6 @@
-// Owns: the session finish screen (SPEC §7 "Finish"; 2a kit) — the title row ("Upper A done", the date, a
-// pending badge while the finish is queued), duration, total volume, sets and PRs as stat cards, the muscle map of
+// Owns: the session finish screen (SPEC §7 "Finish"; 1d Summit kit) — the sky hero ("Upper A done", the date, a
+// pending badge while the finish is queued), duration, total volume, sets and PRs as stat cards in a wrapping row
+// (150 px tiles, two up on a phone), the muscle map of
 // what was trained (levels from the session's muscle scores), volume per muscle as a compact bar list, the PRs (best
 // load at a rep count, best e1RM), each exercise's ticked sets, one-tap "Save as template", "Edit sets" (back into the
 // logger; saving finishes it again with the same end time), "Back to Train" and "Delete session".
@@ -25,6 +26,8 @@ import {
   PendingBadge,
   ProgressBar,
   StatCard,
+  wrapCol,
+  WrapRow,
 } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, MuscleMapLegend } from '../../../muscle-map'
 import { tokens } from '../../../theme'
@@ -76,7 +79,15 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
     .filter((x) => x.sets.length > 0)
 
   return (
-    <Box data-testid="session-summary" sx={{ display: 'grid', gap: 4, minWidth: 0 }}>
+    <Box
+      data-testid="session-summary"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        gap: `${tokens.rhythm.section}px`,
+        minWidth: 0,
+      }}
+    >
       <PageHeader
         title={session.name ? `${session.name} done` : 'Session done'}
         subtitle={`${formatWeekday(session.date)}, ${formatShortDate(session.date)}`}
@@ -85,9 +96,10 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
 
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
-          gap: 4,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: `${tokens.summit.space.gap.tile}px`,
+          '& > *': { ...wrapCol(1, tokens.layout.wrapBasis.tile) },
         }}
       >
         <StatCard
@@ -113,30 +125,32 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         />
       </Box>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' },
-          gap: 4,
-          alignItems: 'start',
-        }}
-      >
-        <Panel
-          title="What you trained"
-          description="Sets × 1.0 for main muscles, × 0.5 for helpers"
-          testId="summary-muscle-map"
-        >
-          {view.volume.length === 0 && Object.keys(summary.muscle_scores).length === 0 ? (
-            <Box sx={MUTED_SX}>No ticked sets, so nothing was trained.</Box>
-          ) : (
-            <Stack spacing={3} sx={{ alignItems: 'center' }}>
-              <MuscleMap levels={view.levels} size={300} title="Muscles trained this session" />
-              <MuscleMapLegend dense />
-            </Stack>
-          )}
-        </Panel>
+      <WrapRow align="flex-start">
+        <Box sx={wrapCol(1)}>
+          <Panel
+            title="What you trained"
+            description="Sets × 1.0 for main muscles, × 0.5 for helpers"
+            testId="summary-muscle-map"
+          >
+            {view.volume.length === 0 && Object.keys(summary.muscle_scores).length === 0 ? (
+              <Box sx={MUTED_SX}>No ticked sets, so nothing was trained.</Box>
+            ) : (
+              <Stack spacing={3} sx={{ alignItems: 'center' }}>
+                <MuscleMap levels={view.levels} size={300} title="Muscles trained this session" />
+                <MuscleMapLegend dense />
+              </Stack>
+            )}
+          </Panel>
+        </Box>
 
-        <Box sx={{ display: 'grid', gap: 4, minWidth: 0 }}>
+        <Box
+          sx={{
+            ...wrapCol(1),
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+            gap: `${tokens.summit.space.gap.tile}px`,
+          }}
+        >
           {view.volume.length > 0 && (
             <Panel
               title="Volume per muscle"
@@ -158,7 +172,6 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
                     <Box sx={{ color: tokens.ink.text }}>{MUSCLE_LABELS[muscle]}</Box>
                     <ProgressBar
                       value={maxKg ? Math.max(0.04, kg / maxKg) : 0}
-                      color={tokens.accent.main}
                       label={`${MUSCLE_LABELS[muscle]} volume`}
                     />
                     <Box
@@ -206,7 +219,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
             )}
           </Panel>
         </Box>
-      </Box>
+      </WrapRow>
 
       {done.length > 0 && (
         <Panel title="Exercises">
@@ -238,9 +251,10 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         </Panel>
       )}
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
         <Button
           variant="contained"
+          size="large"
           startIcon={<BookmarkAddOutlined />}
           onClick={() => setSaving(true)}
           disabled={done.length === 0}
@@ -251,6 +265,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         </Button>
         <Button
           variant="outlined"
+          size="large"
           startIcon={<EditOutlined />}
           onClick={() => loggerState().update(session.id, (c) => ({ ...c, editing: true }))}
           data-testid="summary-edit"
@@ -260,6 +275,7 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         </Button>
         <Button
           variant="outlined"
+          size="large"
           onClick={() => void navigate('/train')}
           sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
         >
@@ -269,7 +285,12 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
           color="error"
           onClick={() => setDeleting(true)}
           data-testid="delete-session"
-          sx={{ ml: { sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
+          sx={{
+            ml: 'auto',
+            mr: '-12px',
+            fontWeight: tokens.font.weight.heading,
+            '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+          }}
         >
           Delete session
         </Button>

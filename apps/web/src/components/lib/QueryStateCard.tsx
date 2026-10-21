@@ -88,7 +88,7 @@ export function QueryStateCard({ query, what, height = 200, titleSize = 'section
         <Skeleton
           variant="rounded"
           height={height}
-          sx={{ mt: '14px', borderRadius: `${tokens.radius.control}px` }}
+          sx={{ mt: '14px', borderRadius: `${tokens.radius.well}px` }}
         />
       </Card>
     )

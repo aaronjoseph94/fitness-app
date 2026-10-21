@@ -1,15 +1,17 @@
-// Owns: the app's navigation destinations in one table each — the six bottom tabs (SPEC §11 navigation, plus
-// Dashboard — see docs/PROGRESS.md: key, path, nav label, page title and icons), and the desktop sidebar's "Body"
-// group and Settings link, which a phone reaches from the pages instead.
+// Owns: the app's navigation destinations in one table each — the six tabs (SPEC §11 navigation, plus Dashboard — see
+// docs/PROGRESS.md: key, path, nav label, page title and icons) that the Summit nav's pill (desktop, `title`) and the
+// phone's bottom tab bar (`label`) list, the Scans circle and the Settings avatar beside them, and the "Body" pages
+// (Scans, Photos, Plan history). Photos and Plan history are not in the nav (1d): they are reached from the pages that
+// link to them and from the ⌘K command palette.
 //
 // The icon set is one family, not a sample of one: every destination draws from the same rounded outline weight, so a
 // nav reads as a single column rather than unrelated glyphs. Inactive destinations take the outlined cut and the
 // active one the filled, rounded cut, which is the one weight difference the pair is there to carry (the item also
 // darkens its ink and keeps `aria-current`, so colour is never the only signal).
-import AccessibilityNewOutlined from '@mui/icons-material/AccessibilityNewOutlined'
-import AccessibilityNewRounded from '@mui/icons-material/AccessibilityNewRounded'
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
+import DonutLargeOutlined from '@mui/icons-material/DonutLargeOutlined'
+import DonutLargeRounded from '@mui/icons-material/DonutLargeRounded'
 import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined'
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
@@ -32,11 +34,11 @@ import type { TabKey } from '../ui-store'
 /** A place the navigation links to, with its outlined (inactive) and filled (active) glyph. */
 export interface Destination {
   path: string
-  /** The page's name: the sidebar label and the page title. */
+  /** The page's name: the desktop nav's label and the page title. */
   title: string
   Icon: typeof SvgIcon
   ActiveIcon: typeof SvgIcon
-  /** The sidebar item's test id. */
+  /** The nav item's test id (`rail-*`, kept from the 2a sidebar). */
   testId: string
 }
 
@@ -104,17 +106,25 @@ export const TABS: readonly Tab[] = [
 ]
 
 /**
- * The sidebar's "Body" group. 2a also draws "Weekly reports" here, but the app has no page that lists them (a report
- * lives at /reports/week/:week, reached from Progress and Today), so there is nothing for the item to open.
+ * The Scans circle in the Summit nav (desktop and phone). Its glyph is body composition as a split ring (the mock's
+ * Material Symbol `body_fat` has no @mui/icons-material twin): not a person, which would read as a second avatar
+ * beside Settings', and not the scale, which is the weigh-in's.
+ */
+export const SCANS_DESTINATION: Destination = {
+  path: '/scans',
+  title: 'Scans',
+  Icon: DonutLargeOutlined,
+  ActiveIcon: DonutLargeRounded,
+  testId: 'rail-scans',
+}
+
+/**
+ * The "Body" pages: Scans (the nav's circle), Photos and Plan history (reached from the pages and the command palette;
+ * 1d draws no nav item for them). There is no "Weekly reports" page to list (a report lives at /reports/week/:week,
+ * reached from Progress and Today).
  */
 export const BODY_DESTINATIONS: readonly Destination[] = [
-  {
-    path: '/scans',
-    title: 'Scans',
-    Icon: AccessibilityNewOutlined,
-    ActiveIcon: AccessibilityNewRounded,
-    testId: 'rail-scans',
-  },
+  SCANS_DESTINATION,
   {
     path: '/photos',
     title: 'Photos',

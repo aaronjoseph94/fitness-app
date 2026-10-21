@@ -1,8 +1,8 @@
-// Owns: the weekly tape on the Log tab (SPEC §6) — the last value of each site (neck, chest, waist at navel, hips, both
-// arms, both thighs, in cm) with the waist's change since the first tape and the waist-to-hip ratio, when the next tape
-// is due (a week after the last), and "Measure now" opening the form: each site's last value greyed in as the
-// placeholder; only the sites filled in are sent (POST /api/measurements, which replaces a site already logged that date).
-import StraightenRounded from '@mui/icons-material/StraightenRounded'
+// Owns: the weekly tape on the Log tab (SPEC §6; 1d Summit rail card) — the last value of each site (neck, chest, waist
+// at navel, hips, both arms, both thighs, in cm) as a centred grid of Outfit figures, with the waist's change since the
+// first tape and the waist-to-hip ratio, when the next tape is due (a week after the last), and "Measure now" opening
+// the form: each site's last value greyed in as the placeholder; only the sites filled in are sent (POST
+// /api/measurements, which replaces a site already logged that date).
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Collapse from '@mui/material/Collapse'
@@ -97,14 +97,11 @@ export function MeasurementsCard({ date }: { date: string }) {
   return (
     <LogCard
       title="Measurements"
-      icon={StraightenRounded}
       meta={
         <>
           {anyPending && <PendingBadge />}
           <CardMeta>
-            {lastDate
-              ? `Weekly tape · last ${formatWeekday(lastDate)}, ${formatShortDate(lastDate)}`
-              : 'Weekly tape, cm'}
+            {lastDate ? `${formatWeekday(lastDate)}, ${formatShortDate(lastDate)}` : 'Weekly tape, cm'}
           </CardMeta>
         </>
       }
@@ -121,51 +118,75 @@ export function MeasurementsCard({ date }: { date: string }) {
           m: 0,
           display: 'grid',
           gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: '8px 8px',
-          fontSize: tokens.font.size.caption,
+          gap: '12px 10px',
+          textAlign: 'center',
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         <Site label="Neck">{cm('neck')}</Site>
         <Site label="Chest">{cm('chest')}</Site>
-        <Site label="Waist">
-          {cm('waist_navel')}
-          {waistChange !== null && Math.abs(waistChange) >= 0.05 && firstWaist && (
-            <Box
-              component="span"
-              sx={{ color: waistChange < 0 ? tokens.tone.success.text : tokens.ink.label }}
-            >
-              {' '}
-              {formatSigned(waistChange, 1)}
+        <Site
+          label="Waist"
+          change={
+            waistChange !== null && Math.abs(waistChange) >= 0.05 && firstWaist ? (
               <Box
                 component="span"
-                sx={visuallyHidden}
-              >{` cm since ${formatShortDate(firstWaist.date)}`}</Box>
-            </Box>
-          )}
+                sx={{ color: waistChange < 0 ? tokens.tone.success.text : tokens.ink.label }}
+              >
+                {formatSigned(waistChange, 1)}
+                <Box
+                  component="span"
+                  sx={visuallyHidden}
+                >{` cm since ${formatShortDate(firstWaist.date)}`}</Box>
+              </Box>
+            ) : undefined
+          }
+        >
+          {cm('waist_navel')}
         </Site>
         <Site label="Hips">{cm('hips')}</Site>
-        <Site label="Arm L / R">
+        <Site label="Arm L / R" wide>
           {cm('left_arm')} / {cm('right_arm')}
         </Site>
-        <Site label="Thigh L / R">
+        <Site label="Thigh L / R" wide>
           {cm('left_thigh')} / {cm('right_thigh')}
         </Site>
-        <Site label="Waist-to-hip" wide>
-          {waist && hips && hips.cm > 0 ? formatNumber(waist.cm / hips.cm, 2) : '—'}
-        </Site>
       </Box>
-      <Button
-        variant="outlined"
-        size="tiny"
-        aria-expanded={open}
-        aria-controls={formId}
-        onClick={() => setOpen((o) => !o)}
-        sx={{ mt: 3 }}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0 6px',
+          mt: '10px',
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.body,
+          color: tokens.ink.secondary,
+          fontVariantNumeric: 'tabular-nums',
+        }}
       >
-        {due === null
-          ? 'Measure now'
-          : `Measure now · ${due > date ? `due ${formatWeekday(due)}` : due === date ? 'due today' : 'overdue'}`}
-      </Button>
+        <span>
+          Waist-to-hip {waist && hips && hips.cm > 0 ? formatNumber(waist.cm / hips.cm, 2) : '—'}
+          {' ·'}
+        </span>
+        <Button
+          variant="text"
+          aria-expanded={open}
+          aria-controls={formId}
+          onClick={() => setOpen((o) => !o)}
+          sx={{
+            px: '6px',
+            ml: '-6px',
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.heading,
+            '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+          }}
+        >
+          {due === null
+            ? 'Measure now'
+            : `Measure now · ${due > date ? `due ${formatWeekday(due)}` : due === date ? 'due today' : 'overdue'}`}
+        </Button>
+      </Box>
       <Collapse in={open} unmountOnExit>
         <Box
           component="form"
@@ -246,18 +267,58 @@ export function MeasurementsCard({ date }: { date: string }) {
   )
 }
 
-/** One tape site: 12 px muted label over its 600 value. */
-function Site({ label, wide = false, children }: { label: string; wide?: boolean; children: ReactNode }) {
+/** One tape site: 12/600 muted label over its Outfit 17 value, and an optional change under it. */
+function Site({
+  label,
+  change,
+  wide = false,
+  children,
+}: {
+  label: string
+  change?: ReactNode
+  /** Two columns: a left / right pair. */
+  wide?: boolean
+  children: ReactNode
+}) {
   return (
-    <Box sx={{ minWidth: 0, gridColumn: wide ? 'span 2' : undefined, alignSelf: 'end' }}>
-      <Box component="dt" sx={{ color: tokens.ink.secondary }}>
+    <Box sx={{ minWidth: 0, gridColumn: wide ? 'span 2' : undefined }}>
+      <Box
+        component="dt"
+        sx={{
+          fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.heading,
+          color: tokens.ink.secondary,
+          whiteSpace: 'nowrap',
+        }}
+      >
         {label}
       </Box>
       <Box
         component="dd"
-        sx={{ m: 0, fontWeight: tokens.font.weight.heading, fontVariantNumeric: 'tabular-nums' }}
+        sx={{
+          m: 0,
+          fontFamily: tokens.font.display,
+          fontSize: 17,
+          fontWeight: tokens.font.weight.number,
+          lineHeight: 1.35,
+          overflowWrap: 'anywhere',
+        }}
       >
         {children}
+        {change && (
+          <Box
+            component="span"
+            sx={{
+              display: 'block',
+              fontFamily: tokens.font.family,
+              fontSize: tokens.font.size.caption,
+              fontWeight: tokens.font.weight.heading,
+              lineHeight: 1.3,
+            }}
+          >
+            {change}
+          </Box>
+        )}
       </Box>
     </Box>
   )

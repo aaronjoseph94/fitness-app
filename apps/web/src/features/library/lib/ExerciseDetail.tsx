@@ -1,11 +1,12 @@
-// Owns: the body of an exercise's detail view (SPEC §7) as 2a cards — animated demo when matched (with the Gym visual
+// Owns: the body of an exercise's detail view (SPEC §7) as 1d Summit cards — animated demo when matched (with the Gym visual
 // credit its terms require; a GIF that fails to load leaves the step images), both step images, a "Muscles and
 // equipment" card (primary / secondary muscles, equipment, category, level, mechanic and force as rows beside the
-// muscle map on an `ink.panel` panel — primary at level 4, secondary at level 2 — with the YouTube form-video search),
+// muscle map in a warm well at 1fr : 260 px, wrapping under them when narrow — primary at level 4, secondary at level 2 —
+// with the YouTube form-video search),
 // "How to" (GET /api/exercises/:id: the cached list has none), the strength chart with PRs and next session's
 // suggestion from GET /api/history/exercises/:id, and "Hide forever" (or, when hidden, why and "Un-hide"). Shared by
 // the detail sheet (cards under the sheet's h2) and the /train/library/:id page (cards under its h1). The cards rise in
-// one after another on mount (2a's entrance, `cardDelay`).
+// one after another on mount (1d's entrance, `cardDelay`).
 import BlockRounded from '@mui/icons-material/BlockRounded'
 import OndemandVideoRounded from '@mui/icons-material/OndemandVideoRounded'
 import Box from '@mui/material/Box'
@@ -25,6 +26,7 @@ import { useApiQuery } from '../../../api'
 import { StrengthChart, type StrengthSession } from '../../../charts'
 import {
   ChartCard,
+  fixedCol,
   formatNumber,
   formatShortDate,
   LegendChips,
@@ -324,14 +326,17 @@ function Overview({ exercise, heading }: { exercise: ExerciseSummary; heading: H
         </Button>
       }
     >
+      {/* The facts beside the map at 1fr : 260 px, the map wrapping under them when they no longer fit (README §4);
+          the map draws its rule a pixel outside itself and the row clips it, so it shows only between the two. */}
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) 260px' },
+          display: 'flex',
+          flexWrap: 'wrap',
+          overflow: 'hidden',
           borderTop: `1px solid ${tokens.ink.hairline}`,
         }}
       >
-        <Box sx={{ px: `${tokens.pad.card.x}px`, py: '6px', minWidth: 0 }}>
+        <Box sx={{ flex: '100 1 280px', px: `${tokens.pad.card.x}px`, py: '6px', minWidth: 0 }}>
           {rows
             .filter(([, value]) => value !== '')
             .map(([label, value]) => (
@@ -346,9 +351,9 @@ function Overview({ exercise, heading }: { exercise: ExerciseSummary; heading: H
             justifyContent: 'center',
             gap: 2,
             p: 4,
+            ...fixedCol(260),
             bgcolor: tokens.ink.panel,
-            borderLeft: { sm: `1px solid ${tokens.ink.border}` },
-            borderTop: { xs: `1px solid ${tokens.ink.border}`, sm: 'none' },
+            boxShadow: `-1px 0 0 0 ${tokens.ink.hairline}, 0 -1px 0 0 ${tokens.ink.hairline}`,
           }}
         >
           <MuscleMap

@@ -1,5 +1,5 @@
-// Owns: the muscle-map colour scales (level → token colour: the four blue volume steps, or the four rose steps a
-// scan's fat share uses), level names, and display names for the 17 muscle keys.
+// Owns: the muscle-map colour scales (level → token colour: the four violet volume steps, or the four coral steps a
+// scan's fat share uses — README §2 "Muscle map"), level names, and display names for the 17 muscle keys.
 import type { Muscle } from '@fitness/shared/schemas'
 import { tokens } from '../../theme'
 
@@ -7,8 +7,8 @@ import { tokens } from '../../theme'
 export type MuscleLevel = 0 | 1 | 2 | 3 | 4
 
 /**
- * `volume`: training load in the blue steps (`muscleMap.steps`, lightest → accent). `fat`: a scan segment's fat share
- * in the rose steps (`muscleMap.fatSteps`).
+ * `volume`: training load in the violet steps (`muscleMap.steps`, lightest → strong). `fat`: a scan segment's fat
+ * share in the coral steps (`muscleMap.fatSteps`).
  */
 export type MuscleScale = 'volume' | 'fat'
 

@@ -3,14 +3,23 @@
 // proposals wait in the AI tab" has somewhere to land. Each card says who proposed it (the Coach, the AI clerk), as
 // on Today. Also the rest of 2a's right-hand rail: its quiet line when nothing waits, "Recent Train changes" (the
 // last 7 days' applied Train changes and split drafts kept over a template, not undone yet, each with its lasting
-// one-tap Undo; hidden when there are none) and the "Rails the AI works inside" card.
+// one-tap Undo; hidden when there are none) and the "Rails on" card (1d: the coach gradient) at the foot of the chats
+// rail.
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
 import type { AiEvent, ChatProposal, Proposal } from '@fitness/shared/schemas'
 import { useApiQuery } from '../../../api'
 import { actorLabel } from '../../proposals'
-import { isQueryLoading, QueryStateCard, Reveal, staggerDelay, visuallyHidden } from '../../../components'
+import {
+  displayTitle,
+  isQueryLoading,
+  QueryStateCard,
+  Reveal,
+  staggerDelay,
+  tabularNums,
+  visuallyHidden,
+} from '../../../components'
 import { tokens } from '../../../theme'
 import { ProposalItem } from './ProposalItem'
 import { useThreadStore } from './thread-store'
@@ -93,16 +102,15 @@ function useRecentTrainChanges(): Proposal[] {
 const railTitleSx = {
   m: 0,
   flex: 1,
-  fontSize: tokens.font.size.body,
-  fontWeight: tokens.font.weight.heading,
-  lineHeight: tokens.font.leading.label,
+  ...displayTitle('card'),
+  fontSize: tokens.font.size.subtitle,
   color: tokens.ink.text,
 } as const
 
-/** "Waiting for your tap" at 14/600 with the blue count pill. */
+/** "Waiting for your tap" in Outfit 17 with the gold count pill. */
 function RailTitle({ count }: { count: number }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', px: '4px' }}>
       <Box component="h2" id="ask-ai-pending-title" sx={railTitleSx}>
         Waiting for your tap
       </Box>
@@ -110,15 +118,15 @@ function RailTitle({ count }: { count: number }) {
         <Box
           component="span"
           sx={{
-            px: '7px',
-            py: '1px',
+            px: '9px',
+            py: '2px',
             borderRadius: `${tokens.radius.pill}px`,
-            bgcolor: tokens.accent.main,
-            color: tokens.dark.text,
-            fontSize: tokens.font.size.micro,
+            backgroundImage: tokens.summit.cta.gold.bg,
+            color: tokens.summit.cta.gold.text,
+            fontSize: tokens.font.size.caption,
             fontWeight: tokens.font.weight.heading,
             lineHeight: tokens.font.leading.micro,
-            fontVariantNumeric: 'tabular-nums',
+            ...tabularNums,
           }}
         >
           {count}
@@ -140,15 +148,15 @@ export function PendingProposals() {
       component="section"
       aria-labelledby="ask-ai-pending-title"
       data-testid="ask-ai-pending"
-      sx={{ display: 'grid', gap: '16px' }}
+      sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '14px' }}
     >
       <RailTitle count={pending.length} />
       {pending.length > SHOWN && (
         <Box
-          sx={{ mt: '-10px', fontSize: tokens.font.size.caption, color: tokens.ink.muted }}
+          sx={{ mt: '-8px', px: '4px', fontSize: tokens.font.size.caption, color: tokens.ink.muted }}
         >{`The newest ${SHOWN} of ${pending.length}.`}</Box>
       )}
-      <Box sx={{ display: 'grid', gap: '12px' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '14px' }}>
         {pending.slice(0, SHOWN).map((p, i) => (
           <Reveal key={p.id} delay={staggerDelay(i, tokens.motion.stagger.section, 150)}>
             <ProposalItem
@@ -176,16 +184,17 @@ export function RecentTrainChanges() {
       component="section"
       aria-labelledby="ask-ai-recent-title"
       data-testid="recent-train-changes"
-      sx={{ display: 'grid', gap: '16px' }}
+      sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '14px' }}
     >
-      <Box>
+      <Box sx={{ px: '4px' }}>
         <Box component="h2" id="ask-ai-recent-title" sx={railTitleSx}>
           Recent Train changes
         </Box>
         <Box
           sx={{
             mt: '2px',
-            fontSize: tokens.font.size.caption,
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.body,
             lineHeight: tokens.font.leading.small,
             color: tokens.ink.muted,
           }}
@@ -195,7 +204,7 @@ export function RecentTrainChanges() {
             : 'From the last 7 days. Undo puts it back as it was.'}
         </Box>
       </Box>
-      <Box sx={{ display: 'grid', gap: '12px' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '14px' }}>
         {recent.slice(0, SHOWN).map((p, i) => (
           <Reveal key={p.id} delay={staggerDelay(i, tokens.motion.stagger.section, 150)}>
             <ProposalItem
@@ -224,7 +233,9 @@ export function NothingWaiting() {
       <Box
         sx={{
           mt: '6px',
-          fontSize: tokens.font.size.caption,
+          px: '4px',
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.body,
           lineHeight: tokens.font.leading.small,
           color: tokens.ink.muted,
         }}
@@ -246,23 +257,32 @@ export function NothingWaiting() {
   )
 }
 
-/** The `ink.panel` card at the foot of the rail: the rails every proposal is checked against. */
+/**
+ * The coach-gradient card at the foot of the chats rail (1d): the rails every proposal is checked against, behind a
+ * teal "on" dot.
+ */
 export function RailsCard() {
+  const coach = tokens.summit.coach
   return (
     <Box
       sx={{
-        px: '14px',
-        py: '12px',
-        borderRadius: `${tokens.radius.panel}px`,
-        border: `1px solid ${tokens.ink.border}`,
-        bgcolor: tokens.ink.panel,
-        fontSize: tokens.font.size.caption,
-        lineHeight: tokens.font.leading.small,
-        color: tokens.ink.label,
+        px: '16px',
+        py: '14px',
+        borderRadius: `${tokens.summit.radius.wellLarge}px`,
+        background: coach.bg,
+        color: coach.text,
+        fontSize: tokens.font.size.small,
+        fontWeight: tokens.font.weight.body,
+        lineHeight: tokens.font.leading.body,
       }}
     >
-      <Box sx={{ mb: '4px', fontWeight: tokens.font.weight.heading, color: tokens.ink.text }}>
-        Rails the AI works inside
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: tokens.font.weight.heading }}>
+        <Box
+          component="span"
+          aria-hidden
+          sx={{ width: 7, height: 7, flex: 'none', borderRadius: '50%', bgcolor: tokens.tone.success.light }}
+        />
+        Rails on
       </Box>
       Calorie floor and proposal ceiling · protein and fat minimums · two 24 h fasts a month · machines and
       free weights only. Only you change these, in Settings.

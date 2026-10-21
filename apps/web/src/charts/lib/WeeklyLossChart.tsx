@@ -1,6 +1,8 @@
-// Owns: weekly trend change as bars about zero (a loss hangs below the line) against the forecast's expected
-// change per week (a 1 px dashed grey line with small markers). 2a: wide accent bars with the data end rounded, the
-// change written at the end of each bar (12/600), the zero line as the baseline.
+// Owns: weekly trend change against the forecast's expected change per week (1d). A week's loss is a wide bar growing
+// up from the baseline — its height the kilograms lost, filled with the weight ramp (plum at the foot, coral at the
+// top), 14 px top corners and 6 px feet — with the change written above it (Outfit 16, "−0.8"); a week that gained
+// hangs below the baseline in the warning tint. The expected loss is the dashed gold plan line across the plot. No y
+// axis: every bar carries its value, and the tooltip the exact kilograms.
 import { formatShortDate, formatSigned, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
@@ -9,17 +11,17 @@ import {
   WEEK_BAR_MAX,
   barCursor,
   barMotion,
-  tickCount,
-  tickInterval,
-  dataEndBarPath,
-  gridStyle,
+  barXAxisStyle,
   niceScale,
+  planLine,
+  rampGradient,
   rechartsSize,
   seriesSummary,
   surfaceText,
+  tickInterval,
   tooltip,
-  xAxisStyle,
-  yAxisStyle,
+  useFadeId,
+  wideBarPath,
   type ChartSizeProps,
 } from './frame'
 import { Plot } from './plot'
@@ -39,30 +41,35 @@ export interface WeeklyLossChartProps extends ChartSizeProps {
 }
 
 const C = tokens.metric.weight
-/** Room past the lowest/highest bar for its label, as a share of the value range. */
-const LABEL_ROOM = 0.18
+/** Room above the tallest bar for its label, as a share of the value range. */
+const LABEL_ROOM = 0.3
+/** Past this many weeks the value labels would touch: only the tooltip carries them. */
+const MAX_LABELLED = 10
 const kgWeek = (v: number | null | undefined) =>
   v === null || v === undefined ? null : `${formatSigned(v, 2)} kg`
 
-/** Bar shape with the data end rounded, whichever side of zero it falls. */
-function LossBar(props: {
-  x?: number
-  y?: number
-  width?: number
-  height?: number
-  value?: number | [number, number]
-  fill?: string
-}) {
-  const { x = 0, y = 0, width = 0, height = 0, fill } = props
-  const v = Array.isArray(props.value) ? props.value[1] - props.value[0] : (props.value ?? 0)
-  const d = dataEndBarPath(x, y, width, height, v >= 0, BAR_END_RADIUS)
-  return d ? <path d={d} fill={fill} /> : null
+interface Row extends WeeklyLossPoint {
+  /** Kilograms lost (a gain is negative): the bar's height. */
+  lost: number
 }
 
-/** 2a rounds the end of these wide bars a little more than a day bar. */
-const BAR_END_RADIUS = 4
+/** The wide bar: the loss ramp upward, a gain in the warning tint below the baseline. */
+function lossBar(fill: string) {
+  return function LossBar(props: {
+    x?: number
+    y?: number
+    width?: number
+    height?: number
+    payload?: unknown
+  }) {
+    const { x = 0, y = 0, width = 0, height = 0 } = props
+    const lost = (props.payload as Row | undefined)?.lost ?? 0
+    const d = wideBarPath(x, y, width, height, lost >= 0)
+    return d ? <path d={d} fill={lost >= 0 ? fill : tokens.tone.warning.bg} /> : <g />
+  }
+}
 
-/** The change written just past the data end of its bar: above a gain, below a loss. */
+/** The change written just past the data end of its bar: above a loss, below a gain. */
 function EndLabel(props: {
   x?: number | string
   y?: number | string
@@ -77,13 +84,15 @@ function EndLabel(props: {
   const h = Number(props.height ?? 0)
   const top = Math.min(y, y + h)
   const bottom = Math.max(y, y + h)
+  // `value` is the change (negative = loss), so a loss's label sits above its upward bar.
   return (
     <text
       x={x}
-      y={v < 0 ? bottom + 14 : top - 6}
+      y={v <= 0 ? top - 8 : bottom + 18}
       textAnchor="middle"
-      fontSize={tokens.font.size.caption}
-      fontWeight={tokens.font.weight.heading}
+      fontFamily={tokens.font.display}
+      fontSize={tokens.font.size.itemTitle}
+      fontWeight={tokens.font.weight.number}
       fill={tokens.ink.text}
     >
       {formatSigned(v, 1)}
@@ -92,46 +101,47 @@ function EndLabel(props: {
 }
 
 export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: WeeklyLossChartProps) {
-  // Ticks print one decimal, so every step is a multiple of 0.1 (a 0.25 step would print −0.75 as "−0.8").
-  const values = weeks.flatMap((w) => [w.change, w.expected ?? 0])
-  const span = Math.max(0.1, Math.max(0, ...values) - Math.min(0, ...values))
-  const y = niceScale(
-    [
-      ...values,
-      Math.min(0, ...values) - (Math.min(...values) < 0 ? span * LABEL_ROOM : 0),
-      Math.max(0, ...values) + (Math.max(...values) > 0 ? span * LABEL_ROOM : 0),
-    ],
-    { zero: true, count: tickCount(height), minStep: 0.1 },
-  )
-  const Tip = tooltip<WeeklyLossPoint>(
+  const fillId = useFadeId('loss-ramp')
+  const rows: Row[] = weeks.map((w) => ({ ...w, lost: -w.change }))
+  const lost = rows.map((r) => r.lost)
+  const expectedLoss = weeks
+    .map((w) => (typeof w.expected === 'number' && Number.isFinite(w.expected) ? -w.expected : null))
+    .filter((v): v is number => v !== null)
+  // The forecast's rate is usually the same every week: one dashed line (1d), else a dashed step per week.
+  const steady =
+    expectedLoss.length > 0 && Math.max(...expectedLoss) - Math.min(...expectedLoss) < 0.005
+      ? expectedLoss[0]!
+      : null
+  const top = Math.max(0, ...lost, ...expectedLoss)
+  const bottom = Math.min(0, ...lost)
+  const span = Math.max(0.1, top - bottom)
+  const y = niceScale([bottom - (bottom < 0 ? span * LABEL_ROOM : 0), top + span * LABEL_ROOM], {
+    zero: true,
+    count: 2,
+    minStep: 0.1,
+  })
+  const Tip = tooltip<Row>(
     (w) => `Week of ${w.week}`,
     [
       { label: 'Trend change', color: C, value: (w) => kgWeek(w.change) },
-      { label: 'Expected', color: tokens.chart.target, dashed: true, value: (w) => kgWeek(w.expected) },
+      { label: 'Expected', color: tokens.chart.plan, dashed: true, value: (w) => kgWeek(w.expected) },
     ],
   )
-  // The forecast's rate is usually the same every week: then it is one dashed line labelled at the right (2a), not a
-  // line through a marker per week.
-  const expected = weeks
-    .map((w) => w.expected)
-    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-  const steady =
-    expected.length > 0 && Math.max(...expected) - Math.min(...expected) < 0.005 ? expected[0]! : null
   const items: LegendItem[] = [
     { label: 'Trend change', color: C, mark: 'bar' },
-    { label: 'Expected', color: tokens.chart.target, mark: 'dashed' },
+    { label: 'Expected', color: tokens.chart.plan, mark: 'dashed' },
   ]
   const label = 'Weekly trend change versus expected'
   const summary = `Weeks of ${seriesSummary(
     weeks.map((w) => ({ date: w.week, value: w.change })),
     (v) => `${formatSigned(v, 2)} kg`,
-  )}`
+  )}${steady !== null ? ` Expected ${formatSigned(-steady, 2)} kg a week.` : ''}`
   return (
     <ChartFrame
       testId="chart-weekly-loss"
       label={label}
       legend={legend ? items : undefined}
-      unit="kg / week"
+      legendPlacement="bottom"
       width={width}
       height={height}
       empty={weeks.length === 0}
@@ -139,53 +149,42 @@ export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: W
       <Plot width={width} height={height}>
         {(R, plotWidth) => (
           <R.ComposedChart
-            data={weeks}
-            margin={MARGIN}
-            barCategoryGap="24%"
+            data={rows}
+            margin={{ ...MARGIN, top: 4, left: 8, right: 8 }}
+            barCategoryGap="22%"
             {...rechartsSize(width, height)}
             {...surfaceText(label, summary)}
           >
-            <R.CartesianGrid {...gridStyle} />
+            <defs>{rampGradient(fillId, 'weight')}</defs>
             <R.XAxis
-              {...xAxisStyle}
+              {...barXAxisStyle}
+              axisLine={false}
               dataKey="week"
               tickFormatter={(d: string) => formatShortDate(d)}
-              interval={tickInterval(weeks.length, plotWidth)}
+              interval={tickInterval(rows.length, plotWidth, 0)}
+              tick={{ ...barXAxisStyle.tick, fontSize: tokens.font.size.caption }}
             />
-            <R.YAxis
-              {...yAxisStyle}
-              domain={y.domain}
-              ticks={y.ticks}
-              tickFormatter={(v: number) => (v === 0 ? '0' : formatSigned(v, 1))}
-            />
+            <R.YAxis hide domain={y.domain} />
             <R.Tooltip content={Tip} cursor={barCursor} />
-            <R.ReferenceLine y={0} stroke={tokens.chart.baseline} strokeWidth={1} />
-            <R.Bar dataKey="change" fill={C} maxBarSize={WEEK_BAR_MAX} shape={LossBar} {...barMotion(width)}>
-              <R.LabelList dataKey="change" content={EndLabel} />
+            {bottom < 0 && <R.ReferenceLine y={0} stroke={tokens.chart.baseline} strokeWidth={1} />}
+            <R.Bar
+              dataKey="lost"
+              fill={`url(#${fillId})`}
+              maxBarSize={WEEK_BAR_MAX}
+              shape={lossBar(`url(#${fillId})`)}
+              {...barMotion(width)}
+            >
+              {rows.length <= MAX_LABELLED && <R.LabelList dataKey="change" content={EndLabel} />}
             </R.Bar>
             {steady !== null ? (
-              <R.ReferenceLine
-                y={steady}
-                stroke={tokens.chart.target}
-                strokeWidth={1}
-                strokeDasharray={tokens.chart.targetDash}
-                ifOverflow="extendDomain"
-                label={{
-                  value: formatSigned(steady, 2),
-                  position: 'insideBottomRight',
-                  fill: tokens.chart.axis,
-                  fontSize: tokens.chart.axisFontSize,
-                }}
-              />
+              <R.ReferenceLine y={steady} {...planLine} ifOverflow="extendDomain" />
             ) : (
               <R.Line
-                dataKey="expected"
-                stroke={tokens.chart.target}
-                strokeWidth={1}
-                strokeDasharray={tokens.chart.targetDash}
-                dot={{ r: 2.5, fill: tokens.chart.target, stroke: tokens.ink.card, strokeWidth: 1 }}
+                dataKey={(r: Row) => (typeof r.expected === 'number' ? -r.expected : null)}
+                {...planLine}
+                dot={false}
                 activeDot={false}
-                type="linear"
+                type="step"
                 connectNulls
                 isAnimationActive={false}
               />

@@ -33,6 +33,8 @@ import {
   xAxisStyle,
   yAxisStyle,
   type ChartSizeProps,
+  rampGradient,
+  useFadeId,
 } from './frame'
 import { Plot } from './plot'
 import { bedtimeLabel, bedtimeMinutes } from './stats'
@@ -61,8 +63,8 @@ const C = tokens.metric.sleep
 /** A night short of the target: the sleep colour's lighter step. */
 const SHORT = tintOnCard(C, UNDER_TARGET_ALPHA)
 
-/** One night's bar: full colour at or over the target, the light step under it. */
-function nightBar(target: number | undefined) {
+/** One night's bar: the sleep ramp at or over the target (`fill`, a gradient), the light step under it. */
+function nightBar(target: number | undefined, fill: string) {
   return function NightBar(p: {
     x?: number
     y?: number
@@ -73,12 +75,13 @@ function nightBar(target: number | undefined) {
     const hours = (p.payload as Row | undefined)?.hours
     const d = dataEndBarPath(p.x ?? 0, p.y ?? 0, p.width ?? 0, p.height ?? 0, true)
     const short = target !== undefined && typeof hours === 'number' && hours < target
-    return d ? <path d={d} fill={short ? SHORT : C} /> : <g />
+    return d ? <path d={d} fill={short ? SHORT : fill} /> : <g />
   }
 }
 
 export function SleepChart({ nights, target, width, height = 300, legend = true }: SleepChartProps) {
   const syncId = useId()
+  const rampId = useFadeId('sleep-ramp')
   const rows: Row[] = nights.map((n) => ({ ...n, bed: n.bedtime ? bedtimeMinutes(n.bedtime) : null }))
   const topH = Math.round(height * 0.52)
   const bottomH = height - topH
@@ -151,6 +154,7 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
             {...rechartsSize(width, topH)}
             {...surfaceText('Hours asleep per night', hoursSummary)}
           >
+            <defs>{rampGradient(rampId, 'sleep')}</defs>
             <R.CartesianGrid {...gridStyle} />
             <R.XAxis {...xAxisStyle} dataKey="date" hide />
             <R.YAxis {...yAxisStyle} domain={hours.domain} ticks={hours.ticks} />
@@ -160,7 +164,7 @@ export function SleepChart({ nights, target, width, height = 300, legend = true 
               fill={C}
               maxBarSize={BAR_MAX}
               radius={BAR_RADIUS}
-              shape={nightBar(target)}
+              shape={nightBar(target, `url(#${rampId})`)}
               {...motion}
             />
             <R.ReferenceLine y={0} stroke={tokens.chart.baseline} strokeWidth={1} />

@@ -1,7 +1,7 @@
-// Owns: the per-route shell settings (title, tab, breadcrumb trail, width, quick-log button) carried in each route's
-// `handle`, and the hook the shell uses to read the deepest one. The route table is the single place a page declares
-// its chrome.
+// Owns: the per-route shell settings (title, tab, trail, width, sky) carried in each route's `handle`, and the hook
+// the shell uses to read the deepest one. The route table is the single place a page declares its chrome.
 import { useMatches } from 'react-router'
+import type { HeroVariant } from '../../theme'
 import type { TabKey } from '../ui-store'
 import { APP_NAME } from '../brand'
 
@@ -14,22 +14,26 @@ export interface Crumb {
 }
 
 export interface RouteHandle {
-  /** The page's name: the breadcrumb's last step, the phone bar's title and the document title. */
+  /** The page's name: the sky's fallback title (a page without its own header) and the document title. */
   title: string
-  /** The bottom tab this page is. Pages without one get a back arrow on the phone instead. */
+  /**
+   * The bottom tab this page is. Pages without one get a back circle on the phone instead of the logo — except the
+   * nav's own Scans and Settings, which it links to directly.
+   */
   tab?: TabKey
   /**
-   * The pages above this one, outermost first ("Train" above "Session"). The header's breadcrumb links each, and the
-   * sidebar marks the first as the section the page belongs to. A top-level page has none.
+   * The pages above this one, outermost first ("Train" above "Session"). The nav marks the first as the section the
+   * page belongs to. A top-level page has none.
    */
   trail?: readonly Crumb[]
   /**
-   * 'wide' gives the page the whole content column (2a's 1,144 px at a 1,440 px window); 'narrow' keeps a reading
-   * column (a phone-width one under `md`). Default 'narrow'.
+   * 'wide' gives the page the whole content column (1d's 1,328 px); 'narrow' keeps a reading column (820 px from
+   * `md`, a phone-width one under it). Default 'narrow'.
    */
   width?: PageWidth
-  /** Show the floating quick-log button (phones; the desktop pages carry their own "Log" button). */
-  quickLog?: boolean
+  /** The sky: Today's full one, an inner page's (default) or the compact one (Ask AI, Settings). A page's
+   * `PageHeader variant` overrides it while mounted. */
+  hero?: HeroVariant
 }
 
 const FALLBACK: RouteHandle = { title: APP_NAME }

@@ -3,11 +3,13 @@
 // guard and other call-outs, the debrief with its milestone updates and proposals, the scan charts, and every value
 // against the previous scan and the baseline; "Edit values" re-confirms, "Delete this scan" (at the foot) removes a
 // wrong scan after a confirm.
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
+import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
 import type { Scan, ScanFlag } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
@@ -25,9 +27,11 @@ import {
   staggerDelay,
   StatCard,
   StatusChip,
+  wrapCol,
+  WrapRow,
   type BannerTone,
 } from '../../../components'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { clockOf, todayLocal } from '../../quick-log'
 import { DeleteScanDialog } from './DeleteScanDialog'
 import { DeltaTable } from './DeltaTable'
@@ -56,9 +60,34 @@ const FLAG_TITLE: Record<ScanFlag['code'], string> = {
   other: 'Note',
 }
 
-/** The page's single column (2a: 20 px between sections), which never grows past the viewport. */
-const page = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 5 } as const
-/** 2a's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
+/** The page's single column (1d: 26 px between rows), which never grows past the viewport. */
+const page = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: `${tokens.rhythm.section}px`,
+} as const
+/** The headline tiles wrap at 150 px each (README §4's tile basis): four across, two on a phone. */
+const tile = wrapCol(1, tokens.layout.wrapBasis.tile)
+
+/** The eyebrow's way back to Scans (1d's nav has no breadcrumb; a phone also has its back circle). */
+const crumb = (
+  <Link
+    component={RouterLink}
+    to="/scans"
+    underline="hover"
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+    }}
+  >
+    <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
+    Scans
+  </Link>
+)
+
+/** 1d's entrance: each card group after the header rises in, a section's stagger apart, in reading order. */
 const enter = (i: number) => staggerDelay(i, tokens.motion.stagger.section)
 
 /** Height, age and sex for a blank form: the latest confirmed scan, else the profile. */
@@ -111,7 +140,11 @@ function ManualEntry() {
   if (!fallback.ready) return <Skeleton variant="rounded" height={320} />
   return (
     <Box sx={page}>
-      <PageHeader title="Enter a scan by hand" subtitle="Every value from the Evolt sheet, in kg." />
+      <PageHeader
+        eyebrow={crumb}
+        title="Enter a scan by hand"
+        subtitle="Every value from the Evolt sheet, in kg."
+      />
       <ReviewForm
         scanId={id}
         initial={formFrom({ fallback })}
@@ -157,6 +190,7 @@ function PendingScan({ scan }: { scan: Scan }) {
     return (
       <Box sx={page}>
         <PageHeader
+          eyebrow={crumb}
           title={scan.extracted && !manual ? 'Check the values' : 'Enter the values'}
           subtitle={`Uploaded ${scanDay(scan.date)}`}
           action={actions}
@@ -175,7 +209,12 @@ function PendingScan({ scan }: { scan: Scan }) {
 
   return (
     <Box sx={page}>
-      <PageHeader title="New scan" subtitle={`Uploaded ${scanDay(scan.date)}`} action={actions} />
+      <PageHeader
+        eyebrow={crumb}
+        title="New scan"
+        subtitle={`Uploaded ${scanDay(scan.date)}`}
+        action={actions}
+      />
       {reading && !x?.error && (
         <Box
           sx={{
@@ -343,7 +382,7 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
   if (editing)
     return (
       <Box sx={page}>
-        <PageHeader title="Edit scan values" subtitle="Saving re-runs the analysis." />
+        <PageHeader eyebrow={crumb} title="Edit scan values" subtitle="Saving re-runs the analysis." />
         <ReviewForm
           scanId={scan.id}
           initial={formFrom({ record: r, fallback })}
@@ -359,6 +398,7 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
     <Box sx={page} data-testid="scan-page">
       <Box>
         <PageHeader
+          eyebrow={crumb}
           title={`Scan · ${scanDay(scan.date)}`}
           subtitle={`Evolt 360 at ${formatClock(r.scanned_at)} · ${prev ? `changes since ${formatShortDate(prev.date)}` : 'the baseline'}`}
           action={
@@ -380,46 +420,48 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
       </Box>
 
       <Reveal delay={enter(2)}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
-            gap: { xs: 3, md: 4 },
-          }}
-        >
-          <StatCard
-            label="Weight"
-            value={r.weight_kg}
-            unit="kg"
-            precision={1}
-            metric="weight"
-            delta={delta(prev?.fat_vs_lean.weight_kg, 'down')}
-          />
-          <StatCard
-            label="Body fat"
-            value={r.body_fat_pct}
-            unit="%"
-            precision={1}
-            metric="fatMass"
-            delta={delta(prev?.deltas.body_fat_pct, 'down')}
-          />
-          <StatCard
-            label="Fat mass"
-            value={r.body_fat_mass_kg}
-            unit="kg"
-            precision={1}
-            metric="fatMass"
-            delta={delta(prev?.fat_vs_lean.fat_kg, 'down')}
-          />
-          <StatCard
-            label="Lean mass"
-            value={r.lean_body_mass_kg}
-            unit="kg"
-            precision={1}
-            metric="lean"
-            delta={delta(prev?.fat_vs_lean.lean_kg, 'up')}
-          />
-        </Box>
+        <WrapRow gap={tokens.summit.space.gap.tile}>
+          <Box sx={tile}>
+            <StatCard
+              label="Weight"
+              value={r.weight_kg}
+              unit="kg"
+              precision={1}
+              metric="weight"
+              delta={delta(prev?.fat_vs_lean.weight_kg, 'down')}
+            />
+          </Box>
+          <Box sx={tile}>
+            <StatCard
+              label="Body fat"
+              value={r.body_fat_pct}
+              unit="%"
+              precision={1}
+              metric="fatMass"
+              delta={delta(prev?.deltas.body_fat_pct, 'down')}
+            />
+          </Box>
+          <Box sx={tile}>
+            <StatCard
+              label="Fat mass"
+              value={r.body_fat_mass_kg}
+              unit="kg"
+              precision={1}
+              metric="fatMass"
+              delta={delta(prev?.fat_vs_lean.fat_kg, 'down')}
+            />
+          </Box>
+          <Box sx={tile}>
+            <StatCard
+              label="Lean mass"
+              value={r.lean_body_mass_kg}
+              unit="kg"
+              precision={1}
+              metric="lean"
+              delta={delta(prev?.fat_vs_lean.lean_kg, 'up')}
+            />
+          </Box>
+        </WrapRow>
       </Reveal>
 
       {/* role="status": a polite live region (the call-outs arrive with the page; an alert would interrupt). */}
@@ -476,14 +518,14 @@ export function ScanPage() {
   if (isQueryLoading(scan))
     return (
       <Box sx={page}>
-        <PageHeader title="Scan" />
-        <Skeleton variant="rounded" height={220} />
+        <PageHeader eyebrow={crumb} title="Scan" />
+        <Skeleton variant="rounded" height={220} sx={{ borderRadius: `${tokens.radius.card}px` }} />
       </Box>
     )
   if (!scan.data)
     return (
       <Box sx={page}>
-        <PageHeader title="Scan" />
+        <PageHeader eyebrow={crumb} title="Scan" />
         <QueryStateCard query={scan} what="this scan" />
       </Box>
     )

@@ -1,6 +1,7 @@
-// Owns: the training charts — weekly volume stacked flush by muscle group in the muscle-map blue steps (2a), strength
-// per exercise (top-set load and Epley e1RM in the accent), and the week plan vs actuals (planned vs eaten kcal per
-// weekday with the session status under it).
+// Owns: the training charts — weekly volume as 1d's wide stacked bars (deep ink → plum → violet → lilac, bottom to top,
+// 14 px top and 6 px feet on the whole stack, the week's total in tonnes above it, the keys under the plot), strength per
+// exercise (top-set load and Epley e1RM in the accent, the latest session haloed), and the week plan vs actuals
+// (planned vs eaten kcal per weekday with the session status under it).
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
@@ -8,6 +9,7 @@ import {
   ChartFrame,
   MARGIN,
   WEEK_BAR_MAX,
+  WEEK_BAR_RADIUS,
   barCursor,
   barMotion,
   barXAxisStyle,
@@ -46,9 +48,43 @@ export interface VolumeWeek {
 
 export interface TrainingVolumeChartProps extends Common {
   weeks: readonly VolumeWeek[]
-  /** Up to four groups, bottom → top; coloured with the muscle-map blue steps (darkest first). */
+  /** Up to four groups, bottom → top; coloured deep ink, plum, bright violet, lilac (1d's Dashboard). */
   groups: readonly VolumeGroup[]
 }
+
+/** 1d's volume stack, bottom → top (the Dashboard mock: legs darkest, arms lightest; the deepest step is the deep ink). */
+const VOLUME_STEPS = [
+  tokens.summit.ink.deep,
+  tokens.summit.plum,
+  tokens.accent.bright,
+  tokens.accent.soft,
+] as const
+
+/** "16.4 t" from 1,000 kg up, else "820 kg". */
+const tonnage = (kg: number) =>
+  kg >= 1000 ? `${formatNumber(kg / 1000, kg >= 100_000 ? 0 : 1)} t` : `${formatNumber(kg)} kg`
+
+/** The week's total written above its stack (Outfit 15). */
+function TotalLabel(props: { x?: number | string; y?: number | string; value?: unknown }) {
+  const v = typeof props.value === 'number' ? props.value : null
+  if (v === null || v <= 0) return null
+  return (
+    <text
+      x={Number(props.x ?? 0)}
+      y={Number(props.y ?? 0) - 8}
+      textAnchor="middle"
+      fontFamily={tokens.font.display}
+      fontSize={tokens.font.size.emphasis}
+      fontWeight={tokens.font.weight.number}
+      fill={tokens.ink.text}
+    >
+      {tonnage(v)}
+    </text>
+  )
+}
+
+/** Past this many weeks the totals would touch: only the tooltip carries them. */
+const MAX_LABELLED_WEEKS = 8
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
 const weekLabel = (s: string) => (isDate(s) ? formatShortDate(s) : s)
@@ -60,25 +96,22 @@ export function TrainingVolumeChart({
   height = 220,
   legend = true,
 }: TrainingVolumeChartProps) {
-  const steps = [...tokens.muscleMap.steps].reverse()
-  const series = groups.slice(0, steps.length).map((g, i) => ({ ...g, color: steps[i]! }))
-  const rows = weeks.map((w) => ({
+  const series = groups.slice(0, VOLUME_STEPS.length).map((g, i) => ({ ...g, color: VOLUME_STEPS[i]! }))
+  const totals = weeks.map((w) => series.reduce((s, g) => s + (w.volume[g.key] ?? 0), 0))
+  const rows = weeks.map((w, i) => ({
     week: w.week,
+    total: totals[i]!,
     ...Object.fromEntries(series.map((s) => [s.key, w.volume[s.key] ?? 0])),
   }))
-  const totals = weeks.map((w) => series.reduce((s, g) => s + (w.volume[g.key] ?? 0), 0))
-  const y = niceScale(totals, { zero: true, count: tickCount(height) })
-  // 2a labels a tonnage axis in tonnes ("16", "8", "0" under a "t" caption); the tooltip keeps exact kg.
-  const tonnes = y.domain[1] >= 2000
+  const labelled = rows.length <= MAX_LABELLED_WEEKS
+  // Headroom over the tallest stack for its total: ≈ 22 px of the plot.
+  const peak = Math.max(1, ...totals)
+  const domain: [number, number] = [0, labelled ? peak * (1 + 26 / Math.max(80, height - 30)) : peak]
   const fmt = (v: number) => `${formatNumber(v)} kg`
   const Tip = tooltip<(typeof rows)[number]>(
     (r) => `Week of ${r.week}`,
     [
-      {
-        label: 'Total',
-        color: tokens.ink.text,
-        value: (r) => fmt(series.reduce((s, g) => s + Number((r as Record<string, unknown>)[g.key] ?? 0), 0)),
-      },
+      { label: 'Total', color: tokens.chart.tooltip.muted, value: (r) => fmt(r.total) },
       ...[...series].reverse().map((g) => ({
         label: g.label,
         color: g.color,
@@ -98,50 +131,62 @@ export function TrainingVolumeChart({
       testId="chart-training-volume"
       label={label}
       legend={legend ? items : undefined}
-      unit={tonnes ? 't (sets × reps × kg)' : 'kg (sets × reps × load)'}
+      legendPlacement="bottom"
       width={width}
       height={height}
       empty={weeks.length === 0}
     >
       <Plot width={width} height={height}>
-        {(R, plotWidth) => (
-          <R.BarChart
-            data={rows}
-            margin={MARGIN}
-            barCategoryGap="24%"
-            {...rechartsSize(width, height)}
-            {...surfaceText(label, summary)}
-          >
-            <R.CartesianGrid {...gridStyle} />
-            <R.XAxis
-              {...barXAxisStyle}
-              dataKey="week"
-              tickFormatter={weekLabel}
-              interval={tickInterval(rows.length, plotWidth)}
-            />
-            <R.YAxis
-              {...yAxisStyle}
-              domain={y.domain}
-              ticks={y.ticks}
-              tickFormatter={(v: number) =>
-                tonnes ? formatNumber(v / 1000, v % 1000 === 0 ? 0 : 1) : formatNumber(v)
-              }
-            />
-            <R.Tooltip content={Tip} cursor={barCursor} />
-            <R.BarStack stackId="volume" radius={BAR_RADIUS}>
-              {series.map((s) => (
-                <R.Bar
-                  key={s.key}
-                  dataKey={s.key}
-                  name={s.label}
-                  fill={s.color}
-                  maxBarSize={WEEK_BAR_MAX}
-                  {...barMotion(width)}
+        {(R, plotWidth) => {
+          // The stack's corners never exceed half its width: ≈ (plot ÷ weeks) × (1 − the 24 % gap), at most 120 px.
+          const barWidth = Math.min(WEEK_BAR_MAX, (plotWidth / Math.max(1, rows.length)) * 0.76)
+          const top = Math.min(WEEK_BAR_RADIUS.top, barWidth / 2)
+          const foot = Math.min(WEEK_BAR_RADIUS.foot, barWidth / 2)
+          return (
+            <R.ComposedChart
+              data={rows}
+              margin={{ ...MARGIN, top: 4, left: 8, right: 8 }}
+              barCategoryGap="24%"
+              {...rechartsSize(width, height)}
+              {...surfaceText(label, summary)}
+            >
+              <R.XAxis
+                {...barXAxisStyle}
+                axisLine={false}
+                dataKey="week"
+                tickFormatter={weekLabel}
+                interval={tickInterval(rows.length, plotWidth, 0)}
+                tick={{ ...barXAxisStyle.tick, fontSize: tokens.font.size.caption }}
+              />
+              <R.YAxis hide domain={domain} />
+              <R.Tooltip content={Tip} cursor={barCursor} />
+              <R.BarStack stackId="volume" radius={[top, top, foot, foot]}>
+                {series.map((s) => (
+                  <R.Bar
+                    key={s.key}
+                    dataKey={s.key}
+                    name={s.label}
+                    fill={s.color}
+                    maxBarSize={WEEK_BAR_MAX}
+                    {...barMotion(width)}
+                  />
+                ))}
+              </R.BarStack>
+              {labelled && (
+                <R.Line
+                  dataKey="total"
+                  stroke="none"
+                  dot={false}
+                  activeDot={false}
+                  isAnimationActive={false}
+                  legendType="none"
+                  tooltipType="none"
+                  label={TotalLabel}
                 />
-              ))}
-            </R.BarStack>
-          </R.BarChart>
-        )}
+              )}
+            </R.ComposedChart>
+          )
+        }}
       </Plot>
     </ChartFrame>
   )

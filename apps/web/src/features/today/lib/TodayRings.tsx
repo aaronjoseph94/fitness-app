@@ -1,27 +1,26 @@
-// Owns: Today's five stat cards (2a) — calories, protein, water, steps and last night's sleep: the amount against its
-// target ("860 / 1,400 kcal"), a 6 px bar in the metric colour, and a caption whose key figure is what is left (or
-// when he slept); queued logs added in. Each card is a `group` named with the whole sentence in the units the day
-// stores ("Water: 1,750 of 3,000 ml"), so the amount and its target are one announcement. Under the cards, only when
-// there is something to say: the fast badge (fasting now, or a fast day), the pending count, meals that count once
-// synced, and the manual steps/sleep entry. While the day loads, five placeholders of the card's height hold the grid.
-import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
-import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
-import EggAltRounded from '@mui/icons-material/EggAltRounded'
-import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
+// Owns: Today's "Today's fuel" card (1d README §5.1) — "As of" the day's last read, then five capsule gauges in one row
+// at every width (kcal left, protein, water, steps, last night's sleep): each fills with its metric ramp to the share of
+// its target (the kcal capsule fills with what is eaten), shows its figure (counting up) over "of <target>", and is a
+// `group` named with the whole reading in the units the day stores ("Water: 1,750 of 3,000 ml"; calories as eaten, with
+// what is left after it), so the e2e helpers and assistive tech read one sentence; queued logs are added in. Under the
+// gauges, only when there is something to say: the fast badge (fasting now, or a fast day), the pending count, meals
+// that count once synced, and the manual steps/sleep entry. While the day loads the card holds its shape.
 import TimerRounded from '@mui/icons-material/TimerRounded'
-import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
-import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import type { DayView } from '@fitness/shared/schemas'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import {
+  CapsuleGauge,
+  CapsuleGaugeRow,
+  cardSurface,
+  CountUp,
+  displayTitle,
   formatClock,
   formatNumber,
   PendingBadge,
-  Reveal,
-  StatCard,
+  sizeContainer,
   StatusChip,
   staggerDelay,
 } from '../../../components'
@@ -31,31 +30,11 @@ import type { PendingToday } from './pending'
 /** SPEC §9 readiness compares sleep with 7.5 h. */
 export const SLEEP_TARGET_H = 7.5
 
-/** A 2a stat card's rendered height (label, value, bar, caption), so the placeholders hold the row. */
-const CARD_HEIGHT = 138
+/** The mock's capsule height on a phone and a desktop card, for the placeholder (clamp(80px, 26cqi, 170px) + text). */
+const GAUGES_HEIGHT = 'clamp(150px, calc(26cqi + 74px), 250px)'
 
-/** The card grid: two across on a phone (sleep takes the last row), from 600 px three over two on six tracks, all five
- * in one row from `lg`: never an empty cell. */
-const GRID = {
-  display: 'grid',
-  // A slightly tighter gap on a phone buys each half-width card the few pixels a four-digit number needs.
-  gap: { xs: 2, sm: 4 },
-  gridTemplateColumns: {
-    xs: 'repeat(2, minmax(0, 1fr))',
-    sm: 'repeat(6, minmax(0, 1fr))',
-    lg: 'repeat(5, minmax(0, 1fr))',
-  },
-} as const
-
-/** Card `i`'s place in GRID: the fifth spans a phone's row; from `sm` the first three take two of the six tracks and
- * the last two take three. */
-const cellSx = (i: number) => ({
-  minWidth: 0,
-  gridColumn: { xs: i === 4 ? 'span 2' : 'auto', sm: `span ${i < 3 ? 2 : 3}`, lg: 'auto' },
-})
-
-/** 2a's stagger: the row starts after the title and the cards follow 60 ms apart. */
-const cardDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.card, 100)
+/** The gauges grow 100 ms apart after the card rises (README §6). */
+const gaugeDelay = (i: number) => staggerDelay(i, 100, 500)
 
 function useMinuteClock(): number {
   const [now, setNow] = useState(() => Date.now())
@@ -66,20 +45,22 @@ function useMinuteClock(): number {
   return now
 }
 
-interface Stat {
+interface Gauge {
   id: 'calories' | 'protein' | 'water' | 'steps' | 'sleep'
-  label: string
   metric: MetricKey
-  icon: SvgIconComponent
-  /** The amount as shown (litres for water); null when not logged. */
+  /** What the figure reads ("kcal left", "protein"). */
+  label: string
+  /** The figure; null when not logged. */
   shown: number | null
   precision: number
-  /** "/ 1,400 kcal", or the bare unit without a target. */
-  unit: string
-  progress: number | null
-  /** The card's accessible name, in the stored unit: "Water: 1,750 of 3,000 ml". */
+  /** Beside the figure at .62em ("g", "L", "h"). */
+  unit?: string
+  /** The fill, 0–1+; null for none. */
+  ratio: number | null
+  /** "of 1,400", or why there is no target. */
+  caption: ReactNode
+  /** The gauge's accessible name, in the stored unit: "Water: 1,750 of 3,000 ml". */
   name: string
-  footnote: ReactNode
 }
 
 /** "Water: 1,750 of 3,000 ml" with a target, "Steps: — steps" without one. */
@@ -90,15 +71,15 @@ function sentence(label: string, value: number | null, target: number, unit: str
     : `${label}: ${amount} ${unit}`
 }
 
-/** Litres for a card: "1.75", and "3.0" for a round amount. */
+/** Litres for a gauge: "1.75", and "3.0" for a round amount. */
 const litrePrecision = (ml: number) => (ml % 100 === 0 ? 1 : 2)
-const litres = (ml: number) => formatNumber(ml / 1000, litrePrecision(ml))
+const litres = (ml: number) => formatNumber(ml / 1000, ml % 1000 === 0 ? 0 : litrePrecision(ml))
 
-const toGo = (left: number, unit: string) =>
-  left > 0 ? <strong>{`${formatNumber(left)}${unit} to go`}</strong> : <strong>Target met</strong>
+const ratioOf = (value: number | null, target: number) =>
+  value !== null && target > 0 ? value / target : null
 
-/** The five cards for a day, with queued logs added in. Pure. */
-export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: number): Stat[] {
+/** The five gauges for a day, with queued logs added in. Pure. */
+export function gaugesFor(day: DayView, pending: PendingToday, waterTargetMl: number): Gauge[] {
   const t = day.targets
   const fastDay = day.fast.is_fast_day || t?.is_fast_day === true
   const noTarget = fastDay ? 'Fast day' : 'No target yet'
@@ -106,7 +87,6 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
   const eaten = Math.round(day.intake.total.kcal)
   const kcalTarget = t?.kcal ?? 0
   const left = kcalTarget - eaten
-  const meals = day.intake.meals_logged
   const protein = Math.round(day.intake.total.protein_g)
   const proteinTarget = t?.protein_g ?? 0
   const waterMl = day.water_ml + pending.waterMl
@@ -115,90 +95,72 @@ export function statsFor(day: DayView, pending: PendingToday, waterTargetMl: num
   const stepsTarget = t?.steps ?? 0
   const sleepMin = day.sleep?.asleep_min ?? pending.sleepMin
   const sleepH = sleepMin === null ? null : sleepMin / 60
-  const bed = day.sleep?.asleep_min != null && day.sleep.in_bed_at && day.sleep.woke_at ? day.sleep : null
-  const ratio = (value: number | null, target: number) =>
-    value !== null && target > 0 ? value / target : null
+  const calories = sentence('Calories', eaten, kcalTarget, 'kcal')
 
   return [
-    {
-      id: 'calories',
-      label: 'Calories',
-      metric: 'calories',
-      icon: LocalFireDepartmentRounded,
-      shown: eaten,
-      precision: 0,
-      unit: kcalTarget > 0 ? `/ ${formatNumber(kcalTarget)} kcal` : 'kcal',
-      progress: ratio(eaten, kcalTarget),
-      name: sentence('Calories', eaten, kcalTarget, 'kcal'),
-      footnote:
-        kcalTarget > 0 ? (
-          <>
-            <strong>{left >= 0 ? `${formatNumber(left)} left` : `${formatNumber(-left)} over`}</strong> ·{' '}
-            {meals} {meals === 1 ? 'meal' : 'meals'} logged
-          </>
-        ) : (
-          noTarget
-        ),
-    },
+    kcalTarget > 0
+      ? {
+          id: 'calories',
+          metric: 'calories',
+          label: left >= 0 ? 'kcal left' : 'kcal over',
+          shown: Math.abs(left),
+          precision: 0,
+          ratio: eaten / kcalTarget,
+          caption: `of ${formatNumber(kcalTarget)}`,
+          name: `${calories}, ${formatNumber(Math.abs(left))} ${left >= 0 ? 'left' : 'over'}`,
+        }
+      : {
+          id: 'calories',
+          metric: 'calories',
+          label: 'kcal eaten',
+          shown: eaten,
+          precision: 0,
+          ratio: null,
+          caption: noTarget,
+          name: calories,
+        },
     {
       id: 'protein',
-      label: 'Protein',
       metric: 'protein',
-      icon: EggAltRounded,
+      label: 'protein',
       shown: protein,
       precision: 0,
-      unit: proteinTarget > 0 ? `/ ${formatNumber(proteinTarget)} g` : 'g',
-      progress: ratio(protein, proteinTarget),
+      unit: 'g',
+      ratio: ratioOf(protein, proteinTarget),
+      caption: proteinTarget > 0 ? `of ${formatNumber(proteinTarget)} g` : noTarget,
       name: sentence('Protein', protein, proteinTarget, 'g'),
-      footnote: proteinTarget > 0 ? toGo(proteinTarget - protein, ' g') : noTarget,
     },
     {
       id: 'water',
-      label: 'Water',
       metric: 'water',
-      icon: WaterDropRounded,
+      label: 'water',
       shown: waterMl / 1000,
       precision: litrePrecision(waterMl),
-      unit: `/ ${litres(waterTarget)} L`,
-      progress: ratio(waterMl, waterTarget),
+      unit: 'L',
+      ratio: ratioOf(waterMl, waterTarget),
+      caption: `of ${litres(waterTarget)} L`,
       name: sentence('Water', waterMl, waterTarget, 'ml'),
-      footnote:
-        waterTarget - waterMl > 0 ? (
-          <strong>{`${litres(waterTarget - waterMl)} L to go`}</strong>
-        ) : (
-          <strong>Target met</strong>
-        ),
     },
     {
       id: 'steps',
-      label: 'Steps',
       metric: 'steps',
-      icon: DirectionsWalkRounded,
+      label: 'steps',
       shown: steps,
       precision: 0,
-      unit: steps !== null && stepsTarget > 0 ? `/ ${formatNumber(stepsTarget)}` : 'steps',
-      progress: ratio(steps, stepsTarget),
+      ratio: ratioOf(steps, stepsTarget),
+      caption: steps === null ? 'Not logged' : stepsTarget > 0 ? `of ${formatNumber(stepsTarget)}` : null,
       name: sentence('Steps', steps, stepsTarget, 'steps'),
-      footnote: steps === null ? 'Not logged' : stepsTarget > 0 ? toGo(stepsTarget - steps, '') : null,
     },
     {
       id: 'sleep',
-      label: 'Sleep',
       metric: 'sleep',
-      icon: BedtimeRounded,
+      label: 'sleep',
       shown: sleepH,
       precision: 1,
-      unit: `/ ${formatNumber(SLEEP_TARGET_H, 1)} h`,
-      progress: ratio(sleepH, SLEEP_TARGET_H),
+      unit: 'h',
+      ratio: ratioOf(sleepH, SLEEP_TARGET_H),
+      caption: sleepH === null ? 'Not logged' : `of ${formatNumber(SLEEP_TARGET_H, 1)} h`,
       name: sentence('Sleep', sleepH, SLEEP_TARGET_H, 'h', 1),
-      footnote:
-        sleepH === null ? (
-          'Not logged'
-        ) : bed ? (
-          <strong>{`${formatClock(bed.in_bed_at!)} – ${formatClock(bed.woke_at!)}`}</strong>
-        ) : (
-          'Last night'
-        ),
     },
   ]
 }
@@ -217,60 +179,107 @@ function fastLabel(day: DayView, pending: PendingToday, now: number): string | n
 interface TodayRingsProps {
   day: DayView | undefined
   loading: boolean
+  /** When the day was last read (the query's `dataUpdatedAt`), for "As of". */
+  readAt: number
   pending: PendingToday
   waterTargetMl: number
   onAddHealth: () => void
 }
 
-/** The row while the day loads: one placeholder per card, in the same grid, so nothing below moves. */
-function RingsSkeleton() {
+/** The white card, a size container (the gauges size by `cqi`), padded as the mock's fuel card. */
+const CARD = {
+  ...cardSurface,
+  ...sizeContainer,
+  minWidth: 0,
+  px: 'clamp(16px, 4vw, 28px)',
+  py: 'clamp(18px, 4vw, 26px)',
+} as const
+
+function Header({ id, readAt }: { id: string; readAt: number | null }) {
   return (
-    <Box aria-busy="true" data-testid="today-rings-loading" sx={GRID}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <Skeleton key={i} variant="rounded" height={CARD_HEIGHT} sx={cellSx(i)} />
-      ))}
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '4px 12px',
+      }}
+    >
+      <Box component="h2" id={id} sx={{ ...displayTitle('section'), m: 0, minWidth: 0 }}>
+        Today’s fuel
+      </Box>
+      {readAt !== null && (
+        <Box component="span" sx={{ fontSize: tokens.font.size.body, color: tokens.ink.muted }}>
+          As of {formatClock(new Date(readAt).toISOString())}
+        </Box>
+      )}
     </Box>
   )
 }
 
-export function TodayRings({ day, loading, pending, waterTargetMl, onAddHealth }: TodayRingsProps) {
+export function TodayRings({ day, loading, readAt, pending, waterTargetMl, onAddHealth }: TodayRingsProps) {
   const now = useMinuteClock()
-  if (loading || !day) return <RingsSkeleton />
+  const titleId = useId()
+  if (loading || !day)
+    return (
+      <Box
+        component="section"
+        aria-labelledby={titleId}
+        aria-busy="true"
+        data-testid="today-rings-loading"
+        sx={CARD}
+      >
+        <Header id={titleId} readAt={null} />
+        <Skeleton variant="rounded" sx={{ mt: 'clamp(14px, 4cqi, 22px)', height: GAUGES_HEIGHT }} />
+      </Box>
+    )
 
   const missingHealth =
     (day.steps ?? pending.steps) === null || (day.sleep?.asleep_min ?? pending.sleepMin) === null
   const fast = fastLabel(day, pending, now)
   return (
-    <Box data-testid="today-rings">
-      <Box sx={GRID}>
-        {statsFor(day, pending, waterTargetMl).map((s, i) => (
-          <Reveal key={s.id} delay={cardDelay(i)} sx={cellSx(i)}>
-            {/* `group`, not `img`: the card has readable content inside it (the number, the caption, the bar). */}
-            <Box
-              role="group"
-              aria-label={s.name}
-              data-testid={`today-metric-${s.id}`}
-              sx={{ height: '100%', minWidth: 0 }}
-            >
-              <StatCard
-                label={s.label}
-                icon={s.icon}
-                metric={s.metric}
-                value={s.shown}
-                precision={s.precision}
-                unit={s.unit}
-                progress={s.progress}
-                footnote={s.footnote}
-                countUp
-                delay={cardDelay(i) + 200}
-              />
-            </Box>
-          </Reveal>
-        ))}
+    <Box component="section" aria-labelledby={titleId} data-testid="today-rings" sx={CARD}>
+      <Header id={titleId} readAt={readAt > 0 ? readAt : null} />
+      <Box sx={{ mt: 'clamp(14px, 4cqi, 22px)' }}>
+        <CapsuleGaugeRow>
+          {gaugesFor(day, pending, waterTargetMl).map((g, i) => (
+            <CapsuleGauge
+              key={g.id}
+              testId={`today-metric-${g.id}`}
+              metric={g.metric}
+              value={g.shown}
+              target={null}
+              ratio={g.ratio}
+              label={g.label}
+              unit={g.unit}
+              display={
+                g.shown === null ? (
+                  '—'
+                ) : (
+                  <CountUp value={g.shown} precision={g.precision} delay={gaugeDelay(i)} />
+                )
+              }
+              caption={g.caption}
+              ariaLabel={g.name}
+              delay={gaugeDelay(i)}
+            />
+          ))}
+        </CapsuleGaugeRow>
       </Box>
 
       {(fast || pending.count > 0 || pending.meals > 0 || missingHealth) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mt: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+            mt: '18px',
+            pt: '14px',
+            borderTop: `1px solid ${tokens.ink.hairline}`,
+          }}
+        >
           {fast && <StatusChip testId="fast-badge" tone="warning" icon={TimerRounded} label={fast} />}
           {pending.count > 0 && <PendingBadge count={pending.count} />}
           {pending.meals > 0 && (

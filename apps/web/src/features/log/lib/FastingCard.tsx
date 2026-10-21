@@ -1,8 +1,9 @@
-// Owns: fasting on the Log tab — the month's planned count against the rail, the next planned fast (its day, length and
-// start) with every later planned one after it, a 14-day strip around today (planned, completed and partial fasts by
-// their fast day; tap a fast for its date, status and hours), and the history list (a planned fast never ended opens the
-// fast sheet to resolve it: its real end, or "Didn't fast"; a fast ended within an hour of its start — a mis-tap — can be
-// removed, so it no longer counts toward the month's fasts).
+// Owns: fasting on the Log tab (1d Summit: the screen's deep-sky card) — the month's planned count against the rail, the
+// next planned fast (its day, length and start) with every later planned one after it in a well, a 14-day strip around
+// today (today gold; completed fasts coral, partial ones half coral, planned ones a dashed coral outline, by their fast
+// day; tap a fast for its date, status and hours), and the history list (a planned fast never ended opens the fast sheet
+// to resolve it: its real end, or "Didn't fast"; a fast ended within an hour of its start — a mis-tap — can be removed,
+// so it no longer counts toward the month's fasts).
 import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,7 +11,6 @@ import ButtonBase from '@mui/material/ButtonBase'
 import { fastDay } from '@fitness/shared/engine'
 import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
-import { fastLook } from '../../../charts'
 import {
   formatClock,
   formatNumber,
@@ -19,7 +19,7 @@ import {
   LoadProblem,
   PendingBadge,
 } from '../../../components'
-import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens, withAlpha } from '../../../theme'
 import {
   dateOf,
   formatDateTime,
@@ -40,8 +40,37 @@ const MISTAP_H = 1
 /** The strip: ten days back to three ahead of today (2a's 14 cells). */
 const STRIP_BACK = 10
 const STRIP_DAYS = 14
-/** On touch, a fast's hit area is 44 × 44 centred on its cell (insets from the padding box, so the border doesn't shrink it). */
+/** A fast's hit area is 24 px tall centred on its 12 px cell (WCAG 2.5.8), 44 × 44 on touch (insets from the padding
+ * box, so the border doesn't shrink it). */
+const POINTER_REACH = 'calc(50% - 12px)'
 const TOUCH_REACH = `calc(50% - ${tokens.tapTarget / 2}px)`
+
+const { summit } = tokens
+const coral = summit.coral.main
+
+/** The white button on the deep sky (deep ink on white, 16.4:1): "Plan a fast". */
+const onDarkButtonSx = {
+  bgcolor: summit.avatar.bg,
+  color: summit.avatar.text,
+  '&:hover': { bgcolor: summit.avatar.hover },
+  '&.Mui-focusVisible': { outlineColor: summit.gold.main },
+} as const
+
+/** A text button on the deep sky: gold (11.5:1). */
+const onDarkTextSx = {
+  color: summit.gold.main,
+  '&:hover': { bgcolor: summit.deepSky.well },
+  '&.Mui-focusVisible': { outlineColor: summit.gold.main },
+} as const
+
+/** A strip cell's look on the deep sky, by what the day holds. */
+function cellLook(status: FastView['status'] | undefined, isToday: boolean) {
+  if (status === 'completed') return { bgcolor: coral }
+  if (status === 'partial' || status === 'active') return { bgcolor: withAlpha(coral, 0.55) }
+  if (status === 'planned') return { bgcolor: 'transparent', border: `1.5px dashed ${coral}` }
+  if (status === 'missed') return { bgcolor: 'transparent', border: `1.5px dashed ${summit.onSky.disabled}` }
+  return { bgcolor: isToday ? summit.gold.main : summit.glass.border }
+}
 
 function monthStart(date: string, deltaMonths: number): string {
   const [y, m] = date.split('-').map(Number) as [number, number]
@@ -82,8 +111,9 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
   return (
     <LogCard
       title="Fasting"
+      tone="deep"
       icon={TimerOutlined}
-      iconColor={tokens.tone.warning.text}
+      iconColor={coral}
       meta={
         <>
           {anyPending && <PendingBadge />}
@@ -93,7 +123,7 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
       testId="log-fasting"
     >
       {fasting.isLoading && fasting.fasts.length === 0 ? (
-        <LoadingRows rows={2} />
+        <LoadingRows rows={2} onDark />
       ) : fasting.error != null && fasting.fasts.length === 0 ? (
         <LoadProblem what="Your fasts" error={fasting.error} onRetry={fasting.refetch} />
       ) : (
@@ -101,38 +131,23 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
           {next && (
             <Box
               sx={{
-                px: 3,
-                py: '10px',
-                borderRadius: `${tokens.radius.control}px`,
-                bgcolor: tokens.tone.warning.bg,
-                fontSize: tokens.font.size.small,
-                mb: 3,
+                px: '14px',
+                py: '12px',
+                mb: '14px',
+                borderRadius: `${summit.radius.wellSmall}px`,
+                bgcolor: summit.deepSky.well,
+                fontSize: tokens.font.size.body,
+                fontWeight: tokens.font.weight.body,
+                lineHeight: 1.45,
+                fontVariantNumeric: 'tabular-nums',
               }}
             >
-              <Box
-                component="b"
-                sx={{ color: tokens.tone.warning.deep, fontWeight: tokens.font.weight.heading }}
-              >
-                Next: {longDayLabel(dayOf(next))}
-              </Box>
-              <Box
-                sx={{
-                  fontSize: tokens.font.size.caption,
-                  color: tokens.tone.warning.text,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {formatNumber(fastHours)} h from {formatClock(next.startedAt)}{' '}
-                {formatWeekday(dateOf(next.startedAt))}
-              </Box>
+              <div>
+                Next: {longDayLabel(dayOf(next))} · {formatNumber(fastHours)} h from{' '}
+                {formatClock(next.startedAt)} {formatWeekday(dateOf(next.startedAt))}
+              </div>
               {later.length > 0 && (
-                <Box
-                  sx={{
-                    fontSize: tokens.font.size.caption,
-                    color: tokens.tone.warning.text,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
+                <Box sx={{ color: summit.deepSky.muted }}>
                   Then: {later.map((f) => longDayLabel(dayOf(f))).join(' · ')}
                 </Box>
               )}
@@ -143,7 +158,7 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
             <Box
               component="ul"
               aria-label="Fasting history"
-              sx={{ listStyle: 'none', p: 0, m: 0, mt: 3, display: 'grid' }}
+              sx={{ listStyle: 'none', p: 0, m: 0, mt: '12px', display: 'grid' }}
             >
               {history.map((f) => (
                 <Box
@@ -154,14 +169,20 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
                     alignItems: 'center',
                     gap: 2,
                     minHeight: 36,
-                    fontSize: tokens.font.size.caption,
-                    borderTop: `1px solid ${tokens.ink.hairline}`,
+                    fontSize: tokens.font.size.small,
+                    borderTop: `1px solid ${summit.deepSky.hairline}`,
                   }}
                 >
                   <Box sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatDateTime(f.startedAt)}</Box>
-                  <Box sx={{ flex: 1, color: tokens.ink.secondary }}>{STATUS_TEXT[f.status]}</Box>
+                  <Box sx={{ flex: 1, color: summit.deepSky.muted }}>{STATUS_TEXT[f.status]}</Box>
                   {f.status === 'missed' && (
-                    <Button size="tiny" variant="text" onClick={onPlan} data-testid="fast-resolve">
+                    <Button
+                      size="tiny"
+                      variant="text"
+                      onClick={onPlan}
+                      data-testid="fast-resolve"
+                      sx={onDarkTextSx}
+                    >
                       Resolve
                     </Button>
                   )}
@@ -172,6 +193,7 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
                       onClick={() => remove.mutate({ params: { id: f.id } })}
                       disabled={remove.isPending}
                       data-testid="fast-remove"
+                      sx={onDarkTextSx}
                     >
                       Remove
                     </Button>
@@ -185,13 +207,13 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
             </Box>
           )}
           {fasting.fasts.length === 0 && (
-            <Box sx={{ fontSize: tokens.font.size.caption, color: tokens.ink.secondary, mt: 3 }}>
+            <Box sx={{ fontSize: tokens.font.size.small, color: summit.deepSky.muted, mt: '12px' }}>
               No fasts yet. Plan the month's two on the dates that suit you.
             </Box>
           )}
         </>
       )}
-      <Button variant="outlined" size="tiny" onClick={onPlan} sx={{ mt: 3 }}>
+      <Button variant="contained" color="inherit" onClick={onPlan} sx={{ ...onDarkButtonSx, mt: '14px' }}>
         Plan a fast
       </Button>
     </LogCard>
@@ -199,10 +221,9 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
 }
 
 /**
- * 2a's fasting strip: one cell per day, today dark, a planned fast dashed amber, completed / partial in the fasting slate
- * (the chart kit's `fastLook`, shared with every fasting day strip; a running fast looks partial). A day with a fast is
- * a button: tapping it puts its date, status and hours in the line under the strip (the kit's FastingStrip tap caption),
- * in place of the range labels.
+ * 1d's fasting strip on the deep sky: one 12 px cell per day, today gold, a completed fast coral, a partial or running
+ * one half coral, a planned one a dashed coral outline. A day with a fast is a button: tapping it puts its date, status
+ * and hours in the line under the strip, in place of the range labels.
  */
 function FastStrip({
   fasts,
@@ -232,31 +253,28 @@ function FastStrip({
         role="group"
         aria-label={`Fasting, ${formatShortDate(first)} to ${formatShortDate(last)}: ${summary}`}
         data-testid="chart-fasting"
-        sx={{ display: 'grid', gridTemplateColumns: `repeat(${STRIP_DAYS}, minmax(0, 1fr))`, gap: '3px' }}
+        sx={{ display: 'grid', gridTemplateColumns: `repeat(${STRIP_DAYS}, minmax(0, 1fr))`, gap: '4px' }}
       >
         {days.map((d, i) => {
           const f = byDay.get(d)
           const status = f?.status
           const isToday = d === today
-          const look = status ? fastLook(status === 'active' ? 'partial' : status) : undefined
           const cellSx = {
-            height: 18,
+            height: 12,
             minWidth: 0,
             boxSizing: 'border-box',
-            borderRadius: `${tokens.chart.barRadius}px`,
-            bgcolor:
-              look?.fill ?? (look?.dashed ? 'transparent' : isToday ? tokens.dark.bg : tokens.ink.fill),
-            border: look?.dashed ? `1.5px dashed ${look.dashed}` : undefined,
+            borderRadius: '3px',
+            ...cellLook(status, isToday),
             boxShadow:
               d === selected
-                ? `inset 0 0 0 1.5px ${tokens.ink.text}`
+                ? `0 0 0 2px ${summit.deepSky.text}`
                 : f && isToday
-                  ? `inset 0 0 0 1.5px ${tokens.dark.bg}`
+                  ? `0 0 0 2px ${summit.gold.main}`
                   : undefined,
           } as const
           if (!f) return <Box key={d} aria-hidden sx={cellSx} />
-          // Beside another fast the hit area stops at the 3 px gap, so a tap on one fast's cell never lands on its neighbour.
-          const side = (n: string | undefined) => (n !== undefined && byDay.has(n) ? '-3px' : TOUCH_REACH)
+          // Beside another fast the hit area stops at the 4 px gap, so a tap on one fast's cell never lands on its neighbour.
+          const side = (n: string | undefined) => (n !== undefined && byDay.has(n) ? '-4px' : TOUCH_REACH)
           return (
             <ButtonBase
               key={d}
@@ -266,7 +284,16 @@ function FastStrip({
               sx={{
                 ...cellSx,
                 position: 'relative',
-                // The 18 px cell stays as drawn; on touch its hit area is 44 × 44 around it.
+                '&.Mui-focusVisible': { outlineColor: summit.gold.main },
+                // The 12 px cell stays as drawn; its hit area is 24 px tall around it, 44 × 44 on touch.
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: POINTER_REACH,
+                  bottom: POINTER_REACH,
+                  left: 0,
+                  right: 0,
+                },
                 [COARSE_POINTER_QUERY]: {
                   '&::after': {
                     content: '""',
@@ -288,11 +315,11 @@ function FastStrip({
           display: 'flex',
           justifyContent: 'space-between',
           gap: 2,
-          mt: 1,
+          mt: '8px',
           minHeight: 18,
-          fontSize: tokens.font.size.micro,
+          fontSize: tokens.font.size.caption,
           lineHeight: '18px',
-          color: tokens.ink.secondary,
+          color: summit.deepSky.muted,
         }}
       >
         {pick && selected !== null ? (
@@ -300,7 +327,7 @@ function FastStrip({
             component="span"
             sx={{
               fontSize: tokens.font.size.caption,
-              color: tokens.ink.label,
+              color: summit.deepSky.text,
               fontVariantNumeric: 'tabular-nums',
             }}
           >

@@ -1,68 +1,94 @@
-// Owns: the app frame around every in-app page (2a) — from `md` up the 240 px sidebar (or its 76 px icon rail) beside a
-// 56 px breadcrumb header; on a phone the slim top bar and the bottom tabs — plus the banners, the page column, the
-// phone's quick-log button, the quick-log sheet (loaded on first open), the Ask AI slide-up panel and the ⌘K command
-// palette — configured per route through its `handle` (title, tab, trail, width, quick-log).
+// Owns: the app frame around every in-app page (1d "Summit", README §3) — the sky hero at the top of `main` (Today's
+// full sky, an inner page's, or the compact one) with the Summit nav drawn over it, the shell's banners on the sky, the
+// hero slot a page's `PageHeader` renders into, and the cream panel holding the page; on a phone the fixed bottom tab
+// bar and its clearance; the status bar's strip (the installed iOS app draws under the status bar, so a fixed strip in
+// the sky's top colour keeps its white text off the cream panel once the page scrolls); the quick-log sheet (loaded on
+// first open; Today's and Log's hero "+ Log" opens it), the Ask AI slide-up panel (the ⌘K palette's "Ask AI here"
+// opens it over any page; the nav's gold pill goes to the AI tab) and the ⌘K command palette — configured per route
+// through its `handle` (title, tab, trail, width, hero). On a phone the nav shows the logo on the tabs and on its own
+// Scans and Settings, and a back circle on every other page.
 //
-// Every 2a page opens with its own `h1`. A page that does not (yet) gets one from the shell instead, visually hidden at
-// the top of `main` — the shell watches `main` for a page heading, so the two can never both be there.
+// Every 1d page names itself in its sky with a `PageHeader` (its `h1`). A page that does not (yet) gets the route's
+// title there from the shell instead — the header claims the slot from a layout effect, so the two are never on screen
+// together.
 //
-// A route change is deliberately *not* wrapped in a cross-fade: each page's own title row and card groups rise in
-// through `Reveal`/`useEntrance` as they mount, which is 2a's one entrance.
+// A route change is deliberately *not* wrapped in a cross-fade: the sky and the nav stay put, and each page's own hero
+// content and card groups rise in through `Reveal`/`useEntrance` as they mount, which is 1d's one entrance.
 import Box from '@mui/material/Box'
 import type { Theme } from '@mui/material/styles'
+import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { Outlet, ScrollRestoration, useLocation } from 'react-router'
-import { visuallyHidden } from '../../../components'
-import { tokens } from '../../../theme'
+import { HeroSlotProvider, SkyHero, SummitPanel, visuallyHidden, type HeroSlot } from '../../../components'
+import { tokens, type HeroVariant } from '../../../theme'
 import { useUiStore } from '../../ui-store'
 import { APP_NAME } from '../../brand'
 import { useRouteHandle } from '../route-handle'
-import { tabByKey } from '../tabs'
+import { SCANS_DESTINATION, SETTINGS_DESTINATION, tabByKey } from '../tabs'
 import { AskAiHost } from './AskAiHost'
-import { BottomTabs } from './BottomTabs'
 import { CommandPalette } from './CommandPalette'
-import { DesktopHeader, PhoneTopBar } from './Header'
-import { mainPaddingSx, NAV_VAR, navInset, navWidth, pageWidthSx, shellColumnSx } from './layout'
-import { QuickLogFab } from './QuickLogFab'
+import { navInset, pageWidthSx, safeArea, shellColumnSx, tabBarClearance } from './layout'
 import { QuickLogHost } from './QuickLogHost'
-import { Sidebar } from './Sidebar'
 import { StatusBanners } from './StatusBanners'
+import { SummitNav, type Current } from './SummitNav'
+import { TabBar } from './TabBar'
 
-/** The page's own heading: any `h1` but the shell's fallback, which is marked `data-shell-title`. */
-const PAGE_TITLE = 'h1:not([data-shell-title])'
+const { summit, font } = tokens
 
-/**
- * Whether the page inside `main` renders its own `h1`. Re-read whenever `main`'s tree changes (a lazy page arriving, a
- * skeleton giving way to the page), not on text changes, so a counting number costs nothing.
- */
-function usePageHasTitle(main: RefObject<HTMLElement | null>): boolean {
-  const [hasTitle, setHasTitle] = useState(false)
-  useLayoutEffect(() => {
-    const element = main.current
-    if (!element) return
-    const read = () => setHasTitle(element.querySelector(PAGE_TITLE) !== null)
-    read()
-    const observer = new MutationObserver(read)
-    observer.observe(element, { childList: true, subtree: true })
-    return () => observer.disconnect()
-  }, [main])
-  return hasTitle
+/** One page header on screen, and the sky it asked for. */
+interface Claim {
+  id: number
+  variant: HeroVariant | null
+}
+
+let nextClaim = 0
+
+/** The nav's own destinations beside the tabs (the Scans circle, the avatar): their pages show the logo, not a back. */
+const NAV_ROOTS: ReadonlySet<string> = new Set([SCANS_DESTINATION.path, SETTINGS_DESTINATION.path])
+
+/** The hero slot the shell offers its page: where a `PageHeader` portals, the sky variant, and who has claimed it. */
+function useHeroSlotState(routeVariant: HeroVariant) {
+  const [target, setTarget] = useState<HTMLElement | null>(null)
+  const [claims, setClaims] = useState<readonly Claim[]>([])
+  const claim = useCallback((variant: HeroVariant | null) => {
+    const id = nextClaim++
+    setClaims((all) => [...all, { id, variant }])
+    return () => setClaims((all) => all.filter((c) => c.id !== id))
+  }, [])
+  const variant = claims.findLast((c) => c.variant !== null)?.variant ?? routeVariant
+  const slot = useMemo<HeroSlot>(() => ({ target, variant, claim }), [target, variant, claim])
+  return { slot, setTarget, claimed: claims.length > 0 }
+}
+
+/** The route's title in the sky while no `PageHeader` claims it (a page still loading its code, the not-found page). */
+function FallbackHero({ title, compact }: { title: string; compact: boolean }) {
+  return (
+    <Box sx={{ ...shellColumnSx, pt: `${compact ? 14 : tokens.layout.hero.padTop}px` }}>
+      <Typography
+        component="h1"
+        variant="h1"
+        sx={{
+          m: 0,
+          color: summit.onSky.text,
+          overflowWrap: 'anywhere',
+          ...(compact && { fontSize: font.fluid.h1Compact }),
+        }}
+      >
+        {title}
+      </Typography>
+    </Box>
+  )
 }
 
 export function AppShell() {
-  const { title, tab, trail = [], width = 'narrow', quickLog = false } = useRouteHandle()
+  const { title, tab, trail = [], width = 'narrow', hero = 'inner' } = useRouteHandle()
   const { pathname } = useLocation()
   const setLastTab = useUiStore((s) => s.setLastTab)
-  const storedCollapsed = useUiStore((s) => s.sidebarCollapsed)
-  const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
-  // Read synchronously on the first render, so a desktop never paints the phone chrome first.
-  const desktop = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'), { noSsr: true })
-  const large = useMediaQuery((theme: Theme) => theme.breakpoints.up('lg'), { noSsr: true })
-  // Until Aaron picks, the sidebar follows the window: labelled from `lg`, the icon rail between `md` and `lg`.
-  const collapsed = storedCollapsed ?? !large
+  // Read synchronously on the first render, so a desktop never paints the phone chrome first. `md` is the nav's 960.
+  const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'), { noSsr: true })
   const main = useRef<HTMLElement>(null)
-  const pageHasTitle = usePageHasTitle(main)
+  const { slot, setTarget, claimed } = useHeroSlotState(hero)
 
   useEffect(() => {
     if (tab) setLastTab(tab)
@@ -72,18 +98,23 @@ export function AppShell() {
     document.title = tab === 'today' ? APP_NAME : `${title} · ${APP_NAME}`
   }, [tab, title])
 
+  // The page on screen and the section it sits under (the first step of its trail), for the nav's marks.
+  const pagePath = tab ? tabByKey(tab).path : pathname
+  const sectionPath = trail[0]?.path
+  const showBack = !tab && !NAV_ROOTS.has(pathname.replace(/\/+$/, '') || '/')
+  const currentOf = useCallback(
+    (path: string): Current => (path === pagePath ? 'page' : path === sectionPath ? 'section' : null),
+    [pagePath, sectionPath],
+  )
+
   return (
-    // The sidebar is a fixed layer beside the page, so the page column itself is inset by it rather than each centred
-    // column being padded: the header, the banners and the content are all inside this box.
     <Box
       sx={{
-        [NAV_VAR]: desktop ? `${navWidth(collapsed)}px` : '0px',
-        pl: navInset,
+        position: 'relative',
         minHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         bgcolor: tokens.ink.page,
-        '@media print': { [NAV_VAR]: '0px' },
       }}
     >
       <Box
@@ -112,49 +143,50 @@ export function AppShell() {
             color: tokens.dark.text,
             fontSize: tokens.font.size.body,
             fontWeight: tokens.font.weight.label,
-            outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+            outline: `${tokens.focusRing.width}px solid ${summit.onSky.text}`,
             outlineOffset: tokens.focusRing.offset,
           },
         }}
       >
         Skip to content
       </Box>
-      {desktop && (
-        <Sidebar
-          collapsed={collapsed}
-          pagePath={tab ? tabByKey(tab).path : pathname}
-          sectionPath={trail[0]?.path}
-        />
-      )}
-      {desktop ? (
-        <DesktopHeader
-          title={title}
-          trail={trail}
-          sidebarCollapsed={collapsed}
-          onToggleSidebar={() => setSidebarCollapsed(!collapsed)}
-        />
-      ) : (
-        <PhoneTopBar title={title} showBack={!tab} pageHasTitle={pageHasTitle} />
-      )}
-      <StatusBanners />
+      <SummitNav wide={wide} currentOf={currentOf} showBack={showBack} />
+      {/* The status bar's strip: zero tall outside the installed iOS app. */}
+      <Box
+        aria-hidden
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: safeArea.top,
+          zIndex: 'appBar',
+          bgcolor: summit.sky.top,
+          pointerEvents: 'none',
+          displayPrint: 'none',
+        }}
+      />
       <Box
         component="main"
         id="main"
         ref={main}
         tabIndex={-1}
-        sx={{ ...shellColumnSx, ...mainPaddingSx(quickLog && !desktop), flex: 1, outline: 'none' }}
+        sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, outline: 'none' }}
       >
-        <Box sx={pageWidthSx(width)}>
-          {!pageHasTitle && (
-            <Box component="h1" data-shell-title="" sx={visuallyHidden}>
-              {title}
+        <HeroSlotProvider value={slot}>
+          <SkyHero variant={slot.variant} topInset={navInset(wide)}>
+            <StatusBanners />
+            {!claimed && <FallbackHero title={title} compact={slot.variant === 'compact'} />}
+            <Box ref={setTarget} sx={shellColumnSx} />
+          </SkyHero>
+          <SummitPanel extraBottom={wide ? undefined : tabBarClearance()}>
+            <Box sx={pageWidthSx(width)}>
+              <Outlet />
             </Box>
-          )}
-          <Outlet />
-        </Box>
+          </SummitPanel>
+        </HeroSlotProvider>
       </Box>
-      {quickLog && !desktop && <QuickLogFab width={width} />}
-      {!desktop && <BottomTabs active={tab} />}
+      {!wide && <TabBar currentOf={currentOf} />}
       <QuickLogHost />
       <AskAiHost />
       <CommandPalette />

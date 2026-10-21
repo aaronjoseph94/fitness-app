@@ -1,14 +1,15 @@
-// Owns: the 2a badge / chip — a small non-interactive label in one of the status tones (success, warning, danger,
-// info-blue, neutral), an outline, or a dashed outline (something still to come: Scans' "Upcoming"); as a badge
-// (radius 6) or a pill (999), at 12 px (medium) or 11 px (small), with an optional leading glyph or status dot. Text
-// always sits on its own tint at ≥4.5:1 (see theme.ts).
+// Owns: the 1d status pill — a small non-interactive label in one of the status tones (success, warning, danger,
+// info-violet, neutral soft violet), the gold highlight ("Today", "Current", "PR": the gold CTA gradient with deep ink,
+// 7.04:1 at its darkest end), an outline, or a dashed outline (something still to come: Scans' "Upcoming");
+// fully round either way (`shape` is kept for callers: 1d draws badges as pills too), at 12 px (medium) or 11 px
+// (small), with an optional leading glyph or status dot. Text always sits on its own tint at ≥4.5:1 (see theme.ts).
 // For a chip a person taps, use MUI's <Chip onClick> (themed to the same look) instead.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { CHIP_TONES, tokens, type Tone } from '../../theme'
 
-export type StatusChipTone = Tone | 'outline' | 'dashed'
+export type StatusChipTone = Tone | 'gold' | 'outline' | 'dashed'
 
 export interface StatusChipProps {
   /** Default `neutral`. */
@@ -21,23 +22,27 @@ export interface StatusChipProps {
   dot?: boolean | string
   /** `medium` 12 px · padding 3 × 8 (default); `small` 11 px · padding 1 × 6. */
   size?: 'medium' | 'small'
-  /** `badge` radius 5–6 (default); `pill` fully round. */
+  /** `badge` (default) or `pill`: both fully round in 1d. */
   shape?: 'badge' | 'pill'
   /** Accessible name when the visible text is not enough (e.g. a bare count). */
   ariaLabel?: string
   testId?: string
 }
 
-/** The theme's badge colours (shared with MUI's filled `<Chip>`) plus a dot colour; the two outline looks are the kit's own. */
+/**
+ * The theme's badge colours (shared with MUI's filled `<Chip>`) plus a dot colour; the gold highlight (a gradient
+ * `image` over its solid gold) and the two outline looks are the kit's own.
+ */
 const TONES: Record<
   StatusChipTone,
-  { bg: string; text: string; border?: string; dot: string; weight: number }
+  { bg: string; image?: string; text: string; border?: string; dot: string; weight: number }
 > = {
   success: { ...CHIP_TONES.success, dot: tokens.tone.success.solid },
   warning: { ...CHIP_TONES.warning, dot: tokens.tone.warning.text },
   danger: { ...CHIP_TONES.danger, dot: tokens.tone.danger.text },
   info: { ...CHIP_TONES.info, dot: tokens.accent.main },
   neutral: { ...CHIP_TONES.neutral, dot: tokens.ink.faint },
+  gold: { ...CHIP_TONES.gold, image: tokens.summit.cta.gold.bg, dot: tokens.summit.cta.gold.text },
   outline: {
     bg: tokens.ink.card,
     text: tokens.ink.label,
@@ -83,14 +88,15 @@ export function StatusChip({
         flex: 'none',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        px: small ? '5px' : '7px',
-        py: small ? 0 : '2px',
+        px: small ? '7px' : '10px',
+        py: small ? 0 : '3px',
         border,
         borderRadius:
           shape === 'pill'
             ? `${tokens.radius.pill}px`
             : `${small ? tokens.radius.badgeSmall : tokens.radius.badge}px`,
         bgcolor: t.bg,
+        backgroundImage: t.image,
         color: t.text,
         fontSize: small ? tokens.font.size.micro : tokens.font.size.caption,
         fontWeight: t.weight,

@@ -1,8 +1,8 @@
-// Owns: the proposal card shell (SPEC §6/§8) in its 2a form (README, Today "Proposal card"): a header row — the blue
-// sparkle, who proposed it (default "Proposal") and the neutral "Pending" chip — the title at 15/600, the one-line
-// summary, the before → after rows on `ink.panel` (old value struck through, new value bold), and the actions:
-// "Accept" in the dark button, "Reject" in the outline one and a "Why?" link on the right. Decisions go out through
-// `onAccept` / `onReject`; once decided, the buttons give way to the status line.
+// Owns: the proposal card shell (SPEC §6/§8) in its 1d form ("Waiting for your tap"): a white radius-26 card with a
+// header row — the plum sparkle, who proposed it (default "Proposal", 12/600 muted) and the neutral "Pending" pill —
+// the title at 16/600, the one-line summary, the before → after rows in warm wells (old value struck through, new
+// value bold), and the actions: "Accept" in the deep ink button, "Reject" in the soft violet one and a "Why?" link on
+// the right. Decisions go out through `onAccept` / `onReject`; once decided, the buttons give way to the status line.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -64,25 +64,24 @@ export function ProposalCard({
       data-testid={testId ?? 'proposal-card'}
       data-status={status}
       sx={{
-        px: `${tokens.pad.dense.x}px`,
-        py: `${tokens.pad.dense.y}px`,
-        borderRadius: `${tokens.radius.card}px`,
-        border: `1px solid ${tokens.ink.border}`,
+        px: '20px',
+        py: '18px',
+        borderRadius: `${tokens.radius.tile}px`,
         bgcolor: tokens.ink.card,
         boxShadow: tokens.elevation.card,
         minWidth: 0,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minHeight: 22 }}>
-        <AutoAwesomeRounded aria-hidden sx={{ fontSize: 18, color: tokens.accent.main, flex: 'none' }} />
+        <AutoAwesomeRounded aria-hidden sx={{ fontSize: 16, color: tokens.summit.plum, flex: 'none' }} />
         <Box
           component="span"
           sx={{
             flex: 1,
             minWidth: 0,
-            fontSize: tokens.font.size.body,
+            fontSize: tokens.font.size.caption,
             fontWeight: tokens.font.weight.heading,
-            color: tokens.ink.text,
+            color: tokens.ink.secondary,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',

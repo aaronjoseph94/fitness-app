@@ -1,4 +1,4 @@
-// Owns: the public surface of the chart kit — every chart in SPEC §11's inventory. Props are plain data series
+// Owns: the public surface of the chart kit — every chart in SPEC §11's inventory, drawn in the 1d "Summit" style. Props are plain data series
 // (dates as "YYYY-MM-DD", values in kg / kcal / g / ml / h), never API types, so callers map their data once.
 // Every chart takes `width` (fixed px for print, ~700 on the report page) or fills its container, and carries a
 // data-testid. Colours come from `tokens` only.
@@ -11,6 +11,7 @@ export {
   type WeightPoint,
   type ForecastPoint,
   type WeightMilestone,
+  type WeightPlanLine,
 } from './lib/WeightTrendChart'
 export { WeeklyLossChart, type WeeklyLossChartProps, type WeeklyLossPoint } from './lib/WeeklyLossChart'
 export {

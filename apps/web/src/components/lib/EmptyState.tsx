@@ -1,10 +1,11 @@
-// Owns: the 2a empty state — a dashed `ink.dashed` slot on `ink.panel` at the card radius, a 16/600 title, one 13 px
-// muted line and one outline action on the right (wrapping under the text when narrow). The Log's empty meal slots are
-// the pattern. `compact` tightens the padding for a slot inside a chart card.
+// Owns: the 1d empty state — a 2 px dashed lilac slot (`dashedSurface`) at the card radius, an Outfit 400 title, one 13 px
+// muted line and one soft violet action on the right (wrapping under the text when narrow). The Log's empty meal slots
+// ("Add dinner") are the pattern. `compact` tightens the padding and the radius for a slot inside a chart card.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
+import { dashedSurface, displayTitle } from './surfaces'
 
 export interface EmptyStateProps {
   title: string
@@ -29,20 +30,18 @@ export function EmptyState({ title, body, action, compact = false, testId }: Emp
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '10px 16px',
+        ...dashedSurface,
         px: compact ? `${tokens.pad.dense.x}px` : `${tokens.pad.card.x}px`,
         py: compact ? '14px' : `${tokens.pad.dense.y}px`,
-        borderRadius: `${tokens.radius.card}px`,
-        border: `1px dashed ${tokens.ink.dashed}`,
-        bgcolor: tokens.ink.panel,
+        borderRadius: `${compact ? tokens.radius.small : tokens.radius.card}px`,
         minWidth: 0,
       }}
     >
       <Box sx={{ flex: '1 1 200px', minWidth: 0 }}>
         <Box
           sx={{
-            fontSize: tokens.font.size.cardTitle,
-            fontWeight: tokens.font.weight.heading,
-            lineHeight: tokens.font.leading.cardTitle,
+            ...displayTitle('card'),
+            fontSize: compact ? 17 : tokens.font.size.cardTitle,
             color: tokens.ink.text,
           }}
         >

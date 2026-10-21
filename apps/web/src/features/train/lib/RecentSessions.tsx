@@ -1,7 +1,8 @@
-// Owns: the Train tab's recent sessions — the last four weeks from the Worker plus sessions finished on this device
-// that haven't synced, newest first: weekday and day, name, ticked sets, volume (Σ reps × kg) and duration, a PR chip;
-// tap for the summary or logger — and the "This week" panel under them (sessions finished, volume and ticked sets since
-// Monday). Also the one-line facts other cards quote: each template's newest finished session and this week's totals.
+// Owns: the Train tab's recent sessions (1d Summit: one radius-26 card) — the last four weeks from the Worker plus
+// sessions finished on this device that haven't synced, newest first: weekday and day, name, ticked sets, volume
+// (Σ reps × kg) and duration, a gold PR chip; tap for the summary or logger — and this week's totals in a warm well at
+// the card's foot (sessions finished against the training days, volume and ticked sets since Monday). Also the one-line
+// facts other cards quote: each template's newest finished session, this week's totals and each day's finished work.
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -13,12 +14,11 @@ import {
   formatNumber,
   formatShortDate,
   formatWeekday,
-  panelSurface,
   PendingBadge,
-  StatusChip,
   visuallyHidden,
 } from '../../../components'
 import { tokens, transitionOf } from '../../../theme'
+import { GoldChip } from './GoldChip'
 import { setCounts, type LoggerSession } from './logger-model'
 import { sessionPath, templateName } from './session'
 
@@ -119,6 +119,28 @@ export function weekTotals(
   }
 }
 
+/** One day's finished work: ticked sets and volume over the sessions finished that day. */
+export interface DayWork {
+  sets: number
+  volume_kg: number
+}
+
+/** Each date from `from` to `to` with a finished session (synced or not), its ticked sets and volume summed. */
+export function finishedByDate(
+  sessions: readonly WorkoutSession[],
+  unsynced: readonly LoggerSession[],
+  from: string,
+  to: string,
+): Map<string, DayWork> {
+  const out = new Map<string, DayWork>()
+  for (const r of [...unsynced.map(fromCopy), ...sessions.map((s) => fromServer(s, undefined))]) {
+    if (r.status === 'open' || r.date < from || r.date > to) continue
+    const seen = out.get(r.date) ?? { sets: 0, volume_kg: 0 }
+    out.set(r.date, { sets: seen.sets + r.sets, volume_kg: seen.volume_kg + r.volume_kg })
+  }
+  return out
+}
+
 function WeekStat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div>
@@ -126,6 +148,7 @@ function WeekStat({ label, value, unit }: { label: string; value: string; unit?:
         component="dt"
         sx={{
           fontSize: tokens.font.size.micro,
+          fontWeight: tokens.font.weight.heading,
           lineHeight: tokens.font.leading.micro,
           color: tokens.ink.muted,
         }}
@@ -136,9 +159,10 @@ function WeekStat({ label, value, unit }: { label: string; value: string; unit?:
         component="dd"
         sx={{
           m: 0,
-          fontSize: tokens.font.size.sectionTitle,
-          fontWeight: tokens.font.weight.heading,
-          lineHeight: 'normal',
+          fontFamily: tokens.font.display,
+          fontSize: 18,
+          fontWeight: tokens.font.weight.number,
+          lineHeight: 1.3,
           fontVariantNumeric: 'tabular-nums',
         }}
       >
@@ -147,7 +171,8 @@ function WeekStat({ label, value, unit }: { label: string; value: string; unit?:
           <Box
             component="span"
             sx={{
-              ml: '4px',
+              ml: '3px',
+              fontFamily: tokens.font.family,
               fontSize: tokens.font.size.caption,
               fontWeight: tokens.font.weight.body,
               color: tokens.ink.muted,
@@ -166,15 +191,26 @@ export interface RecentSessionsProps {
   unsynced: readonly LoggerSession[]
   templates: readonly Template[] | undefined
   week: WeekTotals
+  /** His training days this week, when known: sessions read "2 / 4". */
+  plannedSessions?: number
 }
 
-export function RecentSessions({ sessions, unsynced, templates, week }: RecentSessionsProps) {
+export function RecentSessions({
+  sessions,
+  unsynced,
+  templates,
+  week,
+  plannedSessions,
+}: RecentSessionsProps) {
   const rows = [...unsynced.map(fromCopy), ...sessions.map((s) => fromServer(s, templates))]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, SHOWN)
   return (
-    <>
-      <Box data-testid="recent-sessions" sx={{ ...cardSurface, overflow: 'hidden' }}>
+    <Box
+      data-testid="recent-sessions"
+      sx={{ ...cardSurface, borderRadius: `${tokens.summit.radius.tile}px`, overflow: 'hidden', minWidth: 0 }}
+    >
+      <Box sx={{ px: '20px', pt: '8px' }}>
         {rows.map((r, i) => (
           <ButtonBase
             key={r.id}
@@ -184,33 +220,38 @@ export function RecentSessions({ sessions, unsynced, templates, week }: RecentSe
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: 3,
-              px: 4,
-              py: 3,
+              gap: '12px',
+              py: '12px',
               justifyContent: 'flex-start',
               textAlign: 'left',
-              fontSize: tokens.font.size.small,
+              fontSize: tokens.font.size.body,
               lineHeight: 'normal',
               color: tokens.ink.text,
               borderTop: i === 0 ? 'none' : `1px solid ${tokens.ink.hairline}`,
-              transition: transitionOf('background-color', tokens.motion.duration.instant),
-              '@media (hover: hover)': { '&:hover': { bgcolor: tokens.ink.panel } },
-              // Flush in a card that clips its corners: draw the keyboard ring inside the row.
-              '&.Mui-focusVisible': { outlineOffset: -2 },
+              borderRadius: 0,
+              transition: transitionOf('color', tokens.motion.duration.instant),
+              '@media (hover: hover)': { '&:hover .recent-name': { color: tokens.accent.main } },
+              '&.Mui-focusVisible': { outlineOffset: -2, borderRadius: `${tokens.radius.inner}px` },
             }}
           >
-            <Box sx={{ width: 36, flex: 'none', textAlign: 'center', lineHeight: 1.1 }}>
+            <Box sx={{ width: 40, flex: 'none', textAlign: 'center', lineHeight: 1.15 }}>
               <Box
                 aria-hidden
-                sx={{ fontSize: tokens.font.size.micro, color: tokens.ink.muted, textTransform: 'uppercase' }}
+                sx={{
+                  fontSize: tokens.font.size.micro,
+                  fontWeight: tokens.font.weight.heading,
+                  color: tokens.ink.muted,
+                  textTransform: 'uppercase',
+                }}
               >
                 {formatWeekday(r.date)}
               </Box>
               <Box
                 aria-hidden
                 sx={{
+                  fontFamily: tokens.font.display,
                   fontSize: tokens.font.size.itemTitle,
-                  fontWeight: tokens.font.weight.heading,
+                  fontWeight: tokens.font.weight.number,
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
@@ -222,6 +263,7 @@ export function RecentSessions({ sessions, unsynced, templates, week }: RecentSe
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box
+                className="recent-name"
                 sx={{
                   fontWeight: tokens.font.weight.heading,
                   whiteSpace: 'nowrap',
@@ -231,50 +273,58 @@ export function RecentSessions({ sessions, unsynced, templates, week }: RecentSe
               >
                 {r.name}
               </Box>
-              <Box sx={{ color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}>
+              <Box
+                sx={{
+                  fontSize: tokens.font.size.caption,
+                  fontWeight: tokens.font.weight.body,
+                  color: tokens.ink.muted,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {r.sets} set{r.sets === 1 ? '' : 's'} · {formatNumber(r.volume_kg)} kg
                 {r.minutes !== null && ` · ${r.minutes} min`}
               </Box>
             </Box>
-            {r.pr && <StatusChip tone="success" size="small" label="PR" />}
+            {r.pr && <GoldChip size="small" label="PR" />}
             {r.status === 'unsynced' && <PendingBadge label="Not synced" />}
             {r.status === 'open' && <PendingBadge label="Open" />}
-            <ChevronRightRounded sx={{ fontSize: 18, color: tokens.ink.faint, flex: 'none' }} aria-hidden />
+            <ChevronRightRounded sx={{ fontSize: 20, color: tokens.ink.faint, flex: 'none' }} aria-hidden />
           </ButtonBase>
         ))}
       </Box>
       <Box
         component="section"
-        aria-labelledby="this-week-title"
-        sx={{ ...panelSurface, mt: 4, px: '18px', py: 4 }}
+        aria-labelledby="this-week-totals-title"
+        sx={{
+          m: '12px',
+          px: '14px',
+          py: '14px',
+          borderRadius: `${tokens.summit.radius.wellLarge}px`,
+          bgcolor: tokens.ink.panel,
+        }}
       >
-        <Box
-          component="h3"
-          id="this-week-title"
-          sx={{
-            m: 0,
-            fontSize: tokens.font.size.small,
-            fontWeight: tokens.font.weight.heading,
-            lineHeight: 'normal',
-          }}
-        >
-          This week
+        <Box component="h3" id="this-week-totals-title" sx={visuallyHidden}>
+          This week so far
         </Box>
         <Box
           component="dl"
           sx={{
             m: 0,
-            mt: '10px',
             display: 'grid',
             gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: '10px',
+            gap: '8px',
+            textAlign: 'center',
           }}
         >
-          <WeekStat label="Sessions" value={String(week.sessions)} />
+          <WeekStat
+            label="Sessions"
+            value={String(week.sessions)}
+            unit={plannedSessions ? `/ ${plannedSessions}` : undefined}
+          />
           <WeekStat label="Volume" value={formatNumber(week.volume_kg)} unit="kg" />
           <WeekStat label="Sets" value={String(week.sets)} />
         </Box>
       </Box>
-    </>
+    </Box>
   )
 }

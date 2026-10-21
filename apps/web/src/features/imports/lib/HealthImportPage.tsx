@@ -1,11 +1,13 @@
 // Owns: the Apple Watch file import screen (/imports/health, SPEC §8 route 2) — pick a CSV or JSON export (Health Auto
 // Export or similar), check the guessed columns for date, steps, active energy and sleep, preview the mapped days,
 // then POST /api/imports/health in pages of at most 500 rows and show what was saved. Rows upsert by date.
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import UploadFileRounded from '@mui/icons-material/UploadFileRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import MuiTable from '@mui/material/Table'
@@ -18,6 +20,7 @@ import { endpoints } from '@fitness/shared/api'
 import type { HealthImportResult } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
+import { Link as RouterLink } from 'react-router'
 import { apiQueryKey, call, problemText } from '../../../api'
 import {
   cardSurface,
@@ -31,7 +34,7 @@ import {
   tabularNums,
   wellSurface,
 } from '../../../components'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { clockOf } from '../../quick-log'
 import { applyMapping, guessMapping, type Mapping } from './mapping'
 import { readTable, type Table } from './table'
@@ -90,6 +93,24 @@ function ColumnSelect({
 }
 
 type Progress = { done: number; total: number; result: HealthImportResult }
+
+/** The eyebrow's way back to Settings (1d's nav has no breadcrumb; a phone also has its back circle). */
+const crumb = (
+  <Link
+    component={RouterLink}
+    to="/settings"
+    underline="hover"
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+    }}
+  >
+    <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
+    Settings
+  </Link>
+)
 
 export function HealthImportPage() {
   const input = useRef<HTMLInputElement>(null)
@@ -168,6 +189,7 @@ export function HealthImportPage() {
   return (
     <Stack spacing={`${tokens.rhythm.section}px`} data-testid="health-import-page">
       <PageHeader
+        eyebrow={crumb}
         title="Import Apple Watch data"
         subtitle="Steps and sleep from a health export file, one row per day. Rows upsert by date, so importing again is safe."
       />
@@ -244,7 +266,7 @@ export function HealthImportPage() {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' },
                 gap: 3,
                 alignItems: 'start',
               }}

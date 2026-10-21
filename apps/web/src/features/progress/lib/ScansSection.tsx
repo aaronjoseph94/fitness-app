@@ -6,6 +6,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { useNavigate } from 'react-router'
 import { ChartCard, QueryStateCard, SectionHeader } from '../../../components'
+import { tokens } from '../../../theme'
 import { confirmedScans, ScanCharts, ScanMetricGrid, useScans } from '../../scans/charts'
 
 export function ScansSection() {
@@ -13,7 +14,11 @@ export function ScansSection() {
   const scans = useScans()
   const confirmed = scans.data ? confirmedScans(scans.data) : null
   return (
-    <Box component="section" aria-labelledby="progress-scans-title">
+    <Box
+      component="section"
+      aria-labelledby="progress-scans-title"
+      sx={{ mt: `${40 - tokens.rhythm.section}px` }}
+    >
       <SectionHeader
         id="progress-scans"
         title="Scans"
@@ -39,7 +44,10 @@ export function ScansSection() {
           testId="progress-scans"
         />
       ) : (
-        <Box data-testid="progress-scans" sx={{ display: 'grid', gap: 4 }}>
+        <Box
+          data-testid="progress-scans"
+          sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: `${tokens.rhythm.section}px` }}
+        >
           <ScanCharts scans={confirmed} />
           <ScanMetricGrid scans={confirmed} />
         </Box>

@@ -1,5 +1,5 @@
 // Owns: the web build — React, the PWA (injectManifest so src/sw.ts owns caching and push), the manifest and
-// theme colour from the theme tokens, the font's CSS inlined and its latin file preloaded, static files that live
+// theme colour from the theme tokens, the fonts' CSS inlined and their latin files preloaded, static files that live
 // outside public/ (exercise step images and thumbnails, exercise GIFs, the barcode reader's WASM) served in dev and
 // copied into the build, and the dev/preview proxy to the local Worker.
 import { cpSync, createReadStream, existsSync, mkdirSync, statSync } from 'node:fs'
@@ -111,27 +111,30 @@ function staticMounts(mounts: readonly StaticMount[]): Plugin {
   }
 }
 
-/** The browser's theme colour comes from the page token, so the status bar blends into the top bar. */
+/** The browser's theme colour is the sky's top stop, so the status bar runs into the sky hero under the nav. */
 function themeColorMeta(): Plugin {
   return {
     name: 'fitness:theme-color',
     transformIndexHtml: () => [
-      { tag: 'meta', attrs: { name: 'theme-color', content: tokens.ink.page }, injectTo: 'head' },
+      { tag: 'meta', attrs: { name: 'theme-color', content: tokens.summit.sky.top }, injectTo: 'head' },
     ],
   }
 }
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')
 
-/** Entry stylesheets at most this big are inlined into index.html (today: only Geist's five @font-face rules, ~1.8 KB). */
+/** Entry stylesheets at most this big are inlined into index.html (today: Outfit's and DM Sans' four @font-face rules, ~1.6 KB). */
 const INLINE_CSS_MAX_BYTES = 4 * 1024
 
+/** The latin (wght axis) file of each self-hosted family: the one every screen uses, so it is preloaded. */
+const PRELOADED_FONT = /\/(?:outfit|dm-sans)-latin-wght-normal-[^/]+\.woff2$/
+
 /**
- * The self-hosted Geist variable font without a render-blocking request: the entry stylesheet (its @font-face rules,
- * still font-display: swap, one per unicode range) is inlined into index.html, and the latin woff2 that every screen
- * uses is preloaded, so the font downloads alongside the scripts instead of being discovered at the first paint. The
- * other ranges (latin-ext, cyrillic, vietnamese) are fetched only if a page ever shows such a glyph. (The CSP allows
- * inline styles.)
+ * The self-hosted variable fonts (Outfit and DM Sans) without a render-blocking request: the entry stylesheet (their
+ * @font-face rules, still font-display: swap, one per unicode range) is inlined into index.html, and each family's latin
+ * woff2 is preloaded, so the fonts download alongside the scripts instead of being discovered at the first paint. The
+ * latin-ext files are fetched only if a page ever shows such a glyph. Never a font CDN: the Worker's CSP is 'self' and
+ * the PWA must render offline. (The CSP allows inline styles.)
  */
 function inlineFontCss(): Plugin {
   return {
@@ -151,14 +154,12 @@ function inlineFontCss(): Plugin {
           if (css.length > INLINE_CSS_MAX_BYTES || !link.test(out)) continue
           out = out.replace(link, () => `<style>${css}</style>`)
         }
-        const latin = Object.keys(bundle).find((f) => /\/geist-latin-wght-normal-[^/]+\.woff2$/.test(f))
-        if (latin) {
-          out = out.replace(
-            '<title>',
-            () =>
-              `<link rel="preload" href="/${latin}" as="font" type="font/woff2" crossorigin />\n    <title>`,
-          )
-        }
+        const preloads = Object.keys(bundle)
+          .filter((f) => PRELOADED_FONT.test(f))
+          .sort()
+          .map((f) => `<link rel="preload" href="/${f}" as="font" type="font/woff2" crossorigin />\n    `)
+          .join('')
+        if (preloads) out = out.replace('<title>', () => `${preloads}<title>`)
         return out
       },
     },
@@ -192,8 +193,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
         // Runtime-cached by src/sw.ts instead of precached: exercise media, food icons (loaded with a meal), the barcode
         // WASM (1 MB, on the first scan) and pdf.js with its worker (~1.7 MB, only when a scan PDF is opened).
-        // Geist's latin-ext, cyrillic and vietnamese files are not precached: the UI is English (latin only), the browser
-        // fetches them by unicode-range if a name ever needs one, and offline those glyphs use the system face.
+        // The fonts' latin-ext files are not precached: the UI is English (latin only), the browser fetches them by
+        // unicode-range if a name ever needs one, and offline those glyphs use the system face.
         globIgnores: [
           'exercises/**',
           'media/**',
@@ -201,9 +202,8 @@ export default defineConfig({
           'food-icons/**',
           'assets/pdf-*.js',
           'assets/pdf.worker.min-*',
-          'assets/geist-latin-ext-*',
-          'assets/geist-cyrillic*',
-          'assets/geist-vietnamese-*',
+          'assets/outfit-latin-ext-*',
+          'assets/dm-sans-latin-ext-*',
         ],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
@@ -217,7 +217,8 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        theme_color: tokens.ink.page,
+        // The status bar runs into the sky; the splash screen is the cream page.
+        theme_color: tokens.summit.sky.top,
         background_color: tokens.ink.page,
         categories: ['health', 'fitness'],
         icons: [

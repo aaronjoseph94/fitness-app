@@ -1,7 +1,7 @@
-// Owns: one Dashboard section — a titled block of cards (2a: a 16/600 title with its 13 px muted description on the
-// same baseline, then the section's own board of cards). On a phone it folds behind its heading (so the page reads as
-// a short list and each section opens on a tap); from `md` up it is always open. Each section lays out its own board
-// with the shared `Columns`/`Column` pair, because 2a weights them differently (1.6 : 1 : 1, or four equal cards).
+// Owns: one Dashboard section (1d) — a titled group of cards: an Outfit 24 px `h2` with its 13 px muted description,
+// 40 px above it and 14 px under it, then the section's own wrapping rows of cards. A detail section folds behind its
+// heading on a phone (a white radius-30 card that opens on a tap, so the page reads as a short list); `fold={false}`
+// keeps it open at every width (Training, as 1d draws it). From `md` up every section is always open.
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
@@ -10,14 +10,11 @@ import Box from '@mui/material/Box'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
-import { cardSurface, SectionHeader } from '../../../components'
+import { cardSurface, displayTitle, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
 
-/**
- * 2a's 1.6 : 1 : 1 row as whole tracks: an 18-track board where the wide card takes 8 and the two beside it take 5
- * each (8 : 5 : 5 = 1.6 : 1 : 1), so the row is the kit's `Columns` rather than a hand-written grid template.
- */
-export const WIDE_ROW = { tracks: 18, wide: 8, narrow: 5, half: 9 } as const
+/** 1d: a section heading sits 40 px under the row above it (the page's rows are 26 px apart). */
+const HEADING_GAP = 40 - tokens.rhythm.section
 
 export interface DashboardSectionProps {
   /** Anchor id; the title gets `${id}-title` for aria-labelledby. */
@@ -26,6 +23,8 @@ export interface DashboardSectionProps {
   subtitle?: ReactNode
   /** Whether the section starts open on a phone. Ignored on desktop, where it is always open. */
   defaultOpen?: boolean
+  /** Fold behind its heading on a phone. Default true; false keeps it open at every width. */
+  fold?: boolean
   children: ReactNode
 }
 
@@ -34,14 +33,20 @@ export function DashboardSection({
   title,
   subtitle,
   defaultOpen = false,
+  fold = true,
   children,
 }: DashboardSectionProps) {
   const theme = useTheme()
   const desktop = useMediaQuery(theme.breakpoints.up('md'))
 
-  if (desktop)
+  if (desktop || !fold)
     return (
-      <Box component="section" aria-labelledby={`${id}-title`} data-testid={`dashboard-${id}`}>
+      <Box
+        component="section"
+        aria-labelledby={`${id}-title`}
+        data-testid={`dashboard-${id}`}
+        sx={{ mt: `${HEADING_GAP}px`, minWidth: 0 }}
+      >
         <SectionHeader id={id} title={title} subtitle={subtitle} />
         {children}
       </Box>
@@ -56,8 +61,14 @@ export function DashboardSection({
       // APG accordion: the section's h2 wraps the toggle button (MUI's default heading slot is an h3), so the title
       // inside is a plain span. The open panel is a region named by that title, so two open sections are two landmarks.
       slotProps={{ heading: { component: 'h2' }, region: { 'aria-labelledby': `${id}-title` } }}
-      // The 2a card (hairline, radius 12, the card whisper); `&::before` is MUI's own top rule, which 2a does not draw.
-      sx={{ ...cardSurface, overflow: 'hidden', '&::before': { display: 'none' } }}
+      // The 1d card (radius 30, the soft violet shadow); `&::before` is MUI's own top rule, which 1d does not draw. An
+      // open section's cards sit on the cream inside it, so they keep their own white and shadow.
+      sx={{
+        ...cardSurface,
+        overflow: 'hidden',
+        '&::before': { display: 'none' },
+        '&.Mui-expanded': { bgcolor: tokens.ink.page, boxShadow: 'none' },
+      }}
     >
       <AccordionSummary
         expandIcon={<ExpandMoreRounded />}
@@ -66,21 +77,16 @@ export function DashboardSection({
           minHeight: tokens.tapTarget,
           px: `${tokens.pad.card.x}px`,
           py: 1,
-          '& .MuiAccordionSummary-content': { my: '14px' },
+          '& .MuiAccordionSummary-content': { my: '16px' },
           '&.Mui-focusVisible': { outlineOffset: -tokens.focusRing.width },
+          '&.Mui-expanded': { px: 0 },
         }}
       >
         <Box component="span" sx={{ display: 'block', minWidth: 0 }}>
           <Box
             component="span"
             id={`${id}-title`}
-            sx={{
-              display: 'block',
-              fontSize: tokens.font.size.sectionTitle,
-              fontWeight: tokens.font.weight.heading,
-              lineHeight: tokens.font.leading.sectionTitle,
-              color: tokens.ink.text,
-            }}
+            sx={{ display: 'block', ...displayTitle('section'), color: tokens.ink.text }}
           >
             {title}
           </Box>
@@ -100,7 +106,7 @@ export function DashboardSection({
           )}
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ px: 3, pt: 1, pb: 3 }}>{children}</AccordionDetails>
+      <AccordionDetails sx={{ px: 0, pt: '4px', pb: '4px' }}>{children}</AccordionDetails>
     </Accordion>
   )
 }

@@ -1,15 +1,18 @@
 // Owns: the route error boundary — a calm card with Reload. A failed lazy import after a deploy (stale chunk) is named
-// as "a new version is ready", which a reload fixes; the same failure with no network says so instead.
+// as "a new version is ready", which a reload fixes; the same failure with no network says so instead. Inside the shell
+// it sits in the panel; at the root (`RootRouteError`, no shell around it) it also keeps clear of the iOS status bar,
+// which the installed app draws under.
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { isRouteErrorResponse, useRouteError } from 'react-router'
 import { Panel } from '../../../components'
+import { safeArea } from './layout'
 
 const STALE_CHUNK =
   /dynamically imported module|Importing a module script failed|error loading dynamically imported/i
 
-export function RouteError() {
+export function RouteError({ inset = false }: { inset?: boolean }) {
   const error = useRouteError()
   const staleChunk = error instanceof Error && STALE_CHUNK.test(error.message)
   const offline = staleChunk && typeof navigator !== 'undefined' && !navigator.onLine
@@ -25,7 +28,15 @@ export function RouteError() {
           : 'An unexpected error happened.'
   if (!staleChunk) console.error(error)
   return (
-    <Box role="alert" sx={{ p: 4, maxWidth: (theme) => theme.breakpoints.values.sm, mx: 'auto' }}>
+    <Box
+      role="alert"
+      sx={{
+        p: 4,
+        ...(inset && { pt: (theme) => `calc(${theme.spacing(4)} + ${safeArea.top})` }),
+        maxWidth: (theme) => theme.breakpoints.values.sm,
+        mx: 'auto',
+      }}
+    >
       <Panel title={title}>
         <Typography variant="body2" sx={{ mb: 4, overflowWrap: 'anywhere' }}>
           {detail}
@@ -36,4 +47,9 @@ export function RouteError() {
       </Panel>
     </Box>
   )
+}
+
+/** The boundary outside the shell (the app frame or the printed report failed): clear of the status bar too. */
+export function RootRouteError() {
+  return <RouteError inset />
 }

@@ -1,207 +1,230 @@
-// Owns: the Today tab (SPEC §6 dashboard, 2a layout): the title row (greeting, the date, the day of the plan and
-// today's session; "+ Log" opens the quick-log sheet from `md` up, where the phone's quick-log row and floating button
-// are not shown), today's five stat cards (with the fast badge and queued logs), the quick-log row on a phone, the
-// weight trend card (headline, chart of the window's weigh-ins and trend, four-stat footer) beside today's session and
-// this week, then the pinned coach note with today's day adjustment under it, the AI slot (the latest proposal or AI
-// event, any safety flag; live: polled every 15 s while visible) and the recent activity table from the same feed.
-// Reads: GET /api/day/:date (with the note and the active plan's forecast), /api/trend, /api/settings,
-// /api/week-plans/view, /api/week-plans?status=proposed, /api/events. On a phone the page is one column in that order.
+// Owns: the Today tab (SPEC §6 dashboard, 1d "Summit" layout: docs/design/design_handoff_fitness_1d README §5.1) — the
+// full sky hero (the eyebrow "Day 12 of the climb · Wed, Oct 7"; the trend weight as the page's h1, counting down from
+// the start weight; today's weigh-in and the 7-day change; the pills for the change since base camp and kg to the
+// summit; the glass "Next camp" card; under it the gold "+ Log" that opens the quick-log sheet, in the headline column
+// so it never sits on the mountain; and the mountain with its camps, the summit and "You"), then on the cream panel:
+// "Today's fuel" (five capsule gauges, the fast badge and queued logs) beside the pinned coach note over the quick-log
+// row (1.45 : 1, wrapping); today's session (with the readiness ring), the AI check-in (today's day adjustment, the
+// latest AI event or the pending proposal, any safety flag; live: polled every 15 s while visible) and the deep-sky
+// "This week" (1 : 1 : 1, wrapping; its next Evolt scan from the scan schedule); and the recent activity table from the
+// same feed.
+// Reads: GET /api/day/:date (with the note and the active plan's forecast), /api/trend (milestones too), /api/settings,
+// /api/week-plans/view, /api/week-plans?status=proposed, /api/scans/schedule, /api/days and /api/sessions (readiness),
+// /api/events, and the exercise library for the session's names.
+// Every row wraps instead of squeezing (README §4); on a phone the page is one column in that order.
 // Second entry point: ./queries (the reads' inputs).
 import AddRounded from '@mui/icons-material/AddRounded'
-import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
-import Stack from '@mui/material/Stack'
-import { daysBetween, weekdayOf } from '@fitness/shared/engine'
-import { useState } from 'react'
+import { daysBetween } from '@fitness/shared/engine'
+import { useMemo, useState } from 'react'
 import {
-  Column,
-  Columns,
-  formatClockTime,
-  formatLongDate,
-  greetingFor,
+  formatShortDate,
+  formatWeekday,
   isQueryLoading,
   PageHeader,
   QueryStateCard,
   Reveal,
-  staggerDelay,
+  WrapRow,
+  wrapCol,
 } from '../../components'
 import { useLocalToday } from '../../app/local-today'
 import { useUiStore } from '../../app/ui-store'
+import { copy } from '../../copy'
 import { tokens } from '../../theme'
-import { AiCard, TodayAdjustment } from './lib/AiCard'
+import { lastTrend } from '../progress/series'
+import { AiCard } from './lib/AiCard'
+import { climbOf } from './lib/climb'
 import { CoachNote } from './lib/CoachNote'
 import { HealthDialog } from './lib/HealthDialog'
-import { HeroChart } from './lib/HeroChart'
+import { HeroMountain } from './lib/Mountain'
 import { QuickLogRow } from './lib/QuickLogRow'
 import { RecentActivity } from './lib/RecentActivity'
 import { ThisWeekCard } from './lib/ThisWeekCard'
 import { TodayRings } from './lib/TodayRings'
 import { TodaySession } from './lib/TodaySession'
+import { TrendFacts, TrendTitle } from './lib/TodayHeader'
 import { useEventFeed } from './lib/useEventFeed'
 import { useTodayData } from './lib/useToday'
 
-/** Fallbacks while settings load: the goal (SPEC §3) and the water target (SPEC §6). */
-const DEFAULT_GOAL_KG = 65
+/** Fallback while settings load: the water target (SPEC §6). */
 const DEFAULT_WATER_ML = 3000
 
-/** The session and week cards' heights with a planned session, for their placeholders. */
-const SESSION_HEIGHT = 326
-const WEEK_HEIGHT = 303
+/** The second row's cards with a planned session, for their placeholders. */
+const ROW_HEIGHT = 420
 /** The recent activity table's height under its title, for its placeholder. */
 const ACTIVITY_HEIGHT = 260
 
-/** A bottom-row slot: its cards stacked 16 px apart; gone when it has nothing to show. */
-const SLOT = {
-  display: 'grid',
-  gap: 4,
-  alignContent: 'start',
-  minWidth: 0,
-  '&:empty': { display: 'none' },
-} as const
+/** README §6: the panel's cards rise in reading order, 90 ms apart, after the hero. */
+const enter = (i: number) => 200 + i * tokens.motion.stagger.section
 
-/** 2a's entrance: the stat cards first, then the 2 : 1 row, then the bottom row, 90 ms apart per card. */
-const rowDelay = (row: number, i = 0) => staggerDelay(i, tokens.motion.stagger.section, row === 1 ? 300 : 450)
+/** A card that fills its wrapping column (row 2's cards end level). */
+const FILL = { height: '100%' } as const
 
 export function TodayPage() {
   const date = useLocalToday()
-  const { day, trend, settings, week, weekPlan, proposed, note, pending } = useTodayData(date)
+  const { day, trend, settings, week, weekPlan, proposed, note, pending, scanDue, readiness } =
+    useTodayData(date)
   const feed = useEventFeed()
   const openQuickLog = useUiStore((s) => s.openQuickLog)
   const [healthOpen, setHealthOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
   const profile = settings.data?.profile
-  const goalKg = profile?.goal_weight_kg ?? DEFAULT_GOAL_KG
   const waterTargetMl = settings.data?.settings.water_target_ml ?? DEFAULT_WATER_ML
   const trainingDays = settings.data?.settings.training_days ?? null
   const workoutReminder = settings.data?.settings.reminders.workout
-  // The day carries the active plan's forecast (the same one GET /api/plan returns).
-  const forecast = day.data?.forecast ?? null
-  const lastPoint = trend.data?.points.findLast((p) => p.trend_kg !== null)
-  const trendKg = day.data?.weight.trend_kg ?? lastPoint?.trend_kg ?? null
+  // The day carries the active plan's forecast (the same one GET /api/plan returns); else the trend's own.
+  const forecast = day.data?.forecast ?? trend.data?.forecast ?? null
+  const last = trend.data ? lastTrend(trend.data.points) : null
+  const trendKg = day.data?.weight.trend_kg ?? last?.kg ?? null
   const fasting =
     pending.fast === 'started' || (pending.fast !== 'ended' && day.data?.fast.state === 'active')
-  const weighIn = () => openQuickLog('weigh-in')
 
-  // "Wednesday, October 7 · Day 12 of the plan · Upper A at 4:30 PM", from what has arrived.
+  const climb = useMemo(
+    () =>
+      profile
+        ? climbOf({
+            startKg: profile.start_weight_kg,
+            goalKg: profile.goal_weight_kg,
+            milestones: trend.data?.milestones ?? [],
+            trend: trendKg !== null ? { date: last?.date ?? date, kg: trendKg } : null,
+            forecast,
+          })
+        : null,
+    [profile, trend.data?.milestones, trendKg, last?.date, date, forecast],
+  )
+
+  // "Day 12 of the climb · Wed, Oct 7".
   const planDay =
     profile?.start_date && profile.start_date <= date ? daysBetween(profile.start_date, date) + 1 : null
-  const session = day.data?.session
-    ? null
-    : (day.data?.planned_session ?? weekPlan?.plan.sessions[weekdayOf(date)] ?? null)
-  const at =
-    workoutReminder?.enabled && workoutReminder.time ? ` at ${formatClockTime(workoutReminder.time)}` : ''
-  const subtitle = [
-    formatLongDate(date),
-    planDay && `Day ${planDay} of the plan`,
-    session && `${session.name}${at}`,
-  ]
+  const eyebrow = [planDay && copy.dayOfPlan(planDay), `${formatWeekday(date)}, ${formatShortDate(date)}`]
     .filter(Boolean)
     .join(' · ')
 
   return (
-    <Stack spacing={{ xs: 4, md: 5 }} data-testid="today-page">
+    <Box
+      data-testid="today-page"
+      sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: `${tokens.rhythm.section}px` }}
+    >
       <PageHeader
+        variant="today"
         testId="today-hero"
-        title={`${greetingFor(new Date().getHours())}, Aaron`}
         pageName="Today"
+        eyebrow={eyebrow}
+        title={<TrendTitle trendKg={trendKg} startKg={profile?.start_weight_kg ?? null} />}
         subtitle={
-          // The day of the plan and the session land after the date and wrap it onto a second line on a phone: that line
-          // is held from the first paint, so the cards under the title never move.
-          <Box
-            component="span"
-            sx={{ display: 'block', minHeight: { xs: `${2 * tokens.font.leading.body}em`, sm: 0 } }}
-          >
-            {subtitle}
-          </Box>
+          <TrendFacts
+            climb={climb}
+            rawKg={pending.weighInKg ?? day.data?.weight.raw_kg ?? null}
+            rawPending={pending.weighInKg !== null}
+            change7dKg={day.data?.weight.change_7d_kg ?? trend.data?.change_7d_kg ?? null}
+            action={
+              <Button
+                variant="contained"
+                color="gold"
+                startIcon={<AddRounded />}
+                aria-haspopup="dialog"
+                data-testid="today-log"
+                onClick={() => openQuickLog()}
+              >
+                Log
+              </Button>
+            }
+          />
         }
-        action={
-          // From `md` up the title row carries the log button; a phone has the floating one and the quick-log row.
-          <Button
-            variant="contained"
-            startIcon={<AddRounded />}
-            endIcon={<ExpandMoreRounded />}
-            aria-haspopup="dialog"
-            onClick={() => openQuickLog()}
-            sx={{ display: { xs: 'none', md: 'inline-flex' } }}
-          >
-            Log
-          </Button>
-        }
+        extras={<HeroMountain climb={climb} />}
       />
 
-      {!day.data && !isQueryLoading(day) ? (
-        <QueryStateCard query={day} what="today" />
-      ) : (
-        <TodayRings
-          day={day.data}
-          loading={isQueryLoading(day)}
-          pending={pending}
-          waterTargetMl={waterTargetMl}
-          onAddHealth={() => setHealthOpen(true)}
-        />
-      )}
-
-      <Box sx={{ display: { md: 'none' } }}>
-        <QuickLogRow fasting={fasting} />
-      </Box>
-
-      {/* 2 : 1 from `lg` (the chart, then today's session over this week); from `sm` the chart takes the full width
-          and the two cards share the row under it; one column on a phone. */}
-      <Columns md={1} lg={3}>
-        <Column span={2}>
-          <Reveal delay={rowDelay(1)}>
-            <HeroChart
-              trend={trend}
-              forecast={forecast}
-              trendKg={trendKg}
-              rawKg={pending.weighInKg ?? day.data?.weight.raw_kg ?? null}
-              rawPending={pending.weighInKg !== null}
-              change7dKg={day.data?.weight.change_7d_kg ?? trend.data?.change_7d_kg ?? null}
-              startKg={profile?.start_weight_kg ?? null}
-              startDate={profile?.start_date ?? null}
-              goalKg={goalKg}
-              onWeighIn={weighIn}
-            />
-          </Reveal>
-        </Column>
-        <Column>
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 4,
-              alignItems: 'start',
-              gridTemplateColumns: {
-                xs: 'minmax(0, 1fr)',
-                sm: 'repeat(2, minmax(0, 1fr))',
-                lg: 'minmax(0, 1fr)',
-              },
-            }}
-          >
-            {/* Until the day and the week answer, placeholders; if either fails, its banner: "Rest day" or an empty
-                week would be a claim. */}
-            {isQueryLoading(day) || isQueryLoading(week) ? (
-              <>
-                <Skeleton variant="rounded" height={SESSION_HEIGHT} />
-                <Skeleton variant="rounded" height={WEEK_HEIGHT} />
-              </>
-            ) : !week.data || !day.data ? (
-              <QueryStateCard query={week.data ? day : week} what="today’s session and this week" />
+      {/* Fuel : coach note over the quick-log row, 1.45 : 1; they wrap to one column rather than squeeze. */}
+      <WrapRow align="flex-start">
+        <Box sx={wrapCol(1.45)}>
+          <Reveal delay={enter(0)}>
+            {!day.data && !isQueryLoading(day) ? (
+              <QueryStateCard query={day} what="today" />
             ) : (
-              <>
-                <Reveal delay={rowDelay(1, 1)}>
+              <TodayRings
+                day={day.data}
+                loading={isQueryLoading(day)}
+                readAt={day.dataUpdatedAt}
+                pending={pending}
+                waterTargetMl={waterTargetMl}
+                onAddHealth={() => setHealthOpen(true)}
+              />
+            )}
+          </Reveal>
+        </Box>
+        <Box
+          sx={{
+            ...wrapCol(1),
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+            gap: '20px',
+            alignContent: 'start',
+          }}
+        >
+          {note && (
+            <Reveal delay={enter(1)}>
+              <CoachNote note={note} />
+            </Reveal>
+          )}
+          <QuickLogRow fasting={fasting} />
+        </Box>
+      </WrapRow>
+
+      {/* Today's session : AI check-in : this week, 1 : 1 : 1. Until the day and the week answer, placeholders; if
+          either fails, its banner: "Rest day" or an empty week would be a claim. */}
+      <WrapRow>
+        {isQueryLoading(day) || isQueryLoading(week) ? (
+          <>
+            <Skeleton
+              variant="rounded"
+              height={ROW_HEIGHT}
+              sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
+            />
+            <Skeleton
+              variant="rounded"
+              height={ROW_HEIGHT}
+              sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
+            />
+            <Skeleton
+              variant="rounded"
+              height={ROW_HEIGHT}
+              sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
+            />
+          </>
+        ) : (
+          <>
+            <Box sx={wrapCol(1)}>
+              <Reveal delay={enter(2)} sx={FILL}>
+                {day.data ? (
                   <TodaySession
                     date={date}
                     day={day.data}
                     plan={weekPlan}
                     trainingDays={trainingDays}
                     reminder={workoutReminder}
+                    readiness={readiness}
                   />
-                </Reveal>
-                <Reveal delay={rowDelay(1, 2)}>
+                ) : (
+                  <QueryStateCard query={day} what="today’s session" />
+                )}
+              </Reveal>
+            </Box>
+            <Box sx={wrapCol(1)}>
+              <Reveal delay={enter(3)} sx={FILL}>
+                <AiCard
+                  latest={day.data?.proposals.latest ?? null}
+                  pendingCount={day.data?.proposals.pending_count ?? 0}
+                  events={feed.data?.events ?? []}
+                />
+              </Reveal>
+            </Box>
+            <Box sx={wrapCol(1)}>
+              <Reveal delay={enter(4)} sx={FILL}>
+                {week.data && day.data ? (
                   <ThisWeekCard
                     date={date}
                     day={day.data}
@@ -210,45 +233,24 @@ export function TodayPage() {
                     trainingDays={trainingDays}
                     fastHours={settings.data?.settings.fast_hours ?? null}
                     waterTargetMl={waterTargetMl}
+                    scanDue={scanDue}
                   />
-                </Reveal>
-              </>
-            )}
-          </Box>
-        </Column>
-      </Columns>
+                ) : (
+                  <QueryStateCard query={week.data ? day : week} what="this week" />
+                )}
+              </Reveal>
+            </Box>
+          </>
+        )}
+      </WrapRow>
 
-      {/* Coach note (with today's day adjustment under it) : AI slot : recent activity at 1 : 1 : 1.3 from `lg`; the
-          first two side by side over the table from `md`; one column on a phone. A slot with nothing to show takes no
-          room. */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          flexWrap: { md: 'wrap', lg: 'nowrap' },
-          alignItems: { md: 'flex-start' },
-          gap: 4,
-        }}
-      >
-        <Reveal delay={rowDelay(2)} sx={{ ...SLOT, flex: { md: '1 1 0' } }}>
-          {note && <CoachNote note={note} />}
-          <TodayAdjustment events={feed.data?.events ?? []} />
-        </Reveal>
-        <Reveal delay={rowDelay(2, 1)} sx={{ ...SLOT, flex: { md: '1 1 0' } }}>
-          <AiCard
-            latest={day.data?.proposals.latest ?? null}
-            pendingCount={day.data?.proposals.pending_count ?? 0}
-            events={feed.data?.events ?? []}
-          />
-        </Reveal>
-        <Reveal delay={rowDelay(2, 2)} sx={{ ...SLOT, flex: { md: '1 1 100%', lg: '1.3 1 0' } }}>
-          {feed.data ? (
-            <RecentActivity events={feed.data.events} />
-          ) : (
-            <QueryStateCard query={feed} what="recent activity" height={ACTIVITY_HEIGHT} />
-          )}
-        </Reveal>
-      </Box>
+      <Reveal delay={enter(5)}>
+        {feed.data ? (
+          <RecentActivity events={feed.data.events} />
+        ) : (
+          <QueryStateCard query={feed} what="recent activity" height={ACTIVITY_HEIGHT} />
+        )}
+      </Reveal>
 
       {healthOpen && (
         <HealthDialog
@@ -269,6 +271,6 @@ export function TodayPage() {
         message={notice}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       />
-    </Stack>
+    </Box>
   )
 }

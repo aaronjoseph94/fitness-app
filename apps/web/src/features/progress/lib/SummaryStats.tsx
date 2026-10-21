@@ -1,13 +1,24 @@
-// Owns: the four headline numbers for the selected range (2a stat cards) — trend change with the weekly rate, average
-// intake and average protein against their targets, and logging adherence — each a big number with a pill right of
-// it and a caption saying what it is. Two per row on a phone, four across from 900 px.
-// Before the range's data arrives (`summary` null) the cards show dashes with captions of the same length and hold
-// their pills' room (`delta={null}`), so the grid has its final height from the first paint and the charts under it
-// never move.
+// Owns: the four headline numbers for the selected range (1d summary cards) — trend change with the weekly rate,
+// average intake and average protein against their targets, and logging adherence — each a 13/600 muted label, the
+// number in Outfit 30 with its unit, and a status pill under it saying what it means. Cards are 150 px columns in a
+// row that wraps: four across on a desktop, two on a phone.
+// Before the range's data arrives (`summary` null) the cards show dashes and hold their pills' room, so the row has
+// its final height from the first paint and the charts under it never move.
 import Box from '@mui/material/Box'
 import type { Forecast, TargetValues } from '@fitness/shared/schemas'
-import { formatNumber, formatSigned, Reveal, StatCard, staggerDelay, StatusChip } from '../../../components'
-import { tokens } from '../../../theme'
+import {
+  cardSurface,
+  CountUp,
+  formatNumber,
+  formatSigned,
+  Reveal,
+  staggerDelay,
+  statValue,
+  type StatusChipTone,
+  wrapCol,
+  WrapRow,
+} from '../../../components'
+import { CHIP_TONES, tokens } from '../../../theme'
 import type { RangeSummary } from './series'
 
 interface SummaryStatsProps {
@@ -15,22 +26,136 @@ interface SummaryStatsProps {
   summary: RangeSummary | null
   /** The targets the charts' target lines show (latest non-fast day). */
   targets: TargetValues | null
+  /** The forecast (the hero's subtitle compares the range's rate with the plan's; kept for callers). */
   forecast: Forecast | null
 }
 
 /** A weekly rate needs at least a week of trend between its ends to mean anything. */
 const RATE_MIN_DAYS = 7
 
-/** Each card fills its grid cell, so a row of cards shares one height. */
-const FILL = { height: '100%' }
+const delay = (i: number) => staggerDelay(i, 70, 150)
 
-const delay = (i: number) => staggerDelay(i, tokens.motion.stagger.card, 150)
+/**
+ * The card's status pill (1d: 12/600, 4 × 10, the tone's text on its tint). Unlike the kit's one-line chip it wraps in
+ * a phone's half-width card ("−10 vs 130 minimum"), its corners easing from a pill to a rounded box.
+ */
+function pillSx(tone: StatusChipTone) {
+  const t = CHIP_TONES[tone === 'outline' || tone === 'dashed' ? 'neutral' : tone]
+  return {
+    display: 'inline-block',
+    maxWidth: '100%',
+    px: '10px',
+    py: '3px',
+    borderRadius: '11px',
+    bgcolor: t.bg,
+    color: tone === 'neutral' ? tokens.summit.ink.deep : t.text,
+    fontSize: tokens.font.size.caption,
+    fontWeight: tokens.font.weight.heading,
+    lineHeight: '16px',
+    fontVariantNumeric: 'tabular-nums',
+  } as const
+}
 
-/** A phone card with its numbers in: label, value, the delta pill on a row of its own, a two-line caption. Each phone
- * row is at least this tall, so the rows hold their height when the range's numbers and captions land. */
-const PHONE_CARD_HEIGHT = 165
+interface CardProps {
+  label: string
+  /** The number as shown, or null for a dash. */
+  value: number | null
+  /** Shown instead of `value` as text (a signed change keeps its sign). */
+  text?: string
+  unit: string
+  precision?: number
+  countUp?: boolean
+  /** The pill under the number; null while loading (its room is held), undefined for none. */
+  pill: { tone: StatusChipTone; label: string } | null | undefined
+  index: number
+  testId: string
+}
 
-export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) {
+/** One 1d summary card: label, number + unit, the pill under it. */
+function SummaryCard({ label, value, text, unit, precision = 0, countUp, pill, index, testId }: CardProps) {
+  return (
+    <Box sx={{ ...wrapCol(1, tokens.layout.wrapBasis.tile), display: 'flex' }}>
+      <Reveal delay={delay(index)} sx={{ width: '100%' }}>
+        <Box
+          data-testid={testId}
+          sx={{
+            ...cardSurface,
+            borderRadius: `${tokens.radius.tile}px`,
+            height: '100%',
+            boxSizing: 'border-box',
+            px: '24px',
+            py: '20px',
+            minWidth: 0,
+          }}
+        >
+          <Box
+            sx={{
+              fontSize: tokens.font.size.label,
+              fontWeight: tokens.font.weight.heading,
+              color: tokens.ink.secondary,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {label}
+          </Box>
+          <Box
+            sx={{
+              mt: '6px',
+              display: 'flex',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              columnGap: '6px',
+              ...statValue('standard'),
+              lineHeight: 1.15,
+              color: tokens.ink.text,
+            }}
+          >
+            <span>
+              {value === null ? (
+                '—'
+              ) : text ? (
+                text
+              ) : countUp ? (
+                <CountUp value={value} precision={precision} delay={delay(index) + 300} />
+              ) : (
+                formatNumber(value, precision)
+              )}
+            </span>
+            {value !== null && (
+              <Box
+                component="span"
+                sx={{
+                  fontFamily: tokens.font.family,
+                  fontSize: tokens.font.size.body,
+                  fontWeight: tokens.font.weight.label,
+                  letterSpacing: 0,
+                  color: tokens.ink.secondary,
+                }}
+              >
+                {unit}
+              </Box>
+            )}
+          </Box>
+          <Box sx={{ mt: '8px', minHeight: 22, display: 'flex' }}>
+            {pill === null ? (
+              <Box aria-hidden sx={{ ...pillSx('neutral'), visibility: 'hidden' }}>
+                –
+              </Box>
+            ) : pill ? (
+              <Box component="span" sx={pillSx(pill.tone)}>
+                {pill.label}
+              </Box>
+            ) : null}
+          </Box>
+        </Box>
+      </Reveal>
+    </Box>
+  )
+}
+
+export function SummaryStats({ summary, targets }: SummaryStatsProps) {
   const s = summary
   const change = s?.trendChangeKg ?? null
   // Rate = trend change ÷ (days between the first and last trend point ÷ 7), kg/week.
@@ -39,130 +164,82 @@ export function SummaryStats({ summary, targets, forecast }: SummaryStatsProps) 
   const proteinTarget = targets?.protein_g ?? null
   const avgKcal = s?.avgKcal == null ? null : Math.round(s.avgKcal)
   const avgProtein = s?.avgProteinG == null ? null : Math.round(s.avgProteinG)
-  const logged = s?.loggedDays ?? null
-  const trendLine =
-    s?.trendFromKg != null && s.trendToKg != null
-      ? `${formatNumber(s.trendFromKg, 1)} → ${formatNumber(s.trendToKg, 1)} kg`
-      : 'Trend at the start and end of the range'
-  const expected =
-    forecast && forecast.weekly_rate_kg > 0
-      ? ` · expected ${formatSigned(-forecast.weekly_rate_kg, 2)} a week`
-      : ''
+
+  const ratePill =
+    s === null
+      ? null
+      : rate === null
+        ? undefined
+        : {
+            tone: (rate < 0 ? 'success' : 'warning') as StatusChipTone,
+            label: `${formatSigned(rate, 2)} kg a week`,
+          }
+  const kcalPill =
+    s === null
+      ? null
+      : avgKcal !== null && kcalTarget
+        ? {
+            tone: 'neutral' as StatusChipTone,
+            label: `${formatSigned(avgKcal - kcalTarget, 0)} vs ${formatNumber(kcalTarget)}`,
+          }
+        : undefined
+  const proteinPill =
+    s === null
+      ? null
+      : avgProtein !== null && proteinTarget
+        ? {
+            tone: (avgProtein >= proteinTarget ? 'success' : 'warning') as StatusChipTone,
+            label: `${formatSigned(avgProtein - proteinTarget, 0)} vs ${formatNumber(proteinTarget)} minimum`,
+          }
+        : undefined
+  const adherencePill =
+    s === null
+      ? null
+      : {
+          tone: (s.adherentDays === s.days ? 'success' : 'neutral') as StatusChipTone,
+          label: `${s.adherentDays} of ${s.days} days logged`,
+        }
 
   return (
-    <Box
-      data-testid="progress-summary"
-      aria-busy={summary === null || undefined}
-      sx={{
-        display: 'grid',
-        gap: 4,
-        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
-        gridAutoRows: { xs: `minmax(${PHONE_CARD_HEIGHT}px, auto)`, sm: 'auto' },
-      }}
-    >
-      <Reveal delay={delay(0)} sx={FILL}>
-        <StatCard
+    <Box data-testid="progress-summary" aria-busy={summary === null || undefined}>
+      <WrapRow gap={tokens.summit.space.gap.tile}>
+        <SummaryCard
+          index={0}
           label="Trend change"
-          value={change === null ? null : formatSigned(change, 1)}
+          value={change}
+          text={change === null ? undefined : formatSigned(change, 1)}
           unit="kg"
-          precision={2}
-          delta={s === null ? null : rate === null ? undefined : { value: rate, unit: 'kg/wk', good: 'down' }}
-          footnote={`${trendLine}${expected}`}
+          pill={ratePill}
           testId="stat-trend-change"
         />
-      </Reveal>
-      <Reveal delay={delay(1)} sx={FILL}>
-        <StatCard
+        <SummaryCard
+          index={1}
           label="Average intake"
           value={avgKcal}
           unit="kcal"
-          delta={
-            s === null
-              ? null
-              : avgKcal !== null && kcalTarget
-                ? {
-                    value: avgKcal - kcalTarget,
-                    unit: '',
-                    period: `vs ${formatNumber(kcalTarget)}`,
-                    good: 'neutral',
-                  }
-                : undefined
-          }
           countUp
-          delay={delay(1)}
-          footnote={
-            logged === null
-              ? 'Logged days, fasts excluded'
-              : logged
-                ? `${logged} logged ${logged === 1 ? 'day' : 'days'}, fasts excluded`
-                : 'No meals logged yet'
-          }
+          pill={kcalPill}
           testId="stat-avg-kcal"
         />
-      </Reveal>
-      <Reveal delay={delay(2)} sx={FILL}>
-        <StatCard
+        <SummaryCard
+          index={2}
           label="Average protein"
           value={avgProtein}
           unit="g"
-          delta={
-            s === null
-              ? null
-              : avgProtein !== null && proteinTarget
-                ? {
-                    value: avgProtein - proteinTarget,
-                    unit: '',
-                    period: `vs ${formatNumber(proteinTarget)}`,
-                    good: 'up',
-                  }
-                : undefined
-          }
           countUp
-          delay={delay(2)}
-          footnote={
-            logged && proteinTarget
-              ? `Hit the target on ${s!.proteinHitDays} of ${logged} ${logged === 1 ? 'day' : 'days'}`
-              : proteinTarget
-                ? `Daily average; target ${formatNumber(proteinTarget)} g`
-                : 'Daily average'
-          }
+          pill={proteinPill}
           testId="stat-avg-protein"
         />
-      </Reveal>
-      <Reveal delay={delay(3)} sx={FILL}>
-        <StatCard
+        <SummaryCard
+          index={3}
           label="Adherence"
           value={s?.adherence == null ? null : Math.round(s.adherence * 100)}
           unit="%"
           countUp
-          delay={delay(3)}
-          // A count, not a judgement: green when every day of the range was logged, otherwise the neutral pill. The 22 px
-          // pill sits in the 20 px label row without pushing this card's number below its neighbours'. A phone's half-width
-          // card has no room for it beside the label, so there the count leads the caption instead.
-          badge={
-            s ? (
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline-flex' }, my: '-1px' }}>
-                <StatusChip
-                  tone={s.adherentDays === s.days ? 'success' : 'neutral'}
-                  shape="pill"
-                  label={`${s.adherentDays} of ${s.days} days`}
-                />
-              </Box>
-            ) : undefined
-          }
-          footnote={
-            <>
-              {s && (
-                <Box component="strong" sx={{ display: { sm: 'none' } }}>
-                  {s.adherentDays} of {s.days} days ·{' '}
-                </Box>
-              )}
-              Weigh-in, two meals or a fast, and water each day
-            </>
-          }
+          pill={adherencePill}
           testId="stat-adherence"
         />
-      </Reveal>
+      </WrapRow>
     </Box>
   )
 }

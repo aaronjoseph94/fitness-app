@@ -1,12 +1,14 @@
-// Owns: the hero weight chart (2a) — the 2.5 px trend line over an area fading from 18 % to 0, raw weigh-ins as 8 px
-// white dots with a grey ring, the latest trend point ringed in the accent, the forecast (dashed "5 5" mid line over
-// the light ±20 % band) to the goal, the goal line in the goal colour with a dot where the forecast meets it, and a
-// marker on each milestone reached.
+// Owns: the hero weight chart (1d) — the 3 px plum trend line over an area fading to 0, raw weigh-ins as 9 px white
+// dots ringed in faint lilac, the latest trend point as "you are here" (a white dot in a gold halo), the forecast
+// (dashed "5 5" mid line over the light ±20 % band) to the goal, the dashed gold plan line (base camp → summit at the
+// plan's rate), the goal line in the goal colour with a dot where the forecast meets it, and a marker on each milestone
+// reached.
 import { formatNumber, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
   ChartFrame,
   FORECAST_WIDTH,
+  planLine,
   MARGIN,
   TREND_WIDTH,
   currentPoint,
@@ -53,8 +55,16 @@ export interface WeightMilestone {
   reachedOn?: string | null
 }
 
+/** The plan's straight line from base camp to the summit (start weight on the start date → goal weight on its date). */
+export interface WeightPlanLine {
+  from: { date: string; kg: number }
+  to: { date: string; kg: number }
+}
+
 export interface WeightTrendChartProps extends ChartSizeProps {
   points: readonly WeightPoint[]
+  /** The dashed gold plan line, drawn across the chart's own dates (it never widens the axis). */
+  plan?: WeightPlanLine | null
   /** Start it at the last trend point so band and trend meet. */
   forecast?: readonly ForecastPoint[]
   /** Goal weight, kg (dashed line). */
@@ -71,6 +81,7 @@ interface Row {
   trend?: number | null
   mid?: number
   band?: [number, number]
+  plan?: number
 }
 
 const C = tokens.metric.weight
@@ -85,6 +96,7 @@ const DOT_SPACING_PX = 10
 export function WeightTrendChart({
   points,
   forecast = [],
+  plan = null,
   goal,
   milestones = [],
   width,
@@ -102,8 +114,17 @@ export function WeightTrendChart({
     byDate.set(f.date, row)
   }
   const rows = [...byDate.values()].sort((a, b) => a.t - b.t)
+  // The plan line at each of the chart's dates inside its span: kg(t) = from.kg + (to.kg − from.kg) × (t − t0) / (t1 − t0).
+  if (plan) {
+    const t0 = dateToTime(plan.from.date)
+    const t1 = dateToTime(plan.to.date)
+    for (const r of rows)
+      if (t1 > t0 && r.t >= t0 && r.t <= t1)
+        r.plan = plan.from.kg + ((plan.to.kg - plan.from.kg) * (r.t - t0)) / (t1 - t0)
+  }
+  const hasPlan = rows.filter((r) => r.plan !== undefined).length > 1
   const values = rows
-    .flatMap((r) => [r.raw, r.trend, r.band?.[0], r.band?.[1]])
+    .flatMap((r) => [r.raw, r.trend, r.band?.[0], r.band?.[1], r.plan])
     .filter((v): v is number => v != null)
   if (goal !== undefined) values.push(goal)
   const y = niceScale(values, { count: tickCount(height) })
@@ -129,6 +150,7 @@ export function WeightTrendChart({
     { label: 'Weigh-in', color: tokens.chart.dotRing, mark: 'ring' },
   ]
   if (forecast.length) items.push({ label: 'Forecast', color: C, mark: 'dashed' })
+  if (hasPlan) items.push({ label: 'Plan', color: tokens.chart.plan, mark: 'dashed' })
   if (goal !== undefined) items.push({ label: 'Goal', color: GOAL, mark: 'line' })
 
   const Tip = tooltip<Row>(
@@ -144,6 +166,12 @@ export function WeightTrendChart({
           r.mid === undefined || r.trend != null
             ? null
             : `${kg(r.mid)} (${formatNumber(r.band![0], 1)}–${formatNumber(r.band![1], 1)})`,
+      },
+      {
+        label: 'Plan',
+        color: tokens.chart.plan,
+        dashed: true,
+        value: (r) => (hasPlan && r.plan !== undefined ? kg(r.plan) : null),
       },
     ],
   )
@@ -229,6 +257,18 @@ export function WeightTrendChart({
                   isAnimationActive={false}
                 />
               )}
+              {hasPlan && (
+                <R.Line
+                  dataKey="plan"
+                  {...planLine}
+                  dot={false}
+                  activeDot={false}
+                  connectNulls
+                  type="linear"
+                  isAnimationActive={false}
+                  legendType="none"
+                />
+              )}
               {goal !== undefined && (
                 <R.ReferenceLine
                   y={goal}
@@ -251,7 +291,7 @@ export function WeightTrendChart({
                   tokens.chart.dotRing,
                   rawCount > 1 && (plotWidth - yAxisStyle.width) / rawCount < DOT_SPACING_PX,
                 )}
-                activeDot={{ r: 4, fill: tokens.ink.card, stroke: tokens.ink.text, strokeWidth: 1.5 }}
+                activeDot={{ r: 4.5, fill: tokens.ink.card, stroke: tokens.ink.text, strokeWidth: 2 }}
                 isAnimationActive={false}
                 legendType="none"
               />
@@ -293,7 +333,7 @@ export function WeightTrendChart({
                 />
               )}
               {latest && (
-                <R.ReferenceDot x={latest.t} y={latest.trend!} ifOverflow="visible" shape={currentPoint(C)} />
+                <R.ReferenceDot x={latest.t} y={latest.trend!} ifOverflow="visible" shape={currentPoint()} />
               )}
             </R.ComposedChart>
           )}

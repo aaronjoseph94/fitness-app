@@ -1,6 +1,7 @@
-// Owns: the ⌘K / Ctrl-K command palette — one keyboard-first way to log something or jump to any screen, including
-// the ones the sidebar does not list (library, equipment, builder, the settings pages). The desktop header's search
-// field opens it too.
+// Owns: the ⌘K / Ctrl-K command palette — one keyboard-first way to log something, ask AI over the page you are on (the
+// Ask AI slide-up panel; not on the AI tab, which is the chat), or jump to any screen, including the ones the nav does
+// not list (Photos, Plan history, library, equipment, builder, the settings pages). The desktop nav's search circle
+// opens it too.
 import SearchRounded from '@mui/icons-material/SearchRounded'
 import Box from '@mui/material/Box'
 import Dialog from '@mui/material/Dialog'
@@ -10,10 +11,10 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { tokens } from '../../../theme'
 import { useUiStore, type QuickLogKind } from '../../ui-store'
-import { TABS } from '../tabs'
+import { TABS, tabByKey } from '../tabs'
 
 interface Command {
   label: string
@@ -22,10 +23,13 @@ interface Command {
   run: () => void
 }
 
-/** Everything the palette can do, in listing order when nothing is typed: log first, then go. */
+/** Everything the palette can do, in listing order when nothing is typed: log first, then ask, then go. */
 function useCommands(close: () => void): Command[] {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const openQuickLog = useUiStore((s) => s.openQuickLog)
+  const setAskAiOpen = useUiStore((s) => s.setAskAiOpen)
+  const onAiTab = pathname === tabByKey('ai').path
 
   return useMemo(() => {
     const log = (label: string, hint: string, kind: QuickLogKind): Command => ({
@@ -50,6 +54,18 @@ function useCommands(close: () => void): Command[] {
       log('Log water', 'Add a glass', 'water'),
       log('Start or stop a fast', 'Planned fasts too', 'fast'),
       log('Add a progress photo', 'Pose photos', 'photo'),
+      ...(onAiTab
+        ? []
+        : [
+            {
+              label: 'Ask AI here',
+              hint: 'Open the chat over this page',
+              run: () => {
+                close()
+                setAskAiOpen(true)
+              },
+            },
+          ]),
       ...TABS.map((t) => go(t.title, `Go to ${t.label}`, t.path)),
       go('Settings', 'Rails, daily targets, app', '/settings'),
       go('Model keys and the Claude connector', 'Provider keys and the MCP token', '/settings/ai'),
@@ -63,7 +79,7 @@ function useCommands(close: () => void): Command[] {
       go('Equipment', 'What your gym has, what to avoid', '/train/equipment'),
       go('Workout builder', 'Build a template, fill it with AI', '/train/builder'),
     ]
-  }, [close, navigate, openQuickLog])
+  }, [close, navigate, openQuickLog, setAskAiOpen, onAiTab])
 }
 
 export function CommandPalette() {

@@ -21,7 +21,7 @@ Single-user, AI-first fitness tracker for Aaron: an installable React PWA and on
 
 ## Stack
 
-- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Geist (self-hosted variable font, OFL) on the "2a" design — a 240 px sidebar + 56 px header from md up, bottom tabs on phones, hairline white cards (spec: `docs/design/design_handoff_fitness_2a/README.md`; the kit lives in `apps/web/src/components`).
+- **Web** (`apps/web`): React 19, Vite, TypeScript 7 strict, MUI, Recharts, TanStack Query, Zustand, Dexie (offline log queue), vite-plugin-pwa, Outfit (display and numbers) + DM Sans (UI), both self-hosted variable fonts (OFL), on the 1d "Summit" design — a violet-to-coral sky hero on every page over a cream panel, a glass nav pill from 960 px up and a top bar plus a fixed six-tab bar below it, warm white cards (spec: `docs/design/design_handoff_fitness_1d/README.md`; the kit lives in `apps/web/src/components`, the climb copy in `apps/web/src/copy`).
 - **Worker** (`apps/worker`, config `wrangler.jsonc`): Hono on Cloudflare Workers. REST under `/api`, MCP under `/mcp` (`@modelcontextprotocol/server` v2 + `@modelcontextprotocol/hono`, stateless, new server per request), job runner (`ai_jobs` + `ctx.waitUntil()` + one 5-minute cron). D1 via Drizzle ORM, R2 for files, Browser Rendering (`BROWSER.quickAction('pdf')`) for archived PDFs, Cloudflare Access JWT on every request.
 - **Shared** (`packages/shared`): Zod schemas (types inferred from them), the pure engine (`packages/shared/src/engine`), guardrails (`packages/shared/src/engine/guards.ts`).
 - **Exercises** (`packages/exercises`): the normalised free-exercise-db library (typed muscles, slugs, video links) for scripts and the seed, plus exercise images and GIFs served as static assets.
@@ -56,7 +56,7 @@ pnpm check                               # typecheck + deep-module boundaries (p
 
 - Every file starts with a short comment saying what it owns. Engine functions are pure, typed, and commented with the formula they implement (write the formula, not a paraphrase).
 - Zod schema first for every API body, job output and MCP tool input. Types are inferred from schemas, never written twice by hand.
-- Visual tokens (colours, type scale, spacing, chart palette) live only in `apps/web/src/theme.ts`, and no other file hard-codes a colour. The scheme is Facebook blue (`accent.main` `#166FE5`), measured for WCAG AA wherever white text sits on it.
+- Visual tokens (colours, type scale, spacing, chart palette) live only in `apps/web/src/theme.ts`, and no other file hard-codes a colour. The accent is violet (`accent.main` `#7B3FE4`), and every text colour is measured for WCAG AA on the surface it sits on (the figures are in the header of `theme.ts`).
 - No secrets in the web bundle. The web app talks only to `/api`. LLM keys live in Worker secrets.
 - Local dev against local D1 and R2; deploy with `wrangler deploy`; Aaron applies migrations before each deploy (`docs/DEPLOY.md`; there is no CI).
 - Units kg, cm, ml, kcal, g. Timezone `America/Edmonton`. A day is an ISO date string (`2026-10-04`); instants are ISO timestamps with offset. IDs are UUID text.

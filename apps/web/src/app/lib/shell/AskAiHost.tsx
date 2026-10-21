@@ -1,5 +1,6 @@
-// Owns: hosting the Ask AI slide-up panel over every tab — loaded on first open (the chat code stays out of the first
-// paint), open while useUiStore().askAiOpen, closed on navigation and never over the AI tab itself (that page is the chat).
+// Owns: hosting the Ask AI slide-up panel over every page — loaded on first open (the chat code stays out of the first
+// paint), open while useUiStore().askAiOpen (the ⌘K palette's "Ask AI here" sets it; the nav's gold Ask AI pill goes
+// to the AI tab instead), closed on navigation and never over the AI tab itself (that page is the chat).
 // When its code can't be fetched (offline before the service worker cached it), the panel closes with a short note
 // instead of the error replacing the whole app; the next tap tries again.
 import Snackbar from '@mui/material/Snackbar'

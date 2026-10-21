@@ -1,6 +1,6 @@
 // Owns: what each editable setting is (pure) — label, unit, whether it is a rail (edits need confirmation), help copy
-// in GLOSSARY terms — and how a typed value is checked: the SettingsPatch schema, plus floor ≤ ceiling against the
-// value already stored. Also what each editable profile field is, every one of them Aaron's to change, and the one-line
+// in GLOSSARY terms (the scan interval's names the next scan's due date when it is known) — and how a typed value is
+// checked: the SettingsPatch schema, plus floor ≤ ceiling against the value already stored. Also what each editable profile field is, every one of them Aaron's to change, and the one-line
 // summary of the reminder preferences the Settings list shows.
 import { FAST_DAY_EXTRA_WATER_ML } from '@fitness/shared/engine'
 import {
@@ -11,7 +11,7 @@ import {
   type Settings,
   type Weekday,
 } from '@fitness/shared/schemas'
-import { formatClockTime, formatNumber } from '../../../components'
+import { formatClockTime, formatNumber, formatShortDate } from '../../../components'
 
 export type NumberKey =
   | 'calorie_floor'
@@ -80,10 +80,15 @@ export const SCAN_FIELD: NumberField = {
   help: 'How often an Evolt scan comes due · same conditions each time',
 }
 
-/** The field's help line; water's names the fast-day target it implies (target + FAST_DAY_EXTRA_WATER_ML). */
-export function helpFor(field: NumberField, settings: Settings): string | undefined {
+/**
+ * The field's help line; water's names the fast-day target it implies (target + FAST_DAY_EXTRA_WATER_ML), and the scan
+ * interval's names when the next scan is due once `scanDue` (GET /api/scans/schedule's `due`) is known.
+ */
+export function helpFor(field: NumberField, settings: Settings, scanDue?: string | null): string | undefined {
   if (field.key === 'water_target_ml')
     return `Fast days go up to ${formatNumber(settings.water_target_ml + FAST_DAY_EXTRA_WATER_ML)} ml automatically`
+  if (field.key === 'scan_interval_days' && scanDue)
+    return `Next Evolt scan due ${formatShortDate(scanDue)} · same conditions each time`
   return field.help
 }
 

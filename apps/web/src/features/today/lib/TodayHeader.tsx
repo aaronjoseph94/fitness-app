@@ -1,142 +1,262 @@
-// Owns: the weight trend card's numbers (2a) — the headline row (trend weight as the one 34 px number, "kg trend", the
-// change since the start weight as a pill, and today's raw weigh-in de-emphasised, marked pending while it waits to
-// sync) and the four-stat footer: since the start date, the 7-day change ("on pace" when it is inside or past the
-// forecast's band), kg to go to the goal, and the projected finish date with the active plan's forecast rate.
-import TrendingDownRounded from '@mui/icons-material/TrendingDownRounded'
+// Owns: Today's headline on the sky (1d README §5.1) — the page's h1 (the trend weight in Outfit 300 at the trend size,
+// counting down from the start weight, and "kg"), and under it: "Trend weight · weighed in at …" (today's raw weigh-in,
+// marked pending while it waits to sync; the 7-day change after it), the two pills (the change since base camp — teal
+// when it is a loss — and kg to the summit in dark glass), the dark glass "Next camp" card (the camp's weight and date,
+// a gold bar of the stretch from the camp passed last, kg there and to go at the forecast's weekly rate), and last the
+// page's action (the gold "+ Log"), so it stays in the headline column, clear of the mountain at every width.
+//
+// Contrast on Today's sky (measured, theme.ts header): the pills and the card sit 50–80 % down the sky, where the
+// light glass and white .75 drop under 4.5:1, so the summit pill takes the dark glass and the card's lines are white.
+import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
+import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
+import FlagRounded from '@mui/icons-material/FlagRounded'
 import TrendingFlatRounded from '@mui/icons-material/TrendingFlatRounded'
-import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded'
 import Box from '@mui/material/Box'
-import type { Forecast } from '@fitness/shared/schemas'
+import type { ReactNode } from 'react'
 import {
   CountUp,
   formatNumber,
   formatShortDate,
   formatSigned,
-  KeyStat,
-  KeyStatGrid,
+  GlassPill,
   PendingBadge,
-  statValue,
-  StatusChip,
+  Reveal,
+  skyControls,
+  useEntrance,
 } from '../../../components'
-import { tokens } from '../../../theme'
+import { copy } from '../../../copy'
+import { enterEasing, tokens } from '../../../theme'
+import type { Climb } from './climb'
 
-export interface TrendNumbers {
-  trendKg: number | null
-  /** Today's raw weigh-in (server or queued). */
-  rawKg: number | null
-  rawPending: boolean
-  change7dKg: number | null
-  startKg: number | null
-  startDate: string | null
-  goalKg: number
-  forecast: Pick<Forecast, 'finish_date' | 'weekly_rate_kg' | 'band'> | null
-}
+const { summit, font } = tokens
 
-/** Under this the change since the start reads as flat. */
+/** Under this the change since base camp reads as flat. */
 const FLAT_KG = 0.05
 
-const sinceStartKg = ({ trendKg, startKg }: TrendNumbers) =>
-  trendKg !== null && startKg !== null ? trendKg - startKg : null
-
-/** "2027-04-09" → "Apr 9, 2027". */
-const finishLabel = (date: string) => `${formatShortDate(date)}, ${date.slice(0, 4)}`
-
-export function TrendHeadline(props: TrendNumbers) {
-  const { trendKg, rawKg, rawPending, startKg } = props
-  const since = sinceStartKg(props)
-  const flat = since === null || Math.abs(since) < FLAT_KG
+/** The trend number and "kg": the content of the page's h1. */
+export function TrendTitle({ trendKg, startKg }: { trendKg: number | null; startKg: number | null }) {
   return (
     <Box
+      component="span"
       data-testid="today-header"
-      sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '10px', rowGap: 1 }}
+      sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '12px', mt: '2px' }}
     >
       <Box
         component="span"
         data-testid="today-trend"
-        sx={{ ...statValue('medium'), lineHeight: tokens.font.leading.number, color: tokens.ink.text }}
+        sx={{
+          fontFamily: font.display,
+          fontSize: font.fluid.trend,
+          fontWeight: font.weight.display,
+          lineHeight: font.leading.trend,
+          letterSpacing: font.em.hero,
+          fontVariantNumeric: 'tabular-nums',
+        }}
       >
         {trendKg === null ? (
           '—'
         ) : (
-          <CountUp value={trendKg} from={startKg ?? trendKg} precision={1} delay={300} />
+          <CountUp value={trendKg} from={startKg ?? trendKg} precision={1} delay={400} />
         )}
+      </Box>{' '}
+      <Box
+        component="span"
+        sx={{
+          fontFamily: font.display,
+          fontSize: font.size.trendUnit,
+          fontWeight: font.weight.display,
+          lineHeight: 1,
+        }}
+      >
+        kg
       </Box>
-      <Box component="span" sx={{ fontSize: tokens.font.size.body, color: tokens.ink.muted }}>
-        kg trend
-      </Box>
-      {since !== null && (
-        <Box component="span" sx={{ alignSelf: 'center' }}>
-          <StatusChip
-            tone={flat ? 'neutral' : since < 0 ? 'success' : 'warning'}
-            shape="pill"
-            icon={flat ? TrendingFlatRounded : since < 0 ? TrendingDownRounded : TrendingUpRounded}
-            label={`${formatNumber(Math.abs(since), 1)} kg`}
-            ariaLabel={`${formatSigned(since, 1)} kg since the start`}
-          />
-        </Box>
-      )}
-      {rawKg !== null && (
-        <Box
-          component="span"
-          sx={{
-            fontSize: tokens.font.size.small,
-            color: tokens.ink.muted,
-            fontVariantNumeric: 'tabular-nums',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Weigh-in {formatNumber(rawKg, 1)} kg
-        </Box>
-      )}
-      {rawPending && (
-        <Box component="span" sx={{ alignSelf: 'center' }}>
-          <PendingBadge />
-        </Box>
-      )}
     </Box>
   )
 }
 
-export function TrendFacts(props: TrendNumbers) {
-  const { trendKg, change7dKg, startKg, startDate, goalKg, forecast } = props
-  const since = sinceStartKg(props)
-  const toGo = trendKg !== null ? Math.max(0, trendKg - goalKg) : null
-  const finish = forecast?.finish_date ?? null
-  // The week's loss at or above the slow edge of the plan's ±20 % band (SPEC §9): −change_7d ≥ weekly_rate × 0.8.
-  const onPace =
-    change7dKg !== null &&
-    forecast !== null &&
-    forecast.weekly_rate_kg > 0 &&
-    -change7dKg >= forecast.band.low
+export interface TrendFactsProps {
+  climb: Climb | null
+  /** Today's raw weigh-in (server or queued). */
+  rawKg: number | null
+  rawPending: boolean
+  change7dKg: number | null
+  /** The page's action under the card (the gold "+ Log"), in the hero's control look. */
+  action?: ReactNode
+}
+
+/** The line under the number: what the number is, today's weigh-in, the 7-day change. */
+function TrendLine({
+  trendKg,
+  rawKg,
+  rawPending,
+  change7dKg,
+}: Omit<TrendFactsProps, 'climb' | 'action'> & { trendKg: number | null }) {
+  if (trendKg === null) return <>Weigh in each morning: the trend smooths out the day-to-day swings.</>
   return (
-    <KeyStatGrid>
-      <KeyStat
-        label={startDate ? `Since ${formatShortDate(startDate)}` : 'Since start'}
-        value={since === null ? '—' : formatSigned(since, 1)}
-        unit={since === null ? undefined : 'kg'}
-        caption={startKg !== null ? `from ${formatNumber(startKg, 1)}` : undefined}
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}
+    >
+      <span>
+        Trend weight ·{' '}
+        {rawKg !== null ? `weighed in at ${formatNumber(rawKg, 1)} kg` : 'no weigh-in yet today'}
+        {change7dKg !== null && (
+          <>
+            {' · '}
+            <Box component="span" data-testid="today-change-7d" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+              {formatSigned(change7dKg, 1)} kg in 7 days
+            </Box>
+          </>
+        )}
+      </span>
+      {rawPending && <PendingBadge />}
+    </Box>
+  )
+}
+
+/** The gold bar of the stretch to the next camp: grows from 0 on mount (in place under reduced motion). */
+function CampBar({ ratio }: { ratio: number }) {
+  const { entered, reduced } = useEntrance()
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        mt: '12px',
+        height: 10,
+        borderRadius: `${summit.radius.pill}px`,
+        bgcolor: summit.glass.tile,
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          width: `${Math.min(100, Math.max(0, ratio * 100))}%`,
+          height: '100%',
+          borderRadius: `${summit.radius.pill}px`,
+          background: `linear-gradient(90deg, ${summit.gold.main}, ${summit.gold.deep})`,
+          transformOrigin: 'left',
+          transform: entered ? 'none' : 'scaleX(0)',
+          transition: reduced ? 'none' : `transform ${tokens.motion.duration.grow}ms ${enterEasing()} 1000ms`,
+        }}
       />
-      <KeyStat
-        label="7-day change"
-        value={change7dKg === null ? '—' : formatSigned(change7dKg, 1)}
-        unit={change7dKg === null ? undefined : 'kg'}
-        caption={onPace ? 'on pace' : undefined}
-        captionTone="success"
-        testId="today-change-7d"
-      />
-      <KeyStat
-        label="To go"
-        value={toGo === null ? '—' : formatNumber(toGo, 1)}
-        unit={toGo === null ? undefined : 'kg'}
-        caption={`to ${formatNumber(goalKg, 0)}`}
-        testId="today-to-go"
-      />
-      <KeyStat
-        label="Projected finish"
-        value={finish ? finishLabel(finish) : '—'}
-        caption={forecast ? `at ${formatNumber(forecast.weekly_rate_kg, 2)} kg/wk` : undefined}
-        testId="today-finish"
-      />
-    </KeyStatGrid>
+    </Box>
+  )
+}
+
+/** The glass "Next camp" card: the camp, its date, how much of the stretch is done and what is left at what rate. */
+function NextCampCard({ climb }: { climb: Climb }) {
+  const next = climb.next
+  if (!next) return null
+  const kg = formatNumber(next.kg, next.kg % 1 === 0 ? 0 : 1)
+  const title = next.summit ? copy.goalAt(kg) : copy.nextMilestoneAt(kg)
+  const done = `${formatNumber(next.doneKg, 1)} of ${formatNumber(next.stretchKg, 1)} kg there`
+  const toGo = `${formatNumber(next.toGoKg, 1)} kg to go`
+  const rate = climb.rateKg !== null ? ` at ${formatNumber(climb.rateKg, 2)} kg a week` : ''
+  return (
+    <Box
+      data-testid="today-next-camp"
+      sx={{
+        mt: '26px',
+        px: '20px',
+        py: '18px',
+        width: 'min(420px, 100%)',
+        boxSizing: 'border-box',
+        borderRadius: `${summit.radius.small}px`,
+        bgcolor: summit.glass.card,
+        border: `1px solid ${summit.glass.cardBorder}`,
+        backdropFilter: `blur(${summit.glass.cardBlur}px)`,
+        color: summit.onSky.text,
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+        <FlagRounded aria-hidden sx={{ fontSize: 22, color: summit.gold.main, flex: 'none' }} />
+        <Box
+          component="span"
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: font.size.itemTitle,
+            fontWeight: font.weight.heading,
+            lineHeight: font.leading.itemTitle,
+          }}
+        >
+          {title}
+        </Box>
+        {next.date && (
+          <Box
+            component="span"
+            sx={{
+              flex: 'none',
+              fontSize: font.size.body,
+              fontWeight: font.weight.body,
+              color: summit.onSky.text,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatShortDate(next.date)}
+          </Box>
+        )}
+      </Box>
+      <CampBar ratio={next.stretchKg > 0 ? next.doneKg / next.stretchKg : 0} />
+      <Box
+        sx={{
+          mt: '8px',
+          fontSize: font.size.body,
+          fontWeight: font.weight.body,
+          lineHeight: font.leading.small,
+          color: summit.onSky.text,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {done} · {toGo}
+        {rate}
+      </Box>
+    </Box>
+  )
+}
+
+/** Everything under the h1: the line, the pills, the next-camp card and the page's action. */
+export function TrendFacts({ climb, rawKg, rawPending, change7dKg, action }: TrendFactsProps) {
+  const trendKg = climb?.trendKg ?? null
+  const since = climb && trendKg !== null ? trendKg - climb.startKg : null
+  const flat = since === null || Math.abs(since) < FLAT_KG
+  const toGo = climb && trendKg !== null ? Math.max(0, trendKg - climb.goalKg) : null
+  return (
+    <>
+      <Box component="span" sx={{ display: 'block', fontWeight: font.weight.body }}>
+        <TrendLine trendKg={trendKg} rawKg={rawKg} rawPending={rawPending} change7dKg={change7dKg} />
+      </Box>
+      {(since !== null || toGo !== null) && (
+        <Reveal delay={760}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '10px', mt: '18px' }}>
+            {since !== null && (
+              <GlassPill
+                tone={!flat && since < 0 ? 'teal' : 'glass'}
+                icon={flat ? TrendingFlatRounded : since < 0 ? ArrowDownwardRounded : ArrowUpwardRounded}
+                ariaLabel={`${formatSigned(since, 1)} kg ${copy.sinceStart}`}
+                testId="today-since-start"
+              >
+                {formatNumber(Math.abs(since), 1)} kg {copy.sinceStart}
+              </GlassPill>
+            )}
+            {toGo !== null && (
+              <GlassPill tone="dark" testId="today-to-go">
+                {copy.toGoal(formatNumber(toGo, 1))}
+              </GlassPill>
+            )}
+          </Box>
+        </Reveal>
+      )}
+      {climb?.next && (
+        <Reveal delay={900}>
+          <NextCampCard climb={climb} />
+        </Reveal>
+      )}
+      {action && (
+        <Reveal delay={1000}>
+          <Box sx={{ ...skyControls, display: 'flex', flexWrap: 'wrap', gap: '10px', mt: '22px' }}>{action}</Box>
+        </Reveal>
+      )}
+    </>
   )
 }

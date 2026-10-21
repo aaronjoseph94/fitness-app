@@ -2,8 +2,9 @@
 // sets, what the guards dropped or repaired (guard_notes), each exercise with its prescription, swap (picker limited to
 // the same primary muscle and kind of lift, never an exercise already in the draft) and about, then "Start session" or
 // "Save as template". Controlled: the caller holds the draft and applies swaps through `onSwap`.
-// 2a: a summary card in Train's today-card idiom (the AI's reasoning, guard notes and the set count | the muscle map on
-// an `ink.panel` panel), the exercises as a card of rows, and the sticky Save / Start bar. The two cards rise in on mount.
+// 1d Summit: a summary card in Train's today-card idiom (the AI's reasoning, guard notes and the set count | the muscle
+// map in a warm well), the exercises as a card of rows, and the sticky Save / Start bar floating white over the cards.
+// The two cards rise in on mount.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded'
@@ -15,7 +16,7 @@ import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import type { ExerciseSummary, WorkoutDraft } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
-import { outlinedIconButton, Panel, Reveal, staggerDelay, statValue } from '../../../components'
+import { displayTitle, outlinedIconButton, Panel, Reveal, staggerDelay, statValue } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { ExerciseDetailSheet, ExercisePicker, ExerciseThumb, useExerciseIndex } from '../../library'
@@ -99,24 +100,16 @@ export function AiWorkoutPreview({
             .join(', ')}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <AutoAwesomeRounded sx={{ fontSize: 18, color: tokens.accent.main }} aria-hidden />
-            <Box
-              component={headingComponent}
-              sx={{
-                m: 0,
-                fontSize: tokens.font.size.body,
-                fontWeight: tokens.font.weight.heading,
-                lineHeight: tokens.font.leading.label,
-                color: tokens.ink.text,
-              }}
-            >
+            <AutoAwesomeRounded sx={{ fontSize: 20, color: tokens.accent.main }} aria-hidden />
+            <Box component={headingComponent} sx={{ m: 0, ...displayTitle('card'), color: tokens.ink.text }}>
               Why this session
             </Box>
           </Box>
           <Box
             sx={{
               mt: 2,
-              fontSize: tokens.font.size.small,
+              fontSize: tokens.font.size.body,
+              fontWeight: tokens.font.weight.body,
               lineHeight: tokens.font.leading.emphasis,
               color: tokens.ink.body,
             }}
@@ -251,18 +244,22 @@ export function AiWorkoutPreview({
       <Box
         sx={{
           position: 'sticky',
-          bottom: { xs: actionsBottom, md: 0 },
+          bottom: { xs: `calc(${actionsBottom} + 8px)`, md: '16px' },
           zIndex: 1,
           display: 'flex',
           justifyContent: 'flex-end',
-          gap: 2,
-          py: 3,
-          bgcolor: tokens.ink.page,
-          borderTop: `1px solid ${tokens.ink.border}`,
+          gap: '10px',
+          // A floating white bar (1d): it rides over the cards as the page scrolls.
+          p: '12px',
+          mb: { md: '16px' },
+          borderRadius: `${tokens.summit.radius.small}px`,
+          bgcolor: tokens.ink.card,
+          boxShadow: tokens.elevation.overlay,
         }}
       >
         <Button
           variant="outlined"
+          size="large"
           disabled={busy}
           onClick={() => onSave(draft)}
           sx={{ flex: { xs: 1, sm: 'none' } }}
@@ -272,6 +269,7 @@ export function AiWorkoutPreview({
         </Button>
         <Button
           variant="contained"
+          size="large"
           disabled={busy}
           startIcon={<PlayArrowRounded />}
           onClick={() => onStart(draft)}

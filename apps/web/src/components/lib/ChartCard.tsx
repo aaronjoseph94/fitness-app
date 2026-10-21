@@ -1,9 +1,9 @@
-// Owns: the card every chart sits in (2a): a header row — title 16/600 over a 13 px muted description, or 14/600 over
-// 12 px for a chart in a grid of cards, and right-hand actions (a segmented range) — legend keys under it, the chart,
-// an optional 12 px caption pinned to the bottom (with `fill`, captions line up across a row of cards), an optional
-// full-bleed footer behind a hairline (the weight trend's four stats), or the 2a empty state (a dashed `ink.panel`
-// slot) when there is nothing to plot. Built on `Panel`, so it is the same white, hairline-bordered, radius-12 card as
-// every other. Prints without breaking across pages.
+// Owns: the card every chart sits in (1d): a header row — an Outfit 19 px title over a 13 px muted description, or
+// 17 px over 12 px for a chart in a grid of cards, and right-hand actions (a segmented range) — legend keys under it,
+// the chart, an optional 12 px caption pinned to the bottom (with `fill`, captions line up across a row of cards), an
+// optional full-bleed footer behind a hairline (the weight trend's four stats), or the 1d empty state (a dashed slot)
+// when there is nothing to plot. Built on `Panel`, so it is the same white radius-30 card as every other. Prints
+// without breaking across pages.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { EmptyState, type EmptyStateProps } from './EmptyState'
@@ -26,8 +26,8 @@ export interface ChartCardProps {
   /** Full-bleed footer behind a hairline, e.g. a `<KeyStatGrid>`. Hidden while empty. */
   footer?: ReactNode
   /**
-   * `card` 14/600 + a 12 px description: a chart in a grid of cards (Dashboard, Progress, Scans). Default `section`
-   * 16/600 + 13 px: a full-width chart (Today's weight trend).
+   * `card` 17 px + a 12 px description: a chart in a grid of cards (Dashboard, Progress, Scans). Default `section`
+   * 19 px + 13 px: a full-width chart (Today's weight trend).
    */
   titleSize?: 'section' | 'card'
   /** Fill the grid cell's height, so a row of cards ends level and their captions line up. */

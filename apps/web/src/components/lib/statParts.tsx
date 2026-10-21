@@ -1,7 +1,7 @@
-// Owns: the two pieces every 2a stat surface is made of, so the stat card and any tile built on it cannot drift
+// Owns: the two pieces every 1d stat surface is made of, so the stat card and any tile built on it cannot drift
 // apart: the head row (13/500 `ink.label` label, a right-aligned 16 px `ink.faint` glyph, an optional badge) and the
-// figure (a 28/600 tabular value — 40 for a hero — with its unit in 13 px muted, counting up once on mount when
-// asked). Internal to the kit.
+// figure (a 30 px Outfit 400 tabular value — 52 for a hero — with its unit in DM Sans 500 muted, counting up once on
+// mount when asked). Internal to the kit.
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
@@ -84,7 +84,7 @@ export function StatFigure({
         component="span"
         sx={{
           ...statValue(hero ? 'large' : 'standard'),
-          // A hero steps down to 34 on a phone; a stat value stays 28 (its unit wraps under it in a narrow card).
+          // A hero steps down to 40 on a phone; a stat value stays 30 (its unit wraps under it in a narrow card).
           ...(hero && {
             fontSize: { xs: tokens.font.size.bigNumberMedium, sm: tokens.font.size.bigNumberLarge },
           }),
@@ -100,6 +100,7 @@ export function StatFigure({
           component="span"
           sx={{
             fontSize: hero ? tokens.font.size.body : tokens.font.size.small,
+            fontWeight: tokens.font.weight.label,
             color: tokens.ink.secondary,
             minWidth: 0,
           }}

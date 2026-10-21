@@ -1,9 +1,10 @@
-// Owns: one exercise in the session logger (2a) — a header (thumbnail and "1 · name", tap for the detail sheet; a Done /
-// Current / recovery chip; muscles · equipment · sets × reps · rest · last time), then, while expanded, the set table
-// under its column strip with last session greyed, a footer (add set, copy last session's set into the next open one,
-// remove the last set, the engine's progression hint) and the exercise note; the menu (note, about, collapse, swap for
-// one with the same primary muscle while a set is still open, remove from this session). Collapsed it shows the header
-// only, with "0 of 3 sets" and an expand button.
+// Owns: one exercise in the session logger (1d Summit) — a header (thumbnail tile and "1 · name", tap for the detail
+// sheet; a gold "Current", a Done or a recovery chip; muscles · equipment · sets × reps · rest · last time), then, while
+// expanded, the set wells under their column strip with last session greyed, a footer of link-style actions (add set,
+// copy last session's set into the next open one, remove the last set) with the engine's progression hint on the right,
+// and the exercise note; the menu (note, about, collapse, swap for one with the same primary muscle while a set is still
+// open, remove from this session). The exercise in hand is the gold-ringed card. Collapsed it shows the header only,
+// with "0 of 3 sets" and an expand button.
 import AddRounded from '@mui/icons-material/AddRounded'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
@@ -19,19 +20,14 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import type { ExerciseSummary } from '@fitness/shared/schemas'
 import { memo, useEffect, useState } from 'react'
-import {
-  cardSurface,
-  formatNumber,
-  highlightSurface,
-  outlinedIconButton,
-  StatusChip,
-} from '../../../components'
+import { cardSurface, displayTitle, formatNumber, highlightSurface, StatusChip } from '../../../components'
 import { MUSCLE_LABELS } from '../../../muscle-map'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { ExerciseThumb } from '../../library'
 import type { LoggerActions } from './actions'
 import { previousSet, progressionHint, setHint, type LoggerExercise } from './logger-model'
-import { SET_GRID_SX, SET_GUTTER_SX, SetRow } from './SetRow'
+import { GoldChip } from './GoldChip'
+import { SET_GRID_SX, SET_GUTTER_SX, SET_ROW_PAD_SX, SetRow } from './SetRow'
 
 export interface ExerciseLogCardProps {
   exercise: LoggerExercise
@@ -43,8 +39,10 @@ export interface ExerciseLogCardProps {
   onAbout: (exerciseId: string) => void
   /** Swap this exercise for another with the same primary muscle (offered while a set is still open). */
   onSwap: (exerciseId: string) => void
-  /** The first exercise with a set still to tick: blue border and ring, and it opens when it becomes current. */
+  /** The first exercise with a set still to tick: the gold ring, and it opens when it becomes current. */
   current: boolean
+  /** The set to log next in this exercise (the violet-ringed row), when it is the one in hand. */
+  activeSetId?: string | null
   /** Expanded on mount (the logger folds exercises still to come once a session is under way). */
   defaultOpen: boolean
   /** One of its main muscles was also a main target the day before or after (the session's recovery check). */
@@ -74,8 +72,18 @@ function lastText(exercise: LoggerExercise): string | null {
   }`
 }
 
-/** 2a's 32 px outlined icon button (44 on a touch screen, from the theme). */
-const ICON_BUTTON_SX = { ...outlinedIconButton, width: 32, height: 32, color: tokens.ink.label } as const
+/** A 36 px round ghost icon button (44 on a touch screen, from the theme): the menu, expand. */
+const ICON_BUTTON_SX = { width: 36, height: 36, borderRadius: '50%', color: tokens.ink.secondary } as const
+
+/** A footer action that reads as a link (violet 14/600, no fill). */
+const LINK_ACTION_SX = {
+  px: '6px',
+  minWidth: 0,
+  fontSize: tokens.font.size.body,
+  fontWeight: tokens.font.weight.heading,
+  '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+  '& .MuiButton-startIcon': { mr: '2px' },
+} as const
 
 function ExerciseLogCardInner({
   exercise,
@@ -85,6 +93,7 @@ function ExerciseLogCardInner({
   onAbout,
   onSwap,
   current,
+  activeSetId = null,
   defaultOpen,
   recoveryConflict,
 }: ExerciseLogCardProps) {
@@ -119,22 +128,28 @@ function ExerciseLogCardInner({
       component="section"
       data-testid="exercise-log-card"
       aria-labelledby={`exercise-${id}`}
-      sx={{ ...(current ? highlightSurface : cardSurface), overflow: 'hidden', minWidth: 0 }}
+      sx={{
+        ...(current ? highlightSurface : cardSurface),
+        borderRadius: `${open ? tokens.summit.radius.large : tokens.summit.radius.tile}px`,
+        overflow: 'hidden',
+        minWidth: 0,
+      }}
     >
       {/* Thumb · name and chips · actions, the meta line under the name; on a phone the meta runs full width. */}
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: '44px minmax(0, 1fr) auto',
+          gridTemplateColumns: `${open ? 48 : 44}px minmax(0, 1fr) auto`,
           gridTemplateAreas: {
             xs: '"thumb title actions" "meta meta meta"',
             sm: '"thumb title actions" "thumb meta actions"',
           },
           alignItems: 'center',
-          columnGap: '12px',
+          columnGap: '14px',
           rowGap: { xs: 1, sm: 0 },
           ...SET_GUTTER_SX,
-          py: '14px',
+          pt: open ? '20px' : '16px',
+          pb: open ? 0 : '16px',
         }}
       >
         {/* Pointer-only: the title and "About" are the keyboard and screen-reader routes to the same sheet. */}
@@ -142,9 +157,14 @@ function ExerciseLogCardInner({
           onClick={() => onAbout(id)}
           tabIndex={-1}
           aria-hidden
-          sx={{ gridArea: 'thumb', borderRadius: `${tokens.radius.control}px` }}
+          sx={{
+            gridArea: 'thumb',
+            borderRadius: `${tokens.summit.radius.well}px`,
+            overflow: 'hidden',
+            bgcolor: tokens.ink.panel,
+          }}
         >
-          <ExerciseThumb exercise={info} size={44} />
+          <ExerciseThumb exercise={info} size={open ? 48 : 44} />
         </ButtonBase>
         <Box
           sx={{
@@ -153,7 +173,7 @@ function ExerciseLogCardInner({
             display: 'flex',
             alignItems: 'center',
             flexWrap: 'wrap',
-            columnGap: 2,
+            columnGap: '8px',
             rowGap: 0.5,
             minWidth: 0,
           }}
@@ -163,15 +183,17 @@ function ExerciseLogCardInner({
             id={`exercise-${id}`}
             sx={{
               m: 0,
-              fontSize: tokens.font.size.itemTitle,
-              fontWeight: tokens.font.weight.heading,
-              lineHeight: 1.35,
+              ...(open
+                ? { ...displayTitle('card'), fontSize: 20, letterSpacing: tokens.font.em.number }
+                : { fontSize: tokens.font.size.itemTitle, fontWeight: tokens.font.weight.heading }),
+              lineHeight: 1.3,
             }}
           >
             <ButtonBase
               onClick={() => onAbout(id)}
               sx={{
                 font: 'inherit',
+                letterSpacing: 'inherit',
                 textAlign: 'left',
                 color: tokens.ink.text,
                 borderRadius: `${tokens.radius.inner}px`,
@@ -185,7 +207,7 @@ function ExerciseLogCardInner({
           {done ? (
             <StatusChip size="small" tone="success" label="Done" />
           ) : current ? (
-            <StatusChip size="small" tone="info" label="Current" />
+            <GoldChip label="Current" />
           ) : null}
           {recoveryConflict && !done && <StatusChip size="small" tone="warning" label="Recovery conflict" />}
         </Box>
@@ -193,7 +215,9 @@ function ExerciseLogCardInner({
           sx={{
             gridArea: 'meta',
             alignSelf: { sm: 'start' },
+            mt: { sm: '2px' },
             fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.body,
             lineHeight: 1.5,
             color: tokens.ink.muted,
             minWidth: 0,
@@ -201,7 +225,7 @@ function ExerciseLogCardInner({
         >
           {meta}
         </Box>
-        <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ gridArea: 'actions', display: 'flex', alignItems: 'center', gap: '8px' }}>
           {open ? (
             <>
               <Button
@@ -218,14 +242,14 @@ function ExerciseLogCardInner({
                 onClick={(e) => setMenu(e.currentTarget)}
                 sx={ICON_BUTTON_SX}
               >
-                <MoreHorizRounded sx={{ fontSize: 18 }} />
+                <MoreHorizRounded sx={{ fontSize: 22 }} />
               </IconButton>
             </>
           ) : (
             <>
               <Box
                 sx={{
-                  fontSize: tokens.font.size.caption,
+                  fontSize: tokens.font.size.small,
                   color: tokens.ink.muted,
                   whiteSpace: 'nowrap',
                   fontVariantNumeric: 'tabular-nums',
@@ -239,7 +263,7 @@ function ExerciseLogCardInner({
                 onClick={() => setOpen(true)}
                 sx={ICON_BUTTON_SX}
               >
-                <ExpandMoreRounded sx={{ fontSize: 18 }} />
+                <ExpandMoreRounded sx={{ fontSize: 24 }} />
               </IconButton>
             </>
           )}
@@ -248,101 +272,104 @@ function ExerciseLogCardInner({
 
       {open && (
         <>
-          <Box
-            aria-hidden
-            sx={{
-              ...SET_GRID_SX,
-              ...SET_GUTTER_SX,
-              py: '6px',
-              borderTop: `1px solid ${tokens.ink.border}`,
-              borderBottom: `1px solid ${tokens.ink.border}`,
-              bgcolor: tokens.ink.panel,
-              fontSize: tokens.font.size.micro,
-              fontWeight: tokens.font.weight.label,
-              lineHeight: 1.45,
-              color: tokens.ink.muted,
-              textTransform: 'uppercase',
-              letterSpacing: tokens.font.em.micro,
-              whiteSpace: 'nowrap',
-              '& > :last-of-type': { textAlign: 'center' },
-            }}
-          >
-            <span>Set</span>
-            <span data-col="previous">Previous</span>
-            <span>kg</span>
-            <span>Reps</span>
-            <Box component="span" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
-              RPE
+          <Box sx={{ ...SET_GUTTER_SX, mt: '16px' }}>
+            <Box
+              aria-hidden
+              sx={{
+                ...SET_GRID_SX,
+                ...SET_ROW_PAD_SX,
+                py: '8px',
+                borderRadius: `${tokens.summit.radius.button}px`,
+                bgcolor: tokens.ink.panel,
+                fontSize: tokens.font.size.micro,
+                fontWeight: tokens.font.weight.heading,
+                lineHeight: 1.45,
+                color: tokens.ink.muted,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                whiteSpace: 'nowrap',
+                '& > :last-of-type': { textAlign: 'center' },
+              }}
+            >
+              <span>Set</span>
+              <span data-col="previous">Previous</span>
+              <span>kg</span>
+              <span>Reps</span>
+              <Box component="span" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                RPE
+              </Box>
+              <span>Done</span>
             </Box>
-            <span>Done</span>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '6px', mt: '8px' }}>
+              {exercise.sets.map((set, i) => (
+                <SetRow
+                  key={set.id}
+                  position={i}
+                  set={set}
+                  active={set.id === activeSetId}
+                  previous={previousSet(exercise, i)}
+                  hint={setHint(exercise, i)}
+                  onValues={(values) => actions.setValues(set.id, values)}
+                  onCopyPrevious={() => actions.copyPrevious(set.id)}
+                  onToggle={() => actions.toggleDone(set.id)}
+                />
+              ))}
+            </Box>
           </Box>
-          <div>
-            {exercise.sets.map((set, i) => (
-              <SetRow
-                key={set.id}
-                position={i}
-                set={set}
-                previous={previousSet(exercise, i)}
-                hint={setHint(exercise, i)}
-                onValues={(values) => actions.setValues(set.id, values)}
-                onCopyPrevious={() => actions.copyPrevious(set.id)}
-                onToggle={() => actions.toggleDone(set.id)}
-              />
-            ))}
-          </div>
 
           <Box
             sx={{
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
-              gap: 2,
+              columnGap: '6px',
+              rowGap: '2px',
               ...SET_GUTTER_SX,
               pt: '10px',
-              pb: '14px',
-              borderTop: `1px solid ${tokens.ink.hairline}`,
+              pb: '18px',
             }}
           >
             <Button
-              variant="outlined"
-              size="tiny"
+              size="small"
               startIcon={<AddRounded />}
               onClick={() => actions.addSet(id)}
               data-testid="add-set"
+              sx={{ ...LINK_ACTION_SX, ml: '-6px' }}
             >
               Add set
             </Button>
             {copyTarget >= 0 && (
               <Button
-                variant="outlined"
-                size="tiny"
+                size="small"
                 onClick={() => {
                   const set = exercise.sets[copyTarget]
                   if (set) actions.copyPrevious(set.id)
                 }}
                 aria-label={`Copy previous: last session's set ${copyTarget + 1}`}
+                sx={LINK_ACTION_SX}
               >
                 Copy previous
               </Button>
             )}
             <Button
-              variant="outlined"
-              size="tiny"
+              size="small"
               startIcon={<RemoveRounded />}
               onClick={() => actions.removeLastSet(id)}
               disabled={exercise.sets.length === 0}
+              sx={LINK_ACTION_SX}
             >
               Remove set
             </Button>
             {exercise.suggestion && (
-              // The engine's reason always shows; the test id marks a load hint ("+2.5 kg", "Deload"), as before 2a.
+              // The engine's reason always shows; the test id marks a load hint ("+2.5 kg", "Deload").
               <Box
                 data-testid={hint ? 'progression-hint' : undefined}
                 sx={{
                   ml: { sm: 'auto' },
                   flexBasis: { xs: '100%', sm: 'auto' },
                   minWidth: 0,
-                  fontSize: tokens.font.size.caption,
+                  fontSize: tokens.font.size.body,
+                  fontWeight: tokens.font.weight.body,
                   lineHeight: 1.4,
                   color: tokens.ink.muted,
                   textAlign: { sm: 'right' },

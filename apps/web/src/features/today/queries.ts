@@ -1,12 +1,12 @@
-// Owns: the inputs and freshness of Today's reads (the hero chart's trend window, settings), shared by useTodayData.
+// Owns: the inputs and freshness of Today's reads (the hero's trend window, settings), shared by useTodayData.
 // A second entry point of the today module: light, no UI.
 import { addDays } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 
-/** The hero chart's history: about eight weeks. */
+/** The hero's trend history (the last trend point, the 7-day change, the milestones): about eight weeks. */
 export const HERO_DAYS = 56
 
-/** GET /api/trend for the hero chart: the HERO_DAYS days ending on `date`. */
+/** GET /api/trend for the hero: the HERO_DAYS days ending on `date`. */
 export const heroTrendInput = (date: LocalDate) => ({
   query: { from: addDays(date, -(HERO_DAYS - 1)), to: date },
 })

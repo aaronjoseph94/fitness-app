@@ -31,10 +31,10 @@ const H = 86
 const LINE_Y = 42
 const PAD = 26
 /**
- * Geist's average glyph width as a share of the font size (labels are short: digits, units, a few letters). Measured
- * at 11–12 px the widest run 0.53–0.54 ("WHR < 0.90", "~Nov 1"); most sit under 0.5.
+ * DM Sans' average glyph width as a share of the font size (labels are short: digits, units, a few letters). Measured
+ * at 11–12 px: 0.551 at weight 500 and 0.558 at 600 (Outfit runs 0.54), so 0.56 covers both label weights.
  */
-const GLYPH = 0.54
+const GLYPH = 0.56
 
 /** Centre `text` on `x` unless it would cross 0 or `width`; then pin it to that edge. */
 function placeText(

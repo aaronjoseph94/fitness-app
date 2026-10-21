@@ -1,10 +1,11 @@
 // Owns: the one implementation behind every "bars per day + target" chart (calories, macros, water, steps), in the
-// 2a style: a day axis over the baseline rule (day-of-month labels for up to 16 days, "Oct 12" beyond), single
-// or flush-stacked bars with radius-3 tops that grow on screen, a dashed target line (optionally in its series'
-// colour), days below the target in the series' tint when asked, an optional overlay line (e.g. a rolling median)
-// and optional baseline markers (e.g. fast days). Charts configure it; they do not re-implement it.
+// 1d style: a day axis over the lilac baseline (day-of-month labels for up to 16 days, "Oct 12" beyond), single or
+// flush-stacked bars with radius-4 tops that grow on screen — a single series filled with its metric's ramp (a vertical
+// gradient) when it has one — a dashed target line (optionally in its series' colour), days below the target in the
+// series' light step when asked, an optional overlay line (e.g. a rolling median) and optional baseline markers (e.g.
+// fast days). Charts configure it; they do not re-implement it.
 import { formatNumber, type LegendItem } from '../../components'
-import { tokens } from '../../theme'
+import { tokens, type MetricKey } from '../../theme'
 import {
   BAR_MAX,
   BAR_RADIUS,
@@ -21,6 +22,8 @@ import {
   gridStyle,
   lineStyle,
   niceScale,
+  rampGradient,
+  useFadeId,
   rechartsSize,
   seriesSummary,
   surfaceText,
@@ -41,8 +44,10 @@ export interface DaySeries {
   key: string
   label: string
   color: string
-  /** A single series with a target: days below it are drawn in this tint (2a: on-target days in full colour). */
+  /** A single series with a target: days below it are drawn in this tint (1d: on-target days in the full ramp). */
   missColor?: string
+  /** A single series fills with this metric's ramp (README §2: low → high, foot → top) instead of `color`. */
+  ramp?: MetricKey
 }
 
 export interface DailyBarsProps {
@@ -64,6 +69,8 @@ export interface DailyBarsProps {
   width?: number
   height: number
   legend: boolean
+  /** Where the legend keys sit (ChartFrame). Default `top`. */
+  legendPlacement?: 'top' | 'bottom'
 }
 
 const val = (r: DayRow, key: string) => num(field(r, key))
@@ -82,9 +89,13 @@ export function DailyBars({
   width,
   height,
   legend,
+  legendPlacement,
 }: DailyBarsProps) {
+  const rampId = useFadeId('day-ramp')
   const stacked = bars.length > 1
   const single = bars[0]
+  const ramp = !stacked && single?.ramp ? single.ramp : null
+  const singleFill = ramp ? `url(#${rampId})` : single?.color
   const tint = !stacked && target && single?.missColor ? single.missColor : null
   const data = rows.map((r) => {
     const v = single ? val(r, single.key) : null
@@ -117,7 +128,7 @@ export function DailyBars({
       ? [
           {
             label: 'Total',
-            color: tokens.ink.text,
+            color: tokens.chart.tooltip.muted,
             value: (r: DayRow) => format(bars.reduce((s, b) => s + (val(r, b.key) ?? 0), 0)),
           },
         ]
@@ -182,7 +193,7 @@ export function DailyBars({
           key={b.key}
           dataKey={b.key}
           name={b.label}
-          fill={b.color}
+          fill={singleFill}
           maxBarSize={BAR_MAX}
           radius={BAR_RADIUS}
           shape={tint ? tintedBar(tint) : undefined}
@@ -196,6 +207,7 @@ export function DailyBars({
       testId={testId}
       label={label}
       legend={legend ? items : undefined}
+      legendPlacement={legendPlacement}
       unit={unit}
       width={width}
       height={height}
@@ -210,6 +222,7 @@ export function DailyBars({
             {...rechartsSize(width, height)}
             {...surfaceText(label, summary)}
           >
+            {ramp && <defs>{rampGradient(rampId, ramp)}</defs>}
             <R.CartesianGrid {...gridStyle} />
             <R.XAxis
               {...barXAxisStyle}

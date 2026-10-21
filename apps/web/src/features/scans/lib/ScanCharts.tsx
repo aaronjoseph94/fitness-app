@@ -47,7 +47,10 @@ export function ScanCharts({
         display: 'grid',
         gap: 4,
         alignItems: 'start',
-        gridTemplateColumns: { xs: '1fr', md: compact || stacked ? '1fr' : '1fr 1fr' },
+        gridTemplateColumns: {
+          xs: 'minmax(0, 1fr)',
+          md: compact || stacked ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+        },
         minWidth: 0,
       }}
     >

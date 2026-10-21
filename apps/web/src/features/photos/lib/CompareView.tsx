@@ -111,7 +111,7 @@ export function CompareView({ photos, before, after, mode, onChange }: CompareVi
           />
         </Stack>
         {mode === 'side' ? (
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 3 }}>
             {[before, after].map((p, i) => (
               <Box key={`${i}-${p.id}`} sx={{ minWidth: 0 }}>
                 <Box

@@ -1,7 +1,7 @@
-// Owns: the Progress tab's "Weekly reviews" card (SPEC §8: past reviews, each opening its report page and its PDF; 2a
-// rows) — a document tile, "Week of …" with the author chip (Claude, or the app's own AI draft), the week's trend
-// change, protein and proposals, when it was written, and links to the report and the archived PDF; then a note on
-// when the next review comes. Data: GET /api/reviews (newest first).
+// Owns: the Progress tab's "Weekly reviews" card (SPEC §8: past reviews, each opening its report page and its PDF; 1d
+// rows) — a 40 px document tile (violet for Claude's review, the warm well for the app's own AI draft), "Week of …"
+// with the author chip, the week's trend change, protein and proposals, when it was written, a chevron, and the
+// archived PDF; then a warm note on when the next review comes. Data: GET /api/reviews (newest first).
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import ScheduleRounded from '@mui/icons-material/ScheduleRounded'
@@ -28,13 +28,12 @@ import { tokens } from '../../../theme'
 
 /** Claude's review supersedes the app's own draft for the same week (WeeklyReview). */
 const AUTHOR = {
-  claude_mcp: { label: 'Claude', tone: 'info' },
-  gemini: { label: 'AI draft', tone: 'neutral' },
+  claude_mcp: { label: 'Claude', tone: 'info', tile: tokens.accent.soft, glyph: tokens.accent.deep },
+  gemini: { label: 'AI draft', tone: 'neutral', tile: tokens.ink.panel, glyph: tokens.ink.secondary },
 } as const
 /** Rows shown before "Show all". */
 const FIRST_ROWS = 8
 
-const gutter = { px: { xs: '16px', sm: '18px' } } as const
 const note = {
   fontSize: tokens.font.size.small,
   lineHeight: tokens.font.leading.small,
@@ -48,18 +47,18 @@ export function WeeklyReviewsSection() {
   return (
     <Panel
       title="Weekly reviews"
-      description="Each opens its report page and PDF"
-      padding="none"
+      titleSize="card"
+      headingComponent="h3"
+      actions="Sunday drafts"
+      fill
       testId="progress-weekly-reviews"
     >
       {isQueryLoading(reviews) ? (
-        <Box sx={{ ...gutter, pt: '4px', pb: '16px', ...note }}>Loading reviews…</Box>
+        <Box sx={note}>Loading reviews…</Box>
       ) : reviews.isError || !reviews.data ? (
-        <Box sx={{ ...gutter, pt: '4px', pb: '16px' }}>
-          <QueryStateCard query={reviews} what="the reviews" />
-        </Box>
+        <QueryStateCard query={reviews} what="the reviews" />
       ) : rows.length === 0 ? (
-        <Box sx={{ ...gutter, pb: '16px' }}>
+        <Box>
           <EmptyState
             compact
             title="No reviews yet"
@@ -74,32 +73,28 @@ export function WeeklyReviewsSection() {
             ))}
           </Box>
           {!all && rows.length > FIRST_ROWS && (
-            <Button
-              fullWidth
-              onClick={() => setAll(true)}
-              sx={{ borderTop: `1px solid ${tokens.ink.hairline}`, borderRadius: 0 }}
-            >
+            <Button fullWidth onClick={() => setAll(true)} sx={{ mt: '6px' }}>
               Show all {rows.length}
             </Button>
           )}
           <Box
             sx={{
-              mx: { xs: '16px', sm: '18px' },
-              mt: '12px',
-              mb: '16px',
+              mt: '14px',
               py: '12px',
               px: '14px',
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              borderRadius: `${tokens.radius.control}px`,
+              borderRadius: `${tokens.summit.radius.wellSmall}px`,
               bgcolor: tokens.ink.panel,
               ...note,
-              color: tokens.ink.label,
+              fontWeight: tokens.font.weight.label,
+              lineHeight: tokens.font.leading.body,
             }}
           >
-            <ScheduleRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.secondary, flex: 'none' }} />
-            The next review is drafted on Sunday at 20:00; Claude’s review supersedes the draft when it lands.
+            <ScheduleRounded aria-hidden sx={{ fontSize: 18, color: tokens.ink.secondary, flex: 'none' }} />A
+            draft lands every Sunday at 20:00; Claude’s review supersedes it when it lands and can carry
+            proposals.
           </Box>
         </>
       )}
@@ -116,6 +111,7 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
     change === null ? null : `${formatSigned(change, 1)} kg`,
     protein > 0 ? `protein averaged ${formatNumber(protein)} g` : null,
     n > 0 ? `${n} proposal${n === 1 ? '' : 's'}` : null,
+    `written ${formatShortDate(localDate(r.created_at))}`,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -126,8 +122,8 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
       sx={{
         display: 'flex',
         alignItems: 'center',
-        borderTop: `1px solid ${first ? tokens.ink.border : tokens.ink.hairline}`,
-        '@media (hover: hover)': { '&:hover': { bgcolor: tokens.ink.panel } },
+        gap: '6px',
+        borderTop: first ? 0 : `1px solid ${tokens.ink.hairline}`,
       }}
     >
       <Link
@@ -136,34 +132,36 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
         underline="none"
         color="inherit"
         sx={{
-          ...gutter,
           flex: 1,
           minWidth: 0,
           display: 'flex',
           alignItems: 'center',
-          gap: 3,
+          gap: '12px',
           py: '12px',
-          fontSize: tokens.font.size.small,
+          fontSize: tokens.font.size.body,
           lineHeight: tokens.font.leading.small,
+          borderRadius: `${tokens.radius.control}px`,
+          '@media (hover: hover)': { '&:hover .review-title': { color: tokens.accent.deep } },
         }}
       >
         <Box
           aria-hidden
           sx={{
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             flex: 'none',
             display: 'grid',
             placeItems: 'center',
             borderRadius: `${tokens.radius.control}px`,
-            bgcolor: tokens.ink.fill,
-            color: tokens.ink.label,
+            bgcolor: author.tile,
+            color: author.glyph,
           }}
         >
-          <DescriptionOutlined sx={{ fontSize: 20 }} />
+          <DescriptionOutlined sx={{ fontSize: 22 }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box
+            className="review-title"
             sx={{
               display: 'flex',
               alignItems: 'center',
@@ -176,12 +174,17 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
             Week of {formatShortDate(r.week_start)}
             <StatusChip tone={author.tone} size="small" label={author.label} />
           </Box>
-          {summary && <Box sx={{ color: tokens.ink.secondary }}>{summary}</Box>}
+          <Box
+            sx={{
+              fontSize: tokens.font.size.caption,
+              fontWeight: tokens.font.weight.label,
+              color: tokens.ink.secondary,
+            }}
+          >
+            {summary}
+          </Box>
         </Box>
-        <Box sx={{ flex: 'none', color: tokens.ink.secondary, fontVariantNumeric: 'tabular-nums' }}>
-          {formatShortDate(localDate(r.created_at))}
-        </Box>
-        <ChevronRightRounded aria-hidden sx={{ flex: 'none', fontSize: 18, color: tokens.ink.faint }} />
+        <ChevronRightRounded aria-hidden sx={{ flex: 'none', fontSize: 20, color: tokens.ink.faint }} />
       </Link>
       {r.pdf_url && (
         <Button
@@ -190,7 +193,7 @@ function ReviewRow({ review: r, first }: { review: WeeklyReview; first: boolean 
           href={r.pdf_url}
           target="_blank"
           rel="noopener"
-          sx={{ flex: 'none', mr: { xs: '8px', sm: '10px' } }}
+          sx={{ flex: 'none' }}
         >
           PDF
         </Button>

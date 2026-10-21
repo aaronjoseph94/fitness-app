@@ -1,4 +1,4 @@
-// Owns: the 2a key stat — a 12 px muted label over a tabular 600 value (16 or 20 px, or any type-scale size) with
+// Owns: the key stat — a 12 px muted label over a tabular Outfit 400 value (16 or 20 px, or any type-scale size) with
 // an optional unit, a trailing slot (a delta) and a 12 px caption run inline after it ("−1.0 kg  on pace"), then an
 // optional 12 px note under the value ("range 10–20 %"), caption and note optionally in a status colour — and
 // `KeyStatGrid`, which lays them out in cells divided by `ink.border` rules (or the lighter `ink.hairline`), a set
@@ -79,6 +79,8 @@ export function KeyStat({
       <Box
         sx={{
           mt: '4px',
+          // Outfit for the figure (README §2 "values in Outfit with DM Sans units").
+          fontFamily: tokens.font.display,
           fontSize: px,
           fontWeight: tokens.font.weight.number,
           lineHeight: 1.25,
@@ -94,6 +96,7 @@ export function KeyStat({
             component="span"
             sx={{
               ml: '4px',
+              fontFamily: tokens.font.family,
               fontSize: small ? tokens.font.size.caption : tokens.font.size.small,
               fontWeight: tokens.font.weight.body,
               letterSpacing: 0,

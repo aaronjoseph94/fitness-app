@@ -1,10 +1,11 @@
-// Owns: the 2a section title row between groups of cards — a 16/600 `h2` with its 13 px muted description running
-// after it on the same baseline (wrapping under it when narrow), and optional actions on the right ("+ New template").
-// It leaves 12 px under itself, less than the 20–24 px a page leaves between sections, which is what makes a group read
-// as a group.
+// Owns: the 1d section title row between groups of cards — an Outfit 400 24 px `h2` with its 13 px muted description
+// running after it on the same baseline (wrapping under it when narrow), and optional actions on the right ("+ New
+// template"). It leaves 14 px under itself, less than the 26 px a page leaves between rows, which is what makes a group
+// read as a group.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
+import { displayTitle } from './surfaces'
 
 export interface SectionHeaderProps {
   title: string
@@ -24,7 +25,7 @@ export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProp
         display: 'flex',
         alignItems: 'center',
         gap: 3,
-        mb: '12px',
+        mb: '14px',
         minWidth: 0,
         scrollMarginTop: tokens.layout.scrollPadding.top,
       }}
@@ -43,13 +44,7 @@ export function SectionHeader({ title, subtitle, action, id }: SectionHeaderProp
         <Box
           component="h2"
           id={id ? `${id}-title` : undefined}
-          sx={{
-            m: 0,
-            fontSize: tokens.font.size.sectionTitle,
-            fontWeight: tokens.font.weight.heading,
-            lineHeight: tokens.font.leading.sectionTitle,
-            color: tokens.ink.text,
-          }}
+          sx={{ m: 0, ...displayTitle('section'), color: tokens.ink.text }}
         >
           {title}
         </Box>

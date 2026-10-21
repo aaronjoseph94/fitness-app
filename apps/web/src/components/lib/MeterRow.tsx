@@ -1,6 +1,7 @@
-// Owns: the 2a meter row (Log's macros, the Dashboard's daily averages) — a 13 px label on the left, the bold value
-// with its muted "/ 130 g" (or "/ 45 g min" for a minimum) on the right, a 6 px bar in the given colour under them,
-// and an optional 11 px caption ("48 g to go") coloured by tone. While its value loads it keeps its lines' heights.
+// Owns: the 1d meter row (Log's macros, the Dashboard's daily averages) — a 13 px label on the left, the bold value
+// with its muted "/ 130 g" (or "/ 45 g min" for a minimum) on the right, a 10 px bar under them (a metric's mark colour
+// draws that metric's ramp on its tint track), and an optional 12 px caption ("48 g to go") coloured by tone. While its
+// value loads it keeps its lines' heights.
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import type { ReactNode } from 'react'
@@ -17,7 +18,7 @@ export interface MeterRowProps {
   unit: string
   /** The target is a minimum ("/ 45 g min"). */
   floor?: boolean
-  /** The bar's fill, a token colour. */
+  /** The bar's fill, a token colour (a metric's mark colour draws its ramp). */
   color: string
   /** The bar's accessible name. Default: the label. */
   barLabel?: string
@@ -81,16 +82,16 @@ export function MeterRow({
           )}
         </Box>
       </Box>
-      {/* 2a: the bar sits 6 px under the row when a caption follows (Log), 5 px otherwise (Dashboard). */}
+      {/* The bar sits 6 px under the row when a caption follows (Log), 5 px otherwise (Dashboard). */}
       <Box sx={{ mt: withCaption ? '6px' : '5px' }}>
-        <ProgressBar value={ratio} color={color} label={barLabel ?? label} delay={delay} />
+        <ProgressBar value={ratio} color={color} label={barLabel ?? label} delay={delay} height={10} />
       </Box>
       {withCaption && (
         <Box
           sx={{
             mt: '5px',
-            minHeight: 15,
-            fontSize: tokens.font.size.micro,
+            minHeight: 16,
+            fontSize: tokens.font.size.caption,
             lineHeight: tokens.font.leading.micro,
             color: CAPTION_COLOR[captionTone],
             fontWeight:

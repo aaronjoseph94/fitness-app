@@ -1,16 +1,16 @@
-// Owns: the 2a card shell — a white card (1 px `ink.border`, radius 12, the card whisper) with an optional header row
-// (a title over a muted description, right-hand actions: 16/600 over 13 px, padding 16 × 20 × 12; or for a small card
-// 14/600 over 12 px with 12 px muted actions, its title as far down as the body's top padding, 18 or 16 dense) and a
-// body that is padded (18 × 20, or 16 × 18 dense) or flush (for a table or `ListRow`s, which bring their own gutters;
-// a table wider than the card scrolls sideways), then an optional 12 px muted caption pinned to the bottom (so captions
-// line up across a row of `fill` cards of different heights) and an optional footer behind a hairline. `fill`
-// stretches the card to its grid cell. Tones: `card` (default), `panel` (`ink.panel`, no shadow — the
-// Dashboard's goal rail, Scans' next-scan card) and `dashed` (an empty slot). `PanelRow` is the 13 px label/value row
-// with `ink.hairline` rules between rows.
+// Owns: the 1d card shell — a white card (radius 30, the soft violet shadow, no border) with an optional header row
+// (a title over a muted description, right-hand actions: Outfit 400 19 px over 13 px, padding 22 × 26 × 14; or for a
+// small card Outfit 400 17 px over 12 px with 12 px muted actions, its title as far down as the body's top padding) and
+// a body that is padded (24 × 26, or 20 × 22 dense) or flush (for a table or `ListRow`s, which bring their own
+// gutters; a table wider than the card scrolls sideways), then an optional 12 px muted caption pinned to the bottom (so
+// captions line up across a row of `fill` cards of different heights) and an optional footer behind a hairline. `fill`
+// stretches the card to its grid cell. Tones: `card` (default), `panel` (the warm well, no shadow — the Dashboard's
+// goal rail, Scans' next-scan card) and `dashed` (an empty slot). `PanelRow` is the 13 px label/value row with
+// `ink.hairline` rules between rows.
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
-import { cardSurface, dashedSurface, panelSurface } from './surfaces'
+import { cardSurface, dashedSurface, displayTitle, panelSurface } from './surfaces'
 
 export interface PanelProps {
   title?: ReactNode
@@ -20,11 +20,11 @@ export interface PanelProps {
   /** Heading level of the title, so the page outline never skips a level. Default h2. */
   headingComponent?: 'h2' | 'h3' | 'h4'
   /**
-   * `section` 16/600 + a 13 px description (default), or `card` 14/600 + a 12 px description and 12 px muted actions (a
-   * small card: "Recent activity", a chart in a grid of cards).
+   * `section` Outfit 19 px + a 13 px description (default), or `card` Outfit 17 px + a 12 px description and 12 px
+   * muted actions (a small card: "Recent activity", a chart in a grid of cards).
    */
   titleSize?: 'section' | 'card'
-  /** `standard` 18 × 20 (default), `dense` 16 × 18, `none` (flush: tables and ListRows). */
+  /** `standard` 24 × 26 (default), `dense` 20 × 22, `none` (flush: tables and ListRows). */
   padding?: 'standard' | 'dense' | 'none'
   tone?: 'card' | 'panel' | 'dashed'
   /** A 12 px muted line under the body, pinned to the card's bottom. */
@@ -70,8 +70,8 @@ export function Panel({
   const hasBody = children !== undefined && children !== null && children !== false
   const headingId = id && title ? `${id}-title` : undefined
   const card = titleSize === 'card'
-  // A small card's title sits as far down as its body's top padding (2a: 18, or 16 dense); a section title, and a
-  // flush card's (its table starts under the header: Today-2a's Recent activity), at 16.
+  // A small card's title sits as far down as its body's top padding (24, or 20 dense); a section title, and a flush
+  // card's (its table starts under the header: Today's Recent activity), at 22.
   const headerTop = card && padding !== 'none' ? pad.y : tokens.pad.header.top
   return (
     <Box
@@ -121,9 +121,8 @@ export function Panel({
                 id={headingId}
                 sx={{
                   m: 0,
-                  fontSize: card ? tokens.font.size.body : tokens.font.size.cardTitle,
-                  fontWeight: tokens.font.weight.heading,
-                  lineHeight: tokens.font.leading.cardTitle,
+                  ...displayTitle('card'),
+                  fontSize: card ? 17 : tokens.font.size.cardTitle,
                   color: tokens.ink.text,
                 }}
               >
@@ -191,7 +190,7 @@ export function Panel({
           {caption}
         </Box>
       )}
-      {footer && <Box sx={{ borderTop: `1px solid ${tokens.ink.border}`, minWidth: 0 }}>{footer}</Box>}
+      {footer && <Box sx={{ borderTop: `1px solid ${tokens.ink.hairline}`, minWidth: 0 }}>{footer}</Box>}
     </Box>
   )
 }

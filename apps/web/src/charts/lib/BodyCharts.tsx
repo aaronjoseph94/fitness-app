@@ -1,13 +1,16 @@
-// Owns: the body-composition charts across scans and tape measurements — fat vs lean mass per scan (2a: grouped
-// bars, fat then lean, the kg written on each, the fat-at-goal line dashed in the goal colour), and body fat % and
-// visceral level, waist and waist-to-hip ratio as TimePanels configurations (separate panels, one axis each).
+// Owns: the body-composition charts across scans and tape measurements — fat vs lean mass per scan (1d: grouped
+// bars, fat then lean, each filled with its ramp, 10 px tops, the kg written on each, the fat at the summit as the
+// dashed gold plan line), and body fat % and visceral level, waist and waist-to-hip ratio as TimePanels configurations
+// (separate panels, one axis each).
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
-import { tokens, withAlpha } from '../../theme'
+import { copy } from '../../copy'
+import { metricRamp, tokens, withAlpha } from '../../theme'
 import {
   ChartFrame,
   MARGIN,
-  WEEK_BAR_MAX,
-  BAR_RADIUS,
+  planLine,
+  rampGradient,
+  useFadeId,
   barCursor,
   barMotion,
   barXAxisStyle,
@@ -16,7 +19,6 @@ import {
   rechartsSize,
   seriesSummary,
   surfaceText,
-  targetLine,
   tickCount,
   tickInterval,
   tooltip,
@@ -49,6 +51,10 @@ export interface BodyCompositionChartProps extends Common {
 
 const FAT = tokens.metric.fatMass
 const LEAN = tokens.metric.lean
+/** Widest scan bar (1d: up to 44 px, a pair to a scan). */
+const SCAN_BAR_MAX = 44
+/** A scan bar's top corners. */
+const SCAN_BAR_RADIUS: [number, number, number, number] = [10, 10, 4, 4]
 /** Narrowest bar whose kg is written over it (12/600, "59.6" is ~26 px); narrower bars label the latest scan only. */
 const LABEL_MIN_BAR_PX = 30
 
@@ -86,6 +92,8 @@ export function BodyCompositionChart({
   height = 220,
   legend = true,
 }: BodyCompositionChartProps) {
+  const fatId = useFadeId('fat-ramp')
+  const leanId = useFadeId('lean-ramp')
   const rows = [...scans].sort((a, b) => a.date.localeCompare(b.date))
   const values = rows.flatMap((r) => [r.fatMass ?? 0, r.leanMass ?? 0])
   if (fatTarget !== undefined) values.push(fatTarget)
@@ -96,7 +104,7 @@ export function BodyCompositionChart({
     { label: 'Fat mass', color: FAT, mark: 'bar' },
     { label: 'Lean mass', color: LEAN, mark: 'bar' },
   ]
-  if (fatTarget !== undefined) items.push({ label: 'Fat at goal', color: FAT, mark: 'dashed' })
+  if (fatTarget !== undefined) items.push({ label: copy.fatAtGoal, color: tokens.chart.plan, mark: 'dashed' })
   const kgOrNull = (v: number | null | undefined) => (v === null || v === undefined ? null : kg(v))
   const Tip = tooltip<CompositionScan>(
     (r) => `Scan ${r.date}`,
@@ -104,7 +112,7 @@ export function BodyCompositionChart({
       { label: 'Fat mass', color: FAT, value: (r) => kgOrNull(r.fatMass) },
       { label: 'Lean mass', color: LEAN, value: (r) => kgOrNull(r.leanMass) },
       ...(fatTarget !== undefined
-        ? [{ label: 'Fat at goal', color: FAT, dashed: true, value: () => kg(fatTarget) }]
+        ? [{ label: copy.fatAtGoal, color: tokens.chart.plan, dashed: true, value: () => kg(fatTarget) }]
         : []),
     ],
   )
@@ -118,7 +126,7 @@ export function BodyCompositionChart({
       rows.map((r) => ({ date: r.date, value: r.leanMass })),
       kg,
     )}`,
-    fatTarget !== undefined ? `Fat at goal ${kg(fatTarget)}.` : '',
+    fatTarget !== undefined ? `${copy.fatAtGoal} ${kg(fatTarget)}.` : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -143,6 +151,10 @@ export function BodyCompositionChart({
             {...rechartsSize(width, height)}
             {...surfaceText(label, summary)}
           >
+            <defs>
+              {rampGradient(fatId, { from: metricRamp('fatMass').from, to: metricRamp('fatMass').to })}
+              {rampGradient(leanId, 'lean')}
+            </defs>
             <R.CartesianGrid {...gridStyle} />
             <R.XAxis
               {...barXAxisStyle}
@@ -160,9 +172,9 @@ export function BodyCompositionChart({
             <R.Bar
               dataKey="fatMass"
               name="Fat mass"
-              fill={FAT}
-              maxBarSize={WEEK_BAR_MAX}
-              radius={BAR_RADIUS}
+              fill={`url(#${fatId})`}
+              maxBarSize={SCAN_BAR_MAX}
+              radius={SCAN_BAR_RADIUS}
               {...barMotion(width)}
             >
               <R.LabelList dataKey="fatMass" content={kgLabel(last)} />
@@ -170,14 +182,16 @@ export function BodyCompositionChart({
             <R.Bar
               dataKey="leanMass"
               name="Lean mass"
-              fill={LEAN}
-              maxBarSize={WEEK_BAR_MAX}
-              radius={BAR_RADIUS}
+              fill={`url(#${leanId})`}
+              maxBarSize={SCAN_BAR_MAX}
+              radius={SCAN_BAR_RADIUS}
               {...barMotion(width)}
             >
               <R.LabelList dataKey="leanMass" content={kgLabel(last)} />
             </R.Bar>
-            {fatTarget !== undefined && <R.ReferenceLine y={fatTarget} {...targetLine(FAT)} />}
+            {fatTarget !== undefined && (
+              <R.ReferenceLine y={fatTarget} {...planLine} ifOverflow="extendDomain" />
+            )}
           </R.BarChart>
         )}
       </Plot>

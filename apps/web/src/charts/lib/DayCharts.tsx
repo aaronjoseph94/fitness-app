@@ -1,9 +1,9 @@
-// Owns: the four "per day vs target" charts — calories by meal slot (2a: the calories colour lightening breakfast →
-// lunch → dinner → snack, flush), macros (g) with the protein target dashed in the protein colour, water (ml; days
-// that hit the target in full colour, the rest in its lighter step) and steps with a 14-day median — as configurations of
-// DailyBars in their metric colours.
+// Owns: the four "per day vs target" charts — calories by meal slot (1d: the calories ramp from its deep coral at
+// breakfast to its light end at dinner, snack lighter still, flush), macros (g: protein orange, carbs violet, fat coral,
+// as 1d draws them) with the protein minimum dashed in the warning amber, water (ml; days that hit the target in the
+// water ramp, the rest in its light end) and steps with a 14-day median — as configurations of DailyBars.
 import { formatNumber } from '../../components'
-import { tokens } from '../../theme'
+import { metricRamp, tokens } from '../../theme'
 import { DailyBars, type DaySeries } from './DailyBars'
 import { UNDER_TARGET_ALPHA, tintOnCard, type ChartSizeProps } from './frame'
 import { rollingMedian } from './stats'
@@ -11,6 +11,8 @@ import { rollingMedian } from './stats'
 interface Common extends ChartSizeProps {
   /** Draw the legend chips. Default true. */
   legend?: boolean
+  /** Where the legend keys sit: the top row (default) or under the plot. */
+  legendPlacement?: 'top' | 'bottom'
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -33,23 +35,41 @@ export interface CaloriesChartProps extends Common {
   target?: number
 }
 
-/** Slots are steps of the calories colour, darkest first, stacked in eating order (2a: breakfast at the base). */
-const SLOTS: readonly { key: MealSlotKey; label: string; alpha: number }[] = [
-  { key: 'breakfast', label: 'Breakfast', alpha: 1 },
-  { key: 'lunch', label: 'Lunch', alpha: 0.6 },
-  { key: 'dinner', label: 'Dinner', alpha: 0.32 },
-  { key: 'snack', label: 'Snack', alpha: 0.18 },
+/** `a` → `b` at `t` (0–1), per channel, as an opaque hex: a step between a ramp's two ends. */
+function between(a: string, b: string, t: number): string {
+  const parse = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const x = parse(a)
+  const y = parse(b)
+  return `#${x
+    .map((c, i) =>
+      Math.round(c + (y[i]! - c) * t)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`
+}
+
+const KCAL = metricRamp('calories')
+/** Slots are steps along the calories ramp, deepest first, stacked in eating order (breakfast at the base). */
+const SLOTS: readonly { key: MealSlotKey; label: string; color: string }[] = [
+  { key: 'breakfast', label: 'Breakfast', color: KCAL.from },
+  { key: 'lunch', label: 'Lunch', color: between(KCAL.from, KCAL.to, 0.5) },
+  { key: 'dinner', label: 'Dinner', color: KCAL.to },
+  { key: 'snack', label: 'Snack', color: tintOnCard(KCAL.to, 0.5) },
 ]
 
 const kcal = (v: number) => `${formatNumber(v)} kcal`
 
-export function CaloriesChart({ days, target, width, height = 220, legend = true }: CaloriesChartProps) {
+export function CaloriesChart({
+  days,
+  target,
+  width,
+  height = 220,
+  legend = true,
+  legendPlacement,
+}: CaloriesChartProps) {
   const present = SLOTS.filter((s) => days.some((d) => (d[s.key] ?? 0) > 0))
-  const bars: DaySeries[] = present.map((s) => ({
-    key: s.key,
-    label: s.label,
-    color: s.alpha === 1 ? tokens.metric.calories : tintOnCard(tokens.metric.calories, s.alpha),
-  }))
+  const bars: DaySeries[] = present.map((s) => ({ key: s.key, label: s.label, color: s.color }))
   return (
     <DailyBars
       testId="chart-calories"
@@ -63,6 +83,7 @@ export function CaloriesChart({ days, target, width, height = 220, legend = true
       width={width}
       height={height}
       legend={legend}
+      legendPlacement={legendPlacement}
     />
   )
 }
@@ -84,7 +105,14 @@ export interface MacrosChartProps extends Common {
 
 const grams = (v: number) => `${formatNumber(v)} g`
 
-export function MacrosChart({ days, proteinTarget, width, height = 220, legend = true }: MacrosChartProps) {
+export function MacrosChart({
+  days,
+  proteinTarget,
+  width,
+  height = 220,
+  legend = true,
+  legendPlacement,
+}: MacrosChartProps) {
   return (
     <DailyBars
       testId="chart-macros"
@@ -92,19 +120,20 @@ export function MacrosChart({ days, proteinTarget, width, height = 220, legend =
       unit="g"
       rows={days}
       bars={[
-        { key: 'protein', label: 'Protein', color: tokens.metric.protein },
-        { key: 'carbs', label: 'Carbs', color: tokens.metric.carbs },
-        { key: 'fat', label: 'Fat', color: tokens.metric.fat },
+        { key: 'protein', label: 'Protein', color: metricRamp('protein').from },
+        { key: 'carbs', label: 'Carbs', color: tokens.accent.bright },
+        { key: 'fat', label: 'Fat', color: metricRamp('fat').to },
       ]}
       target={
         proteinTarget === undefined
           ? undefined
-          : { value: proteinTarget, label: 'Protein target', color: tokens.metric.protein }
+          : { value: proteinTarget, label: 'Protein minimum', color: tokens.tone.warning.text }
       }
       format={grams}
       width={width}
       height={height}
       legend={legend}
+      legendPlacement={legendPlacement}
     />
   )
 }
@@ -134,6 +163,7 @@ export function WaterChart({ days, target, width, height = 200, legend = true }:
           key: 'ml',
           label: 'Water',
           color: tokens.metric.water,
+          ramp: 'water',
           missColor: tintOnCard(tokens.metric.water, UNDER_TARGET_ALPHA),
         },
       ]}

@@ -1,19 +1,22 @@
-// Owns: the AI settings page (2a kit) — the paid models (Claude, ChatGPT, Gemini Pro: a set key puts that model first),
+// Owns: the AI settings page (1d kit) — the paid models (Claude, ChatGPT, Gemini Pro: a set key puts that model first),
 // the free provider keys the AI falls back on, and how Claude connects. A key lives in the Worker (never in the web
 // bundle) and comes back as status only, so this screen shows whether one is set, where it came from and its last four
 // characters, never the value. Reads GET /api/settings/secrets and GET /api/settings/connection; every edit is one PUT
 // or DELETE /api/settings/secrets/:name. Needs a connection.
+import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import { useState } from 'react'
+import { Link as RouterLink } from 'react-router'
 import { problemText, signInAgain } from '../../api'
 import { PageHeader, Panel } from '../../components'
 import { useOnline } from '../../offline'
-import { tokens } from '../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../theme'
 import { formatDateTime } from '../quick-log'
 import { copyText } from './lib/copy'
 import { CopyRow, ReadOnlyRow, SettingsGroup, ValueRow } from './lib/rows'
@@ -27,6 +30,24 @@ import {
   type ListedSecretName,
 } from './lib/secrets'
 import { useConnection, useSecretMutations, useSecrets } from './lib/useSecrets'
+
+/** The eyebrow's way back to Settings (1d's nav has no breadcrumb; a phone also has its back circle). */
+const crumb = (
+  <Link
+    component={RouterLink}
+    to="/settings"
+    underline="hover"
+    sx={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+    }}
+  >
+    <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
+    Settings
+  </Link>
+)
 
 const saveError = (error: unknown) => problemText(error, 'Setting a key needs a connection.')
 
@@ -57,6 +78,7 @@ export function AiSettingsPage() {
 
   const header = (
     <PageHeader
+      eyebrow={crumb}
       title="AI and Claude"
       subtitle="The keys the AI runs on and how Claude connects. A key stays in the Worker; this page only shows whether it is set."
     />

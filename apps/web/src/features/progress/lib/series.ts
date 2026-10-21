@@ -164,21 +164,26 @@ export function milestoneTimelines(
 
 export interface MilestoneItem {
   label: string
-  /** `done` reached · `next` the next weight milestone · `later` a composition milestone not reached yet. */
+  /**
+   * `done` reached · `next` the next weight milestone (a camp) · `later` a weight camp further on, or a composition
+   * milestone not reached yet.
+   */
   state: 'done' | 'next' | 'later'
   reachedOn: LocalDate | null
-  /** Forecast date of the next weight milestone. */
+  /** Forecast date of a weight milestone not reached yet (at the chart's rate). */
   expectedOn: LocalDate | null
   /** Trend kg still to lose to the next weight milestone: from.kg − target. */
   awayKg: number | null
   /** What measures it: the trend weight, an Evolt scan, or the tape (waist-to-hip). */
   source: 'weight' | 'scan' | 'tape'
+  /** A weight milestone's target, kg (null for a composition milestone). */
+  kg: number | null
 }
 
 /**
- * The Progress milestones list: the weight milestones reached and the next one (heaviest first), then every
- * composition milestone in its own order. Weight milestones past the next one are left out: each comes into view as
- * the one before it is reached.
+ * The Progress milestones list (1d "Camps on the way"): every weight milestone, heaviest first — the ones reached, the
+ * next one with the kilograms still to go, and the ones further on with their forecast dates at `rate` — then every
+ * composition milestone in its own order.
  */
 export function milestoneList(
   rows: readonly MilestoneRow[],
@@ -187,28 +192,52 @@ export function milestoneList(
 ): MilestoneItem[] {
   const weight = rows.filter((m) => m.kind === 'weight').sort((a, b) => b.target_value - a.target_value)
   const next = weight.find((m) => !m.reached_on)
-  const items: MilestoneItem[] = weight
-    .filter((m) => m.reached_on || m === next)
-    .map((m) => ({
-      label: m.label,
-      state: m.reached_on ? 'done' : 'next',
-      reachedOn: m.reached_on,
-      expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate),
-      awayKg: m.reached_on || !from ? null : round(from.kg - m.target_value, 1),
-      source: 'weight',
-    }))
+  const items: MilestoneItem[] = weight.map((m) => ({
+    label: m.label,
+    state: m.reached_on ? 'done' : m === next ? 'next' : 'later',
+    reachedOn: m.reached_on,
+    expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate),
+    awayKg: m === next && from ? round(from.kg - m.target_value, 1) : null,
+    source: 'weight',
+    kg: m.target_value,
+  }))
   for (const m of rows) {
     if (m.kind === 'weight') continue
     items.push({
-      label: m.label,
+      label: shortLabel(m),
       state: m.reached_on ? 'done' : 'later',
       reachedOn: m.reached_on,
       expectedOn: null,
       awayKg: null,
       source: m.kind === 'whr' ? 'tape' : 'scan',
+      kg: null,
     })
   }
   return items
+}
+
+/**
+ * The plan's line from base camp to the summit: start weight on the start date to goal weight on the goal date, and
+ * its rate in kg a week = (start − goal) / (days from start to goal ÷ 7). Null without a goal below the start or a goal
+ * date after the start.
+ */
+export function planLine(
+  profile: {
+    start_date: LocalDate
+    start_weight_kg: number
+    goal_weight_kg: number
+    goal_date: LocalDate
+  } | null,
+): { from: { date: LocalDate; kg: number }; to: { date: LocalDate; kg: number }; rate: number } | null {
+  if (!profile) return null
+  const days = daysBetween(profile.start_date, profile.goal_date)
+  const kg = profile.start_weight_kg - profile.goal_weight_kg
+  if (!(days > 0) || !(kg > 0)) return null
+  return {
+    from: { date: profile.start_date, kg: profile.start_weight_kg },
+    to: { date: profile.goal_date, kg: profile.goal_weight_kg },
+    rate: kg / (days / 7),
+  }
 }
 
 /** Timeline labels must fit ~55 px at phone width: "Visceral ≤ 9", "BF < 30 %", "WHR < 0.90", "Torso < 10.4 kg". */

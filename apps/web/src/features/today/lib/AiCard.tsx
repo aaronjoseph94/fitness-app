@@ -1,25 +1,29 @@
-// Owns: Today's AI slot (2a: the middle card of the bottom row) — the newest safety flag of the last 7 days (rapid
-// loss, plateau, protein low; shown, never applied) as a warning at the top of the slot; the latest pending proposal
-// as a ProposalCard titled with the proposer's own summary when it is one short line, else with the change's own
-// title over that summary (Accept / Reject / Why → POST /api/proposals/:id/accept|reject through the shared decision
-// hook; Why links to the plan history), or else the latest AI event (review, note, change) from the live feed. Also
-// today's day adjustment card (remaining kcal and macros, protein status, next-meal ideas) when the AI has made one
-// today, which the page puts under the coach note.
+// Owns: Today's AI check-in card (1d README §5.1, the middle card of the second row) — the sparkle and "AI check-in"
+// with the time of its newest item; the newest safety flag of the last 7 days (rapid loss, plateau, protein low; shown,
+// never applied) as a warning; today's day adjustment when the AI has made one (status, kcal and protein left, the AI's
+// note, next-meal ideas that log a favourite in one tap); the latest AI event (review, note, change) from the live feed
+// when no proposal waits; and behind a hairline the latest pending proposal, titled with the proposer's own summary
+// when it is one short line, else with the change's own title over that summary (Accept / Reject / Why? →
+// POST /api/proposals/:id/accept|reject through the shared decision hook; Why lists the reasons and links to the plan
+// history). With nothing from the AI yet, one quiet line says what will show here.
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
-import Stack from '@mui/material/Stack'
+import { keyframes } from '@mui/material/styles'
 import { endpoints } from '@fitness/shared/api'
 import type { AiEvent, Proposal } from '@fitness/shared/schemas'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { call, useApiQuery } from '../../../api'
-import { formatRecentTime, Panel, ProposalCard } from '../../../components'
+import { cardSurface, displayTitle, eyebrow, formatRecentTime, ProposalCard } from '../../../components'
 import { tokens } from '../../../theme'
 import { PROPOSAL_TITLE_MAX, useProposalDecision } from '../../proposals'
 import { DayAdjustmentCard, latestAdjustment, todayLocal } from '../../quick-log'
 import { eventView, proposalView } from './event-view'
 import { useRefreshAfterDecision } from './useEventFeed'
+
+const { font } = tokens
 
 interface AiCardProps {
   /** DayView.proposals.latest: the newest pending proposal, as the day knows it. */
@@ -33,6 +37,14 @@ interface AiCardProps {
 const FLAG_DAYS = 7
 
 type NoteEvent = Extract<AiEvent, { kind: 'note' }>
+
+const pulse = keyframes`
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.86); }
+`
+
+/** A section of the card after the first: a hairline above it. */
+const SECTION = { mt: '16px', pt: '14px', borderTop: `1px solid ${tokens.ink.hairline}` } as const
 
 /**
  * The newest safety-flag note of the last FLAG_DAYS days. The nightly job writes each flag as a note whose body
@@ -57,39 +69,88 @@ function freshest(latest: Proposal | null, events: readonly AiEvent[]): Proposal
   return same && same.updated_at > latest.updated_at ? same : latest
 }
 
-/** Today's day adjustment card: the AI's latest one today (an older one is stale); the page puts it under the coach note. */
-export function TodayAdjustment({ events }: { events: readonly AiEvent[] }) {
-  const today = todayLocal()
-  const adjustment = latestAdjustment(events, today)
-  return adjustment ? <DayAdjustmentCard date={today} adjustment={adjustment} /> : null
-}
-
 export function AiCard({ latest, pendingCount, events }: AiCardProps) {
+  const titleId = useId()
+  const today = todayLocal()
   const proposal = freshest(latest, events)
-  // Adjustments show as their own card (today's only; an older one is stale), so the event slot skips them.
+  const adjustment = latestAdjustment(events, today)
+  // Adjustments show as their own section (today's only; an older one is stale), so the event slot skips them.
   const first = proposal ? null : events.find((e) => e.kind !== 'proposal' || e.proposal_status !== 'pending')
   const event = first && first.kind !== 'adjustment' ? first : null
   const flag = latestFlag(events)
-  // The flag shows above the slot, so the slot does not repeat it.
+  // The flag shows at the top, so the event slot does not repeat it.
   const slotEvent = event && event.id === flag?.id ? null : event
-  const main = proposal ? (
-    <ProposalSlot key={proposal.id} proposal={proposal} pendingCount={pendingCount} />
-  ) : slotEvent ? (
-    <EventCard event={slotEvent} />
-  ) : null
-  if (!flag) return main
+  const newest = [adjustment, proposal, slotEvent, flag]
+    .flatMap((e) => (e ? [e.created_at] : []))
+    .sort()
+    .at(-1)
+  const sections = [
+    flag && (
+      <Alert key="flag" severity="warning" data-testid="today-flag">
+        <Box sx={{ fontWeight: font.weight.label }}>Safety flag · {formatRecentTime(flag.created_at)}</Box>
+        {flag.summary}
+      </Alert>
+    ),
+    adjustment && (
+      <DayAdjustmentCard key="adjustment" date={today} adjustment={adjustment} variant="embedded" />
+    ),
+    slotEvent && <EventSection key="event" event={slotEvent} />,
+    proposal && <ProposalSlot key={proposal.id} proposal={proposal} pendingCount={pendingCount} />,
+  ].filter(Boolean)
+
   return (
-    <Stack spacing={4}>
-      {flag && (
-        <Alert severity="warning" data-testid="today-flag">
-          <Box sx={{ fontWeight: tokens.font.weight.label }}>
-            Safety flag · {formatRecentTime(flag.created_at)}
+    <Box
+      component="section"
+      aria-labelledby={titleId}
+      data-testid="today-ai"
+      sx={{
+        ...cardSurface,
+        height: '100%',
+        boxSizing: 'border-box',
+        minWidth: 0,
+        px: `${tokens.pad.card.x}px`,
+        py: `${tokens.pad.card.y}px`,
+      }}
+    >
+      <Box sx={{ ...eyebrow, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <AutoAwesomeRounded
+          aria-hidden
+          sx={{
+            fontSize: 18,
+            color: tokens.accent.main,
+            flex: 'none',
+            animation: `${pulse} 2600ms ease-in-out infinite`,
+            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+          }}
+        />
+        <Box component="h2" id={titleId} sx={{ m: 0, font: 'inherit', flex: 1, minWidth: 0 }}>
+          AI check-in
+        </Box>
+        {newest && (
+          <Box component="span" sx={{ textTransform: 'none', letterSpacing: 0, flex: 'none' }}>
+            {formatRecentTime(newest)}
           </Box>
-          {flag.summary}
-        </Alert>
+        )}
+      </Box>
+      {sections.length === 0 ? (
+        <Box
+          sx={{
+            mt: '10px',
+            fontSize: font.size.emphasis,
+            lineHeight: font.leading.emphasis,
+            color: tokens.ink.body,
+          }}
+        >
+          Day adjustments, proposals and notes from the AI show here.
+        </Box>
+      ) : (
+        sections.map((section, i) => (
+          <Box key={i} sx={i === 0 ? { mt: '10px' } : SECTION}>
+            {section}
+          </Box>
+        ))
       )}
-      {main}
-    </Stack>
+    </Box>
   )
 }
 
@@ -109,10 +170,20 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
   const short = proposal.summary.length <= PROPOSAL_TITLE_MAX
 
   return (
-    <Box>
+    // Inside the check-in card the proposal drops its own card: no padding, shadow or fill (kit request: a flat look).
+    <Box
+      sx={{
+        '& > [data-testid="today-proposal"]': {
+          p: 0,
+          boxShadow: 'none',
+          borderRadius: 0,
+          bgcolor: 'transparent',
+        },
+      }}
+    >
       <ProposalCard
         testId="today-proposal"
-        headingComponent="h2"
+        headingComponent="h3"
         title={short ? proposal.summary : view.title}
         source={view.source}
         summary={short ? null : proposal.summary}
@@ -130,13 +201,7 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
                 <Box
                   component="ul"
                   data-testid="proposal-why"
-                  sx={{
-                    m: 0,
-                    pl: 5,
-                    fontSize: tokens.font.size.small,
-                    color: tokens.ink.text,
-                    lineHeight: 1.5,
-                  }}
+                  sx={{ m: 0, pl: 5, fontSize: font.size.small, color: tokens.ink.text, lineHeight: 1.5 }}
                 >
                   {view.why.map((reason) => (
                     <li key={reason}>{reason}</li>
@@ -149,8 +214,8 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
                     display: 'inline-flex',
                     alignItems: 'center',
                     minHeight: tokens.tapTarget,
-                    fontSize: tokens.font.size.small,
-                    fontWeight: tokens.font.weight.label,
+                    fontSize: font.size.small,
+                    fontWeight: font.weight.label,
                   }}
                 >
                   Plan history and the rails it was checked against
@@ -162,7 +227,7 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
         )}
       </ProposalCard>
       {pendingCount > 1 && (
-        <Box sx={{ mt: 2, px: 1, fontSize: tokens.font.size.small, color: tokens.ink.muted }}>
+        <Box sx={{ mt: 2, fontSize: font.size.small, color: tokens.ink.muted }}>
           {pendingCount - 1} more {pendingCount - 1 === 1 ? 'proposal waits' : 'proposals wait'} in the{' '}
           <Link component={RouterLink} to="/ai" underline="always" color="inherit">
             AI tab
@@ -174,7 +239,8 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
   )
 }
 
-function EventCard({ event }: { event: AiEvent }) {
+/** The latest AI event that is not a pending proposal or an adjustment: its source, title, text, details and link. */
+function EventSection({ event }: { event: AiEvent }) {
   const favouriteIds =
     event.kind === 'adjustment'
       ? event.body.suggestions.flatMap((s) => (s.favorite_id ? [s.favorite_id] : []))
@@ -186,72 +252,82 @@ function EventCard({ event }: { event: AiEvent }) {
   )
   const view = eventView(event, (id) => favourites.data?.find((f) => f.id === id)?.label ?? null)
   return (
-    <Box data-testid="today-event" data-kind={event.kind} sx={{ minWidth: 0 }}>
-      <Panel padding="dense" component="article" ariaLabel={view.title}>
-        <Box sx={{ display: 'flex', gap: 2, fontSize: tokens.font.size.caption, color: tokens.ink.muted }}>
-          <Box sx={{ flex: 1, minWidth: 0 }}>{view.source}</Box>
-          <Box sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-            {formatRecentTime(event.created_at)}
-          </Box>
-        </Box>
+    <Box
+      component="article"
+      aria-label={view.title}
+      data-testid="today-event"
+      data-kind={event.kind}
+      sx={{ minWidth: 0 }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 2,
+          fontSize: font.size.small,
+          fontWeight: font.weight.heading,
+          color: tokens.accent.main,
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>{view.source}</Box>
         <Box
-          component="h2"
           sx={{
-            m: 0,
-            mt: '8px',
-            fontSize: tokens.font.size.itemTitle,
-            fontWeight: tokens.font.weight.heading,
-            lineHeight: tokens.font.leading.itemTitle,
+            whiteSpace: 'nowrap',
+            fontVariantNumeric: 'tabular-nums',
+            color: tokens.ink.muted,
+            fontWeight: font.weight.body,
           }}
         >
-          {view.title}
+          {formatRecentTime(event.created_at)}
         </Box>
-        {view.text && (
-          <Box
-            sx={{
-              mt: '4px',
-              fontSize: tokens.font.size.small,
-              color: tokens.ink.muted,
-              lineHeight: tokens.font.leading.small,
-            }}
-          >
-            {view.text}
-          </Box>
-        )}
-        {view.details.length > 0 && (
-          <Box
-            component="ul"
-            sx={{
-              m: 0,
-              mt: 2,
-              pl: 5,
-              fontSize: tokens.font.size.small,
-              color: tokens.ink.body,
-              lineHeight: tokens.font.leading.small,
-            }}
-          >
-            {view.details.map((d) => (
-              <li key={d}>{d}</li>
-            ))}
-          </Box>
-        )}
-        {view.link && (
-          <Link
-            component={RouterLink}
-            to={view.link.to}
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minHeight: tokens.tapTarget,
-              mt: 1,
-              fontSize: tokens.font.size.small,
-              fontWeight: tokens.font.weight.label,
-            }}
-          >
-            {view.link.label}
-          </Link>
-        )}
-      </Panel>
+      </Box>
+      <Box component="h3" sx={{ ...displayTitle('card'), m: 0, mt: '6px' }}>
+        {view.title}
+      </Box>
+      {view.text && (
+        <Box
+          sx={{
+            mt: '4px',
+            fontSize: font.size.emphasis,
+            color: tokens.ink.body,
+            lineHeight: font.leading.emphasis,
+          }}
+        >
+          {view.text}
+        </Box>
+      )}
+      {view.details.length > 0 && (
+        <Box
+          component="ul"
+          sx={{
+            m: 0,
+            mt: 2,
+            pl: 5,
+            fontSize: font.size.small,
+            color: tokens.ink.body,
+            lineHeight: font.leading.small,
+          }}
+        >
+          {view.details.map((d) => (
+            <li key={d}>{d}</li>
+          ))}
+        </Box>
+      )}
+      {view.link && (
+        <Link
+          component={RouterLink}
+          to={view.link.to}
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            minHeight: tokens.tapTarget,
+            mt: 1,
+            fontSize: font.size.small,
+            fontWeight: font.weight.heading,
+          }}
+        >
+          {view.link.label}
+        </Link>
+      )}
     </Box>
   )
 }

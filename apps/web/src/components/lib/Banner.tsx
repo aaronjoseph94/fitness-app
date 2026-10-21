@@ -1,5 +1,6 @@
-// Owns: the 2a banner — a tinted strip with a 1 px border, radius 10, 13 px text and an 18 px glyph in the tone's own
-// colour, all from `BANNER_TONES`: info (`tone.info` bg / border / text — a session's start notes, an offline read),
+// Owns: the 1d banner — a tinted strip with a 1 px border, radius 18, 13 px text and an 18 px glyph in the tone's own
+// colour, all from `BANNER_TONES`: info (soft violet `tone.info` bg / border / text — a session's start notes, an
+// offline read),
 // warning (`tone.warning.bg`, `tone.warning.deep` text — the next fast, a failed read), danger and success. An optional
 // title, and an action on the right (a retry).
 // MUI's <Alert> is themed to the same look; use this where a banner is part of a layout rather than a notice.
@@ -49,7 +50,7 @@ export function Banner({ tone = 'info', title, children, action, role, testId }:
         display: 'flex',
         alignItems: 'flex-start',
         gap: '10px',
-        px: '14px',
+        px: '16px',
         py: '12px',
         borderRadius: `${tokens.radius.panel}px`,
         border: `1px solid ${t.border}`,

@@ -1,9 +1,11 @@
-// Owns: the Settings page (2a) — a sticky section nav beside the cards: the rails (set with the doctor and dietitian;
-// each edit asks for confirmation), daily targets (fibre, water), training days and the scan interval, the auto-apply
-// preference with the links to the AI page (model keys and the Claude connector) and to Reminders, every profile field
-// (goal, start, height, sex, birth date, time zone — all editable), links to other pages, and "About this data". Reads
-// GET /api/settings; every change is one PATCH /api/settings, shown at once and rolled back if the Worker refuses.
-// Needs a connection.
+// Owns: the Settings page (1d) — a compact sky hero, then the section nav card beside the cards (README §4: nav 220 px :
+// cards, wrapping): the rails (set with the doctor and dietitian; each edit asks for confirmation), daily targets
+// (fibre, water), training days and the scan interval (with the next scan's due date), the auto-apply preference with
+// the links to the AI page (model keys and the Claude connector, with how many keys are set) and to Reminders, every
+// profile field (goal, start, height, sex, birth date, time zone — all editable), links to other pages (Scans with its
+// next due date), and the deep-sky "About this data". Reads GET /api/settings (and the key statuses and the scan
+// schedule); every change is one PATCH /api/settings, shown at once and rolled back if the Worker refuses. Needs a
+// connection.
 import AccessibilityNewOutlined from '@mui/icons-material/AccessibilityNewOutlined'
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
@@ -22,9 +24,10 @@ import Snackbar from '@mui/material/Snackbar'
 import type { Settings, Weekday } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { problemText, signInAgain } from '../../api'
-import { PageHeader, Reveal, staggerDelay, StatusChip } from '../../components'
+import { formatNumber, formatShortDate, PageHeader, Reveal, staggerDelay, StatusChip } from '../../components'
+import { copy } from '../../copy'
 import { useOnline } from '../../offline'
-import { tokens } from '../../theme'
+import { metricTint, minWidth, tokens } from '../../theme'
 import { AboutData } from './lib/AboutData'
 import { EditDialog } from './lib/EditDialog'
 import {
@@ -42,10 +45,20 @@ import {
   type ProfileField,
 } from './lib/fields'
 import { ProfileDialog, type ProfileValue } from './lib/ProfileDialog'
-import { DayTiles, LinkRow, RowGrid, SettingsGroup, SwitchRow, ValueRow } from './lib/rows'
+import {
+  Amount,
+  DayTiles,
+  LinkRow,
+  RowGrid,
+  SettingsGroup,
+  SwitchRow,
+  ValueRow,
+  type IconTint,
+} from './lib/rows'
 import { SectionNav, type NavSection } from './lib/SectionNav'
 import { TrainingDaysDialog } from './lib/TrainingDaysDialog'
-import { useSettings, useUpdateSettings, type SettingsChange } from './lib/useSettings'
+import { useScanDue, useSettings, useUpdateSettings, type SettingsChange } from './lib/useSettings'
+import { useModelChain } from './models'
 
 type Editing =
   | { kind: 'number'; field: NumberField }
@@ -67,42 +80,105 @@ const SECTIONS: readonly NavSection[] = [
   { id: 'about', label: 'About this data' },
 ]
 
-/** 2a: the title rises in at 150 ms, then the cards follow 90 ms apart from 300 ms. */
+/** 1d: the hero comes in first, then the cards follow 90 ms apart from 300 ms. */
 const cardDelay = (index: number) => staggerDelay(index, tokens.motion.stagger.section, 300)
 
 /**
- * 2a: the section nav's column; the cards' column beside it is at most 820 px, its cards 24 px apart. Loading and the
- * failed read draw the same page (nav, then the column with the title first), so React keeps one page box and one
- * title when the data lands: nothing moves (no CLS) and the title fades in once.
+ * README §4: the section nav (220 px) beside the cards (`100 1 280px`, at most 880 px), wrapping above them on a phone.
+ * Loading and the failed read draw the same page (nav, then the column), so React keeps one page box when the data
+ * lands: nothing moves (no CLS).
  */
-const NAV_WIDTH = 200
+const CARDS_MAX = 880
 const pageSx = {
-  display: 'grid',
-  gridTemplateColumns: { md: `${NAV_WIDTH}px minmax(0, 1fr)` },
-  gap: '28px',
-  alignItems: 'start',
-  pb: { xs: 4, md: 0 },
-} as const
-const columnSx = {
-  display: 'grid',
-  gap: `${tokens.rhythm.section}px`,
-  maxWidth: tokens.layout.readingMax,
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '30px',
+  alignItems: 'flex-start',
   minWidth: 0,
 } as const
+const columnSx = {
+  flex: '100 1 280px',
+  maxWidth: CARDS_MAX,
+  minWidth: 0,
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: '22px',
+} as const
+
+/** The More card's tiles: each destination in its own tint (1d). */
+const TINT = {
+  plan: { bg: tokens.accent.soft, fg: tokens.accent.deep },
+  scans: { bg: tokens.tone.success.bg, fg: tokens.tone.success.text },
+  watch: { bg: metricTint('sleep'), fg: tokens.metric.sleep },
+  photos: { bg: tokens.tone.danger.bg, fg: tokens.tone.danger.text },
+  data: { bg: tokens.tone.warning.bg, fg: tokens.tone.warning.text },
+} as const satisfies Record<string, IconTint>
+
+const NOTE =
+  'Every change saves at once and is rolled back if the server refuses. Rails ask for confirmation.'
+/**
+ * 1d sets the hero's line right of the title, where it clears the sun disc only on a wide sky (from about 1,400 px);
+ * narrower, it is the usual subtitle under the title, so it never sits on the disc.
+ */
+const NOTE_BESIDE = minWidth(1400)
+
+/** The hero's line beside the title, in the slot a page's controls would take. */
+function HeroNote() {
+  return (
+    <Box
+      sx={{
+        display: 'none',
+        [NOTE_BESIDE]: { display: 'block' },
+        maxWidth: 460,
+        pb: '6px',
+        textAlign: 'right',
+        fontSize: tokens.font.size.emphasis,
+        fontWeight: tokens.font.weight.body,
+        lineHeight: tokens.font.leading.small,
+        color: tokens.summit.onSky.subtitle,
+      }}
+    >
+      {NOTE}
+    </Box>
+  )
+}
+
+/** "3 keys set" in teal, or a neutral "No keys yet", once the key statuses have loaded. */
+function KeysChip() {
+  const chain = useModelChain()
+  if (!chain) return null
+  return chain.keys > 0 ? (
+    <StatusChip
+      tone="success"
+      dot
+      label={`${formatNumber(chain.keys)} ${chain.keys === 1 ? 'key' : 'keys'} set`}
+    />
+  ) : (
+    <StatusChip label="No keys yet" />
+  )
+}
 
 export function SettingsPage() {
   const query = useSettings()
   const update = useUpdateSettings()
+  const scanDue = useScanDue()
   const online = useOnline()
   const [editing, setEditing] = useState<Editing>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  // The eyebrow keeps its line while the settings load (a non-breaking space), so the title never moves.
   const header = (
     <PageHeader
+      variant="compact"
+      eyebrow={query.data?.profile.timezone ?? '\u00a0'}
       title="Settings"
-      subtitle="Every change saves at once and is rolled back if the server refuses. Rails ask for confirmation."
-      delay={150}
+      subtitle={
+        <Box component="span" sx={{ [NOTE_BESIDE]: { display: 'none' } }}>
+          {NOTE}
+        </Box>
+      }
+      action={<HeroNote />}
     />
   )
 
@@ -194,8 +270,8 @@ export function SettingsPage() {
     <ValueRow
       key={field.key}
       label={field.label}
-      help={helpFor(field, settings)}
-      value={formatValue(field, settings[field.key])}
+      help={helpFor(field, settings, scanDue)}
+      value={<Amount text={formatValue(field, settings[field.key])} unit={field.unit} />}
       onClick={() => setEditing({ kind: 'number', field })}
       disabled={locked}
       testId={`setting-${field.key}`}
@@ -218,7 +294,7 @@ export function SettingsPage() {
             id="rails"
             title="Rails"
             subtitle="Set with your doctor and dietitian; the AI works inside them and never changes them."
-            actions={<StatusChip icon={LockOutlined} label="Confirm to edit" />}
+            actions={<StatusChip tone="warning" icon={LockOutlined} label="Confirm to edit" />}
           >
             {RAIL_FIELDS.map(numberRow)}
           </SettingsGroup>
@@ -241,6 +317,7 @@ export function SettingsPage() {
               value={<DayTiles days={settings.training_days} />}
               onClick={() => setEditing({ kind: 'training-days' })}
               disabled={locked}
+              wrapValue
               testId="setting-training_days"
             />
             {numberRow(SCAN_FIELD)}
@@ -265,6 +342,7 @@ export function SettingsPage() {
             <LinkRow
               label="Model keys and the Claude connector"
               help="Groq · OpenRouter · GLM · Gemini · MCP token for Claude"
+              value={<KeysChip />}
               to="/settings/ai"
               testId="settings-ai"
             />
@@ -276,7 +354,7 @@ export function SettingsPage() {
           <SettingsGroup
             id="profile"
             title="Profile"
-            subtitle="The goal and the start weight drive the forecast and every milestone date."
+            subtitle={`The ${copy.goalLabel} and ${copy.startLabel} drive the forecast and every ${copy.milestoneLabel} date.`}
           >
             <RowGrid>
               {PROFILE_FIELDS.map((field) => {
@@ -290,6 +368,8 @@ export function SettingsPage() {
                         <Box component="span" sx={{ color: tokens.ink.muted }}>
                           {value}
                         </Box>
+                      ) : field.kind === 'number' ? (
+                        <Amount text={value} unit={field.unit} />
                       ) : (
                         value
                       )
@@ -307,11 +387,32 @@ export function SettingsPage() {
         <Reveal delay={cardDelay(5)}>
           <SettingsGroup id="more" title="More">
             <RowGrid>
-              <LinkRow icon={HistoryOutlined} label="Plan history" to="/plan" />
-              <LinkRow icon={AccessibilityNewOutlined} label="Scans" to="/scans" />
-              <LinkRow icon={WatchOutlined} label="Apple Watch import" to="/imports/health" />
-              <LinkRow icon={PhotoLibraryOutlined} label="Progress photos" to="/photos" />
-              <LinkRow icon={DownloadOutlined} label="Export and restore" to="/settings/data" />
+              <LinkRow icon={HistoryOutlined} iconTint={TINT.plan} label="Plan history" to="/plan" />
+              <LinkRow
+                icon={AccessibilityNewOutlined}
+                iconTint={TINT.scans}
+                label="Scans"
+                note={scanDue ? `next ${formatShortDate(scanDue)}` : undefined}
+                to="/scans"
+              />
+              <LinkRow
+                icon={WatchOutlined}
+                iconTint={TINT.watch}
+                label="Apple Watch import"
+                to="/imports/health"
+              />
+              <LinkRow
+                icon={PhotoLibraryOutlined}
+                iconTint={TINT.photos}
+                label="Progress photos"
+                to="/photos"
+              />
+              <LinkRow
+                icon={DownloadOutlined}
+                iconTint={TINT.data}
+                label="Export and restore"
+                to="/settings/data"
+              />
             </RowGrid>
           </SettingsGroup>
         </Reveal>

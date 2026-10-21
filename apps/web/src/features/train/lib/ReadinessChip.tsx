@@ -1,6 +1,7 @@
-// Owns: the readiness chip (SPEC §7, §9 readiness) — 2a's outline chip: a status-coloured dot, "Readiness 74 · full
-// volume" in ink (under 40 flags reduced volume) and an info glyph, and on tap what it is made of: last night's sleep vs
-// 7.5 h, yesterday's steps vs the 14-day median, days since the last session.
+// Owns: the readiness chip (SPEC §7, §9 readiness) — a 1d pill: a status-coloured dot, "Readiness 74 · full volume"
+// (under 40 flags reduced volume) and an info glyph; on the sky (Train's hero) a 46 px teal pill when readiness is good,
+// dark glass with an amber or coral dot otherwise; on a card a soft violet pill. On tap, what it is made of: last
+// night's sleep vs 7.5 h, yesterday's steps vs the 14-day median, days since the last session.
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -23,10 +24,22 @@ export function readinessTone(score: number): string {
       : tokens.tone.success.solid
 }
 
-export function ReadinessChip({ readiness }: { readiness: Readiness }) {
+/** The dot on the sky: white on the teal pill, else gold (moderate) or coral (low) on the dark glass. */
+function skyDot(score: number): string {
+  return score < REDUCED_BELOW
+    ? tokens.summit.coral.main
+    : score < GOOD_FROM
+      ? tokens.summit.gold.main
+      : tokens.summit.onSky.text
+}
+
+const { summit } = tokens
+
+export function ReadinessChip({ readiness, onSky = false }: { readiness: Readiness; onSky?: boolean }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const detailsId = useId()
-  const tone = readinessTone(readiness.score)
+  const good = readiness.score >= GOOD_FROM
+  const tone = onSky ? skyDot(readiness.score) : readinessTone(readiness.score)
   const volume = readiness.reduced_volume ? 'reduced volume' : 'full volume'
   const rows: [string, string][] = [
     [
@@ -59,23 +72,42 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
         aria-controls={anchor !== null ? detailsId : undefined}
         data-testid="readiness-chip"
         sx={{
-          height: 36,
-          px: 3,
-          gap: 2,
+          height: onSky ? 46 : 36,
+          px: onSky ? '16px' : '14px',
+          gap: '8px',
           flex: 'none',
-          borderRadius: `${tokens.radius.control}px`,
-          border: `1px solid ${tokens.ink.border}`,
-          bgcolor: tokens.ink.card,
-          // Status colour on the dot only; the label stays ink so it reads at any score (WCAG 1.4.3).
-          color: tokens.ink.text,
+          maxWidth: '100%',
+          borderRadius: `${summit.radius.pill}px`,
+          // Status colour on the dot only; the label stays white / ink so it reads at any score (WCAG 1.4.3).
+          ...(onSky
+            ? good
+              ? { bgcolor: summit.pill.teal, border: '1px solid transparent', color: summit.onSky.text }
+              : {
+                  bgcolor: summit.glass.control,
+                  border: `1px solid ${summit.glass.controlBorder}`,
+                  backdropFilter: `blur(${summit.glass.blur}px)`,
+                  color: summit.onSky.text,
+                }
+            : { bgcolor: tokens.ink.fill, border: '1px solid transparent', color: summit.ink.deep }),
           // A <button> takes the UA font unless told to inherit the page's.
           fontFamily: 'inherit',
-          fontSize: tokens.font.size.small,
-          fontWeight: tokens.font.weight.label,
+          fontSize: onSky ? 14 : tokens.font.size.small,
+          fontWeight: tokens.font.weight.heading,
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
-          '@media (hover: hover)': { '&:hover': { bgcolor: tokens.ink.fill } },
-          [COARSE_POINTER_QUERY]: { height: tokens.tapTarget },
+          '@media (hover: hover)': {
+            '&:hover': {
+              filter: onSky ? 'brightness(1.08)' : 'none',
+              bgcolor: onSky ? undefined : summit.surface.softHover,
+            },
+          },
+          ...(onSky && {
+            '&.Mui-focusVisible': {
+              outline: `${tokens.focusRing.width}px solid ${summit.onSky.text}`,
+              outlineOffset: tokens.focusRing.offset,
+            },
+          }),
+          [COARSE_POINTER_QUERY]: { height: onSky ? 46 : tokens.tapTarget },
         }}
       >
         <Box
@@ -83,8 +115,13 @@ export function ReadinessChip({ readiness }: { readiness: Readiness }) {
           aria-hidden
           sx={{ width: 8, height: 8, flex: 'none', borderRadius: '50%', bgcolor: tone }}
         />
-        Readiness {readiness.score} · {volume}
-        <InfoOutlined aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint }} />
+        <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          Readiness {readiness.score} · {volume}
+        </Box>
+        <InfoOutlined
+          aria-hidden
+          sx={{ fontSize: 18, flex: 'none', color: onSky ? summit.onSky.subtitle : tokens.ink.secondary }}
+        />
       </ButtonBase>
       <Popover
         open={anchor !== null}

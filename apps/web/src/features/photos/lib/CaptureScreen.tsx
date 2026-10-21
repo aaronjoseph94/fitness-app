@@ -429,7 +429,13 @@ export function CaptureScreen() {
             </Stack>
           ) : (
             <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                  alignItems: 'center',
+                }}
+              >
                 <Box>
                   <IconButton
                     aria-label="Choose a photo"

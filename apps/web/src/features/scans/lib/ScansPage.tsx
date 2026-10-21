@@ -1,10 +1,12 @@
-// Owns: the scans list (/scans) — when the next scan is due (the server's schedule: a date the coach or a week plan
-// set, else the last scan + the settings interval) with its conditions checklist, Upload and Enter-by-hand, sheets
-// waiting for review, the latest scan's numbers, fat vs lean across scans, its segments and water, and every scan
-// with its fat and lean change and the lean-loss guard.
-import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded'
+// Owns: the scans list (/scans, 1d) — the hero with Enter by hand and the gold Upload sheet (both wrap under the title
+// on a phone), sheets waiting for review, the deep-sky next-scan card (when it is due — the server's schedule: a date
+// the coach or a week plan set, else the last scan + the settings interval — with its conditions checklist and the
+// masking note) beside the latest scan's numbers (1 : 2), fat vs lean across scans (with the next scan's empty slot)
+// beside its segments and water (1.3 : 1), and every scan with its fat and lean change and the lean-loss guard, in a table that scrolls sideways on
+// a phone. Rows of cards wrap rather than squeeze (README §4).
+import AccessibilityNewOutlined from '@mui/icons-material/AccessibilityNewOutlined'
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
-import EventOutlined from '@mui/icons-material/EventOutlined'
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -19,6 +21,8 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import {
   Banner,
+  DeepSkyCard,
+  deepSkyWell,
   EmptyState,
   formatNumber,
   formatShortDate,
@@ -27,13 +31,16 @@ import {
   ListRow,
   PageHeader,
   Panel,
-  panelSurface,
   QueryStateCard,
   Reveal,
   StatusChip,
   staggerDelay,
-  statValue,
+  TableScroll,
+  tabularNums,
+  wrapCol,
+  WrapRow,
 } from '../../../components'
+import { copy } from '../../../copy'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { shiftDate, todayLocal } from '../../quick-log'
 import { conditionsLine, scanDay, weekdayDay } from './format'
@@ -70,284 +77,312 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
     schedule?.source === 'scheduled'
       ? 'Set by your plan.'
       : scans > 0
-        ? `Every ${interval} days from the ${scans === 1 ? 'baseline' : 'last scan'}.`
-        : `The first scan is the baseline; then one every ${interval} days.`
+        ? `Every ${interval} days from ${scans === 1 ? copy.startLabel : 'the last scan'}.`
+        : `The first scan is ${copy.startLabel}; then one every ${interval} days.`
   const checks = [
     'Morning, before breakfast',
     'Fasted, normal hydration',
     due ? `No training on ${formatShortDate(shiftDate(due, -1))}` : 'No training the day before',
   ]
+  const late = status.left !== null && status.left <= 0
   return (
-    <Box
-      component="section"
-      aria-labelledby="scan-due-title"
-      data-testid="scan-due"
-      sx={{ ...panelSurface, px: '22px', py: '20px', minWidth: 0 }}
+    <DeepSkyCard
+      component="aside"
+      eyebrow="Next scan"
+      icon={<AccessibilityNewOutlined aria-hidden sx={{ fontSize: 18, color: tokens.tone.success.light }} />}
+      ariaLabel="Next scan"
+      testId="scan-due"
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: tokens.ink.label }}>
-        <EventOutlined aria-hidden sx={{ fontSize: 16, color: tokens.ink.faint }} />
+      <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '6px 10px' }}>
         <Box
           component="h2"
           id="scan-due-title"
           sx={{
             m: 0,
-            fontSize: tokens.font.size.label,
-            fontWeight: tokens.font.weight.label,
-            lineHeight: tokens.font.leading.label,
+            fontFamily: tokens.font.display,
+            fontSize: tokens.font.size.bigNumber,
+            fontWeight: tokens.font.weight.display,
+            letterSpacing: tokens.font.em.title,
+            lineHeight: tokens.font.leading.number,
           }}
         >
-          Next scan
+          {due ? weekdayDay(due) : '—'}
         </Box>
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '6px 10px', mt: '10px' }}>
-        <Box sx={{ ...statValue('standard'), lineHeight: 1 }}>{due ? weekdayDay(due) : '—'}</Box>
-        <StatusChip
-          shape="pill"
-          tone={status.left !== null && status.left <= 0 ? 'warning' : 'outline'}
-          label={status.text}
-        />
+        <Box
+          component="span"
+          sx={{
+            px: '12px',
+            py: '5px',
+            borderRadius: `${tokens.radius.pill}px`,
+            // Due or overdue: the gold that marks "now" on the deep sky; otherwise glass.
+            ...(late
+              ? { bgcolor: tokens.summit.gold.main, color: tokens.summit.ink.deep }
+              : {
+                  bgcolor: tokens.summit.glass.tile,
+                  border: `1px solid ${tokens.summit.glass.tileBorder}`,
+                }),
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.heading,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {status.text}
+        </Box>
       </Box>
       <Box
         sx={{
-          mt: '10px',
-          fontSize: tokens.font.size.small,
-          lineHeight: tokens.font.leading.small,
-          color: tokens.ink.muted,
+          mt: '12px',
+          fontSize: tokens.font.size.body,
+          fontWeight: tokens.font.weight.body,
+          lineHeight: tokens.font.leading.body,
+          color: tokens.summit.onSky.eyebrow,
         }}
       >
         {why} The coach can move it; the reminder fires that day with the conditions checklist.
       </Box>
       <Box
         component="ul"
+        aria-label="Conditions"
         sx={{
           listStyle: 'none',
           m: 0,
-          mt: '14px',
+          mt: '16px',
           p: 0,
           display: 'grid',
-          gap: '6px',
-          fontSize: tokens.font.size.small,
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gap: '8px',
+          fontSize: tokens.font.size.body,
+          fontWeight: tokens.font.weight.body,
           lineHeight: tokens.font.leading.small,
         }}
       >
         {checks.map((c) => (
-          <Box component="li" key={c} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <CheckCircleOutlineRounded aria-hidden sx={{ fontSize: 16, color: tokens.tone.success.solid }} />
+          <Box
+            component="li"
+            key={c}
+            sx={{
+              ...deepSkyWell,
+              borderRadius: `${tokens.summit.radius.wellSmall}px`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              px: '12px',
+              py: '10px',
+            }}
+          >
+            <CheckCircleRounded
+              aria-hidden
+              sx={{ fontSize: 20, color: tokens.tone.success.light, flex: 'none' }}
+            />
             {c}
           </Box>
         ))}
       </Box>
       <Box
         sx={{
-          mt: 4,
-          pt: '14px',
-          borderTop: `1px solid ${tokens.ink.border}`,
-          fontSize: tokens.font.size.caption,
-          lineHeight: tokens.font.leading.caption,
-          color: tokens.ink.muted,
+          mt: '16px',
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.body,
+          lineHeight: tokens.font.leading.body,
+          color: tokens.summit.deepSky.muted,
         }}
       >
         Upload the sheet as PDF, PNG or JPG. Your name is masked on this device before anything leaves it; the
         values are read for you to check and confirm.
       </Box>
-    </Box>
+    </DeepSkyCard>
   )
 }
 
-/** Hidden on a phone, where the table keeps date, weight, the two changes and the guard. */
-const wide = { display: { xs: 'none', sm: 'table-cell' } } as const
-const dash = { color: tokens.ink.faint }
+const hairline = `1px solid ${tokens.ink.hairline}`
+const dash = { color: tokens.ink.muted }
 
-/** "Sep 26, 2026"; "Sep 26" on a phone, where the table is narrow. */
+/** 1d's table: 11/600 muted heads over 14 px rows, hairlines between, the card's gutter at both ends. */
+const tableSx = {
+  '& th': {
+    fontSize: tokens.font.size.micro,
+    fontWeight: tokens.font.weight.heading,
+    color: tokens.ink.muted,
+    py: '8px',
+    borderTop: hairline,
+    borderBottom: 0,
+    whiteSpace: 'nowrap',
+  },
+  '& td': {
+    fontSize: tokens.font.size.body,
+    py: '12px',
+    borderTop: hairline,
+    borderBottom: 0,
+    ...tabularNums,
+  },
+  '& tbody tr:last-of-type td': { pb: '16px' },
+  // The rows open their scan, so on touch each is a 44 px target.
+  [COARSE_POINTER_QUERY]: { '& tbody td': { height: tokens.tapTarget } },
+} as const
+
+/** "Fri, Sep 26": the table scrolls sideways on a phone, so it keeps the weekday. */
 function TableDate({ date }: { date: string }) {
-  return (
-    <>
-      <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-        {scanDay(date)}
-      </Box>
-      <Box component="span" sx={{ display: { sm: 'none' } }}>
-        {formatShortDate(date)}
-      </Box>
-    </>
-  )
+  return <>{weekdayDay(date)}</>
 }
 
 function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSchedule | undefined }) {
   const navigate = useNavigate()
   const due = schedule?.due ?? null
   const left = dueIn(due).left
-  const about = 'Fat and lean change against the previous scan, with the lean-loss guard'
   return (
     <Panel
       title="Every scan"
-      // Right of the title on a wider screen (2a); under it on a phone, where it has to wrap.
-      description={
-        <Box component="span" sx={{ display: { sm: 'none' } }}>
-          {about}
-        </Box>
-      }
+      description="Fat and lean change against the previous scan, with the lean-loss guard"
+      // The guard's three outcomes, as the rows show them (1d); they wrap under the title on a phone.
       actions={
-        <Box
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            fontSize: tokens.font.size.small,
-            color: tokens.ink.muted,
-          }}
-        >
-          {about}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px 10px' }}>
+          <StatusChip tone="success" label="Lean held" />
+          <StatusChip tone="danger" label="Lean loss" />
+          <StatusChip tone="info" label="Water shift" />
         </Box>
       }
       padding="none"
       testId="scan-history"
     >
-      <Table
-        sx={{
-          '& th': { whiteSpace: 'nowrap' },
-          // 2a: inner cells sit flush (the theme keeps the 20 px gutters on the first and last cells); 6 px on a phone.
-          '& th, & td': { px: { xs: '6px', sm: 0 } },
-          '& td': { py: '10px' },
-          // The rows open their scan, so on touch each is a 44 px target.
-          [COARSE_POINTER_QUERY]: { '& tbody td': { height: tokens.tapTarget } },
-        }}
-      >
-        <TableHead>
-          <TableRow>
-            <TableCell>Date</TableCell>
-            <TableCell sx={wide}>Conditions</TableCell>
-            <TableCell align="right">Weight</TableCell>
-            <TableCell align="right" sx={wide}>
-              Body fat
-            </TableCell>
-            <TableCell align="right">Fat Δ</TableCell>
-            <TableCell align="right">Lean Δ</TableCell>
-            <TableCell align="right">Guard</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {due && (
-            <TableRow sx={{ bgcolor: tokens.ink.panel }}>
-              <TableCell sx={{ color: tokens.ink.muted, whiteSpace: 'nowrap' }}>
-                <TableDate date={due} />
-              </TableCell>
-              <TableCell sx={{ ...wide, color: tokens.ink.muted }}>
-                Scheduled · reminder {formatShortDate(due)}
-              </TableCell>
-              <TableCell align="right" sx={dash}>
-                —
-              </TableCell>
-              <TableCell align="right" sx={{ ...wide, ...dash }}>
-                —
-              </TableCell>
-              <TableCell align="right" sx={dash}>
-                —
-              </TableCell>
-              <TableCell align="right" sx={dash}>
-                —
-              </TableCell>
-              <TableCell align="right">
-                {left !== null && left < 0 ? (
-                  <StatusChip size="small" tone="warning" label="Overdue" />
-                ) : left === 0 ? (
-                  <StatusChip size="small" tone="warning" label="Due today" />
-                ) : (
-                  <StatusChip size="small" tone="dashed" label="Upcoming" />
-                )}
-              </TableCell>
+      <TableScroll ariaLabel="Every scan">
+        <Table sx={tableSx}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Date</TableCell>
+              <TableCell>Conditions</TableCell>
+              <TableCell align="right">Weight</TableCell>
+              <TableCell align="right">Body fat</TableCell>
+              <TableCell align="right">Fat Δ</TableCell>
+              <TableCell align="right">Lean Δ</TableCell>
+              <TableCell align="right">Guard</TableCell>
             </TableRow>
-          )}
-          {[...scans].reverse().map((s) => {
-            const p = s.analysis?.vs_previous ?? null
-            return (
-              <TableRow
-                key={s.id}
-                hover
-                onClick={() => void navigate(`/scans/${s.id}`)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <TableCell sx={{ fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}>
-                  <Box
-                    component={RouterLink}
-                    to={`/scans/${s.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    sx={{
-                      color: 'inherit',
-                      textDecoration: 'none',
-                      '&:hover': { textDecoration: 'underline' },
-                      '&:focus-visible': {
-                        outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
-                        outlineOffset: `${tokens.focusRing.offset}px`,
-                        borderRadius: `${tokens.radius.bar}px`,
-                      },
-                    }}
-                  >
-                    <TableDate date={s.date} />
-                  </Box>
+          </TableHead>
+          <TableBody>
+            {due && (
+              <TableRow sx={{ bgcolor: tokens.summit.surface.dashed.bg }}>
+                <TableCell
+                  sx={{
+                    color: tokens.ink.muted,
+                    fontWeight: tokens.font.weight.heading,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <TableDate date={due} />
                 </TableCell>
-                <TableCell sx={{ ...wide, color: tokens.ink.label }}>
-                  {conditionsLine(s.record.conditions, !p)}
+                <TableCell sx={{ color: tokens.ink.muted, whiteSpace: 'nowrap' }}>
+                  Scheduled · reminder {formatShortDate(due)}
                 </TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                  {formatNumber(s.record.weight_kg, 1)} kg
+                <TableCell align="right" sx={dash}>
+                  —
                 </TableCell>
-                <TableCell align="right" sx={{ ...wide, whiteSpace: 'nowrap' }}>
-                  {formatNumber(s.record.body_fat_pct, 1)} %
+                <TableCell align="right" sx={dash}>
+                  —
                 </TableCell>
-                <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>
-                  {p ? formatSigned(p.fat_vs_lean.fat_kg, 1) : '—'}
+                <TableCell align="right" sx={dash}>
+                  —
                 </TableCell>
-                <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>
-                  {p ? formatSigned(p.fat_vs_lean.lean_kg, 1) : '—'}
+                <TableCell align="right" sx={dash}>
+                  —
                 </TableCell>
                 <TableCell align="right">
-                  <GuardChip change={p} size="small" />
+                  {left !== null && left < 0 ? (
+                    <StatusChip size="small" tone="warning" label="Overdue" />
+                  ) : left === 0 ? (
+                    <StatusChip size="small" tone="warning" label="Due today" />
+                  ) : (
+                    <StatusChip size="small" tone="dashed" label="Upcoming" />
+                  )}
                 </TableCell>
               </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+            )}
+            {[...scans].reverse().map((s) => {
+              const p = s.analysis?.vs_previous ?? null
+              return (
+                <TableRow
+                  key={s.id}
+                  hover
+                  onClick={() => void navigate(`/scans/${s.id}`)}
+                  sx={{ cursor: 'pointer' }}
+                >
+                  <TableCell sx={{ fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}>
+                    <Box
+                      component={RouterLink}
+                      to={`/scans/${s.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{
+                        color: 'inherit',
+                        textDecoration: 'none',
+                        '&:hover': { textDecoration: 'underline' },
+                        '&:focus-visible': {
+                          outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+                          outlineOffset: `${tokens.focusRing.offset}px`,
+                          borderRadius: `${tokens.radius.bar}px`,
+                        },
+                      }}
+                    >
+                      <TableDate date={s.date} />
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ color: tokens.ink.muted, whiteSpace: 'nowrap' }}>
+                    {conditionsLine(s.record.conditions, !p)}
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}
+                  >
+                    {formatNumber(s.record.weight_kg, 1)} kg
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ fontWeight: tokens.font.weight.heading, whiteSpace: 'nowrap' }}
+                  >
+                    {formatNumber(s.record.body_fat_pct, 1)} %
+                  </TableCell>
+                  <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>
+                    {p ? formatSigned(p.fat_vs_lean.fat_kg, 1) : '—'}
+                  </TableCell>
+                  <TableCell align="right" sx={p ? undefined : { color: tokens.ink.muted }}>
+                    {p ? formatSigned(p.fat_vs_lean.lean_kg, 1) : '—'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <GuardChip change={p} size="small" />
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </TableScroll>
       <Box
         sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '8px 16px',
           px: `${tokens.pad.card.x}px`,
           pt: '12px',
-          pb: '14px',
-          borderTop: `1px solid ${tokens.ink.hairline}`,
+          pb: '16px',
+          borderTop: hairline,
           fontSize: tokens.font.size.caption,
+          fontWeight: tokens.font.weight.body,
+          lineHeight: tokens.font.leading.caption,
           color: tokens.ink.muted,
         }}
       >
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-          <StatusChip size="small" tone="danger" label="Lean loss" />
-          lean is over 25 % of the loss between scans
-        </Box>
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-          <StatusChip size="small" tone="outline" label="Water shift" />a lean drop matched by a water drop
-        </Box>
+        Lean loss: lean is over 25 % of the loss between scans. Water shift: a lean drop matched by a water
+        drop.
       </Box>
     </Panel>
   )
 }
 
-/** Row 1 (2a): the next-scan panel beside the latest scan, 1 : 2 from `md`; stacked below. */
-const row1 = {
-  display: 'grid',
-  gap: 4,
-  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1fr) minmax(0, 2fr)' },
-} as const
-/** Row 2: fat and lean mass beside segments + water, 1.3 : 1 from `lg`. */
-const row2 = {
-  display: 'grid',
-  gap: 4,
-  alignItems: 'start',
-  gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.3fr) minmax(0, 1fr)' },
-} as const
-/** A Reveal that is a grid item and lets its card fill the row. */
-const cell = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 } as const
 /** The page's single column, which never grows past the viewport to fit a table or a chart. */
-const page = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 5 } as const
+const page = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: `${tokens.rhythm.section}px`,
+} as const
+/** A Reveal that is a wrapping row's column and lets its card fill the row. */
+const column = (ratio: number, basis?: number) =>
+  ({ ...wrapCol(ratio, basis), display: 'flex', flexDirection: 'column' }) as const
+/** README §4, Scans: next scan : latest scan 1 : 2 (the latest's basis 560 px), fat vs lean : segments 1.3 : 1. */
+const LATEST_BASIS = 280
 
 export function ScansPage() {
   const navigate = useNavigate()
@@ -355,26 +390,40 @@ export function ScansPage() {
   const schedule = useScanSchedule()
   const [uploading, setUploading] = useState(false)
 
-  const title = 'Evolt 360 scans'
-  const subtitle =
-    'Body composition every 4–6 weeks, same conditions each time: morning, fasted, no training the day before'
+  const title = 'Scans'
+  const interval = schedule.data?.interval_days
+  const subtitle = `Same conditions each time: morning, fasted, no training the day before${interval ? ` · every ${interval} days` : ''}`
+  const confirmedCount = scans.data ? confirmedScans(scans.data).length : null
+  const eyebrow = `Body · Evolt 360${
+    confirmedCount === null
+      ? ''
+      : ` · ${confirmedCount === 0 ? 'no scans yet' : `${formatNumber(confirmedCount)} ${confirmedCount === 1 ? 'scan' : 'scans'} confirmed`}`
+  }`
 
   // While the list loads or fails, only the title: Upload and Enter by hand appear with the list, as they always have.
   if (isQueryLoading(scans))
     return (
       <Box sx={page}>
-        <PageHeader title={title} subtitle={subtitle} />
-        <Box sx={row1}>
-          <Skeleton variant="rounded" height={326} />
-          <Skeleton variant="rounded" height={326} sx={{ display: { xs: 'none', md: 'block' } }} />
-        </Box>
-        <Skeleton variant="rounded" height={380} />
+        <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
+        <WrapRow>
+          <Skeleton
+            variant="rounded"
+            height={326}
+            sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
+          />
+          <Skeleton
+            variant="rounded"
+            height={326}
+            sx={{ ...wrapCol(2, LATEST_BASIS), borderRadius: `${tokens.radius.card}px` }}
+          />
+        </WrapRow>
+        <Skeleton variant="rounded" height={380} sx={{ borderRadius: `${tokens.radius.card}px` }} />
       </Box>
     )
   if (!scans.data)
     return (
       <Box sx={page}>
-        <PageHeader title={title} subtitle={subtitle} />
+        <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
         <QueryStateCard query={scans} what="the scan list" />
       </Box>
     )
@@ -387,26 +436,24 @@ export function ScansPage() {
   return (
     <Box sx={page} data-testid="scans-page">
       <PageHeader
+        eyebrow={eyebrow}
         title={title}
         subtitle={subtitle}
         action={
-          <>
-            <Button
-              variant="outlined"
-              startIcon={<EditOutlined />}
-              onClick={() => void navigate('/scans/new')}
-            >
-              Enter by hand
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<UploadFileOutlined />}
-              onClick={() => setUploading(true)}
-              data-testid="scan-upload-open"
-            >
-              Upload sheet
-            </Button>
-          </>
+          <Button variant="outlined" startIcon={<EditOutlined />} onClick={() => void navigate('/scans/new')}>
+            Enter by hand
+          </Button>
+        }
+        primaryAction={
+          <Button
+            variant="contained"
+            color="gold"
+            startIcon={<UploadFileOutlined />}
+            onClick={() => setUploading(true)}
+            data-testid="scan-upload-open"
+          >
+            Upload sheet
+          </Button>
         }
       />
 
@@ -425,11 +472,11 @@ export function ScansPage() {
         </Reveal>
       )}
 
-      <Box sx={row1}>
-        <Reveal delay={staggerDelay(1, tokens.motion.stagger.card, 150)} sx={cell}>
+      <WrapRow align="flex-start">
+        <Reveal delay={staggerDelay(1, tokens.motion.stagger.card, 150)} sx={column(1)}>
           <DueCard schedule={schedule.data} scans={confirmed.length} />
         </Reveal>
-        <Reveal delay={staggerDelay(2, tokens.motion.stagger.card, 150)} sx={cell}>
+        <Reveal delay={staggerDelay(2, tokens.motion.stagger.card, 150)} sx={column(2, LATEST_BASIS)}>
           {latest ? (
             <LatestScanCard scan={latest} />
           ) : (
@@ -439,7 +486,7 @@ export function ScansPage() {
             />
           )}
         </Reveal>
-      </Box>
+      </WrapRow>
 
       {leanLoss && (
         <Banner tone="danger" title="Lean-loss guard" role="status" testId="scan-flag-lean_loss">
@@ -449,15 +496,18 @@ export function ScansPage() {
 
       {latest && (
         <>
-          <Box sx={row2}>
-            <Reveal delay={staggerDelay(3, tokens.motion.stagger.card, 150)} sx={cell}>
-              <CompositionCard scans={confirmed} />
+          <WrapRow align="flex-start">
+            <Reveal delay={staggerDelay(3, tokens.motion.stagger.card, 150)} sx={column(1.3)}>
+              <CompositionCard scans={confirmed} next={schedule.data?.due ?? null} />
             </Reveal>
-            <Reveal delay={staggerDelay(4, tokens.motion.stagger.card, 150)} sx={{ ...cell, gap: 4 }}>
+            <Reveal
+              delay={staggerDelay(4, tokens.motion.stagger.card, 150)}
+              sx={{ ...column(1), gap: `${tokens.summit.space.gap.tile}px` }}
+            >
               <SegmentsCard scan={latest} />
               <WaterCard scan={latest} />
             </Reveal>
-          </Box>
+          </WrapRow>
           <Reveal delay={staggerDelay(5, tokens.motion.stagger.card, 150)}>
             <History scans={confirmed} schedule={schedule.data} />
           </Reveal>

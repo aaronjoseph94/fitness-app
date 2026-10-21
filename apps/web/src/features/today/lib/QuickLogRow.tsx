@@ -1,72 +1,129 @@
-// Owns: Today's quick-log row (SPEC §6) — weigh-in, meal, water, fast start/stop and photo as five equal one-tap
-// buttons (icon in the metric colour, label under it, ≥ 64 px tall), each opening its quick-log form.
+// Owns: Today's quick-log row (SPEC §6, 1d) — weigh-in, meal, water, fast start/stop and photo as five white tiles
+// (80 px basis each, wrapping rather than squeezing: README §4), each a 42 px tinted glyph square in its metric's colour
+// over its label, opening its quick-log form in one tap.
 import MonitorWeightOutlined from '@mui/icons-material/MonitorWeightOutlined'
 import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined'
-import RestaurantOutlined from '@mui/icons-material/RestaurantOutlined'
-import TimerOutlined from '@mui/icons-material/TimerOutlined'
+import RestaurantRounded from '@mui/icons-material/RestaurantRounded'
 import TimerOffOutlined from '@mui/icons-material/TimerOffOutlined'
-import WaterDropOutlined from '@mui/icons-material/WaterDropOutlined'
+import TimerOutlined from '@mui/icons-material/TimerOutlined'
+import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import type SvgIcon from '@mui/material/SvgIcon'
 import { useUiStore, type QuickLogKind } from '../../../app/ui-store'
-import { tokens } from '../../../theme'
+import { staggerDelay, useEntrance } from '../../../components'
+import { enterEasing, metricTint, reducedEntrance, tokens, transitionOf } from '../../../theme'
+
+const { summit, font } = tokens
 
 interface Item {
   kind: QuickLogKind
   label: string
   Icon: typeof SvgIcon
+  /** The glyph square's tint and the glyph's colour (README: each tile in its metric's family). */
+  tint: string
   color: string
 }
 
+/** The tiles pop in 60 ms apart after the coach note (README §6). */
+const tileDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.card, 420)
+
 export function QuickLogRow({ fasting }: { fasting: boolean }) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
+  const { entered, reduced } = useEntrance()
   const items: Item[] = [
-    { kind: 'weigh-in', label: 'Weigh-in', Icon: MonitorWeightOutlined, color: tokens.metric.weight },
-    { kind: 'meal', label: 'Meal', Icon: RestaurantOutlined, color: tokens.metric.calories },
-    { kind: 'water', label: 'Water', Icon: WaterDropOutlined, color: tokens.metric.water },
-    fasting
-      ? { kind: 'fast', label: 'End fast', Icon: TimerOffOutlined, color: tokens.metric.fasting }
-      : { kind: 'fast', label: 'Start fast', Icon: TimerOutlined, color: tokens.metric.fasting },
-    { kind: 'photo', label: 'Photo', Icon: PhotoCameraOutlined, color: tokens.ink.secondary },
+    {
+      kind: 'weigh-in',
+      label: 'Weigh-in',
+      Icon: MonitorWeightOutlined,
+      tint: metricTint('steps'),
+      color: tokens.metric.steps,
+    },
+    {
+      kind: 'meal',
+      label: 'Meal',
+      Icon: RestaurantRounded,
+      tint: metricTint('calories'),
+      color: tokens.metric.calories,
+    },
+    {
+      kind: 'water',
+      label: 'Water',
+      Icon: WaterDropRounded,
+      tint: metricTint('water'),
+      color: tokens.tone.success.text,
+    },
+    {
+      kind: 'fast',
+      label: fasting ? 'End fast' : 'Start fast',
+      Icon: fasting ? TimerOffOutlined : TimerOutlined,
+      tint: metricTint('protein'),
+      color: tokens.tone.warning.text,
+    },
+    {
+      kind: 'photo',
+      label: 'Photo',
+      Icon: PhotoCameraOutlined,
+      tint: metricTint('sleep'),
+      color: tokens.metric.sleep,
+    },
   ]
   return (
     <Box
       component="nav"
       aria-label="Quick log"
       data-testid="today-quick-log"
-      sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 2 }}
+      sx={{ display: 'flex', flexWrap: 'wrap', gap: '10px', minWidth: 0 }}
     >
-      {items.map(({ kind, label, Icon, color }) => (
+      {items.map(({ kind, label, Icon, tint, color }, i) => (
         <ButtonBase
           key={kind}
           onClick={() => openQuickLog(kind)}
           data-testid={`quick-log-${kind}`}
           sx={{
-            minHeight: 64,
+            flex: '100 1 80px',
+            minWidth: 0,
+            minHeight: tokens.tapTarget,
             display: 'flex',
             flexDirection: 'column',
-            gap: 1,
-            borderRadius: `${tokens.radius.control}px`,
-            border: `1px solid ${tokens.ink.border}`,
-            bgcolor: tokens.ink.card,
+            alignItems: 'center',
+            gap: '6px',
+            px: '4px',
+            py: '14px',
+            borderRadius: `${summit.radius.small}px`,
+            bgcolor: summit.surface.card,
+            boxShadow: summit.shadow.tile,
             color: tokens.ink.text,
-            fontFamily: tokens.font.family,
-            '&:focus-visible': { outline: `2px solid ${tokens.metric.weight}`, outlineOffset: 2 },
+            fontFamily: font.family,
+            fontSize: font.size.small,
+            fontWeight: font.weight.label,
+            lineHeight: 1.2,
+            textAlign: 'center',
+            opacity: entered ? 1 : 0,
+            transform: entered ? 'none' : 'scale(0.85)',
+            transition: reduced
+              ? transitionOf('box-shadow')
+              : `opacity 600ms ${enterEasing()} ${tileDelay(i)}ms, transform 600ms ${enterEasing()} ${tileDelay(i)}ms, box-shadow ${tokens.motion.duration.fast}ms ${tokens.motion.easing.standard}`,
+            animation: reducedEntrance(tileDelay(i), reduced),
+            '&:hover': { boxShadow: summit.shadow.tileHover },
           }}
         >
-          <Icon aria-hidden sx={{ color, fontSize: 24 }} />
           <Box
             component="span"
+            aria-hidden
             sx={{
-              fontSize: tokens.font.size.caption,
-              fontWeight: tokens.font.weight.label,
-              lineHeight: 1.2,
-              textAlign: 'center',
+              width: 42,
+              height: 42,
+              borderRadius: `${summit.radius.wellSmall}px`,
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: tint,
+              color,
             }}
           >
-            {label}
+            <Icon sx={{ fontSize: 24 }} />
           </Box>
+          {label}
         </ButtonBase>
       ))}
     </Box>

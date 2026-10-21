@@ -1,4 +1,6 @@
-// Owns: the Train tab's "today" card (2a: a full-width card, its muscle map in a tinted panel on the right) — the
+// Owns: the Train tab's "today" card (1d Summit: a full-width white card, its muscle map in a warm well beside the
+// content at 1fr : 300 px, wrapping under it when they no longer fit; the exercises in rows that go two up from 300 px
+// each; the coral Start session) — the
 // session in progress (resume), today's finished session, the planned session — the week plan's, else today's split
 // template ("Planned · your split", started as that template) — with its exercises, start it, or generate with AI
 // instead, the AI's pending draft for today (the nightly workout_generate when neither covers the day: preview, swap,
@@ -13,7 +15,7 @@ import type { DayView, Muscle, Template, TemplateExerciseInput } from '@fitness/
 import { muscleLevels } from '@fitness/shared/engine'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { cardSurface, formatNumber, StatusChip } from '../../../components'
+import { cardSurface, displayTitle, fixedCol, formatNumber, StatusChip } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { draftMuscleLevels, pendingWorkoutPath, usePendingWorkouts } from '../../builder'
@@ -93,7 +95,7 @@ function plannedToday(
   }
 }
 
-/** The muscle map panel on the card's right (below the content on a phone). */
+/** The muscle map panel on the card's right (under the content when the row wraps). */
 function MapPanel({
   levels,
   title,
@@ -105,12 +107,14 @@ function MapPanel({
 }) {
   return (
     <>
-      <MuscleMap levels={levels} size={200} title={title} />
+      <MuscleMap levels={levels} size={220} title={title} />
       {caption && (
         <Box
           sx={{
-            fontSize: tokens.font.size.caption,
-            lineHeight: tokens.font.leading.caption,
+            mt: '8px',
+            fontSize: tokens.font.size.small,
+            fontWeight: tokens.font.weight.body,
+            lineHeight: tokens.font.leading.small,
             color: tokens.ink.muted,
             textAlign: 'center',
           }}
@@ -149,26 +153,39 @@ function Shell({
       data-testid={testId}
       sx={{
         ...cardSurface,
-        overflow: 'hidden',
-        display: 'grid',
-        gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: aside ? 'minmax(0, 1fr) 260px' : 'minmax(0, 1fr)' },
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '26px',
+        px: { xs: '22px', sm: '28px' },
+        py: { xs: '22px', sm: '26px' },
+        minWidth: 0,
       }}
     >
-      <Box sx={{ minWidth: 0, px: { xs: 4, sm: '22px' }, py: 5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ flex: '100 1 280px', minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           {chip}
-          {meta && <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.muted }}>{meta}</Box>}
+          {meta && (
+            <Box
+              sx={{
+                fontSize: tokens.font.size.small,
+                fontWeight: tokens.font.weight.heading,
+                color: tokens.ink.muted,
+              }}
+            >
+              {meta}
+            </Box>
+          )}
         </Box>
         <Box
           component="h2"
           id="today-title"
           sx={{
             m: 0,
-            mt: '10px',
-            fontSize: tokens.font.size.title1,
-            fontWeight: tokens.font.weight.heading,
-            lineHeight: tokens.font.leading.title1,
-            letterSpacing: tokens.font.em.title,
+            mt: '12px',
+            ...displayTitle('card'),
+            fontSize: tokens.font.size.bigNumber,
+            letterSpacing: tokens.font.em.number,
+            lineHeight: 1.15,
             overflowWrap: 'anywhere',
           }}
         >
@@ -176,14 +193,20 @@ function Shell({
         </Box>
         {body && (
           <Box
-            sx={{ mt: 1, fontSize: tokens.font.size.small, lineHeight: 'normal', color: tokens.ink.muted }}
+            sx={{
+              mt: '6px',
+              fontSize: tokens.font.size.body,
+              fontWeight: tokens.font.weight.body,
+              lineHeight: tokens.font.leading.small,
+              color: tokens.ink.muted,
+            }}
           >
             {body}
           </Box>
         )}
         {list}
         {children && (
-          <Box sx={{ mt: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ mt: '20px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             {children}
           </Box>
         )}
@@ -191,15 +214,14 @@ function Shell({
       {aside && (
         <Box
           sx={{
+            ...fixedCol(300),
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 2,
-            p: 4,
+            p: '18px',
+            borderRadius: `${tokens.summit.radius.small}px`,
             bgcolor: tokens.ink.panel,
-            borderTop: { xs: `1px solid ${tokens.ink.border}`, md: 'none' },
-            borderLeft: { md: `1px solid ${tokens.ink.border}` },
           }}
         >
           {aside}
@@ -210,8 +232,9 @@ function Shell({
 }
 
 /**
- * The planned exercises as a numbered list: one column on a phone, two from `sm` (filled down, then across, so the
- * reading order stays 1 … n), each row "name · sets × reps · kg" over a hairline.
+ * The planned exercises as a numbered list: two up wherever two fit at 300 px each (README §4: repeat(auto-fit,
+ * minmax(min(100%, 300px), 1fr))), read across then down; each row "name · sets × reps · kg" over a hairline. The list
+ * clips its own last pixel, so the last row's rule never shows whatever the column count.
  */
 function ExerciseList({
   exercises,
@@ -220,8 +243,6 @@ function ExerciseList({
   exercises: readonly TemplateExerciseInput[]
   name: (id: string) => string
 }) {
-  const rows = Math.ceil(exercises.length / 2)
-  const hairline = `1px solid ${tokens.ink.hairline}`
   return (
     <Box
       component="ol"
@@ -229,16 +250,14 @@ function ExerciseList({
         listStyle: 'none',
         p: 0,
         m: 0,
-        mt: '14px',
+        mt: '18px',
         display: 'grid',
-        gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' },
-        gridTemplateRows: { sm: `repeat(${rows}, auto)` },
-        gridAutoFlow: { sm: 'column' },
-        columnGap: 6,
-        rowGap: 1,
-        fontSize: tokens.font.size.small,
-        // 2a's list rows take the font's own line height, as in the mock.
-        lineHeight: 'normal',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+        columnGap: '28px',
+        rowGap: '2px',
+        clipPath: 'inset(0 0 1px 0)',
+        fontSize: tokens.font.size.emphasis,
+        lineHeight: 1.35,
       }}
     >
       {exercises.map((e, i) => {
@@ -249,30 +268,38 @@ function ExerciseList({
             key={`${e.exercise_id}-${i}`}
             sx={{
               display: 'flex',
-              justifyContent: 'space-between',
-              gap: 2,
-              py: '7px',
+              alignItems: 'center',
+              gap: '10px',
+              py: '8px',
               minWidth: 0,
-              borderBottom: {
-                xs: i < exercises.length - 1 ? hairline : 'none',
-                sm: i % rows === rows - 1 || i === exercises.length - 1 ? 'none' : hairline,
-              },
+              borderBottom: `1px solid ${tokens.ink.hairline}`,
             }}
           >
-            <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              <Box
-                component="span"
-                aria-hidden
-                sx={{ mr: 2, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}
-              >
-                {i + 1}
-              </Box>
+            <Box
+              component="span"
+              aria-hidden
+              sx={{
+                width: 22,
+                flex: 'none',
+                fontFamily: tokens.font.display,
+                fontSize: tokens.font.size.caption,
+                color: tokens.ink.faint,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {i + 1}
+            </Box>
+            <Box
+              component="span"
+              sx={{ flex: 1, minWidth: 0, fontWeight: tokens.font.weight.label, overflowWrap: 'anywhere' }}
+            >
               {name(e.exercise_id)}
             </Box>
             <Box
               component="span"
               sx={{
                 flex: 'none',
+                fontSize: tokens.font.size.body,
                 color: tokens.ink.muted,
                 fontVariantNumeric: 'tabular-nums',
                 whiteSpace: 'nowrap',
@@ -287,6 +314,14 @@ function ExerciseList({
     </Box>
   )
 }
+
+/** A text button that reads as a link (violet 14/600), its padding hung outside the row's edge. */
+const linkButtonSx = {
+  ml: 'auto',
+  mr: '-10px',
+  fontWeight: tokens.font.weight.heading,
+  '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+} as const
 
 export function TodayCard({
   day,
@@ -307,6 +342,7 @@ export function TodayCard({
   const generate = (primary: boolean) => (
     <Button
       variant={primary ? 'contained' : 'outlined'}
+      size="large"
       startIcon={<AutoAwesomeRounded />}
       onClick={() => void navigate(GENERATE_PATH)}
       data-testid="generate-workout"
@@ -329,6 +365,7 @@ export function TodayCard({
       >
         <Button
           variant="contained"
+          size="large"
           startIcon={<PlayArrowRounded />}
           onClick={() => void navigate(sessionPath(id))}
           data-testid="resume-session"
@@ -349,7 +386,7 @@ export function TodayCard({
         aside={<MapPanel levels={levels} title="Muscles trained today" />}
         testId="today-done"
       >
-        <Button variant="outlined" onClick={() => void navigate(sessionPath(serverSession.id))}>
+        <Button variant="outlined" size="large" onClick={() => void navigate(sessionPath(serverSession.id))}>
           View summary
         </Button>
       </Shell>
@@ -383,6 +420,7 @@ export function TodayCard({
       >
         <Button
           variant="contained"
+          size="large"
           startIcon={<PlayArrowRounded />}
           onClick={() => onStart(planned.start)}
           data-testid={planned.startTestId}
@@ -390,12 +428,11 @@ export function TodayCard({
           Start session
         </Button>
         <Button
-          size="small"
           startIcon={<AutoAwesomeRounded />}
           onClick={() => void navigate(GENERATE_PATH)}
           data-testid="generate-workout"
           // A link-like text button: its 10 px padding hangs past the list's right edge so the label lines up with it.
-          sx={{ ml: 'auto', mr: '-10px' }}
+          sx={linkButtonSx}
         >
           Generate with AI instead
         </Button>
@@ -421,6 +458,7 @@ export function TodayCard({
       >
         <Button
           variant="contained"
+          size="large"
           startIcon={<AutoAwesomeRounded />}
           onClick={() => void navigate(pendingWorkoutPath(suggested.id))}
           data-testid="open-suggested"

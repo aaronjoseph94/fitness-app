@@ -1,41 +1,40 @@
 // Owns: the Dashboard's goal facts and the two panels that show them without a chart. `goalFacts` derives, from the
 // window the sections below draw, where Aaron stands against the goal (start, now, goal, the share behind him, the rate
-// the goal date needs, the forecast finish, the next milestone). `GoalRail` is 2a's "Against the plan" rail beside the
-// headline band: an 84 px ring for the share of the goal done, then one row per plan fact (weekly rate, sessions, fasts,
-// days logged, next milestone, next scan, expenditure) and the way to the plan history. `LatestDay` is the latest
-// day's targets as a slim strip under the band. Everything comes from the same window, so neither can disagree with it.
+// the goal date needs, the forecast finish, the next milestone). `GoalRail` is 1d's deep-sky "Against the plan" card
+// beside the trend card: a 76 px gold ring for the share of the climb done, "Ahead, week 2", the outlook, then one row
+// per plan fact (weekly rate, sessions, fasts, days logged, next camp, next Evolt scan) and the way to the plan
+// history. `LatestDay` is the latest day's targets as a slim white strip. Everything comes from the same window, so
+// neither can disagree with it. (The expenditure estimate moved to the page's subtitle, as 1d draws it.)
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'
 import AccessibilityNewRounded from '@mui/icons-material/AccessibilityNewRounded'
 import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
 import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
 import EggAltRounded from '@mui/icons-material/EggAltRounded'
-import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
-import FlagOutlined from '@mui/icons-material/FlagOutlined'
-import LocalFireDepartmentOutlined from '@mui/icons-material/LocalFireDepartmentOutlined'
 import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
-import SpeedRounded from '@mui/icons-material/SpeedRounded'
-import TaskAltRounded from '@mui/icons-material/TaskAltRounded'
-import TimerOutlined from '@mui/icons-material/TimerOutlined'
 import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
+import FlagRounded from '@mui/icons-material/FlagRounded'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import type { SvgIconComponent } from '@mui/icons-material'
+import type { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { addDays, daysBetween, fastDay, weekdayOf, weekStart } from '@fitness/shared/engine'
 import type { DaySummary, LocalDate, TargetValues } from '@fitness/shared/schemas'
 import {
   cardSurface,
-  formatDayRange,
+  DeepSkyCard,
+  deepSkyRule,
+  displayTitle,
+  eyebrow,
   formatNumber,
   formatShortDate,
   formatWeekday,
   MetricRing,
-  Panel,
-  PanelRow,
-  StatusChip,
-  type StatusChipTone,
+  tabularNums,
+  useEntrance,
 } from '../../../components'
-import { tokens, type MetricKey } from '../../../theme'
+import { copy } from '../../../copy'
+import { COARSE_POINTER_QUERY, enterEasing, tokens, type MetricKey } from '../../../theme'
 import { confirmedScans } from '../../scans/charts'
 import { effectiveRate, lastTrend, milestoneTimelines, SLEEP_TARGET_H } from '../../progress/series'
 import type { DashboardData } from './useDashboardData'
@@ -199,8 +198,10 @@ export function goalFacts(data: DashboardData): GoalFacts {
   }
 }
 
+const { summit } = tokens
+
 /** "Apr 9, 2027" for a date in another year, "Nov 12" in this one. */
-function shortDate(date: LocalDate, today: LocalDate): string {
+export function shortDate(date: LocalDate, today: LocalDate): string {
   return date.slice(0, 4) === today.slice(0, 4)
     ? formatShortDate(date)
     : `${formatShortDate(date)}, ${date.slice(0, 4)}`
@@ -231,36 +232,136 @@ function dueIn(date: LocalDate, today: LocalDate): string {
   return days > 0 ? `in ${amount}` : `${amount} overdue`
 }
 
-const muted = { fontWeight: tokens.font.weight.body, color: tokens.ink.secondary } as const
-
-/** A value: the figure in 600 ink, then its context in muted 400 ("−0.78 / −0.70 kg"). */
-function Figure({ value, rest }: { value: string; rest?: string }) {
+/** The deep-sky rail's row: a muted label, the value in white, an optional trailing note or chip. */
+function RailRow({
+  icon,
+  label,
+  value,
+  trailing,
+  testId,
+}: {
+  icon?: ReactNode
+  label: ReactNode
+  value: ReactNode
+  trailing?: ReactNode
+  testId?: string
+}) {
   return (
-    <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-      <Box component="span" sx={{ fontWeight: tokens.font.weight.number, color: tokens.ink.text }}>
-        {value}
-      </Box>
-      {rest && (
-        <Box component="span" sx={muted}>
-          {' '}
-          {rest}
-        </Box>
-      )}
+    <Box
+      data-testid={testId}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        py: '9px',
+        minWidth: 0,
+        '& + &': { borderTop: deepSkyRule },
+      }}
+    >
+      {icon}
+      <Box sx={{ flex: 1, minWidth: 0, color: summit.deepSky.muted }}>{label}</Box>
+      <Box sx={{ flex: 'none', ...tabularNums, color: summit.deepSky.text, textAlign: 'right' }}>{value}</Box>
+      {trailing}
     </Box>
   )
 }
 
-function Glyph({ icon: Icon }: { icon: SvgIconComponent }) {
-  return <Icon aria-hidden sx={{ fontSize: 18, color: tokens.ink.secondary, flex: 'none' }} />
+/** A 12 px note after a rail value ("2 left", "100 %"), muted on the deep sky unless it carries a colour. */
+function Note({ children, color = summit.deepSky.muted }: { children: ReactNode; color?: string }) {
+  return (
+    <Box
+      component="span"
+      sx={{ flex: 'none', fontSize: tokens.font.size.caption, color, whiteSpace: 'nowrap', ...tabularNums }}
+    >
+      {children}
+    </Box>
+  )
 }
 
-function Chip({ tone, label }: { tone: StatusChipTone; label: string }) {
-  return <StatusChip size="small" tone={tone} label={label} />
+/** The rail's status chip on the deep sky: "ahead" in the deepened teal, "behind" in the warning tint. */
+function RailChip({ ahead }: { ahead: boolean }) {
+  return (
+    <Box
+      component="span"
+      sx={{
+        flex: 'none',
+        px: '8px',
+        py: '2px',
+        borderRadius: `${tokens.radius.pill}px`,
+        bgcolor: ahead ? summit.pill.teal : tokens.tone.warning.bg,
+        color: ahead ? summit.deepSky.text : tokens.tone.warning.text,
+        fontSize: tokens.font.size.micro,
+        fontWeight: tokens.font.weight.heading,
+        lineHeight: '16px',
+      }}
+    >
+      {ahead ? 'ahead' : 'behind'}
+    </Box>
+  )
 }
 
+/** The share of the climb done as 1d's 76 px gold ring on the deep sky, drawing from 0 on mount. */
+function PlanRing({ progress }: { progress: number }) {
+  const { entered, reduced } = useEntrance()
+  const size = 76
+  const stroke = 7
+  const r = (size - stroke) / 2 - 1.5
+  const c = 2 * Math.PI * r
+  const percent = Math.round(progress * 100)
+  return (
+    <Box
+      role="img"
+      aria-label={`Goal progress: ${percent} %`}
+      sx={{ position: 'relative', width: size, height: size, flex: 'none' }}
+    >
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden focusable="false">
+        <g transform={`rotate(-90 ${size / 2} ${size / 2})`} fill="none" strokeLinecap="round">
+          <circle cx={size / 2} cy={size / 2} r={r} stroke={summit.glass.tile} strokeWidth={stroke} />
+          {progress > 0 && (
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke={summit.gold.main}
+              strokeWidth={stroke}
+              strokeDasharray={`${entered ? Math.max(c * progress, 1) : 0} ${c}`}
+              style={{
+                transition: reduced
+                  ? 'none'
+                  : `stroke-dasharray ${tokens.motion.duration.grow}ms ${enterEasing()} 900ms`,
+              }}
+            />
+          )}
+        </g>
+      </svg>
+      <Box
+        aria-hidden
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          display: 'grid',
+          placeItems: 'center',
+          fontFamily: tokens.font.display,
+          fontSize: tokens.font.size.itemTitle,
+          fontWeight: tokens.font.weight.display,
+          ...tabularNums,
+        }}
+      >
+        {percent}%
+      </Box>
+    </Box>
+  )
+}
+
+const glyph = { fontSize: 18, flex: 'none' } as const
+
+/**
+ * 1d's deep-sky "Against the plan": the gold ring for the share of the climb done beside "Ahead, week 2", the outlook
+ * in one muted line, then one row per plan fact — weekly rate against the rate the summit date needs, sessions, fasts
+ * this month, days logged, the next camp and the next Evolt scan — and the way to the plan history.
+ */
 export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFacts }) {
   const today = data.to
-  const percent = facts.progress === null ? null : Math.round(facts.progress * 100)
 
   const planStart = facts.startDate && facts.startDate > data.from ? facts.startDate : data.from
   const thisWeek = weekStart(today)
@@ -289,176 +390,148 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
   const nextScan = lastScan
     ? addDays(lastScan.date, data.settings?.scan_interval_days ?? DEFAULT_SCAN_INTERVAL_DAYS)
     : null
-  const tdee = data.trend?.forecast?.tdee_est ?? null
 
   const ahead =
     facts.forecastRate !== null && facts.requiredRate !== null
       ? facts.forecastRate >= facts.requiredRate
       : null
+  const week = facts.startDate ? Math.floor(Math.max(0, daysBetween(facts.startDate, today)) / 7) + 1 : null
+  const headline =
+    week === null
+      ? copy.PlanLabel
+      : ahead === null
+        ? `Week ${week} of ${copy.planLabel}`
+        : `${ahead ? 'Ahead' : 'Behind'}, week ${week}`
   const outlook =
     facts.finishDate && facts.goalDate
-      ? `At this rate the goal lands ${shortDate(facts.finishDate, today)}, ${versusGoalDate(facts.finishDate, facts.goalDate)}.`
+      ? `At this rate the ${copy.goalLabel} lands ${shortDate(facts.finishDate, today)}, ${versusGoalDate(facts.finishDate, facts.goalDate)}.`
       : facts.goalDate
-        ? `The goal date is ${shortDate(facts.goalDate, today)}. A few more weigh-ins set the forecast.`
+        ? `The ${copy.goalLabel} date is ${shortDate(facts.goalDate, today)}. A few more weigh-ins set the forecast.`
         : 'Set a goal in Settings and the forecast starts here.'
 
   return (
-    <Panel
-      tone="panel"
-      component="aside"
-      id="plan-rail"
-      title="Against the plan"
-      headingComponent="h3"
-      description={`Since ${formatShortDate(planStart)} · this week ${formatDayRange(thisWeek, weekEnd)}`}
-      testId="dashboard-goal-rail"
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, mt: '4px' }}>
-        {percent !== null && facts.progress !== null && (
-          <MetricRing
-            label="Goal progress"
-            metric="weight"
-            color={tokens.accent.main}
-            trackColor={tokens.ink.border}
-            size={84}
-            thickness={8}
-            value={Math.round(facts.progress * 1000) / 10}
-            target={100}
-            unit="%"
-            centre={`${percent}%`}
-            delay={300}
-          />
-        )}
+    <DeepSkyCard component="aside" ariaLabel="Against the plan" testId="dashboard-goal-rail">
+      <Box id="plan-rail" sx={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+        {facts.progress !== null && <PlanRing progress={facts.progress} />}
         <Box sx={{ minWidth: 0 }}>
+          <Box sx={{ ...eyebrow, color: summit.deepSky.muted }}>Against the plan</Box>
           <Box
-            sx={{
-              fontSize: tokens.font.size.body,
-              fontWeight: tokens.font.weight.heading,
-              color: tokens.ink.text,
-              fontVariantNumeric: 'tabular-nums',
-            }}
+            component="h3"
+            id="plan-rail-title"
+            sx={{ m: 0, mt: '2px', ...displayTitle('card'), fontSize: 20, color: summit.deepSky.text }}
           >
-            {formatNumber(facts.doneKg, 1)} of {formatNumber(facts.totalKg, 1)} kg
-          </Box>
-          {/* What is still to go opens the outlook, where 2a says where he stands against the forecast line. */}
-          <Box
-            sx={{
-              mt: '2px',
-              fontSize: tokens.font.size.small,
-              lineHeight: tokens.font.leading.small,
-              color: tokens.ink.secondary,
-            }}
-          >
-            {facts.nowKg !== null && facts.goalKg !== null && (
-              <>
-                <Box component="span" data-testid="goal-to-go" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatNumber(Math.max(0, facts.nowKg - facts.goalKg), 1)} kg to go.
-                </Box>{' '}
-              </>
-            )}
-            {outlook}
+            {headline}
           </Box>
         </Box>
       </Box>
+      <Box
+        sx={{
+          mt: '10px',
+          fontSize: tokens.font.size.small,
+          lineHeight: tokens.font.leading.small,
+          color: summit.deepSky.muted,
+        }}
+      >
+        {facts.nowKg !== null && facts.goalKg !== null && (
+          <>
+            <Box component="span" data-testid="goal-to-go" sx={tabularNums}>
+              {formatNumber(Math.max(0, facts.nowKg - facts.goalKg), 1)} kg to go.
+            </Box>{' '}
+          </>
+        )}
+        {outlook}
+      </Box>
 
-      <Box sx={{ mt: 4, borderTop: `1px solid ${tokens.ink.border}` }}>
-        <PanelRow
-          hairline={tokens.ink.border}
-          leading={<Glyph icon={SpeedRounded} />}
+      <Box
+        sx={{
+          mt: '8px',
+          fontSize: tokens.font.size.body,
+          fontWeight: tokens.font.weight.body,
+          lineHeight: tokens.font.leading.small,
+          '& > :first-of-type': { borderTop: deepSkyRule },
+        }}
+      >
+        <RailRow
           label="Weekly rate"
           value={
-            <Figure
-              value={facts.forecastRate === null ? '—' : `−${formatNumber(facts.forecastRate, 2)}`}
-              rest={facts.requiredRate === null ? 'kg' : `/ −${formatNumber(facts.requiredRate, 2)} kg`}
-            />
+            <>
+              {facts.forecastRate === null ? '—' : `−${formatNumber(facts.forecastRate, 2)}`}
+              {facts.requiredRate === null ? ' kg' : ` / −${formatNumber(facts.requiredRate, 2)} kg`}
+            </>
           }
-          trailing={
-            ahead === null ? undefined : (
-              <Chip tone={ahead ? 'success' : 'warning'} label={ahead ? 'ahead' : 'behind'} />
-            )
-          }
+          trailing={ahead === null ? undefined : <RailChip ahead={ahead} />}
         />
-        <PanelRow
-          hairline={tokens.ink.border}
-          leading={<Glyph icon={FitnessCenterRounded} />}
+        <RailRow
           label="Sessions"
-          value={
-            <Figure
-              value={String(done)}
-              rest={planned === null ? 'in this window' : `/ ${planned} planned`}
-            />
-          }
-          trailing={left > 0 ? <Chip tone="neutral" label={`${left} left`} /> : undefined}
+          value={planned === null ? `${done} in this window` : `${done} / ${planned}`}
+          trailing={left > 0 ? <Note>{left} left</Note> : undefined}
         />
-        <PanelRow
-          hairline={tokens.ink.border}
-          leading={<Glyph icon={TimerOutlined} />}
-          label="Fasts this month"
-          value={<Figure value={String(fastsThisMonth)} rest={`/ ${data.settings?.fasts_per_month ?? 2}`} />}
-          trailing={nextFast ? <Chip tone="warning" label={formatWeekday(nextFast)} /> : undefined}
+        <RailRow
+          label="Fasts"
+          value={`${fastsThisMonth} / ${data.settings?.fasts_per_month ?? 2}`}
+          trailing={nextFast ? <Note color={summit.coral.main}>{formatWeekday(nextFast)}</Note> : undefined}
         />
-        <PanelRow
-          hairline={tokens.ink.border}
+        <RailRow
           testId="goal-adherence"
-          leading={<Glyph icon={TaskAltRounded} />}
           label="Days logged"
-          value={<Figure value={String(logged)} rest={`/ ${data.days.length}`} />}
-          trailing={
-            data.days.length ? (
-              <Chip
-                tone={loggedShare >= LOGGED_GOOD_SHARE ? 'success' : 'warning'}
-                label={`${Math.round(loggedShare * 100)}%`}
-              />
-            ) : undefined
-          }
+          value={`${logged} / ${data.days.length}`}
+          trailing={data.days.length ? <Note>{Math.round(loggedShare * 100)} %</Note> : undefined}
         />
-        <PanelRow
-          hairline={tokens.ink.border}
-          leading={<Glyph icon={FlagOutlined} />}
-          label="Next milestone"
+        <RailRow
+          icon={<FlagRounded aria-hidden sx={{ ...glyph, color: summit.gold.main }} />}
+          label={copy.nextMilestone}
           value={
-            facts.nextMilestone ? (
-              <Figure
-                value={facts.nextMilestone.label}
-                rest={
-                  facts.nextMilestone.date ? `· ${shortDate(facts.nextMilestone.date, today)}` : undefined
-                }
-              />
-            ) : (
-              <Figure value="—" />
-            )
+            facts.nextMilestone
+              ? `${facts.nextMilestone.label}${facts.nextMilestone.date ? ` · ${shortDate(facts.nextMilestone.date, today)}` : ''}`
+              : '—'
           }
         />
-        <PanelRow
-          hairline={tokens.ink.border}
-          leading={<Glyph icon={AccessibilityNewRounded} />}
-          label="Next Evolt scan"
-          value={
-            nextScan ? (
-              <Figure value={shortDate(nextScan, today)} rest={`· ${dueIn(nextScan, today)}`} />
-            ) : (
-              <Figure value="None yet" />
-            )
+        <RailRow
+          icon={<AccessibilityNewRounded aria-hidden sx={{ ...glyph, color: tokens.tone.success.light }} />}
+          label={
+            <Link
+              component={RouterLink}
+              to="/scans"
+              underline="hover"
+              sx={{
+                color: 'inherit',
+                '&:hover': { color: summit.deepSky.text },
+                [COARSE_POINTER_QUERY]: {
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  minHeight: tokens.tapTarget,
+                },
+              }}
+            >
+              Next Evolt scan
+            </Link>
           }
-        />
-        <PanelRow
-          hairline={tokens.ink.border}
-          leading={<Glyph icon={LocalFireDepartmentOutlined} />}
-          label="Expenditure estimate"
-          value={<Figure value={formatNumber(tdee)} rest="kcal" />}
+          value={nextScan ? shortDate(nextScan, today) : 'None yet'}
+          trailing={nextScan ? <Note>{dueIn(nextScan, today)}</Note> : undefined}
         />
       </Box>
 
-      <Button
+      <Link
         component={RouterLink}
         to="/plan"
-        variant="text"
-        size="small"
-        endIcon={<ArrowForwardRounded />}
-        sx={{ mt: 2, ml: '-8px' }}
+        underline="hover"
+        sx={{
+          mt: '12px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          minHeight: 32,
+          fontSize: tokens.font.size.small,
+          fontWeight: tokens.font.weight.label,
+          color: summit.gold.main,
+          '&:hover': { color: summit.deepSky.text },
+          [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+        }}
       >
         Plan history and rails
-      </Button>
-    </Panel>
+        <ArrowForwardRounded aria-hidden sx={{ fontSize: 16 }} />
+      </Link>
+    </DeepSkyCard>
   )
 }
 
@@ -494,19 +567,14 @@ export function LatestDay({ data }: { data: DashboardData }) {
         columnGap: 4,
         rowGap: 3,
         px: `${tokens.pad.card.x}px`,
-        py: '14px',
+        py: '18px',
       }}
     >
       <Box sx={{ gridColumn: { xs: '1 / -1', lg: 'auto' }, minWidth: 0 }}>
         <Box
           component="h3"
           id="latest-day-title"
-          sx={{
-            m: 0,
-            fontSize: tokens.font.size.body,
-            fontWeight: tokens.font.weight.heading,
-            color: tokens.ink.text,
-          }}
+          sx={{ m: 0, ...displayTitle('card'), fontSize: 17, color: tokens.ink.text }}
         >
           Latest day
         </Box>
