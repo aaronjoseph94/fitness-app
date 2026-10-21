@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@200..600&family=DM+Sans:opsz,wght@9..40,400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<script src="muscle-map.js"></script>
+<style>body{margin:0}b,strong{font-weight:600}a{color:#7B3FE4;text-decoration:none}a:hover{color:#FF5D5D}</style>
+</helmet>
+<div ref="{{ root }}" data-screen-label="1d Train" style="opacity:0;width:100%;min-height:100vh;overflow-x:clip;background:#FFF8EE;color:#1F1033;font-family:'DM Sans',system-ui,sans-serif">
+  <section style="position:relative;min-height:340px;padding-bottom:64px;box-sizing:border-box;overflow:hidden;background:linear-gradient(180deg,#1A0A42 0%,#3E1A73 38%,#9A3A8E 74%,#FF7569 100%);color:#FFFFFF">
+    <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none">
+      <span data-loop="twinkle" data-ldur="3000" style="position:absolute;left:10%;top:14%;width:3px;height:3px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="3800" data-ld="-1000" style="position:absolute;left:34%;top:10%;width:2px;height:2px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="2600" data-ld="-600" style="position:absolute;left:55%;top:21%;width:3px;height:3px;border-radius:50%;background:#FFE7B8"></span>
+      <span data-loop="twinkle" data-ldur="3600" data-ld="-2600" style="position:absolute;left:84%;top:12%;width:3px;height:3px;border-radius:50%;background:#FFFFFF"></span>
+      <div data-loop="breathe" data-ldur="6000" style="position:absolute;left:calc(58% - 210px);top:-70px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,236,190,.8),rgba(255,170,110,.4) 45%,rgba(255,120,100,0))"></div>
+      <div data-loop="float" data-ldur="9000" style="position:absolute;left:calc(58% - 45px + min(80px,8vw));top:108px;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#FFF6DA,#FFD08A 70%,#FFB36B)"></div>
+      <svg viewBox="0 0 1440 140" preserveAspectRatio="none" style="position:absolute;left:0;bottom:0;width:100%;height:140px"><path d="M0,140 L0,96 C180,70 300,24 470,46 C640,68 730,8 900,30 C1070,52 1190,98 1440,78 L1440,140 Z" style="fill:rgba(37,12,70,.55)"></path><path d="M0,140 L0,120 C240,104 420,128 640,112 C860,96 1080,132 1440,110 L1440,140 Z" style="fill:rgba(26,10,51,.6)"></path></svg>
+    </div>
+    <dc-import name="Summit-Nav" active="train" hint-size="100%,90px" data-a="fall" data-t="900"></dc-import>
+    <div style="position:relative;z-index:2;display:flex;align-items:flex-end;flex-wrap:wrap;gap:20px;padding:30px max(clamp(16px,4vw,56px),calc((100vw - 1328px) / 2)) 0">
+      <div style="flex:1;min-width:0">
+        <div data-a="fade" data-d="200" style="font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75)">Training day 3 of 4 · 2 sessions done this week</div>
+        <h1 data-a="blur" data-d="320" data-t="1100" style="margin:8px 0 0;font-family:Outfit,system-ui;font-size:clamp(34px,8.5vw,56px);line-height:1.05;font-weight:300;letter-spacing:-.020em">Wednesday, Oct 7</h1>
+        <div data-a="fade" data-d="560" style="margin-top:12px;font-size:17px;font-weight:500;color:rgba(255,255,255,.85)">Upper B — Pull at 4:30 PM · Anytime Fitness</div>
+      </div>
+      <div data-a="rise" data-d="500" style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+        <span style="display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 16px;border-radius:999px;background:rgba(23,184,166,.9);font-size:14px;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:#FFFFFF"></span>Readiness 74 · full volume<span class="material-symbols-rounded" style="font-size:18px;opacity:.8">info</span></span>
+        <button style="height:46px;padding:0 18px 0 14px;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(255,255,255,.14);color:#FFFFFF;font:500 14px 'DM Sans',system-ui;display:flex;align-items:center;gap:6px;cursor:pointer;backdrop-filter:blur(12px)" style-hover="background:rgba(255,255,255,.24)"><span class="material-symbols-rounded" style="font-size:20px">add</span>Blank session</button>
+      </div>
+    </div>
+  </section>
+
+  <div style="position:relative;z-index:3;margin-top:-44px;padding:40px max(clamp(16px,4vw,56px),calc((100vw - 1328px) / 2)) 60px;border-radius:44px 44px 0 0;background:#FFF8EE;box-shadow:0 -20px 50px rgba(43,15,79,.18)">
+    <section data-a="rise" data-d="450" style="display:flex;flex-wrap:wrap;gap:26px;border-radius:30px;padding:26px 28px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+      <div style="min-width:0;flex:100 1 280px;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600"><span style="padding:4px 10px;border-radius:999px;background:#EEE6FF;color:#6A33D6">Planned · week plan</span><span style="color:#7A6B8E">4:30 PM · Anytime Fitness</span></div>
+        <h2 style="margin:12px 0 0;font-family:Outfit,system-ui;font-size:30px;font-weight:400;letter-spacing:-.015em">Upper B — Pull</h2>
+        <div style="margin-top:6px;font-size:14px;font-weight:500;color:#7A6B8E">6 exercises · 18 working sets · about 50 min · last done Wed, Sep 30 (3,540 kg)</div>
+        <ol data-stagger="45" data-sd="700" data-sa="right" style="list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:2px 28px;font-size:15px">
+          <li style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F1E9F7"><span style="width:22px;font-family:Outfit,system-ui;font-size:12px;font-weight:400;color:#B8ABC9">1</span><span style="flex:1;font-weight:500">Lat pulldown</span><span style="color:#7A6B8E">3 × 10–12 · 45 kg</span><span style="padding:2px 7px;border-radius:999px;background:#DDF7F4;color:#0E8797;font-size:11px;font-weight:600">+2.5</span></li>
+          <li style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F1E9F7"><span style="width:22px;font-family:Outfit,system-ui;font-size:12px;font-weight:400;color:#B8ABC9">2</span><span style="flex:1;font-weight:500">Seated cable row</span><span style="color:#7A6B8E">3 × 10–12 · 40 kg</span></li>
+          <li style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F1E9F7"><span style="width:22px;font-family:Outfit,system-ui;font-size:12px;font-weight:400;color:#B8ABC9">3</span><span style="flex:1;font-weight:500">Chest-supported row</span><span style="color:#7A6B8E">3 × 8–10 · 30 kg</span></li>
+          <li style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F1E9F7"><span style="width:22px;font-family:Outfit,system-ui;font-size:12px;font-weight:400;color:#B8ABC9">4</span><span style="flex:1;font-weight:500">Rear delt fly</span><span style="color:#7A6B8E">3 × 12–15 · 25 kg</span></li>
+          <li style="display:flex;align-items:center;gap:10px;padding:8px 0"><span style="width:22px;font-family:Outfit,system-ui;font-size:12px;font-weight:400;color:#B8ABC9">5</span><span style="flex:1;font-weight:500">Dumbbell curl</span><span style="color:#7A6B8E">3 × 10–12 · 10 kg</span></li>
+          <li style="display:flex;align-items:center;gap:10px;padding:8px 0"><span style="width:22px;font-family:Outfit,system-ui;font-size:12px;font-weight:400;color:#B8ABC9">6</span><span style="flex:1;font-weight:500">Hammer curl</span><span style="color:#7A6B8E">3 × 10–12 · 10 kg</span></li>
+        </ol>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:20px">
+          <a href="Session-1d.dc.html" data-burst="#FFD27A,#FF7569,#7B3FE4" data-magnet="4" style="height:50px;padding:0 24px;border-radius:16px;background:linear-gradient(135deg,#FF7569,#9A3A8E);color:#FFFFFF;font:500 16px 'DM Sans',system-ui;display:flex;align-items:center;gap:6px;box-shadow:0 10px 26px rgba(255,117,105,.35)"><span class="material-symbols-rounded" style="font-size:22px;font-variation-settings:'FILL' 1">play_arrow</span>Start session</a>
+          <button style="height:50px;padding:0 18px;border:0;border-radius:16px;background:#F3ECFA;color:#2B0F4F;font:500 15px 'DM Sans',system-ui;cursor:pointer" style-hover="background:#EEE6FF">Swap an exercise</button>
+          <a href="#" style="margin-left:auto;font-size:14px;font-weight:600">Generate with AI instead</a>
+        </div>
+      </div>
+      <div style="padding:18px;border-radius:22px;background:#FFF5EC;text-align:center;flex:1 1 300px;min-width:0">
+        <div ref="{{ todayMap }}" aria-label="Muscles in Upper B" style="margin:0 auto;width:220px;line-height:0"></div>
+        <div style="margin-top:8px;font-size:13px;font-weight:500;color:#7A6B8E">Lats and middle back hardest · biceps, rear delts, forearms</div>
+      </div>
+    </section>
+
+    <section data-a="rise" data-d="600" style="position:relative;overflow:hidden;margin-top:26px;border-radius:30px;padding:24px 28px;background:linear-gradient(170deg,#2B0F4F,#1A0A33);color:#FFFFFF;box-shadow:0 18px 50px rgba(43,15,79,.3)">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px"><h2 style="margin:0;flex:1;font-family:Outfit,system-ui;font-size:22px;font-weight:400;letter-spacing:-.015em">This week’s split</h2><span style="font-size:13px;font-weight:500;color:rgba(255,255,255,.65)">Oct 5 – 11 · Upper / Lower, 4 days</span><button style="height:38px;padding:0 14px;border:1px solid rgba(255,255,255,.3);border-radius:12px;background:rgba(255,255,255,.1);color:#FFFFFF;font:500 13px 'DM Sans',system-ui;display:flex;align-items:center;gap:4px;cursor:pointer" style-hover="background:rgba(255,255,255,.2)"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">auto_awesome</span>Generate the week</button></div>
+      <div data-stagger="60" data-sd="800" data-sa="pop" style="display:grid;grid-auto-flow:column;grid-auto-columns:minmax(128px,1fr);gap:10px;margin-top:18px;overflow-x:auto;padding-bottom:4px">
+        <div style="padding:14px;border-radius:18px;background:rgba(255,210,122,.16);border:1px solid rgba(255,210,122,.4)"><div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:#FFD27A">Mon<span class="material-symbols-rounded" style="font-size:18px">check_circle</span></div><div style="margin-top:8px;font-size:15px;font-weight:600">Upper A</div><div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.65)">16 of 16 sets · 4,320 kg</div></div>
+        <div style="padding:14px;border-radius:18px;background:rgba(255,210,122,.16);border:1px solid rgba(255,210,122,.4)"><div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:#FFD27A">Tue<span class="material-symbols-rounded" style="font-size:18px">check_circle</span></div><div style="margin-top:8px;font-size:15px;font-weight:600">Lower A</div><div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.65)">15 of 15 sets · 3,860 kg</div></div>
+        <div style="padding:14px;border-radius:18px;background:#FFFFFF;color:#2B0F4F;box-shadow:0 0 24px rgba(255,210,122,.45)"><div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:#9A3A8E">Wed · today<span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">play_circle</span></div><div style="margin-top:8px;font-size:15px;font-weight:600">Upper B</div><div style="font-size:12px;font-weight:500;color:#7A6B8E">18 sets · 4:30 PM</div></div>
+        <div style="padding:14px;border-radius:18px;border:1px dashed rgba(255,255,255,.4)"><div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.7)">Thu</div><div style="margin-top:8px;font-size:15px;font-weight:600">Lower B</div><div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.65)">15 sets · planned</div></div>
+        <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,.06)"><div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.5)">Fri</div><div style="margin-top:8px;font-size:15px;font-weight:600;color:rgba(255,255,255,.6)">Rest</div><div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.45)">walk 9,000 steps</div></div>
+        <div style="padding:14px;border-radius:18px;background:rgba(255,117,105,.2);border:1px solid rgba(255,117,105,.5)"><div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:#FFB79A">Sat<span class="material-symbols-rounded" style="font-size:18px">timer</span></div><div style="margin-top:8px;font-size:15px;font-weight:600">Fast day</div><div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.65)">keep training light</div></div>
+        <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,.06)"><div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.5)">Sun</div><div style="margin-top:8px;font-size:15px;font-weight:600;color:rgba(255,255,255,.6)">Rest</div><div style="font-size:12px;font-weight:500;color:rgba(255,255,255,.45)">weekly review lands</div></div>
+      </div>
+    </section>
+
+    <div style="display:flex;flex-wrap:wrap;gap:26px;margin-top:34px;align-items:flex-start">
+      <section style="flex:200 1 560px;min-width:0">
+        <div data-a="fade" data-d="800" style="display:flex;align-items:baseline;flex-wrap:wrap;gap:12px;margin-bottom:14px"><h2 style="margin:0;flex:1;font-family:Outfit,system-ui;font-size:24px;font-weight:400;letter-spacing:-.010em">Templates</h2><a href="#" style="font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:2px"><span class="material-symbols-rounded" style="font-size:18px">add</span>New template</a></div>
+        <div data-stagger="80" data-sd="900" data-sa="rise" style="display:flex;flex-wrap:wrap;gap:18px">
+          <div style="display:flex;gap:16px;padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10);flex:100 1 280px;min-width:0"><div ref="{{ mapA }}" aria-hidden="true" style="width:84px;flex:none;line-height:0"></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1;font-size:17px;font-weight:600">Upper A — Push</h3><span style="padding:3px 9px;border-radius:999px;background:#F3ECFA;font-size:12px;font-weight:600;color:#2B0F4F">Mon</span></div><div style="margin-top:4px;font-size:13px;font-weight:500;color:#7A6B8E">6 exercises · 16 sets · chest, shoulders, triceps</div><div style="margin-top:2px;font-size:13px;font-weight:500;color:#7A6B8E">Done Mon · 4,320 kg</div><div style="display:flex;gap:8px;margin-top:12px"><button style="height:36px;padding:0 14px;border:0;border-radius:12px;background:#F3ECFA;color:#2B0F4F;font:500 13px 'DM Sans',system-ui;display:flex;align-items:center;gap:4px;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">play_arrow</span>Start</button><button aria-label="Edit Upper A" style="width:36px;height:36px;border:0;border-radius:12px;background:transparent;color:#7A6B8E;display:grid;place-items:center;cursor:pointer" style-hover="background:#F3ECFA"><span class="material-symbols-rounded" style="font-size:20px">edit</span></button></div></div></div>
+          <div style="display:flex;gap:16px;padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10);flex:100 1 280px;min-width:0"><div ref="{{ mapB }}" aria-hidden="true" style="width:84px;flex:none;line-height:0"></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1;font-size:17px;font-weight:600">Lower A — Quads</h3><span style="padding:3px 9px;border-radius:999px;background:#F3ECFA;font-size:12px;font-weight:600;color:#2B0F4F">Tue</span></div><div style="margin-top:4px;font-size:13px;font-weight:500;color:#7A6B8E">5 exercises · 15 sets · quads, glutes, calves</div><div style="margin-top:2px;font-size:13px;font-weight:500;color:#7A6B8E">Done Tue · 3,860 kg</div><div style="display:flex;gap:8px;margin-top:12px"><button style="height:36px;padding:0 14px;border:0;border-radius:12px;background:#F3ECFA;color:#2B0F4F;font:500 13px 'DM Sans',system-ui;display:flex;align-items:center;gap:4px;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">play_arrow</span>Start</button><button aria-label="Edit Lower A" style="width:36px;height:36px;border:0;border-radius:12px;background:transparent;color:#7A6B8E;display:grid;place-items:center;cursor:pointer" style-hover="background:#F3ECFA"><span class="material-symbols-rounded" style="font-size:20px">edit</span></button></div></div></div>
+          <div style="display:flex;gap:16px;padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 0 0 2px #FFD27A,0 18px 50px rgba(74,28,120,.14);flex:100 1 280px;min-width:0"><div ref="{{ mapC }}" aria-hidden="true" style="width:84px;flex:none;line-height:0"></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1;font-size:17px;font-weight:600">Upper B — Pull</h3><span style="padding:3px 9px;border-radius:999px;background:linear-gradient(135deg,#FFD27A,#FF8A5B);font-size:12px;font-weight:600;color:#2B0F4F">Today</span></div><div style="margin-top:4px;font-size:13px;font-weight:500;color:#7A6B8E">6 exercises · 18 sets · lats, back, biceps</div><div style="margin-top:2px;font-size:13px;font-weight:500;color:#7A6B8E">Last Wed, Sep 30 · 3,540 kg</div><div style="display:flex;gap:8px;margin-top:12px"><a href="Session-1d.dc.html" style="height:36px;padding:0 14px;border-radius:12px;background:#2B0F4F;color:#FFFFFF;font:500 13px 'DM Sans',system-ui;display:flex;align-items:center;gap:4px"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">play_arrow</span>Start</a><button aria-label="Edit Upper B" style="width:36px;height:36px;border:0;border-radius:12px;background:transparent;color:#7A6B8E;display:grid;place-items:center;cursor:pointer" style-hover="background:#F3ECFA"><span class="material-symbols-rounded" style="font-size:20px">edit</span></button></div></div></div>
+          <div style="display:flex;gap:16px;padding:20px;border-radius:26px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10);flex:100 1 280px;min-width:0"><div ref="{{ mapD }}" aria-hidden="true" style="width:84px;flex:none;line-height:0"></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;flex:1;font-size:17px;font-weight:600">Lower B — Hinge</h3><span style="padding:3px 9px;border-radius:999px;background:#F3ECFA;font-size:12px;font-weight:600;color:#2B0F4F">Thu</span></div><div style="margin-top:4px;font-size:13px;font-weight:500;color:#7A6B8E">5 exercises · 15 sets · hamstrings, glutes, back</div><div style="margin-top:2px;font-size:13px;font-weight:500;color:#7A6B8E">Last Thu, Oct 1 · 4,100 kg</div><div style="display:flex;gap:8px;margin-top:12px"><button style="height:36px;padding:0 14px;border:0;border-radius:12px;background:#F3ECFA;color:#2B0F4F;font:500 13px 'DM Sans',system-ui;display:flex;align-items:center;gap:4px;cursor:pointer"><span class="material-symbols-rounded" style="font-size:18px;font-variation-settings:'FILL' 1">play_arrow</span>Start</button><button aria-label="Edit Lower B" style="width:36px;height:36px;border:0;border-radius:12px;background:transparent;color:#7A6B8E;display:grid;place-items:center;cursor:pointer" style-hover="background:#F3ECFA"><span class="material-symbols-rounded" style="font-size:20px">edit</span></button></div></div></div>
+        </div>
+      </section>
+      <section style="flex:100 1 280px;min-width:0">
+        <div data-a="fade" data-d="850" style="display:flex;align-items:baseline;flex-wrap:wrap;gap:12px;margin-bottom:14px"><h2 style="margin:0;flex:1;font-family:Outfit,system-ui;font-size:24px;font-weight:400;letter-spacing:-.010em">Recent</h2><a href="#" style="font-size:14px;font-weight:600">All sessions</a></div>
+        <div data-a="rise" data-d="1000" style="border-radius:26px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div data-stagger="60" data-sd="1100" data-sa="fade" style="display:grid;grid-template-columns:minmax(0,1fr);padding:8px 20px 0;font-size:14px">
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F1E9F7;color:#1F1033"><div style="width:40px;text-align:center"><div style="font-size:11px;font-weight:600;color:#7A6B8E">TUE</div><div style="font-family:Outfit,system-ui;font-size:16px;font-weight:400">6</div></div><div style="flex:1;min-width:0"><div style="font-weight:600">Lower A — Quads</div><div style="font-size:12px;font-weight:500;color:#7A6B8E">15 of 15 sets · 3,860 kg · 46 min</div></div><span style="padding:2px 8px;border-radius:999px;background:linear-gradient(135deg,#FFD27A,#FF8A5B);font-size:11px;font-weight:600;color:#2B0F4F">PR</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F1E9F7;color:#1F1033"><div style="width:40px;text-align:center"><div style="font-size:11px;font-weight:600;color:#7A6B8E">MON</div><div style="font-family:Outfit,system-ui;font-size:16px;font-weight:400">5</div></div><div style="flex:1;min-width:0"><div style="font-weight:600">Upper A — Push</div><div style="font-size:12px;font-weight:500;color:#7A6B8E">16 of 16 sets · 4,320 kg · 48 min</div></div><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F1E9F7;color:#1F1033"><div style="width:40px;text-align:center"><div style="font-size:11px;font-weight:600;color:#7A6B8E">THU</div><div style="font-family:Outfit,system-ui;font-size:16px;font-weight:400">1</div></div><div style="flex:1;min-width:0"><div style="font-weight:600">Lower B — Hinge</div><div style="font-size:12px;font-weight:500;color:#7A6B8E">15 of 15 sets · 4,100 kg · 52 min</div></div><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:12px 0;color:#1F1033"><div style="width:40px;text-align:center"><div style="font-size:11px;font-weight:600;color:#7A6B8E">WED</div><div style="font-family:Outfit,system-ui;font-size:16px;font-weight:400">30</div></div><div style="flex:1;min-width:0"><div style="font-weight:600">Upper B — Pull</div><div style="font-size:12px;font-weight:500;color:#7A6B8E">17 of 18 sets · 3,540 kg · 49 min</div></div><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px;padding:14px;border-radius:18px;background:#FFF5EC;text-align:center">
+            <div><div style="font-size:11px;font-weight:600;color:#7A6B8E">Sessions</div><div style="font-family:Outfit,system-ui;font-size:18px;font-weight:400">2 <span style="font-size:12px;color:#7A6B8E">/ 4</span></div></div>
+            <div><div style="font-size:11px;font-weight:600;color:#7A6B8E">Volume</div><div style="font-family:Outfit,system-ui;font-size:18px;font-weight:400">8,180 <span style="font-size:12px;color:#7A6B8E">kg</span></div></div>
+            <div><div style="font-size:11px;font-weight:600;color:#7A6B8E">Deload</div><div style="font-family:Outfit,system-ui;font-size:18px;font-weight:400">4 <span style="font-size:12px;color:#7A6B8E">wks</span></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <nav aria-label="Training tools" data-stagger="70" data-sd="1300" data-sa="rise" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:34px">
+      <a href="#" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:22px;background:#FFFFFF;color:#1F1033;box-shadow:0 18px 50px rgba(74,28,120,.10);flex:100 1 220px;min-width:0" style-hover="box-shadow:0 22px 60px rgba(74,28,120,.2)"><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#EEE6FF;color:#6A33D6"><span class="material-symbols-rounded" style="font-size:24px">menu_book</span></span><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Exercise library</span><span style="display:block;font-size:12px;font-weight:500;color:#7A6B8E">542 allowed of 876</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+      <a href="#" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:22px;background:#FFFFFF;color:#1F1033;box-shadow:0 18px 50px rgba(74,28,120,.10);flex:100 1 220px;min-width:0" style-hover="box-shadow:0 22px 60px rgba(74,28,120,.2)"><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#DDF7F4;color:#0E8797"><span class="material-symbols-rounded" style="font-size:24px">fitness_center</span></span><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Equipment</span><span style="display:block;font-size:12px;font-weight:500;color:#7A6B8E">Anytime Fitness · 47 machines</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+      <a href="#" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:22px;background:#FFFFFF;color:#1F1033;box-shadow:0 18px 50px rgba(74,28,120,.10);flex:100 1 220px;min-width:0" style-hover="box-shadow:0 22px 60px rgba(74,28,120,.2)"><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#FFF2DC;color:#C26A00"><span class="material-symbols-rounded" style="font-size:24px">edit_note</span></span><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">Workout builder</span><span style="display:block;font-size:12px;font-weight:500;color:#7A6B8E">Create or edit a template</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+      <a href="#" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,#4A1C78,#9A3A8E 60%,#FF7569);color:#FFFFFF;box-shadow:0 18px 50px rgba(154,58,142,.3);flex:100 1 220px;min-width:0"><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.16);color:#FFD27A"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:'FILL' 1">auto_awesome</span></span><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">AI workout</span><span style="display:block;font-size:12px;font-weight:500;color:rgba(255,255,255,.75)">From your equipment and readiness</span></span><span class="material-symbols-rounded" style="font-size:20px;color:rgba(255,255,255,.7)">chevron_right</span></a>
+    </nav>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  todayMap = React.createRef();
+  mapA = React.createRef();
+  mapB = React.createRef();
+  mapC = React.createRef();
+  mapD = React.createRef();
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) return setTimeout(go, 25);
+      else el.style.opacity = '';
+      const opts = (size, title) => ({ body: '#F1E9F7', stroke: '#FFFFFF', steps: ['#EEE6FF', '#C9B3FF', '#9A6BFF', '#6A33D6'], size, title });
+      const pull = { lats: 4, 'middle back': 4, biceps: 3, shoulders: 2, forearms: 2, traps: 1 };
+      const maps = [
+        [this.todayMap, pull, 220, 'Muscles in Upper B'],
+        [this.mapA, { chest: 4, shoulders: 3, triceps: 3, abdominals: 1 }, 84, 'Upper A'],
+        [this.mapB, { quadriceps: 4, glutes: 3, calves: 2, adductors: 2 }, 84, 'Lower A'],
+        [this.mapC, pull, 84, 'Upper B'],
+        [this.mapD, { hamstrings: 4, glutes: 3, 'lower back': 3, calves: 1 }, 84, 'Lower B']
+      ];
+      if (window.mountMuscleMap) maps.forEach(([r, lv, s, t]) => window.mountMuscleMap(r.current, lv, opts(s, t)));
+    };
+    go();
+  }
+  renderVals() {
+    return { root: this.root, todayMap: this.todayMap, mapA: this.mapA, mapB: this.mapB, mapC: this.mapC, mapD: this.mapD };
+  }
+}
+</script>
+</body>
+</html>

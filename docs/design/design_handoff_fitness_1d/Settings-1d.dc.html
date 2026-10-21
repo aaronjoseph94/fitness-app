@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@200..600&family=DM+Sans:opsz,wght@9..40,400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,300..600,0..1,0&display=block">
+<script src="anim.js"></script>
+<style>body{margin:0}b,strong{font-weight:600}a{color:#7B3FE4;text-decoration:none}a:hover{color:#FF5D5D}</style>
+</helmet>
+<div ref="{{ root }}" data-screen-label="1d Settings" style="opacity:0;width:100%;min-height:100vh;overflow-x:clip;background:#FFF8EE;color:#1F1033;font-family:'DM Sans',system-ui,sans-serif">
+  <section style="position:relative;min-height:280px;padding-bottom:64px;box-sizing:border-box;overflow:hidden;background:linear-gradient(180deg,#1A0A42 0%,#3E1A73 38%,#9A3A8E 74%,#FF7569 100%);color:#FFFFFF">
+    <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none">
+      <span data-loop="twinkle" data-ldur="3000" style="position:absolute;left:12%;top:16%;width:3px;height:3px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="3800" data-ld="-1000" style="position:absolute;left:37%;top:10%;width:2px;height:2px;border-radius:50%;background:#FFFFFF"></span>
+      <span data-loop="twinkle" data-ldur="2600" data-ld="-600" style="position:absolute;left:59%;top:24%;width:3px;height:3px;border-radius:50%;background:#FFE7B8"></span>
+      <div data-loop="breathe" data-ldur="6000" style="position:absolute;left:calc(58% - 210px);top:-70px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,236,190,.8),rgba(255,170,110,.4) 45%,rgba(255,120,100,0))"></div>
+      <div data-loop="float" data-ldur="9000" style="position:absolute;left:calc(58% - 45px + min(80px,8vw));top:84px;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#FFF6DA,#FFD08A 70%,#FFB36B)"></div>
+      <svg viewBox="0 0 1440 140" preserveAspectRatio="none" style="position:absolute;left:0;bottom:0;width:100%;height:120px"><path d="M0,140 L0,96 C180,70 300,24 470,46 C640,68 730,8 900,30 C1070,52 1190,98 1440,78 L1440,140 Z" style="fill:rgba(37,12,70,.55)"></path><path d="M0,140 L0,120 C240,104 420,128 640,112 C860,96 1080,132 1440,110 L1440,140 Z" style="fill:rgba(26,10,51,.6)"></path></svg>
+    </div>
+    <dc-import name="Summit-Nav" active="none" hint-size="100%,90px" data-a="fall" data-t="900"></dc-import>
+    <div style="position:relative;z-index:2;display:flex;align-items:flex-end;flex-wrap:wrap;gap:20px;padding:14px max(clamp(16px,4vw,56px),calc((100vw - 1328px) / 2)) 0">
+      <div style="flex:1;min-width:0">
+        <div data-a="fade" data-d="200" style="font-size:14px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75)">Aaron · America/Edmonton</div>
+        <h1 data-a="blur" data-d="320" data-t="1100" style="margin:8px 0 0;font-family:Outfit,system-ui;font-size:clamp(32px,7.5vw,48px);line-height:1.05;font-weight:300;letter-spacing:-.020em">Settings</h1>
+      </div>
+      <div data-a="fade" data-d="500" style="font-size:15px;font-weight:500;color:rgba(255,255,255,.85);max-width:460px;text-align:right;padding-bottom:6px">Every change saves at once and is rolled back if the server refuses. Rails ask for confirmation.</div>
+    </div>
+  </section>
+
+  <div style="position:relative;z-index:3;margin-top:-44px;padding:36px max(clamp(16px,4vw,56px),calc((100vw - 1328px) / 2)) 60px;border-radius:44px 44px 0 0;background:#FFF8EE;box-shadow:0 -20px 50px rgba(43,15,79,.18)">
+    <div style="display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start">
+      <nav data-a="left" data-d="400" aria-label="Settings sections" style="position:{{ navPos }};top:24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px;padding:10px;border-radius:24px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10);font-size:15px;font-weight:500;flex:1 1 220px;min-width:0">
+        <a href="#rails" aria-current="location" style="padding:10px 14px;border-radius:14px;background:#FFF5EC;color:#1F1033;font-weight:600;box-shadow:inset 0 0 0 2px #FFD27A">Rails</a>
+        <a href="#targets" style="padding:10px 14px;border-radius:14px;color:#4E4063" style-hover="background:#FFF5EC;color:#1F1033">Daily targets</a>
+        <a href="#training" style="padding:10px 14px;border-radius:14px;color:#4E4063" style-hover="background:#FFF5EC;color:#1F1033">Training and scans</a>
+        <a href="#app" style="padding:10px 14px;border-radius:14px;color:#4E4063" style-hover="background:#FFF5EC;color:#1F1033">App and AI</a>
+        <a href="#profile" style="padding:10px 14px;border-radius:14px;color:#4E4063" style-hover="background:#FFF5EC;color:#1F1033">Profile</a>
+        <a href="#more" style="padding:10px 14px;border-radius:14px;color:#4E4063" style-hover="background:#FFF5EC;color:#1F1033">More</a>
+        <a href="#about" style="padding:10px 14px;border-radius:14px;color:#4E4063" style-hover="background:#FFF5EC;color:#1F1033">About this data</a>
+      </nav>
+
+      <div data-stagger="90" data-sd="450" data-sa="rise" style="display:grid;grid-template-columns:minmax(0,1fr);gap:22px;max-width:880px;flex:100 1 280px;min-width:0">
+        <section id="rails" style="border-radius:30px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:22px 26px 14px"><div style="flex:1"><h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">Rails</h2><p style="margin:4px 0 0;font-size:14px;font-weight:500;color:#7A6B8E">Set with your doctor and dietitian; the AI works inside them and never changes them.</p></div><span style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;background:#FFF2DC;color:#C26A00;font-size:12px;font-weight:600"><span class="material-symbols-rounded" style="font-size:16px">lock</span>Confirm to edit</span></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr);font-size:15px">
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Calorie floor</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">The AI never proposes a day below this</span></span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400;font-variant-numeric:tabular-nums">1,400 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">kcal</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Calorie ceiling for proposals</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">A proposed day never goes above this</span></span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400;font-variant-numeric:tabular-nums">1,700 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">kcal</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Protein minimum</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">About 2.2 g per kg of lean mass</span></span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">130 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">g</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Fat minimum</span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">45 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">g</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:0 0 30px 30px" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Fasting pattern</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">Planned fasts the week plan may place</span></span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">2 × 24 h <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">a month</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+          </div>
+        </section>
+
+        <section id="targets" style="border-radius:30px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div style="padding:22px 26px 14px"><h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">Daily targets</h2><p style="margin:4px 0 0;font-size:14px;font-weight:500;color:#7A6B8E">A change writes a new plan version and rebuilds today’s targets.</p></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr);font-size:15px">
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Fibre</span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">30 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">g</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:0 0 30px 30px" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Water</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">Fast days go up to 3,500 ml automatically</span></span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">3,000 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">ml</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+          </div>
+        </section>
+
+        <section id="training" style="border-radius:30px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div style="padding:22px 26px 14px"><h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">Training and scans</h2></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr);font-size:15px">
+            <button style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer" style-hover="background:#FFF5EC"><span style="flex:1 1 120px;font-weight:600">Training days</span><span style="display:flex;flex-wrap:wrap;gap:4px"><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#2B0F4F;color:#FFFFFF;font-size:12px;font-weight:600">M</span><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#2B0F4F;color:#FFFFFF;font-size:12px;font-weight:600">T</span><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#2B0F4F;color:#FFFFFF;font-size:12px;font-weight:600">W</span><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#2B0F4F;color:#FFFFFF;font-size:12px;font-weight:600">T</span><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#F3ECFA;color:#B8ABC9;font-size:12px;font-weight:600">F</span><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#F3ECFA;color:#B8ABC9;font-size:12px;font-weight:600">S</span><span style="width:clamp(26px,7vw,32px);height:28px;border-radius:9px;display:grid;place-items:center;background:#F3ECFA;color:#B8ABC9;font-size:12px;font-weight:600">S</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:0 0 30px 30px" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Scan interval</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">Next Evolt scan due Nov 7 · same conditions each time</span></span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">42 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">days</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+          </div>
+        </section>
+
+        <section id="app" style="border-radius:30px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div style="padding:22px 26px 14px"><h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">App and AI</h2></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr);font-size:15px">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 26px;border-top:1px solid #F1E9F7"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Apply safe AI changes</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">Meal suggestions, exercise swaps within the same muscle, and reminder times. Target changes always wait for a tap.</span></span><button role="switch" aria-checked="false" aria-label="Apply safe AI changes" style="position:relative;width:46px;height:26px;border-radius:999px;border:0;background:#E3D6F2;cursor:pointer;flex:none"><span style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(43,15,79,.3)"></span></button></div>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:14px 26px;border-top:1px solid #F1E9F7;color:#1F1033" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Model keys and the Claude connector</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">Groq · OpenRouter · GLM · Gemini · MCP token for Claude</span></span><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#DDF7F4;color:#0E8797;font-size:12px;font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:#17B8A6"></span>3 keys set</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:14px 26px;border-top:1px solid #F1E9F7;color:#1F1033;border-radius:0 0 30px 30px" style-hover="background:#FFF5EC"><span style="flex:1;min-width:0"><span style="display:block;font-weight:600">Reminders</span><span style="display:block;font-size:13px;font-weight:500;color:#7A6B8E">Weigh-in 7:00 · workout 4:30 PM on training days · water when behind pace</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+          </div>
+        </section>
+
+        <section id="profile" style="border-radius:30px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div style="padding:22px 26px 14px"><h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">Profile</h2><p style="margin:4px 0 0;font-size:14px;font-weight:500;color:#7A6B8E">The summit and base camp drive the forecast and every camp date.</p></div>
+          <div style="display:flex;flex-wrap:wrap;font-size:15px;border-top:1px solid #F1E9F7">
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-right:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Goal weight</span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">65.0 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">kg</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Goal date</span><span style="font-weight:500;color:#4E4063;font-variant-numeric:tabular-nums">2027-07-20</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;border-right:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Start weight</span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">95.1 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">kg</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Start date</span><span style="font-weight:500;color:#4E4063;font-variant-numeric:tabular-nums">2026-09-26</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;border-right:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Height</span><span style="font-family:Outfit,system-ui;font-size:15px;font-weight:400">165 <span style="font-family:'DM Sans',system-ui;font-size:13px;color:#7A6B8E">cm</span></span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Sex</span><span style="font-weight:500;color:#4E4063">Male</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;border-right:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:0 0 0 30px;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Birth date</span><span style="font-weight:500;color:#B8ABC9">Not set · age 31 at baseline</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+            <button style="display:flex;align-items:center;gap:12px;padding:14px 26px;border:0;border-top:1px solid #F1E9F7;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:0 0 30px 0;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="flex:1;font-weight:600">Time zone</span><span style="font-weight:500;color:#4E4063">America/Edmonton</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></button>
+          </div>
+        </section>
+
+        <section id="more" style="border-radius:30px;background:#FFFFFF;box-shadow:0 18px 50px rgba(74,28,120,.10)">
+          <div style="padding:22px 26px 14px"><h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">More</h2></div>
+          <div style="display:flex;flex-wrap:wrap;font-size:15px;border-top:1px solid #F1E9F7">
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:14px 26px;border-right:1px solid #F1E9F7;color:#1F1033;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#EEE6FF;color:#6A33D6"><span class="material-symbols-rounded" style="font-size:20px">history</span></span><span style="flex:1;font-weight:600">Plan history</span><span style="font-size:13px;font-weight:500;color:#7A6B8E">v7 active</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="Scans-1d.dc.html" style="display:flex;align-items:center;gap:12px;padding:14px 26px;color:#1F1033;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#DDF7F4;color:#0E8797"><span class="material-symbols-rounded" style="font-size:20px">body_fat</span></span><span style="flex:1;font-weight:600">Scans</span><span style="font-size:13px;font-weight:500;color:#7A6B8E">next Nov 7</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:14px 26px;border-top:1px solid #F1E9F7;border-right:1px solid #F1E9F7;color:#1F1033;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#E6E8FF;color:#3F3FC8"><span class="material-symbols-rounded" style="font-size:20px">watch</span></span><span style="flex:1;font-weight:600">Apple Watch import</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:14px 26px;border-top:1px solid #F1E9F7;color:#1F1033;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#FFEDE8;color:#E8384F"><span class="material-symbols-rounded" style="font-size:20px">photo_library</span></span><span style="flex:1;font-weight:600">Progress photos</span><span style="font-size:13px;font-weight:500;color:#7A6B8E">6 photos</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+            <a href="#" style="display:flex;align-items:center;gap:12px;padding:14px 26px;grid-column:1 / -1;border-top:1px solid #F1E9F7;color:#1F1033;border-radius:0 0 30px 30px;flex:100 1 300px;min-width:0" style-hover="background:#FFF5EC"><span style="width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:#FFF2DC;color:#C26A00"><span class="material-symbols-rounded" style="font-size:20px">download</span></span><span style="flex:1;font-weight:600">Export and restore</span><span style="font-size:13px;font-weight:500;color:#7A6B8E">backup Oct 1</span><span class="material-symbols-rounded" style="font-size:20px;color:#B8ABC9">chevron_right</span></a>
+          </div>
+        </section>
+
+        <section id="about" style="position:relative;overflow:hidden;border-radius:30px;padding:24px 26px;background:linear-gradient(170deg,#2B0F4F,#1A0A33);color:#FFFFFF;box-shadow:0 18px 50px rgba(43,15,79,.3)">
+          <h2 style="margin:0;font-family:Outfit,system-ui;font-size:19px;font-weight:400;letter-spacing:-.015em">About this data</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:16px;font-size:14px;font-weight:500;line-height:1.5;color:rgba(255,255,255,.75)">
+            <div style="flex:100 1 200px;min-width:0"><div style="font-weight:600;color:#FFD27A">Kept on Cloudflare</div>Logs, plans, scans and reviews in D1; photos and sheets in R2. Single user, behind Access.</div>
+            <div style="flex:100 1 200px;min-width:0"><div style="font-weight:600;color:#FFD27A">Kept on this device</div>The offline queue and the last day’s cache. Writes sync when you’re back online.</div>
+            <div style="flex:100 1 200px;min-width:0"><div style="font-weight:600;color:#FFD27A">Never sent to an LLM</div>Progress photos. Meal photos are downscaled to 1,024 px and the name on a scan sheet is masked first.</div>
+          </div>
+          <div style="margin-top:16px;font-size:13px;font-weight:500;color:rgba(255,255,255,.6)">Time zone America/Edmonton · build 2026.10.21 · <a href="#" style="color:#FFD27A">Export everything</a></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  root = React.createRef();
+  state = { w: 1440 };
+  componentDidMount() {
+    let n = 0;
+    const go = () => {
+      const el = this.root.current;
+      if (!el) return;
+      if (window.DCAnim) window.DCAnim.mount(el);
+      else if (n++ < 160) return setTimeout(go, 25);
+      else el.style.opacity = '';
+    };
+    go();
+    let tries = 0;
+    const watch = () => {
+      const el = this.root.current;
+      if (!el) { if (tries++ < 200) this.wt = setTimeout(watch, 25); return; }
+      const read = () => { const r = this.root.current; if (!r) return; const w = Math.round(r.getBoundingClientRect().width / (parseFloat(getComputedStyle(r).zoom) || 1)); if (w && w !== this.state.w) this.setState({ w }); };
+      read();
+      if (window.ResizeObserver) { this.ro = new ResizeObserver(read); this.ro.observe(el); this.ro.observe(document.body); this.obs = el; }
+      this.onResize = read; window.addEventListener('resize', read);
+    };
+    watch();
+  }
+  componentDidUpdate() { const r = this.root.current; if (this.ro && r && r !== this.obs) { this.ro.observe(r); this.obs = r; if (this.onResize) this.onResize(); } }
+  componentWillUnmount() { if (this.ro) this.ro.disconnect(); clearTimeout(this.wt); if (this.onResize) window.removeEventListener('resize', this.onResize); }
+  renderVals() {
+    return { root: this.root, navPos: this.state.w >= 760 ? 'sticky' : 'static' };
+  }
+}
+</script>
+</body>
+</html>
