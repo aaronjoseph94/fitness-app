@@ -7,7 +7,7 @@
 // and last the scans.
 // Data: GET /api/days, /api/trend, /api/fasts, /api/sessions, /api/settings.
 // Second entry point: ./series (the series mappings Today, the Dashboard and the weekly report share); third:
-// ./queries (the range the URL asks for).
+// ./queries (the range the URL asks for); fourth: ./cards (the weekly loss card the Dashboard shows too).
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -17,6 +17,7 @@ import {
   formatNumber,
   formatShortDate,
   PageHeader,
+  QueryStateCard,
   Reveal,
   staggerDelay,
   wrapCol,
@@ -26,15 +27,16 @@ import { copy } from '../../copy'
 import { useLocalToday } from '../../app/local-today'
 import { tokens, transitionOf } from '../../theme'
 import { DetailSection } from './lib/DetailSection'
-import { FoodCards, HabitCounts } from './lib/HabitsColumn'
+import { FoodCards, HabitCounts } from './lib/FoodHabitCards'
 import type { RangeKey } from './lib/range'
 import { RangeToggle } from './lib/RangeToggle'
 import {
+  basePlan,
   effectiveRate,
   lastTrend,
   latestTargets,
   milestoneList,
-  planLine,
+  paceVersusPlan,
   rangeDays,
   rangeSummary,
 } from './lib/series'
@@ -42,7 +44,8 @@ import { ScansSection } from './lib/ScansSection'
 import { SummaryStats } from './lib/SummaryStats'
 import { TrainingSection } from './lib/TrainingSection'
 import { useProgressData } from './lib/useProgressData'
-import { CampsCard, WeeklyLossCard, WeightTrendCard } from './lib/WeightColumn'
+import { WeeklyLossCard } from './lib/WeeklyLossCard'
+import { CampsCard, WeightTrendCard } from './lib/WeightCards'
 import { progressRange } from './queries'
 
 /** Fallbacks while settings load: the goal (SPEC §3) and the fast length (SPEC §2). */
@@ -71,7 +74,7 @@ export function ProgressPage() {
   const refreshing = days.isPlaceholderData || trend.isPlaceholderData
   const profile = settings.data?.profile
   const rails = settings.data?.settings
-  const plan = planLine(profile ?? null)
+  const plan = basePlan(profile ?? null)
   const sincePlan = profile?.start_date === from ? ` since ${copy.startLabel}` : ''
   const dim = {
     opacity: refreshing ? 0.6 : 1,
@@ -80,12 +83,16 @@ export function ProgressPage() {
   // After the hero (0) and the summary cards (150–360 ms), each later group rises 90 ms after the one before it.
   const section = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 380)
 
-  // Where the range's trend stands against the plan's line, and the next camp with its forecast date.
-  const rate =
-    summary && summary.trendChangeKg !== null && summary.trendDays >= 7
-      ? -summary.trendChangeKg / (summary.trendDays / 7)
-      : null
+  // Where the forecast stands against the pace the summit date needs (as the Dashboard says it), and the next camp
+  // with its forecast date.
   const last = trend.data ? lastTrend(trend.data.points) : null
+  const pace = paceVersusPlan({
+    nowKg: last?.kg ?? null,
+    goalKg: profile?.goal_weight_kg ?? null,
+    today: date,
+    goalDate: profile?.goal_date ?? null,
+    weeklyRateKg: trend.data?.forecast?.weekly_rate_kg,
+  })
   const next =
     trend.data && last
       ? milestoneList(
@@ -95,8 +102,8 @@ export function ProgressPage() {
         ).find((m) => m.state === 'next')
       : undefined
   const subtitle = [
-    plan && rate !== null
-      ? `${rate >= plan.rate ? 'Ahead of' : 'Behind'} the ${formatNumber(plan.rate, 2)} kg a week line`
+    pace.ahead !== null
+      ? `${pace.ahead ? 'Ahead of' : 'Behind'} the ${formatNumber(pace.requiredRate, 2)} kg a week the ${copy.goalLabel} date needs`
       : null,
     next
       ? `${copy.nextMilestone.toLowerCase()} ${next.label}${next.expectedOn ? ` on ${shortDate(next.expectedOn, date)}` : ''}`
@@ -166,7 +173,11 @@ export function ProgressPage() {
               />
             </Reveal>
             <Reveal delay={section(2)}>
-              <WeeklyLossCard trend={trend} />
+              {trend.data ? (
+                <WeeklyLossCard trend={trend.data} height={150} titleSize="card" />
+              ) : (
+                <QueryStateCard query={trend} what="the weekly loss" height={190} titleSize="card" />
+              )}
             </Reveal>
             <Reveal delay={section(3)}>
               <HabitCounts days={days} />

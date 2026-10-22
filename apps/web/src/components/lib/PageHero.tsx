@@ -3,8 +3,8 @@
 // 18), the page's controls (they wrap under the title on a phone and take the sky's glass look: a segmented control
 // becomes a glass track with a white selected segment, outline/text/icon buttons glass pills, the contained primary
 // button the gold CTA), an always-visible `primaryAction` slot, and a `extras` slot for what a page draws in its sky
-// (Today's mountain). Every button and link in it takes the white keyboard ring (the violet one is 1.09:1 on the
-// sky). While mounted it claims the shell's hero slot (`claim()`), so the shell drops its own fallback heading.
+// (Today's mountain). Every button and link in it takes the sky's keyboard ring (white with a deep-ink band: the violet
+// one is 1.09:1 on plum). While mounted it claims the shell's hero slot (`claim()`), so the shell drops its own fallback heading.
 //
 // It renders through the shell's hero slot (`HeroSlotProvider`): a page writes `<PageHeader>` wherever it likes and the
 // content lands on the sky above the cream panel, while the page's own cards stay in the panel. Outside the shell it
@@ -18,7 +18,7 @@ import { createPortal } from 'react-dom'
 import { COARSE_POINTER_QUERY, enterEasing, reducedEntrance, tokens, type HeroVariant } from '../../theme'
 import { useHeroSlot } from './heroSlot'
 import { SkyHero } from './SkyHero'
-import { skyFocus, skyFocusWithin } from './surfaces'
+import { skyFocusWithin } from './surfaces'
 import { useEntrance } from './useEntrance'
 
 const { summit, font, motion, layout } = tokens
@@ -56,16 +56,16 @@ const glass = {
 /**
  * The sky's look for the hero's own controls (direct children of the action row, so a composite control a page builds
  * keeps its own look): glass pills 46 px tall, the contained primary button as the gold CTA, a segmented control as a
- * glass track with a white selected segment (deep ink, 16.4:1), and the white keyboard ring on each. The glass is a
- * dark tint so white text clears 4.5:1 however low on the sky the row wraps (theme.ts header).
+ * glass track with a white selected segment (deep ink, 16.4:1), and the sky's two-tone keyboard ring on each. The glass
+ * is a dark tint so white text clears 4.5:1 however low on the sky the row wraps (theme.ts header).
  */
 export const skyControls = {
+  ...skyFocusWithin,
   '& > .MuiButton-root': {
     minHeight: 46,
     px: '18px',
     borderRadius: `${summit.radius.pill}px`,
     fontSize: font.size.emphasis,
-    ...skyFocus,
   },
   '& > .MuiButton-outlined, & > .MuiButton-text': {
     ...glass,
@@ -84,7 +84,6 @@ export const skyControls = {
     height: 46,
     borderRadius: '50%',
     '&:hover': { bgcolor: summit.glass.controlHover },
-    ...skyFocus,
   },
   '& > .MuiToggleButtonGroup-root': {
     ...glass,
@@ -103,7 +102,6 @@ export const skyControls = {
         boxShadow: 'none',
       },
       [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
-      ...skyFocus,
     },
   },
 } as const

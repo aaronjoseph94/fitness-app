@@ -5,7 +5,7 @@
 import { formatNumber } from '../../components'
 import { metricRamp, tokens } from '../../theme'
 import { DailyBars, type DaySeries } from './DailyBars'
-import { UNDER_TARGET_ALPHA, tintOnCard, type ChartSizeProps } from './frame'
+import { UNDER_TARGET_ALPHA, mix, tintOnCard, type ChartSizeProps } from './frame'
 import { rollingMedian } from './stats'
 
 interface Common extends ChartSizeProps {
@@ -35,25 +35,11 @@ export interface CaloriesChartProps extends Common {
   target?: number
 }
 
-/** `a` → `b` at `t` (0–1), per channel, as an opaque hex: a step between a ramp's two ends. */
-function between(a: string, b: string, t: number): string {
-  const parse = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
-  const x = parse(a)
-  const y = parse(b)
-  return `#${x
-    .map((c, i) =>
-      Math.round(c + (y[i]! - c) * t)
-        .toString(16)
-        .padStart(2, '0'),
-    )
-    .join('')}`
-}
-
 const KCAL = metricRamp('calories')
 /** Slots are steps along the calories ramp, deepest first, stacked in eating order (breakfast at the base). */
 const SLOTS: readonly { key: MealSlotKey; label: string; color: string }[] = [
   { key: 'breakfast', label: 'Breakfast', color: KCAL.from },
-  { key: 'lunch', label: 'Lunch', color: between(KCAL.from, KCAL.to, 0.5) },
+  { key: 'lunch', label: 'Lunch', color: mix(KCAL.from, KCAL.to, 0.5) },
   { key: 'dinner', label: 'Dinner', color: KCAL.to },
   { key: 'snack', label: 'Snack', color: tintOnCard(KCAL.to, 0.5) },
 ]

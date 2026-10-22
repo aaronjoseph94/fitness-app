@@ -113,7 +113,8 @@ export function DraftTemplateCard({ draft, replaces, kept, onKept }: DraftTempla
           <TemplateName>{name}</TemplateName>
           <StatusChip tone="info" size="small" label="AI draft" />
           {d.status === 'pending' && (
-            // Dismiss sits where TemplateCard has its chip, so Keep and Preview fit one row at the grid's 300 px.
+            // Dismiss sits in the title row beside the AI chip (where TemplateCard has its own), so the action row holds
+            // only Keep and Preview and they fit one line on the template row's narrowest card (its 280 px basis).
             <IconButton
               size="tiny"
               onClick={d.onReject}

@@ -63,7 +63,14 @@ export interface Kpi {
   seriesTo?: string
   /** A target drawn as a dashed line on the sparkline. */
   reference?: number
+  /** The target is a ceiling (intake: at or under it is on target); otherwise it is a minimum. */
+  ceiling?: boolean
   footnote: string
+}
+
+/** Whether a value is on its target: value ≤ target for a ceiling (intake), value ≥ target for a minimum. Pure. */
+export function onTarget(kpi: Pick<Kpi, 'ceiling'>, value: number, target: number): boolean {
+  return kpi.ceiling ? value <= target : value >= target
 }
 
 const round = (v: number, places = 1) => Math.round(v * 10 ** places) / 10 ** places
@@ -158,6 +165,7 @@ export function dashboardKpis(data: DashboardData): Kpi[] {
     icon: LocalFireDepartmentRounded,
     series: kcalSeries,
     reference: target?.kcal,
+    ceiling: true,
     delta:
       avgKcal !== null && target
         ? { value: Math.round(avgKcal - target.kcal), unit: '', period: 'vs target', good: 'neutral' }

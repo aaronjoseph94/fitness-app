@@ -10,8 +10,6 @@
 // darkens its ink and keeps `aria-current`, so colour is never the only signal).
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
-import DonutLargeOutlined from '@mui/icons-material/DonutLargeOutlined'
-import DonutLargeRounded from '@mui/icons-material/DonutLargeRounded'
 import FitnessCenterOutlined from '@mui/icons-material/FitnessCenterOutlined'
 import FitnessCenterRounded from '@mui/icons-material/FitnessCenterRounded'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
@@ -20,6 +18,8 @@ import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import InsightsRounded from '@mui/icons-material/InsightsRounded'
 import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
 import PhotoLibraryRounded from '@mui/icons-material/PhotoLibraryRounded'
+import PieChartOutlined from '@mui/icons-material/PieChartOutlined'
+import PieChartRounded from '@mui/icons-material/PieChartRounded'
 import RestaurantOutlined from '@mui/icons-material/RestaurantOutlined'
 import RestaurantRounded from '@mui/icons-material/RestaurantRounded'
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined'
@@ -106,15 +106,15 @@ export const TABS: readonly Tab[] = [
 ]
 
 /**
- * The Scans circle in the Summit nav (desktop and phone). Its glyph is body composition as a split ring (the mock's
+ * The Scans circle in the Summit nav (desktop and phone). Its glyph is body composition as a pie (the mock's
  * Material Symbol `body_fat` has no @mui/icons-material twin): not a person, which would read as a second avatar
  * beside Settings', and not the scale, which is the weigh-in's.
  */
 export const SCANS_DESTINATION: Destination = {
   path: '/scans',
   title: 'Scans',
-  Icon: DonutLargeOutlined,
-  ActiveIcon: DonutLargeRounded,
+  Icon: PieChartOutlined,
+  ActiveIcon: PieChartRounded,
   testId: 'rail-scans',
 }
 

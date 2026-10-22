@@ -6,19 +6,10 @@ import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import type SvgIcon from '@mui/material/SvgIcon'
 import type { ReactNode } from 'react'
-import { cardSurface, displayTitle } from '../../../components'
+import { cardSurface, deepSkySurface, displayTitle } from '../../../components'
 import { tokens } from '../../../theme'
 
 const { summit } = tokens
-
-/** The deep-sky card's surface (README §2: one per screen, for the plan-level fact). */
-export const deepSkySurface = {
-  background: summit.deepSky.bg,
-  color: summit.deepSky.text,
-  border: 0,
-  borderRadius: `${summit.radius.large}px`,
-  boxShadow: summit.deepSky.shadow,
-} as const
 
 interface LogCardProps {
   title: string

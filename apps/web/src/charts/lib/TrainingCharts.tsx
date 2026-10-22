@@ -1,5 +1,6 @@
-// Owns: the training charts — weekly volume as 1d's wide stacked bars (deep ink → plum → violet → lilac, bottom to top,
-// 14 px top and 6 px feet on the whole stack, the week's total in tonnes above it, the keys under the plot), strength per
+// Owns: the training charts — weekly volume as 1d's wide stacked bars (deep plum → plum → violet → lilac, bottom to
+// top, 14 px top and 6 px feet on the whole stack, up to 8 weeks the week's total in tonnes above it and no y axis, past
+// that a y axis in tonnes over a hairline grid, the keys under the plot), strength per
 // exercise (top-set load and Epley e1RM in the accent, the latest session haloed), and the week plan vs actuals
 // (planned vs eaten kcal per weekday with the session status under it).
 import { formatNumber, formatShortDate, type LegendItem } from '../../components'
@@ -48,16 +49,20 @@ export interface VolumeWeek {
 
 export interface TrainingVolumeChartProps extends Common {
   weeks: readonly VolumeWeek[]
-  /** Up to four groups, bottom → top; coloured deep ink, plum, bright violet, lilac (1d's Dashboard). */
+  /** Up to four groups, bottom → top; coloured deep plum, plum, violet, mid violet (1d's Dashboard). */
   groups: readonly VolumeGroup[]
 }
 
-/** 1d's volume stack, bottom → top (the Dashboard mock: legs darkest, arms lightest; the deepest step is the deep ink). */
+/**
+ * 1d's volume stack, bottom → top (the Dashboard mock: legs darkest, arms lightest): deep plum, plum, the accent violet
+ * and the muscle map's mid volume step (3.30:1 on white — the top step meets the card, so it keeps the 3:1 a
+ * mark needs; the mock's lilac was 1.21:1 and vanished into the card).
+ */
 const VOLUME_STEPS = [
-  tokens.summit.ink.deep,
+  tokens.summit.plumDeep,
   tokens.summit.plum,
-  tokens.accent.bright,
-  tokens.accent.soft,
+  tokens.summit.accent.main,
+  tokens.summit.muscle.steps[2],
 ] as const
 
 /** "16.4 t" from 1,000 kg up, else "820 kg". */
@@ -83,7 +88,7 @@ function TotalLabel(props: { x?: number | string; y?: number | string; value?: u
   )
 }
 
-/** Past this many weeks the totals would touch: only the tooltip carries them. */
+/** Past this many weeks the totals would touch: a y axis in tonnes carries the scale instead. */
 const MAX_LABELLED_WEEKS = 8
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -104,9 +109,13 @@ export function TrainingVolumeChart({
     ...Object.fromEntries(series.map((s) => [s.key, w.volume[s.key] ?? 0])),
   }))
   const labelled = rows.length <= MAX_LABELLED_WEEKS
-  // Headroom over the tallest stack for its total: ≈ 22 px of the plot.
   const peak = Math.max(1, ...totals)
-  const domain: [number, number] = [0, labelled ? peak * (1 + 26 / Math.max(80, height - 30)) : peak]
+  // Labelled: headroom over the tallest stack for its total (≈ 22 px of the plot). Else the axis's nice steps.
+  const y = niceScale([0, peak], { zero: true, count: tickCount(height) })
+  const domain: [number, number] = labelled ? [0, peak * (1 + 26 / Math.max(80, height - 30))] : y.domain
+  const tonnes = peak >= 1000
+  const step = (y.ticks[1] ?? peak) - (y.ticks[0] ?? 0)
+  const yTick = (kg: number) => (tonnes ? formatNumber(kg / 1000, step < 1000 ? 1 : 0) : formatNumber(kg))
   const fmt = (v: number) => `${formatNumber(v)} kg`
   const Tip = tooltip<(typeof rows)[number]>(
     (r) => `Week of ${r.week}`,
@@ -132,6 +141,7 @@ export function TrainingVolumeChart({
       label={label}
       legend={legend ? items : undefined}
       legendPlacement="bottom"
+      unit={labelled ? undefined : tonnes ? 't' : 'kg'}
       width={width}
       height={height}
       empty={weeks.length === 0}
@@ -150,15 +160,22 @@ export function TrainingVolumeChart({
               {...rechartsSize(width, height)}
               {...surfaceText(label, summary)}
             >
+              {!labelled && <R.CartesianGrid {...gridStyle} />}
               <R.XAxis
                 {...barXAxisStyle}
                 axisLine={false}
                 dataKey="week"
                 tickFormatter={weekLabel}
-                interval={tickInterval(rows.length, plotWidth, 0)}
+                interval={tickInterval(rows.length, plotWidth, labelled ? 0 : yAxisStyle.width)}
                 tick={{ ...barXAxisStyle.tick, fontSize: tokens.font.size.caption }}
               />
-              <R.YAxis hide domain={domain} />
+              <R.YAxis
+                {...yAxisStyle}
+                hide={labelled}
+                domain={domain}
+                ticks={labelled ? undefined : y.ticks}
+                tickFormatter={yTick}
+              />
               <R.Tooltip content={Tip} cursor={barCursor} />
               <R.BarStack stackId="volume" radius={[top, top, foot, foot]}>
                 {series.map((s) => (

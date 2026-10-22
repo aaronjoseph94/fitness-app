@@ -3,8 +3,9 @@
 // width)`, so they show at every width), Today's drifting clouds, and the two-layer ridge silhouette at its foot. It is
 // a full-bleed band: `minHeight` per variant (Today 660, inner 340, compact 280), 64 px of padding under its content
 // (the cream panel rides 44 px up over it), and `topInset` kept clear for a nav drawn over it. The decoration is
-// `aria-hidden` and ignores the pointer; its ambient loops stop under `prefers-reduced-motion`, and every animation in
-// the sky (Today's mountain included, which draws itself in here) pauses while the sky is scrolled off screen.
+// `aria-hidden` and ignores the pointer; its ambient loops stop under `prefers-reduced-motion`, and every ambient loop
+// (`skyLoop`: the stars, the sun, the clouds, Today's mountain route) pauses while the sky is scrolled off screen. A
+// one-shot entrance is never paused, so a page restored below its sky still finishes drawing its title and flags.
 import Box from '@mui/material/Box'
 import { keyframes } from '@mui/material/styles'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -97,6 +98,12 @@ const SUN = {
   },
 } as const
 
+/**
+ * Today's near cloud, px from the sky's top: 90 px above the mock's 250, behind the trend number (large text, 3:1)
+ * rather than the line under it — its pale core there left that 18 px line at 3.3:1 (theme.ts header).
+ */
+const NEAR_CLOUD_TOP = 160
+
 /** The ridge's two layers in a 1440 × 140 box, stretched to the sky's width (README §3). */
 const RIDGE = {
   back: 'M0,140 L0,96 C180,70 300,24 470,46 C640,68 730,8 900,30 C1070,52 1190,98 1440,78 L1440,140 Z',
@@ -112,11 +119,21 @@ const PHONE = theme.breakpoints.down('sm')
 /** Today's disc: off until the mountain stands beside the headline. */
 const TODAY_DISC = { display: 'none', [minWidth(layout.todayMountain)]: { display: 'block' } } as const
 
-/** A loop that stops under reduced motion (the element keeps its resting look). */
-const loop = (name: ReturnType<typeof keyframes>, duration: number, offset = 0) => ({
-  animation: `${name} ${duration}ms ease-in-out ${offset}ms infinite`,
+/**
+ * An ambient loop in the sky: it stops under reduced motion (the element keeps its resting look) and pauses while its
+ * sky is off screen (`data-paused` on the sky). Only loops pause: a one-shot entrance must always finish.
+ */
+export const skyLoop = (
+  name: ReturnType<typeof keyframes>,
+  duration: number,
+  offset = 0,
+  timing = 'ease-in-out',
+) => ({
+  animation: `${name} ${duration}ms ${timing} ${offset}ms infinite`,
   '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+  '[data-sky-hero][data-paused] &': { animationPlayState: 'paused' },
 })
+const loop = skyLoop
 
 export interface SkyHeroProps {
   /** `today` (660, the full sky with clouds), `inner` (340, the default) or `compact` (280: Ask AI, Settings). */
@@ -181,7 +198,7 @@ function SkyDecor({ variant }: { variant: HeroVariant }) {
             sx={{
               position: 'absolute',
               left: '8%',
-              top: 250,
+              top: NEAR_CLOUD_TOP,
               width: 420,
               height: 90,
               borderRadius: '50%',
@@ -229,7 +246,9 @@ function useOffscreen(el: HTMLElement | null): boolean {
   const [offscreen, setOffscreen] = useState(false)
   useEffect(() => {
     if (!el || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(([entry]) => setOffscreen(entry ? !entry.isIntersecting : false))
+    const observer = new IntersectionObserver(([entry]) =>
+      setOffscreen(entry ? !entry.isIntersecting : false),
+    )
     observer.observe(el)
     return () => observer.disconnect()
   }, [el])
@@ -257,8 +276,6 @@ export function SkyHero({ variant = 'inner', topInset, children, component = 'di
         background: variant === 'today' ? summit.sky.today : summit.sky.inner,
         color: summit.onSky.text,
         displayPrint: 'none',
-        // Off screen, nothing in the sky keeps animating (the stars, the sun, the clouds, the mountain's route).
-        '&[data-paused] *': { animationPlayState: 'paused' },
       }}
     >
       <SkyDecor variant={variant} />

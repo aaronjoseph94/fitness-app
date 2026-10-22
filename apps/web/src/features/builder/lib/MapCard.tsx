@@ -1,5 +1,5 @@
 // Owns: the builder's summary card in Train's "today card" idiom (1d Summit) — a white radius-30 card whose content sits
-// on the left and whose muscle map (220 px, its legend and a caption) sits in a warm well at 1fr : 260 px, the well
+// on the left and whose muscle map (200 px, its legend and a caption) sits in a warm well at 1fr : 260 px, the well
 // wrapping under the content when the two no longer fit (README §4). Shared by the workout builder and the AI workout
 // preview.
 import Box from '@mui/material/Box'

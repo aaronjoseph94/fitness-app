@@ -4,9 +4,9 @@
 // masking note) beside the latest scan's numbers (1 : 2), fat vs lean across scans (with the next scan's empty slot)
 // beside its segments and water (1.3 : 1), and every scan with its fat and lean change and the lean-loss guard, in a table that scrolls sideways on
 // a phone. Rows of cards wrap rather than squeeze (README §4).
-import AccessibilityNewOutlined from '@mui/icons-material/AccessibilityNewOutlined'
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import PieChartRounded from '@mui/icons-material/PieChartRounded'
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -89,7 +89,7 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
     <DeepSkyCard
       component="aside"
       eyebrow="Next scan"
-      icon={<AccessibilityNewOutlined aria-hidden sx={{ fontSize: 18, color: tokens.tone.success.light }} />}
+      icon={<PieChartRounded aria-hidden sx={{ fontSize: 18, color: tokens.tone.success.light }} />}
       ariaLabel="Next scan"
       testId="scan-due"
     >

@@ -1,18 +1,19 @@
 // Owns: Progress's weight cards (1d), from GET /api/trend — `WeightTrendCard` (the smoothed trend over the weigh-in
 // dots, the forecast to the summit, the dashed gold plan line from base camp, the deep-ink tooltip, and a footer with
-// the keys, the forecast summit date and its ± band), `CampsCard` (the deep-sky "Camps on the way": base camp, every
-// camp with its date, the next one pinging, the summit), and `WeeklyLossCard` (each whole week's loss against the
-// expected rate). Waist, scans and photos sit in the page's detail section.
+// the keys, the forecast summit date and its ± band) and `CampsCard` (the deep-sky "Camps on the way": base camp, every
+// camp with its date, the next one pinging, the summit, and the way to the scans). The weekly loss card is shared with
+// the Dashboard (./WeeklyLossCard); waist, scans and photos sit in the page's detail section.
 import Box from '@mui/material/Box'
-import { isoWeek } from '@fitness/shared/engine'
+import Link from '@mui/material/Link'
 import type { LocalDate, TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router'
 import type { ApiError } from '../../../api'
 import { useUiStore } from '../../../app/ui-store'
-import { frameHeight, WeeklyLossChart, WeightTrendChart } from '../../../charts'
+import { frameHeight, WeightTrendChart } from '../../../charts'
 import {
   cardSurface,
-  ChartCard,
   DeepSkyCard,
   displayTitle,
   EmptyState,
@@ -23,7 +24,7 @@ import {
   type LegendItem,
 } from '../../../components'
 import { copy } from '../../../copy'
-import { tokens } from '../../../theme'
+import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { MilestoneList } from './MilestoneList'
 import type { RangeKey } from './range'
 import {
@@ -33,7 +34,6 @@ import {
   lastTrend,
   milestoneList,
   waistPoints,
-  weeklyLoss,
   weightMilestones,
   weightPoints,
 } from './series'
@@ -47,25 +47,27 @@ const withYear = (date: LocalDate) => `${formatShortDate(date)}, ${date.slice(0,
 /** "2027-01-03" → "Jan 3", with the year only when it is not `year`. */
 const inYear = (date: LocalDate, year: string) =>
   date.startsWith(year) ? formatShortDate(date) : withYear(date)
-/** "2026-W40" → "40". */
-const weekNumber = (date: LocalDate) => String(Number(isoWeek(date).slice(6)))
-
-/** The plan line from base camp to the summit (series `planLine`). */
+/** The plan's base line from base camp to the summit (series `basePlan`). */
 export interface PlanLine {
   from: { date: LocalDate; kg: number }
   to: { date: LocalDate; kg: number }
   rate: number
 }
 
-/** A 1d card title row: the title on the left, a 13 px muted note on its baseline at the right (wrapping under). */
+/**
+ * A 1d card title row: the title on the left, a 13 px muted note on its baseline and an optional link at the right
+ * (wrapping under).
+ */
 function TitleRow({
   title,
   note,
+  action,
   id,
   onDark = false,
 }: {
   title: string
   note?: string
+  action?: ReactNode
   id: string
   onDark?: boolean
 }) {
@@ -97,6 +99,7 @@ function TitleRow({
           {note}
         </Box>
       )}
+      {action}
     </Box>
   )
 }
@@ -250,46 +253,32 @@ export function CampsCard({
         id="progress-camps-title"
         title={copy.milestonesTitle}
         note={rate !== null ? `at ${formatNumber(rate, 2)} kg a week` : undefined}
+        action={
+          // Gold on the deep sky (≥ 11:1); DeepSkyCard gives it the white keyboard ring with its deep-ink band.
+          <Link
+            component={RouterLink}
+            to="/scans"
+            underline="hover"
+            sx={{
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.label,
+              color: summit.gold.main,
+              '&:hover': { color: summit.deepSky.text },
+              [COARSE_POINTER_QUERY]: {
+                display: 'inline-flex',
+                alignItems: 'center',
+                minHeight: tokens.tapTarget,
+              },
+            }}
+          >
+            Scans
+          </Link>
+        }
         onDark
       />
       <Box sx={{ mt: '12px' }}>
         <MilestoneList items={items} start={start} goalKg={goalKg} whrNow={whrNow} />
       </Box>
     </DeepSkyCard>
-  )
-}
-
-export function WeeklyLossCard({ trend }: { trend: Trend }) {
-  if (!trend.data)
-    return <QueryStateCard query={trend} what="the weekly loss" height={190} titleSize="card" />
-  const rate = trend.data.forecast?.weekly_rate_kg ?? null
-  const weeks = weeklyLoss(trend.data.points, rate)
-  return (
-    <ChartCard
-      title="Weekly loss vs expected"
-      titleSize="card"
-      headingComponent="h3"
-      action={
-        weeks.length > 0 ? (
-          <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-            {weeks.length === 1
-              ? `Week ${weekNumber(weeks[0]!.week)}`
-              : `Weeks ${weekNumber(weeks[0]!.week)}–${weekNumber(weeks.at(-1)!.week)}`}
-          </Box>
-        ) : undefined
-      }
-      empty={
-        weeks.length
-          ? undefined
-          : { title: 'No full week yet', body: 'A full Monday–Sunday week of weigh-ins draws the first bar.' }
-      }
-      caption={
-        rate !== null
-          ? `Dashed line = ${formatNumber(rate, 2)} kg expected · trend change per Monday–Sunday week`
-          : 'Trend change per Monday–Sunday week'
-      }
-    >
-      <WeeklyLossChart weeks={weeks} height={150} legend={false} />
-    </ChartCard>
   )
 }

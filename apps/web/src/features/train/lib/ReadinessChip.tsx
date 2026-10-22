@@ -1,7 +1,8 @@
 // Owns: the readiness chip (SPEC §7, §9 readiness) — a 1d pill: a status-coloured dot, "Readiness 74 · full volume"
 // (under 40 flags reduced volume) and an info glyph; on the sky (Train's hero) a 46 px teal pill when readiness is good,
-// dark glass with an amber or coral dot otherwise; on a card a soft violet pill. On tap, what it is made of: last
-// night's sleep vs 7.5 h, yesterday's steps vs the 14-day median, days since the last session.
+// dark glass with a gold or coral dot otherwise; on a card a soft violet pill. On tap, what it is made of: last
+// night's sleep vs 7.5 h, yesterday's steps vs the 14-day median, days since the last session. Its score bands and their
+// colours (`readinessBand`, `readinessTone`, `readinessOnSky`) are the session hero's readiness stat's too.
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -15,22 +16,28 @@ import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 const GOOD_FROM = 70
 const REDUCED_BELOW = 40
 
-/** The status dot's colour: danger under 40, warning under 70, else the solid success green. */
-export function readinessTone(score: number): string {
-  return score < REDUCED_BELOW
-    ? tokens.tone.danger.text
-    : score < GOOD_FROM
-      ? tokens.tone.warning.text
-      : tokens.tone.success.solid
+/** good: from 70 · moderate: under 70 · low: under 40, where the session suggests reduced volume (SPEC §9). */
+export type ReadinessBand = 'good' | 'moderate' | 'low'
+
+export function readinessBand(score: number): ReadinessBand {
+  return score < REDUCED_BELOW ? 'low' : score < GOOD_FROM ? 'moderate' : 'good'
 }
 
-/** The dot on the sky: white on the teal pill, else gold (moderate) or coral (low) on the dark glass. */
-function skyDot(score: number): string {
-  return score < REDUCED_BELOW
-    ? tokens.summit.coral.main
-    : score < GOOD_FROM
-      ? tokens.summit.gold.main
-      : tokens.summit.onSky.text
+/** The status dot's colour on a card: danger when low, warning when moderate, else the solid success green. */
+export function readinessTone(score: number): string {
+  return {
+    low: tokens.tone.danger.text,
+    moderate: tokens.tone.warning.text,
+    good: tokens.tone.success.solid,
+  }[readinessBand(score)]
+}
+
+/**
+ * Readiness on the sky: gold when moderate, coral when low (both ≥ 6:1 on the night sky); when good, `good` — the
+ * chip's white dot on its teal pill, or the light teal of a figure written straight on the sky (the session's stat).
+ */
+export function readinessOnSky(score: number, good: string = tokens.summit.onSky.text): string {
+  return { low: tokens.summit.coral.main, moderate: tokens.summit.gold.main, good }[readinessBand(score)]
 }
 
 const { summit } = tokens
@@ -39,7 +46,7 @@ export function ReadinessChip({ readiness, onSky = false }: { readiness: Readine
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const detailsId = useId()
   const good = readiness.score >= GOOD_FROM
-  const tone = onSky ? skyDot(readiness.score) : readinessTone(readiness.score)
+  const tone = onSky ? readinessOnSky(readiness.score) : readinessTone(readiness.score)
   const volume = readiness.reduced_volume ? 'reduced volume' : 'full volume'
   const rows: [string, string][] = [
     [

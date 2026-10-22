@@ -139,21 +139,29 @@ export const BAR_RADIUS: [number, number, number, number] = [
 export const barCursor = { fill: tokens.chart.grid, radius: tokens.chart.barRadius * 2 } as const
 export const lineCursor = { stroke: tokens.ink.border, strokeWidth: 1 } as const
 /**
- * `color` at `alpha` over the card, as an opaque hex: 2a's lighter steps of a metric (a meal stack's lunch and dinner,
- * a day under target) without gridlines showing through the bar, and legible as a tooltip key on the dark tooltip.
- * Each channel: round(alpha × c + (1 − alpha) × card).
+ * Two "#rrggbb" token colours mixed per channel, as an opaque hex: mix(a, b, t) = round(a + (b − a) × t), t in 0–1
+ * (0 = a, 1 = b). A step between a ramp's two ends, or a colour laid over the card (`tintOnCard`).
  */
-export function tintOnCard(color: string, alpha: number): string {
+export function mix(a: string, b: string, t: number): string {
   const parse = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
-  const fg = parse(color)
-  const bg = parse(tokens.ink.card)
-  return `#${fg
+  const from = parse(a)
+  const to = parse(b)
+  return `#${from
     .map((c, i) =>
-      Math.round(alpha * c + (1 - alpha) * bg[i]!)
+      Math.round(c + (to[i]! - c) * t)
         .toString(16)
         .padStart(2, '0'),
     )
     .join('')}`
+}
+
+/**
+ * `color` at `alpha` over the card, as an opaque hex: 2a's lighter steps of a metric (a meal stack's lunch and dinner,
+ * a day under target) without gridlines showing through the bar, and legible as a tooltip key on the dark tooltip.
+ * tintOnCard(c, alpha) = mix(card, c, alpha): each channel round(card + (c − card) × alpha).
+ */
+export function tintOnCard(color: string, alpha: number): string {
+  return mix(tokens.ink.card, color, alpha)
 }
 
 /**

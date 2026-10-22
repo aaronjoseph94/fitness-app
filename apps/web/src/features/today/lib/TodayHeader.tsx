@@ -25,7 +25,7 @@ import {
   useEntrance,
 } from '../../../components'
 import { copy } from '../../../copy'
-import { enterEasing, tokens } from '../../../theme'
+import { enterEasing, theme, tokens } from '../../../theme'
 import type { Climb } from './climb'
 
 const { summit, font } = tokens
@@ -163,6 +163,7 @@ function NextCampCard({ climb }: { climb: Climb }) {
         boxSizing: 'border-box',
         borderRadius: `${summit.radius.small}px`,
         bgcolor: summit.glass.card,
+        [theme.breakpoints.down('sm')]: { bgcolor: summit.glass.cardStrong },
         border: `1px solid ${summit.glass.cardBorder}`,
         backdropFilter: `blur(${summit.glass.cardBlur}px)`,
         color: summit.onSky.text,
@@ -254,7 +255,9 @@ export function TrendFacts({ climb, rawKg, rawPending, change7dKg, action }: Tre
       )}
       {action && (
         <Reveal delay={1000}>
-          <Box sx={{ ...skyControls, display: 'flex', flexWrap: 'wrap', gap: '10px', mt: '22px' }}>{action}</Box>
+          <Box sx={{ ...skyControls, display: 'flex', flexWrap: 'wrap', gap: '10px', mt: '22px' }}>
+            {action}
+          </Box>
         </Reveal>
       )}
     </>

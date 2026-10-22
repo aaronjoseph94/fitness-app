@@ -11,7 +11,7 @@ export { useEntrance, type Entrance } from './lib/useEntrance'
 export { CountUp, type CountUpProps } from './lib/CountUp'
 export { PageHeader, skyControls, visuallyHidden, type PageHeaderProps } from './lib/PageHero'
 export { HeroSlotProvider, useHeroSlot, type HeroSlot } from './lib/heroSlot'
-export { SkyHero, type SkyHeroProps } from './lib/SkyHero'
+export { SkyHero, skyLoop, type SkyHeroProps } from './lib/SkyHero'
 export { SummitPanel, type SummitPanelProps } from './lib/SummitPanel'
 export { WrapRow, wrapCol, fixedCol, type WrapRowProps } from './lib/WrapRow'
 export {

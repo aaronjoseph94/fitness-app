@@ -10,7 +10,7 @@
 // fat and fibre targets (the gauges carry the rest), and what the plan changed from last week. Days come from the week
 // view's actuals and plan; without a week plan, today's targets and the settings' training days.
 import CheckRounded from '@mui/icons-material/CheckRounded'
-import DonutLargeRounded from '@mui/icons-material/DonutLargeRounded'
+import PieChartRounded from '@mui/icons-material/PieChartRounded'
 import TimerRounded from '@mui/icons-material/TimerRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -435,7 +435,7 @@ export function ThisWeekCard({
           {nextScan && (
             <WellRow
               icon={
-                <DonutLargeRounded
+                <PieChartRounded
                   aria-hidden
                   sx={{ fontSize: 20, color: tokens.tone.success.light, flex: 'none' }}
                 />

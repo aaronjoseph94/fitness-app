@@ -20,7 +20,7 @@ export type FatLeanBar =
 
 /** The plot's height, px; bar heights are computed against it (README: 260). */
 const PLOT_HEIGHT = 260
-/** At most this many columns (the latest scans, the next one, the summit), so the bars keep their minimum width on a phone. */
+/** At most this many columns (the latest scans, the next one, the summit): the bars keep their minimum width on a phone. */
 const MAX_COLUMNS = 7
 /** One bar's width and the gap inside a pair (README §4). */
 const BAR_WIDTH = 'clamp(12px, 7cqi, 44px)'
@@ -30,9 +30,9 @@ const AXIS = 40
 const RIGHT = 10
 
 const columnGap = 'clamp(6px, 3cqi, 20px)'
+const columnPad = '0 clamp(4px, 3cqi, 20px)'
 /** The summit's pair is not measured: its dashed outlines (and their legend mark) are drawn faded. */
 const TARGET_OPACITY = 0.55
-const columnPad = '0 clamp(4px, 3cqi, 20px)'
 
 /** The axis top: the tallest value with 10 % headroom, up to the next 10 kg (59.6 → 70). */
 export function axisTop(values: readonly number[]): number {

@@ -6,13 +6,13 @@
 // history. `LatestDay` is the latest day's targets as a slim white strip. Everything comes from the same window, so
 // neither can disagree with it. (The expenditure estimate moved to the page's subtitle, as 1d draws it.)
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded'
-import AccessibilityNewRounded from '@mui/icons-material/AccessibilityNewRounded'
 import BedtimeRounded from '@mui/icons-material/BedtimeRounded'
 import DirectionsWalkRounded from '@mui/icons-material/DirectionsWalkRounded'
 import EggAltRounded from '@mui/icons-material/EggAltRounded'
 import LocalFireDepartmentRounded from '@mui/icons-material/LocalFireDepartmentRounded'
 import WaterDropRounded from '@mui/icons-material/WaterDropRounded'
 import FlagRounded from '@mui/icons-material/FlagRounded'
+import PieChartRounded from '@mui/icons-material/PieChartRounded'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import type { SvgIconComponent } from '@mui/icons-material'
@@ -36,7 +36,13 @@ import {
 import { copy } from '../../../copy'
 import { COARSE_POINTER_QUERY, enterEasing, tokens, type MetricKey } from '../../../theme'
 import { confirmedScans } from '../../scans/charts'
-import { effectiveRate, lastTrend, milestoneTimelines, SLEEP_TARGET_H } from '../../progress/series'
+import {
+  effectiveRate,
+  lastTrend,
+  milestoneTimelines,
+  paceVersusPlan,
+  SLEEP_TARGET_H,
+} from '../../progress/series'
 import type { DashboardData } from './useDashboardData'
 
 /** SPEC §2: a planned fast lasts 24 h. */
@@ -151,10 +157,12 @@ export interface GoalFacts {
   /** start − now and start − goal, kg. */
   doneKg: number | null
   totalKg: number | null
-  /** The rate that lands the goal on its date: (now − goal) / (weeks from today to goal_date). */
+  /** The rate that lands the goal on its date: (now − goal) / (weeks from today to goal_date) (`paceVersusPlan`). */
   requiredRate: number | null
   /** The forecast's own rate and the date it reaches the goal. */
   forecastRate: number | null
+  /** Whether the forecast lands the goal by its date: forecastRate ≥ requiredRate (`paceVersusPlan`). */
+  ahead: boolean | null
   finishDate: LocalDate | null
   /** The next weight milestone not yet reached, with its forecast date. */
   nextMilestone: { label: string; date: LocalDate | null } | null
@@ -169,7 +177,13 @@ export function goalFacts(data: DashboardData): GoalFacts {
   const goalKg = profile?.goal_weight_kg ?? null
   const goalDate = profile?.goal_date ?? null
   const forecast = data.trend?.forecast ?? null
-  const weeksLeft = goalDate ? daysBetween(data.to, goalDate) / 7 : 0
+  const pace = paceVersusPlan({
+    nowKg,
+    goalKg,
+    today: data.to,
+    goalDate,
+    weeklyRateKg: forecast?.weekly_rate_kg,
+  })
   const timelines =
     data.trend && goalKg !== null
       ? milestoneTimelines(
@@ -188,11 +202,9 @@ export function goalFacts(data: DashboardData): GoalFacts {
     progress: goalProgress(startKg, nowKg, goalKg),
     doneKg: startKg !== null && nowKg !== null ? startKg - nowKg : null,
     totalKg: startKg !== null && goalKg !== null ? startKg - goalKg : null,
-    requiredRate:
-      nowKg !== null && goalKg !== null && weeksLeft > 0 && nowKg > goalKg
-        ? (nowKg - goalKg) / weeksLeft
-        : null,
-    forecastRate: forecast && forecast.weekly_rate_kg > 0 ? forecast.weekly_rate_kg : null,
+    requiredRate: pace.requiredRate,
+    forecastRate: pace.forecastRate,
+    ahead: pace.ahead,
     finishDate: forecast?.finish_date ?? null,
     nextMilestone: next ? { label: next.label, date: next.expectedOn ?? null } : null,
   }
@@ -391,10 +403,7 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
     ? addDays(lastScan.date, data.settings?.scan_interval_days ?? DEFAULT_SCAN_INTERVAL_DAYS)
     : null
 
-  const ahead =
-    facts.forecastRate !== null && facts.requiredRate !== null
-      ? facts.forecastRate >= facts.requiredRate
-      : null
+  const ahead = facts.ahead
   const week = facts.startDate ? Math.floor(Math.max(0, daysBetween(facts.startDate, today)) / 7) + 1 : null
   const headline =
     week === null
@@ -487,7 +496,7 @@ export function GoalRail({ data, facts }: { data: DashboardData; facts: GoalFact
           }
         />
         <RailRow
-          icon={<AccessibilityNewRounded aria-hidden sx={{ ...glyph, color: tokens.tone.success.light }} />}
+          icon={<PieChartRounded aria-hidden sx={{ ...glyph, color: tokens.tone.success.light }} />}
           label={
             <Link
               component={RouterLink}

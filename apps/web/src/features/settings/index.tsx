@@ -6,11 +6,11 @@
 // next due date), and the deep-sky "About this data". Reads GET /api/settings (and the key statuses and the scan
 // schedule); every change is one PATCH /api/settings, shown at once and rolled back if the Worker refuses. Needs a
 // connection.
-import AccessibilityNewOutlined from '@mui/icons-material/AccessibilityNewOutlined'
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined'
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined'
 import LockOutlined from '@mui/icons-material/LockOutlined'
 import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
+import PieChartOutlined from '@mui/icons-material/PieChartOutlined'
 import WatchOutlined from '@mui/icons-material/WatchOutlined'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -389,7 +389,7 @@ export function SettingsPage() {
             <RowGrid>
               <LinkRow icon={HistoryOutlined} iconTint={TINT.plan} label="Plan history" to="/plan" />
               <LinkRow
-                icon={AccessibilityNewOutlined}
+                icon={PieChartOutlined}
                 iconTint={TINT.scans}
                 label="Scans"
                 note={scanDue ? `next ${formatShortDate(scanDue)}` : undefined}

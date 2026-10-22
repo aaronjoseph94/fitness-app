@@ -26,6 +26,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import {
   cardSurface,
+  deepSkySurface,
   deepSkyWell,
   displayTitle,
   EmptyState,
@@ -53,7 +54,7 @@ import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { ExerciseLogCard } from './ExerciseLogCard'
 import { LEFT_OUT, setCounts, type LoggerSession } from './logger-model'
 import { loggerState, useLoggerStore } from './logger-store'
-import { ReadinessChip } from './ReadinessChip'
+import { ReadinessChip, readinessOnSky } from './ReadinessChip'
 import { finishSession } from './sync'
 
 const ORIGIN_LABEL = {
@@ -226,7 +227,10 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               <StatUnit> kg</StatUnit>
             </Stat>
             {session.readiness && (
-              <Stat label="Readiness" colour={tokens.tone.success.light}>
+              <Stat
+                label="Readiness"
+                colour={readinessOnSky(session.readiness.score, tokens.tone.success.light)}
+              >
                 {session.readiness.score}
               </Stat>
             )}
@@ -553,14 +557,7 @@ function RailCard({
     <Box
       component="section"
       sx={{
-        ...(deep
-          ? {
-              background: summit.deepSky.bg,
-              color: summit.deepSky.text,
-              boxShadow: summit.deepSky.shadow,
-              borderRadius: `${summit.radius.large}px`,
-            }
-          : cardSurface),
+        ...(deep ? deepSkySurface : cardSurface),
         position: 'relative',
         overflow: 'hidden',
         minWidth: 0,

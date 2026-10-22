@@ -46,10 +46,11 @@ import type {
   Weekday,
 } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { apiQueryKey, call, isApiError, problemText } from '../../../api'
 import {
+  deepSkySurface,
   deepSkyWell,
   displayTitle,
   eyebrow,
@@ -247,15 +248,12 @@ export function WeekSplitCard({
       aria-labelledby="week-split-title"
       data-testid="week-split"
       sx={{
+        ...deepSkySurface,
         position: 'relative',
         overflow: 'hidden',
         minWidth: 0,
         px: { xs: '22px', sm: '28px' },
         py: '24px',
-        borderRadius: `${summit.radius.large}px`,
-        background: summit.deepSky.bg,
-        color: summit.deepSky.text,
-        boxShadow: summit.deepSky.shadow,
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 12px' }}>
@@ -310,13 +308,17 @@ export function WeekSplitCard({
         Pick the days you train and generate a workout for each. The days you pick become your training days.
       </Box>
 
-      {/* The seven days scroll sideways inside the card when they no longer fit (README §4). */}
+      {/* The seven days scroll sideways inside the card when they no longer fit (README §4). A scroller clips on both
+          axes, so it keeps TILE_HALO of padding above and below the tiles — room for the gold focus ring and today's
+          24 px glow — and takes the same back from its margins, so the tiles sit where they did (18 px under the
+          intro, 16 px over the preview). */}
       <Box
         sx={{
-          mt: '18px',
+          mt: `${18 - TILE_HALO}px`,
+          mb: `${16 - 10 - TILE_HALO}px`,
           mx: { xs: '-22px', sm: '-28px' },
           px: { xs: '22px', sm: '28px' },
-          pb: '6px',
+          py: `${TILE_HALO}px`,
           overflowX: 'auto',
           overscrollBehaviorX: 'contain',
           scrollbarWidth: 'thin',
@@ -505,6 +507,9 @@ export function WeekSplitCard({
   )
 }
 
+/** Room around the day tiles inside their scroller for today's glow (24 px blur, faint by its last few px) and the ring. */
+const TILE_HALO = 20
+
 /** What a day tile looks like: done (gold), today (white), a picked day ahead (dashed), fast (coral), rest (dim). */
 function tileLook({
   picked,
@@ -608,11 +613,15 @@ function DayTile({
             ? 'No workout yet'
             : 'Generate to draft'
   const surface = { bgcolor: look.bg, color: look.text, border: look.border, boxShadow: look.glow }
+  // The name is the weekday (Train's e2e finds the tile by it); the split's name and what the day holds are its
+  // description, so assistive tech hears "Wednesday, Upper B, Generate to draft" rather than the weekday alone.
+  const id = useId()
   return (
     <ToggleButton
       {...group}
       value={value}
       aria-label={today ? `${long}, today` : long}
+      aria-describedby={meta ? `${id}-name ${id}-meta` : `${id}-name`}
       data-testid="day-chip"
       sx={{
         // Three classes deep, to outrank the theme's segmented-control look on a grouped button.
@@ -652,6 +661,7 @@ function DayTile({
       </Box>
       <Box
         component="span"
+        id={`${id}-name`}
         sx={{
           display: 'block',
           mt: '8px',
@@ -664,6 +674,7 @@ function DayTile({
       </Box>
       <Box
         component="span"
+        id={`${id}-meta`}
         sx={{
           display: 'block',
           minHeight: '1.3em',

@@ -14,7 +14,7 @@ import Box from '@mui/material/Box'
 import { keyframes } from '@mui/material/styles'
 import { memo, useId, useLayoutEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { formatNumber, formatShortDate, Reveal, useEntrance } from '../../../components'
+import { formatNumber, formatShortDate, Reveal, skyLoop, useEntrance } from '../../../components'
 import { copy } from '../../../copy'
 import { enterEasing, reducedEntrance, tokens, withAlpha } from '../../../theme'
 import type { Climb } from './climb'
@@ -59,10 +59,9 @@ const ping = keyframes`
   0% { opacity: 0.9; transform: scale(1); }
   80%, 100% { opacity: 0; transform: scale(2.4); }
 `
-const loop = (name: ReturnType<typeof keyframes>, ms: number, timing = 'ease-in-out') => ({
-  animation: `${name} ${ms}ms ${timing} infinite`,
-  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-})
+/** The mountain's ambient loops: the sky's own rule (stop under reduced motion, pause while the sky is off screen). */
+const loop = (name: ReturnType<typeof keyframes>, ms: number, timing = 'ease-in-out') =>
+  skyLoop(name, ms, 0, timing)
 
 /** A pop-in at `delay` ms (scale and fade; a cross-fade under reduced motion). */
 function usePop(delay: number) {

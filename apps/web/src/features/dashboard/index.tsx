@@ -28,7 +28,8 @@ import {
 } from '../../components'
 import { copy } from '../../copy'
 import { tokens, transitionOf } from '../../theme'
-import { BodySection, CompositionCard, WeeklyLossCard } from './lib/BodySection'
+import { WeeklyLossCard } from '../progress/cards'
+import { BodySection, CompositionCard } from './lib/BodySection'
 import { GoalRail, goalFacts, LatestDay } from './lib/GoalRail'
 import { dashboardKpis } from './lib/kpis'
 import { KpiBand } from './lib/KpiBand'
@@ -40,6 +41,9 @@ import { DEFAULT_WINDOW, useDashboardData, WINDOWS, type WindowKey } from './lib
 function isWindowKey(value: string | null): value is WindowKey {
   return WINDOWS.some((w) => w.key === value)
 }
+
+/** The weekly loss bars' plot height (1d: 150 px of bars plus their labels). */
+const LOSS_HEIGHT = 170
 
 /** README §2: 26 px between a page's rows of cards. */
 const ROW_GAP = tokens.rhythm.section
@@ -187,7 +191,12 @@ export function DashboardPage() {
         />
         <WrapRow>
           {[
-            { ratio: 1.2, card: <WeeklyLossCard data={data} /> },
+            {
+              ratio: 1.2,
+              card: (
+                <WeeklyLossCard trend={data.trend} height={LOSS_HEIGHT} fill testId="dashboard-weekly-loss" />
+              ),
+            },
             { ratio: 1, card: <CompositionCard data={data} /> },
             { ratio: 1.1, card: <MacrosCard data={data} /> },
           ].map(({ ratio, card }, i) => (

@@ -1,6 +1,7 @@
-// Owns: the water quick-add — the day's total against its target, one-tap 250 / 500 / 750 ml chips and a custom
-// amount (POST /api/water with a client id and the time it was drunk), and Undo for the last tap (DELETE /api/water/:id,
-// queued like the add when offline). The sheet stays open so taps can repeat.
+// Owns: the water quick-add — the day's total against its target, one-tap 250 / 500 / 750 ml chips (outlined in the
+// sheet, or 1d's teal tiles on the water tint where a page asks for them: the Log tab) and a custom amount (POST
+// /api/water with a client id and the time it was drunk), and Undo for the last tap (DELETE /api/water/:id, queued like
+// the add when offline). The sheet stays open so taps can repeat.
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,7 +19,7 @@ import {
   statValue,
   tabularNums,
 } from '../../../components'
-import { tokens } from '../../../theme'
+import { metricTint, tokens } from '../../../theme'
 import { instantOnDate, todayLocal } from './dates'
 import { useWater } from './reads'
 import { type LogNotice } from './ui'
@@ -27,7 +28,23 @@ import { problemText } from '../../../api'
 
 const QUICK_ML = [250, 500, 750] as const
 
-export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice: LogNotice) => void }) {
+/** The quick amounts as 1d's Log tab draws them: teal text on the water tint, the success border's tint on hover. */
+const TILE_SX = {
+  bgcolor: metricTint('water'),
+  color: tokens.tone.success.text,
+  '&:hover': { bgcolor: tokens.tone.success.border },
+} as const
+
+export function WaterForm({
+  date,
+  onLogged,
+  tone = 'outlined',
+}: {
+  date: string
+  onLogged?: (notice: LogNotice) => void
+  /** The quick amounts' look: `outlined` buttons (the sheet, default) or `tiles`, teal on the water tint (Log). */
+  tone?: 'outlined' | 'tiles'
+}) {
   const water = useWater(date)
   const add = useLogMutation(endpoints.water.create)
   const remove = useLogMutation(endpoints.water.delete)
@@ -118,7 +135,13 @@ export function WaterForm({ date, onLogged }: { date: string; onLogged?: (notice
             variant="outlined"
             onClick={() => log(ml)}
             data-testid={`water-${ml}`}
-            sx={{ px: 1, minWidth: 0, whiteSpace: 'nowrap', ...tabularNums }}
+            sx={{
+              px: 1,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              ...tabularNums,
+              ...(tone === 'tiles' && TILE_SX),
+            }}
           >
             +{ml} ml
           </Button>

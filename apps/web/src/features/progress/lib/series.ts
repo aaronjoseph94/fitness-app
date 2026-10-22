@@ -126,7 +126,20 @@ export function forecastBandDates(
   return early && late ? { early, late } : null
 }
 
-/** Date the trend reaches `kg` at `rate` kg/week from `from`: from.date + ⌈(from.kg − kg) / rate × 7⌉ days. */
+/**
+ * The forecast band's half-width as a share of its rate, in whole percent (SPEC §9: ±20 %):
+ *   round((band.high − band.low) / 2 / weekly_rate_kg × 100)
+ * Null unless the rate is a loss.
+ */
+export function forecastBandPercent(
+  forecast: Pick<Forecast, 'weekly_rate_kg' | 'band'> | null | undefined,
+): number | null {
+  return forecast && forecast.weekly_rate_kg > 0
+    ? Math.round(((forecast.band.high - forecast.band.low) / 2 / forecast.weekly_rate_kg) * 100)
+    : null
+}
+
+/** Date the trend reaches `kg` at `rate` kg/week from `from`:from.date + ⌈(from.kg − kg) / rate × 7⌉ days. */
 export function expectedOn(
   kg: number,
   from: { date: LocalDate; kg: number } | null,
@@ -217,11 +230,12 @@ export function milestoneList(
 }
 
 /**
- * The plan's line from base camp to the summit: start weight on the start date to goal weight on the goal date, and
- * its rate in kg a week = (start − goal) / (days from start to goal ÷ 7). Null without a goal below the start or a goal
- * date after the start.
+ * The plan's base line from base camp to the summit: start weight on the start date to goal weight on the goal date,
+ * and its rate in kg a week = (start − goal) / (days from start to goal ÷ 7). Null without a goal below the start or a
+ * goal date after the start. (The chart draws it as the dashed gold plan line; pace against the plan is
+ * `paceVersusPlan`, from today, not this line's slope.)
  */
-export function planLine(
+export function basePlan(
   profile: {
     start_date: LocalDate
     start_weight_kg: number
@@ -237,6 +251,42 @@ export function planLine(
     from: { date: profile.start_date, kg: profile.start_weight_kg },
     to: { date: profile.goal_date, kg: profile.goal_weight_kg },
     rate: kg / (days / 7),
+  }
+}
+
+/** Where the trend's pace stands against the goal date. Rates are kg lost per week. */
+export interface Pace {
+  /** The weekly loss the goal date still needs from today; null at or under the goal, or with no goal date ahead. */
+  requiredRate: number | null
+  /** The forecast's own weekly loss; null unless it is a loss. */
+  forecastRate: number | null
+  /** Whether the forecast lands the goal by its date; null when either rate is missing. */
+  ahead: boolean | null
+}
+
+/**
+ * Pace versus plan — "ahead" means the forecast reaches the goal by the goal date:
+ *   required = (now − goal) / (days from today to goal_date ÷ 7)   (null unless now > goal and goal_date > today)
+ *   forecast = weekly_rate_kg                                       (null unless > 0)
+ *   ahead    = forecast ≥ required                                  (null when either is null)
+ * The Dashboard's trend card and "Against the plan" rail and Progress's hero all read it, so they never disagree.
+ */
+export function paceVersusPlan(input: {
+  nowKg: number | null
+  goalKg: number | null
+  today: LocalDate
+  goalDate: LocalDate | null
+  weeklyRateKg: number | null | undefined
+}): Pace {
+  const { nowKg, goalKg, goalDate, weeklyRateKg } = input
+  const weeksLeft = goalDate ? daysBetween(input.today, goalDate) / 7 : 0
+  const requiredRate =
+    nowKg !== null && goalKg !== null && weeksLeft > 0 && nowKg > goalKg ? (nowKg - goalKg) / weeksLeft : null
+  const forecastRate = typeof weeklyRateKg === 'number' && weeklyRateKg > 0 ? weeklyRateKg : null
+  return {
+    requiredRate,
+    forecastRate,
+    ahead: requiredRate !== null && forecastRate !== null ? forecastRate >= requiredRate : null,
   }
 }
 

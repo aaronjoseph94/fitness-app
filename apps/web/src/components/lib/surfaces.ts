@@ -1,8 +1,8 @@
 // Owns: the 1d surface recipes as `sx` fragments, for an element that is not a kit component but must look like one —
 // a link styled as a card, a custom tile, an outlined icon button, a stat's big figure — so no feature re-types a
-// border, a radius, a shadow or a type role; and the keyboard ring for the dark surfaces (the sky, the deep-sky and
-// coach cards), where the theme's violet ring is 1.09:1. `Panel`, `ListRow variant="card"` and `EmptyState` are built
-// from the same values.
+// border, a radius, a shadow or a type role; and the keyboard ring for the sky and the dark cards (the deep-sky and
+// coach cards), where the theme's violet ring is 1.09:1 on plum. `Panel`, `ListRow variant="card"` and `EmptyState`
+// are built from the same values.
 import { tokens } from '../../theme'
 
 const { summit } = tokens
@@ -12,21 +12,23 @@ const lightRing = {
   outlineOffset: tokens.focusRing.offset,
 } as const
 
-/** A keyboard ring that reads on the sky or a dark card: white, 2 px, 2 px out. Spread into the control's own `sx`. */
+/**
+ * A keyboard ring for a control on the sky's dark top (the nav) or the phone's dark tab bar: white, 2 px, 2 px out.
+ * Spread into the control's own `sx`.
+ */
 export const skyFocus = { '&.Mui-focusVisible, &:focus-visible': lightRing } as const
 
-const FOCUSED = '& .MuiButtonBase-root.Mui-focusVisible, & a:focus-visible, & button:focus-visible'
-
-/** The same white ring for every button and link inside the sky's hero row. */
-export const skyFocusWithin = { [FOCUSED]: lightRing } as const
-
 /**
- * The ring inside a deep-sky or coach card, which may hold a light well (a proposed plan's soft violet banner): the
- * white ring with a deep-ink band filling its 2 px gap, so one of the two reads on either surface (white 4.65+ on the
- * gradients, deep ink 14+ on a light well).
+ * The ring for every button and link inside a container whose ground runs from dark to light — the hero row (the
+ * sky's plum top to its coral and peach foot) and the deep-sky and coach cards (which may hold a light well, such as a
+ * proposed plan's banner): the white ring with a deep-ink band filling its 2 px gap, so one of the two clears 3:1 on
+ * any of them (white ≥ 4.6 on the plum and the dark cards; deep ink ≥ 6.2 on the coral and peach and 13+ on a well).
  */
-export const darkCardFocusWithin = {
-  [FOCUSED]: { ...lightRing, boxShadow: `0 0 0 ${tokens.focusRing.offset}px ${summit.ink.deep}` },
+export const skyFocusWithin = {
+  '& .MuiButtonBase-root.Mui-focusVisible, & a:focus-visible, & button:focus-visible': {
+    ...lightRing,
+    boxShadow: `0 0 0 ${tokens.focusRing.offset}px ${summit.ink.deep}`,
+  },
 } as const
 
 /** A white card: radius 30, the soft violet card shadow, no border (1d). */

@@ -15,10 +15,10 @@ import {
   formatShortDate,
   formatWeekday,
   PendingBadge,
+  StatusChip,
   visuallyHidden,
 } from '../../../components'
 import { tokens, transitionOf } from '../../../theme'
-import { GoldChip } from './GoldChip'
 import { setCounts, type LoggerSession } from './logger-model'
 import { sessionPath, templateName } from './session'
 
@@ -285,7 +285,7 @@ export function RecentSessions({
                 {r.minutes !== null && ` · ${r.minutes} min`}
               </Box>
             </Box>
-            {r.pr && <GoldChip size="small" label="PR" />}
+            {r.pr && <StatusChip tone="gold" size="small" label="PR" />}
             {r.status === 'unsynced' && <PendingBadge label="Not synced" />}
             {r.status === 'open' && <PendingBadge label="Open" />}
             <ChevronRightRounded sx={{ fontSize: 20, color: tokens.ink.faint, flex: 'none' }} aria-hidden />

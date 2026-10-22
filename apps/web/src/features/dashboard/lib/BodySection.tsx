@@ -1,14 +1,12 @@
-// Owns: the Dashboard's body cards (1d) — `WeeklyLossCard` and `CompositionCard`, which open the row under the KPI
-// tiles (weekly loss against the expected rate with the dashed gold line; the latest Evolt scan's body fat, visceral
-// level and fat / lean split), and `BodySection`, the detail section further down: the weight journey (trend so far,
-// then the forecast to the summit with its camps) beside the waist and waist-to-hip ratio from the tape, then the camp
-// timelines. Everything comes from the dashboard's own window: `data.trend` (GET /api/trend: points, forecast,
+// Owns: the Dashboard's body cards (1d) — `CompositionCard`, in the row under the KPI tiles beside Progress's shared
+// weekly loss card (the latest Evolt scan's body fat, visceral level and fat / lean split), and `BodySection`, the
+// detail section further down: the weight journey (trend so far, then the forecast to the summit with its camps) beside
+// the waist and waist-to-hip ratio from the tape, then the camp timelines. Everything comes from the dashboard's own window: `data.trend` (GET /api/trend: points, forecast,
 // measurements, milestones) and `data.scans` (GET /api/scans).
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
-import type { Forecast } from '@fitness/shared/schemas'
 import { Link as RouterLink, useNavigate } from 'react-router'
-import { MilestoneTimeline, WaistWhrChart, WeeklyLossChart, WeightTrendChart } from '../../../charts'
+import { MilestoneTimeline, WaistWhrChart, WeightTrendChart } from '../../../charts'
 import {
   ChartCard,
   formatNumber,
@@ -25,11 +23,11 @@ import { enterEasing, metricGradient, metricTint, tokens } from '../../../theme'
 import { confirmedScans } from '../../scans/charts'
 import {
   effectiveRate,
+  forecastBandPercent,
   forecastPath,
   lastTrend,
   milestoneTimelines,
   waistPoints,
-  weeklyLoss,
   weightMilestones,
   weightPoints,
 } from '../../progress/series'
@@ -49,8 +47,6 @@ const DEFAULT_GOAL_KG = 65
 const JOURNEY_HEIGHT = 220
 /** The waist and WHR panels together: 110 px each, so the row ends level with the journey beside it. */
 const WAIST_HEIGHT = 220
-/** The weekly loss bars' plot height (1d: 150 px of bars plus their labels). */
-const LOSS_HEIGHT = 170
 
 export function BodySection({ data }: { data: DashboardData }) {
   const openQuickLog = useUiStore((s) => s.openQuickLog)
@@ -88,7 +84,7 @@ export function BodySection({ data }: { data: DashboardData }) {
     last && trend.forecast ? effectiveRate(last, trend.forecast, goalKg) : null,
   )
   const waist = waistPoints(trend.measurements)
-  const band = bandPercent(trend.forecast)
+  const band = forecastBandPercent(trend.forecast)
   const journey = trend.forecast
     ? `Trend so far, then ${formatNumber(trend.forecast.weekly_rate_kg, 2)} kg a week to the ${copy.goalLabel} at ${formatNumber(goalKg, 0)} kg${band ? ` · band ±${band} %` : ''}`
     : `Trend so far; the ${copy.goalLabel} is ${formatNumber(goalKg, 0)} kg`
@@ -152,62 +148,6 @@ export function BodySection({ data }: { data: DashboardData }) {
         </ChartCard>
       </Box>
     </DashboardSection>
-  )
-}
-
-/** The forecast band's half-width as a share of its rate, in whole percent (SPEC §9: ±20 %). */
-function bandPercent(forecast: Forecast | null | undefined): number | null {
-  return forecast && forecast.weekly_rate_kg > 0
-    ? Math.round(((forecast.band.high - forecast.band.low) / 2 / forecast.weekly_rate_kg) * 100)
-    : null
-}
-
-/**
- * 1d's "Weekly loss vs expected": each whole week's loss as a wide ramp bar with its value above it, the forecast's
- * expected loss as the dashed gold line, and a subtitle saying how many weeks landed inside the ±band (the line's
- * legend, in the plan's amber).
- */
-export function WeeklyLossCard({ data }: { data: DashboardData }) {
-  const trend = data.trend
-  const rate = trend?.forecast?.weekly_rate_kg ?? null
-  const weeks = trend ? weeklyLoss(trend.points, rate) : []
-  const band = bandPercent(trend?.forecast)
-  const inside =
-    rate !== null && band !== null
-      ? weeks.filter((w) => Math.abs(-w.change - rate) <= (rate * band) / 100).length
-      : null
-  const share =
-    inside === null || weeks.length === 0
-      ? null
-      : inside === weeks.length
-        ? `${weeks.length === 1 ? 'The week' : weeks.length === 2 ? 'Both weeks' : `All ${weeks.length} weeks`} inside the ±${band} % band`
-        : `${inside} of ${weeks.length} weeks inside the ±${band} % band`
-  return (
-    <ChartCard
-      fill
-      title="Weekly loss vs expected"
-      subtitle={
-        <>
-          {share ?? 'Trend change per Monday–Sunday week'}
-          {rate !== null && (
-            <>
-              {' · '}
-              <Box component="span" sx={{ color: tokens.tone.warning.text }}>
-                dashed line = {formatNumber(rate, 2)} kg expected
-              </Box>
-            </>
-          )}
-        </>
-      }
-      empty={
-        weeks.length
-          ? null
-          : { title: 'No full week yet', body: 'A full Monday–Sunday week of weigh-ins draws the first bar.' }
-      }
-      testId="dashboard-weekly-loss"
-    >
-      <WeeklyLossChart weeks={weeks} height={LOSS_HEIGHT} legend={false} />
-    </ChartCard>
   )
 }
 

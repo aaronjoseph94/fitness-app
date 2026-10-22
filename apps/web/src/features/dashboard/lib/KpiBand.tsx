@@ -3,8 +3,8 @@
 // base camp, a teal pill for the window's move and a soft one for the weekly rate against the plan's, the gold base
 // camp → summit bar with its three labels, and the trend's sparkline (facts 1fr : sparkline 300 px, wrapping). Each
 // tile: a 13/600 muted label, the window's average in Outfit 26 with its unit, one coloured line against the target,
-// and 12 mini bars for the last 12 days (a day on target in the metric's strong end, the rest in its light end, today
-// in its tint). Tiles are 150 px columns that wrap: five across on a desktop, two on a phone.
+// and 12 mini bars for the last 12 days (a day on target — at or under intake's ceiling, at or over every other
+// metric's minimum (kpis `onTarget`) — in the metric's strong end, the rest in its light end, today in its tint). Tiles are 150 px columns that wrap: five across on a desktop, two on a phone.
 import ArrowDownwardRounded from '@mui/icons-material/ArrowDownwardRounded'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import Box from '@mui/material/Box'
@@ -28,7 +28,7 @@ import { copy } from '../../../copy'
 import { enterEasing, metricRamp, tokens, type MetricKey } from '../../../theme'
 import { SLEEP_TARGET_H } from '../../progress/series'
 import { shortDate, type GoalFacts } from './GoalRail'
-import type { Kpi } from './kpis'
+import { onTarget, type Kpi } from './kpis'
 
 const { summit, font } = tokens
 
@@ -174,8 +174,7 @@ function TrendCard({ kpi, goal, today }: { kpi: Kpi; goal: GoalFacts; today: str
   const moved = delta && Math.abs(delta.value) >= 10 ** -precision / 2
   const percent = goal.progress === null ? null : Math.round(goal.progress * 100)
   const lastWeighIn = kpi.seriesTo ?? null
-  const ahead =
-    goal.forecastRate !== null && goal.requiredRate !== null ? goal.forecastRate >= goal.requiredRate : null
+  const ahead = goal.ahead
   const rate =
     goal.forecastRate === null
       ? null
@@ -328,7 +327,7 @@ function tileLine(kpi: Kpi): { text: string; color: string } | null {
     const diff = kpi.value - target
     return {
       text: `${formatSigned(diff, 0)} vs ${formatNumber(target)} target`,
-      color: diff <= 0 ? tokens.tone.success.text : tokens.tone.warning.text,
+      color: onTarget(kpi, kpi.value, target) ? tokens.tone.success.text : tokens.tone.warning.text,
     }
   }
   if (kpi.key === 'protein') {
@@ -336,13 +335,13 @@ function tileLine(kpi: Kpi): { text: string; color: string } | null {
     const diff = kpi.value - target
     return {
       text: `${formatSigned(diff, 0)} vs ${formatNumber(target)} minimum`,
-      color: diff >= 0 ? tokens.tone.success.text : tokens.tone.warning.text,
+      color: onTarget(kpi, kpi.value, target) ? tokens.tone.success.text : tokens.tone.warning.text,
     }
   }
   if (kpi.key === 'steps') {
     const present = (kpi.series ?? []).filter((v): v is number => v !== null)
     if (target === undefined || present.length === 0) return { text: 'Daily average', color: muted }
-    const hit = present.filter((v) => v >= target).length
+    const hit = present.filter((v) => onTarget(kpi, v, target)).length
     return { text: `${hit} of ${present.length} days at ${formatNumber(target)}`, color: muted }
   }
   if (kpi.key === 'sleep') return { text: `target ${formatNumber(SLEEP_TARGET_H, 1)} h`, color: muted }
@@ -359,6 +358,9 @@ function KpiTile({ kpi, todayLast, delay }: { kpi: Kpi; todayLast: boolean; dela
   const values = (kpi.series ?? []).slice(-BARS)
   const present = values.filter((v) => v !== null).length
   const precision = kpi.precision ?? 0
+  const target = kpi.reference
+  const hits =
+    target === undefined ? null : values.filter((v) => v !== null && onTarget(kpi, v, target)).length
   return (
     <Box
       data-testid={`kpi-${kpi.key}`}
@@ -435,10 +437,11 @@ function KpiTile({ kpi, todayLast, delay }: { kpi: Kpi; todayLast: boolean; dela
         <KpiBars
           values={values}
           metric={kpi.metric}
-          target={kpi.reference}
+          target={target}
+          ceiling={kpi.ceiling ?? false}
           todayLast={todayLast}
           delay={delay + 200}
-          label={`${kpi.label}, last ${values.length} days${kpi.reference !== undefined ? `, against a target of ${formatNumber(kpi.reference, precision)}` : ''}: ${present} ${present === 1 ? 'day' : 'days'} logged${kpi.reference !== undefined ? `, ${values.filter((v) => v !== null && v >= kpi.reference!).length} on target` : ''}`}
+          label={`${kpi.label}, last ${values.length} days${target !== undefined ? `, against a target of ${formatNumber(target, precision)}` : ''}: ${present} ${present === 1 ? 'day' : 'days'} logged${hits !== null ? `, ${hits} on target` : ''}`}
           testId={`chart-kpi-${kpi.key}`}
         />
       )}
@@ -448,13 +451,15 @@ function KpiTile({ kpi, todayLast, delay }: { kpi: Kpi; todayLast: boolean; dela
 
 /**
  * The tile's 12 mini bars (1d): 44 px tall, 4 px apart, radius 3, each grown from the baseline 35 ms after the one
- * before it. A day at or over the target in the metric's strong end, the rest in its light end, today (still in
- * progress) in its tint, a day with nothing logged a 2 px stub. One image with a written summary.
+ * before it. A day on target (`onTarget`: at or under a ceiling, at or over a minimum) in the metric's strong end, the
+ * rest in its light end, today (still in progress) in its tint, a day with nothing logged a 2 px stub. One image with a
+ * written summary.
  */
 function KpiBars({
   values,
   metric,
   target,
+  ceiling,
   todayLast,
   delay,
   label,
@@ -463,6 +468,8 @@ function KpiBars({
   values: readonly (number | null)[]
   metric: MetricKey
   target: number | undefined
+  /** The target is a ceiling (intake). */
+  ceiling: boolean
   todayLast: boolean
   delay: number
   label: string
@@ -482,7 +489,11 @@ function KpiBars({
       {values.map((v, i) => {
         const today = todayLast && i === values.length - 1
         const fill =
-          v === null || today ? ramp.track : target !== undefined && v >= target ? ramp.from : ramp.to
+          v === null || today
+            ? ramp.track
+            : target !== undefined && onTarget({ ceiling }, v, target)
+              ? ramp.from
+              : ramp.to
         return (
           <Box
             key={i}

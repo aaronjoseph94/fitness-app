@@ -8,7 +8,7 @@
 import Box from '@mui/material/Box'
 import type { ReactNode } from 'react'
 import { tokens } from '../../theme'
-import { darkCardFocusWithin } from './surfaces'
+import { skyFocusWithin } from './surfaces'
 
 const { summit, font, pad } = tokens
 
@@ -72,7 +72,7 @@ function SkyCard({
       data-testid={testId}
       sx={{
         ...surface,
-        ...darkCardFocusWithin,
+        ...skyFocusWithin,
         position: 'relative',
         overflow: 'hidden',
         minWidth: 0,
@@ -130,16 +130,12 @@ export type DeepSkyCardProps = SkyCardProps
 
 /** The deep-sky card (README: one per screen, for the plan-level fact). */
 export function DeepSkyCard(props: DeepSkyCardProps) {
-  return (
-    <SkyCard {...props} surface={deepSkySurface} muted={summit.deepSky.muted} />
-  )
+  return <SkyCard {...props} surface={deepSkySurface} muted={summit.deepSky.muted} />
 }
 
 export type CoachCardProps = SkyCardProps
 
 /** The coach / AI highlight card (the coach note, the AI suggestion strip). */
 export function CoachCard(props: CoachCardProps) {
-  return (
-    <SkyCard {...props} surface={coachSurface} muted={summit.coach.muted} />
-  )
+  return <SkyCard {...props} surface={coachSurface} muted={summit.coach.muted} />
 }

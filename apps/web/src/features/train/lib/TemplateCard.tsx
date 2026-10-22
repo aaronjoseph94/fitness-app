@@ -14,7 +14,6 @@ import { Link } from 'react-router'
 import { cardSurface, formatNumber, highlightSurface, StatusChip } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
-import { GoldChip } from './GoldChip'
 import { sessionDay, type SessionLine } from './RecentSessions'
 
 export interface TemplateCardProps {
@@ -88,7 +87,7 @@ function TemplateCardInner({ template, onStart, today = false, weekday, lastDone
         <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TemplateName>{template.name}</TemplateName>
           {today ? (
-            <GoldChip label="Today" />
+            <StatusChip tone="gold" label="Today" />
           ) : weekday ? (
             <StatusChip tone="neutral" label={weekday} />
           ) : null}

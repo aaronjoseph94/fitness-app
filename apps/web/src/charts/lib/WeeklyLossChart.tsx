@@ -1,8 +1,10 @@
 // Owns: weekly trend change against the forecast's expected change per week (1d). A week's loss is a wide bar growing
 // up from the baseline — its height the kilograms lost, filled with the weight ramp (plum at the foot, coral at the
 // top), 14 px top corners and 6 px feet — with the change written above it (Outfit 16, "−0.8"); a week that gained
-// hangs below the baseline in the warning tint. The expected loss is the dashed gold plan line across the plot. No y
-// axis: every bar carries its value, and the tooltip the exact kilograms.
+// hangs below the baseline in the warning amber (5.1:1 on white). The expected loss is the dashed gold plan line across
+// the plot. Up to 10 weeks every bar carries its value and there is no y axis (1d's clean look); past that the labels
+// would touch, so a y axis of the change in kg and its hairline grid carry the scale instead. The tooltip always has
+// the exact kilograms.
 import { formatShortDate, formatSigned, type LegendItem } from '../../components'
 import { tokens } from '../../theme'
 import {
@@ -12,16 +14,19 @@ import {
   barCursor,
   barMotion,
   barXAxisStyle,
+  gridStyle,
   niceScale,
   planLine,
   rampGradient,
   rechartsSize,
   seriesSummary,
   surfaceText,
+  tickCount,
   tickInterval,
   tooltip,
   useFadeId,
   wideBarPath,
+  yAxisStyle,
   type ChartSizeProps,
 } from './frame'
 import { Plot } from './plot'
@@ -43,7 +48,7 @@ export interface WeeklyLossChartProps extends ChartSizeProps {
 const C = tokens.metric.weight
 /** Room above the tallest bar for its label, as a share of the value range. */
 const LABEL_ROOM = 0.3
-/** Past this many weeks the value labels would touch: only the tooltip carries them. */
+/** Past this many weeks the value labels would touch: the y axis carries the scale instead. */
 const MAX_LABELLED = 10
 const kgWeek = (v: number | null | undefined) =>
   v === null || v === undefined ? null : `${formatSigned(v, 2)} kg`
@@ -53,7 +58,7 @@ interface Row extends WeeklyLossPoint {
   lost: number
 }
 
-/** The wide bar: the loss ramp upward, a gain in the warning tint below the baseline. */
+/** The wide bar: the loss ramp upward, a gain in the warning amber below the baseline (≥ 3:1 on white). */
 function lossBar(fill: string) {
   return function LossBar(props: {
     x?: number
@@ -65,7 +70,7 @@ function lossBar(fill: string) {
     const { x = 0, y = 0, width = 0, height = 0 } = props
     const lost = (props.payload as Row | undefined)?.lost ?? 0
     const d = wideBarPath(x, y, width, height, lost >= 0)
-    return d ? <path d={d} fill={lost >= 0 ? fill : tokens.tone.warning.bg} /> : <g />
+    return d ? <path d={d} fill={lost >= 0 ? fill : tokens.tone.warning.text} /> : <g />
   }
 }
 
@@ -112,12 +117,15 @@ export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: W
     expectedLoss.length > 0 && Math.max(...expectedLoss) - Math.min(...expectedLoss) < 0.005
       ? expectedLoss[0]!
       : null
+  const labelled = rows.length <= MAX_LABELLED
   const top = Math.max(0, ...lost, ...expectedLoss)
   const bottom = Math.min(0, ...lost)
   const span = Math.max(0.1, top - bottom)
-  const y = niceScale([bottom - (bottom < 0 ? span * LABEL_ROOM : 0), top + span * LABEL_ROOM], {
+  // Labelled bars need room past their ends for the value; an axis needs only its own nice steps.
+  const room = labelled ? span * LABEL_ROOM : 0
+  const y = niceScale([bottom - (bottom < 0 ? room : 0), top + room], {
     zero: true,
-    count: 2,
+    count: labelled ? 2 : tickCount(height),
     minStep: 0.1,
   })
   const Tip = tooltip<Row>(
@@ -142,6 +150,7 @@ export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: W
       label={label}
       legend={legend ? items : undefined}
       legendPlacement="bottom"
+      unit={labelled ? undefined : 'kg'}
       width={width}
       height={height}
       empty={weeks.length === 0}
@@ -156,15 +165,23 @@ export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: W
             {...surfaceText(label, summary)}
           >
             <defs>{rampGradient(fillId, 'weight')}</defs>
+            {!labelled && <R.CartesianGrid {...gridStyle} />}
             <R.XAxis
               {...barXAxisStyle}
               axisLine={false}
               dataKey="week"
               tickFormatter={(d: string) => formatShortDate(d)}
-              interval={tickInterval(rows.length, plotWidth, 0)}
+              interval={tickInterval(rows.length, plotWidth, labelled ? 0 : yAxisStyle.width)}
               tick={{ ...barXAxisStyle.tick, fontSize: tokens.font.size.caption }}
             />
-            <R.YAxis hide domain={y.domain} />
+            {/* The scale is the change, as the labels write it: a loss (plotted up) reads "−0.5". */}
+            <R.YAxis
+              {...yAxisStyle}
+              hide={labelled}
+              domain={y.domain}
+              ticks={y.ticks}
+              tickFormatter={(v: number) => formatSigned(-v, 1)}
+            />
             <R.Tooltip content={Tip} cursor={barCursor} />
             {bottom < 0 && <R.ReferenceLine y={0} stroke={tokens.chart.baseline} strokeWidth={1} />}
             <R.Bar
@@ -174,7 +191,7 @@ export function WeeklyLossChart({ weeks, width, height = 200, legend = true }: W
               shape={lossBar(`url(#${fillId})`)}
               {...barMotion(width)}
             >
-              {rows.length <= MAX_LABELLED && <R.LabelList dataKey="change" content={EndLabel} />}
+              {labelled && <R.LabelList dataKey="change" content={EndLabel} />}
             </R.Bar>
             {steady !== null ? (
               <R.ReferenceLine y={steady} {...planLine} ifOverflow="extendDomain" />

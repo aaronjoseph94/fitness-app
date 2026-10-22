@@ -44,6 +44,12 @@
 //     the title on a phone), so their glass is a dark tint, rgba(26,10,66,.28): white ≥ 5.77 to 90 % of the sky (the
 //     README's light glass, white .12, drops to 3.55 there). The nav pill keeps the light glass (white .85 on it 9.02 at
 //     the sky's top). The "since base camp" pill is teal rgba(6,122,136,.92) (white 5.35; README's .9 #17B8A6: 2.81).
+//   • Today's sky (measured in a browser over the rendered sky with the text hidden: the 2nd-percentile pixel under
+//     each line, 360–1,440 px): the eyebrow (white .75) ≥ 8.46; the line under the trend (white .85) ≥ 4.94, with the
+//     near cloud moved up 90 px from the mock's 250 (its core behind that line left it at 3.25); the teal pill ≥ 5.22;
+//     the "kg to the summit" pill on the dark glass `glass.card` ≥ 8.52 (the README's light glass falls to ~3.9 that
+//     low); the Next-camp card's lines in full white (README's .75 drops under 4.5 from 1,180 px) ≥ 4.97 on its .38
+//     glass, and ≥ 5.32 on `glass.cardStrong` (.55) under 600 px, where the card sits over the coral band (.38: 3.31).
 //   • Deep-sky card: white 16.4, white .65 on its .08 wells 6.49, gold 11.5. Tab bar: white .78 labels 9.85, the active
 //     cell's deep ink on white 16.4.
 //   • Non-text (1.4.11): the focus ring #7B3FE4 ≥ 5.31 on every surface; a switch's off track and any outline that
@@ -264,6 +270,8 @@ const SUMMIT = {
     controlBorder: 'rgba(255,255,255,.24)',
     /** A dark glass card on the sky (Today's "Next camp"). */
     card: 'rgba(26,10,66,.38)',
+    /** The same card low on a phone's sky (under 600 px it sits over the coral band, where .38 leaves white 3.3:1). */
+    cardStrong: 'rgba(26,10,66,.55)',
     cardBorder: 'rgba(255,255,255,.18)',
     /** backdrop-filter blur, px: pill, tile, card. */
     blur: 14,
@@ -656,7 +664,7 @@ export const tokens = {
     /** Breakpoints (px, as `@media (min-width: …)`; the page column is the viewport now there is no sidebar). */
     navWide: 960,
     /** Under this the desktop nav drops its search circle so the tabs and the worded Ask AI pill fit (⌘K remains). */
-    navSearch: 1100,
+    navSearch: 1020,
     aiRail: 900,
     settingsNav: 760,
     todayMountain: 1180,
@@ -748,11 +756,13 @@ export function enterDuration(): number {
 /**
  * The entrance to play when the viewer prefers reduced motion: a 200 ms cross-fade and no travel. Returns
  * `animation`'s shorthand value, `'none'` when motion is not reduced. Takes `reduced` rather than reading the media
- * query itself so a caller's `useMediaQuery` drives a re-render when the preference changes.
+ * query itself so a caller's `useMediaQuery` drives a re-render when the preference changes. The caller's own resting
+ * opacity is 1 under reduced motion, so the fade fills only backwards (hidden through its delay): once it ends it no
+ * longer holds the element, which would otherwise stay a backdrop root and stop the glass inside it from blurring.
  */
 export function reducedEntrance(delay: number, reduced: boolean): string {
   if (!reduced) return 'none'
-  return `${tokens.motion.duration.fast}ms ${tokens.motion.easing.standard} ${delay}ms both crossFadeIn`
+  return `${tokens.motion.duration.fast}ms ${tokens.motion.easing.standard} ${delay}ms backwards crossFadeIn`
 }
 
 /** Properties that still aid comprehension under reduced motion (colour, opacity, elevation) keep a short transition. */

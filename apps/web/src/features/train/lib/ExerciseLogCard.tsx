@@ -26,7 +26,6 @@ import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { ExerciseThumb } from '../../library'
 import type { LoggerActions } from './actions'
 import { previousSet, progressionHint, setHint, type LoggerExercise } from './logger-model'
-import { GoldChip } from './GoldChip'
 import { SET_GRID_SX, SET_GUTTER_SX, SET_ROW_PAD_SX, SetRow } from './SetRow'
 
 export interface ExerciseLogCardProps {
@@ -207,7 +206,7 @@ function ExerciseLogCardInner({
           {done ? (
             <StatusChip size="small" tone="success" label="Done" />
           ) : current ? (
-            <GoldChip label="Current" />
+            <StatusChip tone="gold" label="Current" />
           ) : null}
           {recoveryConflict && !done && <StatusChip size="small" tone="warning" label="Recovery conflict" />}
         </Box>
