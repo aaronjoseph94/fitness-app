@@ -122,10 +122,21 @@ export function TodayPage() {
             action={
               <Button
                 variant="contained"
-                color="gold"
                 startIcon={<AddRounded />}
                 aria-haspopup="dialog"
                 data-testid="today-log"
+                // White with deep ink: the gold CTA all but vanished into the sky's peach band behind it.
+                // `&&&&` outranks the sky's control rule (`& > .MuiButton-contained.MuiButton-colorPrimary`, which
+                // paints a contained primary button with the gold gradient).
+                sx={{
+                  '&&&&': {
+                    backgroundImage: 'none',
+                    bgcolor: tokens.summit.onSky.text,
+                    color: tokens.summit.ink.deep,
+                    boxShadow: tokens.summit.shadow.tile,
+                  },
+                  '&&&&:hover': { backgroundImage: 'none', bgcolor: tokens.summit.glass.text },
+                }}
                 onClick={() => openQuickLog()}
               >
                 Log

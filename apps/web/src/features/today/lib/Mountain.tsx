@@ -24,6 +24,7 @@ import {
   MOUNTAIN_BOX,
   MOUNTAIN_PATHS,
   pointAt,
+  visiblePointAt,
   ROUTE_LENGTH,
   ROUTE_PATH,
 } from './mountain-route'
@@ -32,6 +33,9 @@ const { summit, font, layout } = tokens
 
 /** How far the "You" dot's centre stays above the panel's edge: its radius 9, halo 4, gap 6. */
 const MARKER_CLEARANCE = 19
+
+/** The lowest point (drawing units at `scale`) a marker's centre may sit and still clear the cream panel's edge. */
+const visibleBottom = (scale: number) => MOUNTAIN_BOX.height - layout.panelOverlap / scale - MARKER_CLEARANCE
 const WHITE = tokens.ink.card
 
 /** The mountain's inks (the mock's own: `summit.mountain`). */
@@ -108,14 +112,13 @@ function CampFlag({
   delay: number
   scale: number
 }) {
-  const p = pointAt(fraction)
+  // Like the "You" marker, a flag near base camp moves up the route until it clears the cream panel's edge.
+  const p = visiblePointAt(fraction, visibleBottom(scale))
   const k = counterScale(font.size.caption, scale)
   const side = labelSide(fraction, labelWidth(text) * k)
   const pop = usePop(delay)
-  // Like the "You" marker, a flag near base camp rises clear of the cream panel's edge, so its label is never cut.
-  const top = Math.min(p.y, MOUNTAIN_BOX.height - layout.panelOverlap / scale - MARKER_CLEARANCE)
   return (
-    <Box sx={{ position: 'absolute', left: p.x, top, ...pop, transformOrigin: '0 0' }}>
+    <Box sx={{ position: 'absolute', left: p.x, top: p.y, ...pop, transformOrigin: '0 0' }}>
       <Box sx={{ position: 'absolute', left: -1, bottom: 0, width: 2, height: 26, bgcolor: WHITE }} />
       <FlagRounded
         sx={{ position: 'absolute', left: 0, bottom: 12, fontSize: 20, color: summit.gold.main }}
@@ -221,14 +224,13 @@ function YouMarker({
   delay: number
   scale: number
 }) {
-  const p = pointAt(fraction)
+  // Near base camp the route runs under the cream panel's edge, which covers the sky's foot; the marker stays on the
+  // route and moves up it to the first point clear of the panel.
+  const p = visiblePointAt(fraction, visibleBottom(scale))
   const pop = usePop(delay)
-  // Near base camp the route runs under the cream panel's edge, which covers the sky's foot; the marker rises just
-  // clear of it (its 9 px dot, 4 px halo and a 6 px gap), in drawing units at this scale.
-  const top = Math.min(p.y, MOUNTAIN_BOX.height - layout.panelOverlap / scale - MARKER_CLEARANCE)
   const k = counterScale(font.size.small, scale)
   return (
-    <Box sx={{ position: 'absolute', left: p.x, top, ...pop }}>
+    <Box sx={{ position: 'absolute', left: p.x, top: p.y, ...pop }}>
       <Box
         sx={{
           position: 'absolute',
@@ -257,9 +259,12 @@ function YouMarker({
       <Box
         component="span"
         sx={{
+          // Left of the dot, centred on it: the route climbs up and to the right, so the left is clear of the
+          // camp flags (above the dot it met the next camp's label).
           position: 'absolute',
-          left: -30,
-          top: -52,
+          right: 20,
+          top: 0,
+          translate: '0 -50%',
           whiteSpace: 'nowrap',
           px: '11px',
           py: '6px',
@@ -270,7 +275,7 @@ function YouMarker({
           fontWeight: font.weight.heading,
           fontVariantNumeric: 'tabular-nums',
           transform: k === 1 ? 'none' : `scale(${k})`,
-          transformOrigin: '30px bottom',
+          transformOrigin: 'right center',
         }}
       >
         {copy.youAt(formatNumber(kg, 1))}

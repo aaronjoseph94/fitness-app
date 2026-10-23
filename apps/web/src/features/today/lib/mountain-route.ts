@@ -113,6 +113,20 @@ export function climbFraction(kg: number, startKg: number, goalKg: number): numb
 }
 
 /** The point `fraction` (0–1) of the way along the route, by arc length. */
+/**
+ * The point on the route at `fraction`, or — when that point sits lower than `maxY` (under the cream panel's edge) —
+ * the first point further along the route that is at or above `maxY`, so a marker stays on the line and in view.
+ * Steps of 1/400 of the route (~3 px at scale 1).
+ */
+export function visiblePointAt(fraction: number, maxY: number): Point {
+  let p = pointAt(fraction)
+  for (let f = clamp01(fraction); p.y > maxY && f < 1;) {
+    f = Math.min(1, f + 1 / 400)
+    p = pointAt(f)
+  }
+  return p
+}
+
 export function pointAt(fraction: number): Point {
   const target = clamp01(fraction) * ROUTE_LENGTH
   let lo = 0
