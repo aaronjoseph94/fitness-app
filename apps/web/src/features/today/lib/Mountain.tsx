@@ -29,6 +29,9 @@ import {
 } from './mountain-route'
 
 const { summit, font, layout } = tokens
+
+/** How far the "You" dot's centre stays above the panel's edge: its radius 9, halo 4, gap 6. */
+const MARKER_CLEARANCE = 19
 const WHITE = tokens.ink.card
 
 /** The mountain's inks (the mock's own: `summit.mountain`). */
@@ -171,11 +174,24 @@ function SummitFlag({ goalKg, finish, delay }: { goalKg: number; finish: string 
 }
 
 /** "You · 93.6": a white dot with a gold halo where the trend is on the route, pinging, and its label above. */
-function YouMarker({ fraction, kg, delay }: { fraction: number; kg: number; delay: number }) {
+function YouMarker({
+  fraction,
+  kg,
+  delay,
+  scale,
+}: {
+  fraction: number
+  kg: number
+  delay: number
+  scale: number
+}) {
   const p = pointAt(fraction)
   const pop = usePop(delay)
+  // Near base camp the route runs under the cream panel's edge, which covers the sky's foot; the marker rises just
+  // clear of it (its 9 px dot, 4 px halo and a 6 px gap), in drawing units at this scale.
+  const top = Math.min(p.y, MOUNTAIN_BOX.height - layout.panelOverlap / scale - MARKER_CLEARANCE)
   return (
-    <Box sx={{ position: 'absolute', left: p.x, top: p.y, ...pop }}>
+    <Box sx={{ position: 'absolute', left: p.x, top, ...pop }}>
       <Box
         sx={{
           position: 'absolute',
@@ -228,7 +244,7 @@ function YouMarker({ fraction, kg, delay }: { fraction: number; kg: number; dela
  * The drawing at scale 1 (820 × 560): silhouette, route, climbed stretch, flags, summit, marker. Memoised on `climb`
  * (TodayPage memoises it), so a resize of the sky re-renders only the frame around it.
  */
-const MountainArt = memo(function MountainArt({ climb }: { climb: Climb }) {
+const MountainArt = memo(function MountainArt({ climb, scale }: { climb: Climb; scale: number }) {
   const id = useId()
   const body = `${id}-body`
   const face = `${id}-face`
@@ -327,7 +343,7 @@ const MountainArt = memo(function MountainArt({ climb }: { climb: Climb }) {
         />
       ))}
       <SummitFlag goalKg={goalKg} finish={finish} delay={1000 + camps.length * 120} />
-      {trendKg !== null && <YouMarker fraction={climbed} kg={trendKg} delay={1500} />}
+      {trendKg !== null && <YouMarker fraction={climbed} kg={trendKg} delay={1500} scale={scale} />}
     </>
   )
 })
@@ -420,7 +436,7 @@ export function HeroMountain({ climb }: { climb: Climb | null }): ReactNode {
             }}
           >
             <Reveal delay={150} sx={{ position: 'absolute', inset: 0 }}>
-              <MountainArt climb={climb} />
+              <MountainArt climb={climb} scale={scale} />
             </Reveal>
           </Box>,
           sky,

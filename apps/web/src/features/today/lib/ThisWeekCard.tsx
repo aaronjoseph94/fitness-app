@@ -63,6 +63,9 @@ const PROPOSED_SHOWN = 2
 /** The day dot's size, and a rest day's. */
 const DOT = 28
 const REST_DOT = 14
+/** The weekday row's height, and the gap from it to the dot: the line's height in the row depends on both. */
+const LABEL_HEIGHT = 18
+const DOT_GAP = 8
 
 type Mark = 'done' | 'fast' | 'planned' | 'missed' | 'rest'
 
@@ -188,26 +191,27 @@ function Dot({ mark, isToday }: { mark: Mark; isToday: boolean }) {
         />
       )
     case 'rest':
+      // Centred in a full-size slot (not by margins, which collapse into the column's and lift the dot off the line).
       return (
-        <Box
-          sx={{
-            width: REST_DOT,
-            height: REST_DOT,
-            borderRadius: '50%',
-            mx: 'auto',
-            my: `${(DOT - REST_DOT) / 2}px`,
-            bgcolor: summit.glass.border,
-          }}
-        />
+        <Box sx={{ height: DOT, display: 'grid', placeItems: 'center' }}>
+          <Box
+            sx={{ width: REST_DOT, height: REST_DOT, borderRadius: '50%', bgcolor: summit.glass.border }}
+          />
+        </Box>
       )
   }
 }
 
-/** The line behind the dots and its gold stretch up to today (grows from 0 on mount). */
+/** The line through the dots' centres and its gold stretch up to today (grows from 0 on mount). */
 function WeekLine({ todayIndex }: { todayIndex: number }) {
   const { entered, reduced } = useEntrance()
   const inset = 'calc(100% / 14)'
-  const line = { position: 'absolute', left: inset, height: 2, top: `calc(18px + ${DOT / 2 - 1}px)` } as const
+  const line = {
+    position: 'absolute',
+    left: inset,
+    height: 2,
+    top: `${LABEL_HEIGHT + DOT_GAP + DOT / 2 - 1}px`,
+  } as const
   return (
     <>
       <Box aria-hidden sx={{ ...line, right: inset, bgcolor: summit.glass.border }} />
@@ -375,7 +379,7 @@ export function ThisWeekCard({
                 <Box
                   aria-hidden
                   sx={{
-                    height: 18,
+                    height: LABEL_HEIGHT,
                     fontSize: font.size.caption,
                     fontWeight: font.weight.heading,
                     color: isToday ? summit.gold.main : mark === 'fast' ? summit.coral.main : sky.muted,
@@ -396,7 +400,7 @@ export function ThisWeekCard({
                     />
                   )}
                 </Box>
-                <Box aria-hidden sx={{ mt: '8px' }}>
+                <Box aria-hidden sx={{ mt: `${DOT_GAP}px` }}>
                   <Dot mark={mark} isToday={isToday} />
                 </Box>
                 <Box
