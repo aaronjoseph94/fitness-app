@@ -10,12 +10,13 @@ import Skeleton from '@mui/material/Skeleton'
 import { endpoints } from '@fitness/shared/api'
 import type { Meal } from '@fitness/shared/schemas'
 import { useMemo, useState } from 'react'
-import { formatNumber, PendingBadge, tabularNums, wellSurface } from '../../../../components'
+import { formatNumber, NoModelKey, PendingBadge, tabularNums, wellSurface } from '../../../../components'
+import { useModelChain } from '../../../settings/models'
 import { tokens } from '../../../../theme'
 import { useNow } from '../fasts'
 import { SLOT_LABEL } from '../nutrition'
 import { useRecentFoods } from '../reads'
-import { noticeFor, type LogNotice } from '../ui'
+import { noticeFor, stickyActionsSx, type LogNotice } from '../ui'
 import { useLogMutation } from '../writes'
 import { useDayAdjustment } from './adjustment'
 import { DayAdjustmentCard } from './DayAdjustmentCard'
@@ -41,6 +42,8 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
   const [manual, setManual] = useState(false)
   /** After a confirm here: the server's updated_at (an adjustment newer than it is the one for this meal), or 'queued'. */
   const [confirmed, setConfirmed] = useState<{ since: string | null } | null>(null)
+  /** No model key at all (once the key statuses load): an analysis that found nothing is that, not a bad read. */
+  const noModelKey = useModelChain()?.keys === 0
   const update = useLogMutation(endpoints.nutrition.updateMeal)
   const recents = useRecentFoods(date)
   const lastGrams = useMemo(() => new Map(recents.map((r) => [r.foodId, r.grams])), [recents])
@@ -108,7 +111,15 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
 
   return (
     <Box sx={{ display: 'grid', gap: 4 }} data-testid="meal-review" data-state={failed ? 'failed' : 'ready'}>
-      {failed ? (
+      {failed && noModelKey && !(manual && meal.status === 'parsing') ? (
+        // No model key: say so once, the shared way (UX #14), rather than "the AI couldn't read this".
+        <Box role="alert" data-testid="analysis-failed" sx={{ display: 'grid', gap: 1 }}>
+          <NoModelKey />
+          <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, pl: '26px' }}>
+            Add what you ate below; what you wrote is kept.
+          </Box>
+        </Box>
+      ) : failed ? (
         <Alert severity="info" data-testid="analysis-failed">
           {manual && meal.status === 'parsing'
             ? 'Add what you ate below. If the analysis finishes first, your items still win.'
@@ -135,17 +146,8 @@ export function MealReview({ date, mealId, localPreviews = [], onClose, onLogged
       />
 
       <Box
-        sx={{
-          position: 'sticky',
-          bottom: 0,
-          bgcolor: tokens.ink.card,
-          pt: 2,
-          pb: 1,
-          borderTop: `1px solid ${tokens.ink.border}`,
-          display: 'grid',
-          gap: 3,
-          zIndex: 1,
-        }}
+        sx={{ ...stickyActionsSx, gap: 3, borderTop: `1px solid ${tokens.ink.border}` }}
+        data-sheet-actions
       >
         <Box
           sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary, ...tabularNums }}
@@ -337,9 +339,11 @@ function ConfirmedView({
         waiting={waiting}
         onLogged={onLogged}
       />
-      <Button variant="contained" size="large" onClick={onClose} data-testid="review-done">
-        Done
-      </Button>
+      <Box sx={stickyActionsSx} data-sheet-actions>
+        <Button variant="contained" size="large" onClick={onClose} data-testid="review-done">
+          Done
+        </Button>
+      </Box>
     </Box>
   )
 }

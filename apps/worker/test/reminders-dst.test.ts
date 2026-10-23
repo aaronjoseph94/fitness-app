@@ -80,16 +80,14 @@ function dbFailingNextRead(table: unknown): Db {
 
 beforeAll(async () => {
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2025-10-01',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2025-10-01',
+    }),
     db.insert(settings).values({
       protein_min_g: 130,
       fat_min_g: 45,

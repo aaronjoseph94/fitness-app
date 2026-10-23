@@ -199,6 +199,7 @@ function HeroContent({
       <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
         {eyebrow && (
           <Box
+            data-hero-eyebrow=""
             sx={{
               ...step(entered, reduced, delay + 200, 'fade'),
               mb: '8px',

@@ -2,6 +2,7 @@
 // time of an instant, day shifts and day counts are the engine's dates helpers under the names the logging kit uses;
 // this file adds an Edmonton wall-clock time as a UTC instant, and how dates and durations read on screen.
 import { addDays, daysBetween, localDate, localTime, today, type InstantInput } from '@fitness/shared/engine'
+import { formatClock, formatDay, formatDayTime, formatWeekday } from '../../../components'
 
 export { daysBetween }
 
@@ -67,7 +68,38 @@ export function formatDuration(ms: number): string {
   return min === 0 ? `${h} h` : `${h} h ${min} min`
 }
 
-/** "2026-10-04 19:00" in Edmonton time. */
-export function formatDateTime(instant: InstantInput): string {
-  return `${localDate(instant)} ${localTime(instant)}`
+/**
+ * Where an instant falls as Aaron says it, from `now`: "Tonight 8:00 PM" (today, from 5 PM), "Today 7:00 AM",
+ * "Tomorrow 8:00 PM", "Yesterday 8:00 PM", a day in the next or last six "Sat 8:00 PM", else "Fri, Oct 30 · 8:00 PM".
+ */
+export function whenLabel(instant: InstantInput, now: InstantInput = Date.now()): string {
+  const iso = new Date(instant).toISOString()
+  const day = localDate(iso)
+  const delta = daysBetween(today(now), day)
+  const clock = formatClock(iso)
+  if (delta === 0) return `${Number(localTime(iso).slice(0, 2)) >= 17 ? 'Tonight' : 'Today'} ${clock}`
+  if (Math.abs(delta) === 1) return `${delta === 1 ? 'Tomorrow' : 'Yesterday'} ${clock}`
+  if (Math.abs(delta) < 7) return `${relativeDay(day, today(now))} ${clock}`
+  return `${formatDay(day, new Date(now).getTime())} · ${clock}`
+}
+
+/**
+ * A fast's window as it reads in copy: start by whenLabel, end by its weekday (its clock alone on the same day, its full
+ * day further out): "Tonight 8:00 PM → Sat 8:00 PM", "Fri, Oct 30 · 8:00 PM → Sat, Oct 31 · 8:00 PM".
+ */
+export function fastWindowLabel(
+  startedAt: string,
+  endsAt: InstantInput,
+  now: InstantInput = Date.now(),
+): string {
+  const end = new Date(endsAt).toISOString()
+  const endDay = localDate(end)
+  const delta = daysBetween(today(now), endDay)
+  const endText =
+    endDay === localDate(startedAt)
+      ? formatClock(end)
+      : delta > 0 && delta < 7
+        ? `${formatWeekday(endDay)} ${formatClock(end)}`
+        : formatDayTime(end, new Date(now).getTime())
+  return `${whenLabel(startedAt, now)} → ${endText}`
 }

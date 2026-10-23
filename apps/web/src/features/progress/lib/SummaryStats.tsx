@@ -1,11 +1,12 @@
-// Owns: the four headline numbers for the selected range (1d summary cards) — trend change with the weekly rate,
+// Owns: the four headline numbers for the selected range (1d summary cards) — the trend change over the named range
+// with the forecast's weekly rate and its pace (the one rate every page shows; an observed change is kg, never kg a week),
 // average intake and average protein against their targets, and logging adherence — each a 13/600 muted label, the
 // number in Outfit 30 with its unit, and a status pill under it saying what it means. Cards are 150 px columns in a
 // row that wraps: four across on a desktop, two on a phone.
 // Before the range's data arrives (`summary` null) the cards show dashes and hold their pills' room, so the row has
 // its final height from the first paint and the charts under it never move.
 import Box from '@mui/material/Box'
-import type { Forecast, TargetValues } from '@fitness/shared/schemas'
+import type { TargetValues } from '@fitness/shared/schemas'
 import {
   cardSurface,
   CountUp,
@@ -26,12 +27,13 @@ interface SummaryStatsProps {
   summary: RangeSummary | null
   /** The targets the charts' target lines show (latest non-fast day). */
   targets: TargetValues | null
-  /** The forecast (the hero's subtitle compares the range's rate with the plan's; kept for callers). */
-  forecast: Forecast | null
+  /** The range as the toggle names it ("4 weeks", "12 weeks", "all"): the change card's window. */
+  rangeLabel: string
+  /** The forecast's weekly loss (series `forecastRate`), the one rate every page shows; null unless a loss. */
+  rate: number | null
+  /** Pace versus plan at that rate (series `paceVersusPlan`); null when it cannot be said. */
+  ahead: boolean | null
 }
-
-/** A weekly rate needs at least a week of trend between its ends to mean anything. */
-const RATE_MIN_DAYS = 7
 
 const delay = (i: number) => staggerDelay(i, 70, 150)
 
@@ -155,11 +157,9 @@ function SummaryCard({ label, value, text, unit, precision = 0, countUp, pill, i
   )
 }
 
-export function SummaryStats({ summary, targets }: SummaryStatsProps) {
+export function SummaryStats({ summary, targets, rangeLabel, rate, ahead }: SummaryStatsProps) {
   const s = summary
   const change = s?.trendChangeKg ?? null
-  // Rate = trend change ÷ (days between the first and last trend point ÷ 7), kg/week.
-  const rate = change !== null && s && s.trendDays >= RATE_MIN_DAYS ? change / (s.trendDays / 7) : null
   const kcalTarget = targets?.kcal ?? null
   const proteinTarget = targets?.protein_g ?? null
   const avgKcal = s?.avgKcal == null ? null : Math.round(s.avgKcal)
@@ -171,8 +171,8 @@ export function SummaryStats({ summary, targets }: SummaryStatsProps) {
       : rate === null
         ? undefined
         : {
-            tone: (rate < 0 ? 'success' : 'warning') as StatusChipTone,
-            label: `${formatSigned(rate, 2)} kg a week`,
+            tone: (ahead === false ? 'warning' : 'success') as StatusChipTone,
+            label: `Forecast ${formatSigned(-rate, 2)} kg a week${ahead === null ? '' : ahead ? ' · ahead' : ' · behind'}`,
           }
   const kcalPill =
     s === null
@@ -205,7 +205,7 @@ export function SummaryStats({ summary, targets }: SummaryStatsProps) {
       <WrapRow gap={tokens.summit.space.gap.tile}>
         <SummaryCard
           index={0}
-          label="Trend change"
+          label={`Trend change · ${rangeLabel}`}
           value={change}
           text={change === null ? undefined : formatSigned(change, 1)}
           unit="kg"

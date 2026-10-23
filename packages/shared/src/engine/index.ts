@@ -36,8 +36,8 @@ export {
   TDEE_RANGE,
 } from './lib/expenditure'
 export type { ExpenditureDay, ExpenditureEstimate } from './lib/expenditure'
-export { forecast, KCAL_PER_KG, FORECAST_BAND } from './lib/forecast'
-export type { ForecastInput, ForecastResult } from './lib/forecast'
+export { forecast, projectedOn, KCAL_PER_KG, FORECAST_BAND } from './lib/forecast'
+export type { ForecastInput, ForecastResult, ProjectionInput } from './lib/forecast'
 
 // Daily targets
 export {

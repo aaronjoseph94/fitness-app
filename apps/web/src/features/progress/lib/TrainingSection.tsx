@@ -270,7 +270,8 @@ const pickerSx = {
     borderRadius: `${tokens.radius.inner}px`,
     bgcolor: tokens.summit.surface.soft,
     color: tokens.summit.ink.deep,
-    [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+    // A 44 px target on every pointer (finding #35: 34 px with a mouse was too small).
+    minHeight: tokens.tapTarget,
   },
   '& .MuiOutlinedInput-notchedOutline': { border: 0 },
   '& .MuiInputBase-input.MuiSelect-select': {

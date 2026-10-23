@@ -1,6 +1,6 @@
 // Owns: the Dashboard — the app's overview of a window of history (1d "Summit"). The sky hero opens it ("The climb so
 // far" and the window's dates, the title, the days logged and the expenditure estimate, the 30 / 90 / 180-day window
-// as glass and Export); then, on the cream panel, the trend card beside the deep-sky "Against the plan", the five KPI
+// as glass and "Export in Settings", the way to Settings → Data); then, on the cream panel, the trend card beside the deep-sky "Against the plan", the five KPI
 // tiles, weekly loss / body composition / macros, and Training; then the detail sections (the latest day, the weight
 // journey with the tape and the camps, calories and protein, recovery and habits). Every row of cards wraps rather
 // than squeezing (README §4). The window is 30, 90 or 180 days (?window=). On a phone the detail sections fold away and
@@ -59,6 +59,9 @@ const column = {
 /** The entrance: after the opening band (80–600 ms), each later group rises 90 ms after the one before it. */
 const sectionDelay = (i: number) => staggerDelay(i, tokens.motion.stagger.section, 620)
 
+/** The subtitle's room from the first paint (two lines on a phone, one from 600 px), so the hero never grows. */
+const SUBTITLE_ROOM = { display: 'block', minHeight: { xs: '2lh', sm: '1lh' } } as const
+
 export function DashboardPage() {
   const [params, setParams] = useSearchParams()
   const windowKey: WindowKey = isWindowKey(params.get('window'))
@@ -83,7 +86,8 @@ export function DashboardPage() {
         variant="outlined"
         startIcon={<FileDownloadOutlined />}
       >
-        Export
+        {/* The export builds in the browser with its progress on Settings → Data, so the button says where it goes. */}
+        Export in Settings
       </Button>
     </>
   )
@@ -91,7 +95,17 @@ export function DashboardPage() {
   if (loading && !data)
     return (
       <Box data-testid="dashboard-page" aria-busy="true" sx={column}>
-        <PageHeader testId="dashboard-hero" eyebrow={copy.planSoFar} title="Dashboard" action={controls} />
+        <PageHeader
+          testId="dashboard-hero"
+          eyebrow={copy.planSoFar}
+          title="Dashboard"
+          subtitle={
+            <Box component="span" sx={SUBTITLE_ROOM}>
+              {' '}
+            </Box>
+          }
+          action={controls}
+        />
         {/* The skeleton is the shape of the band it replaces: the trend card and the rail, then the five tiles. */}
         <WrapRow>
           <Box sx={wrapCol(1.6)}>
@@ -168,7 +182,11 @@ export function DashboardPage() {
         testId="dashboard-hero"
         eyebrow={`${copy.planSoFar} · ${formatShortDate(firstDay)} – ${formatShortDate(data.to)}`}
         title="Dashboard"
-        subtitle={subtitle}
+        subtitle={
+          <Box component="span" sx={SUBTITLE_ROOM}>
+            {subtitle}
+          </Box>
+        }
         action={controls}
       />
 

@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField'
 import { endpoints } from '@fitness/shared/api'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import {
+  formatDay,
   formatNumber,
   NumberField,
   outlinedIconButton,
@@ -22,7 +23,7 @@ import {
 import { tokens } from '../../../theme'
 import { todayLocal } from './dates'
 import { useLastWeight } from './reads'
-import { noticeFor, type LogNotice } from './ui'
+import { noticeFor, stickyActionsSx, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 import { problemText } from '../../../api'
 
@@ -91,7 +92,7 @@ export function WeighInForm({
       { body: { id: crypto.randomUUID(), date, weight_kg: weight, note: note.trim() || undefined } },
       {
         onSuccess: (outcome) =>
-          onLogged(noticeFor(outcome, `Weigh-in ${formatNumber(weight, 1)} kg on ${date}`)),
+          onLogged(noticeFor(outcome, `Weigh-in ${formatNumber(weight, 1)} kg on ${formatDay(date)}`)),
       },
     )
   }
@@ -162,12 +163,12 @@ export function WeighInForm({
           'Looking up your last weigh-in…'
         ) : onDate ? (
           <>
-            Logged {formatNumber(onDate.kg, 1)} kg for {date}; saving replaces it.
+            Logged {formatNumber(onDate.kg, 1)} kg for {formatDay(date)}; saving replaces it.
             {onDate.pending && <PendingBadge />}
           </>
         ) : last ? (
           <>
-            Last {formatNumber(last.kg, 1)} kg on {last.date}
+            Last {formatNumber(last.kg, 1)} kg on {formatDay(last.date)}
             {last.trendKg !== null && ` · trend ${formatNumber(last.trendKg, 1)} kg`}
             {last.pending && <PendingBadge />}
           </>
@@ -206,19 +207,21 @@ export function WeighInForm({
           {problemText(save.error)}
         </Box>
       )}
-      <Button
-        type="submit"
-        variant="contained"
-        size="large"
-        disabled={!valid || save.isPending}
-        data-testid="weigh-in-save"
-      >
-        {save.isPending
-          ? 'Saving…'
-          : kg !== null && valid
-            ? `Save ${formatNumber(kg, 1)} kg`
-            : 'Save weigh-in'}
-      </Button>
+      <Box sx={stickyActionsSx} data-sheet-actions>
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={!valid || save.isPending}
+          data-testid="weigh-in-save"
+        >
+          {save.isPending
+            ? 'Saving…'
+            : kg !== null && valid
+              ? `Save ${formatNumber(kg, 1)} kg`
+              : 'Save weigh-in'}
+        </Button>
+      </Box>
     </Box>
   )
 }

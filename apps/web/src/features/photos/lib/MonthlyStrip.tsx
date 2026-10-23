@@ -4,7 +4,7 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import type { Pose, ProgressPhoto } from '@fitness/shared/schemas'
 import { useEffect, useRef } from 'react'
-import { cardSurface, dashedSurface } from '../../../components'
+import { cardSurface, dashedSurface, formatDay } from '../../../components'
 import { tokens } from '../../../theme'
 import { POSE_LABEL } from './data'
 import { monthLabel, monthlyStrip } from './grouping'
@@ -56,7 +56,7 @@ export function MonthlyStrip({
                   {photo ? (
                     <ButtonBase
                       onClick={() => onOpen(photo)}
-                      aria-label={`Open ${row.pose} photo from ${photo.date}`}
+                      aria-label={`Open ${row.pose} photo from ${formatDay(photo.date)}`}
                       sx={{ display: 'block', width: '100%', borderRadius: `${tokens.radius.control}px` }}
                     >
                       <Box

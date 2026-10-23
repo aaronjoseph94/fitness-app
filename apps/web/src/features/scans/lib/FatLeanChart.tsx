@@ -198,7 +198,7 @@ export function FatLeanChart({ bars, fatTarget }: { bars: readonly FatLeanBar[];
             left: 0,
             right: 0,
             top: `${(1 - fatTarget / top) * 100}%`,
-            borderTop: `2px dashed ${tokens.metric.fatMass}`,
+            borderTop: `2px dashed ${tokens.chart.plan}`,
           }}
         />
         <Box
@@ -313,7 +313,7 @@ function Key({ mark, line = false, children }: { mark?: object; line?: boolean; 
   return (
     <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
       {line ? (
-        <Box component="span" sx={{ width: 14, borderTop: `2px dashed ${tokens.metric.fatMass}` }} />
+        <Box component="span" sx={{ width: 14, borderTop: `2px dashed ${tokens.chart.plan}` }} />
       ) : (
         <Box
           component="span"

@@ -19,7 +19,7 @@ import type { WorkoutDraft } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { problemText } from '../../../api'
-import { formatShortDate, PageHeader, Panel, Reveal, staggerDelay } from '../../../components'
+import { formatShortDate, NoModelKey, PageHeader, Panel, Reveal, staggerDelay } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { ABOVE_NAV, AiWorkoutPreview } from './AiWorkoutPreview'
 import { AiWorking } from './AiWorking'
@@ -148,7 +148,8 @@ export function AiWorkoutPage() {
                 placeholder="e.g. chest and back, go easy on the knees"
                 slotProps={{ htmlInput: { maxLength: 200 } }}
               />
-              {state.status === 'failed' && <Alert severity="warning">{state.message}</Alert>}
+              {state.status === 'failed' &&
+                (state.noKey ? <NoModelKey /> : <Alert severity="warning">{state.message}</Alert>)}
               <Box>
                 <Button
                   variant="contained"
@@ -158,7 +159,7 @@ export function AiWorkoutPage() {
                   sx={{ width: { xs: '100%', sm: 'auto' } }}
                   data-testid="ai-generate"
                 >
-                  {state.status === 'failed' ? 'Try again' : 'Generate workout'}
+                  {state.status === 'failed' && !state.noKey ? 'Try again' : 'Generate workout'}
                 </Button>
               </Box>
             </Stack>

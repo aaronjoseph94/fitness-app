@@ -62,6 +62,8 @@ export const copy = {
   fatAtGoal: CLIMB ? 'Fat at the summit' : 'Fat at goal',
   /** "Base camp week" / "First week". */
   startWeek: pick('Base camp week', 'First week'),
+  /** The not-found page's title: "Off the trail" / "Nothing here". */
+  lostTitle: pick('Off the trail', 'Nothing here'),
   /** The "you are here" marker on the route: "You · 93.6". */
   youAt: (kg: string) => `You · ${kg}`,
 } as const

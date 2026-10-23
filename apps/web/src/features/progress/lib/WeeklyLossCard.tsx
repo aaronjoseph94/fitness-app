@@ -1,17 +1,17 @@
 // Owns: 1d's "Weekly loss vs expected" card, shared by the Dashboard and Progress — each whole Monday–Sunday week's
 // trend change as a wide ramp bar against the forecast's expected loss (the dashed gold line), the weeks it covers
-// ("Weeks 40–43"), a subtitle saying how many weeks landed inside the forecast's ±band and naming the dashed line in the
+// ("Sep 28 – Oct 18"), a subtitle saying how many weeks landed inside the forecast's ±band and naming the dashed line in the
 // plan's amber, and the empty slot before the first full week. Data in (GET /api/trend's series), card out.
 import Box from '@mui/material/Box'
-import { isoWeek } from '@fitness/shared/engine'
+import { addDays } from '@fitness/shared/engine'
 import type { LocalDate, TrendSeries } from '@fitness/shared/schemas'
 import { WeeklyLossChart } from '../../../charts'
-import { ChartCard, formatNumber } from '../../../components'
+import { ChartCard, formatDayRange, formatNumber } from '../../../components'
 import { tokens } from '../../../theme'
 import { forecastBandPercent, weeklyLoss } from './series'
 
-/** "2026-W40" → "40". */
-const weekNumber = (date: LocalDate) => String(Number(isoWeek(date).slice(6)))
+/** The Monday–Sunday span the bars cover, as dates: "Sep 28 – Oct 18" (not ISO week numbers). */
+const span = (first: LocalDate, last: LocalDate) => formatDayRange(first, addDays(last, 6))
 
 export interface WeeklyLossCardProps {
   /** The trend series (its points and forecast); null when there is none for the window. */
@@ -63,9 +63,7 @@ export function WeeklyLossCard({ trend, height, fill, titleSize, testId }: Weekl
       action={
         first && last ? (
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-            {first === last
-              ? `Week ${weekNumber(first.week)}`
-              : `Weeks ${weekNumber(first.week)}–${weekNumber(last.week)}`}
+            {span(first.week, last.week)}
           </Box>
         ) : undefined
       }

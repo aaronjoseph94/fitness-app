@@ -158,6 +158,9 @@ function Row({
   testId,
 }: RowProps) {
   const interactive = Boolean(onClick || to)
+  const chevron = interactive && !trailing && (
+    <ChevronRightRounded aria-hidden sx={{ fontSize: 20, color: tokens.ink.faint, flex: 'none' }} />
+  )
   const content = (
     <>
       {Icon && (
@@ -241,6 +244,7 @@ function Row({
               minWidth: 0,
               maxWidth: wrapValue ? '100%' : '55%',
               textAlign: 'right',
+              ...(wrapValue && { display: 'flex', alignItems: 'center', gap: '12px', ml: 'auto' }),
               // Whole words first: a word breaks only when it can't fit a line on its own.
               overflowWrap: 'break-word',
               fontSize: ROW_LABEL,
@@ -250,11 +254,11 @@ function Row({
             }}
           >
             {breakAfterSlash(value)}
+            {/* A wrapping value carries the chevron with it, so the chevron never wraps onto a line of its own. */}
+            {wrapValue && chevron}
           </Box>
         ))}
-      {interactive && !trailing && (
-        <ChevronRightRounded aria-hidden sx={{ fontSize: 20, color: tokens.ink.faint, flex: 'none' }} />
-      )}
+      {!(wrapValue && !trailing && value !== undefined && value !== null) && chevron}
     </>
   )
 

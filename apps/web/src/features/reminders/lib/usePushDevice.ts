@@ -37,7 +37,7 @@ function sentence(error: unknown): string {
 }
 
 function testOutcome(r: PushResult): string {
-  if (!r.configured) return 'Push isn’t set up on the server (VAPID keys missing).'
+  if (!r.configured) return 'Notifications aren’t set up for this app yet.'
   if (r.sent > 0) return 'Test sent. It should arrive in a few seconds.'
   if (r.removed > 0) return 'This device’s subscription had expired. Enable notifications again.'
   return 'The push service refused the test. Try again later.'
@@ -94,7 +94,7 @@ export function usePushDevice(): PushDevice {
     busy,
     enable: () =>
       run(async () => {
-        if (!publicKey) return 'Push isn’t set up on the server (VAPID keys missing).'
+        if (!publicKey) return 'Notifications aren’t set up for this app yet.'
         const result = await enablePush(publicKey)
         if (result === 'granted') return 'Notifications are on for this device.'
         return result === 'denied'

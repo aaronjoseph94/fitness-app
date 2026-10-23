@@ -27,8 +27,9 @@ export interface RouteHandle {
    */
   trail?: readonly Crumb[]
   /**
-   * 'wide' gives the page the whole content column (1d's 1,328 px); 'narrow' keeps a reading column (820 px from
-   * `md`, a phone-width one under it). Default 'narrow'.
+   * 'wide' gives the page the whole content column (1d's 1,328 px), like every tab, Settings and Scans; 'narrow'
+   * keeps a reading column (820 px from `md`, a phone-width one under it) for a page that is one form. Default 'wide'
+   * (UX #37: a content page uses the panel; the page lays its own cards out in it).
    */
   width?: PageWidth
   /** The sky: Today's full one, an inner page's (default) or the compact one (Ask AI, Settings). A page's

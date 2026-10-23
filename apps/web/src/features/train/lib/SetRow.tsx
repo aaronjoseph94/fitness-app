@@ -2,9 +2,11 @@
 // reps fields with greyed hints (what a tick logs when they are left empty), optional RPE 6–10, and the done tick. Each
 // row is a radius-14 well: a done row teal with a solid teal check, the active row (the next set to log) white with a
 // 2 px violet inset ring, the rest white on a hairline. The grid is README §4's `36px 1.3fr 1fr 1fr .8fr 44px` from `sm`
-// (fluid, never wrapped); on a phone 24 / flex / 64 / 50 / 44 / 44 px with 44 px inputs at 16 px (no iOS zoom) and
+// (fluid, never wrapped); on a phone 24 / flex / 62 / 54 / 44 / 44 px with 44 px inputs at 16 px (no iOS zoom) and
 // 44 px taps, and no Previous column under 375 px (SET_GRID_SX), so the done tick stays inside the card.
-// A problem (a tick with no load, a load or reps out of range) is said in words under the row, not only in red.
+// A problem (a tick with no load, a load or reps out of range) is said in words under the row, not only in red. Text
+// that isn't a valid value stays as typed (never swapped back silently) and keeps the tick disabled, and the logger's
+// Finish waits for it (logger-store `invalid`), so a tick never logs a value or a hint that isn't on screen.
 import CheckRounded from '@mui/icons-material/CheckRounded'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -16,17 +18,18 @@ import { useEffect, useId, useRef, useState, type Ref } from 'react'
 import { formatNumber, parseNumber } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens, transitionOf } from '../../../theme'
 import type { LastSet, LoggerSet } from './logger-model'
+import { loggerState } from './logger-store'
 
 /**
  * The set table's grid, shared with the column header strip so the two line up. From `sm` it is README §4's
  * `36px 1.3fr 1fr 1fr .8fr 44px` with 10 px gaps. On a phone, a row's content is the viewport − 76 px (page gutters,
- * card gutters and the row's padding); the columns need 226 px + Previous (≥ 44) + 5 px gaps, which fit from 375 px;
+ * card gutters and the row's padding); the columns need 228 px + Previous (≥ 44) + 5 px gaps, which fit from 375 px;
  * under 375 px the Previous column goes, and the kg / reps hints still show last session.
  */
 export const SET_GRID_SX = {
   display: 'grid',
   gridTemplateColumns: {
-    xs: '24px minmax(44px, 1fr) 64px 50px 44px 44px',
+    xs: '24px minmax(44px, 1fr) 62px 54px 44px 44px',
     sm: '36px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) 44px',
   },
   columnGap: { xs: '5px', sm: '10px' },
@@ -48,7 +51,8 @@ export const SET_ROW_PAD_SX = { px: { xs: '8px', sm: '12px' } } as const
  * 1.4.11); on a done row it is drawn only on hover and focus, so the logged values read as the teal well's text.
  */
 const FIELD_SX = {
-  height: 34,
+  // 44 px on a phone whatever the pointer (a 34 px field there was too small a target); 34 from `sm` with a mouse.
+  height: { xs: tokens.tapTarget, sm: 34 },
   minWidth: 0,
   boxSizing: 'border-box',
   borderRadius: `${tokens.radius.inner}px`,
@@ -95,6 +99,7 @@ export function SetRow({
   onToggle,
 }: SetRowProps) {
   const loadRef = useRef<HTMLInputElement>(null)
+  const repsRef = useRef<HTMLInputElement>(null)
   const [needLoad, setNeedLoad] = useState(false)
   const [loadInvalid, setLoadInvalid] = useState(false)
   const [repsInvalid, setRepsInvalid] = useState(false)
@@ -115,7 +120,27 @@ export function SetRow({
         ? 'Reps must be a whole number up to 100'
         : null
 
+  // Out-of-range text blocks the tick here and Finish in the logger; the flags go with the row (a folded card).
+  useEffect(() => {
+    const store = loggerState()
+    store.setInvalid(`${set.id}:load`, loadInvalid)
+    store.setInvalid(`${set.id}:reps`, repsInvalid)
+  }, [set.id, loadInvalid, repsInvalid])
+  useEffect(
+    () => () => {
+      const store = loggerState()
+      store.setInvalid(`${set.id}:load`, false)
+      store.setInvalid(`${set.id}:reps`, false)
+    },
+    [set.id],
+  )
+  const blocked = loadInvalid || repsInvalid
+
   const toggle = () => {
+    if (blocked) {
+      ;(loadInvalid ? loadRef : repsRef).current?.focus()
+      return
+    }
     if (onToggle() === 'need-load') {
       setNeedLoad(true)
       loadRef.current?.focus()
@@ -195,6 +220,7 @@ export function SetRow({
       />
       <NumberCell
         integer
+        inputRef={repsRef}
         label={`Set ${n} reps`}
         value={set.reps}
         placeholder={String(hint.reps)}
@@ -223,9 +249,12 @@ export function SetRow({
         onClick={toggle}
         aria-label={set.done ? `Set ${n} done, tap to undo` : `Mark set ${n} done`}
         aria-pressed={set.done}
+        aria-disabled={blocked || undefined}
+        aria-describedby={blocked ? problemId : undefined}
         data-testid="set-done"
         sx={{
           justifySelf: 'center',
+          ...(blocked && { opacity: 0.4, cursor: 'not-allowed' }),
           '&:hover': { bgcolor: 'transparent' },
           '&:hover > span': set.done ? {} : { borderColor: tokens.tone.success.solid },
         }}
@@ -317,7 +346,7 @@ interface NumberCellProps {
   max: number
   error?: boolean
   inputRef?: Ref<HTMLInputElement>
-  /** Told whether the typed text is a valid value (false while it is out of range); true again on blur. */
+  /** Told whether the typed text is a valid value (false while it is out of range; it stays so after blur). */
   onValidity?: (ok: boolean) => void
   /** Id of the message that explains the field's problem. */
   describedBy?: string
@@ -351,7 +380,10 @@ function NumberCell({
 
   // Values set elsewhere (copy previous, a tick filling the hint) show unless the field is being typed in.
   useEffect(() => {
-    if (!focused.current) setText(kg(value))
+    if (focused.current) return
+    setText(kg(value))
+    if (invalid) setInvalid(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new value from elsewhere replaces the text
   }, [value])
 
   return (
@@ -365,8 +397,8 @@ function NumberCell({
       }}
       onBlur={() => {
         focused.current = false
-        setInvalid(false)
-        setText(kg(value))
+        // Invalid text stays on screen with its message until it is fixed (never swapped back to an old value).
+        if (!invalid) setText(kg(value))
       }}
       onChange={(e) => {
         const next = e.target.value.replace(',', '.')
@@ -396,7 +428,7 @@ function NumberCell({
         ...(done && DONE_FIELD_SX),
         // Red when its value is the problem; the violet border and 3 px ring when focused.
         ...(invalid || error ? { borderColor: tokens.status.flag } : {}),
-        px: { xs: '8px', sm: '10px' },
+        px: { xs: '6px', sm: '10px' },
         '& input': { p: 0, height: '100%' },
         '&.Mui-focused': {
           borderColor: invalid || error ? tokens.status.flag : tokens.accent.main,

@@ -17,8 +17,11 @@ export function equipmentLabel(name: string | null): string {
   if (name === null) return 'No equipment'
   if (name === 'kettlebells') return 'Kettlebell'
   if (name === 'e-z curl bar') return 'EZ curl bar'
-  return sentence(name)
+  return sentence(name).replace(ACRONYMS, (w) => w.toUpperCase())
 }
+
+/** Brand lines written in capitals on the gym floor ("mts biceps curl" → "MTS biceps curl"). */
+const ACRONYMS = /\b(mts)\b/gi
 
 export function categoryLabel(category: ExerciseCategory): string {
   return sentence(category)

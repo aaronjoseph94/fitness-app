@@ -4,7 +4,7 @@
 import { endpoints } from '@fitness/shared/api'
 import type { AiWorkoutRequest, WorkoutDraft } from '@fitness/shared/schemas'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { call, problemText, useApiQuery } from '../../../api'
+import { call, isApiError, problemText, useApiQuery } from '../../../api'
 
 const POLL_MS = 1_500
 /** Free-tier providers can queue a while; past this the page says so. */
@@ -21,7 +21,8 @@ export type AiWorkoutState =
   | { status: 'idle' }
   | { status: 'working'; slow: boolean }
   | { status: 'done'; draft: WorkoutDraft; provider: string | null }
-  | { status: 'failed'; message: string }
+  /** `noKey`: no AI model has a key (the page shows the shared Settings → AI message instead of a retry). */
+  | { status: 'failed'; message: string; noKey?: boolean }
 
 export interface AiWorkout {
   state: AiWorkoutState
@@ -102,7 +103,12 @@ export function useAiWorkout(): AiWorkout {
     call(endpoints.ai.workout, { body: request }).then(
       (ref) => mine === runId.current && setJobId(ref.job_id),
       (error: unknown) =>
-        mine === runId.current && setState({ status: 'failed', message: problemText(error) }),
+        mine === runId.current &&
+        setState({
+          status: 'failed',
+          message: problemText(error),
+          noKey: isApiError(error) && error.code === 'no_model_key',
+        }),
     )
   }, [])
 

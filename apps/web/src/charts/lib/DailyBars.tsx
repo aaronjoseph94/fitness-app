@@ -101,7 +101,7 @@ export function DailyBars({
     const v = single ? val(r, single.key) : null
     return {
       ...r,
-      __marker: marker && field(r, marker.key) === true ? 0 : null,
+      __marker: (marker && field(r, marker.key) === true ? 0 : null) as number | null,
       __miss: tint !== null && v !== null && v < target!.value,
     }
   })
@@ -111,6 +111,9 @@ export function DailyBars({
     zero: true,
     count: tickCount(height),
   })
+  // A marker sits a little above the baseline (6 % of the plot), clear of the axis line and the day labels under it.
+  const markerY = y.domain[0] + (y.domain[1] - y.domain[0]) * 0.06
+  for (const r of data) if (r.__marker !== null) r.__marker = markerY
   const compact = Math.max(Math.abs(y.domain[0]), Math.abs(y.domain[1])) > 9999
   const decimals = compact && y.ticks.some((t) => t % 1000 !== 0) ? 1 : 0
   const ticks = tickFormat ?? ((v: number) => formatNumber(v, decimals, compact))
@@ -120,7 +123,7 @@ export function DailyBars({
   if (tint && data.some((r) => r.__miss)) items.push({ label: 'Below target', color: tint, mark: 'bar' })
   if (line) items.push({ label: line.label, color: line.color, mark: 'line' })
   if (target) items.push({ label: target.label, color: targetColor, mark: 'dashed' })
-  if (marker && data.some((r) => r.__marker === 0))
+  if (marker && data.some((r) => r.__marker !== null))
     items.push({ label: marker.label, color: marker.color, mark: 'dot' })
 
   const tipLines: TipLine<DayRow>[] = [

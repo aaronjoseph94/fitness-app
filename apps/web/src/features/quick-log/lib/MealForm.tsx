@@ -23,7 +23,8 @@ import type { MealCreate, MealSlot } from '@fitness/shared/schemas'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { problemText, useApiQuery } from '../../../api'
-import { formatNumber, NumberField, parseNumber, tabularNums } from '../../../components'
+import { formatNumber, NoModelKey, NumberField, parseNumber, tabularNums } from '../../../components'
+import { useModelChain } from '../../settings/models'
 import { tokens, transitionOf } from '../../../theme'
 import { BarcodePane } from './capture/BarcodePane'
 import { PhotoPane } from './capture/PhotoPane'
@@ -34,7 +35,7 @@ import { FavouritesPane, type QuickMeal } from './FavouritesPane'
 import { FoodPicker, type PickedFood } from './FoodPicker'
 import { defaultSlot, portion, SLOT_LABEL, SLOT_TIME, sum, visibleSlots } from './nutrition'
 import { useRecentFoods, useRecentFoodsState } from './reads'
-import { noticeFor, type LogNotice } from './ui'
+import { noticeFor, stickyActionsSx, type LogNotice } from './ui'
 import { useLogMutation } from './writes'
 
 type Mode = 'favourites' | 'foods' | 'describe' | 'photo' | 'barcode'
@@ -421,29 +422,31 @@ function FoodsPane({
           ))}
         </Box>
       )}
-      <Button
-        variant="contained"
-        size="large"
-        disabled={!valid || busy}
-        onClick={() =>
-          onSave(
-            parsed.map(({ item, grams }) => ({
-              id: item.id,
-              food_id: item.food.id,
-              grams: grams ?? 0,
-              description: item.food.name,
-            })),
-            total.kcal,
-          )
-        }
-        data-testid="meal-save-items"
-      >
-        {busy
-          ? 'Saving…'
-          : items.length === 0
-            ? 'Add foods to log'
-            : `Log meal · ${formatNumber(total.kcal)} kcal · ${formatNumber(total.protein_g)} g protein`}
-      </Button>
+      <Box sx={stickyActionsSx} data-sheet-actions>
+        <Button
+          variant="contained"
+          size="large"
+          disabled={!valid || busy}
+          onClick={() =>
+            onSave(
+              parsed.map(({ item, grams }) => ({
+                id: item.id,
+                food_id: item.food.id,
+                grams: grams ?? 0,
+                description: item.food.name,
+              })),
+              total.kcal,
+            )
+          }
+          data-testid="meal-save-items"
+        >
+          {busy
+            ? 'Saving…'
+            : items.length === 0
+              ? 'Add foods to log'
+              : `Log meal · ${formatNumber(total.kcal)} kcal · ${formatNumber(total.protein_g)} g protein`}
+        </Button>
+      </Box>
     </Box>
   )
 }
@@ -471,6 +474,7 @@ function DescribePane({
   onSave,
 }: DescribePaneProps) {
   const trimmed = text.trim()
+  const noModelKey = useModelChain()?.keys === 0
   return (
     <Box
       component="form"
@@ -535,24 +539,31 @@ function DescribePane({
           {dictation.error}
         </Box>
       )}
-      <Box
-        sx={{
-          fontSize: tokens.font.size.small,
-          color: 'text.secondary',
-          lineHeight: tokens.font.leading.small,
-        }}
-      >
-        The AI turns it into items with grams and kcal for you to check before it counts.
+      {noModelKey ? (
+        // Saving still keeps the words; the review then asks for the items by hand.
+        <NoModelKey />
+      ) : (
+        <Box
+          sx={{
+            fontSize: tokens.font.size.small,
+            color: 'text.secondary',
+            lineHeight: tokens.font.leading.small,
+          }}
+        >
+          The AI turns it into items with grams and kcal for you to check before it counts.
+        </Box>
+      )}
+      <Box sx={stickyActionsSx} data-sheet-actions>
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={!trimmed || busy || dictation.listening}
+          data-testid="meal-save-text"
+        >
+          {busy ? 'Saving…' : 'Analyse'}
+        </Button>
       </Box>
-      <Button
-        type="submit"
-        variant="contained"
-        size="large"
-        disabled={!trimmed || busy || dictation.listening}
-        data-testid="meal-save-text"
-      >
-        {busy ? 'Saving…' : 'Analyse'}
-      </Button>
     </Box>
   )
 }

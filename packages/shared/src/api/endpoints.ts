@@ -92,6 +92,7 @@ import {
   SessionCreate,
   SessionFinish,
   SessionFinishResult,
+  SessionPatch,
   SessionSet,
   SetCreate,
   SetPatch,
@@ -529,6 +530,15 @@ export const endpoints = {
       path: '/api/sessions/:id',
       params: IdParams,
       response: WorkoutSession,
+    }),
+    /** Replace the session's planned exercise list (added, swapped or removed mid-session); logged sets stay. */
+    updateSession: defineEndpoint({
+      method: 'PATCH',
+      path: '/api/sessions/:id',
+      params: IdParams,
+      body: SessionPatch,
+      response: WorkoutSession,
+      offline: 'queue',
     }),
     /** A session with its sets and its finish note (a mistaken or duplicate session); an unknown id is a no-op. */
     deleteSession: defineEndpoint({

@@ -15,13 +15,13 @@ import type { DayView, Muscle, Template, TemplateExerciseInput } from '@fitness/
 import { muscleLevels } from '@fitness/shared/engine'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { cardSurface, displayTitle, fixedCol, formatNumber, StatusChip } from '../../../components'
+import { cardSurface, displayTitle, fixedCol, formatDay, formatNumber, StatusChip } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
 import { draftMuscleLevels, pendingWorkoutPath, usePendingWorkouts } from '../../builder'
 import { useExerciseIndex } from '../../library'
 import type { LoggerSession } from './logger-model'
-import { sessionDay, type SessionLine } from './RecentSessions'
+import type { SessionLine } from './RecentSessions'
 import { sessionPath, type StartInput } from './session'
 
 /** The AI workout page, generating at once. */
@@ -146,6 +146,7 @@ function Shell({
   children?: ReactNode
   testId: string
 }) {
+  const compact = !aside && !list
   return (
     <Box
       component="section"
@@ -205,12 +206,29 @@ function Shell({
           </Box>
         )}
         {list}
-        {children && (
+        {children && !compact && (
           <Box sx={{ mt: '20px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             {children}
           </Box>
         )}
       </Box>
+      {/* With nothing beside or under the text (a rest day, nothing planned) the actions sit at the right, so the
+          card is one short row rather than a wide card with a blank half. */}
+      {children && compact && (
+        <Box
+          sx={{
+            flex: '1 1 auto',
+            alignSelf: 'center',
+            display: 'flex',
+            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
+          }}
+        >
+          {children}
+        </Box>
+      )}
       {aside && (
         <Box
           sx={{
@@ -405,7 +423,7 @@ export function TodayCard({
         body={
           <>
             {startable.length} exercises · {training.totalSets} working sets
-            {last && ` · last done ${sessionDay(last.date)} (${formatNumber(last.volume_kg)} kg)`}
+            {last && ` · last done ${formatDay(last.date)} (${formatNumber(last.volume_kg)} kg)`}
           </>
         }
         list={<ExerciseList exercises={startable} name={(id) => index.byId.get(id)?.name ?? 'Exercise'} />}

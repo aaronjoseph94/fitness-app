@@ -153,7 +153,7 @@ export function FavouritesManager({ favourites, isLoading, error, onRetry }: Fav
               mr: '-12px',
               fontSize: tokens.font.size.body,
               fontWeight: tokens.font.weight.heading,
-              '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+              '&:hover': { bgcolor: 'transparent', color: tokens.accent.deep },
             }}
           >
             {managing ? 'Done' : 'Manage'}

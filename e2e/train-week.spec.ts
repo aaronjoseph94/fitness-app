@@ -63,7 +63,7 @@ test('Generate without a model key says where to add one, and the week stays as 
   await generate.click()
   // The e2e Worker has no LLM keys (playwright.config.ts): POST /api/ai/week answers 409 no_model_key.
   const note = card.getByRole('alert')
-  await expect(note).toHaveText('Add a model key in Settings → AI first.')
+  await expect(note).toHaveText('Add a model key in Settings → AI to use this.')
   await expect(note.getByRole('link', { name: 'Settings → AI' })).toHaveAttribute('href', '/settings/ai')
 
   await expect(generate).toBeEnabled()

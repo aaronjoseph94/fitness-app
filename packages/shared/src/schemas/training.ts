@@ -569,6 +569,13 @@ export const SessionCreate = z.object({
 })
 export type SessionCreate = z.infer<typeof SessionCreate>
 
+/**
+ * Body of PATCH /api/sessions/:id: the session's exercise list as it stands now, in order (exercises added, swapped or
+ * removed mid-session, or added to a blank session), replacing the plan's list. Sets already logged stay.
+ */
+export const SessionPatch = z.object({ exercises: z.array(TemplateExerciseInput).max(20) })
+export type SessionPatch = z.infer<typeof SessionPatch>
+
 /** Body of POST /api/sessions/:id/sets. */
 export const SetCreate = z.object({
   id: Id,

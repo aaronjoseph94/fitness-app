@@ -5,8 +5,9 @@
 // with the YouTube form-video search),
 // "How to" (GET /api/exercises/:id: the cached list has none), the strength chart with PRs and next session's
 // suggestion from GET /api/history/exercises/:id, and "Hide forever" (or, when hidden, why and "Un-hide"). Shared by
-// the detail sheet (cards under the sheet's h2) and the /train/library/:id page (cards under its h1). The cards rise in
-// one after another on mount (1d's entrance, `cardDelay`).
+// the detail sheet (cards under the sheet's h2, one column) and the /train/library/:id page (cards under its h1, in two
+// wrapping columns: what it is beside how to do it and its history). The cards rise in one after another on mount (1d's
+// entrance, `cardDelay`).
 import BlockRounded from '@mui/icons-material/BlockRounded'
 import OndemandVideoRounded from '@mui/icons-material/OndemandVideoRounded'
 import Box from '@mui/material/Box'
@@ -34,6 +35,8 @@ import {
   PanelRow,
   Reveal,
   staggerDelay,
+  wrapCol,
+  WrapRow,
 } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap, type MuscleLevel } from '../../../muscle-map'
 import { tokens, withAlpha } from '../../../theme'
@@ -380,10 +383,32 @@ export interface ExerciseDetailProps {
   onHidden?: () => void
   /** Heading level of the cards: h3 under a sheet's h2 title (default), h2 under a page's h1. */
   headingComponent?: Heading
+  /** `columns` (the page): media and the overview beside the steps and history, wrapping to one column when narrow. */
+  layout?: 'stack' | 'columns'
 }
 
-export function ExerciseDetail({ exercise, onHidden, headingComponent = 'h3' }: ExerciseDetailProps) {
+export function ExerciseDetail({
+  exercise,
+  onHidden,
+  headingComponent = 'h3',
+  layout = 'stack',
+}: ExerciseDetailProps) {
   const [hiding, setHiding] = useState(false)
+
+  const about = (
+    <>
+      <Media exercise={exercise} delay={cardDelay(1)} />
+      <Reveal delay={cardDelay(2)}>
+        <Overview exercise={exercise} heading={headingComponent} />
+      </Reveal>
+    </>
+  )
+  const practice = (
+    <>
+      <Instructions exerciseId={exercise.id} heading={headingComponent} delay={cardDelay(3)} />
+      <History exerciseId={exercise.id} heading={headingComponent} delay={cardDelay(4)} />
+    </>
+  )
 
   return (
     <Stack spacing={4} data-testid="exercise-detail">
@@ -392,12 +417,21 @@ export function ExerciseDetail({ exercise, onHidden, headingComponent = 'h3' }: 
           <HiddenNotice exercise={exercise} />
         </Reveal>
       )}
-      <Media exercise={exercise} delay={cardDelay(1)} />
-      <Reveal delay={cardDelay(2)}>
-        <Overview exercise={exercise} heading={headingComponent} />
-      </Reveal>
-      <Instructions exerciseId={exercise.id} heading={headingComponent} delay={cardDelay(3)} />
-      <History exerciseId={exercise.id} heading={headingComponent} delay={cardDelay(4)} />
+      {layout === 'columns' ? (
+        <WrapRow align="flex-start" gap={tokens.summit.space.gap.tile}>
+          <Stack spacing={4} sx={wrapCol(1, 360)}>
+            {about}
+          </Stack>
+          <Stack spacing={4} sx={wrapCol(1, 360)}>
+            {practice}
+          </Stack>
+        </WrapRow>
+      ) : (
+        <>
+          {about}
+          {practice}
+        </>
+      )}
 
       {exercise.allowed && (
         <Reveal delay={cardDelay(5)}>

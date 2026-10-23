@@ -61,7 +61,8 @@ export function DeviceCard({
   } else if (publicKey === null) {
     body = (
       <Alert severity="info" data-testid="push-not-configured">
-        Push isn’t set up on the server yet: it needs the VAPID keys (see docs/DEPLOY.md, “Secrets”).
+        Notifications aren’t set up for this app yet, so no reminder can be sent. Your choices below are kept
+        and start working once they are.
       </Alert>
     )
   } else if (permission === 'denied') {

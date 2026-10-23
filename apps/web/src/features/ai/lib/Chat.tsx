@@ -26,9 +26,19 @@ import Skeleton from '@mui/material/Skeleton'
 import Tooltip from '@mui/material/Tooltip'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { cardSurface, displayTitle, fixedCol, Reveal, staggerDelay, wrapCol } from '../../../components'
+import { useSearchParams } from 'react-router'
+import {
+  cardSurface,
+  displayTitle,
+  fixedCol,
+  NoModelKey,
+  Reveal,
+  staggerDelay,
+  wrapCol,
+} from '../../../components'
 import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, minWidth, scrollBehavior, tokens } from '../../../theme'
+import { useModelChain } from '../../settings/models'
 import { ChatsRail, shorten } from './ChatsRail'
 import { Composer } from './Composer'
 import { NothingWaiting, RailsCard, RecentTrainChanges } from './PendingProposals'
@@ -282,45 +292,74 @@ function Intro() {
 }
 
 /**
- * 1d's starter chips above the composer: 34 px soft-violet pills (44 px on touch); a tap sends that question. `flush`
- * drops the 12 px under them where the phone's sticky dock already starts with that space.
+ * A sideways row's edges fade out, so a chip cut at the edge reads as "scroll for more". A mask: only the alpha counts,
+ * so any opaque token does.
+ */
+const ROW_FADE = `linear-gradient(to right, transparent 0, ${tokens.ink.text} 12px, ${tokens.ink.text} calc(100% - 28px), transparent 100%)`
+
+/**
+ * 1d's starter chips above the composer: 34 px soft-violet pills (44 px on touch); a tap sends that question. `row`
+ * (the phone's sticky dock) keeps them on one line that scrolls sideways with faded edges, so the composer never
+ * covers one. With no model key they are off, under the shared "add a model key" line.
  */
 function Starters({
   onPick,
   disabled,
-  flush = false,
+  row = false,
+  noKey = false,
 }: {
   onPick: (text: string) => void
   disabled: boolean
-  flush?: boolean
+  row?: boolean
+  noKey?: boolean
 }) {
   return (
-    <Box
-      data-testid="ask-ai-suggestions"
-      sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px', mb: flush ? 0 : '12px' }}
-    >
-      {SUGGESTIONS.map((s) => (
-        <Chip
-          key={s}
-          label={s}
-          variant="outlined"
-          disabled={disabled}
-          onClick={() => onPick(s)}
-          sx={{
-            minHeight: 34,
-            px: '14px',
-            border: 0,
-            borderRadius: `${tokens.radius.pill}px`,
-            bgcolor: tokens.summit.surface.soft,
-            fontSize: tokens.font.size.small,
-            fontWeight: tokens.font.weight.label,
-            color: tokens.summit.ink.deep,
-            '&.MuiChip-clickable:hover': { bgcolor: tokens.summit.surface.softHover },
-            '& .MuiChip-label': { whiteSpace: 'normal' },
-            [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
-          }}
-        />
-      ))}
+    <Box sx={{ display: 'grid', gap: '8px', mb: '12px', minWidth: 0 }}>
+      {noKey && <NoModelKey testId="ask-ai-no-key" />}
+      <Box
+        data-testid="ask-ai-suggestions"
+        sx={{
+          display: 'flex',
+          gap: '6px',
+          minWidth: 0,
+          ...(row
+            ? {
+                flexWrap: 'nowrap',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+                mx: '-12px',
+                px: '12px',
+                maskImage: ROW_FADE,
+                '& .MuiChip-label': { whiteSpace: 'nowrap' },
+              }
+            : { flexWrap: 'wrap', '& .MuiChip-label': { whiteSpace: 'normal' } }),
+        }}
+      >
+        {SUGGESTIONS.map((s) => (
+          <Chip
+            key={s}
+            label={s}
+            variant="outlined"
+            disabled={disabled || noKey}
+            onClick={() => onPick(s)}
+            sx={{
+              flex: 'none',
+              maxWidth: row ? 'none' : '100%',
+              minHeight: 34,
+              px: '14px',
+              border: 0,
+              borderRadius: `${tokens.radius.pill}px`,
+              bgcolor: tokens.summit.surface.soft,
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.label,
+              color: tokens.summit.ink.deep,
+              '&.MuiChip-clickable:hover': { bgcolor: tokens.summit.surface.softHover },
+              [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+            }}
+          />
+        ))}
+      </Box>
     </Box>
   )
 }
@@ -338,9 +377,25 @@ const TURNS_MAX_HEIGHT = 'max(360px, calc(100dvh - 300px))'
 export function Chat({ variant, onClose, aside }: ChatProps) {
   const chat = useChat()
   const online = useOnline()
+  const noKey = useModelChain()?.keys === 0
   // Read before the panel's early return so the hook order never changes (rules of hooks).
   const wide = useMediaQuery(WITH_RAIL)
   const [text, setText] = useState('')
+  // The page takes a question to start from as `?q=` (the command palette's "Ask AI: '…'"): it fills the composer,
+  // unsent, and leaves the address so a reload doesn't fill it again.
+  const [params, setParams] = useSearchParams()
+  const prefill = variant === 'page' ? params.get('q') : null
+  useEffect(() => {
+    if (!prefill) return
+    setText(prefill)
+    setParams(
+      (p) => {
+        p.delete('q')
+        return p
+      },
+      { replace: true },
+    )
+  }, [prefill, setParams])
   const end = useRef<HTMLDivElement>(null)
   /** The box the turns scroll in, where they have one (the panel, a wide page); null where the page scrolls. */
   const scroller = useRef<HTMLDivElement>(null)
@@ -435,8 +490,8 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   // The page always offers the starters above its composer (1d, at every width); the panel only on an empty thread.
   // On a phone they sit in the page's flow just above the sticky dock, so the dock stays one composer tall.
   const showStarters = empty || page
-  const starters = (flush = false) => (
-    <Starters onPick={send} disabled={!online || chat.sending} flush={flush} />
+  const starters = (row = false) => (
+    <Starters onPick={send} disabled={!online || chat.sending} row={row} noKey={noKey} />
   )
   const composer = (
     <>
@@ -510,7 +565,15 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       component="section"
       aria-label="Thread"
       data-testid="ask-ai-chat"
-      sx={{ ...cardSurface, flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}
+      sx={{
+        ...cardSurface,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        // Clips the phone dock's skirt at the card's edge (`clip`, not `hidden`: no scroll box, so the dock still sticks).
+        ...(phonePage && { overflow: 'clip' }),
+      }}
     >
       <Box sx={{ px: gutter, py: '16px', borderBottom: `1px solid ${tokens.ink.hairline}` }}>
         <ThreadHeader
@@ -537,7 +600,6 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       >
         {turns}
       </Box>
-      {showStarters && phonePage && <Box sx={{ px: gutter }}>{starters(true)}</Box>}
       <Box
         ref={dock}
         sx={{
@@ -551,9 +613,22 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
             pt: '12px',
             bgcolor: tokens.ink.card,
             borderRadius: `0 0 ${tokens.radius.card}px ${tokens.radius.card}px`,
+            // A skirt in the card's colour down to the tab bar, so no reply shows between the composer and the tabs.
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: '100%',
+              height: `calc(${tokens.layout.bottomNavHeight + tokens.space(3)}px + env(safe-area-inset-bottom, 0px))`,
+              bgcolor: tokens.ink.card,
+              pointerEvents: 'none',
+            },
           }),
         }}
       >
+        {/* The phone's starters ride in the dock as one sideways row, so the composer never covers them. */}
+        {showStarters && phonePage && starters(true)}
         {composer}
       </Box>
     </Box>
@@ -572,7 +647,11 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
       <Reveal delay={enter(1)} sx={{ ...wrapCol(1), display: 'flex', flexDirection: 'column' }}>
         {thread}
       </Reveal>
-      <Reveal delay={enter(2)} sx={{ ...fixedCol(ASIDE_PX), alignSelf: 'flex-start' }}>
+      {/* Under 900 px the thread takes the full width and this column sits below it (never squeezing the thread). */}
+      <Reveal
+        delay={enter(2)}
+        sx={wide ? { ...fixedCol(ASIDE_PX), alignSelf: 'flex-start' } : { flex: '1 1 100%', minWidth: 0 }}
+      >
         <Box
           component="aside"
           aria-label="Proposals and rails"

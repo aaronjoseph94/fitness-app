@@ -1052,6 +1052,14 @@ export const theme = createTheme({
           textSizeAdjust: '100%',
         },
         'b, strong': { fontWeight: font.weight.strong },
+        // A Recharts chart is a tab stop (its accessibility layer): no black square on click, the violet ring for the
+        // keyboard (UX #35; `chartFocus` in the kit does the same for any other focusable SVG).
+        '.recharts-wrapper:focus, .recharts-surface:focus': { outline: 'none' },
+        '.recharts-wrapper:focus-visible, .recharts-surface:focus-visible': {
+          outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+          outlineOffset: tokens.focusRing.offset,
+          borderRadius: `${tokens.radius.well}px`,
+        },
         '::selection': { backgroundColor: accent.ring },
         // A long press must not open a callout over a control (iOS Safari), the way it does over text.
         'button, a': { WebkitTouchCallout: 'none', textDecoration: 'none' },
@@ -1577,11 +1585,15 @@ export const theme = createTheme({
         bar: { borderRadius: radius.pill },
       },
     },
-    // A bottom snackbar sits above the phone's tab bar and the home indicator; from `md` 24 px off the bottom.
+    // Every snackbar sits at the bottom (UX #33): on a phone above the tab bar and the home indicator, from `md` 24 px
+    // off the bottom — never over the nav at the top, where a dark notice also vanished into the dark sky. A screen
+    // that asked for `vertical: 'top'` (or set its own `top`) is moved down too, hence the `!important` on `top`.
+    // Every snackbar sits at the bottom centre, above the phone's tab bar and the home indicator (UX #33); a notice
+    // shown over an open sheet lifts itself above the sheet's action row (quick-log `useNoticeClearance`).
     MuiSnackbar: {
+      defaultProps: { anchorOrigin: { vertical: 'bottom', horizontal: 'center' } },
       styleOverrides: {
-        root: ({ ownerState, theme }) => {
-          if (ownerState.anchorOrigin?.vertical === 'top') return {}
+        root: ({ theme }) => {
           const bottom = `calc(${tokens.layout.bottomNavHeight + tokens.space(2)}px + env(safe-area-inset-bottom, 0px))`
           return {
             bottom,

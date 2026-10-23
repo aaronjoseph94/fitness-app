@@ -20,21 +20,48 @@ export const Profile = Row.extend({
 })
 export type Profile = z.infer<typeof Profile>
 
+let zones: ReadonlySet<string> | undefined
+/** The IANA zones this runtime knows (`Intl.supportedValuesOf('timeZone')`, plus UTC), built once on first use. */
+export function timeZones(): ReadonlySet<string> {
+  zones ??= new Set([...Intl.supportedValuesOf('timeZone'), 'UTC'])
+  return zones
+}
+
+/** An IANA time zone the runtime knows (so `Intl` can compute its local day): "Mars/Base" is refused. */
+export const TimeZone = z
+  .string()
+  .refine((tz) => timeZones().has(tz), { message: 'Pick a time zone from the list, e.g. America/Edmonton.' })
+
+/** Bounds of a goal weight, kg (UX review 2026-10-23: a 200 kg goal read "0.0 kg to the summit"). */
+export const GOAL_WEIGHT_KG = { min: 40, max: 200 } as const
+const GoalWeightKg = z.number().min(GOAL_WEIGHT_KG.min).max(GOAL_WEIGHT_KG.max)
+
+/** The calorie floor agreed with Aaron's doctor and dietitian. Aaron may set the rail lower; the app warns him first. */
+export const AGREED_CALORIE_FLOOR = 1400
+
 /**
  * Every editable profile field (SPEC §3). The whole profile is Aaron's to change: the goal and the start point are
- * facts about him, not derived numbers, so nothing here is read-only. `timezone` stays free text — it is an IANA zone
- * (always America/Edmonton) and validating the full zone list would reject a new one.
+ * facts about him, not derived numbers, so nothing here is read-only. `timezone` must be a zone the runtime knows,
+ * and the goal weight is 40–200 kg and below the start weight (checked here when both are sent; the settings module
+ * checks a lone one against the stored other).
  */
 export const ProfilePatch = Profile.pick({
   height_cm: true,
   birth_date: true,
   sex: true,
-  timezone: true,
-  goal_weight_kg: true,
   goal_date: true,
   start_weight_kg: true,
   start_date: true,
-}).partial()
+})
+  .extend({ timezone: TimeZone, goal_weight_kg: GoalWeightKg })
+  .partial()
+  .refine(
+    (p) =>
+      p.goal_weight_kg === undefined ||
+      p.start_weight_kg === undefined ||
+      p.goal_weight_kg < p.start_weight_kg,
+    { message: 'The goal weight must be below the start weight.', path: ['goal_weight_kg'] },
+  )
 export type ProfilePatch = z.infer<typeof ProfilePatch>
 
 /** Whole kcal for a daily rail; bounds are sanity limits, the values themselves are Aaron's (1,400 / 1,700). */

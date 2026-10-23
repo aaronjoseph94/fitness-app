@@ -119,3 +119,20 @@ export function statValue(size: keyof typeof STAT_SIZE) {
     fontVariantNumeric: 'tabular-nums',
   } as const
 }
+
+/**
+ * The keyboard ring for a chart on a light card (UX #35): spread onto the chart's wrapper (a `ChartCard` body, the Box
+ * around a Recharts `<ResponsiveContainer>` or a custom SVG). Recharts' accessibility layer makes its `<svg>` a tab
+ * stop, and the browser draws a black square there; this swaps it for the theme's violet ring, rounded, only for the
+ * keyboard (`:focus-visible`), and hides the mouse-click outline. Give the focusable SVG an `aria-label` too, or drop
+ * its tab stop (`accessibilityLayer={false}`) when the chart has a data table or a text alternative.
+ */
+export const chartFocus = {
+  '& svg:focus, & .recharts-wrapper:focus, & .recharts-surface:focus': { outline: 'none' },
+  '& svg:focus-visible, & .recharts-wrapper:focus-visible, & .recharts-surface:focus-visible, &:focus-visible':
+    {
+      outline: `${tokens.focusRing.width}px solid ${tokens.focusRing.color}`,
+      outlineOffset: tokens.focusRing.offset,
+      borderRadius: `${tokens.radius.well}px`,
+    },
+} as const

@@ -22,11 +22,11 @@ import { useUiStore } from '../../../app/ui-store'
 import { enterEasing, metricGradient, metricTint, tokens } from '../../../theme'
 import { confirmedScans } from '../../scans/charts'
 import {
-  effectiveRate,
   forecastBandPercent,
   forecastPath,
   lastTrend,
   milestoneTimelines,
+  projectionOf,
   waistPoints,
   weightMilestones,
   weightPoints,
@@ -78,15 +78,11 @@ export function BodySection({ data }: { data: DashboardData }) {
   const forecast =
     last && trend.forecast ? forecastPath({ from: last, forecast: trend.forecast, goalKg }) : []
   const weighed = trend.points.some((p) => p.weight_kg !== null)
-  const timelines = milestoneTimelines(
-    trend.milestones,
-    last,
-    last && trend.forecast ? effectiveRate(last, trend.forecast, goalKg) : null,
-  )
+  const timelines = milestoneTimelines(trend.milestones, projectionOf(trend, goalKg))
   const waist = waistPoints(trend.measurements)
   const band = forecastBandPercent(trend.forecast)
   const journey = trend.forecast
-    ? `Trend so far, then ${formatNumber(trend.forecast.weekly_rate_kg, 2)} kg a week to the ${copy.goalLabel} at ${formatNumber(goalKg, 0)} kg${band ? ` · band ±${band} %` : ''}`
+    ? `Trend so far, then the ${formatNumber(trend.forecast.weekly_rate_kg, 2)} kg a week forecast to the ${copy.goalLabel} at ${formatNumber(goalKg, 0)} kg${trend.forecast.finish_date ? ` · projected ${formatShortDate(trend.forecast.finish_date, data.to)}` : ''}${band ? ` · band ±${band} %` : ''}`
     : `Trend so far; the ${copy.goalLabel} is ${formatNumber(goalKg, 0)} kg`
 
   return (
@@ -131,7 +127,7 @@ export function BodySection({ data }: { data: DashboardData }) {
         </WrapRow>
         <ChartCard
           title={copy.milestonesLabel.charAt(0).toUpperCase() + copy.milestonesLabel.slice(1)}
-          subtitle="Reached, and forecast dates for the next ones"
+          subtitle="Reached, and projected dates for the next ones (the forecast's line)"
           empty={
             timelines.weight.length === 0 && timelines.composition.length === 0
               ? { title: 'No milestones yet', body: 'Milestones appear here as the trend reaches them.' }
@@ -286,7 +282,8 @@ export function CompositionCard({ data }: { data: DashboardData }) {
       >
         Lean should hold near {formatNumber(goalKg - fatAtGoal, 0)} kg at the {copy.goalLabel}; fat carries
         the loss. Lean-loss guard: a flag if lean is over {LEAN_LOSS_GUARD_PCT} % of the loss between scans.{' '}
-        <Link component={RouterLink} to="/scans">
+        {/* 44 px tall to tap, without growing the line it sits in. */}
+        <Link component={RouterLink} to="/scans" sx={{ display: 'inline-block', py: '13px', my: '-13px' }}>
           Open scans
         </Link>
       </Box>

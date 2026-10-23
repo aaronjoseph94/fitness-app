@@ -14,10 +14,9 @@ import Stack from '@mui/material/Stack'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { problemText, signInAgain } from '../../api'
-import { PageHeader, Panel } from '../../components'
+import { formatDayTime, PageHeader, Panel } from '../../components'
 import { useOnline } from '../../offline'
 import { COARSE_POINTER_QUERY, tokens } from '../../theme'
-import { formatDateTime } from '../quick-log'
 import { copyText } from './lib/copy'
 import { CopyRow, ReadOnlyRow, SettingsGroup, ValueRow } from './lib/rows'
 import { SecretDialog } from './lib/SecretDialog'
@@ -253,7 +252,7 @@ export function AiSettingsPage() {
               label="Last change from Claude"
               help="Every write Claude makes is versioned and revertible."
               value={
-                connection.data.last_write_at ? formatDateTime(connection.data.last_write_at) : 'Never yet'
+                connection.data.last_write_at ? formatDayTime(connection.data.last_write_at) : 'Never yet'
               }
             />
           </>

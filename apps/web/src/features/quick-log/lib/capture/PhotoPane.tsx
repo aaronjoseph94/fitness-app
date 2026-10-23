@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useOnline } from '../../../../offline'
 import { tokens } from '../../../../theme'
 import { MAX_MEAL_PHOTOS, type PhotoMeal } from './photo-meal'
+import { stickyActionsSx } from '../ui'
 
 interface PhotoPaneProps {
   capture: PhotoMeal
@@ -150,23 +151,25 @@ export function PhotoPane({ capture, onPick, onSend, onDescribe }: PhotoPaneProp
         </Box>
       )}
 
-      <Button
-        variant="contained"
-        size="large"
-        disabled={!online || busy || photos.length === 0}
-        onClick={() => onSend(note)}
-        data-testid="meal-send-photos"
-      >
-        {sending
-          ? sending.done < sending.total
-            ? `Uploading ${sending.done + 1} of ${sending.total}…`
-            : 'Starting analysis…'
-          : created
-            ? 'Try the upload again'
-            : photos.length > 1
-              ? `Analyse ${photos.length} photos`
-              : 'Analyse photo'}
-      </Button>
+      <Box sx={stickyActionsSx} data-sheet-actions>
+        <Button
+          variant="contained"
+          size="large"
+          disabled={!online || busy || photos.length === 0}
+          onClick={() => onSend(note)}
+          data-testid="meal-send-photos"
+        >
+          {sending
+            ? sending.done < sending.total
+              ? `Uploading ${sending.done + 1} of ${sending.total}…`
+              : 'Starting analysis…'
+            : created
+              ? 'Try the upload again'
+              : photos.length > 1
+                ? `Analyse ${photos.length} photos`
+                : 'Analyse photo'}
+        </Button>
+      </Box>
     </Box>
   )
 }

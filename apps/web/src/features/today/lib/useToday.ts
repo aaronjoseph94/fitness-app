@@ -2,11 +2,12 @@
 // plan's forecast), the last eight weeks of trend for the hero (with the milestones), settings (start and goal
 // weight), this week's view (GET /api/week-plans/view: the active plan and the days so far), the week plans still
 // proposed from this week on (GET /api/week-plans?status=proposed), when the next Evolt scan is due (GET
-// /api/scans/schedule), today's readiness (from the day's sleep, GET /api/days for the steps window and GET
+// /api/scans/schedule), this week's fasts (GET /api/fasts), today's readiness (from the day's sleep, GET /api/days for the steps window and GET
 // /api/sessions for the last session, in the Train tab's windows so the two share their cache), and pending logs
 // (saving or queued) folded into the day. The pinned note shows from this device's memory (./note-memory) until the
 // day answers.
 import { endpoints } from '@fitness/shared/api'
+import { addDays, weekStart } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useEffect, useMemo, useState } from 'react'
 import { useApiQuery } from '../../../api'
@@ -27,6 +28,9 @@ export function useTodayData(date: LocalDate) {
   const proposed = useProposedWeekPlans(date)
   const pending = usePendingToday(date)
   const scanSchedule = useApiQuery(endpoints.scans.schedule, {})
+  // This week's fasts: each shows on its fast day (engine `fastDay()`: the local day the 24 h covers most, decision #8).
+  const monday = weekStart(date)
+  const fasts = useApiQuery(endpoints.fasting.list, { query: { from: monday, to: addDays(monday, 6) } })
   const steps = useApiQuery(endpoints.day.range, stepsWindowInput(date))
   const sessions = useApiQuery(endpoints.training.listSessions, recentSessionsInput(date))
   // Only once all three answer: a score from part of its inputs would change under the reader.
@@ -59,6 +63,7 @@ export function useTodayData(date: LocalDate) {
     note,
     pending,
     scanDue: scanSchedule.data?.due ?? null,
+    fasts: fasts.data ?? [],
     readiness,
   }
 }

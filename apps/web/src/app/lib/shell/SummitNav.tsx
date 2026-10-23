@@ -5,7 +5,8 @@
 // so it fits from 960 px, in this order: the tabs' padding narrows and the sync chip keeps only its glyph, then under
 // `layout.navSearch` the search circle goes (⌘K still opens the palette); the Ask AI pill keeps its words throughout.
 // On a phone: the 44 px logo tile (a back circle instead on a page the nav does not list — a session, a scan, a
-// Settings page, Photos, Plan history), the sync chip, the Scans circle and the avatar — the tabs are the fixed bottom
+// Settings page, Photos, Plan history; it goes back, or with no history to the route's parent, the last step of its
+// `trail`), the sync chip (glyph only under 480 px), the palette's search circle, the Scans circle and the avatar — the tabs are the fixed bottom
 // bar (`TabBar`). A thin gold line runs along the top (under the status bar) while a lazy page loads. The nav falls in
 // once, when the app first opens.
 //
@@ -55,6 +56,9 @@ const SHORTCUT =
 const TIGHT = theme.breakpoints.down('lg')
 /** Below `layout.navSearch`: the search circle goes too (⌘K still opens the palette). */
 const TIGHTER = `@media (max-width: ${layout.navSearch - 0.05}px)`
+
+/** A phone under 480 px: the sync chip keeps only its glyph, so the logo, search, Scans and avatar never crowd. */
+const PHONE_NARROW = '@media (max-width: 479.95px)'
 
 /** A 46 px (44 on a phone) glass circle: the Scans link, the palette's search, the back arrow. */
 const circle = (size: number) => ({
@@ -181,33 +185,37 @@ function AskAiPill({ current }: { current: Current }) {
   )
 }
 
-/** The palette's opener (desktop: a phone has no keyboard to reach the palette with). */
-function SearchCircle() {
+/** The palette's opener: on a desktop beside the Scans circle (gone under `layout.navSearch`, where ⌘K still works);
+ * on a phone it is the only way in, so it always shows there. */
+function SearchCircle({ size }: { size: 44 | 46 }) {
   const openPalette = useUiStore((s) => s.setPaletteOpen)
-  return (
-    <Tooltip title={`Search and commands · ${SHORTCUT}`}>
-      <ButtonBase
-        aria-label="Search and commands"
-        aria-haspopup="dialog"
-        aria-keyshortcuts="Meta+K Control+K"
-        data-testid="palette-open"
-        onClick={() => openPalette(true)}
-        sx={{ ...circle(46), [TIGHTER]: { display: 'none' } }}
-      >
-        <SearchRounded aria-hidden sx={{ fontSize: 22 }} />
-      </ButtonBase>
-    </Tooltip>
+  const button = (
+    <ButtonBase
+      aria-label="Search and commands"
+      aria-haspopup="dialog"
+      aria-keyshortcuts="Meta+K Control+K"
+      data-testid="palette-open"
+      onClick={() => openPalette(true)}
+      sx={{ ...circle(size), ...(size === 46 && { [TIGHTER]: { display: 'none' } }) }}
+    >
+      <SearchRounded aria-hidden sx={{ fontSize: 22 }} />
+    </ButtonBase>
   )
+  // The shortcut hint is for a keyboard; on a phone the tooltip would only linger after the palette closes.
+  return size === 46 ? <Tooltip title={`Search and commands · ${SHORTCUT}`}>{button}</Tooltip> : button
 }
 
-/** Back through history when there is any, otherwise to the last tab (a deep link or a fresh launch). */
-function useBack(): () => void {
+/**
+ * Back through history when there is any; otherwise (a deep link, a fresh launch) up to the page's parent — the last
+ * step of its route `trail` — and only for a page with no trail to the last tab.
+ */
+function useBack(parent: string | undefined): () => void {
   const navigate = useNavigate()
   const lastTab = useUiStore((s) => s.lastTab)
   return () => {
     const index = (window.history.state as { idx?: number } | null)?.idx ?? 0
     if (index > 0) void navigate(-1)
-    else void navigate(tabByKey(lastTab).path)
+    else void navigate(parent ?? tabByKey(lastTab).path)
   }
 }
 
@@ -253,10 +261,12 @@ interface SummitNavProps {
   currentOf: (path: string) => Current
   /** A page the nav does not list (below a tab or a Settings / Scans page): the phone shows a back circle. */
   showBack: boolean
+  /** Where the back circle goes when there is no history: the route's parent (its trail's last step). */
+  parent?: string
 }
 
-export function SummitNav({ wide, currentOf, showBack }: SummitNavProps) {
-  const back = useBack()
+export function SummitNav({ wide, currentOf, showBack, parent }: SummitNavProps) {
+  const back = useBack(parent)
   const { entered, reduced } = useEntrance()
   const size = wide ? 46 : 44
   const row: ReactNode = wide ? (
@@ -290,7 +300,7 @@ export function SummitNav({ wide, currentOf, showBack }: SummitNavProps) {
       >
         <SyncStatus />
       </Box>
-      <SearchCircle />
+      <SearchCircle size={46} />
       <ScansCircle current={currentOf(SCANS_DESTINATION.path)} size={46} />
       <AskAiPill current={currentOf(tabByKey('ai').path)} />
       <AvatarLink current={currentOf(SETTINGS_DESTINATION.path)} size={46} />
@@ -305,7 +315,15 @@ export function SummitNav({ wide, currentOf, showBack }: SummitNavProps) {
         <LogoLink size={44} />
       )}
       <Box sx={{ flex: 1 }} />
-      <SyncStatus />
+      <Box
+        sx={{
+          display: 'contents',
+          [PHONE_NARROW]: { '& .MuiChip-label': visuallyHidden, '& .MuiChip-root': { px: '9px' } },
+        }}
+      >
+        <SyncStatus />
+      </Box>
+      <SearchCircle size={44} />
       <ScansCircle current={currentOf(SCANS_DESTINATION.path)} size={44} />
       <AvatarLink current={currentOf(SETTINGS_DESTINATION.path)} size={44} />
     </>

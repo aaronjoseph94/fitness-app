@@ -31,13 +31,19 @@ function tab(key: TabKey, extra: Omit<RouteHandle, 'title' | 'tab'> = {}): Route
 /** A trail step to one of the tabs. */
 const tabCrumb = (key: TabKey): Crumb => ({ title: tabByKey(key).title, path: tabByKey(key).path })
 
-/** The trail above the pages that live under Train, Settings, Scans and Photos (the nav marks its first step). */
+/**
+ * The trail above the pages that live under Train, Settings, Scans and Photos (the nav marks its first step; the phone's
+ * back circle goes to its last one when there is no history). Plan history and Photos are listed in Settings.
+ */
 const TRAIL = {
   train: [tabCrumb('train')],
   library: [tabCrumb('train'), { title: 'Exercise library', path: '/train/library' }],
   settings: [{ title: 'Settings', path: '/settings' }],
   scans: [{ title: 'Scans', path: '/scans' }],
-  photos: [{ title: 'Progress photos', path: '/photos' }],
+  photos: [
+    { title: 'Settings', path: '/settings' },
+    { title: 'Progress photos', path: '/photos' },
+  ],
 } as const satisfies Record<string, readonly Crumb[]>
 
 const routes: RouteObject[] = [
@@ -102,7 +108,7 @@ const routes: RouteObject[] = [
           },
           {
             path: 'train/ai',
-            handle: { title: 'AI workout', trail: TRAIL.train } satisfies RouteHandle,
+            handle: { title: 'AI workout', trail: TRAIL.train, width: 'narrow' } satisfies RouteHandle,
             lazy: page(() => import('../../features/builder'), 'AiWorkoutPage'),
           },
           {
@@ -137,7 +143,7 @@ const routes: RouteObject[] = [
           },
           {
             path: 'plan',
-            handle: { title: 'Plan history' } satisfies RouteHandle,
+            handle: { title: 'Plan history', trail: TRAIL.settings } satisfies RouteHandle,
             lazy: page(() => import('../../features/plan'), 'PlanPage'),
           },
           {
@@ -157,7 +163,7 @@ const routes: RouteObject[] = [
           },
           {
             path: 'photos',
-            handle: { title: 'Progress photos' } satisfies RouteHandle,
+            handle: { title: 'Progress photos', trail: TRAIL.settings } satisfies RouteHandle,
             lazy: page(() => import('../../features/photos'), 'PhotosPage'),
           },
           {
@@ -165,7 +171,7 @@ const routes: RouteObject[] = [
             handle: { title: 'New photos', trail: TRAIL.photos } satisfies RouteHandle,
             lazy: page(() => import('../../features/photos'), 'PhotoCapturePage'),
           },
-          { path: '*', handle: { title: 'Not found' } satisfies RouteHandle, Component: NotFound },
+          { path: '*', handle: { title: 'Page not found' } satisfies RouteHandle, Component: NotFound },
         ],
       },
     ],

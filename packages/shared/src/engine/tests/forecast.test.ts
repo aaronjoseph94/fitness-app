@@ -1,6 +1,6 @@
 // Owns: seam tests for the forecast, against the SPEC §3 worked example (TEE 2,551 − 1,400 kcal → ~1.0 kg/week).
 import { describe, expect, test } from 'vitest'
-import { forecast } from '../index'
+import { forecast, projectedOn } from '../index'
 
 describe('forecast', () => {
   test('scan TEE 2,551 kcal at 1,400 kcal intake loses ≈1.05 kg/week and reaches 65 kg from 95.1 kg on 2027-04-16', () => {
@@ -63,5 +63,29 @@ describe('forecast: the ±20 % band and the goal', () => {
   test('already at 65 kg: no weeks to go, finish today', () => {
     const f = forecast({ as_of: '2026-10-05', tdee_est: 2000, intake_kcal: 1400, trend_kg: 65, goal_kg: 65 })
     expect(f).toMatchObject({ weeks_to_goal: 0, finish_date: '2026-10-05' })
+  })
+})
+
+describe('projectedOn: every projected date on the forecast line', () => {
+  // SPEC §3 example: 1.0464 kg/week, 95.1 kg on 2026-09-26 → 65 kg on 2027-04-16.
+  const f = forecast({ as_of: '2026-09-26', tdee_est: 2551, intake_kcal: 1400, trend_kg: 95.1, goal_kg: 65 })
+  const input = { forecast: f, goal_kg: 65, trend: { date: '2026-10-23', kg: 92.4 } }
+
+  test('the goal lands on the finish date, so the summit and the camps agree with the header', () => {
+    expect(projectedOn(65, input)).toBe('2027-04-16')
+  })
+
+  test('the 85 kg camp lands 134 days before the finish (20 kg / 1.0464 kg a week = 133.8 days): 2026-12-03', () => {
+    expect(projectedOn(85, input)).toBe('2026-12-03')
+  })
+
+  test('no date for a weight already passed, under the goal, or without a loss', () => {
+    expect(projectedOn(93, input)).toBeNull()
+    expect(projectedOn(60, input)).toBeNull()
+    expect(projectedOn(85, { ...input, forecast: { weekly_rate_kg: 0, finish_date: null } })).toBeNull()
+  })
+
+  test('never before the latest trend day', () => {
+    expect(projectedOn(92, { ...input, trend: { date: '2027-01-10', kg: 92.4 } })).toBe('2027-01-10')
   })
 })

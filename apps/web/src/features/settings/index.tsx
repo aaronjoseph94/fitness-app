@@ -31,9 +31,11 @@ import { metricTint, minWidth, tokens } from '../../theme'
 import { AboutData } from './lib/AboutData'
 import { EditDialog } from './lib/EditDialog'
 import {
+  belowAgreedFloor,
   formatDays,
   formatProfileValue,
   formatValue,
+  friendlyZone,
   helpFor,
   PROFILE_FIELDS,
   profilePatch,
@@ -60,8 +62,14 @@ import { TrainingDaysDialog } from './lib/TrainingDaysDialog'
 import { useScanDue, useSettings, useUpdateSettings, type SettingsChange } from './lib/useSettings'
 import { useModelChain } from './models'
 
+/** The snackbar: a line, and for an edit an Undo that saves the value it replaced (or reopens a rail editor). */
+interface Notice {
+  message: string
+  undo?: () => void
+}
+
 type Editing =
-  | { kind: 'number'; field: NumberField }
+  | { kind: 'number'; field: NumberField; prefill?: number }
   | { kind: 'profile'; field: ProfileField }
   | { kind: 'training-days' }
   | { kind: 'auto-apply' }
@@ -165,13 +173,14 @@ export function SettingsPage() {
   const online = useOnline()
   const [editing, setEditing] = useState<Editing>(null)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const say = (message: string) => setNotice({ message })
 
   // The eyebrow keeps its line while the settings load (a non-breaking space), so the title never moves.
   const header = (
     <PageHeader
       variant="compact"
-      eyebrow={query.data?.profile.timezone ?? '\u00a0'}
+      eyebrow={query.data ? friendlyZone(query.data.profile.timezone) : '\u00a0'}
       title="Settings"
       subtitle={
         <Box component="span" sx={{ [NOTE_BESIDE]: { display: 'none' } }}>
@@ -238,23 +247,51 @@ export function SettingsPage() {
     setEditing(null)
     setError(null)
   }
-  const save = async (change: SettingsChange, done: string) => {
+  /** Undo saves what the edit replaced, through the same PATCH (it is recorded as a change too). */
+  const undoWith = (run: () => Promise<unknown>, done: string) => () => {
+    setNotice(null)
+    run().then(
+      () => say(done),
+      (e: unknown) => say(saveError(e)),
+    )
+  }
+  const save = async (change: SettingsChange, done: string, undo?: () => void) => {
     setError(null)
     try {
       await update.save(change)
       setEditing(null)
-      setNotice(done)
+      setNotice({ message: done, undo })
     } catch (e) {
       setError(saveError(e))
     }
   }
+  /**
+   * A number setting. Its Undo saves the old value directly, except a rail whose old value sits below the agreed
+   * calorie floor: that Undo reopens the editor at the confirm step, prefilled, so it still needs the warning's tick.
+   */
+  const saveNumber = (field: NumberField, value: number) => {
+    const old = settings[field.key]
+    const undo =
+      field.rail && belowAgreedFloor(field, old)
+        ? () => {
+            setNotice(null)
+            setEditing({ kind: 'number', field, prefill: old })
+          }
+        : undoWith(() => update.save({ [field.key]: old } as Partial<Settings>), 'Change undone.')
+    void save(
+      { [field.key]: value } as Partial<Settings>,
+      `${field.label} set to ${formatValue(field, value)}.`,
+      undo,
+    )
+  }
   /** A profile edit goes through the same PATCH, so it behaves exactly like a settings edit. */
   const saveProfile = async (field: ProfileField, value: ProfileValue, done: string) => {
     setError(null)
+    const before = profilePatch(field, profile[field.key])
     try {
       await update.saveProfile(profilePatch(field, value))
       setEditing(null)
-      setNotice(done)
+      setNotice({ message: done, undo: undoWith(() => update.saveProfile(before), 'Change undone.') })
     } catch (e) {
       setError(saveError(e))
     }
@@ -262,8 +299,8 @@ export function SettingsPage() {
   /** Switches save at once; a refusal flips them back and says why. */
   const toggle = (change: SettingsChange, done: string) => {
     update.save(change).then(
-      () => setNotice(done),
-      (e: unknown) => setNotice(saveError(e)),
+      () => say(done),
+      (e: unknown) => say(saveError(e)),
     )
   }
   const numberRow = (field: NumberField) => (
@@ -429,13 +466,9 @@ export function SettingsPage() {
           settings={settings}
           saving={update.isPending}
           error={error}
+          prefill={editing.prefill}
           onClose={close}
-          onSave={(value) =>
-            void save(
-              { [editing.field.key]: value } as Partial<Settings>,
-              `${editing.field.label} set to ${formatValue(editing.field, value)}.`,
-            )
-          }
+          onSave={(value) => void saveNumber(editing.field, value)}
         />
       )}
       {editing?.kind === 'profile' && (
@@ -456,7 +489,11 @@ export function SettingsPage() {
           error={error}
           onClose={close}
           onSave={(days: Weekday[]) =>
-            void save({ training_days: days }, `Training days: ${formatDays(days)}.`)
+            void save(
+              { training_days: days },
+              `Training days: ${formatDays(days)}.`,
+              undoWith(() => update.save({ training_days: settings.training_days }), 'Change undone.'),
+            )
           }
         />
       )}
@@ -497,9 +534,18 @@ export function SettingsPage() {
 
       <Snackbar
         open={notice !== null}
-        autoHideDuration={3000}
-        onClose={() => setNotice(null)}
-        message={notice}
+        autoHideDuration={notice?.undo ? 6000 : 3000}
+        onClose={(_e, reason) => {
+          if (reason !== 'clickaway') setNotice(null)
+        }}
+        message={notice?.message}
+        action={
+          notice?.undo ? (
+            <Button color="inherit" onClick={notice.undo} sx={{ minHeight: 44 }} data-testid="settings-undo">
+              Undo
+            </Button>
+          ) : undefined
+        }
       />
     </Box>
   )

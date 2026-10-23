@@ -1,6 +1,6 @@
 // Owns: Today's mountain in the sky (1d README §5.1) — the silhouette, the dotted route from base camp to the summit
 // with a flag at each camp ("90 · Nov 12": its weight and the day it was reached or is forecast), the summit's flag
-// and card ("Summit · 65 kg" over the forecast finish date), the gold stretch already climbed and the "You · 93.6"
+// and card ("Summit · 65 kg" over "Projected <the forecast finish date>"), the gold stretch already climbed and the "You · 93.6"
 // marker, all placed along the route by weight (./mountain-route). From 1,180 px of sky up it stands at the sky's
 // bottom right beside the headline; below that it moves under the headline and scales,
 //   scale = clamp((width − 24) / 850, 0.3, 1),   room under the headline = 560 × scale + 20 px
@@ -47,6 +47,13 @@ const RIGHT_INSET = 30
 /** The hero row's own gap between lines (PageHeader), already part of the room. */
 const ROW_GAP = 20
 
+/** No label on the mountain reads smaller than this on screen, however far the art is scaled down. */
+const MIN_LABEL_PX = 11
+/** The factor that keeps a `px` label at MIN_LABEL_PX on screen at the art's `scale`: max(1, 11 / (px × scale)). */
+const counterScale = (px: number, scale: number) => Math.max(1, MIN_LABEL_PX / (px * scale))
+/** The share of the art's width faded out at each side, so the ridge has no hard edge against the sky. */
+const EDGE_FADE = '6%'
+
 /** The flag label's width estimate for placing it (12 px DM Sans 600 ≈ 7 px a character, plus its padding). */
 const labelWidth = (text: string) => text.length * 7 + 18
 
@@ -90,12 +97,25 @@ function useDraw(length: number, delay: number, duration: number) {
 }
 
 /** A flag on the route: the pole, the gold flag and its label on the side that keeps clear of the route. */
-function CampFlag({ fraction, text, delay }: { fraction: number; text: string; delay: number }) {
+function CampFlag({
+  fraction,
+  text,
+  delay,
+  scale,
+}: {
+  fraction: number
+  text: string
+  delay: number
+  scale: number
+}) {
   const p = pointAt(fraction)
-  const side = labelSide(fraction, labelWidth(text))
+  const k = counterScale(font.size.caption, scale)
+  const side = labelSide(fraction, labelWidth(text) * k)
   const pop = usePop(delay)
+  // Like the "You" marker, a flag near base camp rises clear of the cream panel's edge, so its label is never cut.
+  const top = Math.min(p.y, MOUNTAIN_BOX.height - layout.panelOverlap / scale - MARKER_CLEARANCE)
   return (
-    <Box sx={{ position: 'absolute', left: p.x, top: p.y, ...pop, transformOrigin: '0 0' }}>
+    <Box sx={{ position: 'absolute', left: p.x, top, ...pop, transformOrigin: '0 0' }}>
       <Box sx={{ position: 'absolute', left: -1, bottom: 0, width: 2, height: 26, bgcolor: WHITE }} />
       <FlagRounded
         sx={{ position: 'absolute', left: 0, bottom: 12, fontSize: 20, color: summit.gold.main }}
@@ -115,6 +135,8 @@ function CampFlag({ fraction, text, delay }: { fraction: number; text: string; d
           fontSize: font.size.caption,
           fontWeight: font.weight.heading,
           fontVariantNumeric: 'tabular-nums',
+          transform: k === 1 ? 'none' : `scale(${k})`,
+          transformOrigin: side === 'right' ? 'left bottom' : 'right bottom',
         }}
       >
         {text}
@@ -124,8 +146,19 @@ function CampFlag({ fraction, text, delay }: { fraction: number; text: string; d
 }
 
 /** The summit: a glow, the white flag and the card naming the goal and the day the forecast reaches it. */
-function SummitFlag({ goalKg, finish, delay }: { goalKg: number; finish: string | null; delay: number }) {
+function SummitFlag({
+  goalKg,
+  finish,
+  delay,
+  scale,
+}: {
+  goalKg: number
+  finish: string | null
+  delay: number
+  scale: number
+}) {
   const p = pointAt(1)
+  const k = counterScale(font.size.small, scale)
   const pop = usePop(delay)
   return (
     <Box sx={{ position: 'absolute', left: p.x, top: p.y, ...pop, transformOrigin: '0 0' }}>
@@ -145,8 +178,11 @@ function SummitFlag({ goalKg, finish, delay }: { goalKg: number; finish: string 
       <Box
         sx={{
           position: 'absolute',
-          left: 26,
+          // Counter-scaled on a phone, the card would run off the sky on the right: it sits left of the flag instead.
+          ...(k === 1 ? { left: 26 } : { right: 22 }),
           top: -34,
+          transform: k === 1 ? 'none' : `scale(${k})`,
+          transformOrigin: 'right top',
           whiteSpace: 'nowrap',
           px: '12px',
           py: '7px',
@@ -165,7 +201,7 @@ function SummitFlag({ goalKg, finish, delay }: { goalKg: number; finish: string 
             data-testid="today-finish"
             sx={{ fontWeight: font.weight.body, color: tokens.ink.muted, fontVariantNumeric: 'tabular-nums' }}
           >
-            {formatShortDate(finish)}, {finish.slice(0, 4)}
+            Projected {formatShortDate(finish)}, {finish.slice(0, 4)}
           </Box>
         )}
       </Box>
@@ -190,6 +226,7 @@ function YouMarker({
   // Near base camp the route runs under the cream panel's edge, which covers the sky's foot; the marker rises just
   // clear of it (its 9 px dot, 4 px halo and a 6 px gap), in drawing units at this scale.
   const top = Math.min(p.y, MOUNTAIN_BOX.height - layout.panelOverlap / scale - MARKER_CLEARANCE)
+  const k = counterScale(font.size.small, scale)
   return (
     <Box sx={{ position: 'absolute', left: p.x, top, ...pop }}>
       <Box
@@ -232,6 +269,8 @@ function YouMarker({
           fontSize: font.size.small,
           fontWeight: font.weight.heading,
           fontVariantNumeric: 'tabular-nums',
+          transform: k === 1 ? 'none' : `scale(${k})`,
+          transformOrigin: '30px bottom',
         }}
       >
         {copy.youAt(formatNumber(kg, 1))}
@@ -264,7 +303,13 @@ const MountainArt = memo(function MountainArt({ climb, scale }: { climb: Climb; 
         width={MOUNTAIN_BOX.width}
         height={MOUNTAIN_BOX.height}
         focusable="false"
-        style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          overflow: 'visible',
+          // The ridge and the foothills fade into the sky at both sides instead of ending on a hard edge.
+          maskImage: `linear-gradient(90deg, transparent, black ${EDGE_FADE}, black calc(100% - ${EDGE_FADE}), transparent)`,
+        }}
       >
         <defs>
           <linearGradient id={body} x1="0" y1="0" x2="0" y2="1">
@@ -340,9 +385,10 @@ const MountainArt = memo(function MountainArt({ climb, scale }: { climb: Climb; 
           fraction={climbFraction(c.kg, startKg, goalKg)}
           text={camp(c.kg, c.date)}
           delay={1000 + i * 120}
+          scale={scale}
         />
       ))}
-      <SummitFlag goalKg={goalKg} finish={finish} delay={1000 + camps.length * 120} />
+      <SummitFlag goalKg={goalKg} finish={finish} delay={1000 + camps.length * 120} scale={scale} />
       {trendKg !== null && <YouMarker fraction={climbed} kg={trendKg} delay={1500} scale={scale} />}
     </>
   )
@@ -352,12 +398,12 @@ const MountainArt = memo(function MountainArt({ climb, scale }: { climb: Climb; 
 function describe(climb: Climb): string {
   const camps = climb.camps.map(
     (c) =>
-      `${formatNumber(c.kg, 1)} kg${c.date ? ` (${c.reached ? 'reached' : 'forecast'} ${formatShortDate(c.date)})` : ''}`,
+      `${formatNumber(c.kg, 1)} kg${c.date ? ` (${c.reached ? 'reached' : 'projected'} ${formatShortDate(c.date)})` : ''}`,
   )
   return [
     `${copy.PlanLabel}: ${copy.startAt(formatNumber(climb.startKg, 1))}`,
     camps.length ? `${copy.milestonesLabel} at ${camps.join(', ')}` : null,
-    `${copy.goalAt(formatNumber(climb.goalKg, 1))}${climb.finish ? ` (forecast ${formatShortDate(climb.finish)}, ${climb.finish.slice(0, 4)})` : ''}`,
+    `${copy.goalAt(formatNumber(climb.goalKg, 1))}${climb.finish ? ` (projected ${formatShortDate(climb.finish)}, ${climb.finish.slice(0, 4)})` : ''}`,
     climb.trendKg !== null ? `you are at ${formatNumber(climb.trendKg, 1)} kg` : null,
   ]
     .filter(Boolean)
@@ -408,7 +454,8 @@ export function HeroMountain({ climb }: { climb: Climb | null }): ReactNode {
         aria-hidden
         data-testid="today-mountain-room"
         sx={{
-          display: !climb || !sky || wide ? 'none' : 'block',
+          // Held from the first paint (before the profile answers), so the hero does not grow when the mountain lands.
+          display: !sky || wide ? 'none' : 'block',
           flex: '0 0 100%',
           height: Math.max(0, room),
           pointerEvents: 'none',

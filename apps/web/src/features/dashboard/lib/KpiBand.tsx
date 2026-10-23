@@ -27,7 +27,7 @@ import {
 import { copy } from '../../../copy'
 import { enterEasing, metricRamp, tokens, type MetricKey } from '../../../theme'
 import { SLEEP_TARGET_H } from '../../progress/series'
-import { shortDate, type GoalFacts } from './GoalRail'
+import type { GoalFacts } from './GoalRail'
 import { onTarget, type Kpi } from './kpis'
 
 const { summit, font } = tokens
@@ -52,7 +52,8 @@ export function KpiBand({ kpis, goal, rail, today, todayLast }: KpiBandProps) {
       data-testid="dashboard-kpis"
       sx={{ display: 'grid', gap: `${tokens.rhythm.section}px`, minWidth: 0 }}
     >
-      <WrapRow>
+      {/* Each card its own height: stretched to the rail, the trend card had ~200 px of blank under its facts. */}
+      <WrapRow align="flex-start">
         {hero && (
           <Box sx={{ ...wrapCol(1.6), display: 'flex' }}>
             <Reveal delay={staggerDelay(0, tokens.motion.stagger.card, 80)} sx={{ width: '100%' }}>
@@ -75,6 +76,10 @@ export function KpiBand({ kpis, goal, rail, today, todayLast }: KpiBandProps) {
           </Box>
         ))}
       </WrapRow>
+      {/* What the tiles' two shades mean, said once for all five. */}
+      <Box data-testid="kpi-bars-key" sx={{ ...caption, mt: `${-tokens.rhythm.section + 8}px` }}>
+        Bars: the last {BARS} days · full colour on target · light off target · palest today so far
+      </Box>
     </Box>
   )
 }
@@ -178,8 +183,10 @@ function TrendCard({ kpi, goal, today }: { kpi: Kpi; goal: GoalFacts; today: str
   const rate =
     goal.forecastRate === null
       ? null
-      : `−${formatNumber(goal.forecastRate, 2)} kg a week${
-          ahead === null ? '' : ` · ${ahead ? 'ahead of' : 'behind'} ${formatNumber(goal.requiredRate, 2)}`
+      : `−${formatNumber(goal.forecastRate, 2)} kg a week forecast${
+          ahead === null
+            ? ''
+            : ` · ${ahead ? 'ahead of' : 'behind'} the ${formatNumber(goal.requiredRate, 2)} needed`
         }`
   const series = kpi.series ?? []
   return (
@@ -273,14 +280,14 @@ function TrendCard({ kpi, goal, today }: { kpi: Kpi; goal: GoalFacts; today: str
               >
                 <Box component="span" data-testid="goal-start">
                   {copy.StartLabel} {formatNumber(goal.startKg, 1)}
-                  {goal.startDate ? ` · ${shortDate(goal.startDate, today)}` : ''}
+                  {goal.startDate ? ` · ${formatShortDate(goal.startDate, today)}` : ''}
                 </Box>
                 <Box component="span" sx={{ color: tokens.ink.text }}>
                   {percent} % of the way
                 </Box>
                 <Box component="span">
                   {copy.GoalLabel} {formatNumber(goal.goalKg, 1)}
-                  {goal.goalDate ? ` · ${shortDate(goal.goalDate, today)}` : ''}
+                  {goal.goalDate ? ` · goal date ${formatShortDate(goal.goalDate, today)}` : ''}
                 </Box>
               </Box>
             </>

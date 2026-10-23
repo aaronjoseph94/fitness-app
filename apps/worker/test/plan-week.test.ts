@@ -98,16 +98,14 @@ const library = [bench, pulldown, row, press, curl, pushdown, legPress, legCurl,
 
 beforeAll(async () => {
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-26',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-26',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -335,14 +333,12 @@ describe('trainingWeek', () => {
       },
       proposal_status: 'pending',
     })
-    await db
-      .insert(ai_jobs)
-      .values({
-        type: 'workout_template',
-        status: 'queued',
-        priority: 10,
-        payload: { slot: { weekday: 'thu', name: 'Full body', focus: 'full' } },
-      })
+    await db.insert(ai_jobs).values({
+      type: 'workout_template',
+      status: 'queued',
+      priority: 10,
+      payload: { slot: { weekday: 'thu', name: 'Full body', focus: 'full' } },
+    })
 
     const week = await trainingWeek(at('user'))
 

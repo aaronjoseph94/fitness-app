@@ -479,7 +479,7 @@ function ConfirmedScanView({ scan, all }: { scan: ConfirmedScan; all: ConfirmedS
 
       <Debrief scan={scan} />
       <Reveal delay={enter(4)}>
-        <ScanCharts scans={all} focus={scan} stacked headingComponent="h2" />
+        <ScanCharts scans={all} focus={scan} headingComponent="h2" />
       </Reveal>
 
       <Reveal delay={enter(5)}>

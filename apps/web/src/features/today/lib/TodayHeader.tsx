@@ -151,7 +151,7 @@ function NextCampCard({ climb }: { climb: Climb }) {
   const title = next.summit ? copy.goalAt(kg) : copy.nextMilestoneAt(kg)
   const done = `${formatNumber(next.doneKg, 1)} of ${formatNumber(next.stretchKg, 1)} kg there`
   const toGo = `${formatNumber(next.toGoKg, 1)} kg to go`
-  const rate = climb.rateKg !== null ? ` at ${formatNumber(climb.rateKg, 2)} kg a week` : ''
+  const rate = climb.rateKg !== null ? ` at the ${formatNumber(climb.rateKg, 2)} kg a week forecast` : ''
   return (
     <Box
       data-testid="today-next-camp"
@@ -216,6 +216,17 @@ function NextCampCard({ climb }: { climb: Climb }) {
   )
 }
 
+/** A stand-in climb, only measured (never shown): the next-camp card's shape before the data. */
+const PLACEHOLDER_CLIMB: Climb = {
+  startKg: 0,
+  goalKg: 0,
+  trendKg: null,
+  camps: [],
+  next: { kg: 90, date: '2026-01-01', summit: false, doneKg: 0, stretchKg: 1, toGoKg: 0 },
+  rateKg: 1,
+  finish: null,
+}
+
 /** Everything under the h1: the line, the pills, the next-camp card and the page's action. */
 export function TrendFacts({ climb, rawKg, rawPending, change7dKg, action }: TrendFactsProps) {
   const trendKg = climb?.trendKg ?? null
@@ -252,6 +263,17 @@ export function TrendFacts({ climb, rawKg, rawPending, change7dKg, action }: Tre
         <Reveal delay={900}>
           <NextCampCard climb={climb} />
         </Reveal>
+      )}
+      {/* Until the profile and trend answer, the pills and the next-camp card hold their room invisibly, so the hero
+          does not grow ~200 px on a phone when they land. */}
+      {climb === null && (
+        <Box aria-hidden sx={{ visibility: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '10px', mt: '18px' }}>
+            <GlassPill tone="glass">0.0 kg {copy.sinceStart}</GlassPill>
+            <GlassPill tone="dark">{copy.toGoal('00.0')}</GlassPill>
+          </Box>
+          <NextCampCard climb={PLACEHOLDER_CLIMB} />
+        </Box>
       )}
       {action && (
         <Reveal delay={1000}>

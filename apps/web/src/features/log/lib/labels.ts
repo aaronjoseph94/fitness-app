@@ -1,6 +1,6 @@
-// Owns: how the Log tab words its days (2a) — the date switcher's day names ("Wed, Oct 7", "Tue 6") and a fast's day
-// ("Saturday, Oct 10"). Pure. Times use the kit's `formatClock`.
-import { dateToTime, formatShortDate, formatWeekday } from '../../../components'
+// Owns: how the Log tab words its days (2a) — the date switcher's short day names ("Tue 6") and a fast's day
+// ("Saturday, Oct 10"); "Wed, Oct 7" is the kit's `formatDay`. Pure. Times use the kit's `formatClock`.
+import { dateToTime } from '../../../components'
 
 const longWeekdayDate = new Intl.DateTimeFormat('en-US', {
   weekday: 'long',
@@ -9,11 +9,6 @@ const longWeekdayDate = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 })
 const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' })
-
-/** "2026-10-07" → "Wed, Oct 7". */
-export function dayLabel(date: string): string {
-  return `${formatWeekday(date)}, ${formatShortDate(date)}`
-}
 
 /** "2026-10-06" → "Tue 6". */
 export function shortDayLabel(date: string): string {

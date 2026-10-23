@@ -15,6 +15,7 @@ import { Link as RouterLink } from 'react-router'
 import { call, useApiQuery } from '../../../api'
 import {
   cardSurface,
+  formatDayTime,
   formatNumber,
   KeyStat,
   KeyStatGrid,
@@ -30,7 +31,6 @@ import {
 } from '../../../components'
 import { tokens } from '../../../theme'
 import { planChangeRows, useProposalDecision } from '../../proposals'
-import { formatDateTime } from '../../quick-log'
 import {
   actorLabel,
   DEFAULT_ROWS,
@@ -64,6 +64,7 @@ export function PlanPage() {
   return (
     <Stack spacing={`${tokens.rhythm.section}px`} data-testid="plan-page">
       <PageHeader
+        eyebrow={active ? `Targets · version ${active.version}` : 'Targets'}
         title="Plan history"
         subtitle={
           active
@@ -161,7 +162,6 @@ export function PlanPage() {
         autoHideDuration={4000}
         onClose={() => setNotice(null)}
         message={notice}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       />
     </Stack>
   )
@@ -174,7 +174,7 @@ function ActiveTargets({ active, rails }: { active: PlanVersion; rails: Rails | 
     <Panel
       id="active-targets"
       title="Daily targets"
-      description={`Version ${active.version} · by ${actorLabel(active.created_by)} · ${formatDateTime(active.created_at)}`}
+      description={`Version ${active.version} · by ${actorLabel(active.created_by)} · ${formatDayTime(active.created_at)}`}
       padding="none"
       testId="active-targets"
       footer={
@@ -298,7 +298,7 @@ function PendingProposal({
     <ProposalCard
       testId="plan-proposal"
       title={proposal.summary}
-      source={`Proposal · ${actorLabel(proposal.actor)} · ${formatDateTime(proposal.created_at)}`}
+      source={`Proposal · ${actorLabel(proposal.actor)} · ${formatDayTime(proposal.created_at)}`}
       summary={[...new Set(changes.map((c) => c.reason))].join(' ')}
       changes={planChangeRows(changes)}
       status={d.status}
@@ -389,7 +389,7 @@ function GuardVerdict({ note }: { note: Extract<AiEvent, { kind: 'note' }> }) {
             ...tabularNums,
           }}
         >
-          {formatDateTime(note.created_at)}
+          {formatDayTime(note.created_at)}
         </Box>
       </Box>
       <Box

@@ -11,6 +11,7 @@ import type { MeasurementSite } from '@fitness/shared/schemas'
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { problemText, useApiQuery } from '../../../api'
 import {
+  formatDay,
   formatNumber,
   formatShortDate,
   formatSigned,
@@ -179,7 +180,7 @@ export function MeasurementsCard({ date }: { date: string }) {
             ml: '-6px',
             fontSize: tokens.font.size.small,
             fontWeight: tokens.font.weight.heading,
-            '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+            '&:hover': { bgcolor: 'transparent', color: tokens.accent.deep },
           }}
         >
           {due === null
@@ -211,7 +212,7 @@ export function MeasurementsCard({ date }: { date: string }) {
                 onSuccess: (o) => {
                   setValues({})
                   setSaved(
-                    `Saved ${entries.length} ${entries.length === 1 ? 'site' : 'sites'} for ${date}${o.status === 'queued' ? ' on this device' : ''}.`,
+                    `Saved ${entries.length} ${entries.length === 1 ? 'site' : 'sites'} for ${formatDay(date)}${o.status === 'queued' ? ' on this device' : ''}.`,
                   )
                 },
               },
@@ -219,7 +220,8 @@ export function MeasurementsCard({ date }: { date: string }) {
           }}
           sx={{ display: 'grid', gap: 3, pt: 4 }}
         >
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+          {/* Row gap clears each field's helper line ("Last Oct 17") from the next row's label. */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 2, rowGap: 4 }}>
             {SITES.map(({ site, label }) => {
               const prev = last.get(site)
               const n = parseNumber(values[site] ?? '')
@@ -231,7 +233,13 @@ export function MeasurementsCard({ date }: { date: string }) {
                   onChange={(v) => setValues((s) => ({ ...s, [site]: v }))}
                   unit="cm"
                   placeholder={prev ? formatNumber(prev.cm, 1) : undefined}
-                  helperText={prev ? `last ${prev.date === todayLocal() ? 'today' : prev.date}` : ' '}
+                  helperText={
+                    n !== null && (n <= 0 || n > 300)
+                      ? 'Enter 1–300 cm'
+                      : prev
+                        ? `Last ${prev.date === todayLocal() ? 'today' : formatShortDate(prev.date)}`
+                        : ' '
+                  }
                   error={n !== null && (n <= 0 || n > 300)}
                   slotProps={{ inputLabel: { shrink: true } }}
                 />

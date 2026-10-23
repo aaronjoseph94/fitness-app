@@ -15,6 +15,8 @@
 //   startSession(deps, body) / getSession(deps, id) / listSessions(deps, { from, to })      → WorkoutSession
 //        start/get carry `plan` (last sets + progression default per exercise), `recovery` and `deload`; an explicit
 //        list from ai/mcp is guarded (422), any other plan leaves out exercises outside the allowed set (a note each)
+//   updateSession(deps, id, { exercises })                                                   → WorkoutSession
+//        the logger's exercise list replaces the plan's (added to a blank session, added / swapped / removed mid-way)
 //   logSet(deps, session_id, body) / updateSet(deps, id, patch) / deleteSet(deps, id)       → SessionSet / Ok
 //   finishSession(deps, id, body)                                                           → { session, summary }
 //        again after editing a finished session's sets: the summary, PRs and muscle scores are recomputed
@@ -95,6 +97,7 @@ export {
   listSessions,
   logSet,
   startSession,
+  updateSession,
   updateSet,
 } from './lib/sessions'
 export { exerciseHistory, type SessionDigest, type TrainingDigest } from './lib/history'

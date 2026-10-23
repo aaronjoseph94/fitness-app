@@ -23,6 +23,7 @@ import { useState } from 'react'
 import {
   formatClock,
   formatNumber,
+  NoModelKey,
   PendingBadge,
   StatusChip,
   TableScroll,
@@ -30,6 +31,7 @@ import {
 } from '../../../components'
 import { tokens } from '../../../theme'
 import { useLogMutation } from '../../quick-log'
+import { useModelChain } from '../../settings/models'
 import { FoodGlyph } from './FoodGlyph'
 import type { ItemView, MealView } from './meals'
 import { problemText } from '../../../api'
@@ -150,6 +152,7 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
   const confirm = useLogMutation(endpoints.nutrition.updateMeal)
   const canAct = canActOn(meal)
   const failed = analysisFailed(meal)
+  const noModelKey = useModelChain()?.keys === 0
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '12px', minWidth: 0 }}>
@@ -226,7 +229,7 @@ export function MealBody({ meal, onReview }: MealBodyProps) {
           data-testid="meal-analysis-failed"
         >
           <Box sx={{ ...noteSx, flex: '1 1 200px' }}>
-            The AI couldn't read this one. Add the items yourself.
+            {noModelKey ? <NoModelKey /> : "The AI couldn't read this one. Add the items yourself."}
           </Box>
           <Button variant="contained" size="dense" onClick={onReview}>
             Add items
@@ -301,79 +304,95 @@ function sourceOf(meal: MealView, item: ItemView): { label: string; tone: Status
   return { label: item.foodId ? 'Database' : 'By hand', tone: 'neutral' }
 }
 
+/** Under this card width the Source column folds into the item cell (UX #18: the table fits a phone, no cut headers). */
+const NARROW = '@container meal-items (max-width: 479px)'
+
 /**
- * 1d's item table: Item (icon, name, "Estimated") · Grams · kcal · Protein · Source, flush with the card's padding; at
- * least 520 px wide inside its wrapper, so on a phone it scrolls sideways within the card (README §4).
+ * 1d's item table: Item (icon, name, "Estimated") · Grams · kcal · Protein · Source, flush with the card's padding. It
+ * fits its card (300 px minimum, then it scrolls with the kit's edge fade): below 480 px the Source chip moves under
+ * the item's name and its column goes, so a phone shows every number without scrolling (UX #18).
  */
 function ItemTable({ meal }: { meal: MealView }) {
   return (
-    <TableScroll ariaLabel={`Items, ${formatClock(meal.eatenAt)}`}>
-      <Table
-        aria-label="Items"
-        sx={{
-          '& .MuiTableCell-root': { fontSize: tokens.font.size.body, px: '8px', py: '9px' },
-          '& .MuiTableCell-root:first-of-type': { pl: 0 },
-          '& .MuiTableCell-root:last-of-type': { pr: 0 },
-          '& .MuiTableCell-head': {
-            fontSize: tokens.font.size.caption,
-            pt: '6px',
-            pb: '8px',
-            borderBottom: `1px solid ${tokens.ink.hairline}`,
-          },
-        }}
-      >
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ width: '50%' }}>Item</TableCell>
-            <TableCell align="right">Grams</TableCell>
-            <TableCell align="right">kcal</TableCell>
-            <TableCell align="right">Protein</TableCell>
-            <TableCell align="right" sx={{ pl: '20px !important' }}>
-              Source
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {meal.items.map((item) => {
-            const source = sourceOf(meal, item)
-            return (
-              <TableRow key={item.id}>
-                <TableCell sx={{ fontWeight: tokens.font.weight.label }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <FoodGlyph name={item.description} />
-                    <Box
-                      sx={{
-                        minWidth: 0,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        gap: '2px 6px',
-                      }}
-                    >
-                      <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                        {item.description}
+    <Box sx={{ containerType: 'inline-size', containerName: 'meal-items', minWidth: 0 }}>
+      <TableScroll ariaLabel={`Items, ${formatClock(meal.eatenAt)}`} minWidth={300}>
+        <Table
+          aria-label="Items"
+          sx={{
+            '& .MuiTableCell-root': { fontSize: tokens.font.size.body, px: '8px', py: '9px' },
+            '& .MuiTableCell-root:first-of-type': { pl: 0 },
+            '& .MuiTableCell-root:last-of-type': { pr: 0 },
+            '& .MuiTableCell-head': {
+              fontSize: tokens.font.size.caption,
+              pt: '6px',
+              pb: '8px',
+              whiteSpace: 'nowrap',
+              borderBottom: `1px solid ${tokens.ink.hairline}`,
+            },
+            [NARROW]: {
+              '& .MuiTableCell-root': { px: '6px' },
+              '& .meal-source-col': { display: 'none' },
+              '& .MuiTableCell-root:nth-last-of-type(2)': { pr: 0 },
+            },
+            '& .meal-source-inline': { display: 'none', [NARROW]: { display: 'inline-flex' } },
+          }}
+        >
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ width: '50%' }}>Item</TableCell>
+              <TableCell align="right">Grams</TableCell>
+              <TableCell align="right">kcal</TableCell>
+              <TableCell align="right">Protein</TableCell>
+              <TableCell align="right" className="meal-source-col" sx={{ pl: '20px !important' }}>
+                Source
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {meal.items.map((item) => {
+              const source = sourceOf(meal, item)
+              return (
+                <TableRow key={item.id}>
+                  <TableCell sx={{ fontWeight: tokens.font.weight.label }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <FoodGlyph name={item.description} />
+                      <Box
+                        sx={{
+                          minWidth: 0,
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: '2px 6px',
+                        }}
+                      >
+                        <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                          {item.description}
+                        </Box>
+                        {item.estimated && <StatusChip tone="warning" size="small" label="Estimated" />}
+                        <Box component="span" className="meal-source-inline">
+                          <StatusChip tone={source.tone} size="small" label={source.label} />
+                        </Box>
                       </Box>
-                      {item.estimated && <StatusChip tone="warning" size="small" label="Estimated" />}
                     </Box>
-                  </Box>
-                </TableCell>
-                <TableCell align="right" sx={{ color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
-                  {item.grams > 0 ? formatNumber(item.grams) : '—'}
-                </TableCell>
-                <TableCell align="right">
-                  {item.nutrients ? formatNumber(item.nutrients.kcal) : '—'}
-                </TableCell>
-                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                  {item.nutrients ? `${formatNumber(item.nutrients.protein_g)} g` : '—'}
-                </TableCell>
-                <TableCell align="right" sx={{ pl: '20px !important' }}>
-                  <StatusChip tone={source.tone} size="small" label={source.label} />
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </TableScroll>
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: tokens.ink.secondary, whiteSpace: 'nowrap' }}>
+                    {item.grams > 0 ? formatNumber(item.grams) : '—'}
+                  </TableCell>
+                  <TableCell align="right">
+                    {item.nutrients ? formatNumber(item.nutrients.kcal) : '—'}
+                  </TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    {item.nutrients ? `${formatNumber(item.nutrients.protein_g)} g` : '—'}
+                  </TableCell>
+                  <TableCell align="right" className="meal-source-col" sx={{ pl: '20px !important' }}>
+                    <StatusChip tone={source.tone} size="small" label={source.label} />
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </TableScroll>
+    </Box>
   )
 }

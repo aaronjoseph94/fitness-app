@@ -23,6 +23,7 @@ import {
   setExercisePhoto,
   startSession,
   updateEquipment,
+  updateSession,
   updateSet,
   updateTemplate,
 } from '../modules/training'
@@ -46,6 +47,7 @@ export function mountTrainingRoutes(app: App): void {
   route(app, t.listSessions, ({ query }, deps) => listSessions(deps, query))
   route(app, t.startSession, ({ body }, deps) => startSession(deps, body), { status: 201 })
   route(app, t.getSession, ({ params }, deps) => getSession(deps, params.id))
+  route(app, t.updateSession, ({ params, body }, deps) => updateSession(deps, params.id, body))
   route(app, t.deleteSession, ({ params }, deps) => deleteSession(deps, params.id))
   route(app, t.logSet, ({ params, body }, deps) => logSet(deps, params.id, body), { status: 201 })
   route(app, t.updateSet, ({ params, body }, deps) => updateSet(deps, params.id, body))

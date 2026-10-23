@@ -22,8 +22,6 @@ interface ScanChartsProps {
   focus?: ConfirmedScan
   compact?: boolean
   width?: number
-  /** One card per row at every width (the scan page, in the shell's ~820 px reading column); else two across from `md`. */
-  stacked?: boolean
   /** The cards' heading level: h2 where they sit straight under the page's h1 (the scan page), h3 under a section. */
   headingComponent?: 'h2' | 'h3'
 }
@@ -32,7 +30,6 @@ export function ScanCharts({
   scans,
   focus,
   compact = false,
-  stacked = false,
   width,
   headingComponent = 'h3',
 }: ScanChartsProps) {
@@ -49,7 +46,7 @@ export function ScanCharts({
         alignItems: 'start',
         gridTemplateColumns: {
           xs: 'minmax(0, 1fr)',
-          md: compact || stacked ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+          md: compact ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
         },
         minWidth: 0,
       }}
@@ -57,7 +54,7 @@ export function ScanCharts({
       <ChartCard
         title="Fat and lean mass"
         subtitle={`Per scan; fat target ${formatNumber(TARGETS.fatMassKg, 1)} kg at goal`}
-        titleSize={stacked ? undefined : 'card'}
+        titleSize="card"
         headingComponent={headingComponent}
         testId="scan-chart-composition"
       >
@@ -71,7 +68,7 @@ export function ScanCharts({
       <ChartCard
         title="Body fat and visceral level"
         subtitle={`Per scan; gauges for ${scanDay(latest.date)}`}
-        titleSize={stacked ? undefined : 'card'}
+        titleSize="card"
         headingComponent={headingComponent}
         testId="scan-chart-fat-visceral"
       >
@@ -105,7 +102,7 @@ export function ScanCharts({
         <ChartCard
           title="Segmental fat"
           subtitle={`Baseline ${scanDay(baseline.date)} vs ${scanDay(latest.date)}, kg`}
-          titleSize={stacked ? undefined : 'card'}
+          titleSize="card"
           headingComponent={headingComponent}
           testId="scan-chart-segments"
         >

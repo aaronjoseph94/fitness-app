@@ -4,14 +4,17 @@
 // summary of the reminder preferences the Settings list shows.
 import { FAST_DAY_EXTRA_WATER_ML } from '@fitness/shared/engine'
 import {
+  AGREED_CALORIE_FLOOR,
+  GOAL_WEIGHT_KG,
   ProfilePatch,
+  Settings,
   SettingsPatch,
+  timeZones,
   type Profile,
   type ReminderPrefs,
-  type Settings,
   type Weekday,
 } from '@fitness/shared/schemas'
-import { formatClockTime, formatNumber, formatShortDate } from '../../../components'
+import { formatClockTime, formatDay, formatNumber, formatShortDate } from '../../../components'
 
 export type NumberKey =
   | 'calorie_floor'
@@ -103,9 +106,31 @@ export function parseWhole(text: string): number | null {
   return Number(cleaned)
 }
 
-/** Why `value` can't be saved for `field`, or null when it can. */
-export function checkValue(field: NumberField, value: number | null, current: Settings): string | null {
-  if (value === null) return 'Enter a whole number.'
+/** The schema's bounds for a number setting (Zod's min/max on the Settings field), for range messages. */
+export function boundsFor(field: NumberField): { min: number; max: number } {
+  const schema = Settings.shape[field.key]
+  return { min: schema.minValue ?? 0, max: schema.maxValue ?? Number.MAX_SAFE_INTEGER }
+}
+
+/** "800–5,000 kcal": the range a number setting takes. */
+export function rangeText(field: NumberField): string {
+  const { min, max } = boundsFor(field)
+  return `${formatNumber(min)}\u2013${formatNumber(max)}${field.unit ? ` ${field.unit}` : ''}`
+}
+
+/**
+ * Why what was typed can't be saved for `field`, or null when it can: empty, not a number ("abc"), not whole, or out
+ * of range ("-5") each name the range; then floor ≤ ceiling against the stored value, then the schema.
+ */
+export function checkValue(field: NumberField, text: string, current: Settings): string | null {
+  const value = parseWhole(text)
+  if (value === null) {
+    const cleaned = text.replace(/[\s,]/g, '')
+    if (cleaned === '') return `Enter a value, ${rangeText(field)}.`
+    if (!/^-?\d*\.?\d+$/.test(cleaned)) return `Enter a number, ${rangeText(field)}.`
+    if (Number(cleaned) < 0) return `Enter ${rangeText(field)}.`
+    return `Enter a whole number, ${rangeText(field)}.`
+  }
   if (field.key === 'calorie_floor' && value > current.calorie_ceiling)
     return `The floor can't be above the ceiling (${formatNumber(current.calorie_ceiling)} kcal).`
   if (field.key === 'calorie_ceiling' && value < current.calorie_floor)
@@ -113,11 +138,13 @@ export function checkValue(field: NumberField, value: number | null, current: Se
   const parsed = SettingsPatch.safeParse({ [field.key]: value })
   if (parsed.success) return null
   const issue = parsed.error.issues[0]
-  if (issue?.code === 'too_small')
-    return `At least ${formatNumber(Number(issue.minimum))}${field.unit ? ` ${field.unit}` : ''}.`
-  if (issue?.code === 'too_big')
-    return `At most ${formatNumber(Number(issue.maximum))}${field.unit ? ` ${field.unit}` : ''}.`
+  if (issue?.code === 'too_small' || issue?.code === 'too_big') return `Enter ${rangeText(field)}.`
   return issue?.message ?? 'That value is not allowed.'
+}
+
+/** True when `value` takes the calorie floor under the one agreed with the doctor and dietitian (Aaron may). */
+export function belowAgreedFloor(field: NumberField, value: number | null): boolean {
+  return field.key === 'calorie_floor' && value !== null && value < AGREED_CALORIE_FLOOR
 }
 
 export const WEEKDAYS: readonly { key: Weekday; short: string; long: string }[] = [
@@ -152,7 +179,7 @@ export function reminderSummary(reminders: ReminderPrefs): string {
 export type ProfileKey = keyof ProfilePatch
 
 /** Which control edits a profile field: a numeric field, a date picker, a short choice, or free text. */
-export type ProfileKind = 'number' | 'date' | 'choice' | 'text'
+export type ProfileKind = 'number' | 'date' | 'choice' | 'text' | 'zone'
 
 export interface ProfileField {
   key: ProfileKey
@@ -185,8 +212,9 @@ export const PROFILE_FIELDS: readonly ProfileField[] = [
     kind: 'number',
     unit: 'kg',
     precision: 1,
-    min: 30,
-    max: 400,
+    min: GOAL_WEIGHT_KG.min,
+    max: GOAL_WEIGHT_KG.max,
+    help: 'Below the start weight.',
   },
   { key: 'goal_date', label: 'Goal date', kind: 'date', help: 'The day the goal weight is due.' },
   {
@@ -224,8 +252,8 @@ export const PROFILE_FIELDS: readonly ProfileField[] = [
   {
     key: 'timezone',
     label: 'Time zone',
-    kind: 'text',
-    help: 'IANA zone, e.g. America/Edmonton. A day is this zone\u2019s day.',
+    kind: 'zone',
+    help: 'Type to search, e.g. Edmonton. A day is this zone\u2019s day.',
   },
 ]
 
@@ -236,6 +264,7 @@ export function formatProfileValue(field: ProfileField, profile: Profile): strin
   if (field.kind === 'choice') return field.options?.find((o) => o.value === value)?.label ?? String(value)
   if (field.kind === 'number')
     return `${formatNumber(Number(value), field.precision ?? 0)}${field.unit ? ` ${field.unit}` : ''}`
+  if (field.kind === 'date') return formatDay(String(value))
   return String(value)
 }
 
@@ -253,20 +282,76 @@ export function parseProfileInput(field: ProfileField, text: string): string | n
   return trimmed === '' ? null : trimmed
 }
 
-/** Why `value` can't be saved for `field`, or null when it can. The schema is the final authority. */
-export function checkProfileValue(field: ProfileField, value: string | number | null): string | null {
+/**
+ * Why `value` can't be saved for `field`, or null when it can: bounds, a time zone from the list, and a goal weight
+ * below the stored start weight (and a start weight above the stored goal). The schema is the final authority.
+ */
+export function checkProfileValue(
+  field: ProfileField,
+  value: string | number | null,
+  profile?: Pick<Profile, 'goal_weight_kg' | 'start_weight_kg'>,
+): string | null {
   if (value === null) {
     if (field.nullable) return null
-    return field.kind === 'number' ? 'Enter a number.' : 'This can\u2019t be empty.'
+    if (field.kind === 'zone') return 'Pick a time zone from the list.'
+    return field.kind === 'number'
+      ? `Enter a number${field.min !== undefined ? `, ${profileRange(field)}` : ''}.`
+      : 'This can\u2019t be empty.'
   }
   if (typeof value === 'number' && (value < (field.min ?? -Infinity) || value > (field.max ?? Infinity)))
-    return `Enter a value between ${formatNumber(field.min ?? 0, field.precision ?? 0)} and ${formatNumber(field.max ?? 0, field.precision ?? 0)}${field.unit ? ` ${field.unit}` : ''}.`
+    return `Enter a value between ${profileRange(field, ' and ')}.`
+  if (field.kind === 'zone' && typeof value === 'string' && !timeZones().has(value))
+    return 'Pick a time zone from the list, e.g. America/Edmonton.'
+  if (profile && typeof value === 'number') {
+    if (field.key === 'goal_weight_kg' && value >= profile.start_weight_kg)
+      return `The goal must be below the start weight (${formatNumber(profile.start_weight_kg, 1)} kg).`
+    if (field.key === 'start_weight_kg' && value <= profile.goal_weight_kg)
+      return `The start must be above the goal weight (${formatNumber(profile.goal_weight_kg, 1)} kg).`
+  }
   const parsed = ProfilePatch.safeParse({ [field.key]: value })
   if (parsed.success) return null
   const issue = parsed.error.issues[0]
-  if (issue?.code === 'too_small') return `At least ${issue.minimum}${field.unit ? ` ${field.unit}` : ''}.`
-  if (issue?.code === 'too_big') return `At most ${issue.maximum}${field.unit ? ` ${field.unit}` : ''}.`
+  if (issue?.code === 'too_small' || issue?.code === 'too_big') return `Enter ${profileRange(field)}.`
   return issue?.message ?? 'That value is not allowed.'
+}
+
+/** "40.0–200.0 kg" (or with " and "): a number profile field's bounds. */
+function profileRange(field: ProfileField, join = '\u2013'): string {
+  const p = field.precision ?? 0
+  return `${formatNumber(field.min ?? 0, p)}${join}${formatNumber(field.max ?? 0, p)}${field.unit ? ` ${field.unit}` : ''}`
+}
+
+/** One time-zone picker option: the IANA id, its label ("America/Port of Spain") and its friendly line. */
+export interface ZoneOption {
+  zone: string
+  label: string
+  friendly: string
+}
+
+let zoneList: readonly ZoneOption[] | null = null
+
+/**
+ * Every IANA zone the browser knows, sorted, for the time-zone picker. Built once per page load (one
+ * `Intl.DateTimeFormat` per zone), so typing in the picker never re-formats the list.
+ */
+export function zoneOptions(): readonly ZoneOption[] {
+  zoneList ??= [...timeZones()]
+    .sort()
+    .map((zone) => ({ zone, label: zone.replace(/_/g, ' '), friendly: friendlyZone(zone) }))
+  return zoneList
+}
+
+/** "Edmonton (Mountain Time)": a zone as a person reads it (the city, then the zone's long generic name). */
+export function friendlyZone(zone: string): string {
+  const city = (zone.split('/').pop() ?? zone).replace(/_/g, ' ')
+  try {
+    const name = new Intl.DateTimeFormat('en-CA', { timeZone: zone, timeZoneName: 'longGeneric' })
+      .formatToParts(new Date())
+      .find((p) => p.type === 'timeZoneName')?.value
+    return name && name !== city ? `${city} \u00b7 ${name}` : city
+  } catch {
+    return city
+  }
 }
 
 /** The PATCH body for one profile field. An exhaustive switch, so a new field cannot be forgotten silently. */

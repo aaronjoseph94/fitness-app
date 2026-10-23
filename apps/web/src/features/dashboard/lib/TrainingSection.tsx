@@ -59,7 +59,8 @@ export function TrainingSection({ data }: { data: DashboardData }) {
       subtitle="Volume per week by muscle group, where it landed, and strength"
       fold={false}
     >
-      <WrapRow>
+      {/* Each card its own height: the volume charts are shorter than Strength with its picker and notes. */}
+      <WrapRow align="flex-start">
         <Box sx={wrapCol(1.2)}>
           <VolumeCard sessions={data.sessions} index={index} from={from} to={data.to} />
         </Box>
@@ -306,7 +307,7 @@ function StrengthCard({ sessions, index }: Pick<CardProps, 'sessions' | 'index'>
           </TextField>
           {history.data ? (
             points.length > 0 ? (
-              <StrengthChart sessions={points} height={STRENGTH_HEIGHT} legend={false} />
+              <StrengthChart sessions={points} height={STRENGTH_HEIGHT} />
             ) : (
               <EmptyHistory loading={false} />
             )
@@ -327,7 +328,8 @@ const pickerSx = {
     borderRadius: `${tokens.summit.radius.button - 2}px`,
     bgcolor: tokens.summit.surface.soft,
     color: tokens.summit.ink.deep,
-    [COARSE_POINTER_QUERY]: { minHeight: tokens.tapTarget },
+    // A 44 px target on every pointer (finding #35: 34 px with a mouse was too small).
+    minHeight: tokens.tapTarget,
   },
   '& .MuiOutlinedInput-notchedOutline': { border: 0 },
   '& .MuiInputBase-input.MuiSelect-select': {

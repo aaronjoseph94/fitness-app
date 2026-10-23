@@ -8,9 +8,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import type { ChangeEvent } from 'react'
+import { formatDay } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { relativeDay, shiftDate } from '../../quick-log'
-import { dayLabel, shortDayLabel } from './labels'
+import { shortDayLabel } from './labels'
 
 const { summit, font } = tokens
 
@@ -67,7 +68,7 @@ export function DateSwitcher({
   const previous = shiftDate(date, -1)
   const next = shiftDate(date, 1)
   const relative = relativeDay(date, today)
-  const label = relative === 'Today' || relative === 'Yesterday' ? relative : dayLabel(date)
+  const label = relative === 'Today' || relative === 'Yesterday' ? relative : formatDay(date)
   return (
     <>
       <Box

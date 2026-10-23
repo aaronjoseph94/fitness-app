@@ -1,7 +1,7 @@
 // Owns: Progress's food and habit cards (1d), from the range's v_day rows (GET /api/days) and the rails from settings —
 // `FoodCards`, calories vs target (stacked by meal slot, the dashed target) beside the macros (stacked grams, the
 // dashed protein minimum in amber), two up in a row that wraps; and `HabitCounts`, three small cards for water, steps
-// and sleep over the range's last 12 days: the days on target out of the days logged in Outfit, what the target is,
+// and sleep over the selected range (as the Dashboard counts its window, so "14 of 28" means the same on both): the days on target out of the days logged in Outfit, what the target is,
 // and a ramp bar of the share. The fasting strip, the full water, steps and sleep charts and the adherence calendars
 // sit in the page's detail section.
 import Box from '@mui/material/Box'
@@ -34,8 +34,6 @@ import {
   waterDays,
 } from './series'
 
-/** The small cards count the range's last 12 days (1d: "8 / 12 days at 3 L"). */
-const MINI_DAYS = 12
 /** The food charts' plot height (1d: 120 px of bars, plus the day axis). */
 const FOOD_HEIGHT = 160
 
@@ -143,15 +141,10 @@ export function HabitCounts({ days }: { days: Days }) {
   if (!days.data) return <QueryStateCard query={days} what="your days" height={110} titleSize="card" />
   const rows = days.data
   const targets = latestTargets(rows)
-  const water = waterDays(rows)
-    .slice(-MINI_DAYS)
-    .map((d) => d.ml ?? null)
-  const steps = stepsDays(rows)
-    .slice(-MINI_DAYS)
-    .map((d) => d.steps ?? null)
-  const sleep = sleepNights(rows)
-    .slice(-MINI_DAYS)
-    .map((n) => n.hours ?? null)
+  // The whole selected range (the toggle's 4 weeks / 12 weeks / all), not a fixed last 12 days.
+  const water = waterDays(rows).map((d) => d.ml ?? null)
+  const steps = stepsDays(rows).map((d) => d.steps ?? null)
+  const sleep = sleepNights(rows).map((n) => n.hours ?? null)
   const litres = (ml: number) => `${formatNumber(ml / 1000, ml % 1000 === 0 ? 0 : 1)} L`
   return (
     <Box

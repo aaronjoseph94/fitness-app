@@ -4,6 +4,28 @@
 
 ## Done
 
+- 2026-10-23 · **UI/UX review: 40 findings fixed.** Three senior-designer reviews of the live Summit app (every screen at 390–1440 px) found 40 issues; Aaron said "fix everything". Five parallel fixers (Train, Today/Dashboard/Progress, Log, Settings/AI/Scans, shell and kit). Highlights:
+  - *Data integrity:*
+    - Invalid sets can't be ticked or finished (and the Worker refuses them, now tested).
+    - Exercises added to a blank session save to the server (new `PATCH /api/sessions/:id`, offline-queued).
+    - Settings refuses impossible time zones and goal weights (shared schema and Worker).
+    - A calorie floor below 1,400 warns, needs a ticked confirmation and can be undone, and the feed records it.
+    - Equipment changes get Undo.
+  - *One set of numbers:*
+    - Every "kg a week" is the forecast rate, and ahead/behind uses it.
+    - Camps and milestones come from one `projectedOn()`.
+    - "Goal date" and "Projected summit" are always labelled.
+    - Fasts show on their fast day everywhere, with their window ("Tonight 8:00 PM → Sat 8:00 PM").
+  - *Layout:*
+    - The session summary and the session at 768 px no longer overlap or squeeze.
+    - Ask AI under 900 px gives the thread the full width.
+    - Cards align to the top instead of stretching empty.
+    - Tables fit or fade at their scroll edge.
+    - Snackbars sit above the tab bar.
+    - Pages use the full width.
+    - Phones get a palette button.
+    - Back goes to the parent page.
+  - *Copy:* readable dates everywhere ("Fri, Oct 23"), and one "Add a model key in Settings → AI" message with a link.
 - 2026-10-21 · **The app wears the 1d "Summit" design.** Aaron sent a new design handoff (`docs/design/design_handoff_fitness_1d/`) and asked to implement it and test the app. Presentation only: every hook, route, guard and dialog is unchanged, and so is every test id except the four removed nav pieces listed under Decisions (5).
   - *Everywhere:* a sky hero (violet to coral, stars, a sun, a ridge) carries each page's eyebrow, title, one-line subtitle and actions, over a cream panel. Outfit for titles and numbers and DM Sans for the UI, both self-hosted. Violet accent `#7B3FE4`. Warm white cards with a soft violet shadow, metric gradient ramps (calories, protein, water, steps, sleep), and one deep-sky card per screen for the plan-level fact.
   - *Navigation:* a glass tab pill from 960 px up (with Scans, a gold Ask AI pill and the Settings avatar), and below it a top bar plus a fixed six-tab bar that sits above the iPhone home indicator.
@@ -67,6 +89,19 @@
 
 ## Decisions made on Aaron's behalf
 
+- 2026-10-23 · **UI/UX fixes: the choices.**
+  - (1) *One weekly rate:* the forecast's, `(tdee_est − planned intake) × 7 ÷ 7,700`, labelled "kg a week forecast". Observed change is shown only as kg over a named window ("−0.8 kg in 7 days", "Trend change · 4 weeks"). Rate, ahead/behind, projected summit and camp dates then all agree.
+  - (2) *A fast's day is the engine's `fastDay()`*, the date holding most of the fast (Fri 8 PM → Sat 8 PM is Saturday's), because it carries the 0 kcal target. Views show both the window and the fast day. This replaces the first idea of using the start day.
+  - (3) *Calorie floor:* Aaron can still lower it (his rail), but below 1,400 the dialog warns and needs a ticked "My doctor and dietitian agreed". Undo restores it, and the settings-change event notes it.
+  - (4) *Scans by hand still needs every value:* making them optional would need a table rebuild. The form now explains this, and scrolls to and selects the first empty field.
+  - (5) *AI workout from the app answers 409 `no_model_key` at once* when no key is set, instead of queueing a job that can only fail. Tool calls (Ask AI, MCP) keep the job.
+  - (6) *Dashboard Export becomes "Export in Settings":* the export lives on the Data page.
+  - (7) *Today's "Recent activity" is "Coach and AI activity"*, hidden when empty. The user's own logs live on Log.
+  - (8) *Routes default to the full panel width*; /train/ai stays narrow, as a form.
+  - (9) *Left as is:*
+    - Scans' Next and Latest cards keep their own heights; stretching only added blank space.
+    - The weekly report eyebrow keeps "2026-W42" (a test pins it).
+    - Train's Generate no-key message keeps its own wording (a test pins it).
 - 2026-10-21 · **The Summit reskin: the choices.**
   - (1) *Fonts are self-hosted* (`@fontsource-variable/outfit` and `@fontsource-variable/dm-sans`), not loaded from Google Fonts as the handoff suggests. The Worker's CSP allows only the app's own origin, the PWA must work offline, and no third party learns when he opens the app. Geist is gone.
   - (2) *Icons stay `@mui/icons-material`* (its Rounded set) instead of the Material Symbols font: the same shapes without another font download.

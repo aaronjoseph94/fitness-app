@@ -24,6 +24,7 @@ import { Link as RouterLink } from 'react-router'
 import { apiQueryKey, call, problemText } from '../../../api'
 import {
   cardSurface,
+  formatDay,
   formatNumber,
   PageHeader,
   Panel,
@@ -375,7 +376,7 @@ export function HealthImportPage() {
                 <TableBody>
                   {mapped.rows.slice(-PREVIEW_ROWS).map((r) => (
                     <TableRow key={r.date}>
-                      <TableCell sx={{ ...tabularNums, whiteSpace: 'nowrap' }}>{r.date}</TableCell>
+                      <TableCell sx={{ ...tabularNums, whiteSpace: 'nowrap' }}>{formatDay(r.date)}</TableCell>
                       <TableCell align="right">
                         {r.steps !== undefined ? formatNumber(r.steps) : '—'}
                       </TableCell>

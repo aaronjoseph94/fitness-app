@@ -1,5 +1,5 @@
-// Owns: how numbers, dates and times look everywhere in the UI (en-CA grouping, fixed precision, ISO dates per SPEC §2,
-// and the 12-hour Edmonton clock: "2:02 PM").
+// Owns: how numbers, dates and times look everywhere in the UI (en-CA grouping, fixed precision, the readable day
+// "Fri, Oct 23" in place of a raw ISO date, and the 12-hour Edmonton clock: "2:02 PM").
 import { localDate, TIMEZONE, today } from '@fitness/shared/engine'
 
 const formatters = new Map<string, Intl.NumberFormat>()
@@ -52,9 +52,15 @@ const longDate = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'UTC',
 })
 
-/** "2026-10-04" → "Oct 4" (axis ticks and compact labels; full ISO dates elsewhere). */
-export function formatShortDate(date: string | number): string {
-  return shortDate.format(typeof date === 'number' ? date : dateToTime(date))
+/**
+ * "2026-10-04" → "Oct 4" (axis ticks and compact labels). Given `today` ("YYYY-MM-DD"), a date in another year keeps
+ * it: "Apr 9, 2027".
+ */
+export function formatShortDate(date: string | number, today?: string): string {
+  const short = shortDate.format(typeof date === 'number' ? date : dateToTime(date))
+  if (today === undefined) return short
+  const year = typeof date === 'number' ? timeToDate(date).slice(0, 4) : date.slice(0, 4)
+  return year === today.slice(0, 4) ? short : `${short}, ${year}`
 }
 
 /** ("2026-10-05", "2026-10-11") → "Oct 5 – 11"; across a month end → "Sep 28 – Oct 4". */
@@ -103,4 +109,33 @@ export function formatRecentTime(instant: string, now: number = Date.now()): str
 export function formatClockTime(time: string): string {
   const [h = 0, m = 0] = time.split(':').map(Number)
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+const dayLabel = new Intl.DateTimeFormat('en-CA', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+const dayLabelYear = new Intl.DateTimeFormat('en-CA', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
+
+/**
+ * A local day "2026-10-23" → "Fri, Oct 23"; a day in another year than today (Edmonton) keeps it: "Fri, Apr 16, 2027".
+ * The one way a day reads in copy (snackbars, history rows, report headers) — never the raw ISO string.
+ */
+export function formatDay(date: string, now: number = Date.now()): string {
+  const day = date.slice(0, 10)
+  const f = day.slice(0, 4) === today(now).slice(0, 4) ? dayLabel : dayLabelYear
+  return f.format(dateToTime(day))
+}
+
+/** An instant "2026-10-24T02:00:00Z" → "Fri, Oct 23 · 8:00 PM" (its Edmonton day via formatDay, then formatClock). */
+export function formatDayTime(instant: string, now: number = Date.now()): string {
+  return `${formatDay(localDate(instant), now)} · ${formatClock(instant)}`
 }

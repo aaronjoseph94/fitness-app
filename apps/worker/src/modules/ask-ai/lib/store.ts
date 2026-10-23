@@ -22,10 +22,16 @@ export const FALLBACK = {
   too_many_steps:
     'That needed more steps than I can take in one go. What I looked up is listed below; try asking one thing at a time.',
 } as const
-/** The ai_unavailable reply when no provider has a key at all: waiting cannot help, so it doesn't say "try again". */
+/**
+ * The ai_unavailable reply when no provider has a key at all, in the shared no-model-key wording: waiting cannot help,
+ * so it doesn't say "try again".
+ */
 export const NOT_SET_UP =
+  "Ask AI isn't set up yet: add a model key in Settings → AI to use this. Nothing is lost; logging, the plan and every chart still work."
+/** The not-set-up reply as stored before 2026-10-23 (it blamed the server), still in older threads. */
+export const NOT_SET_UP_BEFORE =
   "Ask AI isn't set up yet: no AI provider key is configured on the server, so I can't answer. Nothing is lost; logging, the plan and every chart still work."
-const FALLBACK_TEXTS = new Set<string>([...Object.values(FALLBACK), NOT_SET_UP])
+const FALLBACK_TEXTS = new Set<string>([...Object.values(FALLBACK), NOT_SET_UP, NOT_SET_UP_BEFORE])
 
 /** Model turns kept as history (user questions and assistant answers only; tool rounds are not replayed). */
 const HISTORY_ROWS = 12

@@ -71,6 +71,18 @@ function lastText(exercise: LoggerExercise): string | null {
   }`
 }
 
+/**
+ * The engine's reason for its suggestion. With no earlier session of the exercise its "No logged sets yet" is about the
+ * history, not this session, and read as wrong beside ticked sets: say what it means.
+ */
+function suggestionText(exercise: LoggerExercise): string {
+  const s = exercise.suggestion
+  if (!s) return ''
+  if (!exercise.last && s.kind === 'hold' && s.load_kg === null)
+    return 'First time on record: a load suggestion comes after this session'
+  return s.reason
+}
+
 /** A 36 px round ghost icon button (44 on a touch screen, from the theme): the menu, expand. */
 const ICON_BUTTON_SX = { width: 36, height: 36, borderRadius: '50%', color: tokens.ink.secondary } as const
 
@@ -386,7 +398,7 @@ function ExerciseLogCardInner({
                     {hint} ·{' '}
                   </Box>
                 )}
-                {exercise.suggestion.reason}
+                {suggestionText(exercise)}
               </Box>
             )}
             {noteOpen && (

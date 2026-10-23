@@ -40,25 +40,21 @@ beforeAll(async () => {
     db.insert(weight_logs).values({ date: '2001-03-01', weight_kg: 100 }),
     db.insert(weight_logs).values({ date: '2001-03-03', weight_kg: 96 }),
     // Confirmed scans 8 days before and 13 days after the photo; an unconfirmed one on the photo's own day is ignored.
-    db
-      .insert(scans)
-      .values({
-        id: nearScanId,
-        scanned_at: '2001-03-02T16:00:00.000Z',
-        date: '2001-03-02',
-        confirmed: true,
-        body_fat_pct: 30.6,
-        weight_kg: 99.2,
-      }),
-    db
-      .insert(scans)
-      .values({
-        scanned_at: '2001-03-23T16:00:00.000Z',
-        date: '2001-03-23',
-        confirmed: true,
-        body_fat_pct: 29.9,
-        weight_kg: 97.5,
-      }),
+    db.insert(scans).values({
+      id: nearScanId,
+      scanned_at: '2001-03-02T16:00:00.000Z',
+      date: '2001-03-02',
+      confirmed: true,
+      body_fat_pct: 30.6,
+      weight_kg: 99.2,
+    }),
+    db.insert(scans).values({
+      scanned_at: '2001-03-23T16:00:00.000Z',
+      date: '2001-03-23',
+      confirmed: true,
+      body_fat_pct: 29.9,
+      weight_kg: 97.5,
+    }),
     db.insert(scans).values({ scanned_at: '2001-03-10T16:00:00.000Z', date: '2001-03-10', confirmed: false }),
   ])
 })

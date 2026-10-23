@@ -13,6 +13,8 @@ import { endpoints } from '@fitness/shared/api'
 import { useState } from 'react'
 import {
   formatClock,
+  formatDay,
+  formatDayTime,
   formatNumber,
   formatShortDate,
   formatWeekday,
@@ -22,7 +24,7 @@ import {
 import { COARSE_POINTER_QUERY, tokens, withAlpha } from '../../../theme'
 import {
   dateOf,
-  formatDateTime,
+  fastWindowLabel,
   fastsInMonth,
   shiftDate,
   useFasts,
@@ -31,10 +33,11 @@ import {
   useNow,
   type FastView,
 } from '../../quick-log'
-import { dayLabel, longDayLabel } from './labels'
+import { longDayLabel } from './labels'
 import { CardMeta, LoadingRows, LogCard } from './LogCard'
 
 const HISTORY_MAX = 6
+const HOUR_MS = 3_600_000
 /** A fast ended this soon after it started is a mis-tap the Worker lets you remove (DELETE /api/fasts/:id). */
 const MISTAP_H = 1
 /** The strip: ten days back to three ahead of today (2a's 14 cells). */
@@ -142,13 +145,21 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              <div>
-                Next: {longDayLabel(dayOf(next))} · {formatNumber(fastHours)} h from{' '}
-                {formatClock(next.startedAt)} {formatWeekday(dateOf(next.startedAt))}
+              <div data-testid="fast-next">
+                Next: {fastWindowLabel(next.startedAt, Date.parse(next.startedAt) + fastHours * HOUR_MS, now)}
               </div>
+              <Box sx={{ color: summit.deepSky.muted }}>
+                {formatNumber(fastHours)} h · fast day {longDayLabel(dayOf(next))}
+              </Box>
               {later.length > 0 && (
                 <Box sx={{ color: summit.deepSky.muted }}>
-                  Then: {later.map((f) => longDayLabel(dayOf(f))).join(' · ')}
+                  Then:{' '}
+                  {later
+                    .map(
+                      (f) =>
+                        `${formatWeekday(dateOf(f.startedAt))}, ${formatShortDate(dateOf(f.startedAt))} ${formatClock(f.startedAt)}`,
+                    )
+                    .join(' · ')}
                 </Box>
               )}
             </Box>
@@ -173,7 +184,7 @@ export function FastingCard({ today, onPlan }: { today: string; onPlan: () => vo
                     borderTop: `1px solid ${summit.deepSky.hairline}`,
                   }}
                 >
-                  <Box sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatDateTime(f.startedAt)}</Box>
+                  <Box sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatDayTime(f.startedAt)}</Box>
                   <Box sx={{ flex: 1, color: summit.deepSky.muted }}>{STATUS_TEXT[f.status]}</Box>
                   {f.status === 'missed' && (
                     <Button
@@ -245,7 +256,7 @@ function FastStrip({
       ? 'no fasts'
       : shown.map((f) => `${STATUS_TEXT[f.status].toLowerCase()} ${formatShortDate(dayOf(f))}`).join(', ')
   const detail = (d: string, f: FastView) =>
-    `${dayLabel(d)} · ${STATUS_TEXT[f.status]}${f.hours !== null ? ` · ${formatNumber(f.hours, 1)} h` : ''}`
+    `${formatDay(d)} · ${STATUS_TEXT[f.status]}${f.hours !== null ? ` · ${formatNumber(f.hours, 1)} h` : ''}`
   const pick = selected !== null ? byDay.get(selected) : undefined
   return (
     <Box>

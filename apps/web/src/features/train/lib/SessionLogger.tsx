@@ -6,7 +6,7 @@
 // mid-session or swap one for another with the same primary muscle, Add exercise, the coral Finish session with a
 // confirm, the red "Delete session", the rail beside the list at 1fr : 320 px, wrapping under it (progress ring and
 // per-exercise bars, the deep-sky "Last time" with its sets and volume, the readiness chip with its details), the
-// snackbar (a write problem, or a swap refused; at the top, as the quick-log notice), and the edit mode of a finished
+// snackbar (a write problem, or a swap refused), and the edit mode of a finished
 // session (its duration fixed, "Save changes" finishes it again with the same end time). No rest timer (removed
 // 2026-10-14): planned rest stays as text on each exercise.
 import AddRounded from '@mui/icons-material/AddRounded'
@@ -53,7 +53,7 @@ import { loggerActions } from './actions'
 import { DeleteSessionDialog } from './DeleteSessionDialog'
 import { ExerciseLogCard } from './ExerciseLogCard'
 import { LEFT_OUT, setCounts, type LoggerSession } from './logger-model'
-import { loggerState, useLoggerStore } from './logger-store'
+import { loggerState, useHasInvalidField, useLoggerStore } from './logger-store'
 import { ReadinessChip, readinessOnSky } from './ReadinessChip'
 import { finishSession } from './sync'
 
@@ -105,6 +105,8 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
   const setProblem = useLoggerStore((s) => s.setProblem)
   const now = useNow(1000)
   const counts = setCounts(session)
+  /** A set field holds text that isn't a valid value: Finish / Save changes wait until it's fixed. */
+  const invalid = useHasInvalidField(session)
   const picked = useMemo(() => new Set(session.exercises.map((e) => e.exercise_id)), [session.exercises])
   const [folded] = useState(() => (session.finished ? new Set<string>() : foldedAtStart(session)))
   const currentId = session.finished
@@ -241,7 +243,9 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         <WrapRow align="flex-start">
           <Box
             sx={{
-              flex: '100 1 280px',
+              // Exercises : rail at 1fr : 320 px; the exercises need 480 px (the set grid's columns at a usable size),
+              // so on a tablet the rail drops below instead of squeezing the set fields.
+              flex: '100 1 480px',
               minWidth: 0,
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr)',
@@ -327,7 +331,8 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                 <Button
                   variant="contained"
                   size="large"
-                  disabled={finishing}
+                  disabled={finishing || invalid}
+                  aria-describedby={invalid ? 'session-invalid' : undefined}
                   onClick={() => void saveEdits()}
                   data-testid="save-edits"
                   sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
@@ -339,6 +344,8 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
                   variant="contained"
                   size="large"
                   startIcon={<FlagRounded />}
+                  disabled={invalid}
+                  aria-describedby={invalid ? 'session-invalid' : undefined}
                   onClick={() => setConfirm(true)}
                   data-testid="finish-session"
                   sx={{ flex: { xs: '1 1 auto', sm: 'none' } }}
@@ -359,6 +366,15 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
               >
                 Delete session
               </Button>
+              {invalid && (
+                <Box
+                  id="session-invalid"
+                  data-testid="session-invalid"
+                  sx={{ flexBasis: '100%', fontSize: tokens.font.size.small, color: tokens.status.flag }}
+                >
+                  Fix the set marked in red to finish.
+                </Box>
+              )}
             </Box>
           </Box>
 
@@ -409,7 +425,7 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
           <Button
             variant="contained"
             onClick={() => void finish()}
-            disabled={finishing}
+            disabled={finishing || invalid}
             data-testid="confirm-finish"
           >
             {finishing ? 'Finishing…' : 'Finish'}
@@ -423,7 +439,6 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
         setsDone={counts.done}
         onClose={() => setDeleting(false)}
       />
-      {/* At the top, under the app bar or the desktop header, as the quick-log notice. */}
       <Snackbar
         open={notice !== null || problem !== null}
         autoHideDuration={6000}
@@ -432,13 +447,6 @@ export function SessionLogger({ session }: { session: LoggerSession }) {
           setProblem(null)
         }}
         message={notice ?? (problem ? `Couldn't save: ${problem}` : '')}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{
-          top: {
-            xs: `calc(${tokens.tapTarget + tokens.space(4)}px + env(safe-area-inset-top, 0px))`,
-            md: `${tokens.layout.headerHeight + tokens.space(4)}px`,
-          },
-        }}
         data-testid="logger-problem"
       />
     </>
@@ -662,7 +670,8 @@ function ProgressPanel({
 }
 
 /**
- * Last time (the deep-sky card): each exercise's sets from the last session that logged it (the greyed "Previous"
+ * Last time (the deep-sky card, titled by that session's day, or "Last time each exercise was done" when the exercises
+ * were last done on different days): each exercise's sets from the last session that logged it (the greyed "Previous"
  * column), summed — sets against this session's plan and volume (Σ reps × kg) — with the volume to beat and today's
  * so far.
  */
@@ -671,16 +680,19 @@ function LastTimePanel({ session, done, volume }: { session: LoggerSession; done
   if (withLast.length === 0) return null
   const sets = withLast.flatMap((e) => e.last!.sets)
   const lastVolume = sets.reduce((sum, s) => sum + (s.reps ?? 0) * (s.load_kg ?? 0), 0)
-  const date = withLast
-    .map((e) => e.last!.date)
-    .sort()
-    .at(-1)!
+  const dates = [...new Set(withLast.map((e) => e.last!.date))].sort()
+  const date = dates.at(-1)!
+  // One earlier session holds them all: name its day. Otherwise each exercise's last time is a different day.
+  const title =
+    dates.length === 1
+      ? `Last time · ${formatWeekday(date)}, ${formatShortDate(date)}`
+      : 'Last time each exercise was done'
   const planned = session.exercises.reduce((n, e) => n + e.sets.length, 0)
   const started = session.exercises.filter((e) => e.sets.some((x) => x.done)).length
   const strong = { color: summit.deepSky.text, fontWeight: tokens.font.weight.heading } as const
   return (
     <Reveal delay={railDelay(1)} sx={{ minWidth: 0 }}>
-      <RailCard deep title={`Last time · ${formatWeekday(date)}, ${formatShortDate(date)}`}>
+      <RailCard deep title={title}>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
           {[
             ['sets', String(sets.length), `/${planned}`],

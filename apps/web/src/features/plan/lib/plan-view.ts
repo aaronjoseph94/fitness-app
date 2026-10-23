@@ -15,7 +15,7 @@ import type {
   TargetField,
   Weekday,
 } from '@fitness/shared/schemas'
-import { formatNumber, formatSigned } from '../../../components'
+import { formatDay, formatNumber, formatSigned } from '../../../components'
 import { actorLabel, TARGET_FIELD as FIELD, targetAmount as amount, targetLabel } from '../../proposals'
 
 export { actorLabel, amount, FIELD }
@@ -73,7 +73,7 @@ export function overrideRows(targets: PlanTargets): { key: string; label: string
 
 export const DEFAULT_ROWS = FIELD_ORDER
 
-/** "0.9 kg a week (0.7–1.1) · goal 2027-04-16 · expenditure about 2,551 kcal" */
+/** "0.9 kg a week (0.7–1.1) · projected summit Fri, Apr 16, 2027 · expenditure about 2,551 kcal" (the forecast's date, never the goal date) */
 export function forecastText(f: Forecast): string {
   const rate =
     f.weekly_rate_kg > 0 ? `${formatNumber(f.weekly_rate_kg, 2)} kg a week` : 'no loss at this target'
@@ -81,7 +81,7 @@ export function forecastText(f: Forecast): string {
     f.weekly_rate_kg > 0
       ? ` (${formatNumber(Math.min(f.band.low, f.band.high), 2)}–${formatNumber(Math.max(f.band.low, f.band.high), 2)})`
       : ''
-  const finish = f.finish_date ? ` · goal ${f.finish_date}` : ''
+  const finish = f.finish_date ? ` · projected summit ${formatDay(f.finish_date)}` : ''
   return `${rate}${band}${finish} · expenditure about ${formatNumber(f.tdee_est)} kcal`
 }
 

@@ -9,7 +9,7 @@
 import Box from '@mui/material/Box'
 import { keyframes } from '@mui/material/styles'
 import { useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { dashedSurface, formatShortDate, LegendChips, type LegendItem } from '../../components'
+import { chartFocus, dashedSurface, formatShortDate, LegendChips, type LegendItem } from '../../components'
 import { metricRamp, prefersReducedMotion, tokens, withAlpha, type MetricKey } from '../../theme'
 
 /** Size props shared by every chart. */
@@ -444,6 +444,8 @@ export function ChartFrame({
         fontFamily: tokens.font.family,
         fontVariantNumeric: 'tabular-nums',
         '& .recharts-surface': { overflow: 'visible' },
+        // The kit's themed ring on a focused chart (Recharts' keyboard layer), not the browser's black square.
+        ...chartFocus,
         ...drawIn(width),
       }}
     >

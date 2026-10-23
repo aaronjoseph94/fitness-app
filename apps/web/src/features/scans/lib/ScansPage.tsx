@@ -24,6 +24,7 @@ import {
   DeepSkyCard,
   deepSkyWell,
   EmptyState,
+  formatDay,
   formatNumber,
   formatShortDate,
   formatSigned,
@@ -43,7 +44,7 @@ import {
 import { copy } from '../../../copy'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { shiftDate, todayLocal } from '../../quick-log'
-import { conditionsLine, scanDay, weekdayDay } from './format'
+import { conditionsLine, scanDay } from './format'
 import { useScans, useScanSchedule } from './hooks'
 import { CompositionCard, GuardChip, LatestScanCard, SegmentsCard, WaterCard } from './LatestScan'
 import { confirmedScans, type ConfirmedScan } from './series'
@@ -106,7 +107,7 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
             lineHeight: tokens.font.leading.number,
           }}
         >
-          {due ? weekdayDay(due) : '—'}
+          {due ? formatDay(due) : '—'}
         </Box>
         <Box
           component="span"
@@ -222,7 +223,7 @@ const tableSx = {
 
 /** "Fri, Sep 26": the table scrolls sideways on a phone, so it keeps the weekday. */
 function TableDate({ date }: { date: string }) {
-  return <>{weekdayDay(date)}</>
+  return <>{formatDay(date)}</>
 }
 
 function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSchedule | undefined }) {

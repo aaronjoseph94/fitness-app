@@ -191,7 +191,7 @@ export function ExercisePage() {
   return (
     <Stack spacing={5} data-testid="exercise-page">
       <PageHeader title={exercise.name} subtitle={musclesLine(exercise)} />
-      <ExerciseDetail exercise={exercise} headingComponent="h2" />
+      <ExerciseDetail exercise={exercise} headingComponent="h2" layout="columns" />
     </Stack>
   )
 }

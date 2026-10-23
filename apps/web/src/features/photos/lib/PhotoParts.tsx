@@ -5,7 +5,7 @@ import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import type { Pose, ProgressPhoto } from '@fitness/shared/schemas'
 import { useState, type CSSProperties } from 'react'
-import { formatNumber, formatShortDate } from '../../../components'
+import { formatDay, formatNumber, formatShortDate } from '../../../components'
 import { tokens } from '../../../theme'
 import { POSE_LABEL, POSES, useRefreshPhotos } from './data'
 
@@ -25,7 +25,7 @@ export function PhotoImage({ photo, fit = 'cover', eager = false, style }: Photo
   return (
     <img
       src={photo.url}
-      alt={`${POSE_LABEL[photo.pose]} photo, ${photo.date}`}
+      alt={`${POSE_LABEL[photo.pose]} photo, ${formatDay(photo.date)}`}
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
       draggable={false}

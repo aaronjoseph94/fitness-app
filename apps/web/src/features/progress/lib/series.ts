@@ -8,9 +8,11 @@ import {
   fastDay,
   localDate,
   localTime,
+  projectedOn,
   sessionSummary,
   weekStart,
   type MuscleValues,
+  type ProjectionInput,
 } from '@fitness/shared/engine'
 import type {
   DaySummary,
@@ -63,13 +65,15 @@ export function lastTrend(points: readonly TrendPoint[]): { date: LocalDate; kg:
 const MAX_FORECAST_WEEKS = 104
 
 /**
- * The forecast drawn from the last trend point, one point a week, ending on the finish date (mid = goal) or at
- * `horizonDays`, whichever comes first. Empty when the rate is not a loss. When the forecast has a finish date the
- * mid line is anchored to it, so the chart and the header's "projected finish" agree:
- *   rate    = (trend − goal) / (weeks from the last trend date to finish_date)   (else weekly_rate_kg)
- *   mid(w)  = trend − rate × w
- *   low(w)  = max(goal, trend − rate × (band.high / weekly_rate_kg) × w)   (SPEC §9: band = rate × (1 ∓ 0.20))
- *   high(w) = max(goal, trend − rate × (band.low / weekly_rate_kg) × w)
+ * The forecast drawn from the last trend point, one point a week, at the one weekly rate every page shows
+ * (forecastRate) and ending on the projected summit (engine `projectedOn(goal)`, the forecast's finish date), or at
+ * `horizonDays`, whichever comes first. Empty when the rate is not a loss. The mid line is the line every projected
+ * date sits on, so a camp's date read off the chart is the date the milestones show:
+ *   rate    = weekly_rate_kg                                          (forecastRate)
+ *   end     = projectedOn(goal)                                       (else from.date + ⌈(trend − goal) / rate × 7⌉ days)
+ *   mid(d)  = min(trend, goal + rate × (end − d) / 7)
+ *   low(w)  = max(goal, trend − band.high × w)                        (SPEC §9: band = rate × (1 ∓ 0.20))
+ *   high(w) = max(goal, trend − band.low × w)
  */
 export function forecastPath(input: {
   from: { date: LocalDate; kg: number }
@@ -78,51 +82,49 @@ export function forecastPath(input: {
   horizonDays?: number
 }): ForecastPoint[] {
   const { from, forecast, goalKg } = input
-  const rate = effectiveRate(from, forecast, goalKg)
+  const rate = forecastRate(forecast)
   if (rate === null || from.kg <= goalKg) return []
-  const fast = rate * (forecast.band.high / forecast.weekly_rate_kg)
-  const slow = rate * (forecast.band.low / forecast.weekly_rate_kg)
-  const weeksToGoal = (from.kg - goalKg) / rate
-  const horizonWeeks = Math.min(MAX_FORECAST_WEEKS, (input.horizonDays ?? Infinity) / 7)
-  const lastWeek = Math.min(weeksToGoal, horizonWeeks)
-  const at = (w: number): ForecastPoint => ({
-    date: addDays(from.date, Math.ceil(w * 7)),
-    mid: round(Math.max(goalKg, from.kg - rate * w)),
-    low: round(Math.max(goalKg, from.kg - fast * w)),
-    high: round(Math.max(goalKg, from.kg - slow * w)),
+  const projected = projectedOn(goalKg, {
+    forecast: { weekly_rate_kg: rate, finish_date: forecast.finish_date ?? null },
+    goal_kg: goalKg,
+    trend: from,
   })
+  const end =
+    projected && projected > from.date
+      ? projected
+      : addDays(from.date, Math.ceil(((from.kg - goalKg) / rate) * 7))
+  const horizonDays = Math.min(MAX_FORECAST_WEEKS * 7, input.horizonDays ?? Infinity)
+  const lastDay = Math.min(daysBetween(from.date, end), horizonDays)
+  const at = (days: number): ForecastPoint => {
+    const w = days / 7
+    const date = addDays(from.date, Math.ceil(days))
+    return {
+      date,
+      mid: round(Math.min(from.kg, goalKg + (rate * daysBetween(date, end)) / 7)),
+      low: round(Math.max(goalKg, from.kg - forecast.band.high * w)),
+      high: round(Math.max(goalKg, from.kg - forecast.band.low * w)),
+    }
+  }
   const out: ForecastPoint[] = []
-  for (let w = 0; w < lastWeek; w++) out.push(at(w))
-  out.push(at(lastWeek))
+  for (let d = 0; d < lastDay; d += 7) out.push(at(d))
+  out.push(at(lastDay))
   return out
 }
 
-/** The weekly loss the chart draws: anchored to finish_date when there is one (see forecastPath); null if not a loss. */
-export function effectiveRate(
-  from: { date: LocalDate; kg: number },
-  forecast: Pick<Forecast, 'weekly_rate_kg'> & { finish_date?: LocalDate | null },
-  goalKg: number,
-): number | null {
-  if (!(forecast.weekly_rate_kg > 0)) return null
-  const days = forecast.finish_date ? daysBetween(from.date, forecast.finish_date) : 0
-  return days > 0 && from.kg > goalKg ? (from.kg - goalKg) / (days / 7) : forecast.weekly_rate_kg
-}
-
 /**
- * When the ± band reaches the goal (SPEC §9: band = rate × (1 ∓ 0.20)), with rate = effectiveRate:
- *   early = from.date + ⌈(from.kg − goal) / (rate × band.high / weekly_rate_kg) × 7⌉ days
- *   late  = from.date + ⌈(from.kg − goal) / (rate × band.low / weekly_rate_kg) × 7⌉ days
+ * When the ± band reaches the goal (SPEC §9: band = rate × (1 ∓ 0.20)):
+ *   early = from.date + ⌈(from.kg − goal) / band.high × 7⌉ days
+ *   late  = from.date + ⌈(from.kg − goal) / band.low × 7⌉ days
  * Null when the rate is not a loss or the trend is already at the goal.
  */
 export function forecastBandDates(
   from: { date: LocalDate; kg: number },
-  forecast: Pick<Forecast, 'weekly_rate_kg' | 'band'> & { finish_date?: LocalDate | null },
+  forecast: Pick<Forecast, 'weekly_rate_kg' | 'band'>,
   goalKg: number,
 ): { early: LocalDate; late: LocalDate } | null {
-  const rate = effectiveRate(from, forecast, goalKg)
-  if (rate === null) return null
-  const early = expectedOn(goalKg, from, rate * (forecast.band.high / forecast.weekly_rate_kg))
-  const late = expectedOn(goalKg, from, rate * (forecast.band.low / forecast.weekly_rate_kg))
+  if (forecastRate(forecast) === null) return null
+  const early = expectedOn(goalKg, from, forecast.band.high)
+  const late = expectedOn(goalKg, from, forecast.band.low)
   return early && late ? { early, late } : null
 }
 
@@ -155,11 +157,30 @@ export function weightMilestones(rows: readonly MilestoneRow[]): WeightMilestone
     .map((m) => ({ value: m.target_value, reachedOn: m.reached_on }))
 }
 
-/** Weight milestones (heaviest first) with forecast dates for the ones still ahead; composition milestones in order. */
+/**
+ * The one weekly rate every page shows (Today's next camp, the Dashboard, Progress, the weekly report): the forecast's
+ * weekly_rate_kg = (tdee_est − planned intake) × 7 / 7,700, with tdee_est re-estimated from the last 14 days of trend
+ * (SPEC §9). Null unless it is a loss. Observed changes are shown as kg over a named window, never as kg a week.
+ */
+export function forecastRate(forecast: Pick<Forecast, 'weekly_rate_kg'> | null | undefined): number | null {
+  return forecast && forecast.weekly_rate_kg > 0 ? forecast.weekly_rate_kg : null
+}
+
+/** The engine's projection input from a trend series: its forecast, the goal and the last trend weight. */
+export function projectionOf(
+  trend: { points: readonly TrendPoint[]; forecast: Forecast | null } | null | undefined,
+  goalKg: number,
+): ProjectionInput {
+  return { forecast: trend?.forecast ?? null, goal_kg: goalKg, trend: trend ? lastTrend(trend.points) : null }
+}
+
+/**
+ * Weight milestones (heaviest first) with their projected dates (engine `projectedOn`: on the forecast's line, so the
+ * goal lands on finish_date) for the ones still ahead; composition milestones in order.
+ */
 export function milestoneTimelines(
   rows: readonly MilestoneRow[],
-  from: { date: LocalDate; kg: number } | null,
-  rate: number | null,
+  projection: ProjectionInput,
 ): { weight: Milestone[]; composition: Milestone[] } {
   const weight = rows
     .filter((m) => m.kind === 'weight')
@@ -167,11 +188,9 @@ export function milestoneTimelines(
     .map((m) => ({
       label: m.label,
       reachedOn: m.reached_on,
-      expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate),
+      expectedOn: m.reached_on ? null : projectedOn(m.target_value, projection),
     }))
-  const composition = rows
-    .filter((m) => m.kind !== 'weight')
-    .map((m) => ({ label: shortLabel(m), reachedOn: m.reached_on }))
+  const composition = compositionOrder(rows).map((m) => ({ label: shortLabel(m), reachedOn: m.reached_on }))
   return { weight, composition }
 }
 
@@ -183,7 +202,7 @@ export interface MilestoneItem {
    */
   state: 'done' | 'next' | 'later'
   reachedOn: LocalDate | null
-  /** Forecast date of a weight milestone not reached yet (at the chart's rate). */
+  /** Projected date of a weight milestone not reached yet (engine `projectedOn`). */
   expectedOn: LocalDate | null
   /** Trend kg still to lose to the next weight milestone: from.kg − target. */
   awayKg: number | null
@@ -195,27 +214,23 @@ export interface MilestoneItem {
 
 /**
  * The Progress milestones list (1d "Camps on the way"): every weight milestone, heaviest first — the ones reached, the
- * next one with the kilograms still to go, and the ones further on with their forecast dates at `rate` — then every
- * composition milestone in its own order.
+ * next one with the kilograms still to go, and the ones further on with their projected dates (engine `projectedOn`) —
+ * then every composition milestone in its own order.
  */
-export function milestoneList(
-  rows: readonly MilestoneRow[],
-  from: { date: LocalDate; kg: number } | null,
-  rate: number | null,
-): MilestoneItem[] {
+export function milestoneList(rows: readonly MilestoneRow[], projection: ProjectionInput): MilestoneItem[] {
+  const from = projection.trend
   const weight = rows.filter((m) => m.kind === 'weight').sort((a, b) => b.target_value - a.target_value)
   const next = weight.find((m) => !m.reached_on)
   const items: MilestoneItem[] = weight.map((m) => ({
     label: m.label,
     state: m.reached_on ? 'done' : m === next ? 'next' : 'later',
     reachedOn: m.reached_on,
-    expectedOn: m.reached_on ? null : expectedOn(m.target_value, from, rate),
+    expectedOn: m.reached_on ? null : projectedOn(m.target_value, projection),
     awayKg: m === next && from ? round(from.kg - m.target_value, 1) : null,
     source: 'weight',
     kg: m.target_value,
   }))
-  for (const m of rows) {
-    if (m.kind === 'weight') continue
+  for (const m of compositionOrder(rows)) {
     items.push({
       label: shortLabel(m),
       state: m.reached_on ? 'done' : 'later',
@@ -288,6 +303,20 @@ export function paceVersusPlan(input: {
     forecastRate,
     ahead: requiredRate !== null && forecastRate !== null ? forecastRate >= requiredRate : null,
   }
+}
+
+/**
+ * Composition milestones in the order they come: each kind where it first appears, and within a kind (all "under"
+ * thresholds: body fat %, visceral level, WHR, a segment's fat) the highest target first — BF < 30 % before 25 % before
+ * 20 %, so "next" is the one closest to where he is.
+ */
+function compositionOrder(rows: readonly MilestoneRow[]): MilestoneRow[] {
+  const kinds = [
+    ...new Set(rows.filter((m) => m.kind !== 'weight').map((m) => `${m.kind}:${m.segment ?? ''}`)),
+  ]
+  return kinds.flatMap((k) =>
+    rows.filter((m) => `${m.kind}:${m.segment ?? ''}` === k).sort((a, b) => b.target_value - a.target_value),
+  )
 }
 
 /** Timeline labels must fit ~55 px at phone width: "Visceral ≤ 9", "BF < 30 %", "WHR < 0.90", "Torso < 10.4 kg". */
@@ -418,8 +447,8 @@ const HOUR_MS = 3_600_000
 
 /**
  * One strip entry per fast, on its fast day (the engine's `fastDay`: the local date holding most of its window, as
- * Log, the Dashboard, the week plan and `is_fast_day` date it — Saturday for a 24 h fast from Friday 8 PM), or on its
- * start date when it has none (broken off early). The strip has no "running" mark, so a fast under way shows as
+ * Log, Today, the Dashboard, the week plan and `is_fast_day` date it — Saturday for a 24 h fast from Friday 8 PM), or on
+ * its start date when it has none (broken off early). The strip has no "running" mark, so a fast under way shows as
  * planned until it ends:
  *   ended                         → completed when hours ≥ 0.95 × fast_hours, else partial (hours = ended − started)
  *   not ended, start ahead        → planned
@@ -474,7 +503,8 @@ const GROUP_OF: Readonly<Record<Muscle, string>> = {
  * Real kilograms lifted per group. The engine's volume_by_muscle weights each lift 1.0 per primary and 0.5 per
  * secondary muscle, so it sums to 2–3× the kg lifted; it is scaled back to the week's tonnage:
  *   k = volume_kg / Σ volume_by_muscle,   group(g) = k × Σ_{muscle ∈ g} volume_by_muscle[muscle]
- * so the groups add up to volume_kg (Σ reps × kg, "sets × reps × kg"). Exact because both come from one sessionSummary.
+ * so the groups add up to volume_kg (Σ reps × kg, "sets × reps × kg"), in whole kg by largest remainder (their sum is
+ * round(volume_kg)). Exact because both come from one sessionSummary.
  */
 export function groupVolume(volumeByMuscle: MuscleValues, volumeKg: number): Record<string, number> {
   const weighted = Object.values(volumeByMuscle).reduce((sum, v) => sum + (v ?? 0), 0)
@@ -484,8 +514,18 @@ export function groupVolume(volumeByMuscle: MuscleValues, volumeKg: number): Rec
     const g = GROUP_OF[muscle]
     out[g] = (out[g] ?? 0) + kg * k
   }
-  for (const g of Object.keys(out)) out[g] = Math.round(out[g]!)
-  return out
+  // Whole kg by largest remainder, so the groups add up to round(volume_kg) exactly — the weekly bars' total and the
+  // volume map's "X kg" never differ by a rounding kilogram.
+  const keys = Object.keys(out)
+  const floors = Object.fromEntries(keys.map((g) => [g, Math.floor(out[g]!)]))
+  let left =
+    Math.round(keys.reduce((sum, g) => sum + out[g]!, 0)) - keys.reduce((sum, g) => sum + floors[g]!, 0)
+  for (const g of [...keys].sort((a, b) => out[b]! - floors[b]! - (out[a]! - floors[a]!))) {
+    if (left <= 0) break
+    floors[g]! += 1
+    left--
+  }
+  return floors
 }
 
 type ExerciseTags = Pick<ExerciseSummary, 'id' | 'primary_muscles' | 'secondary_muscles'>
@@ -502,7 +542,10 @@ export function volumeBetween(
   return { volume_kg: t.total_volume_kg, volume_by_muscle: t.volume_by_muscle }
 }
 
-/** Volume per group for every Monday–Sunday week touching `from` … `to`, oldest first. */
+/**
+ * Volume per group for every Monday–Sunday week touching `from` … `to`, oldest first, from the first week with a lift
+ * (weeks before it — before base camp, or before training started — would only be empty labelled columns).
+ */
 export function sessionVolumeWeeks(
   sessions: readonly WorkoutSession[],
   exercises: readonly ExerciseTags[],
@@ -514,7 +557,8 @@ export function sessionVolumeWeeks(
     const v = volumeBetween(sessions, exercises, monday, addDays(monday, 6))
     weeks.push({ week: monday, volume: groupVolume(v.volume_by_muscle, v.volume_kg) })
   }
-  return weeks
+  const first = weeks.findIndex((w) => Object.values(w.volume).some((kg) => kg > 0))
+  return first === -1 ? weeks : weeks.slice(first)
 }
 
 /** Sessions per exercise with a completed loaded set, most first (the strength chart's picker order). */

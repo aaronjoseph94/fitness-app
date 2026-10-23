@@ -9,6 +9,7 @@ import type { ReactNode } from 'react'
 import { EmptyState, type EmptyStateProps } from './EmptyState'
 import { LegendChips, type LegendItem } from './LegendChips'
 import { Panel } from './Panel'
+import { chartFocus } from './surfaces'
 
 export interface ChartCardProps {
   title: string
@@ -73,7 +74,9 @@ export function ChartCard({
           <LegendChips items={legend} />
         </Box>
       )}
-      <Box sx={{ minWidth: 0 }}>{emptyProps ? <EmptyState {...emptyProps} compact /> : children}</Box>
+      <Box sx={{ minWidth: 0, ...chartFocus }}>
+        {emptyProps ? <EmptyState {...emptyProps} compact /> : children}
+      </Box>
     </Panel>
   )
 }

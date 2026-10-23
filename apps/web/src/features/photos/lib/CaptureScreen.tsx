@@ -28,8 +28,12 @@ type CameraState = 'starting' | 'live' | 'denied' | 'unavailable'
 type Timer = 0 | 3 | 10
 
 const OVERLAY_OPACITY = 0.25
-/** Top bar, pose selector, shutter row, timer and bottom tabs: the height the viewfinder leaves for them. */
-const VIEWFINDER_RESERVED_PX = 400
+/**
+ * A phone: the compact sky, the pose selector, the shutter row, the "Choose a photo" button and the tab bar — the
+ * height the viewfinder leaves for them, so the shutter and the picker are on screen without scrolling (UX #21). The
+ * timer and the hint may sit below the fold.
+ */
+const VIEWFINDER_RESERVED_PX = 580
 /** From `md`: the 56 px header, the title row and the main padding (the controls sit beside the viewfinder). */
 const VIEWFINDER_RESERVED_DESKTOP_PX = 240
 const PREFS_KEY = 'photos.capture'
@@ -220,12 +224,14 @@ export function CaptureScreen() {
 
   return (
     <Stack spacing={`${tokens.rhythm.section}px`}>
-      {/* The phone keeps every pixel for the viewfinder: its top bar names the page, so the 2a title row is desktop only. */}
-      {desktop && (
+      {/* The phone keeps its pixels for the viewfinder: a compact sky with the title only. */}
+      {desktop ? (
         <PageHeader
           title="New photos"
           subtitle={`${POSE_LABEL[pose]} now. Front, side and back, lined up with the outline; downscaled on this device.`}
         />
+      ) : (
+        <PageHeader variant="compact" title="New photos" />
       )}
       <Reveal delay={ENTER_DELAY}>
         <Box
@@ -281,7 +287,7 @@ export function CaptureScreen() {
                 xs: `min(calc(100dvh - ${VIEWFINDER_RESERVED_PX}px), calc((100vw - 32px) * 4 / 3), 640px)`,
                 md: `min(calc(100dvh - ${VIEWFINDER_RESERVED_DESKTOP_PX}px), 640px)`,
               },
-              minHeight: 240,
+              minHeight: 220,
               aspectRatio: '3 / 4',
               width: 'auto',
               maxWidth: '100%',
@@ -429,6 +435,16 @@ export function CaptureScreen() {
             </Stack>
           ) : (
             <Stack spacing={3} sx={{ gridArea: 'controls', minWidth: 0 }}>
+              {/* With no camera the picker is the way in, so it comes first, right under the frame. */}
+              {noCamera && (
+                <Button
+                  variant="contained"
+                  startIcon={<PhotoLibraryOutlined />}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  Choose a {POSE_LABEL[pose].toLowerCase()} photo
+                </Button>
+              )}
               <Box
                 sx={{
                   display: 'grid',
@@ -513,15 +529,6 @@ export function CaptureScreen() {
                   ]}
                 />
               </Box>
-              {noCamera && (
-                <Button
-                  variant="contained"
-                  startIcon={<PhotoLibraryOutlined />}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  Choose a {POSE_LABEL[pose].toLowerCase()} photo
-                </Button>
-              )}
               <Box
                 sx={{
                   fontSize: tokens.font.size.small,

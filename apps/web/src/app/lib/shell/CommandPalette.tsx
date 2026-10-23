@@ -1,7 +1,8 @@
 // Owns: the ⌘K / Ctrl-K command palette — one keyboard-first way to log something, ask AI over the page you are on (the
 // Ask AI slide-up panel; not on the AI tab, which is the chat), or jump to any screen, including the ones the nav does
-// not list (Photos, Plan history, library, equipment, builder, the settings pages). The desktop nav's search circle
-// opens it too.
+// not list (Photos, Plan history, library, equipment, builder, the settings pages). The nav's search circle opens it
+// too (desktop and phone). A query nothing matches is never a dead end: the palette offers "Ask AI: '<query>'", which
+// opens the AI tab with that question in its composer (`/ai?q=<query>`; the AI page reads `q`).
 import SearchRounded from '@mui/icons-material/SearchRounded'
 import Box from '@mui/material/Box'
 import Dialog from '@mui/material/Dialog'
@@ -66,7 +67,9 @@ function useCommands(close: () => void): Command[] {
               },
             },
           ]),
-      ...TABS.map((t) => go(t.title, `Go to ${t.label}`, t.path)),
+      ...TABS.map((t) =>
+        go(t.title, t.key === 'ai' ? 'The chat, its history and proposals' : `Go to ${t.label}`, t.path),
+      ),
       go('Settings', 'Rails, daily targets, app', '/settings'),
       go('Model keys and the Claude connector', 'Provider keys and the MCP token', '/settings/ai'),
       go('Reminders', 'Notifications for the day', '/settings/reminders'),
@@ -81,6 +84,8 @@ function useCommands(close: () => void): Command[] {
     ]
   }, [close, navigate, openQuickLog, setAskAiOpen, onAiTab])
 }
+
+const askAiPath = tabByKey('ai').path
 
 export function CommandPalette() {
   const open = useUiStore((s) => s.paletteOpen)
@@ -108,11 +113,24 @@ export function CommandPalette() {
     return () => globalThis.removeEventListener('keydown', onKey)
   }, [setOpen])
 
+  const navigate = useNavigate()
   const matches = useMemo(() => {
-    const wanted = query.trim().toLowerCase()
+    const typed = query.trim()
+    const wanted = typed.toLowerCase()
     if (!wanted) return commands
-    return commands.filter((c) => `${c.label} ${c.hint}`.toLowerCase().includes(wanted))
-  }, [commands, query])
+    const found = commands.filter((c) => `${c.label} ${c.hint}`.toLowerCase().includes(wanted))
+    if (found.length) return found
+    // Nothing matches: hand the words to Ask AI rather than stopping here.
+    const ask: Command = {
+      label: `Ask AI: “${typed}”`,
+      hint: 'Open the chat with this question',
+      run: () => {
+        close()
+        void navigate(`${askAiPath}?${new URLSearchParams({ q: typed }).toString()}`)
+      },
+    }
+    return [ask]
+  }, [commands, query, close, navigate])
 
   // A fresh query restarts the highlight, so Enter always runs the top match.
   useEffect(() => setIndex(0), [query])
@@ -150,7 +168,7 @@ export function CommandPalette() {
           fullWidth
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Log something or go somewhere…"
+          placeholder="Log, go somewhere or ask AI…"
           aria-label="Search commands"
           data-testid="palette-input"
           slotProps={{
@@ -219,6 +237,7 @@ export function CommandPalette() {
             sx={{ minHeight: tokens.tapTarget }}
           >
             <ListItemText
+              data-testid={command.label.startsWith('Ask AI: ') ? 'palette-ask-ai' : undefined}
               primary={command.label}
               secondary={command.hint}
               // Ink and label ink, not the dense list's muted body2, which is 4.4:1 on a highlighted row. The hint's
@@ -237,17 +256,6 @@ export function CommandPalette() {
             />
           </ListItemButton>
         ))}
-        {matches.length === 0 && (
-          <ListItemButton
-            disabled
-            role="option"
-            aria-selected={false}
-            data-index={0}
-            sx={{ minHeight: tokens.tapTarget }}
-          >
-            <ListItemText primary={`Nothing matches “${query.trim()}”.`} />
-          </ListItemButton>
-        )}
       </List>
     </Dialog>
   )

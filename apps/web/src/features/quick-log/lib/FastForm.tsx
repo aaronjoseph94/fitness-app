@@ -9,6 +9,9 @@ import { endpoints } from '@fitness/shared/api'
 import { fastDay } from '@fitness/shared/engine'
 import { useState } from 'react'
 import {
+  formatClock,
+  formatDay,
+  formatDayTime,
   formatNumber,
   LoadProblem,
   MetricRing,
@@ -20,12 +23,12 @@ import { tokens } from '../../../theme'
 import {
   clockOf,
   dateOf,
-  formatDateTime,
+  fastWindowLabel,
   formatDuration,
   instantAt,
-  relativeDay,
   shiftDate,
   todayLocal,
+  whenLabel,
 } from './dates'
 import { fastsInMonth, useFasts, useNow, type FastView } from './fasts'
 import { useLogSettings } from './reads'
@@ -42,7 +45,9 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
   const now = useNow(30_000)
   const today = todayLocal(now)
   const { fastHours, fastsPerMonth } = useLogSettings()
-  const fasting = useFasts({ from: shiftDate(today, -3), to: shiftDate(today, 92) }, now)
+  // From just before this month began (a fast from the last evening of last month can be one of this month's), so the
+  // plan form's "1 of 2 planned" counts the month's earlier fasts as the Log tab's card does.
+  const fasting = useFasts({ from: shiftDate(`${today.slice(0, 7)}-01`, -3), to: shiftDate(today, 92) }, now)
   const start = useLogMutation(endpoints.fasting.start)
   const end = useLogMutation(endpoints.fasting.end)
   const cancel = useLogMutation(endpoints.fasting.cancel)
@@ -57,7 +62,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
     const startedAt = new Date().toISOString()
     start.mutate(
       { body: { id: planned?.id ?? crypto.randomUUID(), started_at: startedAt } },
-      { onSuccess: (o) => onLogged(noticeFor(o, `Fast started at ${clockOf(startedAt)}`)) },
+      { onSuccess: (o) => onLogged(noticeFor(o, `Fast started at ${formatClock(startedAt)}`)) },
     )
   }
   const endNow = (fast: FastView) => {
@@ -92,7 +97,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
   const didNotFast = (fast: FastView) => {
     cancel.mutate(
       { params: { id: fast.id } },
-      { onSuccess: (o) => onLogged(noticeFor(o, `Fast of ${formatDateTime(fast.startedAt)} removed`)) },
+      { onSuccess: (o) => onLogged(noticeFor(o, `Fast of ${formatDayTime(fast.startedAt)} removed`)) },
     )
   }
 
@@ -128,9 +133,9 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
                   lineHeight: tokens.font.leading.small,
                 }}
               >
-                Started {formatDateTime(active.startedAt)}
+                {fastWindowLabel(active.startedAt, Date.parse(active.startedAt) + fastHours * HOUR_MS, now)}
                 <br />
-                {fastHours} h at {formatDateTime(Date.parse(active.startedAt) + fastHours * HOUR_MS)}
+                {fastHours} h fast
               </Box>
               {active.pending && (
                 <Box sx={{ mt: 1 }}>
@@ -179,7 +184,7 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
               disabled={start.isPending}
               data-testid="fast-start-planned"
             >
-              Start planned fast ({relativeDay(dateOf(soon.startedAt), today)} {clockOf(soon.startedAt)})
+              Start planned fast · {whenLabel(soon.startedAt, now)}
             </Button>
           ) : null}
           <Button
@@ -257,7 +262,18 @@ export function FastForm({ date, onLogged }: { date: string; onLogged: (notice: 
                     border: `2px solid ${tokens.metric.fasting}`,
                   }}
                 />
-                <Box sx={{ flex: 1, ...tabularNums }}>Planned {formatDateTime(f.startedAt)}</Box>
+                <Box sx={{ flex: 1, minWidth: 0, ...tabularNums }}>
+                  {fastWindowLabel(f.startedAt, Date.parse(f.startedAt) + fastHours * HOUR_MS, now)}
+                  <Box
+                    component="span"
+                    sx={{ display: 'block', color: 'text.secondary', fontSize: tokens.font.size.caption }}
+                  >
+                    Fast day{' '}
+                    {formatDay(
+                      fastDay({ started_at: f.startedAt, ended_at: null }, fastHours) ?? dateOf(f.startedAt),
+                    )}
+                  </Box>
+                </Box>
                 {f.pending && <PendingBadge />}
               </Box>
             ))}
@@ -308,7 +324,7 @@ function MissedFast({
           color: 'text.secondary',
         }}
       >
-        The fast {fast.planned ? 'planned for' : 'started'} {formatDateTime(fast.startedAt)} was never ended.
+        The fast {fast.planned ? 'planned for' : 'started'} {formatDayTime(fast.startedAt)} was never ended.
         When did it end?
       </Box>
       <TextField
@@ -366,6 +382,9 @@ function PlanFastForm({
   // from 31 Oct 19:00 is one of November's.
   const day = (valid && fastDay({ started_at: instantAt(date, time), ended_at: null }, fastHours)) || date
   const count = fastsInMonth(fasts, day, fastHours)
+  const windowText = valid
+    ? fastWindowLabel(instantAt(date, time), Date.parse(instantAt(date, time)) + fastHours * HOUR_MS)
+    : null
   const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(
     Date.parse(`${day}T12:00:00Z`),
   )
@@ -379,7 +398,7 @@ function PlanFastForm({
         if (!valid) return
         plan.mutate(
           { body: { id: crypto.randomUUID(), started_at: instantAt(date, time) } },
-          { onSuccess: (o) => onPlanned(noticeFor(o, `Fast planned for ${date} ${time}`)) },
+          { onSuccess: (o) => onPlanned(noticeFor(o, `Fast planned: ${windowText}`)) },
         )
       }}
       sx={{ display: 'grid', gap: 3 }}
@@ -402,7 +421,12 @@ function PlanFastForm({
         />
       </Box>
       <Box sx={{ fontSize: tokens.font.size.small, color: 'text.secondary' }} data-testid="fast-plan-count">
-        {day !== date && `Fast day ${day}. `}
+        {windowText && (
+          <Box component="span" sx={{ display: 'block', color: 'text.primary' }}>
+            {windowText}
+          </Box>
+        )}
+        {valid && `Fast day ${formatDay(day)}: no food target, water up, training light. `}
         {monthName}: {formatNumber(count)} of {formatNumber(fastsPerMonth)} planned
         {count >= fastsPerMonth ? ". That's the month's fasts already on the calendar." : '.'}
       </Box>
@@ -412,7 +436,7 @@ function PlanFastForm({
         </Box>
       )}
       <Button type="submit" variant="contained" disabled={!valid || plan.isPending}>
-        {plan.isPending ? 'Saving…' : `Plan fast · ${date} ${time}`}
+        {plan.isPending ? 'Saving…' : valid ? `Plan fast · ${whenLabel(instantAt(date, time))}` : 'Plan fast'}
       </Button>
     </Box>
   )

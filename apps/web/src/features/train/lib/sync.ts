@@ -1,10 +1,17 @@
 // Owns: mirroring the logger's working copy to the Worker — one serial write chain for every training write (so a set
 // never overtakes the session it belongs to), per-set reconcile (create when ticked or noted, patch only what
-// changed, delete removed ones), debounced typing, the session start, finish (again after an edit), and deleting a
-// session. Every write goes through the offline-aware mutations, so a write made offline is queued with its client id
+// changed, delete removed ones), debounced typing, the session start, the exercise list (PATCH /api/sessions/:id when
+// exercises are added, swapped or removed, so a blank session's exercises reach the Worker), finish (again after an
+// edit), and deleting a session. Every write goes through the offline-aware mutations, so a write made offline is queued with its client id
 // and replays in order.
 import { endpoints } from '@fitness/shared/api'
-import type { SessionCreate, SetCreate, SetPatch, WorkoutSession } from '@fitness/shared/schemas'
+import type {
+  SessionCreate,
+  SessionPatch,
+  SetCreate,
+  SetPatch,
+  WorkoutSession,
+} from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { apiQueryKey, problemText, useApiMutation, type WriteOutcome } from '../../../api'
@@ -16,6 +23,7 @@ const t = endpoints.training
 /** The writes the chain makes: the offline-aware mutations (saved, or queued on this device). */
 export interface TrainingWriters {
   start: (body: SessionCreate) => Promise<WriteOutcome<typeof t.startSession>>
+  updatePlan: (sessionId: string, body: SessionPatch) => Promise<unknown>
   logSet: (sessionId: string, body: SetCreate) => Promise<unknown>
   updateSet: (setId: string, body: SetPatch) => Promise<unknown>
   deleteSet: (setId: string) => Promise<unknown>
@@ -35,6 +43,8 @@ const FINISH_REFRESHES = [
 /** Bind the training mutations. Mount wherever the logger writes (Train tab, session page). */
 export function useTrainingWriters(): TrainingWriters {
   const start = useApiMutation(t.startSession, { invalidates: [t.listSessions, endpoints.day.get] })
+  // The session page reads the plan back from GET /api/sessions/:id, so a saved exercise list refreshes it.
+  const updatePlan = useApiMutation(t.updateSession, { invalidates: [t.getSession] })
   const logSet = useApiMutation(t.logSet)
   const updateSet = useApiMutation(t.updateSet)
   const deleteSet = useApiMutation(t.deleteSet)
@@ -46,6 +56,7 @@ export function useTrainingWriters(): TrainingWriters {
   const writers = useMemo<TrainingWriters>(
     () => ({
       start: (body) => start.mutateAsync({ body }),
+      updatePlan: (id, body) => updatePlan.mutateAsync({ params: { id }, body }),
       logSet: (id, body) => logSet.mutateAsync({ params: { id }, body }),
       updateSet: (id, body) => updateSet.mutateAsync({ params: { id }, body }),
       deleteSet: (id) => deleteSet.mutateAsync({ params: { id } }),
@@ -60,6 +71,7 @@ export function useTrainingWriters(): TrainingWriters {
     }),
     [
       start.mutateAsync,
+      updatePlan.mutateAsync,
       logSet.mutateAsync,
       updateSet.mutateAsync,
       deleteSet.mutateAsync,
@@ -97,19 +109,24 @@ const session = (id: string): LoggerSession | undefined => loggerState().session
 
 const orUndefined = <T>(v: T | null): T | undefined => (v === null ? undefined : v)
 
-/** POST /api/sessions once for a copy seeded here; a saved answer is folded in (last sets, suggestions, readiness). */
-async function sendStart(w: TrainingWriters, id: string): Promise<void> {
-  const s = session(id)
-  if (!s || s.start === 'sent') return
-  const exercises = s.exercises.slice(0, 20).map((e) => ({
+/** The working copy's exercises as a plan list (what POST /api/sessions and PATCH /api/sessions/:id send). */
+function planList(s: LoggerSession): SessionPatch['exercises'] {
+  return s.exercises.slice(0, 20).map((e) => ({
     exercise_id: e.exercise_id,
     sets: Math.min(10, Math.max(1, e.sets.length)),
     rep_min: e.rep_min,
-    rep_max: e.rep_max,
+    rep_max: Math.max(e.rep_min, e.rep_max),
     target_load_kg: e.default_load_kg,
     rest_sec: e.rest_sec,
     note: null,
   }))
+}
+
+/** POST /api/sessions once for a copy seeded here; a saved answer is folded in (last sets, suggestions, readiness). */
+async function sendStart(w: TrainingWriters, id: string): Promise<void> {
+  const s = session(id)
+  if (!s || s.start === 'sent') return
+  const exercises = planList(s)
   const outcome = await w.start({
     id,
     template_id: s.template_id,
@@ -191,8 +208,33 @@ export function syncSet(sessionId: string, setId: string, delayMs = 0): void {
   else timers.set(setId, { timer: setTimeout(run, delayMs), sessionId })
 }
 
+const planTimers = new Map<string, ReturnType<typeof setTimeout>>()
+/** Exercises added from the picker in a row settle into one write. */
+const PLAN_MS = 600
+
+/**
+ * Mirror the session's exercise list to the Worker (PATCH /api/sessions/:id) after the list stops changing: the
+ * exercises added to a blank session, or added, swapped or removed mid-session, are then the Worker's plan too (another
+ * device, a lost local copy, the week view and the summary see them). Offline it queues like every other write.
+ */
+export function syncPlan(sessionId: string, delayMs = PLAN_MS): void {
+  const pending = planTimers.get(sessionId)
+  if (pending) clearTimeout(pending)
+  const run = () => {
+    planTimers.delete(sessionId)
+    void enqueue(async (w) => {
+      await sendStart(w, sessionId)
+      const s = session(sessionId)
+      if (s) await w.updatePlan(sessionId, { exercises: planList(s) })
+    })
+  }
+  if (delayMs <= 0) run()
+  else planTimers.set(sessionId, setTimeout(run, delayMs))
+}
+
 /** Send every debounced write of a session now (leaving the page, finishing). */
 export function flushSession(sessionId: string): void {
+  if (planTimers.has(sessionId)) syncPlan(sessionId, 0)
   for (const [setId, p] of [...timers]) {
     if (p.sessionId !== sessionId) continue
     clearTimeout(p.timer)
@@ -207,6 +249,8 @@ export function flushSession(sessionId: string): void {
  * so offline it queues behind them. The Worker's delete is idempotent: a session that never reached it is a no-op.
  */
 export async function deleteSession(sessionId: string): Promise<void> {
+  clearTimeout(planTimers.get(sessionId))
+  planTimers.delete(sessionId)
   for (const [setId, p] of [...timers]) {
     if (p.sessionId !== sessionId) continue
     clearTimeout(p.timer)

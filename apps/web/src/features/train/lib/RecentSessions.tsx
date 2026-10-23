@@ -1,18 +1,19 @@
 // Owns: the Train tab's recent sessions (1d Summit: one radius-26 card) — the last four weeks from the Worker plus
-// sessions finished on this device that haven't synced, newest first: weekday and day, name, ticked sets, volume
+// sessions finished on this device that haven't synced, newest first: weekday and day, name (the template's, else the
+// split day's for a blank or planned session), ticked sets, volume
 // (Σ reps × kg) and duration, a gold PR chip; tap for the summary or logger — and this week's totals in a warm well at
 // the card's foot (sessions finished against the training days, volume and ticked sets since Monday). Also the one-line
 // facts other cards quote: each template's newest finished session, this week's totals and each day's finished work.
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
-import { weekStart } from '@fitness/shared/engine'
-import type { Template, WorkoutSession } from '@fitness/shared/schemas'
+import { splitSlot, weekdayOf, weekStart } from '@fitness/shared/engine'
+import type { SessionOrigin, Template, Weekday, WorkoutSession } from '@fitness/shared/schemas'
 import { Link } from 'react-router'
 import {
   cardSurface,
+  formatDay,
   formatNumber,
-  formatShortDate,
   formatWeekday,
   PendingBadge,
   StatusChip,
@@ -43,14 +44,33 @@ interface Row {
   status: 'done' | 'open' | 'unsynced'
 }
 
+/**
+ * A session's name: its template's, else (a blank or planned session) the split day its date falls on ("Upper A", from
+ * his training days), else its kind ("AI workout", "Workout").
+ */
+function nameOf(
+  name: string | null | undefined,
+  origin: SessionOrigin,
+  date: string,
+  trainingDays: readonly Weekday[] | undefined,
+): string {
+  if (name) return name
+  const slot = origin === 'ai' || !trainingDays ? null : splitSlot(weekdayOf(date), trainingDays)
+  return slot?.name ?? ORIGIN_NAME[origin]
+}
+
 const minutesBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 60_000)
 
-function fromServer(s: WorkoutSession, templates: readonly Template[] | undefined): Row {
+function fromServer(
+  s: WorkoutSession,
+  templates: readonly Template[] | undefined,
+  trainingDays?: readonly Weekday[],
+): Row {
   const done = s.sets.filter((x) => x.completed)
   return {
     id: s.id,
     date: s.date,
-    name: templateName(templates, s.template_id) ?? ORIGIN_NAME[s.origin],
+    name: nameOf(templateName(templates, s.template_id), s.origin, s.date, trainingDays),
     sets: done.length,
     volume_kg: done.reduce((v, x) => v + (x.reps ?? 0) * (x.load_kg ?? 0), 0),
     minutes: s.ended_at ? minutesBetween(s.started_at, s.ended_at) : null,
@@ -59,12 +79,12 @@ function fromServer(s: WorkoutSession, templates: readonly Template[] | undefine
   }
 }
 
-function fromCopy(s: LoggerSession): Row {
+function fromCopy(s: LoggerSession, trainingDays?: readonly Weekday[]): Row {
   const c = setCounts(s)
   return {
     id: s.id,
     date: s.date,
-    name: s.name ?? ORIGIN_NAME[s.origin],
+    name: nameOf(s.name, s.origin, s.date, trainingDays),
     sets: c.done,
     volume_kg: c.volume_kg,
     minutes: s.finished ? minutesBetween(s.started_at, s.finished.ended_at) : null,
@@ -93,9 +113,6 @@ export function lastDoneByTemplate(sessions: readonly WorkoutSession[]): Map<str
   return last
 }
 
-/** "Wed, Sep 30" — the day a SessionLine names. */
-export const sessionDay = (date: string) => `${formatWeekday(date)}, ${formatShortDate(date)}`
-
 export interface WeekTotals {
   sessions: number
   sets: number
@@ -109,7 +126,7 @@ export function weekTotals(
   date: string,
 ): WeekTotals {
   const monday = weekStart(date)
-  const rows = [...unsynced.map(fromCopy), ...sessions.map((s) => fromServer(s, undefined))].filter(
+  const rows = [...unsynced.map((s) => fromCopy(s)), ...sessions.map((s) => fromServer(s, undefined))].filter(
     (r) => r.status !== 'open' && r.date >= monday && r.date <= date,
   )
   return {
@@ -121,22 +138,42 @@ export function weekTotals(
 
 /** One day's finished work: ticked sets and volume over the sessions finished that day. */
 export interface DayWork {
+  /** The logged workout's name (its template's, else its kind); two sessions in a day read "Upper A + Workout". */
+  name: string
   sets: number
   volume_kg: number
 }
 
-/** Each date from `from` to `to` with a finished session (synced or not), its ticked sets and volume summed. */
+/**
+ * Each date from `from` to `to` with a finished session (synced or not): the sessions' names, ticked sets and volume
+ * summed.
+ */
 export function finishedByDate(
   sessions: readonly WorkoutSession[],
   unsynced: readonly LoggerSession[],
   from: string,
   to: string,
+  templates?: readonly Template[],
+  trainingDays?: readonly Weekday[],
 ): Map<string, DayWork> {
   const out = new Map<string, DayWork>()
-  for (const r of [...unsynced.map(fromCopy), ...sessions.map((s) => fromServer(s, undefined))]) {
+  const rows = [
+    ...unsynced.map((s) => fromCopy(s, trainingDays)),
+    ...sessions.map((s) => fromServer(s, templates, trainingDays)),
+  ]
+  for (const r of rows) {
     if (r.status === 'open' || r.date < from || r.date > to) continue
-    const seen = out.get(r.date) ?? { sets: 0, volume_kg: 0 }
-    out.set(r.date, { sets: seen.sets + r.sets, volume_kg: seen.volume_kg + r.volume_kg })
+    const seen = out.get(r.date)
+    out.set(
+      r.date,
+      seen
+        ? {
+            name: seen.name === r.name ? seen.name : `${seen.name} + ${r.name}`,
+            sets: seen.sets + r.sets,
+            volume_kg: seen.volume_kg + r.volume_kg,
+          }
+        : { name: r.name, sets: r.sets, volume_kg: r.volume_kg },
+    )
   }
   return out
 }
@@ -193,6 +230,8 @@ export interface RecentSessionsProps {
   week: WeekTotals
   /** His training days this week, when known: sessions read "2 / 4". */
   plannedSessions?: number
+  /** His training days: a blank session is named by the split day its date falls on. */
+  trainingDays?: readonly Weekday[]
 }
 
 export function RecentSessions({
@@ -201,8 +240,12 @@ export function RecentSessions({
   templates,
   week,
   plannedSessions,
+  trainingDays,
 }: RecentSessionsProps) {
-  const rows = [...unsynced.map(fromCopy), ...sessions.map((s) => fromServer(s, templates))]
+  const rows = [
+    ...unsynced.map((s) => fromCopy(s, trainingDays)),
+    ...sessions.map((s) => fromServer(s, templates, trainingDays)),
+  ]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, SHOWN)
   return (
@@ -258,7 +301,7 @@ export function RecentSessions({
                 {Number(r.date.slice(8, 10))}
               </Box>
               <Box component="span" sx={visuallyHidden}>
-                {sessionDay(r.date)}
+                {formatDay(r.date)}
               </Box>
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>

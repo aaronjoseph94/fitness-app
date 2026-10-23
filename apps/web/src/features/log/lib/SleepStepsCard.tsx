@@ -224,6 +224,7 @@ export function SleepStepsCard({
             unit="steps"
             integer
             error={!stepsValid}
+            helperText={stepsValid ? undefined : 'Enter a whole number from 0 to 200,000'}
           />
           <Segmented
             ariaLabel="Sleep entry"
@@ -260,6 +261,7 @@ export function SleepStepsCard({
               onChange={setHours}
               unit="h"
               error={hours !== '' && !hoursValid}
+              helperText={hours !== '' && !hoursValid ? 'Enter hours from 0.1 to 24' : undefined}
             />
           )}
           <Box
@@ -294,7 +296,7 @@ const linkButtonSx = {
   px: '8px',
   ml: '-8px',
   fontWeight: tokens.font.weight.heading,
-  '&:hover': { bgcolor: 'transparent', color: tokens.summit.accent.linkHover },
+  '&:hover': { bgcolor: 'transparent', color: tokens.accent.deep },
 } as const
 
 const SOURCE_LABEL: Record<HealthSource, string> = {

@@ -17,14 +17,12 @@ export function fieldChanges(
     }))
 }
 
-/** "Settings changed: calorie_floor 1400 → 1450; training_days [mon,tue] → [mon,wed]". */
-export function summarise(entity: string, changes: readonly FieldChange[]): string {
+/** "Settings changed: calorie_floor 1400 → 1450; training_days [mon,tue] → [mon,wed]", then " (note)" when given. */
+export function summarise(entity: string, changes: readonly FieldChange[], note?: string): string {
   const show = (v: unknown) =>
     Array.isArray(v) ? `[${v.join(',')}]` : typeof v === 'object' && v !== null ? 'edited' : String(v)
-  return `${entity} changed: ${changes.map((c) => `${c.path} ${show(c.from)} → ${show(c.to)}`).join('; ')}`.slice(
-    0,
-    500,
-  )
+  const line = `${entity} changed: ${changes.map((c) => `${c.path} ${show(c.from)} → ${show(c.to)}`).join('; ')}`
+  return `${line}${note ? ` (${note})` : ''}`.slice(0, 500)
 }
 
 /** Object containing only the changed fields' new values (for the UPDATE). */

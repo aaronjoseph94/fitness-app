@@ -11,10 +11,10 @@ import { muscleLevels } from '@fitness/shared/engine'
 import type { Muscle, Template } from '@fitness/shared/schemas'
 import { memo, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { cardSurface, formatNumber, highlightSurface, StatusChip } from '../../../components'
+import { cardSurface, formatDay, formatNumber, highlightSurface, StatusChip } from '../../../components'
 import { MUSCLE_LABELS, MuscleMap } from '../../../muscle-map'
 import { tokens } from '../../../theme'
-import { sessionDay, type SessionLine } from './RecentSessions'
+import type { SessionLine } from './RecentSessions'
 
 export interface TemplateCardProps {
   template: Template
@@ -98,7 +98,7 @@ function TemplateCardInner({ template, onStart, today = false, weekday, lastDone
         </Box>
         {lastDone && (
           <Box sx={{ ...templateLineSx, mt: '2px' }}>
-            Last {sessionDay(lastDone.date)} · {formatNumber(lastDone.volume_kg)} kg
+            Last {formatDay(lastDone.date)} · {formatNumber(lastDone.volume_kg)} kg
             {lastDone.minutes !== null && ` · ${lastDone.minutes} min`}
           </Box>
         )}

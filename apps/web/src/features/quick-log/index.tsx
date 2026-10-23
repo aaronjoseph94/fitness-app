@@ -15,8 +15,17 @@ export { useDay, useLogSettings, useWater, type LogSettings, type WaterDay } fro
 export { useFasts, useNow, fastsInMonth, type FastView, type FastStatusView } from './lib/fasts'
 export { WaterForm } from './lib/WaterForm'
 export { scaled, sum, SLOT_LABEL, visibleSlots, slotShare } from './lib/nutrition'
-export { todayLocal, dateOf, clockOf, shiftDate, instantAt, relativeDay, formatDateTime } from './lib/dates'
-export type { LogNotice } from './lib/ui'
+export {
+  todayLocal,
+  dateOf,
+  clockOf,
+  shiftDate,
+  instantAt,
+  relativeDay,
+  whenLabel,
+  fastWindowLabel,
+} from './lib/dates'
+export { clearanceSx, useNoticeClearance, type LogNotice } from './lib/ui'
 export { MealReview, type MealReviewProps } from './lib/review/MealReview'
 export { ItemsEditor } from './lib/review/ItemsEditor'
 export { draftTotals, toItemInputs, type DraftItem } from './lib/review/items'

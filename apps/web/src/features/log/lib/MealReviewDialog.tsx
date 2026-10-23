@@ -11,12 +11,23 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
 import { useState } from 'react'
 import { tokens } from '../../../theme'
-import { clockOf, dateOf, MealReview, SLOT_LABEL, type LogNotice } from '../../quick-log'
+import {
+  clearanceSx,
+  clockOf,
+  dateOf,
+  MealReview,
+  SLOT_LABEL,
+  useNoticeClearance,
+  type LogNotice,
+} from '../../quick-log'
 import type { MealView } from './meals'
 
 export function MealReviewDialog({ meal, onClose }: { meal: MealView; onClose: () => void }) {
   const fullScreen = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'))
   const [notice, setNotice] = useState<LogNotice | null>(null)
+  // The notice sits above the review's sticky action row, never over Confirm.
+  const [content, setContent] = useState<HTMLElement | null>(null)
+  const clearance = useNoticeClearance(content, notice !== null)
   return (
     <Dialog
       open
@@ -46,7 +57,10 @@ export function MealReviewDialog({ meal, onClose }: { meal: MealView; onClose: (
           <CloseRounded />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))` }}>
+      <DialogContent
+        ref={setContent}
+        sx={{ pb: `calc(${tokens.space(4)}px + env(safe-area-inset-bottom, 0px))` }}
+      >
         <MealReview date={dateOf(meal.eatenAt)} mealId={meal.id} onClose={onClose} onLogged={setNotice} />
       </DialogContent>
       <Snackbar
@@ -54,7 +68,7 @@ export function MealReviewDialog({ meal, onClose }: { meal: MealView; onClose: (
         autoHideDuration={3500}
         onClose={(_, reason) => reason !== 'clickaway' && setNotice(null)}
         message={notice?.message}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={clearanceSx(clearance)}
       />
     </Dialog>
   )

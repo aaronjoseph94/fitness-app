@@ -108,9 +108,7 @@ const LegacyStartRecord = Readiness.extend({
 })
 
 /** The start plan of a session row (recovery/deload null on old rows that lack them); null when none was stored. */
-export function startPlan(
-  row: Pick<SessionRow, 'plan' | 'readiness'>,
-): {
+export function startPlan(row: Pick<SessionRow, 'plan' | 'readiness'>): {
   exercises: TemplateExerciseInput[]
   recovery: SessionRecovery | null
   deload: DeloadStatus | null

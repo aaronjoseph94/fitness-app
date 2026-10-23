@@ -28,15 +28,16 @@ import { useLocalToday } from '../../app/local-today'
 import { tokens, transitionOf } from '../../theme'
 import { DetailSection } from './lib/DetailSection'
 import { FoodCards, HabitCounts } from './lib/FoodHabitCards'
-import type { RangeKey } from './lib/range'
+import { RANGES, type RangeKey } from './lib/range'
 import { RangeToggle } from './lib/RangeToggle'
 import {
   basePlan,
-  effectiveRate,
+  forecastRate,
   lastTrend,
   latestTargets,
   milestoneList,
   paceVersusPlan,
+  projectionOf,
   rangeDays,
   rangeSummary,
 } from './lib/series'
@@ -55,12 +56,6 @@ const DEFAULT_FAST_HOURS = 24
 /** A single-column stack (README §4: a grid stack declares its one track), `gap` px apart. */
 const stack = (gap: number) =>
   ({ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: `${gap}px`, minWidth: 0 }) as const
-
-/** "Apr 9, 2027" outside this year, "Nov 12" in it. */
-const shortDate = (date: string, today: string) =>
-  date.slice(0, 4) === today.slice(0, 4)
-    ? formatShortDate(date)
-    : `${formatShortDate(date)}, ${date.slice(0, 4)}`
 
 export function ProgressPage() {
   const [params, setParams] = useSearchParams()
@@ -95,18 +90,16 @@ export function ProgressPage() {
   })
   const next =
     trend.data && last
-      ? milestoneList(
-          trend.data.milestones,
-          last,
-          trend.data.forecast ? effectiveRate(last, trend.data.forecast, goalKg) : null,
-        ).find((m) => m.state === 'next')
+      ? milestoneList(trend.data.milestones, projectionOf(trend.data, goalKg)).find((m) => m.state === 'next')
       : undefined
+  // One rate (the forecast's) feeds both the pace and the words, so the hero and the summary card agree.
+  const rate = forecastRate(trend.data?.forecast)
   const subtitle = [
-    pace.ahead !== null
-      ? `${pace.ahead ? 'Ahead of' : 'Behind'} the ${formatNumber(pace.requiredRate, 2)} kg a week the ${copy.goalLabel} date needs`
+    pace.ahead !== null && rate !== null
+      ? `${formatNumber(rate, 2)} kg a week forecast: ${pace.ahead ? 'ahead of' : 'behind'} the ${formatNumber(pace.requiredRate, 2)} the goal date needs`
       : null,
     next
-      ? `${copy.nextMilestone.toLowerCase()} ${next.label}${next.expectedOn ? ` on ${shortDate(next.expectedOn, date)}` : ''}`
+      ? `${copy.nextMilestone.toLowerCase()} ${next.label}${next.expectedOn ? ` on ${formatShortDate(next.expectedOn, date)}` : ''}`
       : null,
   ]
     .filter(Boolean)
@@ -127,8 +120,13 @@ export function ProgressPage() {
             </Box>
           </Box>
         }
-        // A space holds the line while the range loads, so the hero does not grow when the sentence lands.
-        subtitle={subtitle || ' '}
+        // Its room is held from the first paint (three lines on a phone, two on a tablet, one from 900 px), so the hero
+        // does not grow when the sentence lands.
+        subtitle={
+          <Box component="span" sx={{ display: 'block', minHeight: { xs: '3lh', sm: '2lh', md: '1lh' } }}>
+            {subtitle || ' '}
+          </Box>
+        }
         action={
           // Direct children of the hero's action row, so they take the sky's glass (PageHeader's `skyControls`).
           <>
@@ -148,7 +146,13 @@ export function ProgressPage() {
         }
       />
 
-      <SummaryStats summary={summary} targets={targets} forecast={trend.data?.forecast ?? null} />
+      <SummaryStats
+        summary={summary}
+        targets={targets}
+        rangeLabel={range === 'all' ? 'all' : (RANGES.find((r) => r.key === range)?.label ?? '')}
+        rate={rate}
+        ahead={pace.ahead}
+      />
 
       <Box sx={dim}>
         <WrapRow align="flex-start">

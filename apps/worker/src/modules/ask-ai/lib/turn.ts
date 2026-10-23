@@ -26,6 +26,7 @@ import { asksToLog, selectTools, type OfferedTool } from './select'
 import {
   FALLBACK,
   NOT_SET_UP,
+  NOT_SET_UP_BEFORE,
   history,
   insertTurn,
   messageById,
@@ -258,7 +259,7 @@ async function replayTurn(deps: Deps, messageId: string): Promise<ChatSent> {
   const tools = turn.filter((r) => r.role === 'tool')
   const assistant = turn.find((r) => r.role === 'assistant')
   const fallback =
-    assistant?.content === NOT_SET_UP
+    assistant?.content === NOT_SET_UP || assistant?.content === NOT_SET_UP_BEFORE
       ? 'ai_unavailable'
       : (Object.entries(FALLBACK).find(([, text]) => text === assistant?.content)?.[0] as
           ChatTurnError | undefined)

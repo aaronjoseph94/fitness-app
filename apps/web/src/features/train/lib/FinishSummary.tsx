@@ -1,6 +1,6 @@
 // Owns: the session finish screen (SPEC §7 "Finish"; 1d Summit kit) — the sky hero ("Upper A done", the date, a
 // pending badge while the finish is queued), duration, total volume, sets and PRs as stat cards in a wrapping row
-// (150 px tiles, two up on a phone), the muscle map of
+// (a grid of 150 px tiles, two up on a phone), the muscle map of
 // what was trained (levels from the session's muscle scores), volume per muscle as a compact bar list, the PRs (best
 // load at a rep count, best e1RM), each exercise's ticked sets, one-tap "Save as template", "Edit sets" (back into the
 // logger; saving finishes it again with the same end time), "Back to Train" and "Delete session".
@@ -94,12 +94,14 @@ export function FinishSummary({ session }: { session: LoggerSession }) {
         action={queued ? <PendingBadge label="Syncs when online" /> : undefined}
       />
 
+      {/* A grid, not a wrapping flex row: a stat card fills its cell's height, and in a wrapped flex row that is the whole
+          row's height, so the second row's cards overlapped what follows on a phone. */}
       <Box
         sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
+          display: 'grid',
+          gridTemplateColumns: `repeat(auto-fit, minmax(${tokens.layout.wrapBasis.tile}px, 1fr))`,
           gap: `${tokens.summit.space.gap.tile}px`,
-          '& > *': { ...wrapCol(1, tokens.layout.wrapBasis.tile) },
+          minWidth: 0,
         }}
       >
         <StatCard

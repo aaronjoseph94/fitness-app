@@ -1,5 +1,6 @@
 // Owns: "Delete session" — the confirm (what goes: the ticked sets and the session's summary), then back to the Train
-// tab and the delete through the write chain (sync.deleteSession: queued offline, after the session's earlier writes).
+// tab (which says "Session deleted": DELETED_NOTICE in the route state) and the delete through the write chain
+// (sync.deleteSession: queued offline, after the session's earlier writes).
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -7,6 +8,9 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import { useNavigate } from 'react-router'
 import { deleteSession } from './sync'
+
+/** The route state the Train tab reads to say the session went. */
+export const DELETED_NOTICE = 'Session deleted'
 
 export interface DeleteSessionDialogProps {
   open: boolean
@@ -21,7 +25,7 @@ export function DeleteSessionDialog({ open, sessionId, setsDone, onClose }: Dele
   const confirm = () => {
     onClose()
     // Leave the page first, so nothing re-reads the session while it goes.
-    void navigate('/train', { replace: true })
+    void navigate('/train', { replace: true, state: { notice: DELETED_NOTICE } })
     void deleteSession(sessionId)
   }
   return (

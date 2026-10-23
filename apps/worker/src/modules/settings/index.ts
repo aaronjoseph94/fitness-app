@@ -18,6 +18,7 @@
 // the one who taps, which rebuilds the daily targets from today on).
 import { LOCKED_SETTINGS, today } from '@fitness/shared/engine'
 import {
+  AGREED_CALORIE_FLOOR,
   CLOCK_REMINDERS,
   REMINDER_HOURS,
   type Profile,
@@ -56,6 +57,14 @@ const TARGET_INPUTS: readonly string[] = [
 ]
 /** Settings fields that are plan-version defaults too (the daily targets read the version): settings field → target. */
 const PLAN_DEFAULTS = { water_target_ml: 'water_ml', fibre_target_g: 'fibre_g' } as const
+
+/** The record's note when a change takes the calorie floor under the one agreed with the doctor and dietitian. */
+function belowAgreedFloor(changes: readonly { path: string; to: unknown }[]): string | undefined {
+  const floor = changes.find((c) => c.path === 'calorie_floor')?.to
+  return typeof floor === 'number' && floor < AGREED_CALORIE_FLOOR
+    ? `below the ${AGREED_CALORIE_FLOOR} kcal floor set with the doctor and dietitian`
+    : undefined
+}
 
 /** GET /api/settings. */
 export async function getSettings(deps: Deps): Promise<SettingsView> {
@@ -113,6 +122,13 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
   const ceiling = input.settings?.calorie_ceiling ?? current.settings.calorie_ceiling
   if (floor > ceiling)
     throw badRequest(`calorie_floor (${floor}) must not exceed calorie_ceiling (${ceiling})`)
+  const goal = input.profile?.goal_weight_kg ?? current.profile.goal_weight_kg
+  const start = input.profile?.start_weight_kg ?? current.profile.start_weight_kg
+  // Only an edit to either weight is checked, so another profile field still saves on a profile that predates the rule.
+  const weightEdited =
+    input.profile?.goal_weight_kg !== undefined || input.profile?.start_weight_kg !== undefined
+  if (weightEdited && goal >= start)
+    throw badRequest(`The goal weight (${goal} kg) must be below the start weight (${start} kg)`)
   if (settingsChanges.length === 0 && profileChanges.length === 0) return current
 
   const now = deps.now().toISOString()
@@ -120,7 +136,7 @@ export async function updateSettings(deps: Deps, input: SettingsUpdate): Promise
     eventInsert(deps, {
       kind: 'change',
       date: today(now),
-      summary: summarise(entity === 'settings' ? 'Settings' : 'Profile', changes),
+      summary: summarise(entity === 'settings' ? 'Settings' : 'Profile', changes, belowAgreedFloor(changes)),
       body: { entity, changes },
     }).statement
   const newSettings = changedValues<Settings>(settingsChanges)

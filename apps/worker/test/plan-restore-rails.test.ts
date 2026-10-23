@@ -50,30 +50,26 @@ beforeEach(async () => {
     created_at: string,
     active = false,
   ) =>
-    db
-      .insert(plan_versions)
-      .values({
-        id,
-        version: n,
-        active,
-        created_by: by,
-        reason: `v${n}`,
-        diff: [],
-        targets: targets(kcal),
-        created_at,
-        updated_at: created_at,
-      })
+    db.insert(plan_versions).values({
+      id,
+      version: n,
+      active,
+      created_by: by,
+      reason: `v${n}`,
+      diff: [],
+      targets: targets(kcal),
+      created_at,
+      updated_at: created_at,
+    })
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-14',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-14',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,

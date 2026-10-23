@@ -1,15 +1,17 @@
-// Owns: how Ask AI words a moment (pure) — a chat row's "Today · 2:15 PM" / "Yesterday" / "Sep 30" and a reply's
+// Owns: how Ask AI words a moment (pure) — a chat row's "Today · 2:15 PM" / "Yesterday · 9:02 AM" / "Sep 30 · 6:40 PM" and a reply's
 // "2:15 PM · 1.8 s", all on Edmonton's clock (the kit's formatClock).
 import { addDays, localDate, today } from '@fitness/shared/engine'
 import { formatClock, formatShortDate } from '../../../components'
 
-/** A chat row's date: "Today · 2:15 PM", "Yesterday", else "Sep 30". */
+/**
+ * A chat row's when: "Today · 2:15 PM", "Yesterday · 2:15 PM", else "Sep 30 · 2:15 PM". The time is always there, so
+ * chats opened with the same starter (and so the same title) still tell apart.
+ */
 export function chatWhen(instant: string, now: number = Date.now()): string {
   const day = localDate(instant)
   const current = today(now)
-  if (day === current) return `Today · ${formatClock(instant)}`
-  if (day === addDays(current, -1)) return 'Yesterday'
-  return formatShortDate(day)
+  const label = day === current ? 'Today' : day === addDays(current, -1) ? 'Yesterday' : formatShortDate(day)
+  return `${label} · ${formatClock(instant)}`
 }
 
 /**

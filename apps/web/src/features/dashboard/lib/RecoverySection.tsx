@@ -4,7 +4,7 @@
 // the window's v_day rows and fasts. On a phone the section folds away and opens on a tap.
 // Series mappings come from the progress module's shared entry point (../../progress/series), so these cards count
 // days exactly as the Progress tab does.
-import { addDays, dayAdherence, fastDay } from '@fitness/shared/engine'
+import { addDays, dayAdherence } from '@fitness/shared/engine'
 import type { LocalDate } from '@fitness/shared/schemas'
 import { useUiStore } from '../../../app/ui-store'
 import { fastLook, type FastEntry, type FastStatus } from '../../../charts'
@@ -24,11 +24,13 @@ import {
   fastEntries,
   hasAny,
   latestTargets,
+  plannedFasts,
   SLEEP_TARGET_H,
   sleepNights,
   stepsDays,
   waterDays,
 } from '../../progress/series'
+import { fastWindowLabel } from '../../quick-log'
 import { DayStrip, type DayCell } from './DayStrip'
 import { barSeries } from './kpis'
 import { DashboardSection } from './Section'
@@ -91,14 +93,10 @@ export function RecoverySection({ data }: { data: DashboardData }) {
   const water = waterDays(rows)
   const steps = stepsDays(rows)
   const sleep = sleepNights(rows)
-  // Each fast sits on its fast day (the engine's `fastDay`: the local day it covers most — Saturday for a 24 h fast from
-  // Friday 8 PM), as the goals rail and the Log tab date it; a fast too short to have one keeps its start date.
+  // Each fast sits on its fast day (series `fastEntries`: engine fastDay, Saturday for Fri 8 PM → Sat 8 PM), as Log,
+  // Today and the goals rail date it.
   const now = Date.now()
-  const entries = data.fasts
-    .flatMap((f) =>
-      fastEntries([f], now, fastHours).map((e) => ({ ...e, date: fastDay(f, fastHours) ?? e.date })),
-    )
-    .sort((a, b) => (a.date < b.date ? -1 : 1))
+  const entries = fastEntries(data.fasts, now, fastHours)
 
   const waterValues = water.map((d) => (d.ml ? d.ml : null))
   const stepsValues = steps.map((d) => (d.steps ? d.steps : null))
@@ -238,7 +236,7 @@ export function RecoverySection({ data }: { data: DashboardData }) {
   )
 }
 
-/** A fast dated by its fast day. */
+/** A fast dated as series `fastEntries` dates it. */
 type Entries = readonly (FastEntry & { date: LocalDate })[]
 
 /** Every local date from `from` to `to`, inclusive. */
@@ -275,6 +273,7 @@ function FastingCard({
   onStart: () => void
 }) {
   const from: LocalDate = data.days[0]?.date ?? data.from
+  const planned = plannedFasts(data.fasts, Date.now(), fastHours)
   // The strip runs to whichever is later: today or the last fast planned beyond it.
   const to = entries.reduce<LocalDate>((latest, f) => (f.date > latest ? f.date : latest), today)
   const byDate = new Map(entries.map((e) => [e.date, e]))
@@ -292,7 +291,9 @@ function FastingCard({
   const first = done === 0 && (data.profile?.start_date ?? '') >= data.from
   const summary = [
     done ? `${done} ${done === 1 ? 'fast' : 'fasts'} completed in this window` : null,
-    next ? `${first ? 'first' : 'next'} ${fastHours} h fast is ${formatLongDate(next.date)}` : 'none planned',
+    next
+      ? `${first ? 'first' : 'next'} ${fastHours} h fast ${planned[0] ? fastWindowLabel(planned[0].startedAt, planned[0].endsAt) : formatLongDate(next.date)}`
+      : 'none planned',
     second ? `second planned ${formatShortDate(second.date)}` : null,
   ]
     .filter(Boolean)

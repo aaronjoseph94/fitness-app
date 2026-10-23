@@ -126,16 +126,14 @@ const reminders = Object.fromEntries(
 
 beforeAll(async () => {
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-26',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-26',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -166,14 +164,12 @@ beforeAll(async () => {
       },
     }),
     ...[bench, pulldown, row, press, pushups, dbBench].map((e) => db.insert(exercises).values(e)),
-    db
-      .insert(fast_logs)
-      .values({
-        id: FAST_ID,
-        started_at: '2026-10-15T01:00:00.000Z',
-        start_date: '2026-10-14',
-        planned: true,
-      }),
+    db.insert(fast_logs).values({
+      id: FAST_ID,
+      started_at: '2026-10-15T01:00:00.000Z',
+      start_date: '2026-10-14',
+      planned: true,
+    }),
   ])
 })
 

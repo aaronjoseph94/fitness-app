@@ -80,7 +80,11 @@ export function RemindersPage() {
         <Panel
           id="reminder-kinds"
           title="Reminders and times"
-          description={`Every change saves at once. A reminder with a time goes out between ${EARLIEST_TIME} and ${LATEST_TIME}.`}
+          description={
+            device.publicKey === null
+              ? 'Off until notifications are set up for this app. Your choices are kept.'
+              : `Every change saves at once. A reminder with a time goes out between ${EARLIEST_TIME} and ${LATEST_TIME}.`
+          }
           padding={prefs && fastHours !== undefined && scanIntervalDays !== undefined ? 'none' : 'standard'}
         >
           {prefs && fastHours !== undefined && scanIntervalDays !== undefined ? (
@@ -89,6 +93,7 @@ export function RemindersPage() {
               fastHours={fastHours}
               scanIntervalDays={scanIntervalDays}
               disabled={!online || saving}
+              locked={device.publicKey === null}
               onSave={onSave}
             />
           ) : query.isPending && query.fetchStatus !== 'paused' ? (

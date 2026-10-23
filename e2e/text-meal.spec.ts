@@ -14,8 +14,8 @@ test('a described meal falls back to manual items, confirms, and shows the rest 
   await form.getByRole('button', { name: 'Analyse' }).click()
 
   const review = page.getByRole('dialog', { name: 'Review meal' })
-  // No provider keys: the analysis gives up gracefully and keeps what was written.
-  await expect(review.getByRole('alert')).toContainText("The AI couldn't read this one just now")
+  // No provider keys: the analysis says where to add one, and keeps what was written.
+  await expect(review.getByRole('alert')).toContainText('Add a model key in Settings → AI')
   await expect(review.getByTestId('meal-raw-text')).toContainText('2 boiled eggs and a slice of toast')
 
   await review.getByRole('textbox', { name: 'Search foods' }).fill('egg boiled')

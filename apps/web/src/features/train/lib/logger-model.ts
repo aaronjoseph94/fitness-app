@@ -331,7 +331,8 @@ export function mergeServer(
 // ── Swap ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Swap an exercise mid-session (a busy machine) for another, here on this device only (the Worker's start plan stays):
+ * Swap an exercise mid-session (a busy machine) for another in the working copy (the logger then saves the new list as
+ * the Worker's plan, sync.ts syncPlan):
  *   null when `toId` is already in the session, `fromId` is not, or every set of `fromId` is done (nothing to move);
  *   otherwise the done sets of `from` stay under it (its card stays with only those; with none done it goes), and its
  *   n open sets become n fresh placeholders for `to` — new client UUIDs, set_index 1…n, `from`'s rep range and rest,

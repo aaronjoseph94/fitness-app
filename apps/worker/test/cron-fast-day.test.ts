@@ -54,16 +54,14 @@ const EATING = [
 
 beforeAll(async () => {
   await db.batch([
-    db
-      .insert(profile)
-      .values({
-        height_cm: 165.1,
-        sex: 'male',
-        goal_weight_kg: 65,
-        goal_date: '2027-08-04',
-        start_weight_kg: 95.1,
-        start_date: '2026-09-20',
-      }),
+    db.insert(profile).values({
+      height_cm: 165.1,
+      sex: 'male',
+      goal_weight_kg: 65,
+      goal_date: '2027-08-04',
+      start_weight_kg: 95.1,
+      start_date: '2026-09-20',
+    }),
     db.insert(settings).values({
       calorie_floor: 1400,
       calorie_ceiling: 1700,
@@ -115,18 +113,16 @@ beforeAll(async () => {
       const id = crypto.randomUUID()
       return [
         db.insert(meals).values({ id, date, slot: 'dinner', input_method: 'manual', status: 'confirmed' }),
-        db
-          .insert(meal_items)
-          .values({
-            meal_id: id,
-            description: 'dinner',
-            grams: 500,
-            kcal: 1400,
-            protein_g: 130,
-            carbs_g: 119,
-            fat_g: 45,
-            fibre_g: 30,
-          }),
+        db.insert(meal_items).values({
+          meal_id: id,
+          description: 'dinner',
+          grams: 500,
+          kcal: 1400,
+          protein_g: 130,
+          carbs_g: 119,
+          fat_g: 45,
+          fibre_g: 30,
+        }),
       ]
     }),
   ])

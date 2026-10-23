@@ -1,6 +1,7 @@
 // Owns: the full week view on Progress (SPEC §8, §11 "Week plan vs actuals"; 2a's "Week plan" table card) — pick a
 // week (‹ ›), its plan's status and author, a proposed plan's Review → Accept, the plan's focus note, then one table
-// row per day: the session (✓ once done; a fast day in the warning colour), the day's kcal · protein targets, and last
+// row per day: the session (✓ once done; a fast day in coral — the plan's, or a planned fast's fast day from its
+// fast_logs row, GET /api/fasts, engine fastDay), the day's kcal · protein targets, and last
 // week's kcal · protein for the same weekday, today's row tinted. Under the table: the planned-vs-eaten chart with
 // each day's session mark, what changed from last week, the week's water and steps targets (and scan date), and
 // Revert for the active plan of a week not yet over.
@@ -19,6 +20,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import { endpoints } from '@fitness/shared/api'
 import { addDays, weekStart } from '@fitness/shared/engine'
 import {
   Weekday,
@@ -28,6 +30,7 @@ import {
   type WeekPlanView,
 } from '@fitness/shared/schemas'
 import { useState } from 'react'
+import { useApiQuery } from '../../../api'
 import { WeekPlanVsActualChart, type PlanDay, type SessionStatus } from '../../../charts'
 import {
   formatDayRange,
@@ -40,6 +43,7 @@ import {
   visuallyHidden,
 } from '../../../components'
 import { tokens } from '../../../theme'
+import { plannedFasts, type PlannedFast } from '../../progress/series'
 import { AUTHOR, Label, PlanBadge, planDays } from './parts'
 import { ProposedBanner } from './ProposedBanner'
 import { useRevertWeekPlan, useWeekPlan } from './useWeekPlan'
@@ -48,6 +52,11 @@ export interface WeekViewProps {
   /** Today (America/Edmonton); the view opens on its week. */
   date: LocalDate
 }
+
+/** SPEC §2: a fast lasts 24 h, until settings answer. */
+const DEFAULT_FAST_HOURS = 24
+/** A fast's colour in the table: the coral deepened for text on white (≥ 4.5:1). */
+const FAST_TEXT = tokens.summit.coral.deep
 
 /** "1,400 · 130 g". */
 const kcalProtein = (kcal: number, protein: number) => `${formatNumber(kcal)} · ${formatNumber(protein)} g`
@@ -64,18 +73,28 @@ function sessionStatus(
   return date < today ? 'missed' : 'planned'
 }
 
-/** The chart's seven days: the plan's kcal (0 on a fast day) or the materialised target, and what was eaten so far. */
-function chartDays(view: WeekPlanView, plan: WeekPlan | null, today: LocalDate): PlanDay[] {
+/**
+ * The chart's seven days: 0 kcal on a fast day (the plan's, or a planned fast's fastDay), else the plan's kcal or the
+ * materialised target, and what was eaten so far.
+ */
+function chartDays(
+  view: WeekPlanView,
+  plan: WeekPlan | null,
+  today: LocalDate,
+  planned: readonly PlannedFast[],
+): PlanDay[] {
   return Weekday.options.map((w, i) => {
     const date = addDays(view.week_start, i)
     const d = view.days[i]
-    const fast = plan ? plan.plan.fast_dates.includes(date) : (d?.is_fast_day ?? false)
-    const planned = plan ? plan.plan.sessions[w] !== null : (d?.training_planned ?? false)
+    const fast =
+      (plan ? plan.plan.fast_dates.includes(date) : (d?.is_fast_day ?? false)) ||
+      planned.some((f) => f.day === date)
+    const training = plan ? plan.plan.sessions[w] !== null : (d?.training_planned ?? false)
     return {
       day: formatWeekday(date),
-      plannedKcal: plan ? (fast ? 0 : plan.plan.targets[w].kcal) : (d?.target_kcal ?? null),
+      plannedKcal: fast ? 0 : plan ? plan.plan.targets[w].kcal : (d?.target_kcal ?? null),
       eatenKcal: date <= today && d ? d.intake_kcal : null,
-      session: sessionStatus(planned, d, today, date),
+      session: sessionStatus(training, d, today, date),
       fast,
     }
   })
@@ -153,7 +172,17 @@ const cellSx = {
   '&.MuiTableCell-head': { py: '6px' },
 }
 
-function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; today: LocalDate }) {
+function DayTable({
+  view,
+  plan,
+  today,
+  planned,
+}: {
+  view: WeekPlanView
+  plan: WeekPlan
+  today: LocalDate
+  planned: readonly PlannedFast[]
+}) {
   const last = view.last_week.days
   return (
     <Table
@@ -173,6 +202,7 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
         {planDays(plan).map((d, i) => {
           const isToday = d.date === today
           const done = (view.days[i]?.sessions_done ?? 0) > 0
+          const fast = d.fast || planned.some((f) => f.day === d.date)
           const strong = isToday ? tokens.font.weight.heading : undefined
           // `ink.muted` on today's `accent.soft` tint is 4.44:1, under AA for 13 px text; the row's muted text steps up to `ink.label`.
           const muted = isToday ? tokens.ink.label : tokens.ink.secondary
@@ -187,7 +217,7 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
                 sx={{
                   whiteSpace: 'nowrap',
                   fontWeight: strong,
-                  color: d.fast ? tokens.tone.warning.text : isToday ? tokens.ink.text : tokens.ink.secondary,
+                  color: fast ? FAST_TEXT : isToday ? tokens.ink.text : tokens.ink.secondary,
                 }}
               >
                 {formatWeekday(d.date)} {Number(d.date.slice(8))}
@@ -195,11 +225,11 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
               <TableCell
                 sx={{
                   fontWeight: strong,
-                  color: d.session || d.fast ? tokens.ink.text : muted,
+                  color: fast ? FAST_TEXT : d.session ? tokens.ink.text : muted,
                   overflowWrap: 'anywhere',
                 }}
               >
-                {d.fast ? 'Fast day' : (d.session?.name ?? 'Rest')}
+                {fast ? 'Fast' : (d.session?.name ?? 'Rest')}
                 {done && (
                   <>
                     <CheckRounded
@@ -219,7 +249,7 @@ function DayTable({ view, plan, today }: { view: WeekPlanView; plan: WeekPlan; t
                 )}
               </TableCell>
               <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: tokens.ink.text }}>
-                {d.fast ? '— · —' : kcalProtein(d.kcal, d.protein_g)}
+                {fast ? '— · —' : kcalProtein(d.kcal, d.protein_g)}
               </TableCell>
               <TableCell align="right" sx={{ whiteSpace: 'nowrap', color: muted }}>
                 {lastWeek(last[i], today)}
@@ -242,6 +272,15 @@ const gutter = { px: { xs: '16px', sm: `${tokens.pad.card.x}px` } } as const
 export function WeekView({ date }: WeekViewProps) {
   const [monday, setMonday] = useState(() => weekStart(date))
   const view = useWeekPlan(monday)
+  // The week's planned fasts, each on its fast day (engine `fastDay()`, decision #8: the same fast_logs row Today and
+  // Log read).
+  const fasts = useApiQuery(endpoints.fasting.list, { query: { from: monday, to: addDays(monday, 6) } })
+  const settings = useApiQuery(endpoints.settings.get, {}, { staleTime: 5 * 60_000 })
+  const planned = plannedFasts(
+    fasts.data,
+    Date.now(),
+    settings.data?.settings.fast_hours ?? DEFAULT_FAST_HOURS,
+  )
   const data = view.data
   const plan = data?.active ?? null
   const shown = plan ?? data?.proposed ?? null
@@ -311,7 +350,7 @@ export function WeekView({ date }: WeekViewProps) {
             </Box>
           )}
           {shown ? (
-            <DayTable view={data} plan={shown} today={date} />
+            <DayTable view={data} plan={shown} today={date} planned={planned} />
           ) : (
             <Box sx={{ ...gutter, pt: '4px', pb: '16px', ...note }}>
               No week plan yet. The coach review (Claude) or Sunday’s weekly review drafts one.
@@ -328,7 +367,7 @@ export function WeekView({ date }: WeekViewProps) {
           >
             <Label>Planned vs eaten</Label>
             <Box sx={{ mt: '8px' }}>
-              <WeekPlanVsActualChart days={chartDays(data, plan, date)} height={200} />
+              <WeekPlanVsActualChart days={chartDays(data, plan, date, planned)} height={200} />
             </Box>
           </Box>
 

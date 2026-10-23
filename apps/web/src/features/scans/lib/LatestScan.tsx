@@ -287,7 +287,8 @@ function ShareBar({ share }: { share: number }) {
       component="span"
       aria-hidden
       sx={{
-        display: 'block',
+        // A phone drops the bar and keeps the per cent, so the table fits without scrolling (UX #18).
+        display: { xs: 'none', sm: 'block' },
         width: 70,
         height: 8,
         flex: 'none',
@@ -319,20 +320,22 @@ export function SegmentsCard({ scan }: { scan: ConfirmedScan }) {
       description={`Lean and fat per limb · torso fat target under ${formatNumber(TARGETS.torsoFatKg, 1)} kg`}
       // The table carries the numbers; the figure only shows where the fat sits.
       actions={
-        <Box aria-hidden sx={{ width: 56, my: '-6px', lineHeight: 0 }}>
+        // Under 900 px the figure gives its room to the table (the numbers are the point).
+        <Box aria-hidden sx={{ width: 56, my: '-6px', lineHeight: 0, display: { xs: 'none', md: 'block' } }}>
           <MuscleMap levels={segmentFatLevels(scan.record)} view="front" size={56} scale="fat" body="light" />
         </Box>
       }
       padding="none"
     >
-      <TableScroll ariaLabel="Segments">
+      {/* Four short columns (the share bar drops on a phone) fit a 320 px card, so a phone needs no sideways scroll. */}
+      <TableScroll ariaLabel="Segments" minWidth={300}>
         <Table sx={tableSx}>
           <TableHead>
             <TableRow>
               <TableCell>Segment</TableCell>
               <TableCell align="right">Lean</TableCell>
               <TableCell align="right">Fat</TableCell>
-              <TableCell align="right">Fat share</TableCell>
+              <TableCell align="right">Share</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

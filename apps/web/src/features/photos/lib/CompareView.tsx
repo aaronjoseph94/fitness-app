@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import type { ProgressPhoto } from '@fitness/shared/schemas'
 import { useRef, useState, type PointerEvent } from 'react'
-import { formatNumber, formatSigned, Panel, Segmented, tabularNums } from '../../../components'
+import { formatDay, formatNumber, formatSigned, Panel, Segmented, tabularNums } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
 import { POSE_LABEL } from './data'
 import { PhotoFacts, PhotoImage } from './PhotoParts'
@@ -28,7 +28,7 @@ const DAY_MS = 86_400_000
 /** "2026-08-02 · 99.0 kg", with the pose when the list mixes poses. */
 function optionLabel(p: ProgressPhoto, withPose: boolean): string {
   const kg = p.weight_kg === null ? '' : ` · ${formatNumber(p.weight_kg, 1)} kg`
-  return `${p.date}${withPose ? ` · ${POSE_LABEL[p.pose]}` : ''}${kg}`
+  return `${formatDay(p.date)}${withPose ? ` · ${POSE_LABEL[p.pose]}` : ''}${kg}`
 }
 
 interface PhotoSelectProps {
@@ -226,8 +226,8 @@ function RevealSlider({ before, after }: { before: ProgressPhoto; after: Progres
             }}
           />
         </Box>
-        <Box sx={{ ...label, left: 8 }}>Before · {before.date}</Box>
-        <Box sx={{ ...label, right: 8 }}>After · {after.date}</Box>
+        <Box sx={{ ...label, left: 8 }}>Before · {formatDay(before.date)}</Box>
+        <Box sx={{ ...label, right: 8 }}>After · {formatDay(after.date)}</Box>
       </Box>
       <Box sx={{ px: 2, maxWidth: 480, width: '100%', mx: 'auto' }}>
         <Slider

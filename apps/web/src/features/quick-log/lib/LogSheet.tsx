@@ -25,14 +25,14 @@ import Typography from '@mui/material/Typography'
 import type { MealSlot } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import type { QuickLogKind } from '../../../app/ui-store'
-import { PendingBadge, useSheetDrag } from '../../../components'
+import { formatDay, PendingBadge, useSheetDrag } from '../../../components'
 import { tokens, withAlpha } from '../../../theme'
 import { relativeDay, todayLocal } from './dates'
 import { FastForm } from './FastForm'
 import { MealForm, type CapturedMeal } from './MealForm'
 import { MealReview } from './review/MealReview'
 import { PhotoKind } from './PhotoKind'
-import type { LogNotice } from './ui'
+import { clearanceSx, SHEET_BODY_PB, useNoticeClearance, type LogNotice } from './ui'
 import { WaterForm } from './WaterForm'
 import { WeighInForm } from './WeighInForm'
 
@@ -79,6 +79,9 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
   // Drag the header down to throw the sheet away: 1:1 with the finger, and the release hands its own velocity to the
   // spring that settles it. Reduced motion opts out, leaving the Close button as the way out.
   const drag = useSheetDrag({ onDismiss: onClose })
+  // A notice shown while the sheet stays open (water queued, a confirmed review) sits above the sheet's action row.
+  const [scrollArea, setScrollArea] = useState<HTMLElement | null>(null)
+  const clearance = useNoticeClearance(scrollArea, open && notice !== null)
 
   /** Once the sheet has slid away: drop the review (and its thumbnails) so the next open starts at the form. */
   const onExited = () => {
@@ -177,7 +180,8 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
             </Typography>
             {selected && selected.kind !== 'fast' && selected.kind !== 'photo' && !isToday && (
               <Box sx={{ fontSize: tokens.font.size.small, color: tokens.ink.secondary }}>
-                For {relativeDay(day)} {day}
+                For {relativeDay(day) === 'Yesterday' ? 'yesterday, ' : ''}
+                {formatDay(day)}
               </Box>
             )}
           </Box>
@@ -185,7 +189,14 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
             <Close fontSize="small" />
           </IconButton>
         </Stack>
-        <Box sx={{ overflowY: 'auto', px: 5, pt: 3, pb: 2 }}>
+        {/* A link in a form (Settings → AI in the no-model-key note) leaves the sheet: close it as the page changes. */}
+        <Box
+          ref={setScrollArea}
+          sx={{ overflowY: 'auto', px: 5, pt: 3, pb: `${SHEET_BODY_PB}px` }}
+          onClick={(e) => {
+            if (e.target instanceof Element && e.target.closest('a[href]')) onClose()
+          }}
+        >
           {review ? (
             <MealReview
               key={review.mealId}
@@ -269,8 +280,7 @@ export function LogSheet({ open, kind, date, slot, onClose, onPickKind }: LogShe
             </Box>
           )
         }
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ top: { xs: `calc(${tokens.tapTarget + tokens.space(4)}px + env(safe-area-inset-top, 0px))` } }}
+        sx={clearanceSx(clearance)}
         data-testid="log-notice"
       />
     </>

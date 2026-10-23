@@ -78,6 +78,7 @@ export function PhotosLibrary() {
   return (
     <Stack spacing={`${tokens.rhythm.section}px`} data-testid="photos-page">
       <PageHeader
+        eyebrow={data ? `Body · ${all.length} ${all.length === 1 ? 'photo' : 'photos'}` : 'Body'}
         title="Progress photos"
         subtitle={
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>

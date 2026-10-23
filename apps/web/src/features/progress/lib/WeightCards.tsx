@@ -24,15 +24,16 @@ import {
   type LegendItem,
 } from '../../../components'
 import { copy } from '../../../copy'
-import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
+import { tokens } from '../../../theme'
 import { MilestoneList } from './MilestoneList'
 import type { RangeKey } from './range'
 import {
-  effectiveRate,
   forecastBandDates,
+  forecastRate,
   forecastPath,
   lastTrend,
   milestoneList,
+  projectionOf,
   waistPoints,
   weightMilestones,
   weightPoints,
@@ -157,13 +158,13 @@ export function WeightTrendCard({
   if (forecast.length) keys.push({ label: 'Forecast', color: tokens.metric.weight, mark: 'dashed' })
   if (plan)
     keys.push({
-      label: `Plan line ${formatNumber(plan.rate, 2)} kg a week`,
+      label: 'Plan line to the goal date',
       color: tokens.chart.plan,
       mark: 'dashed',
     })
   if (range === 'all') keys.push({ label: copy.GoalLabel, color: tokens.chart.goal, mark: 'line' })
   const outlook = [
-    finish ? `Forecast ${copy.goalLabel} ${withYear(finish)}` : null,
+    finish ? `Projected ${copy.goalLabel} ${withYear(finish)}` : null,
     band && bandPct !== null
       ? `band ±${bandPct} % ${inYear(band.early, year)} – ${inYear(band.late, year)}`
       : null,
@@ -243,16 +244,16 @@ export function CampsCard({
 }) {
   if (!trend.data) return <QueryStateCard query={trend} what="the camps" height={360} titleSize="card" />
   const data = trend.data
-  const last = lastTrend(data.points)
-  const rate = last && data.forecast ? effectiveRate(last, data.forecast, goalKg) : null
-  const items = milestoneList(data.milestones, last, rate)
+  // Camp dates sit on the forecast's line (engine projectedOn), at the one rate every page shows.
+  const rate = forecastRate(data.forecast)
+  const items = milestoneList(data.milestones, projectionOf(data, goalKg))
   const whrNow = waistPoints(data.measurements).at(-1)?.whr ?? null
   return (
     <DeepSkyCard testId="progress-milestones" ariaLabel={copy.milestonesTitle}>
       <TitleRow
         id="progress-camps-title"
         title={copy.milestonesTitle}
-        note={rate !== null ? `at ${formatNumber(rate, 2)} kg a week` : undefined}
+        note={rate !== null ? `at ${formatNumber(rate, 2)} kg a week forecast` : undefined}
         action={
           // Gold on the deep sky (≥ 11:1); DeepSkyCard gives it the white keyboard ring with its deep-ink band.
           <Link
@@ -264,11 +265,13 @@ export function CampsCard({
               fontWeight: tokens.font.weight.label,
               color: summit.gold.main,
               '&:hover': { color: summit.deepSky.text },
-              [COARSE_POINTER_QUERY]: {
-                display: 'inline-flex',
-                alignItems: 'center',
-                minHeight: tokens.tapTarget,
-              },
+              // A 44 × 44 target on every pointer, on one line.
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: tokens.tapTarget,
+              minWidth: tokens.tapTarget,
+              whiteSpace: 'nowrap',
             }}
           >
             Scans

@@ -190,7 +190,8 @@ export function MilestoneList({ items, start, goalKg, whrNow }: MilestoneListPro
           if (!isSummit) camp += 1
           const date = m.reachedOn ?? m.expectedOn
           const when = [
-            date ? dated(date, year) : null,
+            // The summit's date is the forecast's, never the goal date: say so (decision #3).
+            date ? `${isSummit && !m.reachedOn ? 'Projected ' : ''}${dated(date, year)}` : null,
             m.state === 'next' && m.awayKg !== null && m.awayKg > 0
               ? `${formatNumber(m.awayKg, 1)} kg to go`
               : null,

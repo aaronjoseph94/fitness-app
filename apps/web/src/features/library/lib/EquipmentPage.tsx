@@ -3,11 +3,14 @@
 // (queued offline, shown at once), and "Add machine". The machines are his gym's floor, grouped by area (EQUIPMENT_AREAS):
 // the machines at the gym under their part of it (whatever their status: one he dislikes or can't use is still
 // there), then "Not at your gym" — the machines marked "Don't have". Any status but "Have" takes their exercises out
-// of the allowed set. A status change reshapes that set, so the library refreshes.
+// of the allowed set. A status change reshapes that set, so the library refreshes, and a snackbar says how many
+// exercises are allowed now with Undo (the previous status and note put back). A filter field narrows the rows by name
+// or note; a note is edited in a labelled field with Save.
 // 2a: the page's h1 with the allowed count, an "Equipment" card of rows and one card per area, each row a 14/500 name
 // with a 12 px muted line (exercise count, note) and the status as a small segmented control tinted by status.
 import AddRounded from '@mui/icons-material/AddRounded'
 import EditNoteRounded from '@mui/icons-material/EditNoteRounded'
+import SearchRounded from '@mui/icons-material/SearchRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -18,6 +21,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
+import InputAdornment from '@mui/material/InputAdornment'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -29,6 +33,7 @@ import { useMemo, useState } from 'react'
 import { problemText, useApiMutation, useApiQuery } from '../../../api'
 import {
   EmptyState,
+  formatNumber,
   LoadProblem,
   PageHeader,
   Panel,
@@ -148,6 +153,10 @@ function EquipmentRow({
     const next = note.trim() || null
     if (next !== row.note) onChange(row.status ?? 'have', next)
   }
+  const cancelNote = () => {
+    setEditing(false)
+    setNote(row.note ?? '')
+  }
   const help = [
     count !== undefined ? `${count} exercise${count === 1 ? '' : 's'} in the library` : null,
     row.note,
@@ -208,27 +217,38 @@ function EquipmentRow({
         <IconButton
           size="small"
           aria-label={`Note for ${row.equipment}`}
-          onClick={() => setEditing((v) => !v)}
+          aria-expanded={editing}
+          onClick={() => (editing ? cancelNote() : setEditing(true))}
           sx={{ color: row.note ? tokens.accent.main : tokens.ink.label }}
         >
           <EditNoteRounded sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
       {editing && (
-        <TextField
-          autoFocus
-          fullWidth
-          size="small"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={saveNote}
-          onKeyDown={(e) => e.key === 'Enter' && saveNote()}
-          placeholder="e.g. left shoulder"
-          sx={{ mt: 2 }}
-          slotProps={{
-            htmlInput: { maxLength: 200, 'aria-label': `Note for ${row.equipment}`, enterKeyHint: 'done' },
-          }}
-        />
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+          <TextField
+            autoFocus
+            size="small"
+            label="Note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveNote()
+              if (e.key === 'Escape') cancelNote()
+            }}
+            placeholder="e.g. left shoulder"
+            sx={{ flex: '1 1 220px', minWidth: 0 }}
+            slotProps={{
+              htmlInput: { maxLength: 200, 'aria-label': `Note for ${row.equipment}`, enterKeyHint: 'done' },
+            }}
+          />
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button onClick={cancelNote}>Cancel</Button>
+            <Button variant="contained" onClick={saveNote} data-testid="save-note">
+              Save
+            </Button>
+          </Box>
+        </Box>
       )}
     </Box>
   )
@@ -302,6 +322,14 @@ export function EquipmentPage() {
   const [local, setLocal] = useState<Record<string, Row>>({})
   const [adding, setAdding] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  /** The last status change, for the snackbar's live allowed count and its Undo (the row as it was). */
+  const [changed, setChanged] = useState<{
+    equipment: string
+    status: EquipmentStatus
+    before: { status: EquipmentStatus; note: string | null }
+    undone: boolean
+  } | null>(null)
+  const [filter, setFilter] = useState('')
   const update = useApiMutation(endpoints.training.updateEquipment, {
     invalidates: [endpoints.training.getEquipment],
   })
@@ -351,9 +379,12 @@ export function EquipmentPage() {
     return { library: LIBRARY_EQUIPMENT.map((n) => byName.get(n)!), groups, all }
   }, [profile.data, local])
 
-  const set = (equipment: string, status: EquipmentStatus, note: string | null) => {
+  const set = (equipment: string, status: EquipmentStatus, note: string | null, undo = false) => {
     // The area is the seed's; the screen only changes the status, so PUT keeps whatever the profile already has.
-    const area = rows.all.find((r) => r.equipment === equipment)?.area ?? null
+    const current = rows.all.find((r) => r.equipment === equipment)
+    const area = current?.area ?? null
+    // No profile row yet (a library value) counts as "Have": the allowed set treats it so.
+    const before = { status: current?.status ?? 'have', note: current?.note ?? null }
     setLocal((l) => ({ ...l, [equipment]: { equipment, status, note, area, pending: true } }))
     update.mutate(
       { body: { items: [{ equipment, status, note }] } },
@@ -364,13 +395,20 @@ export function EquipmentPage() {
             [equipment]: { equipment, status, note, area, pending: outcome.status === 'queued' },
           }))
           refresh(outcome)
-          if (outcome.status === 'queued') setNotice('Saved on this device · syncs when you’re back online')
+          if (outcome.status === 'queued') {
+            setChanged(null)
+            setNotice('Saved on this device · syncs when you’re back online')
+          } else if (before.status !== status) {
+            setNotice(null)
+            setChanged({ equipment, status, before, undone: undo })
+          } else setNotice('Note saved')
         },
         onError: (error) => {
           setLocal((l) => {
             const { [equipment]: _, ...rest } = l
             return rest
           })
+          setChanged(null)
           setNotice(problemText(error))
         },
       },
@@ -378,6 +416,16 @@ export function EquipmentPage() {
   }
 
   const existing = useMemo(() => new Set(rows.all.map((r) => r.equipment)), [rows])
+
+  const query = filter.trim().toLowerCase()
+  const matches = (r: Row) =>
+    !query ||
+    equipmentLabel(r.equipment).toLowerCase().includes(query) ||
+    (r.note ?? '').toLowerCase().includes(query)
+  const libraryShown = rows.library.filter(matches)
+  const groupsShown = rows.groups
+    .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
+    .filter((g) => g.rows.length > 0)
 
   const machineCount = rows.groups
     .filter((g) => g.title !== NOT_AT_GYM)
@@ -413,22 +461,46 @@ export function EquipmentPage() {
           onRetry={() => void profile.refetch()}
         />
       )}
+      <TextField
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        label="Find equipment"
+        placeholder="Machine, area note or brand"
+        size="small"
+        data-testid="equipment-filter"
+        sx={{ maxWidth: 420 }}
+        slotProps={{
+          htmlInput: { enterKeyHint: 'search', type: 'search' },
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchRounded aria-hidden sx={{ fontSize: 20, color: tokens.ink.label }} />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+      {query && libraryShown.length === 0 && groupsShown.length === 0 && (
+        <EmptyState title="Nothing matches" body={`No equipment or machine matches “${filter.trim()}”.`} />
+      )}
       {/* 2a's entrance: after the title row, each band rises in reading order, a section's stagger apart. */}
       <Reveal delay={staggerDelay(1, tokens.motion.stagger.section)}>
-        <Panel
-          title="Equipment"
-          description="Every equipment type in the library. Don’t have, dislike and can’t use take exercises out of the allowed set: the library, the picker and every AI workout program only from it."
-          padding="none"
-        >
-          {rows.library.map((row) => (
-            <EquipmentRow
-              key={row.equipment}
-              row={row}
-              count={counts.get(row.equipment) ?? 0}
-              onChange={(s, n) => set(row.equipment, s, n)}
-            />
-          ))}
-        </Panel>
+        {(!query || libraryShown.length > 0) && (
+          <Panel
+            title="Equipment"
+            description="Every equipment type in the library. Don’t have, dislike and can’t use take exercises out of the allowed set: the library, the picker and every AI workout program only from it."
+            padding="none"
+          >
+            {libraryShown.map((row) => (
+              <EquipmentRow
+                key={row.equipment}
+                row={row}
+                count={counts.get(row.equipment) ?? 0}
+                onChange={(s, n) => set(row.equipment, s, n)}
+              />
+            ))}
+          </Panel>
+        )}
       </Reveal>
       <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
         <SectionHeader
@@ -452,7 +524,7 @@ export function EquipmentPage() {
           />
         ) : (
           <Stack spacing={4}>
-            {rows.groups.map((group) => (
+            {groupsShown.map((group) => (
               <Panel
                 key={group.title}
                 title={group.title}
@@ -487,6 +559,32 @@ export function EquipmentPage() {
         autoHideDuration={4000}
         onClose={() => setNotice(null)}
         message={notice ?? ''}
+      />
+      <Snackbar
+        key={changed ? `${changed.equipment}-${changed.status}` : 'none'}
+        open={changed !== null && notice === null}
+        autoHideDuration={8000}
+        onClose={(_, reason) => reason !== 'clickaway' && setChanged(null)}
+        data-testid="equipment-changed"
+        message={
+          changed
+            ? `${changed.undone ? 'Put back: ' : ''}${equipmentLabel(changed.equipment)} · ${STATUS_LABEL[changed.status]} · ${formatNumber(index.allowed.length)} exercises allowed now`
+            : ''
+        }
+        action={
+          changed && !changed.undone ? (
+            <Button
+              color="inherit"
+              onClick={() => {
+                const { equipment, before } = changed
+                setChanged(null)
+                set(equipment, before.status, before.note, true)
+              }}
+            >
+              Undo
+            </Button>
+          ) : undefined
+        }
       />
     </Stack>
   )

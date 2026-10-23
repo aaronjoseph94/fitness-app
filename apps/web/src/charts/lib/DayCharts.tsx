@@ -1,11 +1,11 @@
-// Owns: the four "per day vs target" charts — calories by meal slot (1d: the calories ramp from its deep coral at
-// breakfast to its light end at dinner, snack lighter still, flush), macros (g: protein orange, carbs violet, fat coral,
-// as 1d draws them) with the protein minimum dashed in the warning amber, water (ml; days that hit the target in the
+// Owns: the four "per day vs target" charts — calories by meal slot (one distinct hue per slot: breakfast amber, lunch
+// rose, dinner violet, snack blue; fast days a coral dot above the baseline), macros (g: protein orange, carbs violet,
+// fat rose) with the protein minimum dashed in the warning amber, water (ml; days that hit the target in the
 // water ramp, the rest in its light end) and steps with a 14-day median — as configurations of DailyBars.
 import { formatNumber } from '../../components'
 import { metricRamp, tokens } from '../../theme'
 import { DailyBars, type DaySeries } from './DailyBars'
-import { UNDER_TARGET_ALPHA, mix, tintOnCard, type ChartSizeProps } from './frame'
+import { UNDER_TARGET_ALPHA, tintOnCard, type ChartSizeProps } from './frame'
 import { rollingMedian } from './stats'
 
 interface Common extends ChartSizeProps {
@@ -36,12 +36,16 @@ export interface CaloriesChartProps extends Common {
 }
 
 const KCAL = metricRamp('calories')
-/** Slots are steps along the calories ramp, deepest first, stacked in eating order (breakfast at the base). */
+/**
+ * Slots stacked in eating order (breakfast at the base), each its own hue so neighbours never read as one pink:
+ * breakfast amber, lunch the calories rose, dinner violet, snack the sleep blue. The fast-day dot (coral) is a dot
+ * above the baseline, not a segment.
+ */
 const SLOTS: readonly { key: MealSlotKey; label: string; color: string }[] = [
-  { key: 'breakfast', label: 'Breakfast', color: KCAL.from },
-  { key: 'lunch', label: 'Lunch', color: mix(KCAL.from, KCAL.to, 0.5) },
-  { key: 'dinner', label: 'Dinner', color: KCAL.to },
-  { key: 'snack', label: 'Snack', color: tintOnCard(KCAL.to, 0.5) },
+  { key: 'breakfast', label: 'Breakfast', color: metricRamp('protein').from },
+  { key: 'lunch', label: 'Lunch', color: KCAL.from },
+  { key: 'dinner', label: 'Dinner', color: tokens.accent.bright },
+  { key: 'snack', label: 'Snack', color: tokens.metric.sleep },
 ]
 
 const kcal = (v: number) => `${formatNumber(v)} kcal`
@@ -108,7 +112,8 @@ export function MacrosChart({
       bars={[
         { key: 'protein', label: 'Protein', color: metricRamp('protein').from },
         { key: 'carbs', label: 'Carbs', color: tokens.accent.bright },
-        { key: 'fat', label: 'Fat', color: metricRamp('fat').to },
+        // Fat in its rose (metric.fat), apart from protein's amber-orange and carbs' violet.
+        { key: 'fat', label: 'Fat', color: tokens.metric.fat },
       ]}
       target={
         proteinTarget === undefined

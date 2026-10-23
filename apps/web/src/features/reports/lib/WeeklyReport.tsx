@@ -6,7 +6,7 @@
 // rest sit in two columns, so a week prints on two Letter pages; a scan week drops weekly loss and milestones from
 // paper to make room for the scan panel.
 import Box from '@mui/material/Box'
-import { localDate } from '@fitness/shared/engine'
+import { localDate, projectedOn } from '@fitness/shared/engine'
 import type {
   DaySummary,
   ReviewProposal,
@@ -27,12 +27,22 @@ import {
   WeeklyLossChart,
   WeightTrendChart,
 } from '../../../charts'
-import { formatNumber, formatShortDate, formatSigned, formatWeekday, statValue } from '../../../components'
+import {
+  formatDay,
+  formatDayTime,
+  formatNumber,
+  formatShortDate,
+  formatSigned,
+  formatWeekday,
+  statValue,
+} from '../../../components'
 import { MuscleMap, MuscleMapLegend } from '../../../muscle-map'
+import { copy } from '../../../copy'
 import { tokens } from '../../../theme'
 import { Muted, Pair, Panel, PRINT_FULL, PRINT_HALF, StatStrip, Table, type Stat } from './parts'
 import {
   forecastPath,
+  forecastRate,
   lastTrend,
   milestoneTimelines,
   weeklyLoss,
@@ -125,21 +135,29 @@ export function WeeklyReport(props: WeeklyReportProps) {
   const targets = weekTargets(days)
   // The review week's forecast, drawn two weeks past the week's last trend point.
   const last = trend ? lastTrend(trend.points) : null
-  const rate = m.forecast?.weekly_rate_kg ?? null
+  // One forecast for the whole report: the review week's. Its rate is the header's, the expected loss and the
+  // milestones' (engine projectedOn: on its line, so the goal lands on its finish date).
+  const rate = forecastRate(m.forecast)
+  const finish = m.forecast?.finish_date ?? null
   const forecast =
     last && m.forecast && goalKg !== null
       ? forecastPath({ from: last, forecast: m.forecast, goalKg, horizonDays: FORECAST_DAYS })
       : []
   const losses = trend ? weeklyLoss(trend.points, rate) : []
-  const timeline = trend ? milestoneTimelines(trend.milestones, last, rate).weight : []
+  const timeline = trend
+    ? milestoneTimelines(trend.milestones, {
+        forecast: goalKg === null ? null : m.forecast,
+        goal_kg: goalKg ?? 0,
+        trend: last,
+      }).weight
+    : []
   // A scan week needs the room on paper for its scan panel (two Letter pages).
   const lossAndMilestones = !fixed || !m.scan
   const stats: Stat[] = [
     {
-      label: 'Trend',
-      value: kg(m.trend_end_kg),
-      detail:
-        m.trend_change_kg === null ? 'no change yet' : `${formatSigned(m.trend_change_kg, 1)} kg this week`,
+      label: 'Forecast',
+      value: rate === null ? '—' : `${formatNumber(rate, 2)} kg/wk`,
+      detail: finish ? `projected ${formatDay(finish)}` : 'no projected date',
     },
     {
       label: 'Intake',
@@ -221,7 +239,7 @@ export function WeeklyReport(props: WeeklyReportProps) {
             data-testid="report-author"
           >
             {review
-              ? `${AUTHOR_TEXT[review.author]} · updated ${review.updated_at.slice(0, 10)}`
+              ? `${AUTHOR_TEXT[review.author]} · updated ${formatDay(localDate(review.updated_at))}`
               : 'No review yet · engine metrics only'}
           </Box>
         </Box>
@@ -238,10 +256,11 @@ export function WeeklyReport(props: WeeklyReportProps) {
               '@media print': { mt: 0 },
             }}
           >
-            trend {m.trend_change_kg === null ? '' : `${formatSigned(m.trend_change_kg, 1)} kg · `}
-            {m.forecast
-              ? `${formatNumber(m.forecast.weekly_rate_kg, 2)} kg/wk${m.forecast.finish_date ? ` · finish ${m.forecast.finish_date}` : ''}`
-              : 'no forecast'}
+            trend weight
+            {m.trend_change_kg === null ? '' : ` · ${formatSigned(m.trend_change_kg, 1)} kg this week`}
+            {rate !== null
+              ? ` · forecast ${formatNumber(rate, 2)} kg a week${finish ? ` · projected ${copy.goalLabel} ${formatDay(finish)}` : ''}`
+              : ' · no forecast'}
           </Box>
         </Box>
       </Box>
@@ -278,7 +297,7 @@ export function WeeklyReport(props: WeeklyReportProps) {
             subtitle={
               rate === null
                 ? 'Trend change per Monday–Sunday week'
-                : `Trend change per week; expected ${formatNumber(rate, 2)} kg/week`
+                : `Trend change per week; expected ${formatNumber(rate, 2)} kg a week (the forecast)`
             }
             testId="report-weekly-loss"
           >
@@ -292,7 +311,7 @@ export function WeeklyReport(props: WeeklyReportProps) {
           </Panel>
           <Panel
             title="Milestones"
-            subtitle="Reached, and forecast dates for the next ones"
+            subtitle="Reached, and projected dates for the next ones"
             testId="report-milestones"
           >
             {timeline.length ? (
@@ -524,7 +543,7 @@ function FastsPanel({ metrics: m }: { metrics: WeeklyMetrics }) {
         <Table
           head={['Started', 'Hours', 'Status']}
           rows={m.fasts.map((f) => [
-            `${formatWeekday(localDate(f.started_at))} ${localDate(f.started_at)}`,
+            formatDayTime(f.started_at),
             formatNumber(f.hours, 1),
             f.status === 'completed' ? 'Completed' : f.status === 'partial' ? 'Ended early' : 'Running',
           ])}
@@ -556,7 +575,7 @@ function ScanPanel({
     <Pair>
       <Panel
         title="Scan deltas"
-        subtitle={`Scan ${scan.date} vs ${scan.previous_date} (${scan.days} days)`}
+        subtitle={`Scan ${formatDay(scan.date)} vs ${formatDay(scan.previous_date)} (${scan.days} days)`}
         printSubtitle
         testId="report-scan"
       >
@@ -600,8 +619,8 @@ function ScanPanel({
             baseline: s.fat_from,
             latest: s.fat_to,
           }))}
-          baselineLabel={scan.previous_date}
-          latestLabel={scan.date}
+          baselineLabel={formatDay(scan.previous_date)}
+          latestLabel={formatDay(scan.date)}
           width={half}
           height={fixed ? 34 + scan.segments.length * 23 : undefined}
         />
@@ -672,8 +691,8 @@ function NextWeekPanel({ plan, nextStart }: { plan: WeekPlan | null; nextStart: 
       title="Next week's plan"
       subtitle={
         plan
-          ? `Week of ${nextStart} · ${plan.status} · by ${plan.author === 'claude_mcp' ? 'Claude' : plan.author === 'gemini' ? 'Gemini' : 'you'}`
-          : `Week of ${nextStart}`
+          ? `Week of ${formatDay(nextStart)} · ${plan.status} · by ${plan.author === 'claude_mcp' ? 'Claude' : plan.author === 'gemini' ? 'Gemini' : 'you'}`
+          : `Week of ${formatDay(nextStart)}`
       }
       printSubtitle
       testId="report-next-plan"
@@ -688,7 +707,7 @@ function NextWeekPanel({ plan, nextStart }: { plan: WeekPlan | null; nextStart: 
           <PlanGrid rows={planRows(plan)} />
           <Muted>
             Water {formatNumber(plan.plan.water_ml)} ml · steps {formatNumber(plan.plan.steps)}
-            {plan.plan.scan_date ? ` · scan ${plan.plan.scan_date}` : ''}
+            {plan.plan.scan_date ? ` · scan ${formatDay(plan.plan.scan_date)}` : ''}
           </Muted>
         </>
       ) : (

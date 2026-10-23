@@ -1,10 +1,11 @@
 // Owns: the climb as Today's hero draws it (pure) — base camp (the profile's start weight), the summit (the goal), the
 // camps between them (the weight milestones strictly between the two, heaviest first, each with the date it was
 // reached or is forecast), the next camp still ahead with how much of the way to it is done, and the summit's date
-// (the forecast's finish). Rates come from the Progress series (`effectiveRate`), so Today's dates match Progress.
-import { addDays } from '@fitness/shared/engine'
+// (the forecast's finish). The rate is the forecast's (Progress series `forecastRate`) and every date sits on the
+// forecast's line (engine `projectedOn`), so Today's camps, rate and summit match the Dashboard, Progress and the report.
+import { projectedOn } from '@fitness/shared/engine'
 import type { Forecast, LocalDate, Milestone } from '@fitness/shared/schemas'
-import { effectiveRate } from '../../progress/series'
+import { forecastRate } from '../../progress/series'
 
 export interface Camp {
   kg: number
@@ -33,7 +34,7 @@ export interface Climb {
   next: NextCamp | null
   /** The weekly loss the dates assume; null when the forecast is not a loss. */
   rateKg: number | null
-  /** When the trend reaches the summit at that rate (the forecast's finish date). */
+  /** The projected summit: the forecast's finish date. */
   finish: LocalDate | null
 }
 
@@ -46,12 +47,6 @@ export interface ClimbInput {
   forecast: Pick<Forecast, 'weekly_rate_kg' | 'finish_date'> | null
 }
 
-/** Date the trend reaches `kg` at `rate` kg/week: from.date + ⌈(from.kg − kg) / rate × 7⌉ days. */
-function expectedOn(kg: number, from: { date: LocalDate; kg: number } | null, rate: number | null) {
-  if (!from || rate === null || !(rate > 0) || kg >= from.kg) return null
-  return addDays(from.date, Math.ceil(((from.kg - kg) / rate) * 7))
-}
-
 const round1 = (v: number) => Math.round(v * 10) / 10
 
 /**
@@ -61,7 +56,8 @@ const round1 = (v: number) => Math.round(v * 10) / 10
  * where `from` is the camp passed last (else base camp).
  */
 export function climbOf({ startKg, goalKg, milestones, trend, forecast }: ClimbInput): Climb {
-  const rateKg = trend && forecast ? effectiveRate(trend, forecast, goalKg) : null
+  const rateKg = forecastRate(forecast)
+  const projection = { forecast, goal_kg: goalKg, trend }
   const trendKg = trend?.kg ?? null
   const camps: Camp[] = milestones
     .filter((m) => m.kind === 'weight' && m.target_value < startKg && m.target_value > goalKg)
@@ -70,7 +66,7 @@ export function climbOf({ startKg, goalKg, milestones, trend, forecast }: ClimbI
       const reached = m.reached_on !== null || (trendKg !== null && trendKg <= m.target_value)
       return {
         kg: m.target_value,
-        date: m.reached_on ?? (reached ? null : expectedOn(m.target_value, trend, rateKg)),
+        date: m.reached_on ?? (reached ? null : projectedOn(m.target_value, projection)),
         reached,
       }
     })

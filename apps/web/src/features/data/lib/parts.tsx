@@ -1,10 +1,9 @@
 // Owns: small pieces the Data page's cards share — the titled 2a card, a labelled determinate progress line,
 // how an instant reads (Edmonton local date and time), byte sizes, and turning a failed call into one sentence.
 import Box from '@mui/material/Box'
-import { localTime, today } from '@fitness/shared/engine'
 import type { ReactNode } from 'react'
 import { isApiError, problemText } from '../../../api'
-import { formatNumber, Panel, ProgressBar, tabularNums } from '../../../components'
+import { formatDayTime, formatNumber, Panel, ProgressBar, tabularNums } from '../../../components'
 import { tokens } from '../../../theme'
 
 /** The 2a card every section of the page sits in: title, a 13 px muted description, then the card's own body. */
@@ -91,8 +90,8 @@ export function ProgressLine({
   )
 }
 
-/** "2026-10-05 08:14" in Edmonton. */
-export const localStamp = (instant: string) => `${today(instant)} ${localTime(instant)}`
+/** "Mon, Oct 5 · 8:14 AM" in Edmonton (the kit's formatDayTime). */
+export const localStamp = (instant: string) => formatDayTime(instant)
 
 /** 1536 → "1.5 KB", 12_900_000 → "12.3 MB". */
 export function formatBytes(bytes: number): string {

@@ -17,6 +17,7 @@ import {
   type SessionCreate,
   type SessionFinish,
   type SessionFinishResult,
+  type SessionPatch,
   type SessionPlanExercise,
   type SessionSet,
   type SetCreate,
@@ -240,6 +241,59 @@ export async function getSession(deps: Deps, id: string): Promise<WorkoutSession
     },
     deload,
   }
+}
+
+/**
+ * PATCH /api/sessions/:id: the session's exercise list as it stands in the logger (exercises added to a blank session,
+ * added, swapped or removed mid-session) replaces its start plan's list; recovery and deload stay as at the start, and
+ * the planned muscle scores follow the new list until the session is finished. Exercises outside the allowed set are
+ * left out with a note (as at the start). Sets already logged are untouched (getSession lists their exercises anyway).
+ * Idempotent: replaying the same list writes the same row.
+ */
+export async function updateSession(deps: Deps, id: string, input: SessionPatch): Promise<WorkoutSession> {
+  const row = await sessionRow(deps, id)
+  if (!row) throw notFound('Session')
+  const list = input.exercises.filter(
+    (e, i, all) => all.findIndex((x) => x.exercise_id === e.exercise_id) === i,
+  )
+  const tags = await requireExercises(
+    deps,
+    list.map((e) => e.exercise_id),
+  )
+  const rules = list.length ? await loadRules(deps) : null
+  const leftOut: string[] = []
+  const plan = list.filter((p) => {
+    const reason = rules ? exclusionReason(tags.get(p.exercise_id)!, rules) : null
+    if (reason) leftOut.push(`${LEFT_OUT}${tags.get(p.exercise_id)!.name}: ${reason}`)
+    return reason === null
+  })
+  const before = startPlan(row)
+  const recovery = before?.recovery ?? {
+    conflicts: [],
+    reduced_volume: startReadiness(row)?.reduced_volume ?? false,
+    notes: [],
+  }
+  const deload: DeloadStatus = before?.deload ?? {
+    due: false,
+    reason: null,
+    weeks_since: 0,
+    sets_factor: DELOAD_SETS_FACTOR,
+    active: false,
+  }
+  const start: StartPlan = {
+    exercises: plan,
+    recovery: { ...recovery, notes: [...new Set([...recovery.notes, ...leftOut])] },
+    deload,
+  }
+  await deps.db
+    .update(workout_sessions)
+    .set({
+      plan: start,
+      ...(row.ended_at === null ? { muscle_scores: plan.length ? scoresOf(plan, tags) : null } : {}),
+      updated_at: deps.now().toISOString(),
+    })
+    .where(eq(workout_sessions.id, id))
+  return getSession(deps, id)
 }
 
 /** GET /api/sessions?from&to: sessions on those local dates, newest first, with their sets (no plan). */

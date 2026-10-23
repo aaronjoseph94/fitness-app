@@ -59,7 +59,9 @@ export { VOLUME_GROUPS }
 
 /**
  * Real kg per group for each week, oldest first: the current week plus up to `count − 1` earlier reviewed weeks. The
- * weighted volume_by_muscle is scaled to the week's volume_kg (groupVolume), so the stacks match "X kg lifted".
+ * weighted volume_by_muscle is scaled to the week's volume_kg (groupVolume), so the stacks match "X kg lifted". An
+ * earlier week with nothing to stack (no lifts, or a snapshot without a per-muscle split) is left out rather than drawn
+ * as a labelled empty column.
  */
 export function volumeWeeks(
   current: WeeklyMetrics,
@@ -68,7 +70,10 @@ export function volumeWeeks(
 ): VolumeWeek[] {
   const weeks = [
     ...earlier
-      .filter((m) => m.week_start < current.week_start)
+      .filter(
+        (m) =>
+          m.week_start < current.week_start && Object.values(m.volume_by_muscle).some((v) => (v ?? 0) > 0),
+      )
       .sort((a, b) => (a.week_start < b.week_start ? -1 : 1))
       .slice(-(count - 1)),
     current,

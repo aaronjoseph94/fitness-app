@@ -1,6 +1,7 @@
 // Owns: what each tap in the session logger does — change the working copy first (instant, offline), then ask the
 // sync chain to mirror it: type reps / kg / RPE, copy last session's set, tick a set done (greyed hints fill empty
-// fields), add or remove sets, add, swap or remove exercises (with their history), exercise notes.
+// fields), add or remove sets, add, swap or remove exercises (with their history; the new list is saved to the Worker
+// as the session's plan), exercise notes.
 import { endpoints } from '@fitness/shared/api'
 import type { ExerciseHistory } from '@fitness/shared/schemas'
 import { call } from '../../../api'
@@ -16,7 +17,7 @@ import {
   type LoggerSet,
 } from './logger-model'
 import { loggerState } from './logger-store'
-import { syncSet } from './sync'
+import { syncPlan, syncSet } from './sync'
 
 /** Typing settles before a stored set is patched; notes settle a little longer. */
 const TYPING_MS = 800
@@ -175,6 +176,7 @@ export function loggerActions(sessionId: string): LoggerActions {
       const s = current()
       if (!s || s.exercises.some((e) => e.exercise_id === exerciseId)) return false
       update((x) => ({ ...x, exercises: [...x.exercises, addedExercise(exerciseId)] }))
+      syncPlan(sessionId)
       void loadHistory(exerciseId)
       return true
     },
@@ -188,6 +190,7 @@ export function loggerActions(sessionId: string): LoggerActions {
       // The exercise note rides on the first set: if that set was dropped, the first done set carries the note now.
       const kept = swapped.session.exercises.find((e) => e.exercise_id === fromId)
       if (kept?.note.trim() && kept.sets[0]) syncSet(sessionId, kept.sets[0].id)
+      syncPlan(sessionId)
       void loadHistory(toId)
       return true
     },
@@ -197,6 +200,7 @@ export function loggerActions(sessionId: string): LoggerActions {
       if (!e) return
       update((s) => ({ ...s, exercises: s.exercises.filter((x) => x.exercise_id !== exerciseId) }))
       removeSets(e.sets)
+      syncPlan(sessionId)
     },
 
     setNote(exerciseId, note) {

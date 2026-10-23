@@ -9,7 +9,8 @@
 // requiredGroups over its split: its focus's groups, and for a full-body day the groups no other day requires; the
 // prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3).
 // Interface:
-//   requestWorkout(deps, body)         → JobRef  POST /api/ai/workout: enqueue (user priority) + run soon
+//   requestWorkout(deps, body)         → JobRef  POST /api/ai/workout: enqueue (user priority) + run soon; from the app
+//        (actor user) 409 no_model_key (nothing queued) when no model in the job's chain has a key
 //   planTrainingWeek(deps, PlanWeekRequest & { reason? }) → PlanWeekResult  POST /api/ai/week, plan_training_week:
 //        move the training days (settings proposeTrainingDays: applied, or proposed for ai), then a user-priority
 //        workout_template job per split day not already drafting (replace: a template holds its name), run now while
@@ -57,10 +58,10 @@ import {
   workout_templates,
 } from '../../db'
 import type { Deps } from '../../lib/deps'
-import { notFound } from '../../lib/http-error'
+import { HttpError, notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
 import { enqueue, JobFailed, registerJobHandler, runSoon, type JobContext } from '../jobs'
-import { createLlmRouter, ProvidersExhaustedError, type LlmRouter, type Priority } from '../llm'
+import { createLlmRouter, hasModelKey, ProvidersExhaustedError, type LlmRouter, type Priority } from '../llm'
 import { guardContext, planningContext, progressionFor } from '../training'
 import {
   BACKGROUND_PRIORITY,
@@ -108,8 +109,15 @@ interface DraftOptions {
 export type DraftInput = DraftOptions &
   ({ date: string; slot?: undefined } | { slot: SplitSlot; date?: undefined })
 
-/** POST /api/ai/workout: queue the job at user priority and start it after the response. */
+/**
+ * POST /api/ai/workout: queue the job at user priority and start it after the response. Asked from the app with no
+ * model key at all, it says so at once (409 no_model_key, as POST /api/ai/week) instead of queueing a job that can only
+ * fail; a tool call (Ask AI, Claude) keeps its job and reads the failure from it.
+ */
 export async function requestWorkout(deps: Deps, body: AiWorkoutRequest): Promise<JobRef> {
+  const type = body.mode === 'fill' ? 'workout_fill' : 'workout_generate'
+  if (deps.actor === 'user' && !(await hasModelKey(deps, type)))
+    throw new HttpError(409, 'no_model_key', 'No AI model has a key: add a model key in Settings → AI first')
   const date = body.date ?? today(deps.now())
   const job =
     body.mode === 'fill'

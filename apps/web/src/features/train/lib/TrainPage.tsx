@@ -17,11 +17,12 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Skeleton from '@mui/material/Skeleton'
+import Snackbar from '@mui/material/Snackbar'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { addDays, fastDay, today, weekdayOf, weekStart } from '@fitness/shared/engine'
 import type { Template } from '@fitness/shared/schemas'
-import { useCallback, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useCallback, useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import {
   cardSurface,
   dateToTime,
@@ -201,6 +202,12 @@ export function TrainPage() {
   const now = useNow(60_000)
   const date = today(now)
   const navigate = useNavigate()
+  const location = useLocation()
+  // A notice handed over by the page that sent us here ("Session deleted"); cleared from history once shown.
+  const [notice, setNotice] = useState<string | null>(() => {
+    const n = (location.state as { notice?: unknown } | null)?.notice
+    return typeof n === 'string' ? n : null
+  })
   const {
     day,
     sessions,
@@ -229,10 +236,21 @@ export function TrainPage() {
   const lastDone = useMemo(() => lastDoneByTemplate(sessions.data ?? []), [sessions.data])
   const week = useMemo(() => weekTotals(sessions.data ?? [], unsynced, date), [sessions.data, unsynced, date])
   const doneByDate = useMemo(
-    () => finishedByDate(sessions.data ?? [], unsynced, monday, date),
-    [sessions.data, unsynced, monday, date],
+    () =>
+      finishedByDate(
+        sessions.data ?? [],
+        unsynced,
+        monday,
+        date,
+        templates.data,
+        trainingWeek.data?.training_days,
+      ),
+    [sessions.data, unsynced, monday, date, templates.data, trainingWeek.data?.training_days],
   )
-  /** This week's fast days (planned or kept), by the day the fast covers. */
+  /**
+   * This week's fast days (planned or kept): engine fastDay, the Edmonton date holding most of the fast (the day of its
+   * 0 kcal target, fast_dates and /api/day), so a Fri 8 PM → Sat 8 PM fast marks Saturday.
+   */
   const fastDays = useMemo(
     () =>
       new Set(
@@ -433,6 +451,7 @@ export function TrainPage() {
                 templates={templates.data}
                 week={week}
                 plannedSessions={trainingDays.length || undefined}
+                trainingDays={trainingWeek.data?.training_days}
               />
             ) : (
               <EmptyState title="No sessions yet" body="Finished sessions show here." />
@@ -457,6 +476,16 @@ export function TrainPage() {
           ))}
         </Box>
       </Reveal>
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={4000}
+        onClose={() => {
+          setNotice(null)
+          void navigate('.', { replace: true, state: null })
+        }}
+        message={notice ?? ''}
+        data-testid="train-notice"
+      />
     </Box>
   )
 }

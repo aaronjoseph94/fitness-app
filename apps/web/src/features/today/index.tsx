@@ -9,7 +9,8 @@
 // "This week" (1 : 1 : 1, wrapping; its next Evolt scan from the scan schedule); and the recent activity table from the
 // same feed.
 // Reads: GET /api/day/:date (with the note and the active plan's forecast), /api/trend (milestones too), /api/settings,
-// /api/week-plans/view, /api/week-plans?status=proposed, /api/scans/schedule, /api/days and /api/sessions (readiness),
+// /api/week-plans/view, /api/week-plans?status=proposed, /api/scans/schedule, /api/fasts (this week's planned fasts),
+// /api/days and /api/sessions (readiness),
 // /api/events, and the exercise library for the session's names.
 // Every row wraps instead of squeezing (README §4); on a phone the page is one column in that order.
 // Second entry point: ./queries (the reads' inputs).
@@ -34,7 +35,7 @@ import { useLocalToday } from '../../app/local-today'
 import { useUiStore } from '../../app/ui-store'
 import { copy } from '../../copy'
 import { tokens } from '../../theme'
-import { lastTrend } from '../progress/series'
+import { lastTrend, plannedFasts } from '../progress/series'
 import { AiCard } from './lib/AiCard'
 import { climbOf } from './lib/climb'
 import { CoachNote } from './lib/CoachNote'
@@ -60,12 +61,9 @@ const ACTIVITY_HEIGHT = 260
 /** README §6: the panel's cards rise in reading order, 90 ms apart, after the hero. */
 const enter = (i: number) => 200 + i * tokens.motion.stagger.section
 
-/** A card that fills its wrapping column (row 2's cards end level). */
-const FILL = { height: '100%' } as const
-
 export function TodayPage() {
   const date = useLocalToday()
-  const { day, trend, settings, week, weekPlan, proposed, note, pending, scanDue, readiness } =
+  const { day, trend, settings, week, weekPlan, proposed, note, pending, scanDue, fasts, readiness } =
     useTodayData(date)
   const feed = useEventFeed()
   const openQuickLog = useUiStore((s) => s.openQuickLog)
@@ -138,7 +136,8 @@ export function TodayPage() {
         extras={<HeroMountain climb={climb} />}
       />
 
-      {/* Fuel : coach note over the quick-log row, 1.45 : 1; they wrap to one column rather than squeeze. */}
+      {/* Fuel : coach note over the quick-log row, 1.45 : 1; they wrap to one column rather than squeeze. Without a
+          coach note the AI check-in moves up under the quick-log row, so that column is not a lone row of tiles. */}
       <WrapRow align="flex-start">
         <Box sx={wrapCol(1.45)}>
           <Reveal delay={enter(0)}>
@@ -171,12 +170,21 @@ export function TodayPage() {
             </Reveal>
           )}
           <QuickLogRow fasting={fasting} />
+          {!note && (
+            <Reveal delay={enter(1)}>
+              <AiCard
+                latest={day.data?.proposals.latest ?? null}
+                pendingCount={day.data?.proposals.pending_count ?? 0}
+                events={feed.data?.events ?? []}
+              />
+            </Reveal>
+          )}
         </Box>
       </WrapRow>
 
-      {/* Today's session : AI check-in : this week, 1 : 1 : 1. Until the day and the week answer, placeholders; if
-          either fails, its banner: "Rest day" or an empty week would be a claim. */}
-      <WrapRow>
+      {/* Today's session : (AI check-in :) this week, 1 : 1 (: 1), each card its own height. Until the day and the
+          week answer, placeholders; if either fails, its banner: "Rest day" or an empty week would be a claim. */}
+      <WrapRow align="flex-start">
         {isQueryLoading(day) || isQueryLoading(week) ? (
           <>
             <Skeleton
@@ -189,16 +197,18 @@ export function TodayPage() {
               height={ROW_HEIGHT}
               sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
             />
-            <Skeleton
-              variant="rounded"
-              height={ROW_HEIGHT}
-              sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
-            />
+            {note && (
+              <Skeleton
+                variant="rounded"
+                height={ROW_HEIGHT}
+                sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
+              />
+            )}
           </>
         ) : (
           <>
             <Box sx={wrapCol(1)}>
-              <Reveal delay={enter(2)} sx={FILL}>
+              <Reveal delay={enter(2)}>
                 {day.data ? (
                   <TodaySession
                     date={date}
@@ -213,17 +223,19 @@ export function TodayPage() {
                 )}
               </Reveal>
             </Box>
+            {note && (
+              <Box sx={wrapCol(1)}>
+                <Reveal delay={enter(3)}>
+                  <AiCard
+                    latest={day.data?.proposals.latest ?? null}
+                    pendingCount={day.data?.proposals.pending_count ?? 0}
+                    events={feed.data?.events ?? []}
+                  />
+                </Reveal>
+              </Box>
+            )}
             <Box sx={wrapCol(1)}>
-              <Reveal delay={enter(3)} sx={FILL}>
-                <AiCard
-                  latest={day.data?.proposals.latest ?? null}
-                  pendingCount={day.data?.proposals.pending_count ?? 0}
-                  events={feed.data?.events ?? []}
-                />
-              </Reveal>
-            </Box>
-            <Box sx={wrapCol(1)}>
-              <Reveal delay={enter(4)} sx={FILL}>
+              <Reveal delay={enter(4)}>
                 {week.data && day.data ? (
                   <ThisWeekCard
                     date={date}
@@ -234,6 +246,7 @@ export function TodayPage() {
                     fastHours={settings.data?.settings.fast_hours ?? null}
                     waterTargetMl={waterTargetMl}
                     scanDue={scanDue}
+                    plannedFasts={plannedFasts(fasts, Date.now(), settings.data?.settings.fast_hours ?? 24)}
                   />
                 ) : (
                   <QueryStateCard query={week.data ? day : week} what="this week" />
@@ -244,6 +257,7 @@ export function TodayPage() {
         )}
       </WrapRow>
 
+      {/* Hidden while the feed has no event (RecentActivity draws nothing then). */}
       <Reveal delay={enter(5)}>
         {feed.data ? (
           <RecentActivity events={feed.data.events} />
@@ -269,7 +283,6 @@ export function TodayPage() {
         autoHideDuration={3000}
         onClose={() => setNotice(null)}
         message={notice}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       />
     </Box>
   )

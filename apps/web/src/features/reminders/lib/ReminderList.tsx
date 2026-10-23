@@ -11,7 +11,7 @@ import {
 } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { tabularNums } from '../../../components'
-import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
+import { tokens } from '../../../theme'
 import { EARLIEST_TIME, hasTime, inWakingHours, KINDS, LATEST_TIME, type KindCopy } from './kinds'
 
 interface RowProps {
@@ -19,10 +19,12 @@ interface RowProps {
   value: Reminder
   help: string
   disabled: boolean
+  /** Push can't send yet: the switches show off and can't be changed. */
+  locked: boolean
   onSave: (kind: ReminderKind, next: Reminder) => void
 }
 
-function TimeField({ copy, value, disabled, onSave }: Omit<RowProps, 'help'>) {
+function TimeField({ copy, value, disabled, onSave }: Omit<RowProps, 'help' | 'locked'>) {
   const [draft, setDraft] = useState(value.time ?? '')
   const valid = /^\d{2}:\d{2}$/.test(draft) && inWakingHours(draft)
   const commit = () => {
@@ -51,19 +53,15 @@ function TimeField({ copy, value, disabled, onSave }: Omit<RowProps, 'help'>) {
         },
         formHelperText: { sx: { mx: 0 } },
       }}
-      // 156 px holds the "Between 07:00 and 21:55" error on one line; 44 px tall on a touch screen.
-      sx={{
-        width: 156,
-        ...tabularNums,
-        [COARSE_POINTER_QUERY]: { '& .MuiInputBase-root': { minHeight: tokens.tapTarget } },
-      }}
+      // 156 px holds the "Between 07:00 and 21:55" error on one line; 44 px tall at every width (a tap target).
+      sx={{ width: 156, ...tabularNums, '& .MuiInputBase-root': { minHeight: tokens.tapTarget } }}
     />
   )
 }
 
-function ReminderRow({ copy, value, help, disabled, onSave }: RowProps) {
+function ReminderRow({ copy, value, help, disabled, locked, onSave }: RowProps) {
   const inputId = `reminder-${copy.kind}-input`
-  const timed = hasTime(copy.kind) && value.enabled
+  const timed = hasTime(copy.kind) && value.enabled && !locked
   return (
     <Box
       data-testid={`reminder-${copy.kind}`}
@@ -111,8 +109,11 @@ function ReminderRow({ copy, value, help, disabled, onSave }: RowProps) {
           the time only shows once the switch is on, so focus goes switch → time at every width (sm+ draws it last). */}
       <Box sx={{ gridArea: 'switch', justifySelf: 'end' }}>
         <Switch
-          checked={value.enabled}
-          disabled={disabled}
+          // Off and locked while push can't send (the stored choice is kept for when it can).
+          checked={value.enabled && !locked}
+          disabled={disabled || locked}
+          // The hit area is 44 px tall at every width, not only on a touch screen (the theme's coarse-pointer rule).
+          sx={{ '& .MuiSwitch-input': { top: -9, height: tokens.tapTarget } }}
           onChange={(e) => onSave(copy.kind, { ...value, enabled: e.target.checked })}
           slotProps={{
             input: {
@@ -137,12 +138,15 @@ export function ReminderList({
   fastHours,
   scanIntervalDays,
   disabled,
+  locked = false,
   onSave,
 }: {
   prefs: ReminderPrefs
   fastHours: number
   scanIntervalDays: number
   disabled: boolean
+  /** True when push isn't set up, so no reminder can be sent: the switches show off and are locked. */
+  locked?: boolean
   onSave: (kind: ReminderKind, next: Reminder) => void
 }) {
   return (
@@ -158,6 +162,7 @@ export function ReminderList({
           }}
           help={copy.help({ fastHours, scanIntervalDays })}
           disabled={disabled}
+          locked={locked}
           onSave={onSave}
         />
       ))}

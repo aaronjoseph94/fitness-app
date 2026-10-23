@@ -17,10 +17,16 @@ import { endpoints } from '@fitness/shared/api'
 import type { PlanVersion } from '@fitness/shared/schemas'
 import { useState } from 'react'
 import { problemText, useApiMutation } from '../../../api'
-import { BeforeAfterList, cardSurface, highlightSurface, StatusChip, tabularNums } from '../../../components'
+import {
+  BeforeAfterList,
+  cardSurface,
+  formatDayTime,
+  highlightSurface,
+  StatusChip,
+  tabularNums,
+} from '../../../components'
 import { useOnline } from '../../../offline'
 import { tokens } from '../../../theme'
-import { formatDateTime } from '../../quick-log'
 import { actorLabel, diffRows, forecastText, targetsDiff, type DiffRow } from './plan-view'
 
 /** What a restore makes stale: the plan, the versions list, the day (targets) and the event feed. */
@@ -86,7 +92,7 @@ export function VersionCard({ version, active, onRestored }: VersionCardProps) {
               ...tabularNums,
             }}
           >
-            By {actorLabel(version.created_by)} · {formatDateTime(version.created_at)}
+            By {actorLabel(version.created_by)} · {formatDayTime(version.created_at)}
           </Box>
         </Box>
         {!version.active && active && (

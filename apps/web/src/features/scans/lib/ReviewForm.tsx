@@ -8,7 +8,7 @@ import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import type { Scan, ScanDraft, ScanSegment } from '@fitness/shared/schemas'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { formatNumber, NumberField, Panel, Segmented } from '../../../components'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import {
@@ -130,16 +130,38 @@ function TriToggle({
 export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel }: ReviewFormProps) {
   const [form, setForm] = useState<ScanForm>(initial)
   const [errors, setErrors] = useState<FormErrors>({})
+  /** Bumped by a refused Confirm: the first field to fix is then brought to the middle of the screen and focused. */
+  const [refused, setRefused] = useState(0)
+  const formRef = useRef<HTMLFormElement>(null)
   const confirm = useConfirmScan()
+  useEffect(() => {
+    if (!refused) return
+    const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+    if (!first) return
+    // The middle of the screen is clear of the top bar and the tab bar at every width.
+    first.scrollIntoView({ block: 'center' })
+    first.focus({ preventScroll: true })
+  }, [refused])
+  /** Editing a value clears its error (the rest stay until the next Confirm). */
+  const clearError = (key: string) =>
+    setErrors((e) => {
+      if (!(key in e)) return e
+      const { [key]: _fixed, ...rest } = e
+      return rest
+    })
   const lowCount = useMemo(
     () => (draft ? draft.confidence.filter((c) => c.confidence < LOW_CONFIDENCE).length : 0),
     [draft],
   )
 
-  const setValue = (key: FieldSpec['key'], v: string) =>
+  const setValue = (key: FieldSpec['key'], v: string) => {
+    clearError(key)
     setForm((f) => ({ ...f, values: { ...f.values, [key]: v } }))
-  const setSegment = (s: ScanSegment, part: 'lean_kg' | 'fat_kg', v: string) =>
+  }
+  const setSegment = (s: ScanSegment, part: 'lean_kg' | 'fat_kg', v: string) => {
+    clearError(`segments.${s}.${part}`)
     setForm((f) => ({ ...f, segments: { ...f.segments, [s]: { ...f.segments[s], [part]: v } } }))
+  }
   const setCondition = <K extends keyof ScanForm['conditions']>(k: K, v: ScanForm['conditions'][K]) =>
     setForm((f) => ({ ...f, conditions: { ...f.conditions, [k]: v } }))
 
@@ -167,6 +189,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
     const result = recordFrom(form)
     if (!result.record) {
       setErrors(result.errors)
+      setRefused((n) => n + 1)
       return
     }
     setErrors({})
@@ -180,6 +203,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
   return (
     <Box
       component="form"
+      ref={formRef}
       noValidate
       data-testid="scan-review-form"
       onSubmit={(e) => {
@@ -202,7 +226,10 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
         </Alert>
       )}
       {mode === 'manual' && (
-        <Alert severity="info">Enter the values from the sheet in kg (lb × 0.4536).</Alert>
+        <Alert severity="info" data-testid="scan-manual-note">
+          Every value on the sheet is needed, the segments too: the scan’s charts and checks read all of them.
+          Enter them in kg (lb × 0.4536).
+        </Alert>
       )}
 
       <Section
@@ -360,7 +387,7 @@ export function ReviewForm({ scanId, initial, draft, mode, onConfirmed, onCancel
         <Alert severity="error">
           {confirm.error
             ? problemText(confirm.error)
-            : `Fix ${errorCount} ${errorCount === 1 ? 'value' : 'values'} above.`}
+            : `${errorCount} ${errorCount === 1 ? 'value is' : 'values are'} empty or need fixing (marked in red). The first one is selected.`}
         </Alert>
       )}
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

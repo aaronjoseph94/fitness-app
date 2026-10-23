@@ -4,7 +4,7 @@
 import Box from '@mui/material/Box'
 import type { ScanMetrics } from '@fitness/shared/schemas'
 import { Sparkline } from '../../../charts'
-import { ChartCard, formatNumber, formatSigned } from '../../../components'
+import { ChartCard, formatDay, formatNumber, formatSigned } from '../../../components'
 import { tokens, type MetricKey } from '../../../theme'
 import type { ConfirmedScan } from './series'
 
@@ -52,7 +52,7 @@ export function ScanMetricGrid({ scans }: { scans: readonly ConfirmedScan[] }) {
   return (
     <ChartCard
       title="Every scan metric"
-      subtitle={`${scans.length} scan${scans.length === 1 ? '' : 's'} · latest ${last.date}, change since ${first.date}`}
+      subtitle={`${scans.length} scan${scans.length === 1 ? '' : 's'} · latest ${formatDay(last.date)}, change since ${formatDay(first.date)}`}
       testId="scan-metric-grid"
     >
       <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>

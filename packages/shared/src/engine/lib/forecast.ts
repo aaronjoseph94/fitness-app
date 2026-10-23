@@ -69,3 +69,26 @@ export function forecast(input: ForecastInput): ForecastResult {
     finish_band: { early: finishAt(high), late: finishAt(low) },
   }
 }
+
+/** What `projectedOn` reads: the forecast's rate and finish, the goal, and the latest trend weight. */
+export type ProjectionInput = {
+  forecast: { weekly_rate_kg: number; finish_date: LocalDate | null } | null
+  goal_kg: number
+  /** The last day with a trend weight; a weight at or above it is already behind him. */
+  trend: { date: LocalDate; kg: number } | null
+}
+
+/**
+ * The day the forecast reaches `kg` — every projected date in the app (camps, milestones, the projected summit) sits
+ * on this one line, so a camp's date and the summit's date always agree with the rate shown beside them:
+ *   on(kg) = max(trend.date, finish_date − ⌈(kg − goal_kg) / weekly_rate_kg × 7⌉ days)
+ * on(goal_kg) = finish_date. Null when the forecast is not a loss (weekly_rate_kg ≤ 0), has no finish date, kg is
+ * under the goal, or the trend is already at or under kg.
+ */
+export function projectedOn(kg: number, input: ProjectionInput): LocalDate | null {
+  const { forecast: f, goal_kg, trend } = input
+  if (!f || !(f.weekly_rate_kg > 0) || f.finish_date === null || kg < goal_kg) return null
+  if (trend && trend.kg <= kg) return null
+  const on = addDays(f.finish_date, -Math.ceil(((kg - goal_kg) / f.weekly_rate_kg) * 7))
+  return trend && on < trend.date ? trend.date : on
+}

@@ -54,7 +54,9 @@ export {
   displayTitle,
   skyFocus,
   skyFocusWithin,
+  chartFocus,
 } from './lib/surfaces'
+export { NoModelKey, NO_MODEL_KEY_PATH, type NoModelKeyProps } from './lib/NoModelKey'
 export { EmptyState, type EmptyStateProps } from './lib/EmptyState'
 export { PendingBadge, type PendingBadgeProps } from './lib/PendingBadge'
 export { QueryStateCard, isQueryLoading, type QueryStateCardProps } from './lib/QueryStateCard'
@@ -78,6 +80,8 @@ export {
   formatClock,
   formatRecentTime,
   formatClockTime,
+  formatDay,
+  formatDayTime,
   dateToTime,
   timeToDate,
 } from './lib/format'

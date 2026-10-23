@@ -11,7 +11,10 @@ export {
   weightPoints,
   weeklyLoss,
   milestoneTimelines,
-  effectiveRate,
+  milestoneList,
+  type MilestoneItem,
+  forecastRate,
+  projectionOf,
   paceVersusPlan,
   type Pace,
   caloriesDays,
@@ -31,3 +34,4 @@ export {
   latestTargets,
   hasAny,
 } from './lib/series'
+export { plannedFasts, type PlannedFast } from './lib/planned-fasts'

@@ -1,16 +1,11 @@
 // Owns: how the scan pages write dates and conditions — "Sep 26, 2026", "Sat, Nov 7", and a scan's conditions as one
 // short line ("Morning · fasted · baseline").
 import type { ScanConditions } from '@fitness/shared/schemas'
-import { formatShortDate, formatWeekday } from '../../../components'
+import { formatShortDate } from '../../../components'
 
 /** "2026-09-26" → "Sep 26, 2026". */
 export function scanDay(date: string): string {
   return `${formatShortDate(date)}, ${date.slice(0, 4)}`
-}
-
-/** "2026-11-07" → "Sat, Nov 7". */
-export function weekdayDay(date: string): string {
-  return `${formatWeekday(date)}, ${formatShortDate(date)}`
 }
 
 /** "Morning · fasted · baseline": the time of day, fasted when said, and how it compares with the baseline. */

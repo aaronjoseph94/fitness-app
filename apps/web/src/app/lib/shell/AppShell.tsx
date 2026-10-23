@@ -6,7 +6,8 @@
 // first open; Today's and Log's hero "+ Log" opens it), the Ask AI slide-up panel (the ⌘K palette's "Ask AI here"
 // opens it over any page; the nav's gold pill goes to the AI tab) and the ⌘K command palette — configured per route
 // through its `handle` (title, tab, trail, width, hero). On a phone the nav shows the logo on the tabs and on its own
-// Scans and Settings, and a back circle on every other page.
+// Scans and Settings, and a back circle on every other page (the one back control there: a header's eyebrow link to
+// the same parent is hidden on a phone; with no history the circle goes to that parent, the trail's last step).
 //
 // Every 1d page names itself in its sky with a `PageHeader` (its `h1`). A page that does not (yet) gets the route's
 // title there from the shell instead — the header claims the slot from a layout effect, so the two are never on screen
@@ -47,6 +48,19 @@ let nextClaim = 0
 /** The nav's own destinations beside the tabs (the Scans circle, the avatar): their pages show the logo, not a back. */
 const NAV_ROOTS: ReadonlySet<string> = new Set([SCANS_DESTINATION.path, SETTINGS_DESTINATION.path])
 
+/**
+ * One back control per page (UX #36): on a phone the nav's back circle is it, so a page header's eyebrow link to the
+ * same parent ("← Settings", "← Train") is hidden there — and the eyebrow with it when that link is all it holds. From
+ * `md` the nav has no back circle and the eyebrow link is the way back.
+ */
+function hideEyebrowBack(parent: string) {
+  const link = `a[href="${parent}"]`
+  return {
+    [`& [data-hero-eyebrow] ${link}`]: { display: 'none' },
+    [`& [data-hero-eyebrow]:has(> ${link}:only-child)`]: { display: 'none' },
+  }
+}
+
 /** The hero slot the shell offers its page: where a `PageHeader` portals, the sky variant, and who has claimed it. */
 function useHeroSlotState(routeVariant: HeroVariant) {
   const [target, setTarget] = useState<HTMLElement | null>(null)
@@ -82,7 +96,7 @@ function FallbackHero({ title, compact }: { title: string; compact: boolean }) {
 }
 
 export function AppShell() {
-  const { title, tab, trail = [], width = 'narrow', hero = 'inner' } = useRouteHandle()
+  const { title, tab, trail = [], width = 'wide', hero = 'inner' } = useRouteHandle()
   const { pathname } = useLocation()
   const setLastTab = useUiStore((s) => s.setLastTab)
   // Read synchronously on the first render, so a desktop never paints the phone chrome first. `md` is the nav's 960.
@@ -102,6 +116,7 @@ export function AppShell() {
   const pagePath = tab ? tabByKey(tab).path : pathname
   const sectionPath = trail[0]?.path
   const showBack = !tab && !NAV_ROOTS.has(pathname.replace(/\/+$/, '') || '/')
+  const parent = trail.at(-1)?.path
   const currentOf = useCallback(
     (path: string): Current => (path === pagePath ? 'page' : path === sectionPath ? 'section' : null),
     [pagePath, sectionPath],
@@ -150,7 +165,7 @@ export function AppShell() {
       >
         Skip to content
       </Box>
-      <SummitNav wide={wide} currentOf={currentOf} showBack={showBack} />
+      <SummitNav wide={wide} currentOf={currentOf} showBack={showBack} parent={parent} />
       {/* The status bar's strip: zero tall outside the installed iOS app. */}
       <Box
         aria-hidden
@@ -177,7 +192,10 @@ export function AppShell() {
           <SkyHero variant={slot.variant} topInset={navInset(wide)}>
             <StatusBanners />
             {!claimed && <FallbackHero title={title} compact={slot.variant === 'compact'} />}
-            <Box ref={setTarget} sx={shellColumnSx} />
+            <Box
+              ref={setTarget}
+              sx={{ ...shellColumnSx, ...(showBack && !wide && parent ? hideEyebrowBack(parent) : {}) }}
+            />
           </SkyHero>
           <SummitPanel extraBottom={wide ? undefined : tabBarClearance()}>
             <Box sx={pageWidthSx(width)}>

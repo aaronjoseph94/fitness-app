@@ -1,6 +1,6 @@
 // Owns: where the session logger's working copies live — a Zustand store persisted in localStorage (a reload, an app
-// update or a dead tab mid-session loses nothing), pruned of old copies, plus the logger's last write problem (not
-// persisted). Server data still belongs to TanStack Query; this is the local draft.
+// update or a dead tab mid-session loses nothing), pruned of old copies, plus the logger's last write problem and the set fields typed out of range
+// (not persisted). Server data still belongs to TanStack Query; this is the local draft.
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { LoggerSession } from './logger-model'
@@ -9,6 +9,12 @@ interface LoggerState {
   sessions: Record<string, LoggerSession>
   /** A write the Worker refused, in plain words, for the logger's snackbar. */
   problem: string | null
+  /**
+   * Set fields whose typed text is not a valid value (`<set id>:load`, `<set id>:reps`; not persisted): the set's tick and
+   * the session's Finish / Save changes stay disabled while any is here, so nothing logs a value that isn't shown.
+   */
+  invalid: Record<string, true>
+  setInvalid: (key: string, invalid: boolean) => void
   put: (session: LoggerSession) => void
   /** Apply `fn` to a working copy (no-op when absent); stamps `touched`. */
   update: (id: string, fn: (session: LoggerSession) => LoggerSession) => void
@@ -38,6 +44,13 @@ export const useLoggerStore = create<LoggerState>()(
     (set) => ({
       sessions: {},
       problem: null,
+      invalid: {},
+      setInvalid: (key, invalid) =>
+        set((s) => {
+          if (!!s.invalid[key] === invalid) return s
+          const { [key]: _was, ...rest } = s.invalid
+          return { invalid: invalid ? { ...rest, [key]: true } : rest }
+        }),
       put: (session) =>
         set((s) => ({ sessions: { ...s.sessions, [session.id]: { ...session, touched: Date.now() } } })),
       update: (id, fn) =>
@@ -69,3 +82,10 @@ export function useLoggerSession(id: string | undefined): LoggerSession | undefi
 
 /** Read the store outside React (write chain, event handlers that must see the latest state). */
 export const loggerState = () => useLoggerStore.getState()
+
+/** Whether any set field of `session` holds text that isn't a valid value (Finish waits until it is fixed). */
+export function useHasInvalidField(session: LoggerSession): boolean {
+  return useLoggerStore((s) =>
+    session.exercises.some((e) => e.sets.some((x) => s.invalid[`${x.id}:load`] || s.invalid[`${x.id}:reps`])),
+  )
+}

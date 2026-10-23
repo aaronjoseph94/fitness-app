@@ -3,7 +3,7 @@
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import type { ProgressPhoto } from '@fitness/shared/schemas'
-import { SectionHeader } from '../../../components'
+import { formatDay, SectionHeader } from '../../../components'
 import { tokens } from '../../../theme'
 import { groupByMonth, monthLabel } from './grouping'
 import { PhotoFacts, PhotoImage } from './PhotoParts'
@@ -41,7 +41,7 @@ export function PhotoGrid({
               <ButtonBase
                 key={photo.id}
                 onClick={() => onOpen(photo)}
-                aria-label={`Open ${photo.pose} photo from ${photo.date}`}
+                aria-label={`Open ${photo.pose} photo from ${formatDay(photo.date)}`}
                 sx={{
                   display: 'block',
                   textAlign: 'left',

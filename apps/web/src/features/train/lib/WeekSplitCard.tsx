@@ -2,11 +2,13 @@
 // and day count, Keep all and Generate as glass buttons; the seven days as a row of tiles that scrolls sideways when
 // narrow (README §4: grid-auto-columns minmax(128px, 1fr)) — each a toggle that picks it as a training day (preset to his
 // training days), named by the split those days give (engine splitSlots, live as he picks), done days gold-outlined with
-// their sets and volume, today white, a picked day ahead dashed, a fast day coral, rest dim; the live preview of the split
-// ("Mon Upper A · Tue Lower A · Thu Full body"); Generate (POST /api/ai/week with the chosen days, which become his
+// the logged workout's own name, sets and volume (a pick never renames them), today white, a picked day ahead dashed, a
+// fast day coral (pickable, "Fast day — keep it light"), rest dim; the live preview of the split ("Mon Upper A · Tue
+// Lower A · Thu Full body"); while the picks differ from his saved days, "Not saved — tap Generate or Save days" and a
+// plain Save days (PATCH /api/settings training_days, no drafting); Generate (POST /api/ai/week with the chosen days, which become his
 // training days and get one AI draft each; it asks first when a chosen day already has a template, says where to add a
 // model key when none is set, and re-reads everything even when it fails, since the days may have been saved); each saved
-// training day with its template, "No workout yet" or, when its last draft failed, "Couldn't draft — Generate to retry",
+// training day with what was done on it this week, its template, "No workout yet" or, when its last draft failed, "Couldn't draft — Generate to retry",
 // and "Drafting…" / "Draft waiting"; Keep all (accepts the week's pending split drafts in turn, with progress and any
 // refusal); whether the week's templates cover every major muscle group; the week plan line; the combined map.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
@@ -22,7 +24,6 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { endpoints } from '@fitness/shared/api'
@@ -47,7 +48,6 @@ import type {
 } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo, useState, type ReactNode } from 'react'
-import { Link as RouterLink } from 'react-router'
 import { apiQueryKey, call, isApiError, problemText } from '../../../api'
 import {
   deepSkySurface,
@@ -57,6 +57,7 @@ import {
   fixedCol,
   formatDayRange,
   formatNumber,
+  NoModelKey,
   StatusChip,
   wrapCol,
 } from '../../../components'
@@ -84,8 +85,11 @@ const inWeekOrder = (days: readonly Weekday[]): Weekday[] =>
   DAYS.filter((d) => days.includes(d.key)).map((d) => d.key)
 
 /** "Mon Upper A · Tue Lower A · Thu Full body". */
-const splitLine = (slots: readonly SplitSlot[]) =>
-  slots.map((s) => `${SHORT[s.weekday]} ${s.name}`).join(' · ')
+const splitLine = (slots: readonly SplitSlot[], doneName: (weekday: Weekday) => string | null) =>
+  slots.map((s) => `${SHORT[s.weekday]} ${doneName(s.weekday) ?? s.name}`).join(' · ')
+
+const sameDays = (a: readonly Weekday[], b: readonly Weekday[]) =>
+  a.length === b.length && a.every((d, i) => d === b[i])
 
 /** A line under the controls: what Generate or Keep all did, or why not. */
 type Note = { tone: 'info' | 'success' | 'error'; text: ReactNode }
@@ -96,20 +100,6 @@ const NOTE_COLOUR = {
   success: tokens.tone.success.light,
   error: summit.coral.main,
 } as const
-
-const NO_MODEL_KEY = (
-  <>
-    Add a model key in{' '}
-    <Link
-      component={RouterLink}
-      to="/settings/ai"
-      sx={{ color: summit.gold.main, textDecoration: 'underline', '&:hover': { color: summit.onSky.text } }}
-    >
-      Settings → AI
-    </Link>{' '}
-    first.
-  </>
-)
 
 /** The keyboard ring on the deep sky: gold (the theme's violet would not read). */
 const goldFocus = {
@@ -127,7 +117,8 @@ const glassButtonSx = {
   bgcolor: summit.glass.fill,
   color: summit.onSky.text,
   fontSize: tokens.font.size.small,
-  '&:hover': { bgcolor: summit.glass.fillHover },
+  // The label stays white on hover (the theme's text-button hover would turn it violet on the dark glass).
+  '&:hover': { bgcolor: summit.glass.fillHover, color: summit.onSky.text },
   '&.Mui-disabled': {
     bgcolor: summit.deepSky.well,
     color: summit.onSky.disabled,
@@ -168,13 +159,21 @@ export function WeekSplitCard({
   // null = follow his saved training days; a pick previews a new split until Generate saves it.
   const [picked, setPicked] = useState<Weekday[] | null>(null)
   const [confirming, setConfirming] = useState(false)
-  const [busy, setBusy] = useState<'generate' | 'keep' | null>(null)
+  const [busy, setBusy] = useState<'generate' | 'keep' | 'save' | null>(null)
   const [note, setNote] = useState<Note | null>(null)
 
   const chosen = inWeekOrder(picked ?? week.training_days)
   const preview = splitSlots(chosen)
   const todayKey = weekdayOf(date)
   const monday = weekStart(date)
+  const unsaved = picked !== null && !sameDays(chosen, inWeekOrder(week.training_days))
+  const dateOfDay = (weekday: Weekday) =>
+    addDays(
+      monday,
+      DAYS.findIndex((d) => d.key === weekday),
+    )
+  /** A finished day keeps the logged workout's name, whatever the picks make of its slot. */
+  const doneName = (weekday: Weekday) => done?.get(dateOfDay(weekday))?.name ?? null
   const waiting = week.slots.flatMap((s) => (s.draft ? [{ id: s.draft.proposal_id, name: s.name }] : []))
   // Generate asks first when a chosen day's slot already has a template (its draft would replace it on Keep).
   const redraws = preview.some((s) => templates.some((t) => splitNameKey(t.name) === splitNameKey(s.name)))
@@ -207,10 +206,28 @@ export function WeekSplitCard({
       setNote({
         tone: 'error',
         text:
-          isApiError(e) && e.code === 'no_model_key'
-            ? NO_MODEL_KEY
-            : `Couldn't generate the week: ${problemText(e)}`,
+          isApiError(e) && e.code === 'no_model_key' ? (
+            <NoModelKey tone="dark" />
+          ) : (
+            `Couldn't generate the week: ${problemText(e)}`
+          ),
       })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Save the picked days as his training days, without drafting anything (Generate saves them too). */
+  const saveDays = async () => {
+    setBusy('save')
+    setNote(null)
+    try {
+      await call(endpoints.settings.update, { body: { settings: { training_days: chosen } } })
+      await queryClient.invalidateQueries({ queryKey: apiQueryKey() })
+      setPicked(null)
+      setNote({ tone: 'success', text: `Training days saved: ${chosen.map((d) => SHORT[d]).join(', ')}.` })
+    } catch (e) {
+      setNote({ tone: 'error', text: `Couldn't save the days: ${problemText(e)}` })
     } finally {
       setBusy(null)
     }
@@ -373,8 +390,34 @@ export function WeekSplitCard({
           color: summit.onSky.subtitle,
         }}
       >
-        {n > 0 ? splitLine(preview) : 'Pick at least one day.'}
+        {n > 0 ? splitLine(preview, doneName) : 'Pick at least one day.'}
       </Box>
+      {unsaved && (
+        <Box
+          data-testid="week-unsaved"
+          sx={{ mt: '8px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' }}
+        >
+          <Box
+            component="span"
+            sx={{
+              fontSize: tokens.font.size.small,
+              fontWeight: tokens.font.weight.label,
+              lineHeight: tokens.font.leading.small,
+              color: summit.gold.main,
+            }}
+          >
+            Not saved — tap Generate or Save days
+          </Box>
+          <Button
+            onClick={() => void saveDays()}
+            disabled={n === 0 || busy !== null}
+            data-testid="save-days"
+            sx={glassButtonSx}
+          >
+            {busy === 'save' ? 'Saving…' : 'Save days'}
+          </Button>
+        </Box>
+      )}
       {note && (
         <Box
           role={note.tone === 'error' ? 'alert' : 'status'}
@@ -411,7 +454,9 @@ export function WeekSplitCard({
             }}
           >
             {week.slots.length > 0 ? (
-              week.slots.map((slot) => <DayRow key={slot.weekday} slot={slot} />)
+              week.slots.map((slot) => (
+                <DayRow key={slot.weekday} slot={slot} work={done?.get(dateOfDay(slot.weekday)) ?? null} />
+              ))
             ) : (
               <Box
                 component="li"
@@ -598,20 +643,23 @@ function DayTile({
   const picked = slot !== null
   const look = tileLook({ picked, today, done: work !== null, fast })
   const Glyph = work ? CheckCircleOutlineRounded : today ? PlayCircleRounded : fast ? TimerOutlined : null
-  const name = slot ? slot.name : fast ? 'Fast day' : 'Rest'
+  // A finished day is named by what was logged, never by the split the picks give it now.
+  const name = work ? work.name : slot ? slot.name : fast ? 'Fast day' : 'Rest'
   const meta = work
     ? `${work.sets} set${work.sets === 1 ? '' : 's'} · ${formatNumber(work.volume_kg)} kg`
     : !slot
       ? fast
         ? 'planned fast'
         : ''
-      : saved?.drafting
-        ? 'Drafting…'
-        : saved?.template
-          ? `${saved.template.sets} sets · ${today ? 'today' : past ? 'missed' : 'planned'}`
-          : saved
-            ? 'No workout yet'
-            : 'Generate to draft'
+      : fast
+        ? 'Fast day — keep it light'
+        : saved?.drafting
+          ? 'Drafting…'
+          : saved?.template
+            ? `${saved.template.sets} sets · ${today ? 'today' : past ? 'missed' : 'planned'}`
+            : saved
+              ? 'No workout yet'
+              : 'Generate to draft'
   const surface = { bgcolor: look.bg, color: look.text, border: look.border, boxShadow: look.glow }
   // The name is the weekday (Train's e2e finds the tile by it); the split's name and what the day holds are its
   // description, so assistive tech hears "Wednesday, Upper B, Generate to draft" rather than the weekday alone.
@@ -691,12 +739,12 @@ function DayTile({
 }
 
 /**
- * One saved training day, in a well: the weekday, its slot name, its template's size, "No workout yet" or (its last draft
- * failed) "Couldn't draft — Generate to retry" in gold, and a drafting / draft chip.
+ * One saved training day, in a well: the weekday, its slot name, what was done on it this week ("Done · 18 sets ·
+ * 4,200 kg"), else its template's size, "No workout yet" or (its last draft failed) "Couldn't draft — Generate to retry" in gold, and a drafting / draft chip.
  */
-function DayRow({ slot }: { slot: TrainingWeekSlot }) {
+function DayRow({ slot, work }: { slot: TrainingWeekSlot; work: DayWork | null }) {
   const status = slot.drafting ? 'Drafting…' : slot.draft ? 'Draft waiting' : null
-  const failed = !slot.template && !slot.drafting && slot.failed
+  const failed = !work && !slot.template && !slot.drafting && slot.failed
   return (
     <Box
       component="li"
@@ -743,11 +791,13 @@ function DayRow({ slot }: { slot: TrainingWeekSlot }) {
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {slot.template
-            ? `${slot.template.exercise_count} exercises · ${slot.template.sets} sets`
-            : failed
-              ? "Couldn't draft — Generate to retry"
-              : 'No workout yet'}
+          {work
+            ? `Done${work.name === slot.name ? '' : `: ${work.name}`} · ${work.sets} set${work.sets === 1 ? '' : 's'} · ${formatNumber(work.volume_kg)} kg`
+            : slot.template
+              ? `${slot.template.exercise_count} exercises · ${slot.template.sets} sets`
+              : failed
+                ? "Couldn't draft — Generate to retry"
+                : 'No workout yet'}
         </Box>
       </Box>
       {/* The chip column is always there, so a day starting or finishing its draft never moves the row. */}

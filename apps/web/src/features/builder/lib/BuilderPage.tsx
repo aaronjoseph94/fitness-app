@@ -1,8 +1,9 @@
 // Owns: the workout builder page (/train/builder, /train/builder/:templateId, /train/builder?from=<id> to duplicate;
 // SPEC §7) — name, a live muscle map of the template's scores, the exercise list (tap to add from the picker, drag to
-// reorder, per-exercise sets / rep range / load / rest / note), notes, "Fill with AI" into a preview, and a sticky
-// Start / Save bar, and "Delete template" (asks first; sessions started from it keep their sets). The fill's pending
-// workout proposal goes with the next create or start (accepting it). Leaving with unsaved changes asks first.
+// reorder, per-exercise sets / rep range / load / rest / note), notes, "Fill with AI" into a preview, a sticky Start /
+// Save bar (what blocks a save is said in it), and "Delete template" (asks first; sessions started from it keep their
+// sets). The fill's pending workout proposal goes with the next create or start (accepting it). Leaving with unsaved
+// changes asks first.
 // 1d Summit: the sky hero's h1 ("Workout builder", or "Edit template") with Duplicate / Delete as glass buttons, a
 // summary card in Train's today-card idiom (name, notes and sets | the muscle map and what it trains in a warm well),
 // the exercise cards and the sticky bar, a floating white bar (above the bottom tabs on a phone, 16 px off the window's
@@ -49,6 +50,7 @@ import {
   EmptyState,
   formatShortDate,
   LoadProblem,
+  NoModelKey,
   PageHeader,
   Reveal,
   SectionHeader,
@@ -414,12 +416,6 @@ export function BuilderPage() {
         )}
       </Reveal>
 
-      {showProblems && issues.length > 0 && (
-        <Alert severity="warning" onClose={() => setShowProblems(false)}>
-          {issues.join(' ')}
-        </Alert>
-      )}
-
       <Box
         sx={{
           position: 'sticky',
@@ -427,6 +423,7 @@ export function BuilderPage() {
           bottom: { xs: `calc(${ABOVE_NAV} + 8px)`, md: '16px' },
           zIndex: 2,
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'flex-end',
           gap: '10px',
           // A floating white bar (1d): it rides over the cards as the page scrolls.
@@ -437,6 +434,17 @@ export function BuilderPage() {
           boxShadow: tokens.elevation.overlay,
         }}
       >
+        {/* What blocks a save, in the bar itself: below the cards it sat behind this bar and the tab bar. */}
+        {showProblems && issues.length > 0 && (
+          <Alert
+            severity="warning"
+            onClose={() => setShowProblems(false)}
+            data-testid="builder-problems"
+            sx={{ flex: '1 1 100%', py: 0 }}
+          >
+            {issues.join(' ')}
+          </Alert>
+        )}
         <Button
           variant="outlined"
           startIcon={<PlayArrowRounded />}
@@ -520,6 +528,8 @@ export function BuilderPage() {
                   void start(draft)
                 }}
               />
+            ) : ai.state.status === 'failed' && ai.state.noKey ? (
+              <NoModelKey />
             ) : ai.state.status === 'failed' ? (
               <Banner
                 tone="warning"

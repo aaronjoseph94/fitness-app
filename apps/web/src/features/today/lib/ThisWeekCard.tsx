@@ -39,6 +39,8 @@ import {
 } from '../../../components'
 import { COARSE_POINTER_QUERY, enterEasing, tokens } from '../../../theme'
 import { PlanBadge, ProposedBanner } from '../../week'
+import type { PlannedFast } from '../../progress/series'
+import { fastWindowLabel } from '../../quick-log'
 
 const { summit, font } = tokens
 const sky = summit.deepSky
@@ -55,6 +57,8 @@ interface ThisWeekCardProps {
   waterTargetMl: number
   /** When the next Evolt scan is due (GET /api/scans/schedule), null before it answers or with no scan yet. */
   scanDue: LocalDate | null
+  /** The planned fasts (GET /api/fasts, series `plannedFasts`): each marks its fast day in coral. */
+  plannedFasts: readonly PlannedFast[]
 }
 
 /** Lines of "what changed" shown before "and N more"; proposed plans shown. */
@@ -95,13 +99,17 @@ function markOf(
   day: DayView | undefined,
   week: WeekPlanView | null,
   trainingDays: readonly Weekday[] | null,
+  planned: readonly PlannedFast[],
 ): Mark {
   const actual = week?.days.find((a) => a.date === d)
   const plan = week?.active ?? null
   const wd = weekdayOf(d)
   const isToday = d === date
   if ((actual?.sessions_done ?? 0) > 0 || (isToday && day?.session?.ended_at)) return 'done'
+  // A planned fast marks its fast day (engine fastDay over its /api/fasts row), so the strip is right even before any
+  // daily_targets row or week plan carries it.
   const fast =
+    planned.some((f) => f.day === d) ||
     (isToday && (day?.fast.is_fast_day === true || day?.targets?.is_fast_day === true)) ||
     actual?.is_fast_day === true ||
     (plan?.plan.fast_dates.includes(d) ?? false)
@@ -119,7 +127,7 @@ function markOf(
 function dayCaption(mark: Mark, session: string | null): string {
   if (mark === 'fast') return 'Fast'
   if (mark === 'rest') return 'Rest'
-  return session ?? 'Training'
+  return session ?? 'Train'
 }
 
 /** One day's dot. */
@@ -306,6 +314,7 @@ export function ThisWeekCard({
   fastHours,
   waterTargetMl,
   scanDue,
+  plannedFasts,
 }: ThisWeekCardProps) {
   const monday = weekStart(date)
   const sunday = addDays(monday, 6)
@@ -313,7 +322,7 @@ export function ThisWeekCard({
   // One next scan: the schedule's due date, else the week plan's scan day.
   const nextScan = scanDue ?? plan?.plan.scan_date ?? null
   const days = eachDate(monday, sunday).map((d) => {
-    const mark = markOf(d, date, day, week, trainingDays)
+    const mark = markOf(d, date, day, week, trainingDays, plannedFasts)
     const session =
       plan?.plan.sessions[weekdayOf(d)]?.name ?? (d === date ? (day?.planned_session?.name ?? null) : null)
     return { date: d, mark, caption: dayCaption(mark, session), scan: nextScan === d }
@@ -325,7 +334,8 @@ export function ThisWeekCard({
   // Today's materialised targets know best; else the plan's for this weekday. Calories, protein, water and steps are on
   // the gauges, so the card adds the other three.
   const t = day?.targets ?? plan?.plan.targets[weekdayOf(date)] ?? null
-  const fastToday = days.find((d) => d.date === date)?.mark === 'fast'
+  // Today's targets are a fast day's only when today itself is one (a fast starting tonight leaves today's meals).
+  const fastToday = day?.targets?.is_fast_day === true || day?.fast.is_fast_day === true
   const small = { fontSize: font.size.small, lineHeight: font.leading.small, color: sky.muted } as const
 
   return (
@@ -405,14 +415,19 @@ export function ThisWeekCard({
                 </Box>
                 <Box
                   aria-hidden
+                  title={caption}
                   sx={{
                     mt: '8px',
                     px: '1px',
                     fontSize: font.size.micro,
-                    lineHeight: 1.25,
+                    lineHeight: '14px',
+                    height: 14,
                     fontWeight: isToday || mark === 'fast' ? font.weight.heading : font.weight.body,
                     color: isToday ? sky.text : mark === 'fast' ? summit.coral.main : sky.muted,
-                    overflowWrap: 'anywhere',
+                    // One line on one baseline in every column: a long session name ends in an ellipsis.
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}
                 >
                   {caption}
@@ -425,17 +440,23 @@ export function ThisWeekCard({
 
       {(fasts.length > 0 || nextScan) && (
         <Box sx={{ mt: '18px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '8px' }}>
-          {fasts.map((f) => (
-            <WellRow
-              key={f.date}
-              icon={
-                <TimerRounded aria-hidden sx={{ fontSize: 20, color: summit.coral.main, flex: 'none' }} />
-              }
-              value={`water ${formatNumber(fastWater / 1000, 1)} L`}
-            >
-              {formatWeekday(f.date)} · {fastHours ? `${fastHours} h fast` : 'Fast'}
-            </WellRow>
-          ))}
+          {fasts.map((f) => {
+            const row = plannedFasts.find((p) => p.day === f.date)
+            return (
+              <WellRow
+                key={f.date}
+                icon={
+                  <TimerRounded aria-hidden sx={{ fontSize: 20, color: summit.coral.main, flex: 'none' }} />
+                }
+                value={`water ${formatNumber(fastWater / 1000, 1)} L`}
+              >
+                <Box component="span" data-testid="today-week-fast">
+                  {fastHours ? `${fastHours} h fast` : 'Fast'} ·{' '}
+                  {row ? fastWindowLabel(row.startedAt, row.endsAt) : formatWeekday(f.date)}
+                </Box>
+              </WellRow>
+            )
+          })}
           {nextScan && (
             <WellRow
               icon={
