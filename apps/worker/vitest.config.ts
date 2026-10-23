@@ -13,6 +13,8 @@ export default defineConfig({
         bindings: {
           TEST_MIGRATIONS: migrations,
           DEV_AUTH_BYPASS: '1',
+          // Override wrangler.jsonc's temporary PUBLIC_ACCESS=1 so auth tests stay locked unless they opt in.
+          PUBLIC_ACCESS: '',
           HEALTH_WEBHOOK_TOKEN: 'test-health-token',
           MCP_BEARER_TOKEN: 'test-mcp-token',
           FILE_URL_SECRET: 'test-secret',

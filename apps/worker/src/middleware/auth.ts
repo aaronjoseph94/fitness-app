@@ -1,8 +1,8 @@
 // Owns: who may call /api — Cloudflare Access JWT verification (Aaron's login, pinned to ACCESS_EMAIL when set, and the
-// PDF renderer's read-only service token), the localhost-only DEV_AUTH_BYPASS, the bearer tokens of paths Access
-// excludes (the iOS Shortcut webhook), and refusing cross-site writes (CSRF: Sec-Fetch-Site, else Origin).
-// Every request that passes is attributed to actor 'user'. /mcp is not under /api and brings its own auth
-// (middleware/mcp-auth.ts); its OAuth consent page (/authorize) is guarded by this same Access check.
+// PDF renderer's read-only service token), the localhost-only DEV_AUTH_BYPASS, the temporary PUBLIC_ACCESS open window,
+// the bearer tokens of paths Access excludes (the iOS Shortcut webhook), and refusing cross-site writes (CSRF:
+// Sec-Fetch-Site, else Origin). Every request that passes is attributed to actor 'user'. /mcp is not under /api and
+// brings its own auth (middleware/mcp-auth.ts); its OAuth consent page (/authorize) is guarded by this same Access check.
 import type { MiddlewareHandler } from 'hono'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import type { AppEnv, Env } from '../env'
@@ -13,13 +13,19 @@ const BEARER_PATHS: Record<string, (env: Env) => string | undefined> = {
   '/api/ingest/health': (env) => env.HEALTH_WEBHOOK_TOKEN,
 }
 
-/** Hosts where DEV_AUTH_BYPASS=1 is honoured (wrangler dev). Any other host always needs a real Access JWT. */
+/** Hosts where DEV_AUTH_BYPASS=1 is honoured (wrangler dev). Any other host always needs a real Access JWT (unless PUBLIC_ACCESS=1). */
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 const unauthorized = (message: string) => new HttpError(401, 'unauthorized', message)
 
 /** Methods that never change anything (the only ones the PDF service token and cross-site requests may use). */
 const SAFE_METHODS = new Set(['GET', 'HEAD'])
+
+/** Skip Access JWT when local-dev bypass or the temporary public window is on. */
+function skipsAccessJwt(env: Env, hostname: string): boolean {
+  if (env.PUBLIC_ACCESS === '1') return true
+  return env.DEV_AUTH_BYPASS === '1' && LOCAL_HOSTS.has(hostname)
+}
 
 /** Authenticate every /api request; mount with app.use('/api/*', auth()). */
 export function auth(): MiddlewareHandler<AppEnv> {
@@ -32,7 +38,7 @@ export function auth(): MiddlewareHandler<AppEnv> {
     } else {
       if (!SAFE_METHODS.has(c.req.method))
         refuseCrossSite(c.req.header('sec-fetch-site'), c.req.header('origin'), url.origin)
-      if (!(c.env.DEV_AUTH_BYPASS === '1' && LOCAL_HOSTS.has(url.hostname))) {
+      if (!skipsAccessJwt(c.env, url.hostname)) {
         const identity = await verifyAccess(c.req.header('cf-access-jwt-assertion'), c.env)
         if (identity === 'service' && !SAFE_METHODS.has(c.req.method))
           throw new HttpError(403, 'read_only', 'The service token may only read')

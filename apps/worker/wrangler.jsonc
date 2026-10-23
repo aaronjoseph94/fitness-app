@@ -39,6 +39,9 @@
   "workers_dev": true,
   "vars": {
     "APP_ORIGIN": "https://fitness.aarontjoseph94.workers.dev",
-    "TZ_NAME": "America/Edmonton"
+    "TZ_NAME": "America/Edmonton",
+    // Temporary: anyone may call /api without an Access JWT. Turn off Sunday (delete this line) and re-enable Access
+    // in the dashboard (Workers → fitness → Settings → Domains & Routes → Enable Cloudflare Access). See DEPLOY.md §6a.
+    "PUBLIC_ACCESS": "1"
   }
 }
