@@ -4,6 +4,7 @@
 
 ## Done
 
+- 2026-10-22 · **Temporary public access until Sunday.** Aaron asked to drop Cloudflare Access and other visit blocks so people can open the app; he will turn Access back on Sunday. Worker: `PUBLIC_ACCESS=1` in `wrangler.jsonc` vars skips Access JWT on `/api` and `/authorize` (CSRF, MCP auth and the health webhook token stay). Docs: `DEPLOY.md` §6a. Edge Access still has to be disabled in the dashboard (Workers → fitness → Domains & Routes → Disable Cloudflare Access) — that gate is not in the repo. Sunday: re-enable Access, delete `PUBLIC_ACCESS`, redeploy.
 - 2026-10-21 · **The app wears the 1d "Summit" design.** Aaron sent a new design handoff (`docs/design/design_handoff_fitness_1d/`) and asked to implement it and test the app. Presentation only: every hook, route, guard and dialog is unchanged, and so is every test id except the four removed nav pieces listed under Decisions (5).
   - *Everywhere:* a sky hero (violet to coral, stars, a sun, a ridge) carries each page's eyebrow, title, one-line subtitle and actions, over a cream panel. Outfit for titles and numbers and DM Sans for the UI, both self-hosted. Violet accent `#7B3FE4`. Warm white cards with a soft violet shadow, metric gradient ramps (calories, protein, water, steps, sleep), and one deep-sky card per screen for the plan-level fact.
   - *Navigation:* a glass tab pill from 960 px up (with Scans, a gold Ask AI pill and the Settings avatar), and below it a top bar plus a fixed six-tab bar that sits above the iPhone home indicator.
@@ -55,6 +56,7 @@
 
 ## Next
 
+- Aaron **(today, public window):** (1) merge/deploy this change (`PUBLIC_ACCESS=1`, no migration), (2) Cloudflare dashboard → Workers & Pages → **fitness** → Settings → Domains & Routes → **Disable Cloudflare Access** on `workers.dev`. Then anyone with the URL can use the app. **Sunday:** re-Enable Access (Allow your email), remove `PUBLIC_ACCESS` from `wrangler.jsonc`, redeploy (`docs/DEPLOY.md` §6a).
 - Aaron: deploy the Summit reskin (web assets and the Worker, for the consent page; no migration; `docs/DEPLOY.md`). Then open the installed app on the iPhone: the sky should run under the status bar, the six-tab bar should sit above the home indicator, and Today should show the mountain with your camps. If Safari keeps the old look, reopen the app once so the service worker picks up the new build.
 - Aaron: deploy (no migration; `docs/DEPLOY.md`), then connect Muse with `docs/DEPLOY.md` §8 "Connect Meta Muse" and try "log 2 eggs and toast for breakfast": the meal should show on Log as parsing, then ready to review. In Muse's privacy settings, opt out of Meta using your conversations for training (it is on by default). If Muse says the provider rejected the automatic app registration, run `npx wrangler tail` while you retry (DEPLOY §8 says what to do with the logged callback).
 - Aaron: after the next deploy (no migration), open Train → This week, keep Mon, Tue, Thu selected and tap **Generate** once (that saves the days on your live database; it starts on Mon–Thu until then). With a model key set, the three drafts appear within about a minute; tap **Keep all**. Watch the first Generate after deploy: three drafts start in one request on the Workers free plan (10 ms CPU); a draft cut off there is retried by the 5-minute sweep, so the worst case is a slower week, not a lost one.
@@ -67,6 +69,7 @@
 
 ## Decisions made on Aaron's behalf
 
+- 2026-10-22 · **Temporary public window (not a permanent product change).** Used a dedicated `PUBLIC_ACCESS` var instead of production `DEV_AUTH_BYPASS` (DEPLOY forbids that). Left CSRF and MCP/health bearer auth on — those are not visit gates. Did not change Zero Trust from here (no dashboard/API access in this agent); Aaron disables Access in the Cloudflare UI. Accepted that anyone with the URL can read/write his live data until Sunday.
 - 2026-10-21 · **The Summit reskin: the choices.**
   - (1) *Fonts are self-hosted* (`@fontsource-variable/outfit` and `@fontsource-variable/dm-sans`), not loaded from Google Fonts as the handoff suggests. The Worker's CSP allows only the app's own origin, the PWA must work offline, and no third party learns when he opens the app. Geist is gone.
   - (2) *Icons stay `@mui/icons-material`* (its Rounded set) instead of the Material Symbols font: the same shapes without another font download.

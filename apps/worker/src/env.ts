@@ -19,6 +19,11 @@ export interface Env {
   /** Aaron's Access login email. When set, any other Access identity (a policy widened by mistake) gets 403. */
   ACCESS_EMAIL?: string
   DEV_AUTH_BYPASS?: string
+  /**
+   * Temporary open window: when `"1"`, `/api` and `/authorize` skip Cloudflare Access JWT checks on every host
+   * (not only localhost). CSRF, MCP bearer/OAuth and the health webhook token stay on. Turn off Sunday with Access.
+   */
+  PUBLIC_ACCESS?: string
   HEALTH_WEBHOOK_TOKEN?: string
   MCP_BEARER_TOKEN?: string
   FILE_URL_SECRET?: string

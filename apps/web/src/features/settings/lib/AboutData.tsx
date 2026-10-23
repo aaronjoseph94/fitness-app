@@ -53,7 +53,7 @@ export function AboutData({ timezone }: { timezone: string }) {
           }}
         >
           <Item title="Kept on Cloudflare">
-            Logs, plans, scans and reviews in D1; photos and sheets in R2. Single user, behind Access.
+            Logs, plans, scans and reviews in D1; photos and sheets in R2. Single user (Access returns Sunday).
           </Item>
           <Item title="Kept on this device">
             The offline queue and the last day’s cache. Writes sync when you’re back online

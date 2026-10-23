@@ -1,14 +1,15 @@
 // Owns: the auth seam (middleware/auth.ts through the app) — Access is required on /api unless DEV_AUTH_BYPASS is on
-// AND the host is local; a real Access JWT (RS256, team JWKS) is accepted only for our AUD, only for ACCESS_EMAIL when
-// set (expired, foreign-key, unsigned and HS256 tokens are refused), and the PDF service token only reads; hosts that
-// only look local get no bypass; the iOS Shortcut webhook needs its bearer token and is idempotent by date.
+// AND the host is local, or PUBLIC_ACCESS=1 (temporary open window on any host); a real Access JWT (RS256, team JWKS)
+// is accepted only for our AUD, only for ACCESS_EMAIL when set (expired, foreign-key, unsigned and HS256 tokens are
+// refused), and the PDF service token only reads; hosts that only look local get no bypass; the iOS Shortcut webhook
+// needs its bearer token and is idempotent by date.
 import { env } from 'cloudflare:workers'
 import { exportJWK, generateKeyPair, SignJWT, type JWTPayload } from 'jose'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../src/app'
 
 const app = createApp()
-const noBypass = { ...env, DEV_AUTH_BYPASS: undefined }
+const noBypass = { ...env, DEV_AUTH_BYPASS: undefined, PUBLIC_ACCESS: undefined }
 
 // ── A local Access team: an RS256 key pair, its JWKS served by a stubbed fetch, and tokens signed with it ──────────
 const TEAM = 'https://fitness-test.cloudflareaccess.com'
@@ -165,11 +166,13 @@ describe('Access on /api', () => {
   })
 
   it('honours DEV_AUTH_BYPASS on localhost only', async () => {
-    const local = await app.request('http://127.0.0.1:8787/api/health', {}, env)
+    // Clear PUBLIC_ACCESS so a temporary open-window var from wrangler.jsonc cannot mask this check.
+    const localOnly = { ...env, PUBLIC_ACCESS: undefined }
+    const local = await app.request('http://127.0.0.1:8787/api/health', {}, localOnly)
     expect(local.status).toBe(200)
     expect(await local.json()).toEqual({ ok: true, tz: 'America/Edmonton' })
 
-    const remote = await app.request('https://fitness.example.workers.dev/api/health', {}, env)
+    const remote = await app.request('https://fitness.example.workers.dev/api/health', {}, localOnly)
     expect(remote.status).toBe(401)
 
     // Hosts that only look local are not local.
@@ -179,7 +182,31 @@ describe('Access on /api', () => {
       'http://0.0.0.0:8787',
       'http://[::ffff:127.0.0.1]',
     ])
-      expect((await app.request(`${host}/api/health`, {}, env)).status, host).toBe(401)
+      expect((await app.request(`${host}/api/health`, {}, localOnly)).status, host).toBe(401)
+  })
+
+  it('honours PUBLIC_ACCESS on any host (temporary open window)', async () => {
+    const open = { ...noBypass, PUBLIC_ACCESS: '1' }
+    const remote = await app.request('https://fitness.example.workers.dev/api/health', {}, open)
+    expect(remote.status).toBe(200)
+    expect(await remote.json()).toEqual({ ok: true, tz: 'America/Edmonton' })
+
+    // CSRF still blocks a cross-site write even when Access is skipped.
+    const write = weighIn()
+    const cross = await app.request(
+      'https://fitness.example.workers.dev/api/weights',
+      {
+        ...write,
+        headers: {
+          ...(write.headers as Record<string, string>),
+          'Sec-Fetch-Site': 'cross-site',
+          Origin: 'https://evil.example',
+        },
+      },
+      open,
+    )
+    expect(cross.status).toBe(403)
+    expect(await cross.json()).toMatchObject({ error: 'cross_site' })
   })
 })
 

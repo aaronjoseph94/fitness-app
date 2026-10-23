@@ -61,7 +61,7 @@ Set each with `npx wrangler secret put <NAME>` from `apps/worker`. Generate rand
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Web Push keys | `pnpm --filter @fitness/worker exec tsx scripts/vapid-keys.ts` |
 | `VAPID_SUBJECT` | `mailto:` contact for push services | your email |
 
-Vars in `wrangler.jsonc`: `APP_ORIGIN` is the deployed URL (`https://fitness.aarontjoseph94.workers.dev`; `workers_dev` is on, `preview_urls` off, so only that hostname, behind Access, serves). `TZ_NAME` stays `America/Edmonton`.
+Vars in `wrangler.jsonc`: `APP_ORIGIN` is the deployed URL (`https://fitness.aarontjoseph94.workers.dev`; `workers_dev` is on, `preview_urls` off, so only that hostname serves). `TZ_NAME` stays `America/Edmonton`. `PUBLIC_ACCESS` is `"1"` only for the temporary open window (see §6a); delete it when Access returns.
 
 Never set `DEV_AUTH_BYPASS` in production (it is only honoured on localhost anyway).
 
@@ -77,6 +77,21 @@ Note the `run`: `pnpm --filter <pkg> deploy` is pnpm's **own** `deploy` subcomma
 `ERR_PNPM_INVALID_DEPLOY_TARGET`), so the script is only reached with an explicit `run`.
 
 The URL is `https://fitness.<your-subdomain>.workers.dev` unless you add a custom domain (needs a domain on a Cloudflare zone).
+
+## 6a. Temporary public access (until Sunday)
+
+Two gates must both be open for anyone to visit without a login:
+
+1. **Edge Access (dashboard, not deployable from this repo):** Workers & Pages → **fitness** → Settings → Domains & Routes → on the `workers.dev` row, **Disable Cloudflare Access** (or Access tab → make the Worker public / Bypass Everyone). Until that is off, visitors still get the Cloudflare login redirect even if the Worker is open.
+2. **Worker JWT check:** `PUBLIC_ACCESS=1` in `wrangler.jsonc` `vars` (already set for this window). Deploy so production picks it up. CSRF, MCP bearer/OAuth and the health webhook token stay on.
+
+**Sunday — put the lock back on:**
+
+1. Dashboard: re-**Enable Cloudflare Access** on the same `workers.dev` row (policy: Allow → your email, as in §6).
+2. Remove `"PUBLIC_ACCESS": "1"` from `wrangler.jsonc` `vars` and deploy again.
+3. Smoke: unauthenticated `GET /api/health` should 302 to Access (or 401 from the Worker if Access is already on but JWT missing).
+
+Anyone with the URL can read and write the live fitness data while this window is open. Share the link only with people you trust.
 
 ## 6. Cloudflare Access (login, no login screen to build)
 
