@@ -13,9 +13,15 @@
 //        training_days proposal with `before` and the AI's `reason`, lib/training-days.ts); 'user' / 'mcp' → 'applied'
 //        now through updateSettings (its change event is the record, so proposal_id is null; no Undo — change the days
 //        back). 400 for no day.
+//   proposeGoalChange(deps, { goal_weight_kg, goal_date, reason? }) → GoalChangeResult { status: 'proposed',
+//        proposal_id, goal_weight_kg, goal_date, before }  a pending goal_change proposal for every actor (null = that
+//        goal stays; an unchanged goal comes back null). 422 goal_refused when nothing would change, the weight is
+//        outside 40–200 kg or not below the start weight, or the date is not after today (lib/goal-change.ts).
 //   getMcpConnection(deps, origin)       → McpConnectionView  how Claude reaches the app
 // Registers the 'training_days' proposal handler for plan.acceptProposal: accepting saves the days (updateSettings as
-// the one who taps, which rebuilds the daily targets from today on).
+// the one who taps, which rebuilds the daily targets from today on). Registers 'goal_change' too: accepting re-checks
+// the goals against the profile now, saves them (updateSettings as the one who taps, so its change event is the record)
+// and reforecasts (plan reforecast, engine only). The rails are not goals: nothing here can move them.
 import { LOCKED_SETTINGS, today } from '@fitness/shared/engine'
 import {
   AGREED_CALORIE_FLOOR,
@@ -34,6 +40,7 @@ import { badRequest, HttpError, notFound } from '../../lib/http-error'
 import { eventInsert } from '../events'
 import {
   planChangeStatements,
+  reforecast,
   registerProposalHandler,
   targetStatementsFor,
   type ProposalOf,
@@ -41,11 +48,22 @@ import {
 } from '../plan'
 import { runSoon } from '../jobs'
 import { changedValues, fieldChanges, summarise } from './lib/changes'
+import { checkGoalChange, proposeGoals, type GoalChangeInput, type Goals } from './lib/goal-change'
 import { proposeDays, sameDays, weekOrder, type TrainingDaysResult } from './lib/training-days'
 
 /** How Claude reaches the app (SPEC §8): the connector URL, discovery URLs and the bearer token's status. */
 export { getMcpConnection } from './lib/connection'
 export type { TrainingDaysResult } from './lib/training-days'
+export type { GoalChangeInput, Goals } from './lib/goal-change'
+
+/** What proposing a goal change did: the pending proposal, the goals it asks for (null = stays) and the goals now. */
+export interface GoalChangeResult {
+  status: 'proposed'
+  proposal_id: string
+  goal_weight_kg: number | null
+  goal_date: string | null
+  before: Goals
+}
 
 /** Settings fields the daily targets read: changing one rebuilds them. */
 const TARGET_INPUTS: readonly string[] = [
@@ -225,3 +243,44 @@ async function acceptTrainingDays(
 }
 
 registerProposalHandler('training_days', { accept: acceptTrainingDays })
+
+/**
+ * Propose a new goal weight and/or goal date (Ask AI's and Claude's propose_goal_change): checked against the profile
+ * now (lib/goal-change checkGoalChange; 422 goal_refused), then stored as a pending goal_change proposal for a tap.
+ */
+export async function proposeGoalChange(deps: Deps, input: GoalChangeInput): Promise<GoalChangeResult> {
+  const { profile: p } = await getSettings(deps)
+  const change = checkGoalChange(p, input, today(deps.now()))
+  const before = { goal_weight_kg: p.goal_weight_kg, goal_date: p.goal_date }
+  return {
+    status: 'proposed',
+    proposal_id: await proposeGoals(deps, change, before),
+    goal_weight_kg: change.goal_weight_kg,
+    goal_date: change.goal_date,
+    before,
+  }
+}
+
+/**
+ * Accepting a goal_change proposal: re-check it against the profile now (a goal Aaron has since set himself to the
+ * same values saves nothing), save the goals as the one who taps, then reforecast as of today (the summit date moves).
+ */
+async function acceptGoalChange(deps: Deps, proposal: ProposalOf<'goal_change'>): Promise<ProposalOutcome> {
+  const current = await getSettings(deps)
+  const { goal_weight_kg, goal_date } = proposal.body
+  const p = current.profile
+  if ((goal_weight_kg ?? p.goal_weight_kg) === p.goal_weight_kg && (goal_date ?? p.goal_date) === p.goal_date)
+    return { plan_version_id: null, applied: { entity: 'settings', id: current.settings.id } }
+  const as_of = today(deps.now())
+  const change = checkGoalChange(p, { goal_weight_kg, goal_date }, as_of)
+  const view = await updateSettings(deps, {
+    profile: {
+      ...(change.goal_weight_kg !== null ? { goal_weight_kg: change.goal_weight_kg } : {}),
+      ...(change.goal_date !== null ? { goal_date: change.goal_date } : {}),
+    },
+  })
+  await reforecast(deps, { as_of, reestimate: false })
+  return { plan_version_id: null, applied: { entity: 'settings', id: view.settings.id } }
+}
+
+registerProposalHandler('goal_change', { accept: acceptGoalChange })

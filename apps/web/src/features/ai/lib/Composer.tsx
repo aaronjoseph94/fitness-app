@@ -1,14 +1,23 @@
-// Owns: the Ask AI composer (1d) — a growing text box in a warm well (radius 20, a hairline ring that turns violet while
-// focused), the dictation mic where the browser can transcribe, the coral Send (Enter sends, Shift+Enter breaks the
-// line) and the helper line under it. Offline the helper line explains that answers need a connection.
+// Owns: the Ask AI "dump or ask" composer (1d) — the attached photos as chips (each with remove) over a growing text
+// box in a warm well (radius 20, a hairline ring that turns violet while focused) that invites a dump, the attach
+// button (photos picked here are tagged in the attach dialog), the dictation mic where the browser can transcribe, the
+// coral Send (Enter sends, Shift+Enter breaks the line) and the helper line under it. Offline a message still sends (it
+// waits in the queue) and the helper line says so; attaching needs a connection.
+import AddPhotoAlternateOutlined from '@mui/icons-material/AddPhotoAlternateOutlined'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
+import CancelRounded from '@mui/icons-material/CancelRounded'
 import MicNoneRounded from '@mui/icons-material/MicNoneRounded'
 import StopRounded from '@mui/icons-material/StopRounded'
+import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
+import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import InputBase from '@mui/material/InputBase'
+import { useRef } from 'react'
+import { askAiCopy } from '../../../copy/ask-ai'
 import { tokens, transitionOf } from '../../../theme'
 import { appendPhrase, useDictation } from '../../quick-log'
+import type { DraftAttachment } from './attachments'
 
 const coral = tokens.summit.cta.coral
 /** The composer well's radius, px (1d draws 20; the nearest token is the large well's 18). */
@@ -21,16 +30,65 @@ interface ComposerProps {
   sending: boolean
   online: boolean
   autoFocus?: boolean
+  /** What the message carries, as chips over the text box. */
+  attachments?: readonly DraftAttachment[]
+  /** Photos picked with the attach button (each is tagged next); absent: no attach button. */
+  onAttach?: (files: FileList) => void
+  onRemoveAttachment?: (key: string) => void
+  /** A line for the helper row (a limit hit, a progress photo saved privately). */
+  notice?: string | null
 }
 
-export function Composer({ value, onChange, onSend, sending, online, autoFocus }: ComposerProps) {
+export function Composer({
+  value,
+  onChange,
+  onSend,
+  sending,
+  online,
+  autoFocus,
+  attachments = [],
+  onAttach,
+  onRemoveAttachment,
+  notice = null,
+}: ComposerProps) {
   const dictation = useDictation((phrase) => onChange(appendPhrase(value, phrase)))
-  const canSend = online && !sending && value.trim().length > 0
-  const hint = !online ? 'Ask AI needs a connection; logging still works offline.' : dictation.error
+  const picker = useRef<HTMLInputElement>(null)
+  // Offline a message is queued and answered when the connection is back, so Send stays on.
+  const canSend = !sending && value.trim().length > 0
+  const hint = !online ? askAiCopy.offlineHelper : (dictation.error ?? notice)
   const shown =
     dictation.listening && dictation.interim ? `${value}${value ? ' ' : ''}${dictation.interim}` : value
   return (
     <Box>
+      {attachments.length > 0 && (
+        <Box
+          data-testid="ask-ai-attachments"
+          sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px', mb: '8px' }}
+        >
+          {attachments.map((a) => (
+            <Chip
+              key={a.key}
+              data-testid="ask-ai-attachment"
+              label={a.label}
+              avatar={a.previewUrl ? <Avatar alt="" src={a.previewUrl} variant="rounded" /> : undefined}
+              onDelete={onRemoveAttachment ? () => onRemoveAttachment(a.key) : undefined}
+              // The meal and the scan are logged already: removing the chip only leaves them out of this message.
+              deleteIcon={
+                <CancelRounded titleAccess={askAiCopy.chipRemove(a.label, a.ref.tag !== 'screenshot')} />
+              }
+              sx={{
+                maxWidth: '100%',
+                border: 0,
+                borderRadius: `${tokens.radius.pill}px`,
+                bgcolor: tokens.summit.surface.soft,
+                color: tokens.summit.ink.deep,
+                fontSize: tokens.font.size.small,
+                fontWeight: tokens.font.weight.label,
+              }}
+            />
+          ))}
+        </Box>
+      )}
       <Box
         sx={{
           display: 'flex',
@@ -61,9 +119,7 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
               if (canSend) onSend()
             }
           }}
-          placeholder={
-            dictation.listening ? 'Listening…' : 'Ask about your day, your plan, or tell me what you ate…'
-          }
+          placeholder={dictation.listening ? askAiCopy.listening : askAiCopy.placeholder}
           inputProps={{ 'aria-label': 'Message', maxLength: 4000, enterKeyHint: 'send' }}
           autoFocus={autoFocus}
           sx={{
@@ -83,6 +139,31 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
             },
           }}
         />
+        {onAttach && (
+          <>
+            <input
+              ref={picker}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              data-testid="ask-ai-attach-input"
+              onChange={(e) => {
+                if (e.target.files?.length) onAttach(e.target.files)
+                e.target.value = '' // picking the same photo again still fires
+              }}
+            />
+            <IconButton
+              aria-label={askAiCopy.attach}
+              data-testid="ask-ai-attach-button"
+              onClick={() => picker.current?.click()}
+              disabled={sending || !online}
+              sx={{ color: tokens.ink.muted }}
+            >
+              <AddPhotoAlternateOutlined fontSize="small" />
+            </IconButton>
+          </>
+        )}
         {dictation.supported && (
           <IconButton
             aria-label={dictation.listening ? 'Stop dictation' : 'Dictate'}
@@ -126,7 +207,7 @@ export function Composer({ value, onChange, onSend, sending, online, autoFocus }
           color: hint ? tokens.ink.label : tokens.ink.muted,
         }}
       >
-        {hint ?? 'Enter to send · Shift + Enter for a new line · the AI never sees your progress photos'}
+        {hint ?? askAiCopy.helper}
       </Box>
     </Box>
   )

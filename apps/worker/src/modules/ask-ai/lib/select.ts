@@ -42,6 +42,13 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
   ],
   [/\bfast(s|ed|ing)?\b/, ['fasting']],
   [/\b(sleep\w*|slept|bed|woke|wake|nap|steps?|walk\w*)\b/, ['health']],
+  // How the body feels (log_body_note): pain, soreness, a joint, energy, illness, mood.
+  [
+    /\b(pain\w*|sore\w*|hurt\w*|ach(e|es|ing|y)|injur\w*|tweak\w*|strain\w*|stiff\w*|tight|swollen|knees?|ankles?|wrists?|elbows?|joints?|tired|exhausted|energy|sick|ill(ness)?|cold|flu|fever|mood|stress\w*|anxious)\b/,
+    ['health'],
+  ],
+  // A goal he reports or asks for (propose_goal_change, in the body area).
+  [/\b(aim\w*|goal\w*|doctor|dietitian|by (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)\b/, ['body']],
   [
     /\b(work ?outs?|sessions?|gym|exercis\w*|sets?|reps?|lift\w*|bench|squat\w*|deadlift\w*|press|pull\w*|push\w*|legs?|upper|lower|back|shoulders?|biceps?|triceps?|glutes?|muscles?|dumbbells?|barbells?|cables?|train\w*|swap\w*|deload|prs?|e?1rm|volume)\b/,
     ['training'],

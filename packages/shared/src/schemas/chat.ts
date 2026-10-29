@@ -1,7 +1,9 @@
 // Owns: Ask AI chat — messages, the tool calls they show, what a turn created that waits for a tap, the send body and
-// its in-request reply, the history query (one thread, or the list of threads) and the delete query.
+// its in-request reply, the history query (one thread, or the list of threads) and the delete query. A message may be
+// a dump: the facts it logged come back as receipts (each with Undo) and the forecast's move as a ForecastShift.
 import * as z from 'zod'
 import { Id, Instant, LocalDate } from './common'
+import { ChatAttachmentRef, ForecastShift, MAX_SCREENSHOTS, Receipt } from './dump'
 import { ProposalBody, ProposalStatus } from './plan'
 import { WeekPlanStatus } from './week-plan'
 
@@ -51,12 +53,31 @@ export const ChatMessage = z.object({
   tool_calls: z.array(ToolCall).nullable(),
   /** assistant: what the turn created that waits for a tap, with its status now. */
   proposals: z.array(ChatProposal).default([]),
+  /** assistant: what the message logged, in order, each with its Undo state now. */
+  receipts: z.array(Receipt).default([]),
+  /** assistant: how the forecast moved after the message's facts were logged (null: nothing that moves it). */
+  forecast: ForecastShift.nullable().default(null),
   created_at: Instant,
 })
 export type ChatMessage = z.infer<typeof ChatMessage>
 
-/** Body of POST /api/ai/chat: Aaron's message (client id; replaying it returns the stored turn) on a thread (client id for a new thread). */
-export const ChatSend = z.object({ id: Id, thread_id: Id, content: z.string().trim().min(1).max(4000) })
+/**
+ * Body of POST /api/ai/chat: Aaron's message (client id; replaying it returns the stored turn) on a thread (client id
+ * for a new thread) — a question, a dump of things to log, or both — and what it carries (at most MAX_SCREENSHOTS
+ * screenshots, plus the meal photos and scan sheets it already logged).
+ */
+export const ChatSend = z.object({
+  id: Id,
+  thread_id: Id,
+  content: z.string().trim().min(1).max(4000),
+  attachments: z
+    .array(ChatAttachmentRef)
+    .max(8)
+    .refine((a) => a.filter((x) => x.tag === 'screenshot').length <= MAX_SCREENSHOTS, {
+      message: `At most ${MAX_SCREENSHOTS} screenshots per message`,
+    })
+    .default([]),
+})
 export type ChatSend = z.infer<typeof ChatSend>
 
 /** Why a turn ended without a real answer: no model reachable, or more tool rounds than a turn allows. */

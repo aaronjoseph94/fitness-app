@@ -1,10 +1,16 @@
 // Owns: how something Ask AI proposed reads on its card (pure) — title, summary, before → after rows with units,
 // the reason a plan change or a workout gives, the card status, and whether it can be undone — for a plan change, a
 // workout (a split day's draft by its name, "Upper A draft"), a week plan, a reminder time, an exercise swap, a change
-// to Train ("Rename Upper A → Push") or new training days.
+// to Train ("Rename Upper A → Push"), new training days or a goal change ("Summit: 88 kg by Mar 31", now 85 kg by …).
 import type { ChatProposal } from '@fitness/shared/schemas'
 import { formatShortDate, type ProposalChange, type ProposalStatus } from '../../../components'
-import { planChangeHeading, planChangeRows, REMINDER_LABEL, trainBodyView } from '../../proposals'
+import {
+  goalChangeView,
+  planChangeHeading,
+  planChangeRows,
+  REMINDER_LABEL,
+  trainBodyView,
+} from '../../proposals'
 
 export interface ChatProposalView {
   title: string
@@ -105,6 +111,18 @@ export function chatProposalView(p: ChatProposal): ChatProposalView {
         // The revert route takes a Train change; moved training days have none (change them again on Train).
         revertible: body.kind === 'train_change',
         undone: body.kind === 'train_change' && body.reverted_at !== undefined,
+      }
+    }
+    case 'goal_change': {
+      const view = goalChangeView(body)
+      return {
+        title: view.title,
+        summary: view.now,
+        changes: view.changes,
+        why: view.why,
+        status: p.status,
+        replaced: false,
+        ...NOT_REVERTIBLE,
       }
     }
   }

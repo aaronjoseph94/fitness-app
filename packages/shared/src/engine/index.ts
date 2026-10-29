@@ -16,8 +16,13 @@ export {
   isoWeek,
   isoWeekRange,
   eachDate,
+  daysAgo,
 } from './lib/dates'
 export type { InstantInput } from './lib/dates'
+
+// Body notes: which are active on a day, and what they steer (muscles to avoid, reduced volume)
+export { activeBodyNotes, bodyNoteSteer } from './lib/body-notes'
+export type { BodyNoteInput } from './lib/body-notes'
 
 // Units
 export { KG_PER_LB, lbToKg } from './lib/units'

@@ -1,7 +1,8 @@
 // Owns: Ask AI's rows in chat_messages — the stored shape of tool calls (the contract's ToolCall plus what each call
 // created that waits for a tap), rows ↔ ChatMessage, a thread's recent turns as model history, the thread list, and the
 // chunked insert of one turn. tool_calls holds: assistant → every call of the turn; tool → the one call it answers.
-import type { ChatMessage, ChatRole, ToolCall } from '@fitness/shared/schemas'
+// forecast (assistant): how the forecast moved after the message's facts were logged (ForecastShift, parsed on read).
+import { ForecastShift, type ChatMessage, type ChatRole, type ToolCall } from '@fitness/shared/schemas'
 import { and, desc, eq, max, min, sql } from 'drizzle-orm'
 import { chat_messages, chunk, runBatch, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -37,14 +38,18 @@ const FALLBACK_TEXTS = new Set<string>([...Object.values(FALLBACK), NOT_SET_UP, 
 const HISTORY_ROWS = 12
 const THREAD_ROWS = 300
 const THREAD_LIST = 30
-/** chat_messages has 7 columns; D1 allows 100 bound parameters per statement. */
-const ROWS_PER_INSERT = Math.floor(100 / 7)
+/** chat_messages has 8 columns; D1 allows 100 bound parameters per statement. */
+const ROWS_PER_INSERT = Math.floor(100 / 8)
 
 export function storedCalls(row: Pick<ChatRow, 'tool_calls'>): StoredCall[] {
   return Array.isArray(row.tool_calls) ? (row.tool_calls as StoredCall[]) : []
 }
 
-export function toChatMessage(row: ChatRow, proposals: ChatMessage['proposals'] = []): ChatMessage {
+export function toChatMessage(
+  row: ChatRow,
+  proposals: ChatMessage['proposals'] = [],
+  receipts: ChatMessage['receipts'] = [],
+): ChatMessage {
   const calls = Array.isArray(row.tool_calls)
     ? storedCalls(row).map(({ id, name, args, ok }) => ({ id, name, args, ok }))
     : null
@@ -55,6 +60,8 @@ export function toChatMessage(row: ChatRow, proposals: ChatMessage['proposals'] 
     content: row.content,
     tool_calls: calls,
     proposals,
+    receipts,
+    forecast: row.forecast == null ? null : (ForecastShift.safeParse(row.forecast).data ?? null),
     created_at: row.created_at,
   }
 }

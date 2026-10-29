@@ -18,6 +18,11 @@
 //   startFast(deps, FastStart) / endFast(deps, id, FastEnd) / planFast(deps, FastPlan) / moveFast(deps, id, FastMove)
 //                                              → Fast
 //   cancelFast(deps, id)                       → Ok
+//   reopenFast(deps, id)                       → Fast   undo an end logged by mistake (Ask AI's Undo): running again
+//   unstartFast(deps, id, planned_start)       → Ok     undo a start logged by mistake (Ask AI's Undo): an ad-hoc fast
+//                                              goes as if it never happened; a planned fast started early goes back to
+//                                              `planned_start` (its planned instant). Unlike cancelFast it takes a fast
+//                                              that has begun (the start is what is being undone).
 //   listFasts(deps, FastListQuery)             → Fast[]
 //   fastDaysIn(deps, { from, to })             → { fast, date }[]   each fast's fast day in the range
 //   fastsBegunSince(deps, since) / adjustDayForFast(deps, fast)   the cron's day_adjustment card for a planned fast
@@ -392,6 +397,85 @@ export async function cancelFast(deps: Deps, id: string): Promise<Ok> {
     ...(card ? [card.statement] : []),
   ])
   if (card) runSoon(deps, card.id)
+  await fastsChanged(deps)
+  return { ok: true }
+}
+
+/**
+ * Undo an end logged by mistake: the fast runs again (ended_at, end_date back to null). A fast that never ended is
+ * returned as is; 404 for an unknown id. Targets and today's card follow, as for every fast write.
+ */
+export async function reopenFast(deps: Deps, id: string): Promise<Fast> {
+  const { db } = deps
+  const [row] = await db.select().from(fast_logs).where(eq(fast_logs.id, id))
+  if (!row) throw notFound('Fast')
+  if (!row.ended_at) return toFast(row)
+  const now = deps.now().toISOString()
+  const hours = await fastHours(deps)
+  const after = { started_at: row.started_at, ended_at: null }
+  const pending = { fasts: [{ id, ...after }] }
+  const targets = await fastDayStatements(
+    deps,
+    pending,
+    hours,
+    { ...row, ended_at: null, end_date: null },
+    row,
+  )
+  const card = await dayCardAfterChange(deps, id, row, after, hours)
+  const [, [saved]] = await db.batch([
+    db
+      .update(fast_logs)
+      .set({ ended_at: null, end_date: null, actor: deps.actor, updated_at: now })
+      .where(eq(fast_logs.id, id)),
+    db.select().from(fast_logs).where(eq(fast_logs.id, id)),
+    ...targets,
+    ...(card ? [card.statement] : []),
+  ])
+  if (card) runSoon(deps, card.id)
+  await fastsChanged(deps)
+  return toFast(saved!)
+}
+
+/**
+ * Undo a start logged by mistake. A planned fast with `planned_start` goes back to that start, not begun and not
+ * ended; any other fast is deleted (its fast day given back). An unknown id is a no-op.
+ */
+export async function unstartFast(deps: Deps, id: string, planned_start: string | null): Promise<Ok> {
+  const { db } = deps
+  const [row] = await db.select().from(fast_logs).where(eq(fast_logs.id, id))
+  if (!row) return { ok: true }
+  const hours = await fastHours(deps)
+  const now = deps.now().toISOString()
+  if (row.planned && planned_start) {
+    const after = { started_at: planned_start, ended_at: null }
+    const start_date = localDate(planned_start)
+    const targets = await fastDayStatements(
+      deps,
+      { fasts: [{ id, ...after }] },
+      hours,
+      { ...after, start_date, end_date: null },
+      row,
+    )
+    const card = await dayCardAfterChange(deps, id, row, after, hours)
+    await db.batch([
+      db
+        .update(fast_logs)
+        .set({ ...after, start_date, end_date: null, actor: deps.actor, updated_at: now })
+        .where(eq(fast_logs.id, id)),
+      ...targets,
+      ...(card ? [card.statement] : []),
+    ])
+    if (card) runSoon(deps, card.id)
+  } else {
+    const targets = await fastDayStatements(deps, { removed_fasts: [id] }, hours, row)
+    const card = await dayCardAfterChange(deps, id, row, null, hours)
+    await db.batch([
+      db.delete(fast_logs).where(eq(fast_logs.id, id)),
+      ...targets,
+      ...(card ? [card.statement] : []),
+    ])
+    if (card) runSoon(deps, card.id)
+  }
   await fastsChanged(deps)
   return { ok: true }
 }

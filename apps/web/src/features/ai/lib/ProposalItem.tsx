@@ -35,12 +35,15 @@ type FollowUp = { to: string; label: string } | null
 const WEEK_LINK = { to: '/progress', label: 'See the week on Progress' }
 const PLAN_LINK = { to: '/plan', label: 'Plan history' }
 const TRAIN_LINK = { to: '/train', label: 'See it on Train' }
+const PROGRESS_LINK = { to: '/progress', label: 'See it on Progress' }
 const templateLink = (id: string) => ({ to: `/train/builder/${id}`, label: 'Open the template' })
 
 /** Where to look at what accepting changed: the Worker's `applied`, else the kind's own page. */
 function followUp(body: ProposalBody, applied: ProposalApplied | null): FollowUp {
   // Train's own changes first: new training days also come back as `settings`, which would otherwise read as Reminders.
   if (body.kind === 'training_days') return TRAIN_LINK
+  // A new goal moves the forecast, which Progress draws.
+  if (body.kind === 'goal_change') return PROGRESS_LINK
   if (body.kind === 'train_change') {
     const c = body.change
     if (c.op === 'template_create')

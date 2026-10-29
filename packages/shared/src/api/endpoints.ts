@@ -7,6 +7,11 @@ import {
   AiJob,
   AiWorkoutRequest,
   Binary,
+  BodyNote,
+  BodyNoteCreate,
+  BodyNoteResolve,
+  ChatAttachment,
+  ChatAttachmentUploadQuery,
   ChatHistoryQuery,
   ChatMessage,
   ChatSend,
@@ -126,6 +131,7 @@ import {
   WeighInCreate,
   WeighInUpdate,
   WorkoutSession,
+  Receipt,
 } from '../schemas/index'
 import { defineEndpoint } from './endpoint'
 
@@ -425,6 +431,27 @@ export const endpoints = {
     }),
   },
 
+  /** Body notes: how Aaron's body feels (a sore knee, low energy); active ones steer generated workouts. */
+  bodyNotes: {
+    /** Notes active today (the 7-day window, unresolved), newest first. */
+    active: defineEndpoint({ method: 'GET', path: '/api/body-notes', response: z.array(BodyNote) }),
+    create: defineEndpoint({
+      method: 'POST',
+      path: '/api/body-notes',
+      body: BodyNoteCreate,
+      response: BodyNote,
+      offline: 'queue',
+    }),
+    resolve: defineEndpoint({
+      method: 'PATCH',
+      path: '/api/body-notes/:id',
+      params: IdParams,
+      body: BodyNoteResolve,
+      response: BodyNote,
+      offline: 'queue',
+    }),
+  },
+
   training: {
     /** Every row without instructions (ExerciseSummary); getExercise returns one in full. */
     listExercises: defineEndpoint({
@@ -639,7 +666,34 @@ export const endpoints = {
     }),
     /** The training week as it stands: the split, each day's template and draft, and the active week plan's sessions. */
     week: defineEndpoint({ method: 'GET', path: '/api/ai/week', response: TrainingWeek }),
-    chat: defineEndpoint({ method: 'POST', path: '/api/ai/chat', body: ChatSend, response: ChatSent }),
+    /**
+     * One message: a question, a dump of things to log, or both. Queued offline (the id makes it idempotent): a dump
+     * typed with no signal is answered when the phone reconnects, and the thread shows the reply.
+     */
+    chat: defineEndpoint({
+      method: 'POST',
+      path: '/api/ai/chat',
+      body: ChatSend,
+      response: ChatSent,
+      offline: 'queue',
+    }),
+    /** A screenshot for the next message (bytes re-encoded in the browser, EXIF gone, blacked-out boxes painted over). */
+    attachment: defineEndpoint({
+      method: 'POST',
+      path: '/api/ai/attachments',
+      query: ChatAttachmentUploadQuery,
+      body: Upload,
+      response: ChatAttachment,
+      offline: 'queue',
+    }),
+    /** Undo one thing a message logged: the row goes, or the day's earlier value comes back. Once per receipt. */
+    undoReceipt: defineEndpoint({
+      method: 'POST',
+      path: '/api/ai/receipts/:id/undo',
+      params: IdParams,
+      response: Receipt,
+      offline: 'queue',
+    }),
     chatHistory: defineEndpoint({
       method: 'GET',
       path: '/api/ai/chat',

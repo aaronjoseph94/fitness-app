@@ -1,7 +1,9 @@
 // Owns: mounting every /api route group onto the app. Each group file owns its routes and only calls module entry points.
 import type { App } from '../env'
 import { mountAiRoutes } from './ai'
+import { mountAiAttachmentRoutes } from './ai-attachments'
 import { mountBodyRoutes } from './body'
+import { mountBodyNotesRoutes } from './body-notes'
 import { mountDayRoutes } from './day'
 import { mountExclusionRoutes } from './exclusions'
 import { mountExportRoutes } from './export'
@@ -25,6 +27,7 @@ export function mountApiRoutes(app: App): void {
   mountSettingsRoutes(app)
   mountDayRoutes(app)
   mountBodyRoutes(app)
+  mountBodyNotesRoutes(app)
   mountNutritionRoutes(app)
   mountWaterRoutes(app)
   mountFastingRoutes(app)
@@ -34,6 +37,7 @@ export function mountApiRoutes(app: App): void {
   mountTrainingRoutes(app)
   mountExclusionRoutes(app)
   mountAiRoutes(app)
+  mountAiAttachmentRoutes(app)
   mountScansRoutes(app)
   mountReviewsRoutes(app)
   mountWeekPlansRoutes(app)

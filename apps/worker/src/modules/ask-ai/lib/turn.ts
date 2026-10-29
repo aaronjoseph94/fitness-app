@@ -1,28 +1,33 @@
 // Owns: one Ask AI turn, answered inside the request — claim the message id (a replayed id returns the stored turn),
-// offer the model the tools picked by intent, run its tool calls through the tools layer as actor 'ai' for at most
-// MAX_ROUNDS model calls, store the user / tool / assistant rows, and return the reply with the calls it made and the
-// proposals it created (status now). A router failure becomes a calm stored reply, never an HTTP error.
+// run the dump step (lib/dump: extract what the message says happened, log each fact through the tools layer as actor
+// 'ai' with a receipt, propose equipment and goal changes, reforecast when a log moves the forecast), then offer the
+// model the tools picked by intent and run its tool calls for at most MAX_ROUNDS model calls, store the user / tool /
+// assistant rows, and return the reply with the calls it made, the proposals it created (status now), the receipts and
+// the forecast's move. A router failure becomes a calm stored reply, never an HTTP error, and the dump step never
+// breaks a turn (a failed extraction just means no dump).
 // Prompt injection (OWASP LLM01): a tool result reaches the model as {"data": …} (data, never instructions), and a
-// logging call (which applies at once) runs only when the user's own message asks to log in that area; otherwise the
-// model gets needs_confirmation and must ask. Text from a food database or a note can't trigger a write by itself.
-import type { ChatSend, ChatSent, ChatTurnError } from '@fitness/shared/schemas'
+// logging call from the tool loop (which applies at once) runs only when the user's own message asks to log in that
+// area; otherwise the model gets needs_confirmation and must ask. Text from a food database or a note can't trigger a
+// write by itself. The dump's facts come only from the user's own message (and the screenshots he attached).
+import { today } from '@fitness/shared/engine'
+import type { ChatSend, ChatSent, ChatTurnError, ForecastShift } from '@fitness/shared/schemas'
+import type * as z from 'zod'
 import { chat_messages } from '../../../db'
 import type { Deps } from '../../../lib/deps'
 import { HttpError } from '../../../lib/http-error'
 import { redactName } from '../../../lib/redact'
-import {
-  ProvidersExhaustedError,
-  type LlmRouter,
-  type ToolCall as ModelCall,
-  type Msg,
-  type ToolDef,
-} from '../../llm'
+import { attachmentImages } from '../../attachments'
+import { activeBodyNotes } from '../../body-notes'
+import { ProvidersExhaustedError, type LlmRouter, type Msg, type ToolDef } from '../../llm'
+import { getActivePlan, reforecast } from '../../plan'
 import { getSettings } from '../../settings'
-import { callTool, toolJsonSchemas, type ToolDefinition } from '../../tools'
+import { toolJsonSchemas, type ToolDefinition } from '../../tools'
+import { runCall, runDumpCall, type Asked, type ToolRun } from './calls'
+import { applyDump, coachNote, extractDump, wantsExtraction, type Applied } from './dump'
+import { replyMessage } from './history'
 import { systemPrompt } from './prompt'
-import { withProposals } from './history'
-import { createdBy } from './proposals'
-import { asksToLog, selectTools, type OfferedTool } from './select'
+import { insertReceipts, movesForecast } from './receipts'
+import { selectTools } from './select'
 import {
   FALLBACK,
   NOT_SET_UP,
@@ -33,7 +38,6 @@ import {
   threadRows,
   toChatMessage,
   type ChatRow,
-  type ProposalRef,
   type StoredCall,
 } from './store'
 
@@ -44,8 +48,6 @@ const TURN_BUDGET_MS = 55_000
 const CALL_DEADLINE_MS = 25_000
 const MIN_CALL_MS = 3_000
 const MAX_REPLY_TOKENS = 1_024
-/** A tool result longer than this reaches the model (and the stored row) cut, with a note to ask more narrowly. */
-const MAX_TOOL_CHARS = 12_000
 
 /**
  * Tool definitions as the model reads them (the descriptions name the user for the coach; redacted here), per isolate.
@@ -65,22 +67,11 @@ function toolDef(tool: ToolDefinition): ToolDef {
   return def
 }
 
-interface ToolRun {
-  call: StoredCall
-  /** The result as stored and shown in the app (JSON). */
-  content: string
-  /** What the model reads: a result wrapped as {"data": …}; a refusal or error ({error, message}) as is. */
-  forModel: string
-  at: Date
-}
+/** The send body as a caller may give it (attachments default to none). */
+export type ChatTurnInput = z.input<typeof ChatSend>
 
-/** What the turn knows about the user's own words, to decide whether a logging call may apply. */
-interface Asked {
-  message: string
-  previousQuestion: string | null
-}
-
-export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Promise<ChatSent> {
+export async function chatTurn(deps: Deps, llm: LlmRouter, send: ChatTurnInput): Promise<ChatSent> {
+  const input = { ...send, attachments: send.attachments ?? [] }
   const started = deps.now()
   const userRow = row(input.id, input.thread_id, 'user', input.content, null, started)
   const [{ settings }, past] = await Promise.all([getSettings(deps), history(deps, input.thread_id)])
@@ -92,20 +83,27 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
     .returning({ id: chat_messages.id })
   if (claimed.length === 0) return replayTurn(deps, input.id)
 
+  const ai: Deps = { ...deps, actor: 'ai' }
+  const runs: ToolRun[] = []
+  const assistantId = crypto.randomUUID()
+  const dump = await dumpStep(deps, llm, { input, started, assistantId, runs })
+
+  // The coach pass: tools for the message, its requests and questions (and the question before a "yes"); a log tool
+  // the dump already ran is not offered again, so the same fact is never logged twice.
   const offered = selectTools(
-    [input.content, ...(past.lastQuestion ? [past.lastQuestion] : [])],
+    [input.content, ...dump.asks, ...(past.lastQuestion ? [past.lastQuestion] : [])],
     settings.auto_apply_safe,
-  )
+  ).filter((o) => !(o.access === 'log' && dump.logged.has(o.tool.name)))
   const tools = offered.map(({ tool }) => toolDef(tool))
   const allowed = new Map(offered.map((o) => [o.tool.name, o]))
   const asked: Asked = { message: input.content, previousQuestion: past.lastQuestion }
-  const system = systemPrompt(started, settings)
+  const system = dump.note
+    ? `${systemPrompt(started, settings)}\n\n${dump.note}`
+    : systemPrompt(started, settings)
   const messages: Msg[] = [
     ...past.messages.map((m) => ({ ...m, content: redactName(m.content) })),
     { role: 'user', content: redactName(input.content) },
   ]
-  const ai: Deps = { ...deps, actor: 'ai' }
-  const runs: ToolRun[] = []
   let reply: string | null = null
   let error: ChatTurnError | null = null
   /** Every provider was skipped for want of a key: the reply says Ask AI is not set up. */
@@ -160,79 +158,101 @@ export async function chatTurn(deps: Deps, llm: LlmRouter, input: ChatSend): Pro
     row(crypto.randomUUID(), input.thread_id, 'tool', r.content, [r.call], stamp(r.at)),
   )
   const assistant = row(
-    crypto.randomUUID(),
+    assistantId,
     input.thread_id,
     'assistant',
     reply ?? (notSetUp ? NOT_SET_UP : FALLBACK[error ?? 'ai_unavailable']),
     calls.length ? calls : null,
     stamp(deps.now()),
+    dump.forecast,
   )
   await insertTurn(deps, [...toolRows, assistant])
   return {
     message: toChatMessage(userRow),
     tool_messages: toolRows.map((r) => toChatMessage(r)),
-    reply: await withProposals(deps, assistant),
+    reply: await replyMessage(deps, assistant),
     error,
   }
 }
 
-/** Run one model call through the tools layer; failures go back to the model as {error, message}. */
-async function runCall(
-  deps: Deps,
-  call: ModelCall,
-  allowed: ReadonlyMap<string, OfferedTool>,
-  asked: Asked,
-  earlier: readonly ToolRun[],
-): Promise<ToolRun> {
-  const taken = new Set(earlier.map((r) => r.call.id))
-  // Providers number calls per response, so the same id can come back in a later round.
-  const id = taken.has(call.id) ? `${call.id}_${earlier.length}` : call.id
-  const args = JSON.parse(JSON.stringify(call.args ?? {})) as StoredCall['args']
-  const done = (ok: boolean, output: unknown, created: ProposalRef[] = []): ToolRun => {
-    // Tool results carry free text (meal notes, the coach's dashboard note and narrative): the name never goes back.
-    const content = redactName(cap(JSON.stringify(output) ?? 'null'))
-    return {
-      call: { id, name: call.name, args, ok, ...(created.length ? { created } : {}) },
-      content,
-      forModel: ok ? `{"data":${content}}` : content,
-      at: deps.now(),
-    }
-  }
-  const offered = allowed.get(call.name)
-  if (!offered)
-    return done(false, {
-      error: 'not_available',
-      message: `${call.name} is not available in this chat; use the tools offered, or tell the user where in the app to do it.`,
-    })
-  if (offered.access === 'log' && !asksToLog(offered.tool.area, asked.message, asked.previousQuestion))
-    return done(false, {
-      error: 'needs_confirmation',
-      message: `The user's message did not ask to log this, so ${call.name} did not run. Ask the user to confirm the exact value first; it runs once they say yes.`,
-    })
-  try {
-    const output = await callTool(deps, call.name, call.args ?? {})
-    return done(true, output, createdBy(call.name, output))
-  } catch (e) {
-    if (e instanceof HttpError) return done(false, { error: e.code, message: e.message })
-    console.warn(
-      JSON.stringify({
-        at: 'ask_ai',
-        event: 'tool_failed',
-        tool: call.name,
-        error: e instanceof Error ? e.name : 'unknown',
-      }),
-    )
-    return done(false, { error: 'failed', message: `${call.name} failed unexpectedly` })
-  }
+interface DumpOutcome {
+  /** The coach pass's note about the dump (null: nothing was extracted or attached). */
+  note: string | null
+  /** The message's requests and questions, for picking the coach pass's tools. */
+  asks: string[]
+  logged: ReadonlySet<string>
+  forecast: ForecastShift | null
 }
 
-function cap(text: string): string {
-  if (text.length <= MAX_TOOL_CHARS) return text
-  return JSON.stringify({
-    truncated: true,
-    note: `The result was ${text.length} characters; only the start is shown. Ask for less (a shorter range, a filter, a limit).`,
-    start: text.slice(0, MAX_TOOL_CHARS - 300),
-  })
+/**
+ * The dump step: extract (with the message's screenshots), apply the facts and attachments, store their receipts on
+ * the coming assistant row, and reforecast when a log moves the forecast. Never throws: whatever fails is logged by
+ * name and the turn goes on with what was applied.
+ */
+async function dumpStep(
+  deps: Deps,
+  llm: LlmRouter,
+  ctx: { input: ChatSend; started: Date; assistantId: string; runs: ToolRun[] },
+): Promise<DumpOutcome> {
+  const { input, started, runs } = ctx
+  const none: DumpOutcome = { note: null, asks: [], logged: new Set(), forecast: null }
+  const ai: Deps = { ...deps, actor: 'ai' }
+  const warn = (event: string) => (e: unknown) => {
+    console.warn(JSON.stringify({ at: 'ask_ai', event, error: e instanceof Error ? e.name : 'unknown' }))
+    return null
+  }
+  try {
+    let extraction = null
+    if (wantsExtraction(input.content, input.attachments)) {
+      const ids = input.attachments.flatMap((a) => (a.tag === 'screenshot' ? [a.id] : []))
+      const images = ids.length
+        ? ((await attachmentImages(deps, { ids, message_id: input.id }).catch(warn('screenshots_failed'))) ??
+          [])
+        : []
+      const left = TURN_BUDGET_MS - (deps.now().getTime() - started.getTime())
+      extraction = await extractDump(llm, {
+        now: started,
+        content: input.content,
+        images,
+        deadlineMs: Math.min(CALL_DEADLINE_MS, left),
+      })
+    }
+    if (!extraction && !input.attachments.some((a) => a.tag !== 'screenshot')) return none
+
+    const applied: Applied = await applyDump(ai, extraction, input.attachments, async (name, args) => {
+      const run = await runDumpCall(ai, name, args, runs)
+      runs.push(run)
+      return run
+    })
+    if (applied.receipts.length)
+      await insertReceipts(deps, { id: ctx.assistantId, thread_id: input.thread_id }, applied.receipts)
+
+    const day = today(started)
+    let forecast: ForecastShift | null = null
+    if (applied.receipts.some((r) => movesForecast(r.kind))) {
+      forecast = await (async () => {
+        const before = (await getActivePlan(deps)).forecast
+        const after = await reforecast(deps, { as_of: day, reestimate: false })
+        return { before, after }
+      })().catch(warn('dump_reforecast_failed'))
+    }
+    const bodyNotes = (await activeBodyNotes(deps).catch(warn('body_notes_failed'))) ?? []
+    return {
+      note: coachNote({
+        applied,
+        forecast,
+        bodyNotes,
+        dump: extraction,
+        backdated: applied.receipts.some((r) => r.date < day),
+      }),
+      asks: [...(extraction?.requests ?? []), ...(extraction?.questions ?? [])],
+      logged: applied.logged,
+      forecast,
+    }
+  } catch (e) {
+    warn('dump_failed')(e)
+    return none
+  }
 }
 
 function row(
@@ -242,9 +262,10 @@ function row(
   content: string,
   tool_calls: StoredCall[] | null,
   at: Date,
+  forecast: ForecastShift | null = null,
 ): ChatRow {
   const created_at = at.toISOString()
-  return { id, thread_id, role, content, tool_calls, created_at, updated_at: created_at }
+  return { id, thread_id, role, content, tool_calls, forecast, created_at, updated_at: created_at }
 }
 
 /** A message id seen before: the stored turn that followed it (or the calm fallback while it is still running). */
@@ -267,7 +288,7 @@ async function replayTurn(deps: Deps, messageId: string): Promise<ChatSent> {
     message: toChatMessage(first),
     tool_messages: tools.map((r) => toChatMessage(r)),
     reply: assistant
-      ? await withProposals(deps, assistant)
+      ? await replyMessage(deps, assistant)
       : toChatMessage(
           row(crypto.randomUUID(), first.thread_id, 'assistant', FALLBACK.ai_unavailable, null, deps.now()),
         ),

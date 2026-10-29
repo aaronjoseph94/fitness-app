@@ -3,11 +3,14 @@
 // uploaded, which starts the Worker's meal_analysis. Needs a connection: the review waits on that analysis, so photos go now.
 // A failed upload keeps the meal and what already went up, so "Try again" sends only the rest. The meal id is made once,
 // so a retry after a lost createMeal response replays the same id (the Worker returns the stored meal, no second meal).
+// logPhotoMeal is the same path in one call, for a photo picked outside the meal form (Ask AI).
 import { endpoints } from '@fitness/shared/api'
 import type { MealSlot } from '@fitness/shared/schemas'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { call, problemText } from '../../../../api'
+import { clockOf } from '../dates'
+import { defaultSlot } from '../nutrition'
 import { refreshAfter } from '../writes'
 import { preparePhoto, releasePhoto, uploadMealPhoto, type PreparedPhoto } from './photos'
 
@@ -119,4 +122,23 @@ export function usePhotoMeal(): PhotoMeal {
   }
 
   return { photos, preparing, sending, error, created: created.current, add, remove, send, handOff }
+}
+
+/**
+ * One-shot photo meal outside the meal form (Ask AI's "Meal" tag): create the meal now in the slot its time of day
+ * suggests, upload the photos, refresh what the meal makes stale, and resolve with the meal id (the Worker's analysis is
+ * already running). `id` is the caller's client id, so a retry after a lost response replays instead of making a second
+ * meal. Throws ApiError like every call; needs a connection, as the meal form's photo path does.
+ */
+export async function logPhotoMeal(
+  queryClient: QueryClient,
+  meal: { id: string; photos: readonly PreparedPhoto[]; eatenAt?: string },
+): Promise<string> {
+  const eatenAt = meal.eatenAt ?? new Date().toISOString()
+  await call(endpoints.nutrition.createMeal, {
+    body: { id: meal.id, slot: defaultSlot(clockOf(eatenAt)), eaten_at: eatenAt, input_method: 'photo' },
+  })
+  for (const photo of meal.photos) await uploadMealPhoto(meal.id, photo)
+  void refreshAfter(queryClient, endpoints.nutrition.createMeal)
+  return meal.id
 }

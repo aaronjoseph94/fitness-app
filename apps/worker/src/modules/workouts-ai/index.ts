@@ -7,7 +7,8 @@
 // that name and no date (lib/split.ts picks the day; plan 2026-10-09-split-drafts-and-swap); writing it rejects that
 // day's older pending drafts, so a split day has at most one. A split draft must reach its day's body groups (engine
 // requiredGroups over its split: its focus's groups, and for a full-body day the groups no other day requires; the
-// prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3).
+// prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3). A day's draft also avoids loading
+// what Aaron's active body notes protect (engine bodyNoteSteer: a sore knee keeps quadriceps and hamstrings out).
 // Interface:
 //   requestWorkout(deps, body)         → JobRef  POST /api/ai/workout: enqueue (user priority) + run soon; from the app
 //        (actor user) 409 no_model_key (nothing queued) when no model in the job's chain has a key
@@ -30,6 +31,7 @@
 // job no provider could answer fails at once when Aaron asked for it or no provider has a key (JobFailed); otherwise
 // the runner retries it.
 import {
+  bodyNoteSteer,
   muscleScores,
   requiredGroups,
   splitNameKey,
@@ -43,6 +45,7 @@ import {
   WeekPlanContent,
   type AiWorkoutRequest,
   type JobRef,
+  type Muscle,
   type SplitSlot,
   type TemplateExerciseInput,
   type WorkoutDraft,
@@ -59,6 +62,7 @@ import {
 } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { HttpError, notFound } from '../../lib/http-error'
+import { activeBodyNotes } from '../body-notes'
 import { eventInsert } from '../events'
 import { enqueue, JobFailed, registerJobHandler, runSoon, type JobContext } from '../jobs'
 import { createLlmRouter, hasModelKey, ProvidersExhaustedError, type LlmRouter, type Priority } from '../llm'
@@ -135,6 +139,11 @@ export async function requestWorkout(deps: Deps, body: AiWorkoutRequest): Promis
   return { job_id: job.id }
 }
 
+const SEVERITY_WORD = ['mild', 'moderate', 'severe'] as const
+/** A body note as the prompt names it: "knee (pain, moderate)". */
+const noteLabel = (n: { area: string; kind: string; severity: number }) =>
+  `${n.area} (${n.kind}, ${SEVERITY_WORD[n.severity - 1] ?? n.severity})`
+
 const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower body', full: 'Full body' }
 
 /**
@@ -143,11 +152,15 @@ const FOCUS_LABEL: Record<Focus, string> = { upper: 'Upper body', lower: 'Lower 
  *   reduced volume = readiness.reduced_volume ∨ fast day → sets 12–16 (aim 12–14), else 12–28 (aim 16–22); a deload
  *                    week is not reduced here, since the session plan applies its 60 % when the draft is started
  *   avoid          = primary muscles of the sessions the day before and after (recovery rule)
+ *   body notes     = bodyNoteSteer(notes active on `date`).avoid: candidates with such a primary muscle are left out of
+ *                    the list the LLM sees, a reply's pick of one is dropped (an exercise he kept for a fill stays),
+ *                    and the prompt names the notes ("knee (pain, moderate)"); their reduced volume comes through
+ *                    readiness (training readinessOn)
  *   loads          = engine progression load when the exercise has history, else the LLM's (0.5 kg steps), else null
  *   muscle_scores  = engine muscleScores of the final exercises
  * A split draft (`input.slot`) is a reusable template, not a plan for one day: focus = the slot's, sets 12–28 (aim
  * 16–22) with none of the day's cuts (readiness, fast day, deload load, neighbouring-day avoid; recovery is checked
- * when a session starts), recent training read as of today, the prompt names the template, its body groups
+ * when a session starts; body notes are for a day, not a template), recent training read as of today, the prompt names the template, its body groups
  * (requiredGroups(slot, the split that holds it: lib/split splitOf); "every major muscle group" for a full-body day),
  * what the earlier days hold (of its focus, or every earlier day for a full-body day: B varies from A) and, for
  * `replace`, his current version of it (the split day's template: engine splitTemplateFor); the repair adds an
@@ -164,8 +177,9 @@ export async function draftWorkout(
   const ai: Deps = { ...deps, actor: 'ai' }
   const slot = input.slot ?? null
   const date = input.date ?? today(deps.now())
-  const [ctx, [[s], [targets]]] = await Promise.all([
+  const [ctx, notes, [[s], [targets]]] = await Promise.all([
     planningContext(deps, date),
+    slot ? [] : activeBodyNotes(deps, date),
     deps.db.batch([
       deps.db.select({ training_days: settings.training_days }).from(settings).limit(1),
       deps.db
@@ -191,10 +205,16 @@ export async function draftWorkout(
   const fast_day = !slot && (targets?.is_fast_day ?? false)
   const reduced = !slot && (ctx.readiness.reduced_volume || fast_day)
   const sets = { min: SETS.min, max: reduced ? SETS.reduced_max : SETS.max }
+  const sore: ReadonlySet<Muscle> = new Set(bodyNoteSteer(notes).avoid)
+  const soreOf = (e: { primary_muscles: readonly Muscle[] }) => e.primary_muscles.filter((m) => sore.has(m))
 
   const logged = new Set(ctx.digest.last_top_sets.keys())
   const templated = new Set(ctx.templates.flatMap((t) => t.exercises.map((e) => e.exercise_id)))
-  const candidates = selectCandidates(library.exercises, focus, { logged, templated })
+  const candidates = selectCandidates(
+    library.exercises.filter((e) => !soreOf(e).length),
+    focus,
+    { logged, templated },
+  )
   const slugOf = (id: string) => library.byId.get(id)?.slug
   const current = slot && input.replace ? splitTemplateFor(ctx.templates, slot.name) : null
   const split = slot ? await splitOf(deps, slot, s.training_days) : []
@@ -217,6 +237,7 @@ export async function draftWorkout(
     readiness: ctx.readiness,
     fast_day,
     avoid,
+    body_notes: notes.map(noteLabel),
     sets: { ...sets, aim: reduced ? '12-14' : '16-22' },
     digest: ctx.digest,
     slugOf,
@@ -236,8 +257,16 @@ export async function draftWorkout(
   })
 
   const guard = await guardContext(ai, library, 'ai')
+  const soreNotes: string[] = []
+  const picks = reply.data.exercises.filter((p) => {
+    const e = bySlug.get(p.exercise_id)
+    const hit = e && !keep.some((k) => k.exercise_id === e.id) ? soreOf(e) : []
+    if (!hit.length) return true
+    soreNotes.push(`Dropped ${e!.name}: a body note protects ${hit.join(', ')}`)
+    return false
+  })
   const repaired = repairDraft({
-    picks: reply.data.exercises,
+    picks,
     keep,
     byId: library.byId,
     bySlug,
@@ -268,7 +297,12 @@ export async function draftWorkout(
   const rationale = reply.data.rationale.trim().slice(0, 400)
 
   const proposal_id = crypto.randomUUID()
-  const workout = { ...(slot ? { name: slot.name } : {}), exercises, rationale, guard_notes: repaired.notes }
+  const workout = {
+    ...(slot ? { name: slot.name } : {}),
+    exercises,
+    rationale,
+    guard_notes: [...soreNotes, ...repaired.notes],
+  }
   const total = exercises.reduce((n, e) => n + e.sets, 0)
   const size = `${exercises.length} exercises, ${total} sets`
   input.signal?.throwIfAborted()

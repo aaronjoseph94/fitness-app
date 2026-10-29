@@ -6,7 +6,7 @@ import { allTools, type ToolDefinition } from '../../tools'
 
 export type McpAccess = 'full' | 'log'
 
-/** The writes a log-access client may make: entries of the day (meals, body, water, steps, sleep, fasts, sets). */
+/** The writes a log-access client may make: entries of the day (meals, body, water, steps, sleep, fasts, sets, body notes). */
 const LOG_TOOLS: ReadonlySet<string> = new Set([
   'log_meal',
   'confirm_meal',
@@ -20,6 +20,7 @@ const LOG_TOOLS: ReadonlySet<string> = new Set([
   'start_session',
   'log_set',
   'finish_session',
+  'log_body_note',
 ])
 
 /** Read tools a log-access client doesn't get: the coach procedures direct plan writes it cannot make. */

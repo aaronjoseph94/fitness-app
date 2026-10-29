@@ -1,8 +1,10 @@
-// Owns: reading Ask AI chats back — a thread's messages with each reply's proposals at their status now (one lookup
-// for the whole thread), or the thread list (each thread's opening question, most recently active first).
+// Owns: reading Ask AI chats back — a thread's messages with each reply's proposals at their status now and the
+// receipts its message logged (each with its Undo state now; one lookup each for the whole thread), or the thread list
+// (each thread's opening question, most recently active first).
 import type { ChatMessage, ChatProposal } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
 import { resolveProposals } from './proposals'
+import { receiptsOf } from './receipts'
 import {
   storedCalls,
   threadOpenings,
@@ -25,17 +27,26 @@ const pick = (refs: readonly ProposalRef[], resolved: ReadonlyMap<string, ChatPr
   })
 }
 
-/** One assistant row as a ChatMessage with what its calls created, status now. */
-export async function withProposals(deps: Deps, assistant: ChatRow): Promise<ChatMessage> {
+/** One assistant row as a ChatMessage with what its calls created (status now) and what its message logged. */
+export async function replyMessage(deps: Deps, assistant: ChatRow): Promise<ChatMessage> {
   const refs = refsOf(assistant)
-  if (!refs.length) return toChatMessage(assistant)
-  return toChatMessage(assistant, pick(refs, await resolveProposals(deps, refs)))
+  const [resolved, receipts] = await Promise.all([
+    refs.length ? resolveProposals(deps, refs) : new Map<string, ChatProposal>(),
+    receiptsOf(deps, [assistant.id]),
+  ])
+  return toChatMessage(assistant, pick(refs, resolved), receipts.get(assistant.id) ?? [])
 }
 
 export async function chatHistory(deps: Deps, query: { thread_id?: string }): Promise<ChatMessage[]> {
   if (!query.thread_id) return (await threadOpenings(deps)).map((r) => toChatMessage(r))
   const rows = await threadRows(deps, query.thread_id)
   const refs = rows.flatMap(refsOf)
-  const resolved = refs.length ? await resolveProposals(deps, refs) : new Map<string, ChatProposal>()
-  return rows.map((r) => toChatMessage(r, pick(refsOf(r), resolved)))
+  const [resolved, receipts] = await Promise.all([
+    refs.length ? resolveProposals(deps, refs) : new Map<string, ChatProposal>(),
+    receiptsOf(
+      deps,
+      rows.filter((r) => r.role === 'assistant').map((r) => r.id),
+    ),
+  ])
+  return rows.map((r) => toChatMessage(r, pick(refsOf(r), resolved), receipts.get(r.id) ?? []))
 }

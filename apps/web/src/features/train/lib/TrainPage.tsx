@@ -1,7 +1,8 @@
 // Owns: the Train tab (SPEC §7, §11; 1d Summit "Train") — the sky hero (which training day of the week it is and the
 // sessions done this week as the eyebrow, the date as the page's h1, today's plan as the subtitle, the readiness pill
 // and "Blank session"), the today card (the session in progress, today's finished session, the planned one — the week
-// plan's or today's split template — or the way to generate), then the deep-sky "This week" card (pick the training
+// plan's or today's split template — or the way to generate), the "How you feel" card (active body notes with
+// "Better now", only when there are any), then the deep-sky "This week" card (pick the training
 // days, generate the week's drafts, Keep all; done days and fast days marked), then templates (cards two up with mini
 // muscle maps and Start, followed in the same row by the split's AI drafts: waiting for Keep, or kept here with their
 // outcome and Undo) beside recent sessions and this week's totals at 2 : 1, and a row of four tool cards into the
@@ -39,6 +40,7 @@ import {
 import { COARSE_POINTER_QUERY, tokens, transitionOf } from '../../../theme'
 import { useExerciseIndex } from '../../library'
 import { dateOf, useFasts, useLogSettings, useNow } from '../../quick-log'
+import { BodyNotesCard } from './BodyNotesCard'
 import { DraftTemplateCard } from './DraftTemplateCard'
 import { ReadinessChip } from './ReadinessChip'
 import { finishedByDate, lastDoneByTemplate, RecentSessions, weekTotals } from './RecentSessions'
@@ -347,6 +349,9 @@ export function TrainPage() {
           />
         )}
       </Reveal>
+
+      {/* How he feels (from Ask AI), under today's session since generated workouts steer around it; no row when none. */}
+      <BodyNotesCard />
 
       <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
         {trainingWeek.isLoading ? (

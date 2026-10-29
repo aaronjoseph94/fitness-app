@@ -5,6 +5,7 @@
 // 900 px the chats rail shows and the thread's turns scroll inside its card; below that the rail gives way to the
 // past-chats menu in the thread header, the page scrolls, the composer sticks above the tab bar, and the proposals
 // waiting for a tap and recent Train changes wrap under the thread. In the panel the turns scroll inside the sheet.
+// Both carry the same "dump or ask" composer, with its attach flow (photos tagged one by one in the attach dialog).
 import AddCommentOutlined from '@mui/icons-material/AddCommentOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
@@ -38,7 +39,10 @@ import {
 } from '../../../components'
 import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, minWidth, scrollBehavior, tokens } from '../../../theme'
+import { askAiCopy } from '../../../copy/ask-ai'
 import { useModelChain } from '../../settings/models'
+import { AttachDialog } from './AttachDialog'
+import { useAttachments } from './attachments'
 import { ChatsRail, shorten } from './ChatsRail'
 import { Composer } from './Composer'
 import { NothingWaiting, RailsCard, RecentTrainChanges } from './PendingProposals'
@@ -270,7 +274,7 @@ function ThreadHeader({
   )
 }
 
-/** An empty thread opens with the AI's note on what it can do, beside its sparkle tile like a reply. */
+/** An empty thread opens with the AI's invitation to dump anything, beside its sparkle tile like a reply. */
 function Intro() {
   return (
     <Box sx={{ display: 'flex', gap: '12px', maxWidth: 760 }}>
@@ -284,8 +288,7 @@ function Intro() {
           color: tokens.ink.body,
         }}
       >
-        Ask about anything you have logged, or ask for a change. Logs you mention are saved; plan changes come
-        back as a card you accept with one tap.
+        {askAiCopy.invite} {askAiCopy.inviteAfter}
       </Box>
     </Box>
   )
@@ -381,6 +384,7 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   // Read before the panel's early return so the hook order never changes (rules of hooks).
   const wide = useMediaQuery(WITH_RAIL)
   const [text, setText] = useState('')
+  const attachments = useAttachments()
   // The page takes a question to start from as `?q=` (the command palette's "Ask AI: '…'"): it fills the composer,
   // unsent, and leaves the address so a reload doesn't fill it again.
   const [params, setParams] = useSearchParams()
@@ -416,7 +420,9 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   }, [lastKey, replied, chat.threadId])
 
   const send = (value: string) => {
-    if (chat.send(value)) setText('')
+    if (!chat.send(value, attachments.refs())) return
+    setText('')
+    attachments.clear()
   }
   const title = chat.turns.find((t) => t.question.content)?.question.content
   const empty = !chat.loading && chat.turns.length === 0
@@ -491,7 +497,8 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
   // On a phone they sit in the page's flow just above the sticky dock, so the dock stays one composer tall.
   const showStarters = empty || page
   const starters = (row = false) => (
-    <Starters onPick={send} disabled={!online || chat.sending} row={row} noKey={noKey} />
+    // Offline a starter is queued like any message.
+    <Starters onPick={send} disabled={chat.sending} row={row} noKey={noKey} />
   )
   const composer = (
     <>
@@ -503,7 +510,25 @@ export function Chat({ variant, onClose, aside }: ChatProps) {
         sending={chat.sending}
         online={online}
         autoFocus={variant === 'panel'}
+        attachments={attachments.attached}
+        onAttach={attachments.pick}
+        onRemoveAttachment={attachments.remove}
+        notice={attachments.notice}
       />
+      {attachments.current && (
+        <AttachDialog
+          // A new photo starts at its tags, with its own client ids.
+          key={`${attachments.current.index}:${attachments.current.file.name}`}
+          file={attachments.current.file}
+          index={attachments.current.index}
+          total={attachments.current.total}
+          screenshotsLeft={attachments.screenshotsLeft}
+          onAttached={attachments.add}
+          onSavedPrivately={attachments.setNotice}
+          onNext={attachments.next}
+          onCancel={attachments.cancel}
+        />
+      )}
     </>
   )
   /** The turns, bottom-aligned in their area as a chat reads (1d: 20 px apart). */

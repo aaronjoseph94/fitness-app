@@ -14,6 +14,7 @@ import { sql } from 'drizzle-orm'
 import { index, integer, real, sqliteTable, sqliteView, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import {
   Actor,
+  BodyNoteKind,
   EquipmentStatus,
   Exercise,
   ExerciseCategory,
@@ -27,6 +28,7 @@ import {
   MealStatus,
   MeasurementSite,
   Mechanic,
+  ReceiptKind,
   ScanSegment,
   ScanSource,
   SecretName,
@@ -785,9 +787,67 @@ export const chat_messages = sqliteTable(
     role: text({ enum: CHAT_ROLE }).notNull(),
     content: text().notNull(),
     tool_calls: text({ mode: 'json' }).$type<unknown>(),
+    /** assistant: how the forecast moved after the message's facts were logged (ForecastShift; parse on read). */
+    forecast: text({ mode: 'json' }).$type<unknown>(),
     ...timestamps(),
   },
   (t) => [index('chat_messages_thread_idx').on(t.thread_id, t.created_at)],
+)
+
+/**
+ * What an Ask AI message logged: one row per fact (or attached meal photo / scan sheet), with the row it wrote and,
+ * for a per-day or per-site upsert, what that row held before, so Undo puts it back. Undone at most once.
+ */
+export const chat_receipts = sqliteTable(
+  'chat_receipts',
+  {
+    id: id(),
+    /** The assistant message that lists it. */
+    message_id: text().notNull(),
+    thread_id: text().notNull(),
+    kind: text({ enum: values(ReceiptKind) }).notNull(),
+    date: text().notNull(),
+    summary: text().notNull(),
+    ref_id: text().notNull(),
+    before: text({ mode: 'json' }).$type<unknown>(),
+    undone_at: text(),
+    ...timestamps(),
+  },
+  (t) => [index('chat_receipts_message_idx').on(t.message_id), index('chat_receipts_thread_idx').on(t.thread_id)],
+)
+
+/**
+ * A screenshot uploaded for an Ask AI message (re-encoded in the browser, EXIF gone, blacked-out boxes painted over).
+ * `message_id` is set when the message that carries it is sent; the image lives in R2 under `r2_key`.
+ */
+export const chat_attachments = sqliteTable(
+  'chat_attachments',
+  {
+    id: id(),
+    message_id: text(),
+    r2_key: text().notNull(),
+    content_type: text().notNull(),
+    bytes: integer().notNull(),
+    ...timestamps(),
+  },
+  (t) => [index('chat_attachments_message_idx').on(t.message_id)],
+)
+
+/** How Aaron says his body feels on a day; active for 7 days unless resolved (engine activeBodyNotes). */
+export const body_notes = sqliteTable(
+  'body_notes',
+  {
+    id: id(),
+    date: text().notNull(),
+    area: text().notNull(),
+    kind: text({ enum: values(BodyNoteKind) }).notNull(),
+    severity: integer().notNull(),
+    note: text().notNull().default(''),
+    resolved_on: text(),
+    actor: actor(),
+    ...timestamps(),
+  },
+  (t) => [index('body_notes_date_idx').on(t.date)],
 )
 
 export const push_subscriptions = sqliteTable(

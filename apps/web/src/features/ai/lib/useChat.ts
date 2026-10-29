@@ -1,16 +1,15 @@
 // Owns: Ask AI data on the web — the open thread's messages grouped into turns (question, tool results, reply), the
-// thread list, sending a message (answered in the request; the question shows at once, a failed send keeps its id so
-// a retry replays instead of running twice), deleting a whole chat for good, and refreshing the rest of the app after a
-// turn that called tools.
+// thread list, sending a message with what it carries (answered in the request; the question shows at once, a failed
+// send keeps its id so a retry replays instead of running twice), a message queued offline (it shows in the thread as
+// waiting and is answered when the queue flushes, which refreshes the thread), deleting a whole chat for good, and
+// refreshing the rest of the app after a turn that logged, moved the forecast or called tools.
 import { endpoints } from '@fitness/shared/api'
-import type { ChatMessage, ChatSend, ChatSent } from '@fitness/shared/schemas'
+import type { ChatAttachmentRef, ChatMessage, ChatSend } from '@fitness/shared/schemas'
 import { hashKey, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
-import { apiQueryKey, call, problemText, useApiMutation, useApiQuery } from '../../../api'
+import { useEffect, useRef, useState } from 'react'
+import { apiQueryKey, problemText, useApiMutation, useApiQuery, write, type WriteOutcome } from '../../../api'
+import { usePendingWrites } from '../../../offline'
 import { useThreadStore } from './thread-store'
-
-/** A turn takes up to ~55 s on the Worker (several model calls and tools); wait a little longer than that. */
-const SEND_TIMEOUT_MS = 75_000
 
 export interface Turn {
   key: string
@@ -20,6 +19,8 @@ export interface Turn {
   reply: ChatMessage | null
   /** The question is on its way; no reply yet. */
   waiting: boolean
+  /** The question waits in this device's offline queue: it is sent, and answered, when the connection is back. */
+  queued: boolean
 }
 
 /** Messages (oldest first) → turns. A tool or reply before any question (cut history) starts its own turn. */
@@ -34,6 +35,7 @@ export function groupTurns(messages: readonly ChatMessage[]): Turn[] {
         tools: [],
         reply: null,
         waiting: false,
+        queued: false,
       }
       turns.push(turn)
       if (m.role === 'user') continue
@@ -62,11 +64,37 @@ export function useChat() {
   const [asking, setAsking] = useState<ChatSend | null>(null)
   const [error, setError] = useState<string | null>(null)
   const failed = useRef<ChatSend | null>(null)
+  // Messages of this thread still in the offline queue (live from IndexedDB, so they survive a reload).
+  const pending = usePendingWrites(endpoints.ai.chat)
+  const queuedHere = pending.flatMap((w) => {
+    // Stored as the caller wrote it: ChatSend's input (the queue's typing widens it).
+    const body = w.body as ChatSend | undefined
+    return body && body.thread_id === threadId ? [{ ...body, queued_at: w.created_at }] : []
+  })
 
-  const mutation = useMutation<ChatSent, Error, ChatSend>({
+  // A fresh thread whose first message was queued has nothing to load until the queue delivers it; once it has, the
+  // thread is stored on the Worker, so load it (the flush's refresh then fills in the reply).
+  const hadQueued = useRef(false)
+  useEffect(() => {
+    if (queuedHere.length > 0) {
+      hadQueued.current = true
+      return
+    }
+    if (!hadQueued.current) return
+    hadQueued.current = false
+    const store = useThreadStore.getState()
+    if (store.threadId === threadId && store.fresh) store.markStored()
+  }, [queuedHere.length, threadId])
+
+  const mutation = useMutation<WriteOutcome<typeof endpoints.ai.chat>, Error, ChatSend>({
     networkMode: 'always',
-    mutationFn: (body) => call(endpoints.ai.chat, { body }, { timeoutMs: SEND_TIMEOUT_MS }),
-    onSuccess: (turn, body) => {
+    // Online it is answered in the request (a turn-length timeout); offline, or when the network drops, it is queued.
+    mutationFn: (body) => write(endpoints.ai.chat, { body }),
+    onSuccess: (outcome, body) => {
+      failed.current = null
+      // Queued: the pending list shows it; the flush refreshes everything when it is answered.
+      if (outcome.status === 'queued') return
+      const turn = outcome.data
       const key = threadKey(body.thread_id)
       queryClient.setQueryData<ChatMessage[]>(key, (old = []) => [
         ...old.filter((m) => m.id !== turn.message.id),
@@ -80,15 +108,14 @@ export function useChat() {
         queryKey: apiQueryKey(endpoints.ai.chatHistory, { query: {} }),
         exact: true,
       })
-      // Logs and proposals change Today, Log, Train and Progress: refresh everything else that is on screen.
-      if (turn.reply.tool_calls?.length) {
+      // Logs, a moved forecast and proposals change Today, Log, Train and Progress: refresh everything else on screen.
+      if (turn.reply.tool_calls?.length || turn.reply.receipts.length || turn.reply.forecast) {
         const keep = hashKey(key)
         void queryClient.invalidateQueries({
           queryKey: ['api'],
           predicate: (q) => hashKey(q.queryKey) !== keep,
         })
       }
-      failed.current = null
     },
     onError: (e, body) => {
       failed.current = body
@@ -125,15 +152,18 @@ export function useChat() {
     deletion.mutate({ query: { thread_id } })
   }
 
-  /** Send `content` on the open thread; false when it is empty or a send is already running. */
-  const send = (content: string): boolean => {
+  /**
+   * Send `content` on the open thread with what it carries; false when it is empty or a send is already running. A retry
+   * of the failed text replays that message (same id, same attachments).
+   */
+  const send = (content: string, attachments: ChatAttachmentRef[] = []): boolean => {
     const text = content.trim()
     if (!text || mutation.isPending) return false
     const retry = failed.current
     const body: ChatSend =
       retry && retry.thread_id === threadId && retry.content === text
         ? retry
-        : { id: crypto.randomUUID(), thread_id: threadId, content: text }
+        : { id: crypto.randomUUID(), thread_id: threadId, content: text, attachments }
     setError(null)
     setAsking(body)
     mutation.mutate(body)
@@ -142,20 +172,38 @@ export function useChat() {
 
   const messages = fresh ? [] : (thread.data ?? [])
   const turns = groupTurns(messages)
-  if (asking && asking.thread_id === threadId && !messages.some((m) => m.id === asking.id))
+  const shown = new Set(messages.map((m) => m.id))
+  const queued = queuedHere.filter((b) => !shown.has(b.id))
+  for (const b of queued)
+    turns.push({
+      key: b.id,
+      question: { id: b.id, content: b.content, created_at: b.queued_at },
+      tools: [],
+      reply: null,
+      waiting: false,
+      queued: true,
+    })
+  if (
+    asking &&
+    asking.thread_id === threadId &&
+    !shown.has(asking.id) &&
+    !queued.some((b) => b.id === asking.id)
+  )
     turns.push({
       key: asking.id,
       question: { id: asking.id, content: asking.content, created_at: new Date().toISOString() },
       tools: [],
       reply: null,
       waiting: true,
+      queued: false,
     })
 
   return {
     threadId,
     turns,
-    loading: !fresh && thread.isPending,
-    loadError: thread.isError ? problemText(thread.error) : null,
+    loading: !fresh && thread.isPending && queued.length === 0,
+    // Offline with only queued messages and no copy of the thread yet, there is nothing to report: they show as waiting.
+    loadError: thread.isError && queued.length === 0 ? problemText(thread.error) : null,
     sending: mutation.isPending,
     /** A delete is in flight (the confirm's button reads "Deleting…" and both buttons are disabled). */
     deleting: deletion.isPending,

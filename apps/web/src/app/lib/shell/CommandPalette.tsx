@@ -13,6 +13,7 @@ import ListItemText from '@mui/material/ListItemText'
 import TextField from '@mui/material/TextField'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { askAiCopy } from '../../../copy/ask-ai'
 import { tokens } from '../../../theme'
 import { useUiStore, type QuickLogKind } from '../../ui-store'
 import { TABS, tabByKey } from '../tabs'
@@ -60,7 +61,7 @@ function useCommands(close: () => void): Command[] {
         : [
             {
               label: 'Ask AI here',
-              hint: 'Open the chat over this page',
+              hint: askAiCopy.paletteHint,
               run: () => {
                 close()
                 setAskAiOpen(true)

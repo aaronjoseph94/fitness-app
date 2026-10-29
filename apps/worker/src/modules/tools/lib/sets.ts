@@ -1,9 +1,11 @@
 // Owns: the list of tool sets. Each area's tools live in lib/sets/<area>.ts and are added here (one import + one entry).
 import type { ToolDefinition } from './define'
 import { BODY_TOOLS } from './sets/body'
+import { BODY_NOTE_TOOLS } from './sets/body-notes'
 import { COACH_TOOLS } from './sets/coach'
 import { DAY_TOOLS } from './sets/day'
 import { FASTING_TOOLS } from './sets/fasting'
+import { GOAL_TOOLS } from './sets/goals'
 import { HEALTH_TOOLS } from './sets/health'
 import { METRIC_TOOLS } from './sets/metrics'
 import { NUTRITION_TOOLS } from './sets/nutrition'
@@ -30,4 +32,6 @@ export const TOOL_SETS: ReadonlyArray<readonly ToolDefinition[]> = [
   WEEK_PLAN_TOOLS,
   WATER_TOOLS,
   REMINDER_TOOLS,
+  BODY_NOTE_TOOLS,
+  GOAL_TOOLS,
 ]

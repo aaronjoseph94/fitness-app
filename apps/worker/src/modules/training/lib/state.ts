@@ -1,8 +1,10 @@
 // Owns: Aaron's training state on a date, read from the logs and decided by the engine — readiness (last night's
-// sleep, yesterday's steps vs the 14-day median, days since the last session), the recovery rule against the day
+// sleep, yesterday's steps vs the 14-day median, days since the last session; reduced volume too when the active body
+// notes say so), the recovery rule against the day
 // before and after, the deload check, and per-exercise history with the double-progression suggestion.
 import {
   addDays,
+  bodyNoteSteer,
   daysBetween,
   DELOAD_SETS_FACTOR,
   deloadCheck,
@@ -15,6 +17,7 @@ import type { DeloadStatus, Muscle, Readiness, SessionRecovery } from '@fitness/
 import { and, asc, between, desc, eq, inArray, lt, lte, min, ne } from 'drizzle-orm'
 import { exercises, session_sets, sleep_logs, step_logs, workout_sessions } from '../../../db'
 import type { Deps } from '../../../lib/deps'
+import { activeBodyNotes } from '../../body-notes'
 import { chunk, startPlan, unique, type ExerciseTags, type SetRow } from './rows'
 
 /** Rep minimum assumed for a logged set whose session stored no plan (SPEC §7 default range 8–12). */
@@ -32,21 +35,28 @@ const NONE = '00000000-0000-0000-0000-000000000000'
 
 // ── Readiness ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Readiness for a session on `date` (engine readiness; sleep = the night ending on `date`). */
+/**
+ * Readiness for a session on `date` (engine readiness; sleep = the night ending on `date`), with
+ *   reduced_volume = engine reduced_volume ∨ bodyNoteSteer(body notes active on `date`).reduced_volume
+ * (illness, energy ≥ 2 or any severity-3 note; the score itself stays the engine's).
+ */
 export async function readinessOn(deps: Deps, date: string, exclude: string = NONE): Promise<Readiness> {
   const { db } = deps
-  const [sleep, steps, last] = await db.batch([
-    db.select().from(sleep_logs).where(eq(sleep_logs.date, date)).limit(1),
-    db
-      .select({ date: step_logs.date, steps: step_logs.steps })
-      .from(step_logs)
-      .where(between(step_logs.date, addDays(date, -15), addDays(date, -1))),
-    db
-      .select({ date: workout_sessions.date })
-      .from(workout_sessions)
-      .where(and(lte(workout_sessions.date, date), ne(workout_sessions.id, exclude)))
-      .orderBy(desc(workout_sessions.date))
-      .limit(1),
+  const [notes, [sleep, steps, last]] = await Promise.all([
+    activeBodyNotes(deps, date),
+    db.batch([
+      db.select().from(sleep_logs).where(eq(sleep_logs.date, date)).limit(1),
+      db
+        .select({ date: step_logs.date, steps: step_logs.steps })
+        .from(step_logs)
+        .where(between(step_logs.date, addDays(date, -15), addDays(date, -1))),
+      db
+        .select({ date: workout_sessions.date })
+        .from(workout_sessions)
+        .where(and(lte(workout_sessions.date, date), ne(workout_sessions.id, exclude)))
+        .orderBy(desc(workout_sessions.date))
+        .limit(1),
+    ]),
   ])
   const night = sleep[0]
   const sleep_min =
@@ -55,12 +65,13 @@ export async function readinessOn(deps: Deps, date: string, exclude: string = NO
       ? Math.max(0, (Date.parse(night.woke_at) - Date.parse(night.in_bed_at)) / 60_000)
       : null)
   const yesterday = addDays(date, -1)
-  return readiness({
+  const r = readiness({
     sleep_min,
     steps_yesterday: steps.find((s) => s.date === yesterday)?.steps ?? null,
     steps_prior_14d: steps.filter((s) => s.date !== yesterday).map((s) => s.steps),
     days_since_last_session: last[0] ? daysBetween(last[0].date, date) : null,
   })
+  return bodyNoteSteer(notes).reduced_volume ? { ...r, reduced_volume: true } : r
 }
 
 // ── Recovery ───────────────────────────────────────────────────────────────────────────────────────────────────

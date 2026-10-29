@@ -1,5 +1,5 @@
 // Owns: what an Ask AI turn created that waits for Aaron's tap — read off each proposing tool's output (a plan-change,
-// workout, reminder-time, template-swap, Train-change or training-days proposal in ai_events, a proposed week plan) —
+// workout, reminder-time, template-swap, Train-change, training-days or goal-change proposal in ai_events, a proposed week plan) —
 // and those refs resolved to ChatProposals with their status now, through the events and week-plans modules.
 import type { ChatProposal } from '@fitness/shared/schemas'
 import type { Deps } from '../../../lib/deps'
@@ -49,6 +49,8 @@ const READERS: Readonly<Record<string, (out: Out) => ProposalRef[]>> = {
   // The days change (when proposed); the day drafts arrive later from their jobs, as cards in the AI tab and Train.
   set_training_days: (out) => idRef(out?.proposal_id),
   plan_training_week: (out) => idRef(obj(out?.training_days)?.proposal_id),
+  // A goal weight / goal date change (settings' goal_change proposal).
+  propose_goal_change: (out) => idRef(out?.proposal_id),
 }
 
 /** What a successful call of `tool` created that waits for a tap. */

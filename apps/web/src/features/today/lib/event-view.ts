@@ -1,11 +1,18 @@
 // Owns: how an AI event reads on Today (pure) — a proposal as the ProposalCard's title, before → after rows (with units;
 // one row per field and amount, its weekdays folded into "Protein · Mon–Thu"; a Train change or new training days by
-// their own title, "Rename Upper A → Push") and its "why"; any other event (day adjustment, review, note, change) as a
-// source line, title, text and details; any event as a row of the recent activity table (time, who, what, value).
+// their own title, "Rename Upper A → Push"; a goal change as "Summit: 88 kg by Mar 31") and its "why"; any other event
+// (day adjustment, review, note, change) as a source line, title, text and details; any event as a row of the recent activity table (time, who, what, value).
 import { isoWeek } from '@fitness/shared/engine'
 import type { AiEvent, Proposal, ProposalStatus } from '@fitness/shared/schemas'
 import { formatNumber, formatRecentTime, formatSigned, type ProposalChange } from '../../../components'
-import { actorLabel, planChangeRows, planChangeTitle, REMINDER_LABEL, trainBodyView } from '../../proposals'
+import {
+  actorLabel,
+  goalChangeView,
+  planChangeRows,
+  planChangeTitle,
+  REMINDER_LABEL,
+  trainBodyView,
+} from '../../proposals'
 
 export interface ProposalView {
   title: string
@@ -63,6 +70,10 @@ export function proposalView(p: Proposal): ProposalView {
     case 'train_change':
     case 'training_days': {
       const view = trainBodyView(body, p.summary)
+      return { title: view.title, source, changes: view.changes, why: view.why ? [view.why] : [] }
+    }
+    case 'goal_change': {
+      const view = goalChangeView(body)
       return { title: view.title, source, changes: view.changes, why: view.why ? [view.why] : [] }
     }
   }

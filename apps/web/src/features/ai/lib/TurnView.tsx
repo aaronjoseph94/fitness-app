@@ -1,13 +1,20 @@
-// Owns: one Ask AI turn on screen (1d) — Aaron's question as a deep-ink bubble on the right; the reply beside the gold
-// sparkle tile: the tool pills, the text (paragraphs, **bold**, and lists drawn as warm-well rows, from the model's
-// light Markdown; never raw HTML), the proposals as deep-sky strips, and the time it came back; and the "thinking" row
-// (an amber tile, breathing dots) while the reply is on its way.
+// Owns: one Ask AI turn on screen (1d) — Aaron's question as a deep-ink bubble on the right (with "Will send when you're
+// back online" under it while it waits in the offline queue); the reply beside the gold sparkle tile: the tool pills,
+// what the message logged (the Logged card, each row with Undo), how the forecast moved ("What changed"), the text
+// (paragraphs, **bold**, and lists drawn as warm-well rows, from the model's light Markdown; never raw HTML), the
+// proposals as deep-sky strips, and the time it came back; and the "thinking" row (an amber tile, breathing dots) while
+// the reply is on its way.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
+import CloudOffRounded from '@mui/icons-material/CloudOffRounded'
+import TrendingFlatRounded from '@mui/icons-material/TrendingFlatRounded'
 import Box from '@mui/material/Box'
 import { Fragment, type ReactNode } from 'react'
-import { formatClock, tabularNums, wellSurface } from '../../../components'
+import { formatClock, tabularNums, visuallyHidden, wellSurface } from '../../../components'
+import { askAiCopy } from '../../../copy/ask-ai'
 import { tokens } from '../../../theme'
+import { forecastLine } from './forecast-line'
 import { ProposalItem } from './ProposalItem'
+import { ReceiptsCard } from './ReceiptsCard'
 import { ToolChips } from './ToolChips'
 import type { Turn } from './useChat'
 import { replyWhen } from './when'
@@ -190,9 +197,37 @@ function Thinking() {
   )
 }
 
+/** The "What changed" line under the Logged card: the forecast's move, in the reply's own small type. */
+function WhatChanged({ text }: { text: string }) {
+  return (
+    <Box
+      data-testid="chat-forecast"
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: tokens.font.size.small,
+        fontWeight: tokens.font.weight.label,
+        lineHeight: tokens.font.leading.small,
+        color: tokens.ink.label,
+        ...tabularNums,
+      }}
+    >
+      <TrendingFlatRounded aria-hidden sx={{ fontSize: 18, color: tokens.accent.main }} />
+      <span>
+        <Box component="span" sx={visuallyHidden}>
+          {askAiCopy.whatChanged}:{' '}
+        </Box>
+        {text}
+      </span>
+    </Box>
+  )
+}
+
 export function TurnView({ turn }: { turn: Turn }) {
   const { question, reply, tools } = turn
   const waitingForTap = reply?.proposals.some((p) => p.status === 'pending')
+  const moved = reply ? forecastLine(reply.forecast) : null
   return (
     <Box
       component="li"
@@ -221,6 +256,25 @@ export function TurnView({ turn }: { turn: Turn }) {
           {question.content}
         </Box>
       )}
+      {turn.queued && (
+        <Box
+          role="status"
+          data-testid="ask-ai-queued"
+          sx={{
+            justifySelf: 'end',
+            mt: '-12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: tokens.font.size.caption,
+            fontWeight: tokens.font.weight.label,
+            color: tokens.ink.label,
+          }}
+        >
+          <CloudOffRounded aria-hidden sx={{ fontSize: 14 }} />
+          {askAiCopy.queuedNote}
+        </Box>
+      )}
       {turn.waiting && <Thinking />}
       {reply && (
         <Box sx={{ display: 'flex', gap: '12px', maxWidth: 760, minWidth: 0 }}>
@@ -229,6 +283,12 @@ export function TurnView({ turn }: { turn: Turn }) {
             {reply.tool_calls && reply.tool_calls.length > 0 && (
               <Box sx={{ mb: '10px' }}>
                 <ToolChips calls={reply.tool_calls} tools={tools} />
+              </Box>
+            )}
+            {(reply.receipts.length > 0 || moved) && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '10px', mb: '12px' }}>
+                {reply.receipts.length > 0 && <ReceiptsCard receipts={reply.receipts} />}
+                {moved && <WhatChanged text={moved} />}
               </Box>
             )}
             <ReplyText text={reply.content} />

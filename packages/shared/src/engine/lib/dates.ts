@@ -118,3 +118,11 @@ export function eachDate(from: LocalDate, to: LocalDate): LocalDate[] {
   for (let i = 0; i <= n; i++) out.push(addDays(from, i))
   return out
 }
+
+/**
+ * The Edmonton date a fact said "n days ago" belongs to: daysAgo(now, n) = today(now) − n days (n = 1 is yesterday,
+ * whatever the clock says in UTC).
+ */
+export function daysAgo(now: InstantInput, days: number): LocalDate {
+  return addDays(today(now), -days)
+}

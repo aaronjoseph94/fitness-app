@@ -1,9 +1,10 @@
 // Owns: what Ask AI may do with each tool (SPEC §8 "Writes are proposals that need a tap", §9 safe list). Reads are
 // open (they cannot write); a write is offered only when it is listed here, so a new write tool stays out of Ask AI
 // until someone decides its rule (fail closed):
-//   log      — Aaron's own logging (he asked for it in the message): applies at once; starting a session he asked for
-//   propose  — stores a proposal that waits for his tap (targets, workouts, week plans, and every Train change:
-//              templates, equipment, hidden exercises, training days, planning the week)
+//   log      — Aaron's own logging (he asked for it in the message): applies at once; starting a session he asked for;
+//              a body note (how his body feels)
+//   propose  — stores a proposal that waits for his tap (targets, workouts, week plans, a goal weight / goal date, and
+//              every Train change: templates, equipment, hidden exercises, training days, planning the week)
 //   safe     — a safe-list kind (exercise swaps within the same primary muscle, reminder times): the guards apply it
 //              at once only when settings.auto_apply_safe is on; otherwise the tool stores a proposal for his tap
 // Everything else (apply/reject/revert, undoing a Train change, reviews, planned fasts, scan dates, the dashboard
@@ -26,10 +27,13 @@ const WRITES: Readonly<Record<string, Exclude<Access, 'read'>>> = {
   start_session: 'log',
   log_set: 'log',
   finish_session: 'log',
+  log_body_note: 'log',
+  resolve_body_note: 'log',
   propose_plan_change: 'propose',
   generate_workout: 'propose',
   propose_week_plan: 'propose',
   replace_week_plan: 'propose',
+  propose_goal_change: 'propose',
   // Train (trainChange and proposeTrainingDays make Ask AI's call a pending proposal; revert_train_change is not here).
   create_template: 'propose',
   update_template: 'propose',

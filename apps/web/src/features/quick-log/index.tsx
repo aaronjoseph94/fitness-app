@@ -8,8 +8,8 @@
 // - The logging kit the Log tab builds on: writes that know what they make stale and show as pending until synced
 //   (useLogMutation, usePendingLogs), dictation (useDictation, also behind Ask AI's mic), the shared reads (day,
 //   settings, water, fasts, the day's meals polled while one is analysed), food icons, the food maths and slots,
-//   Edmonton dates, and the logged notice. Error wording (problemText) lives in the api module; LoadProblem,
-//   NumberField and parseNumber in components.
+//   Edmonton dates, and the logged notice. logPhotoMeal: a photo meal in one call (Ask AI's "Meal" tag). Error wording
+//   (problemText) lives in the api module; LoadProblem, NumberField and parseNumber in components.
 export { useLogMutation, usePendingLogs, type PendingLog } from './lib/writes'
 export { useDay, useLogSettings, useWater, type LogSettings, type WaterDay } from './lib/reads'
 export { useFasts, useNow, fastsInMonth, type FastView, type FastStatusView } from './lib/fasts'
@@ -35,3 +35,4 @@ export { latestAdjustment, type AdjustmentEvent } from './lib/review/adjustment'
 export { useFoodIcons } from './lib/review/food-icons'
 export { useDictation, appendPhrase, type Dictation } from './lib/capture/voice'
 export { preparePhoto, releasePhoto, type PreparedPhoto } from './lib/capture/photos'
+export { logPhotoMeal } from './lib/capture/photo-meal'

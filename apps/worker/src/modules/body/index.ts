@@ -7,9 +7,15 @@
 //   updateWeighIn(deps, id, WeighInUpdate)    → WeighIn
 //   logMeasurements(deps, MeasurementsCreate) → Measurement[]
 //   getTrend(deps, { from, to })              → TrendSeries
+//   weighInOn(deps, date) / measurementOn(deps, date, site) → WeighIn | null / Measurement | null   that day's row
+//   deleteWeighIn(deps, id, restore?) / deleteMeasurement(deps, id, restore?) → Ok   remove the row; with `restore`
+//        (what that date / site held before it, e.g. an Ask AI receipt's `before`) put that row back, unless the date
+//        (and site) has been logged again since. Deleting an id that is gone is a no-op.
 import type {
   DateRange,
   Measurement,
+  MeasurementSite,
+  Ok,
   MeasurementsCreate,
   TrendSeries,
   WeighIn,
@@ -18,7 +24,7 @@ import type {
 } from '@fitness/shared/schemas'
 import { today } from '@fitness/shared/engine'
 import { and, eq, inArray, ne } from 'drizzle-orm'
-import { measurements, weight_logs } from '../../db'
+import { measurements, runBatch, weight_logs } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest, notFound } from '../../lib/http-error'
 import { toMeasurement, toWeighIn } from './lib/rows'
@@ -111,4 +117,80 @@ export async function logMeasurements(deps: Deps, input: MeasurementsCreate): Pr
 /** GET /api/trend: daily raw + trend weights for the range, the 7-day trend change, tape, forecast and milestones. */
 export function getTrend(deps: Deps, range: DateRange): Promise<TrendSeries> {
   return buildTrend(deps, range)
+}
+
+/** The weigh-in stored for `date`, if any. */
+export async function weighInOn(deps: Deps, date: string): Promise<WeighIn | null> {
+  const [row] = await deps.db.select().from(weight_logs).where(eq(weight_logs.date, date))
+  return row ? toWeighIn(row) : null
+}
+
+/** The tape measurement stored for `date` and `site`, if any. */
+export async function measurementOn(
+  deps: Deps,
+  date: string,
+  site: MeasurementSite,
+): Promise<Measurement | null> {
+  const [row] = await deps.db
+    .select()
+    .from(measurements)
+    .where(and(eq(measurements.date, date), eq(measurements.site, site)))
+  return row ? toMeasurement(row) : null
+}
+
+/**
+ * Remove weigh-in `id`; with `restore`, put that earlier weigh-in back in the same batch. The restore is a conditional
+ * write (ON CONFLICT DO NOTHING on the date): a weigh-in logged for that date since is kept.
+ */
+export async function deleteWeighIn(deps: Deps, id: string, restore: WeighIn | null = null): Promise<Ok> {
+  const { db } = deps
+  await runBatch(db, [
+    db.delete(weight_logs).where(eq(weight_logs.id, id)),
+    ...(restore
+      ? [
+          db
+            .insert(weight_logs)
+            .values({
+              id: restore.id,
+              date: restore.date,
+              weight_kg: restore.weight_kg,
+              note: restore.note,
+              actor: deps.actor,
+              created_at: restore.created_at,
+              updated_at: deps.now().toISOString(),
+            })
+            .onConflictDoNothing(),
+        ]
+      : []),
+  ])
+  return { ok: true }
+}
+
+/** Remove measurement `id`; with `restore`, put that earlier one back unless its date and site were measured since. */
+export async function deleteMeasurement(
+  deps: Deps,
+  id: string,
+  restore: Measurement | null = null,
+): Promise<Ok> {
+  const { db } = deps
+  await runBatch(db, [
+    db.delete(measurements).where(eq(measurements.id, id)),
+    ...(restore
+      ? [
+          db
+            .insert(measurements)
+            .values({
+              id: restore.id,
+              date: restore.date,
+              site: restore.site,
+              value_cm: restore.value_cm,
+              actor: deps.actor,
+              created_at: restore.created_at,
+              updated_at: deps.now().toISOString(),
+            })
+            .onConflictDoNothing(),
+        ]
+      : []),
+  ])
+  return { ok: true }
 }

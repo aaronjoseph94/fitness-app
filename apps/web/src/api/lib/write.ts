@@ -1,7 +1,8 @@
 // Owns: writes that survive being offline — an endpoint marked `offline: 'queue'` is queued (and resolves at once) when the
 // device is offline, the queue already holds earlier writes, the network fails or the Access session expired; a binary
-// body (a photo) is stored as a Blob — and the sender the queue replays through.
-import type { Endpoint, EndpointInput, EndpointOutput } from '@fitness/shared/api'
+// body (a photo) is stored as a Blob — and the sender the queue replays through. An Ask AI message (a turn of up to
+// ~55 s on the Worker) gets a turn-length timeout both when sent and when replayed.
+import { endpoints, type Endpoint, type EndpointInput, type EndpointOutput } from '@fitness/shared/api'
 import { hasPendingWrites, queueWrite, type BodyOf, type PendingWrite, type QueueSender } from '../../offline'
 import { exchange, parseResponse, toWireRequest } from './call'
 import { isApiError } from './errors'
@@ -12,8 +13,15 @@ const QUEUEABLE_TIMEOUT_MS = 10_000
 /** A photo (≤ 1,024 px, a few hundred KB) gets longer on a slow connection before it falls back to the queue. */
 const QUEUEABLE_BINARY_TIMEOUT_MS = 30_000
 
-const timeoutFor = (body: unknown) =>
-  isBinaryBody(body) ? QUEUEABLE_BINARY_TIMEOUT_MS : QUEUEABLE_TIMEOUT_MS
+/** An Ask AI turn runs up to ~55 s on the Worker (several model calls and tools): wait a little longer than that. */
+export const CHAT_TURN_TIMEOUT_MS = 75_000
+
+const timeoutFor = (body: unknown, path: string) =>
+  path === endpoints.ai.chat.path
+    ? CHAT_TURN_TIMEOUT_MS
+    : isBinaryBody(body)
+      ? QUEUEABLE_BINARY_TIMEOUT_MS
+      : QUEUEABLE_TIMEOUT_MS
 
 export type WriteOutcome<E extends Endpoint> =
   /** The Worker stored it; `data` is its validated response. */
@@ -42,7 +50,7 @@ export async function write<E extends Endpoint>(
   if (!navigator.onLine || (await hasPendingWrites())) return enqueue()
   let body: unknown
   try {
-    body = await exchange(request, { timeoutMs: timeoutFor(request.body) })
+    body = await exchange(request, { timeoutMs: timeoutFor(request.body, request.path) })
   } catch (error) {
     if (isApiError(error) && (error.transient || error.kind === 'auth-expired')) return enqueue()
     throw error
@@ -54,7 +62,7 @@ export async function write<E extends Endpoint>(
 export const sendQueuedWrite: QueueSender = async (pending) => {
   const request: WireRequest = { method: pending.method, path: pending.path, body: pending.body }
   try {
-    await send(request, { timeoutMs: timeoutFor(request.body) })
+    await send(request, { timeoutMs: timeoutFor(request.body, request.path) })
     return { kind: 'sent' }
   } catch (error) {
     if (!isApiError(error)) return { kind: 'retry', error: String(error) }

@@ -1,11 +1,14 @@
 // Owns: Ask AI (SPEC §8) on the web — the AI tab's page at /ai (1d: a compact sky hero naming the model that answers
 // first, then chats, the thread, proposals waiting for a tap, recent Train changes with Undo) and the slide-up panel
 // the shell opens from the ⌘K command palette on any other page; both show the same thread.
-// Reads/writes: GET/POST/DELETE /api/ai/chat, GET /api/events, POST /api/proposals/:id/accept|reject,
-// POST /api/week-plans/:id/apply|reject, POST /api/train-changes/:id/revert.
+// The composer takes a dump or a question; the reply shows what was logged (each with Undo) and how the forecast moved.
+// Reads/writes: GET/POST/DELETE /api/ai/chat, POST /api/ai/attachments, POST /api/ai/receipts/:id/undo, GET /api/events,
+// POST /api/proposals/:id/accept|reject, POST /api/week-plans/:id/apply|reject, POST /api/train-changes/:id/revert; an
+// attached photo goes through quick-log (a photo meal), scans (the sheet, name masked) or photos (saved privately).
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import { PageHeader } from '../../components'
+import { askAiCopy } from '../../copy/ask-ai'
 import { minWidth, tokens } from '../../theme'
 import { useModelChain, type ModelChain } from '../settings/models'
 import { Chat } from './lib/Chat'
@@ -21,7 +24,7 @@ function modelLine(chain: ModelChain | undefined): string {
   return `${chain.first} · ${chain.paid ? 'paid key' : 'free tier'}`
 }
 
-const NOTE = 'Numbers come from your data. Every change passes the rails and waits for your tap.'
+const NOTE = askAiCopy.pageNote
 /**
  * 1d sets the hero's line right of the title, where it clears the sun disc only on a wide sky (from about 1,400 px);
  * narrower, it is the usual subtitle under the title, so it never sits on the disc.

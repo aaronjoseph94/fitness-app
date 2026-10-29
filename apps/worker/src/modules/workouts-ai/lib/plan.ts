@@ -225,6 +225,8 @@ export interface PromptInput {
   readiness: Readiness
   fast_day: boolean
   avoid: readonly Muscle[]
+  /** Active body notes of a day's session ("knee (pain, moderate)"); the candidates already leave out what they protect. */
+  body_notes?: readonly string[]
   sets: { min: number; max: number; aim: string }
   digest: TrainingDigest
   slugOf: (id: string) => string | undefined
@@ -294,6 +296,7 @@ function dayLines(p: PromptInput): string[] {
     `Readiness: ${readiness}${r.reduced_volume ? ' - reduce volume' : ''}.`,
     `Fast day: ${p.fast_day ? 'yes (24 h fast) - keep it light' : 'no'}.`,
     `Avoid as primary target (trained on a neighbouring day): ${p.avoid.length ? p.avoid.join(', ') : 'none'}.`,
+    ...(p.body_notes?.length ? [`Avoid loading (body notes): ${p.body_notes.join('; ')}.`] : []),
   ]
 }
 

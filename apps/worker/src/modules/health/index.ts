@@ -7,19 +7,24 @@
 //   logSteps(deps, StepLogCreate)       → StepLog
 //   ingestHealth(deps, HealthIngest)    → HealthIngestResult   the iOS Shortcut webhook (POST /api/ingest/health)
 //   importHealth(deps, HealthImport)    → HealthImportResult   a file import
+//   sleepOn(deps, date) / stepsOn(deps, date) → SleepLog | null / StepLog | null   that date's row
+//   deleteSleep(deps, id, restore?) / deleteSteps(deps, id, restore?) → Ok   remove the row; with `restore` (what that
+//        date held before, e.g. an Ask AI receipt's `before`) put that row back, unless the date has been logged again
+//        since. Deleting an id that is gone is a no-op.
 import { localDate, today } from '@fitness/shared/engine'
 import type {
   HealthImport,
   HealthImportResult,
   HealthIngest,
   HealthIngestResult,
+  Ok,
   SleepLog,
   SleepLogCreate,
   StepLog,
   StepLogCreate,
 } from '@fitness/shared/schemas'
 import { eq, sql } from 'drizzle-orm'
-import { sleep_logs, step_logs } from '../../db'
+import { runBatch, sleep_logs, step_logs } from '../../db'
 import type { Deps } from '../../lib/deps'
 import { badRequest } from '../../lib/http-error'
 import { upsertImport } from './lib/import'
@@ -145,4 +150,73 @@ export async function ingestHealth(deps: Deps, input: HealthIngest): Promise<Hea
 /** POST /api/imports/health: one page of mapped export rows, upserted by date (see lib/import for the rules). */
 export function importHealth(deps: Deps, input: HealthImport): Promise<HealthImportResult> {
   return upsertImport(deps.db, deps.actor, deps.now().toISOString(), input)
+}
+
+/** The night stored for wake date `date`, if any. */
+export async function sleepOn(deps: Deps, date: string): Promise<SleepLog | null> {
+  const [row] = await deps.db.select().from(sleep_logs).where(eq(sleep_logs.date, date))
+  return row ? toSleepLog(row) : null
+}
+
+/** The steps stored for `date`, if any. */
+export async function stepsOn(deps: Deps, date: string): Promise<StepLog | null> {
+  const [row] = await deps.db.select().from(step_logs).where(eq(step_logs.date, date))
+  return row ? toStepLog(row) : null
+}
+
+/**
+ * Remove sleep entry `id`; with `restore`, put that earlier night back in the same batch. The restore is a conditional
+ * write (ON CONFLICT DO NOTHING on the date): a night logged for that date since (the Shortcut, a form) is kept.
+ */
+export async function deleteSleep(deps: Deps, id: string, restore: SleepLog | null = null): Promise<Ok> {
+  const { db } = deps
+  await runBatch(db, [
+    db.delete(sleep_logs).where(eq(sleep_logs.id, id)),
+    ...(restore
+      ? [
+          db
+            .insert(sleep_logs)
+            .values({
+              id: restore.id,
+              date: restore.date,
+              in_bed_at: restore.in_bed_at,
+              woke_at: restore.woke_at,
+              asleep_min: restore.asleep_min,
+              source: restore.source,
+              stages: restore.stages,
+              actor: deps.actor,
+              created_at: restore.created_at,
+              updated_at: deps.now().toISOString(),
+            })
+            .onConflictDoNothing(),
+        ]
+      : []),
+  ])
+  return { ok: true }
+}
+
+/** Remove steps entry `id`; with `restore`, put that earlier entry back unless the date has been logged since. */
+export async function deleteSteps(deps: Deps, id: string, restore: StepLog | null = null): Promise<Ok> {
+  const { db } = deps
+  await runBatch(db, [
+    db.delete(step_logs).where(eq(step_logs.id, id)),
+    ...(restore
+      ? [
+          db
+            .insert(step_logs)
+            .values({
+              id: restore.id,
+              date: restore.date,
+              steps: restore.steps,
+              active_kcal: restore.active_kcal,
+              source: restore.source,
+              actor: deps.actor,
+              created_at: restore.created_at,
+              updated_at: deps.now().toISOString(),
+            })
+            .onConflictDoNothing(),
+        ]
+      : []),
+  ])
+  return { ok: true }
 }
