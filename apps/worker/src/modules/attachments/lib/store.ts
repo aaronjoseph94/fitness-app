@@ -10,8 +10,8 @@ import { HttpError } from '../../../lib/http-error'
 import type { ImageInput } from '../../llm'
 import { checkPhotoBytes } from '../../photos'
 
-/** A re-encoded screenshot (≤ ~1,600 px JPEG/WebP) is a few hundred KB; 2 MB leaves room and keeps the vision call small. */
-export const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024
+/** A re-encoded screenshot (≤ ~1,600 px JPEG/WebP) is a few hundred KB; 600 KB keeps the vision call small. */
+export const MAX_SCREENSHOT_BYTES = 600 * 1024
 /** An upload no message claimed within a day was abandoned (draft discarded, send failed for good). */
 export const UNCLAIMED_TTL_MS = 24 * 3_600_000
 /** A claimed screenshot stays 30 days, so a replayed or retried turn can still read it; the thread keeps only text. */
@@ -42,34 +42,41 @@ export async function uploadAttachment(
   const [existing] = await db.select().from(chat_attachments).where(eq(chat_attachments.id, q.attachment_id))
   if (existing) return toAttachment(existing)
 
-  if (bytes.byteLength > MAX_SCREENSHOT_BYTES)
-    throw new HttpError(
-      422,
-      'image_too_large',
-      `A screenshot may be at most ${MAX_SCREENSHOT_BYTES / 1024 / 1024} MB`,
-    )
+  if (bytes.byteLength > MAX_SCREENSHOT_BYTES) throw tooLarge()
   checkPhotoBytes(bytes, q.content_type) // it goes to a vision LLM: the declared type, and no EXIF / XMP
+  // The key comes from the id and the checked type only. The row goes in first: only the request that inserted it
+  // writes the object, so two uploads racing on one id cannot overwrite each other's bytes.
   const key = keyFor(q.attachment_id, q.content_type)
-  await deps.env.FILES.put(key, bytes, { httpMetadata: { contentType: q.content_type } })
-
   const now = deps.now().toISOString()
-  const [, [row]] = await db.batch([
-    db
-      .insert(chat_attachments)
-      .values({
-        id: q.attachment_id,
-        message_id: null,
-        r2_key: key,
-        content_type: q.content_type,
-        bytes: bytes.byteLength,
-        created_at: now,
-        updated_at: now,
-      })
-      .onConflictDoNothing({ target: chat_attachments.id }),
-    db.select().from(chat_attachments).where(eq(chat_attachments.id, q.attachment_id)),
-  ])
-  return toAttachment(row!)
+  const [inserted] = await db
+    .insert(chat_attachments)
+    .values({
+      id: q.attachment_id,
+      message_id: null,
+      r2_key: key,
+      content_type: q.content_type,
+      bytes: bytes.byteLength,
+      created_at: now,
+      updated_at: now,
+    })
+    .onConflictDoNothing({ target: chat_attachments.id })
+    .returning()
+  if (!inserted) {
+    const [row] = await db.select().from(chat_attachments).where(eq(chat_attachments.id, q.attachment_id))
+    return toAttachment(row!)
+  }
+  try {
+    await deps.env.FILES.put(key, bytes, { httpMetadata: { contentType: q.content_type } })
+  } catch (e) {
+    await db.delete(chat_attachments).where(eq(chat_attachments.id, q.attachment_id)) // a retry starts clean
+    throw e
+  }
+  return toAttachment(inserted)
 }
+
+/** 422 image_too_large: the screenshot is over MAX_SCREENSHOT_BYTES (the route checks Content-Length first). */
+export const tooLarge = () =>
+  new HttpError(422, 'image_too_large', `A screenshot may be at most ${MAX_SCREENSHOT_BYTES / 1024} KB`)
 
 /**
  * Claim up to MAX_SCREENSHOTS screenshots for `message_id` and read their bytes for the model, in the order given.

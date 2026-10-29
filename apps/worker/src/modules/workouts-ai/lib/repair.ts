@@ -7,6 +7,7 @@
 //   3. a second pick of the same exercise → dropped
 //   4. engine guards per exercise (allowed set, no excluded category) → dropped with the exclusion's reason
 //   5. recovery: an LLM pick whose primary muscle is in `avoid` → dropped (kept exercises stay, with a note)
+//  5b. body notes: any exercise whose primary muscle is in `sore` (engine bodyNoteSteer) → dropped, kept ones too
 //   6. at most 10 exercises (extra LLM picks from the end dropped)
 //   7. rep range clamped to 1–30 (swapped when min > max), rest to 30–300 s, LLM sets to 1–6, load rounded to 0.5 kg
 //      (applied while resolving, before step 2)
@@ -15,7 +16,7 @@
 //  8b. body groups (a split day: `required` = engine requiredGroups of its slot in its split): for each required group
 //      the exercises' primary muscles do not reach (engine missingGroups), in `required` order, add the first of
 //      `candidates` (the prompt's ranked list) whose primary muscles reach it, that the draft does not hold, the guards
-//      allow and `avoid` does not hit — COVER_SETS sets, rep_min / rep_max / rest_sec = the lower median of the draft's
+//      allow and neither `avoid` nor `sore` hits — COVER_SETS sets, rep_min / rep_max / rest_sec = the lower median of the draft's
 //      own. Room: fewer than 10 exercises, and total + COVER_SETS ≤ max — when it is over, first −1 set at a time on the
 //      exercise with the most sets (ties: the later one), never below MIN_SETS_TRIMMED, if that many sets can be freed
 //      at all; a group with no candidate or no room gets a note
@@ -49,6 +50,8 @@ export interface RepairInput {
   bySlug: ReadonlyMap<string, LibraryEntry>
   guard: GuardContext
   avoid: readonly Muscle[]
+  /** Muscles a body note protects (engine bodyNoteSteer): a hard avoid, kept exercises included. */
+  sore?: readonly Muscle[]
   sets: { min: number; max: number }
   /** Body groups the draft must reach (a split day's engine requiredGroups); none for a day's session. */
   required?: readonly BodyGroup[]
@@ -138,6 +141,15 @@ export function repairDraft(input: RepairInput): RepairResult {
     return false
   })
 
+  // 5b. body notes: a hard avoid, whoever listed the exercise
+  const sore = input.sore ?? []
+  kept = kept.filter((i) => {
+    const hit = i.entry.primary_muscles.filter((m) => sore.includes(m))
+    if (!hit.length) return true
+    drop(i.entry.name, `a body note protects ${hit.join(', ')}`)
+    return false
+  })
+
   // 6. exercise count
   while (kept.length > MAX_EXERCISES) {
     const last = kept.map((i) => i.kept).lastIndexOf(false)
@@ -182,7 +194,7 @@ export function repairDraft(input: RepairInput): RepairResult {
   }
   const allowed = (e: LibraryEntry) =>
     !entries.some((k) => k.id === e.id) &&
-    !e.primary_muscles.some((m) => input.avoid.includes(m)) &&
+    !e.primary_muscles.some((m) => input.avoid.includes(m) || sore.includes(m)) &&
     applyGuards<ExerciseSwapChange>(
       [{ kind: 'exercise_swap', from_exercise_id: e.id, to_exercise_id: e.id }],
       input.guard,

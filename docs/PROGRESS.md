@@ -4,6 +4,12 @@
 
 ## Done
 
+- 2026-10-29 · **Ask AI is "dump or ask".** Aaron wanted one place to dump anything ("92.4 this morning, slept 6 h, chicken wrap for lunch, leg press is broken, knee's sore, doctor says aim for 88 by March") and have the AI log it, recalculate, and adapt goals and training. One chat turn now:
+  - *extracts* the facts he states (one `llm.complete` with the `DumpExtraction` schema; screenshots go to the vision chain);
+  - *logs* each through the tools layer as actor `ai`, with a receipt and a one-tap Undo (`chat_receipts`; Undo puts a day's earlier value back, never over a newer log);
+  - *reforecasts* when weight, intake, steps, water or a fast moved, and shows "Projected summit Nov 30 → Dec 4";
+  - *then* runs the usual tool loop for questions and requests, proposing changes behind a tap.
+  New: body notes (`body_notes`, active 7 days; pain steers generated workouts away from that area, illness or low energy reduces volume; a "How you feel" card on Train), `goal_change` proposals, tagged photo attachments (meal → photo meal, scan sheet → Scans with the name blacked out, screenshot → black-out boxes then the AI, progress photo → saved privately, never sent), and chat in the offline queue. **Migration 0009** (`body_notes`, `chat_receipts`, `chat_attachments`, `chat_messages.forecast`): apply it before deploying.
 - 2026-10-23 · **UI/UX review: 40 findings fixed.** Three senior-designer reviews of the live Summit app (every screen at 390–1440 px) found 40 issues; Aaron said "fix everything". Five parallel fixers (Train, Today/Dashboard/Progress, Log, Settings/AI/Scans, shell and kit). Highlights:
   - *Data integrity:*
     - Invalid sets can't be ticked or finished (and the Worker refuses them, now tested).
@@ -89,6 +95,16 @@
 
 ## Decisions made on Aaron's behalf
 
+- 2026-10-29 · **Dump or ask: the choices.** Aaron picked four (log now with Undo; tagged photos; Ask AI itself is the dump box; goals as proposals). The rest:
+  - (1) *Facts apply at once, changes wait.* Weight, sleep, steps, meals (text → the meal parser), water, fasts, measurements and body notes are logs. Equipment status, hidden exercises, targets, the week, training days and goals stay proposals; `auto_apply_safe` is unchanged.
+  - (2) *Only stated facts.* The extraction prompt refuses hypotheticals, plans and guesses; facts go back at most 14 days (`DUMP_MAX_DAYS_AGO`), older logs go through Log. A one-clause question with no number and no screenshot skips the extraction call.
+  - (3) *The forecast moves at once, the TDEE estimate weekly.* The dump reforecasts with `reestimate: false`; the expenditure estimate keeps its Sunday cadence and 50/50 smoothing so one dump can't swing it. The reply says so when back-dated logs are involved.
+  - (4) *Body notes renew rather than duplicate* (same area and kind while active), and resolve after 7 days unless logged again. They change one day's generated workout, never the split templates.
+  - (5) *Goal proposals are pending for every actor, MCP included*; accepting re-checks (40–200 kg, below the start weight, a future date) and saves through Settings. The rails are untouched.
+  - (6) *Screenshots:* 600 KB cap, metadata checked on the server as progress photos are, at most 3 a message, deleted 24 h after upload if never sent and 30 days after the message. They are not in the export.
+  - (9) *After review:* every turn stores its receipts and a placeholder reply before the coach pass, so a dropped connection never loses the Undo or logs twice on retry (a replay says `turn_running` and the app polls for the answer). Undo touches a row only while it still holds what the dump wrote ("Logged again since — edit it in Log" otherwise). A screenshot's numbers log only when his own words say log, record, add, enter, track, save or import; a fast or body note never comes from a screenshot. One unreadable fact no longer drops the others. A message sent from the offline queue is dated when it was typed (`sent_at`, clamped to 14 days back). Meal photos and scan sheets confirm before going to the AI, and the black-out step asks "name, face and email covered?". JPEGs keep only JFIF, an ICC colour profile and Adobe segments.
+  - (7) *No e2e for a dump:* the local Worker has no model key, so the dump flow is covered at the Ask AI module seam with a fake model (`apps/worker/test/ask-ai-dump.test.ts`).
+  - (8) *An accepted goal change is a settings change event*, not a plan version: the profile `change` event carries the goals it replaced (`from`) and is changed back in Settings, following the training_days precedent. Goals are not targets, so there is no `plan_versions` row and no one-tap revert.
 - 2026-10-23 · **UI/UX fixes: the choices.**
   - (1) *One weekly rate:* the forecast's, `(tdee_est − planned intake) × 7 ÷ 7,700`, labelled "kg a week forecast". Observed change is shown only as kg over a named window ("−0.8 kg in 7 days", "Trend change · 4 weeks"). Rate, ahead/behind, projected summit and camp dates then all agree.
   - (2) *A fast's day is the engine's `fastDay()`*, the date holding most of the fast (Fri 8 PM → Sat 8 PM is Saturday's), because it carries the 0 kcal target. Views show both the window and the fast day. This replaces the first idea of using the start day.

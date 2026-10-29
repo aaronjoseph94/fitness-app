@@ -1,12 +1,18 @@
 // Owns: tests at the attachments seam — a screenshot upload stored once (a replay returns the same row), metadata-
-// carrying bytes refused, a message claiming its screenshots and getting their bytes back, another message getting
-// none, and a forgotten thread's screenshots removed.
+// carrying bytes refused, one over 600 KB refused on its Content-Length (no row, no object), a message claiming its
+// screenshots and getting their bytes back, another message getting none, and a forgotten thread's screenshots removed.
 import { ChatAttachmentUploadQuery } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { afterEach, describe, expect, it } from 'vitest'
+import { createApp } from '../src/app'
 import { chat_attachments, createDb } from '../src/db'
 import type { Deps } from '../src/lib/deps'
-import { attachmentImages, deleteThreadAttachments, uploadAttachment } from '../src/modules/attachments'
+import {
+  attachmentImages,
+  deleteThreadAttachments,
+  MAX_SCREENSHOT_BYTES,
+  uploadAttachment,
+} from '../src/modules/attachments'
 import { eq } from 'drizzle-orm'
 
 const db = createDb(env.DB)
@@ -55,6 +61,26 @@ describe('chat screenshots', () => {
       code: 'exif_present',
     })
     expect(await db.select().from(chat_attachments).where(eq(chat_attachments.id, id))).toHaveLength(0)
+  })
+
+  it('refuses an upload whose Content-Length is over 600 KB before reading it (422, nothing stored)', async () => {
+    const id = crypto.randomUUID()
+    const body = new Uint8Array(MAX_SCREENSHOT_BYTES + 1)
+    body.set(JFIF.subarray(0, 20))
+    body.set([0xff, 0xd9], body.length - 2)
+    const res = await createApp().request(
+      `http://localhost/api/ai/attachments?attachment_id=${id}&content_type=image%2Fjpeg`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(body.length) },
+        body,
+      },
+      env,
+    )
+    expect(res.status).toBe(422)
+    expect(await res.json()).toMatchObject({ error: 'image_too_large' })
+    expect(await db.select().from(chat_attachments).where(eq(chat_attachments.id, id))).toHaveLength(0)
+    expect(await env.FILES.get(`chat/${id}.jpg`)).toBeNull()
   })
 
   it('a message claims its screenshots and gets their bytes; another message cannot; a forgotten thread drops them', async () => {

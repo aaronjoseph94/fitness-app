@@ -1,7 +1,9 @@
 // Owns: Ask AI's rows in chat_messages — the stored shape of tool calls (the contract's ToolCall plus what each call
-// created that waits for a tap), rows ↔ ChatMessage, a thread's recent turns as model history, the thread list, and the
-// chunked insert of one turn. tool_calls holds: assistant → every call of the turn; tool → the one call it answers.
+// created that waits for a tap), rows ↔ ChatMessage, a thread's recent turns as model history, the thread list, and a
+// turn's writes (its running placeholder, then its tool rows and the placeholder filled in, in one batch). tool_calls holds: assistant → every call of the turn; tool → the one call it answers.
 // forecast (assistant): how the forecast moved after the message's facts were logged (ForecastShift, parsed on read).
+// running (assistant): the turn's placeholder, written with the dump's receipts before the coach pass and filled in at
+// the end; one still running after RUNNING_STALE_MS was cut off (its isolate died) and reads as INTERRUPTED.
 import { ForecastShift, type ChatMessage, type ChatRole, type ToolCall } from '@fitness/shared/schemas'
 import { and, desc, eq, max, min, sql } from 'drizzle-orm'
 import { chat_messages, chunk, runBatch, type Row } from '../../../db'
@@ -34,12 +36,32 @@ export const NOT_SET_UP_BEFORE =
   "Ask AI isn't set up yet: no AI provider key is configured on the server, so I can't answer. Nothing is lost; logging, the plan and every chart still work."
 const FALLBACK_TEXTS = new Set<string>([...Object.values(FALLBACK), NOT_SET_UP, NOT_SET_UP_BEFORE])
 
+/** A turn is at most 55 s; a placeholder older than this was cut off. */
+export const RUNNING_STALE_MS = 120_000
+/** A running turn as read back while it still runs (anything it logged is already listed with the reply). */
+export const RUNNING = 'Still working on this; the answer follows in a moment.'
+/** A running turn that was cut off: what it logged stands, the answer never came. */
+export const INTERRUPTED = 'I logged these; the answer was cut off — ask again.'
+
+/** Whether a running placeholder was cut off (older than RUNNING_STALE_MS at `now`). */
+export const isStale = (row: Pick<ChatRow, 'updated_at'>, now: Date) =>
+  now.getTime() - Date.parse(row.updated_at) > RUNNING_STALE_MS
+
+/**
+ * A row as shown: a running placeholder keeps its empty content (the web reads an assistant row with content as the
+ * answer, so it keeps polling) unless `running` gives a text (a replay's reply), and reads INTERRUPTED once stale.
+ */
+export function asShown(row: ChatRow, now: Date, running = ''): ChatRow {
+  if (!row.running) return row
+  return { ...row, content: isStale(row, now) ? INTERRUPTED : running }
+}
+
 /** Model turns kept as history (user questions and assistant answers only; tool rounds are not replayed). */
 const HISTORY_ROWS = 12
 const THREAD_ROWS = 300
 const THREAD_LIST = 30
-/** chat_messages has 8 columns; D1 allows 100 bound parameters per statement. */
-const ROWS_PER_INSERT = Math.floor(100 / 8)
+/** chat_messages has 9 columns; D1 allows 100 bound parameters per statement. */
+const ROWS_PER_INSERT = Math.floor(100 / 9)
 
 export function storedCalls(row: Pick<ChatRow, 'tool_calls'>): StoredCall[] {
   return Array.isArray(row.tool_calls) ? (row.tool_calls as StoredCall[]) : []
@@ -82,18 +104,33 @@ export async function threadRows(deps: Deps, thread_id: string): Promise<ChatRow
   return rows.reverse()
 }
 
-/** The recent questions and answers of a thread as model history, oldest first, and the last question asked. */
+/**
+ * The recent questions and answers of a thread as model history, oldest first, the last question asked, and the id of
+ * the assistant row that answered it (null: none yet), so the caller can see whether that question logged anything.
+ * A running placeholder is no answer yet and is left out.
+ */
 export async function history(
   deps: Deps,
   thread_id: string,
-): Promise<{ messages: Msg[]; lastQuestion: string | null }> {
+): Promise<{ messages: Msg[]; lastQuestion: string | null; lastAnswerId: string | null }> {
   const rows = await deps.db
-    .select({ role: chat_messages.role, content: chat_messages.content })
+    .select({
+      id: chat_messages.id,
+      role: chat_messages.role,
+      content: chat_messages.content,
+      running: chat_messages.running,
+    })
     .from(chat_messages)
     .where(and(eq(chat_messages.thread_id, thread_id), sql`${chat_messages.role} != 'tool'`))
     .orderBy(desc(chat_messages.created_at))
     .limit(HISTORY_ROWS)
-  const turns = rows.reverse().filter((r) => !(r.role === 'assistant' && FALLBACK_TEXTS.has(r.content)))
+  const ordered = rows.reverse()
+  const lastUser = ordered.findLastIndex((r) => r.role === 'user')
+  const lastAnswerId =
+    lastUser === -1 ? null : (ordered.slice(lastUser + 1).find((r) => r.role === 'assistant')?.id ?? null)
+  const turns = ordered.filter(
+    (r) => !(r.role === 'assistant' && (r.running || FALLBACK_TEXTS.has(r.content))),
+  )
   // A model conversation starts with a question.
   while (turns[0] && turns[0].role !== 'user') turns.shift()
   // Adjacent turns of one role (a question whose answer failed) merge, so the roles alternate as providers expect.
@@ -106,8 +143,8 @@ export async function history(
         r.role === 'user' ? { role: 'user', content: r.content } : { role: 'assistant', content: r.content },
       )
   }
-  const lastQuestion = [...turns].reverse().find((r) => r.role === 'user')?.content ?? null
-  return { messages, lastQuestion }
+  const lastQuestion = lastUser === -1 ? null : ordered[lastUser]!.content
+  return { messages, lastQuestion, lastAnswerId }
 }
 
 /** Each thread's opening question, most recently active thread first. */
@@ -135,12 +172,33 @@ export async function threadOpenings(deps: Deps): Promise<ChatRow[]> {
   return rows.map((r) => r.row).filter((r) => !seen.has(r.thread_id) && !!seen.add(r.thread_id))
 }
 
-/** Insert one turn's rows (already ordered by created_at) as chunked statements in one db.batch. */
-export async function insertTurn(deps: Deps, rows: readonly ChatRow[]): Promise<void> {
-  await runBatch(
-    deps.db,
-    chunk(rows, ROWS_PER_INSERT).map((part) =>
+/**
+ * The statement writing a turn's placeholder reply (running, no content yet), for the batch that also stores the
+ * dump's receipts: from then on a replay of the message sees the turn and what it logged.
+ */
+export function placeholderInsert(deps: Deps, placeholder: ChatRow) {
+  return deps.db.insert(chat_messages).values({ ...placeholder, content: '', running: true })
+}
+
+/**
+ * Finish a turn in one db.batch: its tool rows (chunked inserts, already ordered by created_at) and the placeholder
+ * filled in — content, calls, forecast, created_at after the tool rows — and no longer running.
+ */
+export async function finishTurn(deps: Deps, tools: readonly ChatRow[], assistant: ChatRow): Promise<void> {
+  await runBatch(deps.db, [
+    ...chunk(tools, ROWS_PER_INSERT).map((part) =>
       deps.db.insert(chat_messages).values(part).onConflictDoNothing(),
     ),
-  )
+    deps.db
+      .update(chat_messages)
+      .set({
+        content: assistant.content,
+        tool_calls: assistant.tool_calls,
+        forecast: assistant.forecast,
+        running: false,
+        created_at: assistant.created_at,
+        updated_at: assistant.updated_at,
+      })
+      .where(eq(chat_messages.id, assistant.id)),
+  ])
 }

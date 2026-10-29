@@ -66,3 +66,9 @@
 - **Router**: the LLM provider chain — any paid model whose key is set first (Claude → ChatGPT → Gemini Pro), then the free tiers (Groq → OpenRouter `:free` → GLM → Gemini last; vision starts at OpenRouter) — with quotas, retries, schema repair and failover.
 - **Tools layer**: the typed operations shared by Ask AI and MCP (`get_today`, `apply_review`, …); each tool calls the same worker modules as the REST routes.
 - **Review bundle**: the one compact JSON a coach reads for a period (`get_review_bundle`).
+
+## Ask AI
+
+- **Dump**: one free-form Ask AI message holding things to log, requests and questions together. Its facts are logged at once; its changes come back as proposals.
+- **Receipt**: what a dump logged, one per fact (or attached meal photo or scan sheet), with a one-tap Undo that works once. Undo deletes the row, or puts back the day's earlier value.
+- **Body note**: how Aaron says his body feels on a day (pain, soreness, energy, illness, mood) on a muscle, a joint or the whole body. Active for 7 days unless resolved; pain keeps generated workouts off that area, illness or low energy reduces volume.

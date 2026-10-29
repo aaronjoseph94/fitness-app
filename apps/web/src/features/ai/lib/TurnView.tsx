@@ -2,8 +2,9 @@
 // back online" under it while it waits in the offline queue); the reply beside the gold sparkle tile: the tool pills,
 // what the message logged (the Logged card, each row with Undo), how the forecast moved ("What changed"), the text
 // (paragraphs, **bold**, and lists drawn as warm-well rows, from the model's light Markdown; never raw HTML), the
-// proposals as deep-sky strips, and the time it came back; and the "thinking" row (an amber tile, breathing dots) while
-// the reply is on its way.
+// proposals as deep-sky strips, and the time it came back; the "thinking" row (an amber tile, breathing dots) while
+// the reply is on its way; and, for an answer still coming after its message was delivered, what it already logged
+// with a calm "Still working on the answer…" line.
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import CloudOffRounded from '@mui/icons-material/CloudOffRounded'
 import TrendingFlatRounded from '@mui/icons-material/TrendingFlatRounded'
@@ -155,8 +156,8 @@ export function AiTile({ thinking = false }: { thinking?: boolean }) {
   )
 }
 
-/** Three dots breathing in turn (static under reduced motion) beside "Looking it up…". */
-function Thinking() {
+/** Three dots breathing in turn (static under reduced motion) beside "Looking it up…" (or `text`). */
+function Thinking({ text = 'Looking it up…' }: { text?: string }) {
   return (
     <Box
       role="status"
@@ -192,7 +193,7 @@ function Thinking() {
         <span />
         <span />
       </Box>
-      Looking it up…
+      {text}
     </Box>
   )
 }
@@ -276,6 +277,28 @@ export function TurnView({ turn }: { turn: Turn }) {
         </Box>
       )}
       {turn.waiting && <Thinking />}
+      {turn.stillWorking && (
+        <Box
+          data-testid="ask-ai-still-working"
+          sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '12px', maxWidth: 760 }}
+        >
+          {turn.stillWorking.receipts.length > 0 && <ReceiptsCard receipts={turn.stillWorking.receipts} />}
+          {turn.stillWorking.late ? (
+            <Box
+              role="status"
+              sx={{
+                fontSize: tokens.font.size.small,
+                lineHeight: tokens.font.leading.small,
+                color: tokens.ink.muted,
+              }}
+            >
+              {askAiCopy.stillWorkingLate}
+            </Box>
+          ) : (
+            <Thinking text={askAiCopy.stillWorking} />
+          )}
+        </Box>
+      )}
       {reply && (
         <Box sx={{ display: 'flex', gap: '12px', maxWidth: 760, minWidth: 0 }}>
           <AiTile />

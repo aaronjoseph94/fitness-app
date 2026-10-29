@@ -7,6 +7,9 @@
 //        favourite (copied, scaled) are confirmed at once; text/voice store raw_text as 'parsing' and queue a
 //        meal_analysis job in the same batch; photo waits as 'parsing' for its photos. A replayed id returns the meal.
 //        400 when eaten_at falls on a later local date than today (create or patch).
+//   deferMealAnalysis(deps) → Deps   deps whose createMeal queues a text meal's meal_analysis job without starting it
+//        (the caller runs meal.analysis.job_id later with runSoon: Ask AI's dump, so the job's model calls don't share
+//        the turn's budget while it is still answering)
 //   updateMeal(deps, id, MealPatch) → Meal  slot / eaten_at (date recomputed) / items (replace all) / confirm
 //   deleteMeal(deps, id)          → Ok     items, photos and the meal in one batch; R2 objects removed after
 //   addMealPhoto(deps, id, query, bytes) → MealPhoto   R2 meal-photos/<meal>/<photo>.(jpg|webp); a photo meal not yet
@@ -79,6 +82,16 @@ export async function getMeal(deps: Deps, id: string): Promise<Meal> {
   return meal
 }
 
+/** Deps made by deferMealAnalysis: createMeal leaves their meal_analysis jobs queued for the caller to start. */
+const deferred = new WeakSet<Deps>()
+
+/** A copy of `deps` whose createMeal queues a text meal's analysis job but does not start it (see the interface). */
+export function deferMealAnalysis(deps: Deps): Deps {
+  const out = { ...deps }
+  deferred.add(out)
+  return out
+}
+
 export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
   const existing = await mealById(deps, body.id)
   if (existing) return existing
@@ -142,7 +155,7 @@ export async function createMeal(deps: Deps, body: MealCreate): Promise<Meal> {
     if (raced) return raced
     throw e
   }
-  if (job) runSoon(deps, job.id)
+  if (job && !deferred.has(deps)) runSoon(deps, job.id)
   if (adjust) runSoon(deps, adjust.id)
   return getMeal(deps, body.id)
 }

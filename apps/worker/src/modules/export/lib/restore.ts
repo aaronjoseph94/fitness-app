@@ -26,6 +26,7 @@ const LOGGED_TABLES = [
   'sleep_logs',
   'step_logs',
   'fast_logs',
+  'body_notes',
   'measurements',
   'workout_sessions',
   'progress_photos',

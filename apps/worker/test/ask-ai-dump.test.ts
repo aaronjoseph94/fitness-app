@@ -3,9 +3,12 @@
 // broken, knee's sore, doctor says aim for 88 by March") logs the weight, sleep and meal (analysing) with receipts, files
 // the knee as a body note, leaves the leg press as a pending Train change and 88 kg as a pending goal change, and stores
 // how the forecast moved; a hypothetical writes nothing; undoing a weigh-in brings the day's earlier value back, once.
+// Also: a "1,200 kcal" request never lands below the 1,400 floor; a replayed message id logs nothing twice; Undo after
+// the day was logged again is 409 superseded; a screenshot's weight with no ask to log is not logged; a queued dump is
+// read against when it was typed (sent_at).
 import { env } from 'cloudflare:workers'
 import { ReminderKind, type DumpExtraction, type ReminderPrefs } from '@fitness/shared/schemas'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import {
   body_notes,
@@ -20,6 +23,7 @@ import {
 } from '../src/db'
 import type { Deps } from '../src/lib/deps'
 import { chatHistory, chatTurn, undoReceipt } from '../src/modules/ask-ai'
+import { logWeighIn } from '../src/modules/body'
 import type { ChatRequest, ChatResult, CompleteRequest, CompleteResult, LlmRouter } from '../src/modules/llm'
 
 const db = createDb(env.DB)
@@ -94,8 +98,15 @@ beforeAll(async () => {
   ])
 })
 
-/** A router whose extraction (complete) and coach replies (chat) are scripted; it records what it was sent. */
-function fakeRouter(extraction: DumpExtraction, reply: string) {
+/**
+ * A router whose extraction (complete) and coach replies (chat) are scripted; it records what it was sent. `calls`:
+ * tool calls the coach makes in its first round before replying.
+ */
+function fakeRouter(
+  extraction: unknown,
+  reply: string,
+  calls: { name: string; args: Record<string, unknown> }[] = [],
+) {
   const completes: CompleteRequest<unknown>[] = []
   const chats: ChatRequest<unknown>[] = []
   const meta = { provider: 'fake', model: 'fake-1', latency_ms: 1, tokens_in: 1, tokens_out: 1, attempts: 1 }
@@ -106,6 +117,15 @@ function fakeRouter(extraction: DumpExtraction, reply: string) {
     },
     chat: async <T>(req: ChatRequest<T>): Promise<ChatResult<T>> => {
       chats.push(req as ChatRequest<unknown>)
+      if (chats.length === 1 && calls.length) {
+        const toolCalls = calls.map((c, i) => ({ id: `call_${i}`, ...c }))
+        return {
+          type: 'tool_calls',
+          toolCalls,
+          message: { role: 'assistant', content: '', toolCalls },
+          ...meta,
+        }
+      }
       return { type: 'reply', data: reply as T, message: { role: 'assistant', content: reply }, ...meta }
     },
   }
@@ -113,6 +133,7 @@ function fakeRouter(extraction: DumpExtraction, reply: string) {
 }
 
 const send = (content: string) => ({ id: crypto.randomUUID(), thread_id: crypto.randomUUID(), content })
+const weightOn = (date: string) => db.select().from(weight_logs).where(eq(weight_logs.date, date))
 const empty: DumpExtraction = { facts: [], goal: null, requests: [], questions: [] }
 
 describe('Ask AI: dump or ask', () => {
@@ -198,7 +219,9 @@ describe('Ask AI: dump or ask', () => {
     // The forecast was recomputed from the new weigh-in; the coach pass read what was logged.
     expect(out.reply.forecast?.before).toMatchObject({ finish_date: '2027-06-17', tdee_est: 2551 })
     expect(out.reply.forecast?.after).toBeTruthy()
-    expect(chats[0]!.system).toMatch(/Weight 92\.4 kg/)
+    // The dump's note reaches the coach as data in his turn, not in the system prompt.
+    expect(chats[0]!.system).not.toMatch(/Weight 92\.4 kg/)
+    expect(chats[0]!.messages.at(-1)!.content).toMatch(/^\{"data":".*Weight 92\.4 kg/)
     expect(chats[0]!.tools!.map((t) => t.name)).not.toContain('log_weight')
 
     // History reads the receipts and the forecast back.
@@ -250,5 +273,95 @@ describe('Ask AI: dump or ask', () => {
       status: 409,
       code: 'already_undone',
     })
+  })
+
+  it('"drop my target to 1,200 kcal" never lands below the 1,400 floor', async () => {
+    const { llm } = fakeRouter(
+      { ...empty, requests: ['drop my target to 1,200 kcal'] },
+      'I cannot go below your 1,400 kcal floor.',
+      [
+        {
+          name: 'propose_plan_change',
+          args: { changes: [{ field: 'kcal', weekday: null, to: 1200 }], reason: 'He asked for 1,200 kcal' },
+        },
+      ],
+    )
+    const out = await chatTurn(deps, llm, send('Drop my target to 1,200 kcal'))
+    expect(out.reply.receipts).toEqual([])
+    const [active] = await db.select().from(plan_versions).where(eq(plan_versions.active, true))
+    expect(active!.targets.defaults.kcal).toBeGreaterThanOrEqual(1400)
+    for (const p of out.reply.proposals) expect(JSON.stringify(p)).not.toMatch(/"to":1200\b/)
+  })
+
+  it('replaying a message id returns the same receipts and logs nothing twice; an unreadable fact is reported', async () => {
+    const { llm, completes, chats } = fakeRouter(
+      {
+        ...empty,
+        facts: [
+          { kind: 'weight', days_ago: 5, weight_kg: 93.3 },
+          { kind: 'weight', days_ago: 5, weight_kg: 'heavy' },
+        ],
+      },
+      'Logged 93.3 kg.',
+    )
+    const input = send('93.3 on Saturday')
+    const first = await chatTurn(deps, llm, input)
+    expect(first.reply.receipts.map((r) => r.summary)).toEqual(['Weight 93.3 kg · Sat Oct 24'])
+    expect(chats[0]!.messages.at(-1)!.content).toMatch(/couldn't read: weight/)
+    const again = await chatTurn(deps, llm, input)
+    expect(again.error).toBeNull()
+    expect(again.reply.receipts.map((r) => r.id)).toEqual(first.reply.receipts.map((r) => r.id))
+    expect(completes).toHaveLength(1)
+    expect(await weightOn('2026-10-24')).toHaveLength(1)
+  })
+
+  it('Undo after the day was logged again is 409 superseded, and the new weigh-in stays', async () => {
+    const { llm } = fakeRouter(
+      { ...empty, facts: [{ kind: 'weight', days_ago: 4, weight_kg: 93.0 }] },
+      'Logged.',
+    )
+    const out = await chatTurn(deps, llm, send('93.0 on Sunday'))
+    const [receipt] = out.reply.receipts
+    const again = crypto.randomUUID()
+    await logWeighIn(deps, { id: again, date: '2026-10-25', weight_kg: 92.9 })
+    await expect(undoReceipt(deps, receipt!.id)).rejects.toMatchObject({ status: 409, code: 'superseded' })
+    expect(await weightOn('2026-10-25')).toEqual([expect.objectContaining({ id: again, weight_kg: 92.9 })])
+    const [stored] = await db.select().from(chat_receipts).where(eq(chat_receipts.id, receipt!.id))
+    expect(stored!.undone_at).toBeNull()
+  })
+
+  it('a weight read from a screenshot is not logged when his text only asks "what\'s this?"', async () => {
+    const { llm, chats } = fakeRouter(
+      { ...empty, facts: [{ kind: 'weight', source: 'screenshot', days_ago: 3, weight_kg: 80.1 }] },
+      'That screenshot shows 80.1 kg. Shall I log it?',
+    )
+    const out = await chatTurn(deps, llm, {
+      ...send("what's this?"),
+      attachments: [{ tag: 'screenshot', id: crypto.randomUUID() }],
+    })
+    expect(out.reply.receipts).toEqual([])
+    expect(await weightOn('2026-10-26')).toEqual([])
+    expect(chats[0]!.messages.at(-1)!.content).toMatch(/Seen in the screenshot, not logged.*weight 80\.1 kg/)
+  })
+
+  it('a queued dump typed at 22:40 and sent at 07:10 files "this morning" on the day it was typed', async () => {
+    // Typed Wed Oct 28 22:40 MDT; processed Thu Oct 29 07:10 MDT.
+    const queued: Deps = { ...deps, now: () => new Date('2026-10-29T13:10:00.000Z') }
+    const { llm, completes } = fakeRouter(
+      { ...empty, facts: [{ kind: 'weight', days_ago: 0, weight_kg: 92.6 }] },
+      'Logged.',
+    )
+    const out = await chatTurn(queued, llm, {
+      ...send('92.6 this morning'),
+      sent_at: '2026-10-29T04:40:00.000Z',
+    })
+    expect(out.reply.receipts.map((r) => r.date)).toEqual(['2026-10-28'])
+    expect(completes[0]!.system).toMatch(/Wednesday 2026-10-28, 22:40/)
+    expect(
+      await db
+        .select()
+        .from(weight_logs)
+        .where(and(eq(weight_logs.date, '2026-10-28'), eq(weight_logs.weight_kg, 92.6))),
+    ).toHaveLength(1)
   })
 })

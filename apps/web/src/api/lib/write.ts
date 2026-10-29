@@ -1,7 +1,8 @@
 // Owns: writes that survive being offline — an endpoint marked `offline: 'queue'` is queued (and resolves at once) when the
 // device is offline, the queue already holds earlier writes, the network fails or the Access session expired; a binary
 // body (a photo) is stored as a Blob — and the sender the queue replays through. An Ask AI message (a turn of up to
-// ~55 s on the Worker) gets a turn-length timeout both when sent and when replayed.
+// ~55 s on the Worker) gets a turn-length timeout both when sent and when replayed, and, being independent of the
+// writes before it, goes straight out while online instead of waiting behind them.
 import { endpoints, type Endpoint, type EndpointInput, type EndpointOutput } from '@fitness/shared/api'
 import { hasPendingWrites, queueWrite, type BodyOf, type PendingWrite, type QueueSender } from '../../offline'
 import { exchange, parseResponse, toWireRequest } from './call'
@@ -29,9 +30,19 @@ export type WriteOutcome<E extends Endpoint> =
   /** Stored on this device; it replays in order when the Worker is reachable. Show it as pending. */
   | { status: 'queued'; pending: PendingWrite<BodyOf<E>> }
 
+export interface WriteOptions {
+  /**
+   * The write depends on no earlier write (an Ask AI message: the facts it logs are rows of their own, and what it
+   * carries was uploaded directly), so while online it is sent even when the queue holds earlier writes. Offline, or on
+   * a transient failure, it is still queued.
+   */
+  independent?: boolean
+}
+
 export async function write<E extends Endpoint>(
   endpoint: E,
   input: EndpointInput<E>,
+  options: WriteOptions = {},
 ): Promise<WriteOutcome<E>> {
   const request = toWireRequest(endpoint, input)
   if (endpoint.offline !== 'queue')
@@ -47,7 +58,7 @@ export async function write<E extends Endpoint>(
     return { status: 'queued', pending: pending as PendingWrite<BodyOf<E>> }
   }
   // Behind earlier queued writes it must wait its turn, or it could overtake the write it depends on.
-  if (!navigator.onLine || (await hasPendingWrites())) return enqueue()
+  if (!navigator.onLine || (!options.independent && (await hasPendingWrites()))) return enqueue()
   let body: unknown
   try {
     body = await exchange(request, { timeoutMs: timeoutFor(request.body, request.path) })

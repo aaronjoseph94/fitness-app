@@ -1,6 +1,7 @@
 // Owns: tests at the settings seam for a goal change as a proposal — Ask AI's "aim for 88" is a pending goal_change
 // proposal with the old goals as `before`, the profile stays until Aaron taps it, and accepting saves the goal; a
-// goal of 200 kg, or one at or above the start weight, is refused (422). Start 95.1 kg; Mon 2026-10-12 noon in Edmonton.
+// goal of 200 kg, or one at or above the start weight, is refused (422). The accepted change is recorded as a
+// profile change event carrying the goal it replaced. Start 95.1 kg; Mon 2026-10-12 noon in Edmonton.
 import { DEFAULT_REMINDER_PREFS } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
@@ -85,6 +86,12 @@ describe('proposeGoalChange', () => {
     expect((await getSettings(deps('user'))).profile).toMatchObject({
       goal_weight_kg: 88,
       goal_date: '2027-08-04',
+    })
+    // The record is a profile change event with the goal it replaced (changed back in Settings, no plan version).
+    const changes = await db.select().from(ai_events).where(eq(ai_events.kind, 'change'))
+    expect(changes.map((e) => e.body)).toContainEqual({
+      entity: 'profile',
+      changes: [{ path: 'goal_weight_kg', from: 65, to: 88 }],
     })
   })
 

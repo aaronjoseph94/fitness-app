@@ -42,10 +42,10 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
   ],
   [/\bfast(s|ed|ing)?\b/, ['fasting']],
   [/\b(sleep\w*|slept|bed|woke|wake|nap|steps?|walk\w*)\b/, ['health']],
-  // How the body feels (log_body_note): pain, soreness, a joint, energy, illness, mood.
+  // How the body feels (log_body_note; its own area, so "knee hurts" never opens sleep or steps): pain, soreness, a joint, energy, illness, mood.
   [
     /\b(pain\w*|sore\w*|hurt\w*|ach(e|es|ing|y)|injur\w*|tweak\w*|strain\w*|stiff\w*|tight|swollen|knees?|ankles?|wrists?|elbows?|joints?|tired|exhausted|energy|sick|ill(ness)?|cold|flu|fever|mood|stress\w*|anxious)\b/,
-    ['health'],
+    ['body_notes'],
   ],
   // A goal he reports or asks for (propose_goal_change, in the body area).
   [/\b(aim\w*|goal\w*|doctor|dietitian|by (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)\b/, ['body']],
@@ -82,6 +82,16 @@ const AREA_WORDS: ReadonlyArray<readonly [RegExp, readonly ToolArea[]]> = [
  */
 const LOG_INTENT =
   /\d|\b(log\w*|record\w*|add\w*|enter\w*|track\w*|save\w*|weighed|weigh-?in|ate|eaten|had|drank|drunk|slept|woke|walked|lifted|did|done|finish\w*|complet\w*|start\w*|end\w*|broke|break\w*|began|begin\w*|stop\w*|confirm\w*|yes|yep|yeah|yup|sure|ok(ay)?|go ahead|do it)\b/
+
+/**
+ * His own text asks to log what an attached screenshot shows ("log this", "add my steps", "save it"): a logging verb,
+ * never just a number or a question, since a screenshot can carry any number and any text.
+ */
+const SCREENSHOT_LOG_INTENT = /\b(log\w*|record\w*|add\w*|enter\w*|track\w*|save\w*|import\w*)\b/
+
+/** True when his own words ask to log what a screenshot he attached shows (lib/dump: a screenshot's facts). */
+export const asksToLogScreenshot = (message: string): boolean =>
+  SCREENSHOT_LOG_INTENT.test(message.toLowerCase())
 
 /** A reply that only agrees ("yes", "ok, do it"): its area comes from the question before it. */
 const AFFIRMATION = /^\W*(yes|yep|yeah|yup|sure|ok(ay)?|please|go ahead|do it|confirm\w*|correct|right)\b/i

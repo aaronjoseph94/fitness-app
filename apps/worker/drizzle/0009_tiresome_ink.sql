@@ -31,6 +31,7 @@ CREATE TABLE `chat_receipts` (
 	`date` text NOT NULL,
 	`summary` text NOT NULL,
 	`ref_id` text NOT NULL,
+	`ref_updated_at` text,
 	`before` text,
 	`undone_at` text,
 	`created_at` text DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL,
@@ -39,4 +40,6 @@ CREATE TABLE `chat_receipts` (
 --> statement-breakpoint
 CREATE INDEX `chat_receipts_message_idx` ON `chat_receipts` (`message_id`);--> statement-breakpoint
 CREATE INDEX `chat_receipts_thread_idx` ON `chat_receipts` (`thread_id`);--> statement-breakpoint
-ALTER TABLE `chat_messages` ADD `forecast` text;
+CREATE INDEX `chat_receipts_date_idx` ON `chat_receipts` (`date`);--> statement-breakpoint
+ALTER TABLE `chat_messages` ADD `forecast` text;--> statement-breakpoint
+ALTER TABLE `chat_messages` ADD `running` integer DEFAULT false NOT NULL;

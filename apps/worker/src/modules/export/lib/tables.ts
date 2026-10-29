@@ -17,6 +17,7 @@ const TABLES: Record<ExportTable, SQLiteTable> = {
   sleep_logs: db.sleep_logs,
   step_logs: db.step_logs,
   fast_logs: db.fast_logs,
+  body_notes: db.body_notes,
   foods: db.foods,
   favorites: db.favorites,
   meals: db.meals,
@@ -40,6 +41,7 @@ const TABLES: Record<ExportTable, SQLiteTable> = {
   ai_jobs: db.ai_jobs,
   ai_events: db.ai_events,
   chat_messages: db.chat_messages,
+  chat_receipts: db.chat_receipts,
   push_subscriptions: db.push_subscriptions,
   app_notes: db.app_notes,
 }

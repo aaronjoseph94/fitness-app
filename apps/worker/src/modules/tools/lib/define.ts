@@ -18,6 +18,7 @@ export type ToolArea =
   | 'nutrition'
   | 'fasting'
   | 'health'
+  | 'body_notes'
   | 'training'
   | 'templates'
   | 'equipment'

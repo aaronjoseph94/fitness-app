@@ -789,6 +789,8 @@ export const chat_messages = sqliteTable(
     tool_calls: text({ mode: 'json' }).$type<unknown>(),
     /** assistant: how the forecast moved after the message's facts were logged (ForecastShift; parse on read). */
     forecast: text({ mode: 'json' }).$type<unknown>(),
+    /** assistant: true while its turn is still running (the dump's receipts are stored; the answer is not yet). */
+    running: bool().notNull().default(false),
     ...timestamps(),
   },
   (t) => [index('chat_messages_thread_idx').on(t.thread_id, t.created_at)],
@@ -809,11 +811,17 @@ export const chat_receipts = sqliteTable(
     date: text().notNull(),
     summary: text().notNull(),
     ref_id: text().notNull(),
+    /** The written row's updated_at: Undo only touches the row while it still holds what the dump wrote. */
+    ref_updated_at: text(),
     before: text({ mode: 'json' }).$type<unknown>(),
     undone_at: text(),
     ...timestamps(),
   },
-  (t) => [index('chat_receipts_message_idx').on(t.message_id), index('chat_receipts_thread_idx').on(t.thread_id)],
+  (t) => [
+    index('chat_receipts_message_idx').on(t.message_id),
+    index('chat_receipts_thread_idx').on(t.thread_id),
+    index('chat_receipts_date_idx').on(t.date),
+  ],
 )
 
 /**

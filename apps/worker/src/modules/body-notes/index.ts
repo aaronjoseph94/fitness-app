@@ -5,8 +5,10 @@
 // Interface:
 //   logBodyNote(deps, BodyNoteCreate)        → LoggedBodyNote  idempotent by id (a replay returns the stored note, with
 //        before: null). A note on an area + kind already active on its date is renewed instead of duplicated: that
-//        note keeps its id and takes the later date, the new severity and the new words (if any); `before` holds its
-//        date / severity / note as they were, so Undo can put them back (restoreBodyNote). 400 for a future date.
+//        note keeps its id and takes the later date; from Aaron (actor user) the new severity and words (if any) and his
+//        actor; from Ask AI / Claude never a lower severity, the new words added after the old, and the actor it had.
+//        `before` holds its date / severity / note as they were, so Undo can put them back (restoreBodyNote). 400 for
+//        a future date.
 //   resolveBodyNote(deps, id, BodyNoteResolve) → BodyNote      resolved on a day (null re-opens it); 404, 400 when the
 //        day is before the note's date
 //   restoreBodyNote(deps, id, before)        → BodyNote        undo a renewal: the date / severity / note it replaced
@@ -38,10 +40,11 @@ export async function logBodyNote(deps: Deps, input: BodyNoteCreate): Promise<Lo
 
   const renew = await renewable(deps, input)
   if (renew) {
-    const next = renewal(renew, input)
+    const next = renewal(renew, input, deps.actor)
+    // Aaron's renewal makes the note his; Ask AI's or Claude's keeps whoever logged it.
     await deps.db
       .update(body_notes)
-      .set({ ...next, actor: deps.actor, updated_at: now })
+      .set({ ...next, ...(deps.actor === 'user' ? { actor: deps.actor } : {}), updated_at: now })
       .where(eq(body_notes.id, renew.id))
     const after = await rowById(deps, renew.id)
     return { ...after!, before: { date: renew.date, severity: renew.severity, note: renew.note } }

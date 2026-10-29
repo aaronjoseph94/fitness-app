@@ -1,8 +1,15 @@
 // Owns: the body_notes rows behind the body-notes module — reading the notes that may be active on a day, the row →
 // contract mapping, and the renewal rule (a note logged again on an area and kind that is already active updates that
-// note: the later date, the new severity, the new words when there are any).
+// note: the later date; from Aaron the new severity and words, from Ask AI / Claude never a lower severity and the
+// words added to his).
 import { activeBodyNotes as activeOn, addDays } from '@fitness/shared/engine'
-import { BODY_NOTE_DAYS, BodyArea, type BodyNote, type BodyNoteCreate } from '@fitness/shared/schemas'
+import {
+  BODY_NOTE_DAYS,
+  BodyArea,
+  type Actor,
+  type BodyNote,
+  type BodyNoteCreate,
+} from '@fitness/shared/schemas'
 import { and, between, desc, eq, gt, isNull, or } from 'drizzle-orm'
 import { body_notes, type Row } from '../../../db'
 import type { Deps } from '../../../lib/deps'
@@ -33,18 +40,25 @@ export async function renewable(deps: Deps, input: BodyNoteCreate): Promise<Body
   return (await activeRows(deps, input.date)).find((n) => n.area === input.area && n.kind === input.kind)
 }
 
+/** The longest note a body note holds (BodyNoteCreate.note). */
+const NOTE_MAX = 500
+
 /**
- * The renewal of `note` by `input`:
+ * The renewal of `note` by `input`, written by `actor`:
  *   date     = max(note.date, input.date)   (a back-dated mention never shortens the window)
- *   severity = input.severity               (the latest report)
- *   note     = input.note when non-empty, else the note's own words
+ *   Aaron (actor user): severity = input.severity (his latest report); note = input.note when non-empty, else the
+ *     note's own words
+ *   Ask AI / Claude: severity = max(note.severity, input.severity) (a reading of a chat never plays down what he
+ *     logged); note = the note's words, then "; " and input.note when non-empty and not already in them (cut to 500)
  */
-export function renewal(note: BodyNote, input: BodyNoteCreate): RenewedFrom {
-  return {
-    date: input.date > note.date ? input.date : note.date,
-    severity: input.severity,
-    note: input.note || note.note,
-  }
+export function renewal(note: BodyNote, input: BodyNoteCreate, actor: Actor): RenewedFrom {
+  const date = input.date > note.date ? input.date : note.date
+  if (actor === 'user') return { date, severity: input.severity, note: input.note || note.note }
+  const words =
+    !input.note || note.note.includes(input.note)
+      ? note.note
+      : (note.note ? `${note.note}; ${input.note}` : input.note).slice(0, NOTE_MAX)
+  return { date, severity: Math.max(note.severity, input.severity), note: words }
 }
 
 export async function rowById(deps: Deps, id: string): Promise<BodyNote | undefined> {

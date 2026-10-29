@@ -1,6 +1,6 @@
 // Owns: tests at the photos seam — an upload tagged with the day's trend weight and the nearest confirmed scan, served
-// back through a short-lived signed URL; metadata-carrying bytes refused (JPEG APP1 Exif or XMP anywhere before the
-// image data, however far in; PNG eXIf / text chunks; WebP EXIF / XMP chunks); and the privacy rail, checked by
+// back through a short-lived signed URL; metadata-carrying bytes refused (JPEG: any APPn but JFIF / Adobe, COM, data
+// after EOI; PNG eXIf / text chunks; WebP: chunks other than image / alpha / animation / ICCP, data past RIFF); and the privacy rail, checked by
 // behaviour: with every LLM key set, uploading, listing, viewing and removing photos makes no outbound call at all and
 // queues no job (a progress photo cannot reach any LLM).
 import { PhotoUploadQuery, type ProgressPhoto } from '@fitness/shared/schemas'
@@ -207,7 +207,11 @@ const XMP_GPS = segment(
   0xe1,
   enc('http://ns.adobe.com/xap/1.0/\0<x:xmpmeta><exif:GPSLatitude>51,2.4N</exif:GPSLatitude></x:xmpmeta>'),
 )
-const ICC = segment(0xe2, new Uint8Array(65_000)) // e.g. a colour profile: harmless, and big
+const ICC = segment(0xe2, new Uint8Array(65_000)) // an APP2 that is not a colour profile (no ICC_PROFILE id)
+const ICC_PROFILE = segment(0xe2, bytes(enc('ICC_PROFILE\0'), [1, 1], new Uint8Array(500))) // what a browser may embed
+const ADOBE = segment(0xee, bytes(enc('Adobe'), [0, 100, 0, 0, 0, 0, 1]))
+const COM = segment(0xfe, enc('shot on a phone'))
+const DQT = segment(0xdb, bytes([0], new Uint8Array(64).fill(0xff))) // FF bytes inside a segment are jumped over
 
 /** One PNG chunk: 4-byte length, type, data, CRC (not checked by the Worker). */
 const chunk = (type: string, data: Uint8Array) => {
@@ -246,12 +250,24 @@ describe('metadata in uploaded images', () => {
     }
   }
 
-  it('JPEG: a canvas-style file passes; Exif, Exif past 128 KB of other segments, and XMP GPS are refused', () => {
+  it('JPEG: a canvas-style file passes; any APPn but JFIF, an ICC profile and Adobe, COM, and bytes after EOI are refused', () => {
     expect(verdict(jpeg(APP0), 'image/jpeg')).toBe('ok')
-    expect(verdict(jpeg(APP0, ICC, ICC), 'image/jpeg')).toBe('ok')
+    expect(verdict(jpeg(APP0, ICC_PROFILE), 'image/jpeg')).toBe('ok')
+    expect(verdict(jpeg(APP0, ADOBE, DQT), 'image/jpeg')).toBe('ok')
+    expect(verdict(JFIF.slice().buffer, 'image/jpeg')).toBe('ok')
     expect(verdict(jpeg(EXIF_GPS), 'image/jpeg')).toBe('exif_present')
-    expect(verdict(jpeg(APP0, ICC, ICC, EXIF_GPS), 'image/jpeg')).toBe('exif_present')
+    expect(verdict(jpeg(APP0, ICC, ICC), 'image/jpeg')).toBe('exif_present')
     expect(verdict(jpeg(APP0, XMP_GPS), 'image/jpeg')).toBe('exif_present')
+    expect(verdict(jpeg(APP0, COM), 'image/jpeg')).toBe('exif_present')
+    // A second file after EOI (an Exif JPEG appended), or any trailing bytes.
+    expect(verdict(bytes(new Uint8Array(jpeg(APP0)), new Uint8Array(jpeg(EXIF_GPS))).buffer, 'image/jpeg')).toBe(
+      'exif_present',
+    )
+    expect(verdict(bytes(new Uint8Array(jpeg(APP0)), [0x47, 0x50, 0x53]).buffer, 'image/jpeg')).toBe('exif_present')
+    // Stops before EOI.
+    expect(verdict(bytes([0xff, 0xd8], APP0, [0xff, 0xda, 0x00, 0x02, 0x12]).buffer, 'image/jpeg')).toBe(
+      'not_an_image',
+    )
     // Lost sync before the image data (not a marker where one must be): not a well-formed JPEG.
     expect(
       verdict(bytes([0xff, 0xd8], APP0, [0x00, 0x00, 0xff, 0xe1, 0, 4, 0, 0]).buffer, 'image/jpeg'),
@@ -269,8 +285,12 @@ describe('metadata in uploaded images', () => {
     expect(verdict(bytes([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).buffer, 'image/png')).toBe('not_an_image')
   })
 
-  it('WebP: a plain file passes; EXIF and XMP chunks (or the VP8X flags for them) are refused', () => {
+  it('WebP: a plain file passes; EXIF, XMP, unknown chunks (or the VP8X flags) and bytes past RIFF are refused', () => {
     expect(verdict(webp(VP8), 'image/webp')).toBe('ok')
+    expect(verdict(webp(riff('VP8L', new Uint8Array(21))), 'image/webp')).toBe('ok')
+    expect(verdict(webp(vp8x(0x20), riff('ICCP', new Uint8Array(40)), VP8), 'image/webp')).toBe('ok')
+    expect(verdict(webp(VP8, riff('META', enc('GPS'))), 'image/webp')).toBe('exif_present')
+    expect(verdict(bytes(new Uint8Array(webp(VP8)), enc('GPS 51')).buffer, 'image/webp')).toBe('exif_present')
     expect(verdict(webp(vp8x(0x10), VP8), 'image/webp')).toBe('ok') // alpha flag only
     expect(verdict(webp(vp8x(0), VP8, riff('EXIF', enc('MM\0*GPS'))), 'image/webp')).toBe('exif_present')
     expect(verdict(webp(vp8x(0), VP8, riff('XMP ', enc('<x:xmpmeta/>'))), 'image/webp')).toBe('exif_present')

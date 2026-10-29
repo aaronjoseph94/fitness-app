@@ -1,7 +1,7 @@
 // Owns: tests at the body-notes seam — a logged note is active, logging the same area and kind again renews it (one
 // row, `before` = what it held), resolving hides it, and a day's AI workout draft for a knee-pain note leaves the
-// quadriceps exercise out of the list the LLM sees and drops it from the reply (fake LLM router). Readiness says
-// reduced volume while he has a cold. Mon 2026-10-12 noon in Edmonton.
+// quadriceps exercises out of the list the LLM sees and drops them from the reply, picked by slug, UUID or odd-case
+// slug (fake LLM router). Readiness says reduced volume while he has a cold. Mon 2026-10-12 noon in Edmonton.
 import { DEFAULT_REMINDER_PREFS } from '@fitness/shared/schemas'
 import { env } from 'cloudflare:workers'
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -48,6 +48,7 @@ const ex = (slug: string, name: string, equipment: string, primary: Ex['primary_
 const legPress = ex('leg-press', 'Leg Press', 'machine', ['quadriceps'])
 const calfRaise = ex('standing-calf-raises', 'Standing Calf Raises', 'machine', ['calves'])
 const hipThrust = ex('barbell-hip-thrust', 'Barbell Hip Thrust', 'barbell', ['glutes'])
+const legExtension = ex('leg-extensions', 'Leg Extensions', 'machine', ['quadriceps'])
 
 beforeAll(async () => {
   await db.batch([
@@ -80,7 +81,7 @@ beforeAll(async () => {
         overrides: {},
       },
     }),
-    ...[legPress, calfRaise, hipThrust].map((e) => db.insert(exercises).values(e)),
+    ...[legPress, calfRaise, hipThrust, legExtension].map((e) => db.insert(exercises).values(e)),
     db.insert(equipment_profile).values([
       { equipment: 'barbell', kind: 'library', status: 'have' },
       { equipment: 'machine', kind: 'library', status: 'have' },
@@ -117,9 +118,21 @@ describe('body notes', () => {
     const again = await knee({ severity: 3, note: 'worse today' })
 
     expect(again.id).toBe(first.id)
-    expect(again).toMatchObject({ date: DAY, severity: 3, note: 'worse today' })
+    expect(again).toMatchObject({ date: DAY, severity: 3, note: "knee's sore; worse today" })
     expect(again.before).toEqual({ date: '2026-10-10', severity: 2, note: "knee's sore" })
     expect(await db.select().from(body_notes)).toHaveLength(1)
+  })
+
+  it('a renewal by Ask AI never lowers the severity and keeps the actor; one by Aaron takes his words', async () => {
+    await knee({ severity: 3, note: 'bad' })
+    const ai = await knee({ severity: 1, note: 'a bit better' })
+    expect(ai).toMatchObject({ severity: 3, note: 'bad; a bit better', actor: 'ai' })
+
+    const mine = await logBodyNote(
+      { ...deps, actor: 'user' },
+      { id: crypto.randomUUID(), date: DAY, area: 'knee', kind: 'pain', severity: 1, note: 'fine now' },
+    )
+    expect(mine).toMatchObject({ id: ai.id, severity: 1, note: 'fine now', actor: 'user' })
   })
 
   it('resolving a note hides it from the active list', async () => {
@@ -158,7 +171,14 @@ describe('body notes', () => {
       complete: async (req) => {
         prompt = req.messages.map((m) => m.content).join('\n')
         const data = {
-          exercises: [pick('leg-press', 4), pick('standing-calf-raises', 6), pick('barbell-hip-thrust', 6)],
+          // the same muscles picked by UUID and by an odd-case slug are dropped too
+          exercises: [
+            pick('leg-press', 4),
+            pick(legPress.id, 3),
+            pick('Leg-Extensions', 3),
+            pick('standing-calf-raises', 6),
+            pick('barbell-hip-thrust', 6),
+          ],
           rationale: 'Lower day.',
         }
         return {
@@ -183,7 +203,10 @@ describe('body notes', () => {
     expect(prompt).toContain('Avoid loading (body notes): knee (pain, moderate).')
     expect(prompt).toContain('standing-calf-raises')
     expect(prompt).not.toContain('leg-press')
-    expect(draft.exercises.map((e) => e.exercise_id)).not.toContain(legPress.id)
+    const ids = draft.exercises.map((e) => e.exercise_id)
+    expect(ids).not.toContain(legPress.id)
+    expect(ids).not.toContain(legExtension.id)
     expect(draft.guard_notes).toContainEqual(expect.stringContaining('Dropped Leg Press'))
+    expect(draft.guard_notes).toContainEqual(expect.stringContaining('Dropped Leg Extensions'))
   })
 })

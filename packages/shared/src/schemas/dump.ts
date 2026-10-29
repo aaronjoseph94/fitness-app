@@ -20,41 +20,73 @@ const DaysAgo = z
 const HoursAgo = z.number().min(0).max(48).default(0).describe('Hours before now it happened; 0 = now')
 
 /**
+ * Where a fact was read: his own words ('text') or an attached screenshot ('screenshot'). A screenshot's fact is logged
+ * only when his own text asks to log it, and a fast or a body note never comes from a screenshot. The model fills it;
+ * left out, it counts as 'screenshot' whenever the message carries one (fail closed).
+ */
+export const FactSource = z
+  .enum(['text', 'screenshot'])
+  .optional()
+  .describe("'text' when his own words state it, 'screenshot' when it is read from an attached image")
+export type FactSource = z.infer<typeof FactSource>
+const source = { source: FactSource }
+
+/**
  * One thing Aaron says happened, in his own words, ready to log. Only facts he states — never a hypothetical ("what
  * if I ate…"), a plan ("I'll have…") or a guess. Each kind maps to one tools-layer log tool (equipment to a Train
  * change that waits for his tap).
  */
 export const DumpFact = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('weight'), days_ago: DaysAgo, weight_kg: Kg.min(30).max(300) }),
-  z.object({ kind: z.literal('measurement'), days_ago: DaysAgo, site: MeasurementSite, value_cm: Cm }),
+  z.object({ kind: z.literal('weight'), ...source, days_ago: DaysAgo, weight_kg: Kg.min(30).max(300) }),
+  z.object({
+    kind: z.literal('measurement'),
+    ...source,
+    days_ago: DaysAgo,
+    site: MeasurementSite,
+    value_cm: Cm,
+  }),
   z.object({
     kind: z.literal('meal'),
+    ...source,
     days_ago: DaysAgo,
     slot: MealSlot,
     text: z.string().trim().min(1).max(2000).describe('What he ate, his words with amounts'),
   }),
-  z.object({ kind: z.literal('water'), hours_ago: HoursAgo, amount_ml: z.number().int().min(1).max(5000) }),
+  z.object({
+    kind: z.literal('water'),
+    ...source,
+    hours_ago: HoursAgo,
+    amount_ml: z.number().int().min(1).max(5000),
+  }),
   z.object({
     kind: z.literal('sleep'),
+    ...source,
     days_ago: DaysAgo.describe('The wake day: 0 = woke today'),
-    asleep_min: z.number().int().min(1).max(24 * 60),
+    asleep_min: z
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 60),
   }),
   z.object({
     kind: z.literal('steps'),
+    ...source,
     days_ago: DaysAgo,
     steps: Count.max(200_000),
     active_kcal: z.number().nonnegative().max(10_000).optional(),
   }),
-  z.object({ kind: z.literal('fast_start'), hours_ago: HoursAgo }),
-  z.object({ kind: z.literal('fast_end'), hours_ago: HoursAgo }),
+  z.object({ kind: z.literal('fast_start'), ...source, hours_ago: HoursAgo }),
+  z.object({ kind: z.literal('fast_end'), ...source, hours_ago: HoursAgo }),
   z.object({
     kind: z.literal('equipment'),
+    ...source,
     equipment: EquipmentName.describe('The machine or equipment as he names it'),
     status: EquipmentStatus,
     reason: z.string().trim().min(1).max(300),
   }),
   z.object({
     kind: z.literal('body_note'),
+    ...source,
     days_ago: DaysAgo,
     area: BodyArea,
     note_kind: BodyNoteKind,
@@ -69,11 +101,15 @@ export type DumpFactKind = DumpFact['kind']
 export const DumpGoal = z.object({
   goal_weight_kg: Kg.min(40).max(200).nullable(),
   goal_date: LocalDate.nullable(),
-  reason: z.string().trim().min(1).max(300),
+  reason: z.string().trim().min(1).max(300).optional(),
 })
 export type DumpGoal = z.infer<typeof DumpGoal>
 
-/** What one message holds, as the model reads it. Everything not a fact or a goal goes to the coach as requests/questions. */
+/**
+ * What one message holds, as the model is shown it. Everything not a fact or a goal goes to the coach as
+ * requests/questions. The worker reads the reply leniently (each fact and the goal checked on its own), so one
+ * unreadable fact is reported instead of dropping the rest.
+ */
 export const DumpExtraction = z.object({
   facts: z.array(DumpFact).max(20),
   goal: DumpGoal.nullable(),

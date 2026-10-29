@@ -13,5 +13,11 @@ export {
   type ApiMutationOptions,
   type ApiQueryOptions,
 } from './lib/query'
-export { CHAT_TURN_TIMEOUT_MS, sendQueuedWrite, write, type WriteOutcome } from './lib/write'
+export {
+  CHAT_TURN_TIMEOUT_MS,
+  sendQueuedWrite,
+  write,
+  type WriteOptions,
+  type WriteOutcome,
+} from './lib/write'
 export { clearSignInMarker, signInAgain, useAuthExpired } from './lib/session'

@@ -70,6 +70,11 @@ export const ChatSend = z.object({
   id: Id,
   thread_id: Id,
   content: z.string().trim().min(1).max(4000),
+  /**
+   * When he typed it (the queued body keeps it): "yesterday" and "2 hours ago" are read against this, clamped to
+   * [now − DUMP_MAX_DAYS_AGO days, now], so a dump sent from the offline queue the next morning lands on the right day.
+   */
+  sent_at: Instant.optional(),
   attachments: z
     .array(ChatAttachmentRef)
     .max(8)
@@ -80,8 +85,12 @@ export const ChatSend = z.object({
 })
 export type ChatSend = z.infer<typeof ChatSend>
 
-/** Why a turn ended without a real answer: no model reachable, or more tool rounds than a turn allows. */
-export const ChatTurnError = z.enum(['ai_unavailable', 'too_many_steps'])
+/**
+ * Why a turn ended without a real answer: no model reachable, more tool rounds than a turn allows, or (on a replay)
+ * the turn is still running or was cut off after its facts were logged — the reply carries those receipts; poll the
+ * thread for the answer.
+ */
+export const ChatTurnError = z.enum(['ai_unavailable', 'too_many_steps', 'turn_running'])
 export type ChatTurnError = z.infer<typeof ChatTurnError>
 
 /** Response of POST /api/ai/chat (answered in the request): the stored message, the tool results, the reply. */

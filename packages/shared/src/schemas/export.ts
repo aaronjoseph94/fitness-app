@@ -7,7 +7,8 @@ import { FileKey, SignedFile } from './files'
 
 /**
  * Every D1 table in an export (SPEC §5 plus app_notes), in restore order: parents before children, so a restore that
- * walks this list never breaks a foreign key. System tables (cron_runs, provider_usage, foods_fts) are not exported.
+ * walks this list never breaks a foreign key (chat_receipts after the chat_messages that list them). System tables
+ * (cron_runs, provider_usage, foods_fts) are not exported, nor are Ask AI screenshots (chat_attachments: transient).
  */
 export const ExportTable = z.enum([
   'profile',
@@ -18,6 +19,7 @@ export const ExportTable = z.enum([
   'sleep_logs',
   'step_logs',
   'fast_logs',
+  'body_notes',
   'foods',
   'favorites',
   'meals',
@@ -41,6 +43,7 @@ export const ExportTable = z.enum([
   'ai_jobs',
   'ai_events',
   'chat_messages',
+  'chat_receipts',
   'push_subscriptions',
   'app_notes',
 ])

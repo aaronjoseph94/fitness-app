@@ -1,6 +1,7 @@
 // Owns: Ask AI's "dump or ask" words in one place — the composer's invitation and helper lines, the attach flow (the
-// four tags and what each does with a photo), the Logged card (receipts with Undo), the "What changed" line, the offline
-// note on a queued message, and the "How you feel" card on Train. Climb words come from ./index (the summit), never typed
+// four tags and what each does with a photo, the AI confirm and the black-out check), the Logged card (receipts with
+// Undo), the "What changed" line, the offline note on a queued message, the "Still working on the answer…" line, and the
+// "How you feel" card on Train. Climb words come from ./index (the summit), never typed
 // here. Words only: callers hand over dates and numbers already formatted.
 import { copy } from './index'
 
@@ -38,6 +39,18 @@ export const askAiCopy = {
     'Drag across your name, a face or anything else private to paint a black box over it. Only the blacked-out copy is uploaded.',
   blackoutClear: 'Clear boxes',
   blackoutBox: (n: number) => `Remove black box ${n}`,
+  /** The keyboard way to add a box: one in the middle, to resize and move with the arrow keys. */
+  blackoutAdd: 'Add a box',
+  blackoutKeys: 'Arrow keys move the last box; Shift + arrows resize it.',
+  /** The check before a screenshot or a scan sheet is added: it must be ticked. */
+  coveredCheck: 'Your name, face and email are covered',
+  /** The confirm before a photo goes to the AI (a meal photo; a scan sheet after its name is hidden). */
+  toAiTitle: 'Send to the AI?',
+  toAi: {
+    meal: 'This photo goes to the AI to read the food. Only the food should be in it.',
+    scan: 'This sheet goes to the AI to read the numbers, with your name blacked out.',
+  },
+  send: 'Send',
   maskTitle: 'Hide your name',
   maskHelp:
     'Drag the black box over your name; drag a corner to resize it. Only the masked image is uploaded.',
@@ -80,6 +93,11 @@ export const askAiCopy = {
 
   // A message queued offline.
   queuedNote: "Will send when you're back online",
+
+  // A turn whose answer is still coming (the message was cut off while the turn ran on, or just left the queue).
+  stillWorking: 'Still working on the answer…',
+  stillWorkingLate:
+    'The answer is taking a while. It shows here once it is ready; reopen this chat to check.',
 
   // Train's "How you feel" card.
   bodyNotesTitle: 'How you feel',

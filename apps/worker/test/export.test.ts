@@ -1,6 +1,6 @@
 // Owns: tests at the export seam (modules/export through the /api routes) — an export restores into a fresh instance
-// row for row (a second export deep-equals the first, table by table), a restore refuses a used instance unless told
-// to overwrite and keeps the rails Aaron's, a page whose settings, plan versions or daily targets break their schemas
+// row for row (a second export deep-equals the first, table by table; body notes and Ask AI receipts included), a
+// restore refuses a used instance unless told to overwrite and keeps the rails Aaron's, a page whose settings, plan versions or daily targets break their schemas
 // (or the floor ≤ ceiling rail), or that holds more than one settings / profile row, is refused whole with 422, and
 // the monthly backup writes one table per cron tick.
 import {
@@ -16,6 +16,8 @@ import { count, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
+  body_notes,
+  chat_receipts,
   createDb,
   daily_targets,
   foods,
@@ -139,6 +141,17 @@ beforeAll(async () => {
         .values({ meal_id, food_id: foodId, description: 'Chicken breast', grams: 200, kcal: 330 }),
     ),
     db.insert(meal_photos).values({ meal_id: mealIds[0]!, storage_path: photoKey, width: 1024, height: 768 }),
+    db.insert(body_notes).values({ date: '2026-10-02', area: 'knee', kind: 'pain', severity: 2, note: 'sore' }),
+    db.insert(chat_receipts).values({
+      message_id: crypto.randomUUID(),
+      thread_id: crypto.randomUUID(),
+      kind: 'weight',
+      date: '2026-10-02',
+      summary: 'Weight 99.1 kg',
+      ref_id: crypto.randomUUID(),
+      ref_updated_at: '2026-10-02T14:00:00.000Z',
+      before: { id: crypto.randomUUID(), date: '2026-10-02', weight_kg: 99.4 },
+    }),
     ...Array.from({ length: Math.ceil(WEIGH_INS / 10) }, (_, i) =>
       db.insert(weight_logs).values(weighIns.slice(i * 10, i * 10 + 10)),
     ),
@@ -381,7 +394,7 @@ describe('monthly backup', () => {
     expect(second.table).toBe('settings')
 
     for (let i = 2; i < ExportTable.options.length; i++) await monthlyBackupStep(deps('ai'), '2026-11')
-    expect(await monthlyBackupStep(deps('ai'), '2026-11')).toEqual({ table: null, done: 33, of: 33 })
+    expect(await monthlyBackupStep(deps('ai'), '2026-11')).toEqual({ table: null, done: 35, of: 35 })
 
     const file = await env.FILES.get('reports/backup/2026-11/weight_logs.json')
     const body = (await file!.json()) as { table: string; rows: ExportRow[] }

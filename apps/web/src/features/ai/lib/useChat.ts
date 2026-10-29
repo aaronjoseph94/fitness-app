@@ -1,11 +1,14 @@
 // Owns: Ask AI data on the web — the open thread's messages grouped into turns (question, tool results, reply), the
-// thread list, sending a message with what it carries (answered in the request; the question shows at once, a failed
-// send keeps its id so a retry replays instead of running twice), a message queued offline (it shows in the thread as
-// waiting and is answered when the queue flushes, which refreshes the thread), deleting a whole chat for good, and
-// refreshing the rest of the app after a turn that logged, moved the forecast or called tools.
+// thread list, sending a message with what it carries and when he typed it (answered in the request, sent straight out
+// even while other writes wait in the queue; the question shows at once, a failed send keeps its id and time so a retry
+// replays instead of running twice), a message queued offline (it shows in the thread as waiting and is answered when
+// the queue flushes, which refreshes the thread), a turn whose answer is still coming (a replay answered 'turn_running',
+// or a queued message just delivered: what it logged shows with "Still working on the answer…" while the thread is
+// polled every 3 s for up to 90 s), deleting a whole chat for good, and refreshing the rest of the app after a turn that
+// logged, moved the forecast or called tools.
 import { endpoints } from '@fitness/shared/api'
 import type { ChatAttachmentRef, ChatMessage, ChatSend } from '@fitness/shared/schemas'
-import { hashKey, useMutation, useQueryClient } from '@tanstack/react-query'
+import { hashKey, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { apiQueryKey, problemText, useApiMutation, useApiQuery, write, type WriteOutcome } from '../../../api'
 import { usePendingWrites } from '../../../offline'
@@ -21,6 +24,33 @@ export interface Turn {
   waiting: boolean
   /** The question waits in this device's offline queue: it is sent, and answered, when the connection is back. */
   queued: boolean
+  /**
+   * The question reached the Worker but its answer is not stored yet: what it already logged, and whether the poll
+   * for the answer has given up (`late`). Null once the reply is there, or when nothing is awaited.
+   */
+  stillWorking: { receipts: ChatMessage['receipts']; late: boolean } | null
+}
+
+/** How often, and for how long, the open thread is polled for an answer that is still coming. */
+const POLL_MS = 3_000
+const POLL_MAX_MS = 90_000
+
+/** A message whose answer is awaited: its thread, when the wait began, and the receipts that came back already. */
+interface Awaited {
+  thread_id: string
+  since: number
+  receipts: ChatMessage['receipts']
+}
+
+/** Ids of the questions in `messages` that have their reply. */
+function answered(messages: readonly ChatMessage[] | undefined): Set<string> {
+  return new Set(groupTurns(messages ?? []).flatMap((t) => (t.reply ? [t.question.id] : [])))
+}
+
+/** Logs, a moved forecast and proposals change Today, Log, Train and Progress: refresh everything but `keepKey`. */
+function refreshOthers(queryClient: QueryClient, keepKey: readonly unknown[]): void {
+  const keep = hashKey(keepKey)
+  void queryClient.invalidateQueries({ queryKey: ['api'], predicate: (q) => hashKey(q.queryKey) !== keep })
 }
 
 /** Messages (oldest first) → turns. A tool or reply before any question (cut history) starts its own turn. */
@@ -36,6 +66,7 @@ export function groupTurns(messages: readonly ChatMessage[]): Turn[] {
         reply: null,
         waiting: false,
         queued: false,
+        stillWorking: null,
       }
       turns.push(turn)
       if (m.role === 'user') continue
@@ -56,11 +87,27 @@ export function useChat() {
   const threadId = useThreadStore((s) => s.threadId)
   const fresh = useThreadStore((s) => s.fresh)
   const queryClient = useQueryClient()
+  // Messages whose answer is still coming, by message id.
+  const [awaiting, setAwaiting] = useState<ReadonlyMap<string, Awaited>>(new Map())
+  const awaitingRef = useRef(awaiting)
+  awaitingRef.current = awaiting
   const thread = useApiQuery(
     endpoints.ai.chatHistory,
     { query: { thread_id: threadId } },
-    { enabled: !fresh, staleTime: 60_000 },
+    {
+      enabled: !fresh,
+      staleTime: 60_000,
+      // Poll while a message of this thread awaits its answer, for at most POLL_MAX_MS from when the wait began.
+      refetchInterval: (query) => {
+        const done = answered(query.state.data)
+        const now = Date.now()
+        for (const [id, a] of awaitingRef.current)
+          if (a.thread_id === threadId && !done.has(id) && now - a.since < POLL_MAX_MS) return POLL_MS
+        return false
+      },
+    },
   )
+  const await_ = (id: string, a: Awaited) => setAwaiting((m) => new Map(m).set(id, a))
   const [asking, setAsking] = useState<ChatSend | null>(null)
   const [error, setError] = useState<string | null>(null)
   const failed = useRef<ChatSend | null>(null)
@@ -86,22 +133,80 @@ export function useChat() {
     if (store.threadId === threadId && store.fresh) store.markStored()
   }, [queuedHere.length, threadId])
 
+  // A queued message that left the queue was delivered: its reply may still be coming (the replay can be cut off while
+  // the turn runs on), so its thread waits for it like a 'turn_running' answer.
+  const queuedBefore = useRef<ReadonlyMap<string, string>>(new Map())
+  const queuedNow = pending.flatMap((w) => {
+    const body = w.body as ChatSend | undefined
+    return body ? [`${body.id}:${body.thread_id}`] : []
+  })
+  const queuedSig = queuedNow.join(',')
+  useEffect(() => {
+    const now = new Map(queuedNow.map((pair) => pair.split(':') as [string, string]))
+    const gone = [...queuedBefore.current].filter(([id]) => !now.has(id))
+    queuedBefore.current = now
+    if (gone.length === 0) return
+    const since = Date.now()
+    setAwaiting((m) => {
+      const next = new Map(m)
+      for (const [id, thread_id] of gone) next.set(id, { thread_id, since, receipts: [] })
+      return next
+    })
+    // queuedNow is derived from `pending`; its signature is the dependency.
+  }, [queuedSig])
+
+  // The awaited answer arrived: stop waiting, and refresh what its proposals and logs changed elsewhere.
+  const data = thread.data
+  useEffect(() => {
+    const done = answered(data)
+    const arrived = [...awaitingRef.current].filter(([id, a]) => a.thread_id === threadId && done.has(id))
+    if (arrived.length === 0) return
+    setAwaiting((m) => {
+      const next = new Map(m)
+      for (const [id] of arrived) next.delete(id)
+      return next
+    })
+    refreshOthers(queryClient, threadKey(threadId))
+  }, [data, threadId, queryClient])
+
+  // Re-render when the earliest wait of this thread runs out, so its line says the poll has stopped.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const ends = [...awaiting.values()]
+      .filter((a) => a.thread_id === threadId)
+      .map((a) => a.since + POLL_MAX_MS - Date.now())
+      .filter((ms) => ms > 0)
+    if (ends.length === 0) return
+    const timer = setTimeout(() => setTick((n) => n + 1), Math.min(...ends) + 50)
+    return () => clearTimeout(timer)
+  }, [awaiting, threadId])
+
   const mutation = useMutation<WriteOutcome<typeof endpoints.ai.chat>, Error, ChatSend>({
     networkMode: 'always',
-    // Online it is answered in the request (a turn-length timeout); offline, or when the network drops, it is queued.
-    mutationFn: (body) => write(endpoints.ai.chat, { body }),
+    // Online it is answered in the request (a turn-length timeout), even while other writes wait in the queue: chat
+    // depends on none of them. Offline, or when the network drops, it is queued.
+    mutationFn: (body) => write(endpoints.ai.chat, { body }, { independent: true }),
     onSuccess: (outcome, body) => {
       failed.current = null
       // Queued: the pending list shows it; the flush refreshes everything when it is answered.
       if (outcome.status === 'queued') return
       const turn = outcome.data
       const key = threadKey(body.thread_id)
+      // A replay whose turn is still running (or was cut off) carries what it logged, not the answer: the question and
+      // its tool rows go in the thread, the receipts wait beside it, and the thread is polled until the answer is stored.
+      const running = turn.error === 'turn_running'
+      const rows = [turn.message, ...turn.tool_messages, ...(running ? [] : [turn.reply])]
+      const ids = new Set(rows.map((m) => m.id))
       queryClient.setQueryData<ChatMessage[]>(key, (old = []) => [
-        ...old.filter((m) => m.id !== turn.message.id),
-        turn.message,
-        ...turn.tool_messages,
-        turn.reply,
+        ...old.filter((m) => !ids.has(m.id)),
+        ...rows,
       ])
+      if (running)
+        await_(turn.message.id, {
+          thread_id: body.thread_id,
+          since: Date.now(),
+          receipts: turn.reply.receipts,
+        })
       const store = useThreadStore.getState()
       if (store.threadId === body.thread_id && store.fresh) store.markStored()
       void queryClient.invalidateQueries({
@@ -109,13 +214,8 @@ export function useChat() {
         exact: true,
       })
       // Logs, a moved forecast and proposals change Today, Log, Train and Progress: refresh everything else on screen.
-      if (turn.reply.tool_calls?.length || turn.reply.receipts.length || turn.reply.forecast) {
-        const keep = hashKey(key)
-        void queryClient.invalidateQueries({
-          queryKey: ['api'],
-          predicate: (q) => hashKey(q.queryKey) !== keep,
-        })
-      }
+      if (turn.reply.tool_calls?.length || turn.reply.receipts.length || turn.reply.forecast)
+        refreshOthers(queryClient, key)
     },
     onError: (e, body) => {
       failed.current = body
@@ -163,7 +263,14 @@ export function useChat() {
     const body: ChatSend =
       retry && retry.thread_id === threadId && retry.content === text
         ? retry
-        : { id: crypto.randomUUID(), thread_id: threadId, content: text, attachments }
+        : // When he typed it: the Worker reads "yesterday" against it, also when the queue sends it hours later.
+          {
+            id: crypto.randomUUID(),
+            thread_id: threadId,
+            content: text,
+            sent_at: new Date().toISOString(),
+            attachments,
+          }
     setError(null)
     setAsking(body)
     mutation.mutate(body)
@@ -172,6 +279,12 @@ export function useChat() {
 
   const messages = fresh ? [] : (thread.data ?? [])
   const turns = groupTurns(messages)
+  const now = Date.now()
+  for (const t of turns) {
+    const a = awaiting.get(t.question.id)
+    if (a && !t.reply && a.thread_id === threadId)
+      t.stillWorking = { receipts: a.receipts, late: now - a.since >= POLL_MAX_MS }
+  }
   const shown = new Set(messages.map((m) => m.id))
   const queued = queuedHere.filter((b) => !shown.has(b.id))
   for (const b of queued)
@@ -182,6 +295,7 @@ export function useChat() {
       reply: null,
       waiting: false,
       queued: true,
+      stillWorking: null,
     })
   if (
     asking &&
@@ -196,6 +310,7 @@ export function useChat() {
       reply: null,
       waiting: true,
       queued: false,
+      stillWorking: null,
     })
 
   return {

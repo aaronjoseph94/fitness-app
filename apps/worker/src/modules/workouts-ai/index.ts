@@ -8,7 +8,8 @@
 // day's older pending drafts, so a split day has at most one. A split draft must reach its day's body groups (engine
 // requiredGroups over its split: its focus's groups, and for a full-body day the groups no other day requires; the
 // prompt names them and the repair adds what the reply missed, plan 2026-10-14 A3). A day's draft also avoids loading
-// what Aaron's active body notes protect (engine bodyNoteSteer: a sore knee keeps quadriceps and hamstrings out).
+// what Aaron's active body notes protect (engine bodyNoteSteer: a sore knee keeps quadriceps and hamstrings out): they
+// are left out of the prompt's candidates and the repair drops any exercise that hits them, kept ones included.
 // Interface:
 //   requestWorkout(deps, body)         → JobRef  POST /api/ai/workout: enqueue (user priority) + run soon; from the app
 //        (actor user) 409 no_model_key (nothing queued) when no model in the job's chain has a key
@@ -257,21 +258,14 @@ export async function draftWorkout(
   })
 
   const guard = await guardContext(ai, library, 'ai')
-  const soreNotes: string[] = []
-  const picks = reply.data.exercises.filter((p) => {
-    const e = bySlug.get(p.exercise_id)
-    const hit = e && !keep.some((k) => k.exercise_id === e.id) ? soreOf(e) : []
-    if (!hit.length) return true
-    soreNotes.push(`Dropped ${e!.name}: a body note protects ${hit.join(', ')}`)
-    return false
-  })
   const repaired = repairDraft({
-    picks,
+    picks: reply.data.exercises,
     keep,
     byId: library.byId,
     bySlug,
     guard,
     avoid,
+    sore: [...sore],
     sets,
     required: groups,
     candidates,
@@ -301,7 +295,7 @@ export async function draftWorkout(
     ...(slot ? { name: slot.name } : {}),
     exercises,
     rationale,
-    guard_notes: [...soreNotes, ...repaired.notes],
+    guard_notes: repaired.notes,
   }
   const total = exercises.reduce((n, e) => n + e.sets, 0)
   const size = `${exercises.length} exercises, ${total} sets`

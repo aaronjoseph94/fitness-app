@@ -177,10 +177,6 @@ export const ProposalBody = z.discriminatedUnion('kind', [
     reverted_at: Instant.optional(),
   }),
   /**
-   * Aaron's training days as Ask AI proposes them (pending until he taps it). `before`: the days when it was proposed,
-   * for display ("now Mon, Tue, Thu"); there is no Undo for days — change them back with set_training_days.
-   */
-  /**
    * A goal change Ask AI proposes from what Aaron said (pending until he taps it). Null = that goal stays. `before`: the
    * goals when it was proposed. Accepting writes the profile (the same checks as Settings) and reforecasts.
    */
@@ -189,6 +185,10 @@ export const ProposalBody = z.discriminatedUnion('kind', [
     goal_weight_kg: z.number().min(40).max(200).nullable(),
     goal_date: LocalDate.nullable(),
     before: z.object({ goal_weight_kg: z.number().nullable(), goal_date: LocalDate.nullable() }),
+  /**
+   * Aaron's training days as Ask AI proposes them (pending until he taps it). `before`: the days when it was proposed,
+   * for display ("now Mon, Tue, Thu"); there is no Undo for days — change them back with set_training_days.
+   */
     reason: z.string().max(300).optional(),
   }),
   z.object({

@@ -1,9 +1,11 @@
 // Owns: tagging one picked photo for an Ask AI message (SPEC §9 privacy) — a small dialog with the photo and four tags,
-// then that tag's path: Meal → a photo meal logged now in the slot its time suggests (quick-log's path: downscaled and
-// re-encoded on this device), attached by meal id; Scan sheet → the scans upload with the name box painted black first,
-// attached by scan id; Screenshot → black out anything private, then the re-encoded copy uploaded to
-// POST /api/ai/attachments, attached by its client id; Progress photo → saved privately through the photos module and
-// never attached ("photos of you never go to the AI"). Client ids are made once per photo, so "Try again" replays.
+// Progress photo first, then that tag's path: Progress photo → saved privately through the photos module and never
+// attached ("photos of you never go to the AI"); Meal → "This photo goes to the AI" (Back / Send), then a photo meal
+// logged now in the slot its time suggests (quick-log's path: downscaled and re-encoded on this device), attached by
+// meal id; Scan sheet → the name box painted black, "name, face, email covered" ticked, the masked copy shown with the
+// same confirm, then the scans upload, attached by scan id; Screenshot → black out anything private and tick the same
+// check, then the re-encoded copy uploaded to POST /api/ai/attachments, attached by its client id. Nothing uploads
+// before its confirm. Client ids are made once per photo, so "Try again" replays.
 import CameraAltOutlined from '@mui/icons-material/CameraAltOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
@@ -14,18 +16,20 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
+import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { SvgIconComponent } from '@mui/icons-material'
 import { endpoints } from '@fitness/shared/api'
-import { MAX_SCREENSHOTS, type Pose } from '@fitness/shared/schemas'
+import { MAX_SCREENSHOTS, type Pose, type ScanUploadQuery } from '@fitness/shared/schemas'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { call, isApiError, problemText } from '../../../api'
 import { askAiCopy } from '../../../copy/ask-ai'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
@@ -52,13 +56,24 @@ type Step =
   | { kind: 'mask'; sheet: HTMLCanvasElement }
   | { kind: 'blackout'; source: HTMLCanvasElement }
   | { kind: 'pose' }
+  /** The last stop before a photo goes to the AI: Back, or Send. A scan sheet shows its masked copy. */
+  | { kind: 'confirm'; tag: 'meal' }
+  | { kind: 'confirm'; tag: 'scan'; sheet: HTMLCanvasElement }
   | { kind: 'working'; tag: Tag }
 
+/** The masked sheet exactly as it will upload, with a preview URL freed when it is replaced or the dialog goes. */
+interface ScanCopy {
+  blob: Blob
+  content_type: ScanUploadQuery['content_type']
+  url: string
+}
+
+// Progress photo first: the photo of him is the one that must never be tagged as something that goes to the AI.
 const TAGS: readonly { tag: Tag; icon: SvgIconComponent }[] = [
+  { tag: 'progress', icon: CameraAltOutlined },
   { tag: 'meal', icon: RestaurantRounded },
   { tag: 'screenshot', icon: ScreenshotMonitorOutlined },
   { tag: 'scan', icon: DescriptionOutlined },
-  { tag: 'progress', icon: CameraAltOutlined },
 ]
 
 export interface AttachDialogProps {
@@ -87,6 +102,21 @@ export function AttachDialog(props: AttachDialogProps) {
   const [box, setBox] = useState<MaskBox>(DEFAULT_MASK)
   const [boxes, setBoxes] = useState<MaskBox[]>([])
   const [pose, setPose] = useState<Pose>('front')
+  // The black-out check before "Add to message": ticked by him for each sheet or screenshot.
+  const [covered, setCovered] = useState(false)
+  const [scanCopy, setScanCopyState] = useState<ScanCopy | null>(null)
+  const scanCopyRef = useRef<ScanCopy | null>(null)
+  const setScanCopy = (next: ScanCopy | null) => {
+    if (scanCopyRef.current) URL.revokeObjectURL(scanCopyRef.current.url)
+    scanCopyRef.current = next
+    setScanCopyState(next)
+  }
+  useEffect(
+    () => () => {
+      if (scanCopyRef.current) URL.revokeObjectURL(scanCopyRef.current.url)
+    },
+    [],
+  )
   // One client id per photo and path, so a retry after a lost response replays rather than duplicates.
   const [ids] = useState(() => ({
     meal: crypto.randomUUID(),
@@ -115,7 +145,7 @@ export function AttachDialog(props: AttachDialogProps) {
   }
 
   const logMeal = () =>
-    run('meal', { kind: 'choose' }, async () => {
+    run('meal', { kind: 'confirm', tag: 'meal' }, async () => {
       const photo = await preparePhoto(file)
       try {
         const meal_id = await logPhotoMeal(queryClient, { id: ids.meal, photos: [photo] })
@@ -137,6 +167,7 @@ export function AttachDialog(props: AttachDialogProps) {
     setStep({ kind: 'rendering', tag })
     try {
       const canvas = await renderSheet(file)
+      setCovered(false)
       setStep(tag === 'scan' ? { kind: 'mask', sheet: canvas } : { kind: 'blackout', source: canvas })
     } catch (e) {
       setError(e instanceof Error ? e.message : "That photo couldn't be opened.")
@@ -144,9 +175,21 @@ export function AttachDialog(props: AttachDialogProps) {
     }
   }
 
-  const uploadScan = (sheet: HTMLCanvasElement) =>
-    run('scan', { kind: 'mask', sheet }, async () => {
+  /** The masked copy, made once and shown on the confirm, is the one that uploads. */
+  const confirmScan = async (sheet: HTMLCanvasElement) => {
+    setError(null)
+    try {
       const { blob, content_type } = await maskedSheet(sheet, box)
+      setScanCopy({ blob, content_type, url: URL.createObjectURL(blob) })
+      setStep({ kind: 'confirm', tag: 'scan', sheet })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "That sheet couldn't be prepared.")
+    }
+  }
+
+  const uploadScan = (sheet: HTMLCanvasElement, copy: ScanCopy) =>
+    run('scan', { kind: 'confirm', tag: 'scan', sheet }, async () => {
+      const { blob, content_type } = copy
       const result = await call(
         endpoints.scans.upload,
         { query: { id: ids.scan, content_type }, body: await blob.arrayBuffer() },
@@ -191,7 +234,7 @@ export function AttachDialog(props: AttachDialogProps) {
     })
 
   const choose = (tag: Tag) => {
-    if (tag === 'meal') void logMeal()
+    if (tag === 'meal') setStep({ kind: 'confirm', tag: 'meal' })
     else if (tag === 'progress') setStep({ kind: 'pose' })
     else void render(tag)
   }
@@ -203,7 +246,9 @@ export function AttachDialog(props: AttachDialogProps) {
         ? askAiCopy.blackoutTitle
         : step.kind === 'pose'
           ? askAiCopy.poseTitle
-          : askAiCopy.attachTitle
+          : step.kind === 'confirm'
+            ? askAiCopy.toAiTitle
+            : askAiCopy.attachTitle
 
   return (
     <Dialog
@@ -327,6 +372,7 @@ export function AttachDialog(props: AttachDialogProps) {
           <>
             <Help>{askAiCopy.maskHelp}</Help>
             <MaskEditor sheet={step.sheet} box={box} onChange={setBox} />
+            <CoveredCheck checked={covered} onChange={setCovered} />
             <Actions>
               <Button variant="outlined" onClick={() => setStep({ kind: 'choose' })}>
                 {askAiCopy.back}
@@ -334,7 +380,8 @@ export function AttachDialog(props: AttachDialogProps) {
               <Button
                 variant="contained"
                 data-testid="ask-ai-attach-confirm"
-                onClick={() => void uploadScan(step.sheet)}
+                disabled={!covered}
+                onClick={() => void confirmScan(step.sheet)}
               >
                 {askAiCopy.addToMessage}
               </Button>
@@ -346,6 +393,7 @@ export function AttachDialog(props: AttachDialogProps) {
           <>
             <Help>{askAiCopy.blackoutHelp}</Help>
             <Blackout source={step.source} boxes={boxes} onChange={setBoxes} />
+            <CoveredCheck checked={covered} onChange={setCovered} />
             <Actions>
               <Button variant="outlined" onClick={() => setBoxes([])} disabled={boxes.length === 0}>
                 {askAiCopy.blackoutClear}
@@ -353,6 +401,7 @@ export function AttachDialog(props: AttachDialogProps) {
               <Button
                 variant="contained"
                 data-testid="ask-ai-attach-confirm"
+                disabled={!covered}
                 onClick={() => void uploadScreenshot(step.source)}
               >
                 {askAiCopy.addToMessage}
@@ -404,9 +453,73 @@ export function AttachDialog(props: AttachDialogProps) {
           </>
         )}
 
+        {step.kind === 'confirm' && (
+          <>
+            {(step.tag === 'meal' ? preview : scanCopy?.url) && (
+              <Box
+                component="img"
+                src={(step.tag === 'meal' ? preview : scanCopy?.url) ?? undefined}
+                alt=""
+                sx={{
+                  justifySelf: 'center',
+                  maxWidth: '100%',
+                  maxHeight: 220,
+                  borderRadius: `${tokens.radius.control}px`,
+                  objectFit: 'contain',
+                }}
+              />
+            )}
+            <Box
+              data-testid="ask-ai-attach-to-ai"
+              sx={{
+                fontSize: tokens.font.size.body,
+                lineHeight: tokens.font.leading.body,
+                color: tokens.ink.text,
+              }}
+            >
+              {askAiCopy.toAi[step.tag]}
+            </Box>
+            <Actions>
+              <Button
+                variant="outlined"
+                onClick={() =>
+                  setStep(step.tag === 'meal' ? { kind: 'choose' } : { kind: 'mask', sheet: step.sheet })
+                }
+              >
+                {askAiCopy.back}
+              </Button>
+              <Button
+                variant="contained"
+                data-testid="ask-ai-attach-send"
+                onClick={() => {
+                  if (step.tag === 'meal') void logMeal()
+                  else if (scanCopy) void uploadScan(step.sheet, scanCopy)
+                }}
+              >
+                {askAiCopy.send}
+              </Button>
+            </Actions>
+          </>
+        )}
+
         {step.kind === 'working' && <Working text={askAiCopy.working[step.tag]} />}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** The black-out check: "Add to message" waits until he ticks that his name, face and email are covered. */
+function CoveredCheck({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <FormControlLabel
+      data-testid="ask-ai-covered"
+      control={<Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)} />}
+      label={askAiCopy.coveredCheck}
+      sx={{
+        m: 0,
+        '& .MuiFormControlLabel-label': { fontSize: tokens.font.size.small, color: tokens.ink.text },
+      }}
+    />
   )
 }
 

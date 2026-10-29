@@ -18,11 +18,13 @@
 //   startFast(deps, FastStart) / endFast(deps, id, FastEnd) / planFast(deps, FastPlan) / moveFast(deps, id, FastMove)
 //                                              → Fast
 //   cancelFast(deps, id)                       → Ok
-//   reopenFast(deps, id)                       → Fast   undo an end logged by mistake (Ask AI's Undo): running again
+//   reopenFast(deps, id)                       → Fast   undo an end logged by mistake (Ask AI's Undo): running again;
+//                                              409 fast_active when another fast is running now (one at a time)
 //   unstartFast(deps, id, planned_start)       → Ok     undo a start logged by mistake (Ask AI's Undo): an ad-hoc fast
 //                                              goes as if it never happened; a planned fast started early goes back to
-//                                              `planned_start` (its planned instant). Unlike cancelFast it takes a fast
-//                                              that has begun (the start is what is being undone).
+//                                              `planned_start` (its planned instant), or 409 planned_start_passed when
+//                                              that instant is already past. Unlike cancelFast it takes a fast that
+//                                              has begun (the start is what is being undone).
 //   listFasts(deps, FastListQuery)             → Fast[]
 //   fastDaysIn(deps, { from, to })             → { fast, date }[]   each fast's fast day in the range
 //   fastsBegunSince(deps, since) / adjustDayForFast(deps, fast)   the cron's day_adjustment card for a planned fast
@@ -403,7 +405,8 @@ export async function cancelFast(deps: Deps, id: string): Promise<Ok> {
 
 /**
  * Undo an end logged by mistake: the fast runs again (ended_at, end_date back to null). A fast that never ended is
- * returned as is; 404 for an unknown id. Targets and today's card follow, as for every fast write.
+ * returned as is; 404 for an unknown id; 409 fast_active while another fast runs (one at a time). Targets and today's
+ * card follow, as for every fast write.
  */
 export async function reopenFast(deps: Deps, id: string): Promise<Fast> {
   const { db } = deps
@@ -412,6 +415,21 @@ export async function reopenFast(deps: Deps, id: string): Promise<Fast> {
   if (!row.ended_at) return toFast(row)
   const now = deps.now().toISOString()
   const hours = await fastHours(deps)
+  // One fast runs at a time: a fast started since the end was logged keeps running, and this one stays ended.
+  const runningSince = new Date(deps.now().getTime() - 2 * hours * HOUR_MS).toISOString()
+  const [other] = await db
+    .select({ id: fast_logs.id })
+    .from(fast_logs)
+    .where(
+      and(
+        isNull(fast_logs.ended_at),
+        lte(fast_logs.started_at, now),
+        gt(fast_logs.started_at, runningSince),
+        ne(fast_logs.id, id),
+      ),
+    )
+    .limit(1)
+  if (other) throw fastActive()
   const after = { started_at: row.started_at, ended_at: null }
   const pending = { fasts: [{ id, ...after }] }
   const targets = await fastDayStatements(
@@ -438,7 +456,8 @@ export async function reopenFast(deps: Deps, id: string): Promise<Fast> {
 
 /**
  * Undo a start logged by mistake. A planned fast with `planned_start` goes back to that start, not begun and not
- * ended; any other fast is deleted (its fast day given back). An unknown id is a no-op.
+ * ended; any other fast is deleted (its fast day given back). An unknown id is a no-op. 409 planned_start_passed when
+ * the planned start is already past (back there it would read as running): end or cancel it instead.
  */
 export async function unstartFast(deps: Deps, id: string, planned_start: string | null): Promise<Ok> {
   const { db } = deps
@@ -446,6 +465,13 @@ export async function unstartFast(deps: Deps, id: string, planned_start: string 
   if (!row) return { ok: true }
   const hours = await fastHours(deps)
   const now = deps.now().toISOString()
+  // Back at a planned start that has passed, the fast would read as running from then: refuse rather than restart it.
+  if (row.planned && planned_start && planned_start <= now)
+    throw new HttpError(
+      409,
+      'planned_start_passed',
+      'Its planned start has passed, so the fast is under way; end it or cancel it in Fasting',
+    )
   if (row.planned && planned_start) {
     const after = { started_at: planned_start, ended_at: null }
     const start_date = localDate(planned_start)

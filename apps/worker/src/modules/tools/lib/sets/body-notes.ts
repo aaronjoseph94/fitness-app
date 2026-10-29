@@ -25,7 +25,7 @@ export const BODY_NOTE_TOOLS: readonly ToolDefinition[] = [
   defineTool({
     name: 'get_body_notes',
     title: 'Get the active body notes',
-    area: 'health',
+    area: 'body_notes',
     description:
       'Body notes active today (a note stays active 7 days after its date unless resolved), newest first: area (a ' +
       'muscle key, a joint such as knee, or whole_body), kind (pain, soreness, energy, illness, mood), severity 1 mild ' +
@@ -39,7 +39,7 @@ export const BODY_NOTE_TOOLS: readonly ToolDefinition[] = [
   defineTool({
     name: 'log_body_note',
     title: 'Log a body note',
-    area: 'health',
+    area: 'body_notes',
     description:
       'Record how Aaron says his body feels on a day: a sore knee (area "knee", kind "pain"), tight hamstrings ' +
       '(soreness), low energy or a cold (area "whole_body", kind energy / illness), mood. Severity 1 mild (train ' +
@@ -62,7 +62,7 @@ export const BODY_NOTE_TOOLS: readonly ToolDefinition[] = [
   defineTool({
     name: 'resolve_body_note',
     title: 'Resolve a body note',
-    area: 'health',
+    area: 'body_notes',
     description:
       'Mark a body note resolved (Aaron says the knee is fine now): from `resolved_on` (default today) it no longer ' +
       'steers workouts. resolved_on null re-opens it. `id` from get_body_notes.',
