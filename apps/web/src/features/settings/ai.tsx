@@ -62,6 +62,20 @@ const listSx = {
   color: tokens.ink.label,
 } as const
 
+/** The page's two columns from `lg` (keys left, connector right), one below it. */
+const aiColumnsSx = {
+  display: 'grid',
+  gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' },
+  gap: `${tokens.rhythm.section}px`,
+  alignItems: 'start',
+} as const
+const aiColumnSx = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: `${tokens.rhythm.section}px`,
+  minWidth: 0,
+} as const
+
 export function AiSettingsPage() {
   const secrets = useSecrets()
   const connection = useConnection()
@@ -216,86 +230,94 @@ export function AiSettingsPage() {
         </Panel>
       )}
 
-      <SettingsGroup
-        id="paid"
-        title="Paid models"
-        subtitle="Pay as you go, tried top to bottom before the free tiers. Set a key and its model answers first; remove it and the free models take over. At most 200 paid requests a day per provider (prices are per million tokens — roughly words)."
-      >
-        {PAID_SECRET_NAMES.map(secretRow)}
-      </SettingsGroup>
+      {/* Model keys : the Claude connector, side by side from `lg` (each column a stack of cards), one column below. */}
+      <Box sx={aiColumnsSx}>
+        <Box sx={aiColumnSx}>
+          <SettingsGroup
+            id="paid"
+            title="Paid models"
+            subtitle="Pay as you go, tried top to bottom before the free tiers. Set a key and its model answers first; remove it and the free models take over. At most 200 paid requests a day per provider (prices are per million tokens — roughly words)."
+          >
+            {PAID_SECRET_NAMES.map(secretRow)}
+          </SettingsGroup>
 
-      <SettingsGroup
-        id="models"
-        title="Models"
-        subtitle="Free tiers, tried top to bottom after any paid model; one key is enough."
-      >
-        {MODEL_SECRET_NAMES.map(secretRow)}
-      </SettingsGroup>
-
-      <SettingsGroup
-        id="claude"
-        title="Claude"
-        subtitle="The senior coach, through a connector in your own Claude chats."
-      >
-        {connection.data ? (
-          <>
-            <CopyRow
-              label="Connector URL"
-              help="The address to paste into Claude's custom connector field. It must be the public HTTPS origin — Claude connects from Anthropic's cloud, not from this phone."
-              value={mcpUrl}
-              copied={copied === 'mcp_url'}
-              onCopy={() => void copy('mcp_url', mcpUrl)}
-              testId="copy-mcp-url"
-            />
-            {secretRow('MCP_BEARER_TOKEN')}
-            <ReadOnlyRow
-              label="Last change from Claude"
-              help="Every write Claude makes is versioned and revertible."
-              value={
-                connection.data.last_write_at ? formatDayTime(connection.data.last_write_at) : 'Never yet'
-              }
-            />
-          </>
-        ) : (
-          <ReadOnlyRow
-            label="Connector"
-            value={connection.isPending ? 'Loading…' : `Couldn't load. ${problemText(connection.error)}`}
-          />
-        )}
-      </SettingsGroup>
-
-      <SettingsGroup id="connector-how" title="Adding the connector to Claude">
-        <Box component="ol" sx={listSx}>
-          <li>In Claude, open Settings → Connectors → Add custom connector.</li>
-          <li>Paste the connector URL above.</li>
-          <li>
-            When Claude asks you to sign in, approve the consent page (it is behind your Cloudflare login). If
-            your client asks for a token header instead, generate one in the row above and paste it there.
-          </li>
-          <li>
-            Then ask Claude to “run my coach review”. It follows the coach procedure the server ships, reads
-            the same numbers the app computes, and every change it applies is a plan version you can revert in
-            one tap.
-          </li>
+          <SettingsGroup
+            id="models"
+            title="Models"
+            subtitle="Free tiers, tried top to bottom after any paid model; one key is enough."
+          >
+            {MODEL_SECRET_NAMES.map(secretRow)}
+          </SettingsGroup>
         </Box>
-      </SettingsGroup>
 
-      <SettingsGroup id="key-storage" title="Where these keys live">
-        <Box component="ul" sx={listSx}>
-          <li>
-            In this app’s own Cloudflare D1 database, written only through your signed-in session. They never
-            enter the web bundle or the offline cache, and the API only ever returns whether a key is set,
-            where it came from and its last four characters.
-          </li>
-          <li>
-            A key set here wins over a Worker secret of the same name. Clear it here and a{' '}
-            <code>wrangler secret put</code> value takes over again.
-          </li>
-          <li>
-            Every change is recorded as one event carrying the key’s name and the action, never the value.
-          </li>
+        <Box sx={aiColumnSx}>
+          <SettingsGroup
+            id="claude"
+            title="Claude"
+            subtitle="The senior coach, through a connector in your own Claude chats."
+          >
+            {connection.data ? (
+              <>
+                <CopyRow
+                  label="Connector URL"
+                  help="The address to paste into Claude's custom connector field. It must be the public HTTPS origin — Claude connects from Anthropic's cloud, not from this phone."
+                  value={mcpUrl}
+                  copied={copied === 'mcp_url'}
+                  onCopy={() => void copy('mcp_url', mcpUrl)}
+                  testId="copy-mcp-url"
+                />
+                {secretRow('MCP_BEARER_TOKEN')}
+                <ReadOnlyRow
+                  label="Last change from Claude"
+                  help="Every write Claude makes is versioned and revertible."
+                  value={
+                    connection.data.last_write_at ? formatDayTime(connection.data.last_write_at) : 'Never yet'
+                  }
+                />
+              </>
+            ) : (
+              <ReadOnlyRow
+                label="Connector"
+                value={connection.isPending ? 'Loading…' : `Couldn't load. ${problemText(connection.error)}`}
+              />
+            )}
+          </SettingsGroup>
+
+          <SettingsGroup id="connector-how" title="Adding the connector to Claude">
+            <Box component="ol" sx={listSx}>
+              <li>In Claude, open Settings → Connectors → Add custom connector.</li>
+              <li>Paste the connector URL above.</li>
+              <li>
+                When Claude asks you to sign in, approve the consent page (it is behind your Cloudflare
+                login). If your client asks for a token header instead, generate one in the row above and
+                paste it there.
+              </li>
+              <li>
+                Then ask Claude to “run my coach review”. It follows the coach procedure the server ships,
+                reads the same numbers the app computes, and every change it applies is a plan version you can
+                revert in one tap.
+              </li>
+            </Box>
+          </SettingsGroup>
+
+          <SettingsGroup id="key-storage" title="Where these keys live">
+            <Box component="ul" sx={listSx}>
+              <li>
+                In this app’s own Cloudflare D1 database, written only through your signed-in session. They
+                never enter the web bundle or the offline cache, and the API only ever returns whether a key
+                is set, where it came from and its last four characters.
+              </li>
+              <li>
+                A key set here wins over a Worker secret of the same name. Clear it here and a{' '}
+                <code>wrangler secret put</code> value takes over again.
+              </li>
+              <li>
+                Every change is recorded as one event carrying the key’s name and the action, never the value.
+              </li>
+            </Box>
+          </SettingsGroup>
         </Box>
-      </SettingsGroup>
+      </Box>
 
       {editing && (
         <SecretDialog

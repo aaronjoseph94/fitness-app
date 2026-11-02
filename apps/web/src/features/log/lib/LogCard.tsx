@@ -51,7 +51,7 @@ export function LogCard({
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 8px', minWidth: 0 }}>
         {Icon && <Icon aria-hidden sx={{ fontSize: 22, color: iconColor, flex: 'none' }} />}
         <Box
-          component="h2"
+          component="h3"
           sx={{
             m: 0,
             flex: '1 1 auto',

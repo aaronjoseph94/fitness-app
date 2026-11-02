@@ -162,6 +162,7 @@ export function LatestScanCard({ scan }: { scan: ConfirmedScan }) {
   const size = tokens.font.size.bigNumber
   return (
     <Panel
+      headingComponent="h3"
       title={`Latest scan · ${scanDay(scan.date)}`}
       description={[
         prev ? `${prev.days} days after ${since}` : 'The baseline',
@@ -247,6 +248,7 @@ export function CompositionCard({ scans, next }: { scans: readonly ConfirmedScan
   )
   return (
     <Panel
+      headingComponent="h3"
       title="Fat and lean mass"
       description={`Per scan · fat carries the loss; lean holds near ${formatNumber(TARGETS.leanMassKg)} kg at the ${copy.goalLabel}`}
     >

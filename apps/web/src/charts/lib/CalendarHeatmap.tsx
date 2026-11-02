@@ -32,6 +32,9 @@ export interface CalendarHeatmapProps {
 const LEFT = 18
 const TOP = 16
 const MAX_CELL = 22
+/** A short range (Progress's 4 weeks) has few columns: its cells may grow to this, so the calendar uses its card. */
+const MAX_CELL_SHORT = 34
+const SHORT_WEEKS = 6
 const WEEKDAYS = ['M', '', 'W', '', 'F', '', 'S']
 
 function mondayOnOrBefore(t: number): number {
@@ -61,7 +64,7 @@ export function CalendarHeatmap({
   // Cells shrink to fit the width (never a horizontal scroll); below 10 px the gaps tighten to 1 px.
   const fit = (gap: number) => Math.floor((w - LEFT - gap * (weeks - 1)) / Math.max(weeks, 1))
   const gap = fit(3) >= 10 ? 3 : 1
-  const cell = Math.max(2, Math.min(MAX_CELL, fit(gap)))
+  const cell = Math.max(2, Math.min(weeks <= SHORT_WEEKS ? MAX_CELL_SHORT : MAX_CELL, fit(gap)))
   const svgW = LEFT + weeks * cell + (weeks - 1) * gap
   const svgH = TOP + 7 * cell + 6 * gap
 

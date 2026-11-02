@@ -1,8 +1,9 @@
 // Owns: the Log tab page (SPEC §6, §8 manual route) for one day (1d Summit) — the sky hero (the "Fuel log · Day N"
 // eyebrow, the day as the h1, one line of what is left and logged, the date switcher pill with ?date= in the URL and the
-// gold "+ Log" opening the quick-log sheet for that day), the day's three-part header (eaten, macros, weigh-in), then
-// meals by slot beside the rail (water, sleep and steps, measurements, fasting, favourites) at 2 : 1, wrapping to one
-// column when they no longer fit (README §4) — the same card order either way — and the logging sheet it opens.
+// gold "+ Log" opening the quick-log sheet for that day), then three labelled sections: "Day totals" (eaten, macros,
+// weigh-in); "Food and drink" (meals by slot beside water, fasting and favourites at 2 : 1); "Body and recovery" (sleep
+// and steps beside the tape, 1 : 1). Rows wrap to one column when they no longer fit (README §4) — the same card order
+// either way — and the logging sheet it opens.
 import AddRounded from '@mui/icons-material/AddRounded'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -19,6 +20,7 @@ import {
   formatShortDate,
   PageHeader,
   Reveal,
+  SectionHeader,
   staggerDelay,
   wrapCol,
   WrapRow,
@@ -104,53 +106,81 @@ export function LogPage() {
           </Button>
         }
       />
-      <Reveal delay={100}>
-        <DayHeader
-          date={date}
-          isToday={date === today}
-          day={day.data}
-          isLoading={day.isLoading}
-          error={day.error}
-          onRetry={() => void day.refetch()}
-          pendingMeals={pendingMeals}
-          floor={settings.data?.settings.calorie_floor ?? null}
-          onWeighIn={() => openSheet('weigh-in')}
+      <Box component="section" aria-labelledby="log-totals-title">
+        <SectionHeader
+          id="log-totals"
+          title="Day totals"
+          subtitle="Calories eaten, macros against their targets, and the morning weigh-in"
         />
-      </Reveal>
-      <WrapRow align="flex-start">
-        <Box sx={wrapCol(2)}>
-          <Reveal delay={200}>
-            <MealsSection
-              day={day.data}
-              meals={meals}
-              favourites={favs}
-              onAdd={(slot) => openSheet('meal', slot)}
-            />
-          </Reveal>
-        </Box>
-        <Box sx={{ ...wrapCol(1), ...stackSx }}>
-          <Reveal delay={railDelay(0)}>
-            <WaterCard date={date} />
-          </Reveal>
-          <Reveal delay={railDelay(1)}>
-            <SleepStepsCard date={date} day={day.data} loading={day.isLoading} />
-          </Reveal>
-          <Reveal delay={railDelay(2)}>
-            <MeasurementsCard date={date} />
-          </Reveal>
-          <Reveal delay={railDelay(3)}>
-            <FastingCard today={today} onPlan={() => openSheet('fast')} />
-          </Reveal>
-          <Reveal delay={railDelay(4)}>
-            <FavouritesManager
-              favourites={favs}
-              isLoading={favourites.isLoading}
-              error={favourites.error}
-              onRetry={() => void favourites.refetch()}
-            />
-          </Reveal>
-        </Box>
-      </WrapRow>
+        <Reveal delay={100}>
+          <DayHeader
+            date={date}
+            isToday={date === today}
+            day={day.data}
+            isLoading={day.isLoading}
+            error={day.error}
+            onRetry={() => void day.refetch()}
+            pendingMeals={pendingMeals}
+            floor={settings.data?.settings.calorie_floor ?? null}
+            onWeighIn={() => openSheet('weigh-in')}
+          />
+        </Reveal>
+      </Box>
+      <Box component="section" aria-labelledby="log-food-title">
+        <SectionHeader
+          id="log-food"
+          title="Food and drink"
+          subtitle="Meals by slot (tap + to add to one), water, planned fasts and your saved favourites"
+        />
+        <WrapRow align="flex-start">
+          <Box sx={wrapCol(2)}>
+            <Reveal delay={200}>
+              <MealsSection
+                day={day.data}
+                meals={meals}
+                favourites={favs}
+                onAdd={(slot) => openSheet('meal', slot)}
+              />
+            </Reveal>
+          </Box>
+          <Box sx={{ ...wrapCol(1), ...stackSx }}>
+            <Reveal delay={railDelay(0)}>
+              <WaterCard date={date} />
+            </Reveal>
+            <Reveal delay={railDelay(1)}>
+              <FastingCard today={today} onPlan={() => openSheet('fast')} />
+            </Reveal>
+            <Reveal delay={railDelay(2)}>
+              <FavouritesManager
+                favourites={favs}
+                isLoading={favourites.isLoading}
+                error={favourites.error}
+                onRetry={() => void favourites.refetch()}
+              />
+            </Reveal>
+          </Box>
+        </WrapRow>
+      </Box>
+      <Box component="section" aria-labelledby="log-body-title">
+        <SectionHeader
+          id="log-body"
+          title="Body and recovery"
+          subtitle="Last night’s sleep, today’s steps and the weekly tape measurements"
+        />
+        {/* Two cards that end level, wrapping to one column on a phone. */}
+        <WrapRow>
+          <Box sx={{ ...wrapCol(1), display: 'flex', '& > *': { flex: 1 } }}>
+            <Reveal delay={railDelay(3)} sx={{ display: 'flex', '& > *': { flex: 1 } }}>
+              <SleepStepsCard date={date} day={day.data} loading={day.isLoading} />
+            </Reveal>
+          </Box>
+          <Box sx={{ ...wrapCol(1), display: 'flex', '& > *': { flex: 1 } }}>
+            <Reveal delay={railDelay(4)} sx={{ display: 'flex', '& > *': { flex: 1 } }}>
+              <MeasurementsCard date={date} />
+            </Reveal>
+          </Box>
+        </WrapRow>
+      </Box>
       <LogSheet
         open={sheet.open}
         kind={sheet.kind}

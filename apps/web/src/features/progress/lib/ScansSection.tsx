@@ -21,11 +21,11 @@ export function ScansSection() {
     >
       <SectionHeader
         id="progress-scans"
-        title="Scans"
+        title="Evolt scans"
         subtitle="Body composition across every Evolt scan"
         action={
           <Button size="small" onClick={() => void navigate('/scans')}>
-            All scans
+            All Evolt scans
           </Button>
         }
       />
@@ -39,7 +39,7 @@ export function ScansSection() {
           empty={{
             title: 'No scans yet',
             body: 'Upload an Evolt sheet and every metric is charted here.',
-            action: { label: 'Go to scans', onClick: () => void navigate('/scans') },
+            action: { label: 'Go to Evolt scans', onClick: () => void navigate('/scans') },
           }}
           testId="progress-scans"
         />

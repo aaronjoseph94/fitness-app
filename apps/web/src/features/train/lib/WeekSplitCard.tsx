@@ -275,7 +275,7 @@ export function WeekSplitCard({
     >
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 12px' }}>
         <Box
-          component="h2"
+          component="h3"
           id="week-split-title"
           sx={{ m: 0, flex: '1 1 160px', minWidth: 0, ...displayTitle('card'), fontSize: 22 }}
         >

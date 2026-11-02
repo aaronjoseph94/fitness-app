@@ -58,7 +58,7 @@ const ROUTES: readonly Route[] = [
   { name: 'Progress', path: '/progress', current: { tab: 'progress' }, ready: 'progress-page' },
   { name: 'Ask AI', path: '/ai', current: { tab: 'ai' } },
   { name: 'Settings', path: '/settings', current: { circle: 'rail-settings' }, ready: 'profile-height_cm' },
-  { name: 'Scans', path: '/scans', current: { circle: 'rail-scans' } },
+  { name: 'Evolt scans', path: '/scans', current: { circle: 'rail-scans' } },
   // A page below a tab: Train keeps the mark as the section that holds it, with aria-current="true".
   {
     name: 'A Train session',

@@ -4,6 +4,22 @@
 
 ## Done
 
+- 2026-11-02 · **Layout pass: no bald spots, every group labelled, "Evolt scans".** Aaron saw wide screens leave big empty areas while cards kept stacking downwards, got lost on what some groups were, and wanted Scans named for the Evolt 360. Checked every page at 360, 390, 768, 820, 1024 and 1440 px with ~5 weeks of logged data:
+  - *Re-arranged:*
+    - Today: "Today's fuel" over today's workout, beside quick log, the AI check-in and "This week".
+    - Log: "Day totals", "Food and drink" (meals beside water, fasting, favourites), "Body and recovery" (sleep and steps beside the tape).
+    - Progress: the tape beside the two calendars; water, steps and sleep at one chart height; fasting beside the photos link.
+    - Evolt scans: the latest scan's water and minerals under it, beside the next-scan card.
+    - Scan charts: the two charts end level; the segmental chart takes the whole row.
+    - Exercise library: rows in as many columns as fit (`ExerciseList grid`).
+    - Equipment: types two up, machine areas in two balanced columns.
+    - AI settings: model keys beside the Claude connector.
+    - Export: export and backup beside restore. Reminders: the device beside the list.
+    - Dashboard: the "Latest day" strip moved into the overview.
+  - *Labelled:* every group of cards has a section title with a one-line description of what it is (Today, Log, Train, Progress, Evolt scans, Dashboard "Overview"). Card titles under a section title are `h3`, so the outline is h1 → h2 → h3.
+  - *Phone:* the scan metric grid is two across, the calendars grow their cells on short ranges, equipment rows wrap by their own width, and "Weight change" replaces the truncated "Trend change · 4 weeks".
+  - *Renamed:* user-facing "Scans" is "Evolt scans" (nav circle, page title, trail, Settings → More, Progress, Dashboard, command palette and the Ask AI receipts). Routes, test ids and code names keep `scans`.
+  - Decisions: cards still keep their own heights where stretching would only add blank space (the 2026-10-23 rule). Stretching is used only where the cards' content is close in height or `ChartCard fill` lines up the captions.
 - 2026-10-29 · **Ask AI is "dump or ask".** Aaron wanted one place to dump anything ("92.4 this morning, slept 6 h, chicken wrap for lunch, leg press is broken, knee's sore, doctor says aim for 88 by March") and have the AI log it, recalculate, and adapt goals and training. One chat turn now:
   - *extracts* the facts he states (one `llm.complete` with the `DumpExtraction` schema; screenshots go to the vision chain);
   - *logs* each through the tools layer as actor `ai`, with a receipt and a one-tap Undo (`chat_receipts`; Undo puts a day's earlier value back, never over a newer log);

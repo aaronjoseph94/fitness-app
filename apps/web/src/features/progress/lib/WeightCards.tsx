@@ -274,7 +274,7 @@ export function CampsCard({
               whiteSpace: 'nowrap',
             }}
           >
-            Scans
+            Evolt scans
           </Link>
         }
         onDark

@@ -198,10 +198,10 @@ function Shell({ badge, when, name, line, children }: ShellProps) {
         {badge}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box id={eyebrowId} sx={eyebrow}>
-            Session{when && ` · ${when}`}
+            Today’s workout{when && ` · ${when}`}
           </Box>
           <Box
-            component="h2"
+            component="h3"
             id={titleId}
             sx={{ ...displayTitle('section'), m: 0, mt: '2px', overflowWrap: 'anywhere' }}
           >

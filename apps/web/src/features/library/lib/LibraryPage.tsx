@@ -143,7 +143,7 @@ export function LibraryPage() {
           <EmptyState title="No exercise matches" body="Try fewer words or clear a filter." />
         ) : (
           <Panel padding="none" ariaLabel="Exercises" component="section">
-            <ExerciseList exercises={results} onSelect={(e) => setOpen(e.id)} />
+            <ExerciseList grid exercises={results} onSelect={(e) => setOpen(e.id)} />
           </Panel>
         )}
       </Reveal>

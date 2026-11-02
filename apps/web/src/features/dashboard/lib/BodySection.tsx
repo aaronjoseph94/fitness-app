@@ -200,7 +200,7 @@ export function CompositionCard({ data }: { data: DashboardData }) {
         empty={{
           title: 'No scans yet',
           body: 'Upload an Evolt sheet and every metric is charted here.',
-          action: { label: 'Go to scans', onClick: () => void navigate('/scans') },
+          action: { label: 'Go to Evolt scans', onClick: () => void navigate('/scans') },
         }}
         testId="dashboard-scans"
       />
@@ -284,7 +284,7 @@ export function CompositionCard({ data }: { data: DashboardData }) {
         the loss. Lean-loss guard: a flag if lean is over {LEAN_LOSS_GUARD_PCT} % of the loss between scans.{' '}
         {/* 44 px tall to tap, without growing the line it sits in. */}
         <Link component={RouterLink} to="/scans" sx={{ display: 'inline-block', py: '13px', my: '-13px' }}>
-          Open scans
+          Open Evolt scans
         </Link>
       </Box>
     </ChartCard>

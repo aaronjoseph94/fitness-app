@@ -7,7 +7,7 @@
 // muscle maps and Start, followed in the same row by the split's AI drafts: waiting for Keep, or kept here with their
 // outcome and Undo) beside recent sessions and this week's totals at 2 : 1, and a row of four tool cards into the
 // library, the equipment profile, the builder and AI workouts. Every row wraps rather than squeezes (README §4); on a
-// phone everything is one column in this order.
+// phone everything is one column in this order. Each group carries a section title with a one-line description.
 import AddRounded from '@mui/icons-material/AddRounded'
 import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
@@ -332,48 +332,62 @@ export function TrainPage() {
       />
 
       {/* 1d's entrance: the hero, then each band rises in reading order, a section's stagger apart. */}
-      <Reveal delay={staggerDelay(1, tokens.motion.stagger.section)}>
-        {day.isLoading && !active ? (
-          <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 520, md: 340 } }} />
-        ) : day.error && !day.data && !active ? (
-          <LoadProblem what="Today's session" error={day.error} onRetry={() => void day.refetch()} />
-        ) : (
-          <TodayCard
-            day={day.data}
-            active={active}
-            activeCounts={activeCounts}
-            templates={templates.data ?? []}
-            splitTemplate={splitTemplate}
-            lastDone={lastDone}
-            onStart={start}
-          />
-        )}
-      </Reveal>
+      <Box component="section" aria-labelledby="train-today-title">
+        <SectionHeader
+          id="train-today"
+          title="Today’s workout"
+          subtitle="Start today’s planned session, pick up one in progress, or generate one from your equipment"
+        />
+        <Reveal delay={staggerDelay(1, tokens.motion.stagger.section)}>
+          {day.isLoading && !active ? (
+            <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 520, md: 340 } }} />
+          ) : day.error && !day.data && !active ? (
+            <LoadProblem what="Today's session" error={day.error} onRetry={() => void day.refetch()} />
+          ) : (
+            <TodayCard
+              day={day.data}
+              active={active}
+              activeCounts={activeCounts}
+              templates={templates.data ?? []}
+              splitTemplate={splitTemplate}
+              lastDone={lastDone}
+              onStart={start}
+            />
+          )}
+        </Reveal>
+      </Box>
 
       {/* How he feels (from Ask AI), under today's session since generated workouts steer around it; no row when none. */}
       <BodyNotesCard />
 
-      <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
-        {trainingWeek.isLoading ? (
-          <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 620, md: 420 } }} />
-        ) : trainingWeek.error && !trainingWeek.data ? (
-          <LoadProblem
-            what="This week"
-            error={trainingWeek.error}
-            onRetry={() => void trainingWeek.refetch()}
-          />
-        ) : trainingWeek.data ? (
-          <WeekSplitCard
-            week={trainingWeek.data}
-            date={date}
-            templates={templates.data ?? []}
-            done={doneByDate}
-            fastDays={fastDays}
-            onKept={markKept}
-            onGenerate={clearKept}
-          />
-        ) : null}
-      </Reveal>
+      <Box component="section" aria-labelledby="train-week-title">
+        <SectionHeader
+          id="train-week"
+          title="Your training week"
+          subtitle="Your weekly split: which days you train, what each one works, and what is done so far"
+        />
+        <Reveal delay={staggerDelay(2, tokens.motion.stagger.section)}>
+          {trainingWeek.isLoading ? (
+            <Skeleton variant="rounded" sx={{ ...cardSkeleton, height: { xs: 620, md: 420 } }} />
+          ) : trainingWeek.error && !trainingWeek.data ? (
+            <LoadProblem
+              what="This week"
+              error={trainingWeek.error}
+              onRetry={() => void trainingWeek.refetch()}
+            />
+          ) : trainingWeek.data ? (
+            <WeekSplitCard
+              week={trainingWeek.data}
+              date={date}
+              templates={templates.data ?? []}
+              done={doneByDate}
+              fastDays={fastDays}
+              onKept={markKept}
+              onGenerate={clearKept}
+            />
+          ) : null}
+        </Reveal>
+      </Box>
 
       <Reveal delay={staggerDelay(3, tokens.motion.stagger.section)}>
         {/* 2 : 1 at X 280 (README §4), wrapping to one column: templates first, then recent. */}
@@ -383,7 +397,9 @@ export function TrainPage() {
               id="templates"
               title="Templates"
               subtitle={
-                drafts.some((d) => !d.kept) ? 'AI drafts for your split: keep the ones you like' : undefined
+                drafts.some((d) => !d.kept)
+                  ? 'AI drafts for your split: keep the ones you like'
+                  : 'Saved workouts you can start in one tap'
               }
               action={
                 <Button
@@ -440,7 +456,7 @@ export function TrainPage() {
           </Box>
 
           <Box component="section" aria-labelledby="recent-title" sx={wrapCol(1)}>
-            <SectionHeader id="recent" title="Recent" />
+            <SectionHeader id="recent" title="Recent" subtitle="Finished sessions and this week’s totals" />
             {sessions.isLoading ? (
               <Skeleton variant="rounded" height={160} sx={cardSkeleton} />
             ) : sessions.error && !sessions.data ? (
@@ -466,6 +482,11 @@ export function TrainPage() {
       </Reveal>
 
       <Reveal delay={staggerDelay(4, tokens.motion.stagger.section)}>
+        <SectionHeader
+          id="train-tools"
+          title="Training tools"
+          subtitle="Browse exercises, set what your gym has, build a template or have the AI write a workout"
+        />
         <Box
           component="nav"
           aria-label="Training tools"

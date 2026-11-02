@@ -178,7 +178,7 @@ function Shell({
           )}
         </Box>
         <Box
-          component="h2"
+          component="h3"
           id="today-title"
           sx={{
             m: 0,

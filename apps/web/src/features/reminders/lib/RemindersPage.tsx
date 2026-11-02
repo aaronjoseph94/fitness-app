@@ -2,6 +2,7 @@
 // reminder kind on/off with its time, and the quiet hours. Needs a connection to change anything.
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
@@ -11,7 +12,7 @@ import { REMINDER_HOURS, type Reminder, type ReminderKind } from '@fitness/share
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { problemText, signInAgain } from '../../../api'
-import { PageHeader, Panel, Reveal, staggerDelay } from '../../../components'
+import { PageHeader, Panel, Reveal, staggerDelay, wrapCol, WrapRow } from '../../../components'
 import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { DeviceCard } from './DeviceCard'
@@ -72,58 +73,66 @@ export function RemindersPage() {
         </Alert>
       )}
 
-      <Reveal delay={enter(1)}>
-        <DeviceCard device={device} online={online} onDone={setNotice} />
-      </Reveal>
-
-      <Reveal delay={enter(2)}>
-        <Panel
-          id="reminder-kinds"
-          title="Reminders and times"
-          description={
-            device.publicKey === null
-              ? 'Off until notifications are set up for this app. Your choices are kept.'
-              : `Every change saves at once. A reminder with a time goes out between ${EARLIEST_TIME} and ${LATEST_TIME}.`
-          }
-          padding={prefs && fastHours !== undefined && scanIntervalDays !== undefined ? 'none' : 'standard'}
-        >
-          {prefs && fastHours !== undefined && scanIntervalDays !== undefined ? (
-            <ReminderList
-              prefs={prefs}
-              fastHours={fastHours}
-              scanIntervalDays={scanIntervalDays}
-              disabled={!online || saving}
-              locked={device.publicKey === null}
-              onSave={onSave}
-            />
-          ) : query.isPending && query.fetchStatus !== 'paused' ? (
-            <Skeleton variant="rounded" height={420} />
-          ) : (
-            // 2a draws a failed read as the warning banner, and not having loaded while offline as the info one.
-            <Alert
-              severity={
-                query.fetchStatus === 'paused' || query.error?.kind === 'network' ? 'info' : 'warning'
+      {/* This device : the reminders, side by side on a wide screen (the device card is short), one column below. */}
+      <WrapRow align="flex-start">
+        <Box sx={wrapCol(1)}>
+          <Reveal delay={enter(1)}>
+            <DeviceCard device={device} online={online} onDone={setNotice} />
+          </Reveal>
+        </Box>
+        <Box sx={wrapCol(1.8)}>
+          <Reveal delay={enter(2)}>
+            <Panel
+              id="reminder-kinds"
+              title="Reminders and times"
+              description={
+                device.publicKey === null
+                  ? 'Off until notifications are set up for this app. Your choices are kept.'
+                  : `Every change saves at once. A reminder with a time goes out between ${EARLIEST_TIME} and ${LATEST_TIME}.`
               }
-              data-testid="reminders-error"
-              action={
-                query.error?.kind === 'auth-expired' ? (
-                  <Button color="inherit" size="small" onClick={signInAgain}>
-                    Sign in again
-                  </Button>
-                ) : (
-                  <Button color="inherit" size="small" onClick={() => void query.refetch()}>
-                    Try again
-                  </Button>
-                )
+              padding={
+                prefs && fastHours !== undefined && scanIntervalDays !== undefined ? 'none' : 'standard'
               }
             >
-              {query.fetchStatus === 'paused' || query.error?.kind === 'network'
-                ? 'You’re offline and reminders haven’t been loaded on this device yet.'
-                : `Couldn’t load reminders. ${query.error?.message ?? ''}`}
-            </Alert>
-          )}
-        </Panel>
-      </Reveal>
+              {prefs && fastHours !== undefined && scanIntervalDays !== undefined ? (
+                <ReminderList
+                  prefs={prefs}
+                  fastHours={fastHours}
+                  scanIntervalDays={scanIntervalDays}
+                  disabled={!online || saving}
+                  locked={device.publicKey === null}
+                  onSave={onSave}
+                />
+              ) : query.isPending && query.fetchStatus !== 'paused' ? (
+                <Skeleton variant="rounded" height={420} />
+              ) : (
+                // 2a draws a failed read as the warning banner, and not having loaded while offline as the info one.
+                <Alert
+                  severity={
+                    query.fetchStatus === 'paused' || query.error?.kind === 'network' ? 'info' : 'warning'
+                  }
+                  data-testid="reminders-error"
+                  action={
+                    query.error?.kind === 'auth-expired' ? (
+                      <Button color="inherit" size="small" onClick={signInAgain}>
+                        Sign in again
+                      </Button>
+                    ) : (
+                      <Button color="inherit" size="small" onClick={() => void query.refetch()}>
+                        Try again
+                      </Button>
+                    )
+                  }
+                >
+                  {query.fetchStatus === 'paused' || query.error?.kind === 'network'
+                    ? 'You’re offline and reminders haven’t been loaded on this device yet.'
+                    : `Couldn’t load reminders. ${query.error?.message ?? ''}`}
+                </Alert>
+              )}
+            </Panel>
+          </Reveal>
+        </Box>
+      </WrapRow>
 
       <Snackbar
         open={notice !== null}

@@ -2,10 +2,11 @@
 // "Restore from export". Both actions need a connection; nothing here goes through the offline queue.
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import { Link as RouterLink } from 'react-router'
-import { PageHeader, Reveal, staggerDelay } from '../../../components'
+import { PageHeader, Reveal, staggerDelay, wrapCol, WrapRow } from '../../../components'
 import { useOnline } from '../../../offline'
 import { COARSE_POINTER_QUERY, tokens } from '../../../theme'
 import { ExportCard } from './ExportCard'
@@ -47,26 +48,40 @@ export function DataPage() {
           You’re offline. Export and restore need a connection.
         </Alert>
       )}
-      <Reveal delay={enter(1)}>
-        <ExportCard online={online} />
-      </Reveal>
-      <Reveal delay={enter(2)}>
-        <DataCard
-          id="backup"
-          title="Monthly backup"
-          tone="panel"
-          description={
-            <>
-              On the 1st of every month the server also saves each table as JSON in your private storage
-              (reports/backup/YYYY-MM/), one table every five minutes. Photos are not copied there: keep an
-              export for those.
-            </>
-          }
-        />
-      </Reveal>
-      <Reveal delay={enter(3)}>
-        <RestoreCard online={online} />
-      </Reveal>
+      {/* Taking data out : putting it back, side by side on a wide screen, one column on a phone. */}
+      <WrapRow align="flex-start">
+        <Box
+          sx={{
+            ...wrapCol(1),
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+            gap: `${tokens.rhythm.section}px`,
+          }}
+        >
+          <Reveal delay={enter(1)}>
+            <ExportCard online={online} />
+          </Reveal>
+          <Reveal delay={enter(2)}>
+            <DataCard
+              id="backup"
+              title="Monthly backup"
+              tone="panel"
+              description={
+                <>
+                  On the 1st of every month the server also saves each table as JSON in your private storage
+                  (reports/backup/YYYY-MM/), one table every five minutes. Photos are not copied there: keep
+                  an export for those.
+                </>
+              }
+            />
+          </Reveal>
+        </Box>
+        <Box sx={wrapCol(1)}>
+          <Reveal delay={enter(3)}>
+            <RestoreCard online={online} />
+          </Reveal>
+        </Box>
+      </WrapRow>
     </Stack>
   )
 }

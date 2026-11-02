@@ -27,8 +27,6 @@ interface SummaryStatsProps {
   summary: RangeSummary | null
   /** The targets the charts' target lines show (latest non-fast day). */
   targets: TargetValues | null
-  /** The range as the toggle names it ("4 weeks", "12 weeks", "all"): the change card's window. */
-  rangeLabel: string
   /** The forecast's weekly loss (series `forecastRate`), the one rate every page shows; null unless a loss. */
   rate: number | null
   /** Pace versus plan at that rate (series `paceVersusPlan`); null when it cannot be said. */
@@ -157,7 +155,7 @@ function SummaryCard({ label, value, text, unit, precision = 0, countUp, pill, i
   )
 }
 
-export function SummaryStats({ summary, targets, rangeLabel, rate, ahead }: SummaryStatsProps) {
+export function SummaryStats({ summary, targets, rate, ahead }: SummaryStatsProps) {
   const s = summary
   const change = s?.trendChangeKg ?? null
   const kcalTarget = targets?.kcal ?? null
@@ -205,7 +203,7 @@ export function SummaryStats({ summary, targets, rangeLabel, rate, ahead }: Summ
       <WrapRow gap={tokens.summit.space.gap.tile}>
         <SummaryCard
           index={0}
-          label={`Trend change · ${rangeLabel}`}
+          label="Weight change"
           value={change}
           text={change === null ? undefined : formatSigned(change, 1)}
           unit="kg"

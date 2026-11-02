@@ -252,7 +252,7 @@ function SlotShell({
         </Box>
         <Box sx={{ flex: '1 1 160px', minWidth: 0 }}>
           <Box
-            component="h2"
+            component="h3"
             sx={{
               m: 0,
               ...displayTitle('card'),

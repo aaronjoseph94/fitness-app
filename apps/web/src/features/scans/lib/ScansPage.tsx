@@ -1,9 +1,10 @@
 // Owns: the scans list (/scans, 1d) — the hero with Enter by hand and the gold Upload sheet (both wrap under the title
 // on a phone), sheets waiting for review, the deep-sky next-scan card (when it is due — the server's schedule: a date
 // the coach or a week plan set, else the last scan + the settings interval — with its conditions checklist and the
-// masking note) beside the latest scan's numbers (1 : 2), fat vs lean across scans (with the next scan's empty slot)
-// beside its segments and water (1.3 : 1), and every scan with its fat and lean change and the lean-loss guard, in a table that scrolls sideways on
-// a phone. Rows of cards wrap rather than squeeze (README §4).
+// masking note) beside the latest scan's numbers over its water and minerals (1 : 2); "Body composition": fat vs lean
+// across scans (with the next scan's empty slot) beside its segments (1.3 : 1); and "Scan history": every scan with its
+// fat and lean change and the lean-loss guard, in a table that scrolls sideways on a phone. Each group has a section
+// title; rows of cards wrap rather than squeeze (README §4).
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import PieChartRounded from '@mui/icons-material/PieChartRounded'
@@ -34,6 +35,7 @@ import {
   Panel,
   QueryStateCard,
   Reveal,
+  SectionHeader,
   StatusChip,
   staggerDelay,
   TableScroll,
@@ -96,7 +98,7 @@ function DueCard({ schedule, scans }: { schedule: ScanSchedule | undefined; scan
     >
       <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '6px 10px' }}>
         <Box
-          component="h2"
+          component="h3"
           id="scan-due-title"
           sx={{
             m: 0,
@@ -232,6 +234,7 @@ function History({ scans, schedule }: { scans: ConfirmedScan[]; schedule: ScanSc
   const left = dueIn(due).left
   return (
     <Panel
+      headingComponent="h3"
       title="Every scan"
       description="Fat and lean change against the previous scan, with the lean-loss guard"
       // The guard's three outcomes, as the rows show them (1d); they wrap under the title on a phone.
@@ -391,7 +394,7 @@ export function ScansPage() {
   const schedule = useScanSchedule()
   const [uploading, setUploading] = useState(false)
 
-  const title = 'Scans'
+  const title = 'Evolt scans'
   const interval = schedule.data?.interval_days
   const subtitle = `Same conditions each time: morning, fasted, no training the day before${interval ? ` · every ${interval} days` : ''}`
   const confirmedCount = scans.data ? confirmedScans(scans.data).length : null
@@ -473,21 +476,35 @@ export function ScansPage() {
         </Reveal>
       )}
 
-      <WrapRow align="flex-start">
-        <Reveal delay={staggerDelay(1, tokens.motion.stagger.card, 150)} sx={column(1)}>
-          <DueCard schedule={schedule.data} scans={confirmed.length} />
-        </Reveal>
-        <Reveal delay={staggerDelay(2, tokens.motion.stagger.card, 150)} sx={column(2, LATEST_BASIS)}>
-          {latest ? (
-            <LatestScanCard scan={latest} />
-          ) : (
-            <EmptyState
-              title="No scans yet"
-              body="Upload the Evolt 360 sheet; the values are read for you to check."
-            />
-          )}
-        </Reveal>
-      </WrapRow>
+      <Box component="section" aria-labelledby="scans-latest-title">
+        <SectionHeader
+          id="scans-latest"
+          title="Latest scan and the next one"
+          subtitle="When the next Evolt scan is due and how to take it, beside your most recent results"
+        />
+        {/* Next scan : latest scan with its water and minerals under it, 1 : 2, so the two columns end close. */}
+        <WrapRow align="flex-start">
+          <Reveal delay={staggerDelay(1, tokens.motion.stagger.card, 150)} sx={column(1)}>
+            <DueCard schedule={schedule.data} scans={confirmed.length} />
+          </Reveal>
+          <Reveal
+            delay={staggerDelay(2, tokens.motion.stagger.card, 150)}
+            sx={{ ...column(2, LATEST_BASIS), gap: `${tokens.summit.space.gap.tile}px` }}
+          >
+            {latest ? (
+              <>
+                <LatestScanCard scan={latest} />
+                <WaterCard scan={latest} />
+              </>
+            ) : (
+              <EmptyState
+                title="No scans yet"
+                body="Upload the Evolt 360 sheet; the values are read for you to check."
+              />
+            )}
+          </Reveal>
+        </WrapRow>
+      </Box>
 
       {leanLoss && (
         <Banner tone="danger" title="Lean-loss guard" role="status" testId="scan-flag-lean_loss">
@@ -497,21 +514,31 @@ export function ScansPage() {
 
       {latest && (
         <>
-          <WrapRow align="flex-start">
-            <Reveal delay={staggerDelay(3, tokens.motion.stagger.card, 150)} sx={column(1.3)}>
-              <CompositionCard scans={confirmed} next={schedule.data?.due ?? null} />
+          <Box component="section" aria-labelledby="scans-trend-title">
+            <SectionHeader
+              id="scans-trend"
+              title="Body composition"
+              subtitle="Fat and lean mass per scan against the goal, and where the fat sits, limb by limb"
+            />
+            <WrapRow align="flex-start">
+              <Reveal delay={staggerDelay(3, tokens.motion.stagger.card, 150)} sx={column(1.3)}>
+                <CompositionCard scans={confirmed} next={schedule.data?.due ?? null} />
+              </Reveal>
+              <Reveal delay={staggerDelay(4, tokens.motion.stagger.card, 150)} sx={column(1)}>
+                <SegmentsCard scan={latest} />
+              </Reveal>
+            </WrapRow>
+          </Box>
+          <Box component="section" aria-labelledby="scans-history-title">
+            <SectionHeader
+              id="scans-history"
+              title="Scan history"
+              subtitle="Every scan with its change from the one before; tap a row to open that scan"
+            />
+            <Reveal delay={staggerDelay(5, tokens.motion.stagger.card, 150)}>
+              <History scans={confirmed} schedule={schedule.data} />
             </Reveal>
-            <Reveal
-              delay={staggerDelay(4, tokens.motion.stagger.card, 150)}
-              sx={{ ...column(1), gap: `${tokens.summit.space.gap.tile}px` }}
-            >
-              <SegmentsCard scan={latest} />
-              <WaterCard scan={latest} />
-            </Reveal>
-          </WrapRow>
-          <Reveal delay={staggerDelay(5, tokens.motion.stagger.card, 150)}>
-            <History scans={confirmed} schedule={schedule.data} />
-          </Reveal>
+          </Box>
         </>
       )}
 

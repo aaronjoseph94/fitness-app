@@ -112,7 +112,7 @@ export const TABS: readonly Tab[] = [
  */
 export const SCANS_DESTINATION: Destination = {
   path: '/scans',
-  title: 'Scans',
+  title: 'Evolt scans',
   Icon: PieChartOutlined,
   ActiveIcon: PieChartRounded,
   testId: 'rail-scans',

@@ -43,7 +43,8 @@ export function ScanCharts({
       sx={{
         display: 'grid',
         gap: 4,
-        alignItems: 'start',
+        // Side by side, the two cards end level (the gauges make the second one taller).
+        alignItems: compact ? 'start' : 'stretch',
         gridTemplateColumns: {
           xs: 'minmax(0, 1fr)',
           md: compact ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
@@ -57,12 +58,13 @@ export function ScanCharts({
         titleSize="card"
         headingComponent={headingComponent}
         testId="scan-chart-composition"
+        fill={!compact}
       >
         <BodyCompositionChart
           scans={compositionSeries(shown)}
           fatTarget={TARGETS.fatMassKg}
           width={width}
-          height={compact ? 180 : 220}
+          height={compact ? 180 : 420}
         />
       </ChartCard>
       <ChartCard
@@ -71,6 +73,7 @@ export function ScanCharts({
         titleSize="card"
         headingComponent={headingComponent}
         testId="scan-chart-fat-visceral"
+        fill={!compact}
       >
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2, mb: 3 }}>
           <Gauge
@@ -99,20 +102,23 @@ export function ScanCharts({
         />
       </ChartCard>
       {latest.id !== baseline.id && (
-        <ChartCard
-          title="Segmental fat"
-          subtitle={`Baseline ${scanDay(baseline.date)} vs ${scanDay(latest.date)}, kg`}
-          titleSize="card"
-          headingComponent={headingComponent}
-          testId="scan-chart-segments"
-        >
-          <SegmentalFatChart
-            segments={segmentalFat(baseline.record, latest.record)}
-            baselineLabel={scanDay(baseline.date)}
-            latestLabel={scanDay(latest.date)}
-            width={width}
-          />
-        </ChartCard>
+        // A third card would sit alone in half a row: it spans the row instead.
+        <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
+          <ChartCard
+            title="Segmental fat"
+            subtitle={`Baseline ${scanDay(baseline.date)} vs ${scanDay(latest.date)}, kg`}
+            titleSize="card"
+            headingComponent={headingComponent}
+            testId="scan-chart-segments"
+          >
+            <SegmentalFatChart
+              segments={segmentalFat(baseline.record, latest.record)}
+              baselineLabel={scanDay(baseline.date)}
+              latestLabel={scanDay(latest.date)}
+              width={width}
+            />
+          </ChartCard>
+        </Box>
       )}
     </Box>
   )

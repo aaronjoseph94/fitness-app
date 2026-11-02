@@ -39,7 +39,7 @@ const TRAIL = {
   train: [tabCrumb('train')],
   library: [tabCrumb('train'), { title: 'Exercise library', path: '/train/library' }],
   settings: [{ title: 'Settings', path: '/settings' }],
-  scans: [{ title: 'Scans', path: '/scans' }],
+  scans: [{ title: 'Evolt scans', path: '/scans' }],
   photos: [
     { title: 'Settings', path: '/settings' },
     { title: 'Progress photos', path: '/photos' },
@@ -148,12 +148,12 @@ const routes: RouteObject[] = [
           },
           {
             path: 'scans',
-            handle: { title: 'Scans', width: 'wide' } satisfies RouteHandle,
+            handle: { title: 'Evolt scans', width: 'wide' } satisfies RouteHandle,
             lazy: page(() => import('../../features/scans'), 'ScansPage'),
           },
           {
             path: 'scans/:id',
-            handle: { title: 'Scan', trail: TRAIL.scans } satisfies RouteHandle,
+            handle: { title: 'Evolt scan', trail: TRAIL.scans } satisfies RouteHandle,
             lazy: page(() => import('../../features/scans'), 'ScanPage'),
           },
           {

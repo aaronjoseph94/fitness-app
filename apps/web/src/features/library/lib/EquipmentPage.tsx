@@ -137,6 +137,20 @@ function StatusToggle({
  * runs name → control → note so Tab follows what you see; on a phone the control wraps to its own full-width line
  * under the name and its note button.
  */
+/** The equipment types' rows, two across from `lg` (each row keeps a top hairline, so both columns read as lists). */
+const twoUpRows = {
+  display: 'grid',
+  gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' },
+  columnGap: `${tokens.rhythm.section}px`,
+} as const
+
+/** The machine areas: one column, two from `lg`; the trailing margin of the last card is cancelled. */
+const areaColumns = {
+  columnCount: { xs: 1, lg: 2 },
+  columnGap: `${tokens.rhythm.section}px`,
+  mb: `-${tokens.rhythm.section}px`,
+} as const
+
 function EquipmentRow({
   row,
   count,
@@ -171,13 +185,14 @@ function EquipmentRow({
       <Box
         sx={{
           display: 'flex',
-          flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          // The status control drops under the name only when the row (not the screen) is too narrow for both.
+          flexWrap: 'wrap',
           alignItems: 'center',
           columnGap: '12px',
           rowGap: 2,
         }}
       >
-        <Box sx={{ flex: '1 1 0%', minWidth: 0 }}>
+        <Box sx={{ flex: '1 1 180px', minWidth: 0 }}>
           <Box
             sx={{
               display: 'flex',
@@ -491,14 +506,16 @@ export function EquipmentPage() {
             description="Every equipment type in the library. Don’t have, dislike and can’t use take exercises out of the allowed set: the library, the picker and every AI workout program only from it."
             padding="none"
           >
-            {libraryShown.map((row) => (
-              <EquipmentRow
-                key={row.equipment}
-                row={row}
-                count={counts.get(row.equipment) ?? 0}
-                onChange={(s, n) => set(row.equipment, s, n)}
-              />
-            ))}
+            <Box sx={twoUpRows}>
+              {libraryShown.map((row) => (
+                <EquipmentRow
+                  key={row.equipment}
+                  row={row}
+                  count={counts.get(row.equipment) ?? 0}
+                  onChange={(s, n) => set(row.equipment, s, n)}
+                />
+              ))}
+            </Box>
           </Panel>
         )}
       </Reveal>
@@ -523,25 +540,31 @@ export function EquipmentPage() {
             body="Add the machines at your gym; the AI builds workouts from them."
           />
         ) : (
-          <Stack spacing={4}>
+          // Areas flow into two balanced columns on a wide screen (they differ in length, so a grid would leave gaps).
+          <Box sx={areaColumns}>
             {groupsShown.map((group) => (
-              <Panel
-                key={group.title}
-                title={group.title}
-                description={
-                  group.title === NOT_AT_GYM
-                    ? 'Their exercises stay out of the allowed set'
-                    : `${group.rows.length} machine${group.rows.length === 1 ? '' : 's'}`
-                }
-                padding="none"
-                testId="equipment-area"
-              >
-                {group.rows.map((row) => (
-                  <EquipmentRow key={row.equipment} row={row} onChange={(s, n) => set(row.equipment, s, n)} />
-                ))}
-              </Panel>
+              <Box key={group.title} sx={{ breakInside: 'avoid', mb: `${tokens.rhythm.section}px` }}>
+                <Panel
+                  title={group.title}
+                  description={
+                    group.title === NOT_AT_GYM
+                      ? 'Their exercises stay out of the allowed set'
+                      : `${group.rows.length} machine${group.rows.length === 1 ? '' : 's'}`
+                  }
+                  padding="none"
+                  testId="equipment-area"
+                >
+                  {group.rows.map((row) => (
+                    <EquipmentRow
+                      key={row.equipment}
+                      row={row}
+                      onChange={(s, n) => set(row.equipment, s, n)}
+                    />
+                  ))}
+                </Panel>
+              </Box>
             ))}
-          </Stack>
+          </Box>
         )}
       </Reveal>
       {adding && (

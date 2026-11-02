@@ -1,8 +1,8 @@
-// Owns: the measurements and adherence section of Progress — the charts 1d's opening rows leave out: waist and WHR
-// from the tape (GET /api/trend measurements), the progress photos card, the fasting strip (GET /api/fasts), the
-// protein and logging adherence calendars, and the full water (bars + target), steps (bars + 14-day median) and sleep
-// (bars + bedtime) charts that the small habit cards summarise (the range's v_day rows). Rows of cards wrap
-// (README §4).
+// Owns: the "Body and habits" section of Progress — the charts 1d's opening rows leave out, in three rows of cards
+// that end level and wrap (README §4): waist and WHR from the tape (GET /api/trend measurements) beside the protein
+// and logging adherence calendars; the full water (bars + target), steps (bars + 14-day median) and sleep (bars +
+// bedtime) charts that the small habit cards summarise (the range's v_day rows); the fasting strip (GET /api/fasts)
+// beside the progress photos card.
 import Box from '@mui/material/Box'
 import type { DaySummary, Fast, LocalDate, TrendSeries } from '@fitness/shared/schemas'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -49,6 +49,9 @@ interface DetailSectionProps {
 }
 
 /** A single-column stack of cards, 26 px apart (README §4: a grid stack declares its one track). */
+/** Water, steps and sleep share one plot height (sleep's two panels at their default), so the row ends level. */
+const HABIT_CHART_HEIGHT = 300
+
 const stack = {
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1fr)',
@@ -88,50 +91,39 @@ export function DetailSection({
     >
       <SectionHeader
         id="progress-detail"
-        title="Measurements and adherence"
-        subtitle="Tape, photos, fasting, water, steps, sleep and the daily calendars"
+        title="Body and habits"
+        subtitle="The waist tape, how consistently you hit protein and logged each day, then water, steps, sleep and fasting"
       />
       <Box sx={stack}>
+        {/* Tape beside the two daily calendars: three cards that end level, wrapping on narrower screens. */}
         <WrapRow>
-          <Box sx={wrapCol(1)}>
-            <Box sx={stack}>
-              {waist && (
-                <ChartCard
-                  title="Waist and WHR"
-                  titleSize="card"
-                  subtitle="Waist at the navel and the waist-to-hip ratio"
-                  empty={
-                    waist.length
-                      ? undefined
-                      : {
-                          title: 'No tape measurements in this range',
-                          body: 'Measure waist and hips once a week and both lines start here.',
-                        }
-                  }
-                >
-                  <WaistWhrChart points={waist} whrTarget={WHR_TARGET} />
-                </ChartCard>
-              )}
-              <PhotosLink />
-              {!fasts.data ? (
-                <QueryStateCard query={fasts} what="your fasts" height={90} titleSize="card" />
-              ) : (
-                <ChartCard
-                  title="Fasting"
-                  titleSize="card"
-                  subtitle={`${fastsLine} · planned, done, partial, missed`}
-                >
-                  <FastingStrip fasts={entries} from={from} to={stripTo} />
-                </ChartCard>
-              )}
+          {waist && (
+            <Box sx={wrapCol(1)}>
+              <ChartCard
+                title="Waist and WHR"
+                titleSize="card"
+                fill
+                subtitle="Waist at the navel and the waist-to-hip ratio"
+                empty={
+                  waist.length
+                    ? undefined
+                    : {
+                        title: 'No tape measurements in this range',
+                        body: 'Measure waist and hips once a week and both lines start here.',
+                      }
+                }
+              >
+                <WaistWhrChart points={waist} whrTarget={WHR_TARGET} />
+              </ChartCard>
             </Box>
-          </Box>
-          <Box sx={wrapCol(1)}>
-            {rows && (
-              <Box sx={stack}>
+          )}
+          {rows && (
+            <>
+              <Box sx={wrapCol(1)}>
                 <ChartCard
                   title="Protein adherence"
                   titleSize="card"
+                  fill
                   subtitle={
                     proteinTarget
                       ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank`
@@ -153,9 +145,12 @@ export function DetailSection({
                     }
                   />
                 </ChartCard>
+              </Box>
+              <Box sx={wrapCol(1)}>
                 <ChartCard
                   title="Logging adherence"
                   titleSize="card"
+                  fill
                   subtitle="Weigh-in, two meals or a fast, and water: share of the three"
                 >
                   <CalendarHeatmap
@@ -173,8 +168,8 @@ export function DetailSection({
                   />
                 </ChartCard>
               </Box>
-            )}
-          </Box>
+            </>
+          )}
         </WrapRow>
         {rows && (
           // The three cards fill their row, so it ends level whatever each chart's height; the row wraps.
@@ -195,7 +190,7 @@ export function DetailSection({
                       }
                 }
               >
-                <WaterChart days={water} target={targets?.water_ml} />
+                <WaterChart days={water} target={targets?.water_ml} height={HABIT_CHART_HEIGHT} />
               </ChartCard>
             </Box>
             <Box sx={wrapCol(1)}>
@@ -217,7 +212,7 @@ export function DetailSection({
                       }
                 }
               >
-                <StepsChart days={steps} target={targets?.steps} />
+                <StepsChart days={steps} target={targets?.steps} height={HABIT_CHART_HEIGHT} />
               </ChartCard>
             </Box>
             <Box sx={wrapCol(1)}>
@@ -235,11 +230,31 @@ export function DetailSection({
                       }
                 }
               >
-                <SleepChart nights={sleep} target={SLEEP_TARGET_H} />
+                <SleepChart nights={sleep} target={SLEEP_TARGET_H} height={HABIT_CHART_HEIGHT} />
               </ChartCard>
             </Box>
           </WrapRow>
         )}
+        {/* Fasting's month strip is wide; the photos link beside it fills the rest of the row. */}
+        <WrapRow>
+          <Box sx={wrapCol(2)}>
+            {!fasts.data ? (
+              <QueryStateCard query={fasts} what="your fasts" height={90} titleSize="card" />
+            ) : (
+              <ChartCard
+                title="Fasting"
+                titleSize="card"
+                fill
+                subtitle={`${fastsLine} · planned, done, partial, missed`}
+              >
+                <FastingStrip fasts={entries} from={from} to={stripTo} />
+              </ChartCard>
+            )}
+          </Box>
+          <Box sx={{ ...wrapCol(1), display: 'flex', '& > *': { flex: 1 } }}>
+            <PhotosLink />
+          </Box>
+        </WrapRow>
       </Box>
     </Box>
   )

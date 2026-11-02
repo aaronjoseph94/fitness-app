@@ -2,7 +2,7 @@
 // cards, wrapping): the rails (set with the doctor and dietitian; each edit asks for confirmation), daily targets
 // (fibre, water), training days and the scan interval (with the next scan's due date), the auto-apply preference with
 // the links to the AI page (model keys and the Claude connector, with how many keys are set) and to Reminders, every
-// profile field (goal, start, height, sex, birth date, time zone — all editable), links to other pages (Scans with its
+// profile field (goal, start, height, sex, birth date, time zone — all editable), links to other pages (Evolt scans with its
 // next due date), and the deep-sky "About this data". Reads GET /api/settings (and the key statuses and the scan
 // schedule); every change is one PATCH /api/settings, shown at once and rolled back if the Worker refuses. Needs a
 // connection.
@@ -428,7 +428,7 @@ export function SettingsPage() {
               <LinkRow
                 icon={PieChartOutlined}
                 iconTint={TINT.scans}
-                label="Scans"
+                label="Evolt scans"
                 note={scanDue ? `next ${formatShortDate(scanDue)}` : undefined}
                 to="/scans"
               />

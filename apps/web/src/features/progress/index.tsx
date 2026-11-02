@@ -1,10 +1,10 @@
 // Owns: the Progress tab (SPEC §11 chart inventory, 1d "Summit" layout) — the sky hero (the range's dates and days with
 // data, the title, where the trend stands against the plan's line and the next camp, the 4 weeks / 12 weeks / all
-// range as glass, kept in ?range=, and a link to last week's report), the range's four summary cards, then a 1.3 : 1
-// row that wraps: the weight trend over calories and macros (left), the deep-sky "Camps on the way", weekly loss and the
-// water / steps / sleep counts (right); then Training (the volume map, strength, the weekly reviews; weekly volume and
-// the week plan), the measurements and adherence section (tape, photos, fasting, the full habit charts, the calendars)
-// and last the scans.
+// range as glass, kept in ?range=, and a link to last week's report), then labelled sections: "This range in numbers"
+// (the four summary cards); "Weight and food", a 1.3 : 1 row that wraps — the weight trend over calories and macros
+// (left), the deep-sky "Camps on the way", weekly loss and the water / steps / sleep counts (right); Training (the
+// volume map, strength, the weekly reviews; weekly volume and the week plan); "Body and habits" (tape, the calendars,
+// the full habit charts, fasting, photos); and last the Evolt scans.
 // Data: GET /api/days, /api/trend, /api/fasts, /api/sessions, /api/settings.
 // Second entry point: ./series (the series mappings Today, the Dashboard and the weekly report share); third:
 // ./queries (the range the URL asks for); fourth: ./cards (the weekly loss card the Dashboard shows too).
@@ -19,6 +19,7 @@ import {
   PageHeader,
   QueryStateCard,
   Reveal,
+  SectionHeader,
   staggerDelay,
   wrapCol,
   WrapRow,
@@ -146,48 +147,62 @@ export function ProgressPage() {
         }
       />
 
-      <SummaryStats
-        summary={summary}
-        targets={targets}
-        rangeLabel={range === 'all' ? 'all' : (RANGES.find((r) => r.key === range)?.label ?? '')}
-        rate={rate}
-        ahead={pace.ahead}
-      />
+      <Box component="section" aria-labelledby="progress-summary-title">
+        <SectionHeader
+          id="progress-summary"
+          title="This range in numbers"
+          subtitle={`${range === 'all' ? 'Since you started' : `Over the last ${RANGES.find((r) => r.key === range)?.label ?? 'range'}`}: weight change, average calories and protein, and how many days were fully logged`}
+        />
+        <SummaryStats summary={summary} targets={targets} rate={rate} ahead={pace.ahead} />
+      </Box>
 
-      <Box sx={dim}>
-        <WrapRow align="flex-start">
-          <Box sx={{ ...wrapCol(1.3), ...stack(tokens.summit.space.gap.tile) }}>
-            <Reveal delay={section(0)}>
-              <WeightTrendCard trend={trend} range={range} rangeLength={length} goalKg={goalKg} plan={plan} />
-            </Reveal>
-            <Reveal delay={section(2)}>
-              <FoodCards
-                days={days}
-                to={to}
-                rails={rails ? { floor: rails.calorie_floor, ceiling: rails.calorie_ceiling } : null}
-              />
-            </Reveal>
-          </Box>
-          <Box sx={{ ...wrapCol(1), ...stack(tokens.summit.space.gap.tile) }}>
-            <Reveal delay={section(1)}>
-              <CampsCard
-                trend={trend}
-                goalKg={goalKg}
-                start={profile ? { date: profile.start_date, kg: profile.start_weight_kg } : null}
-              />
-            </Reveal>
-            <Reveal delay={section(2)}>
-              {trend.data ? (
-                <WeeklyLossCard trend={trend.data} height={150} titleSize="card" />
-              ) : (
-                <QueryStateCard query={trend} what="the weekly loss" height={190} titleSize="card" />
-              )}
-            </Reveal>
-            <Reveal delay={section(3)}>
-              <HabitCounts days={days} />
-            </Reveal>
-          </Box>
-        </WrapRow>
+      <Box component="section" aria-labelledby="progress-weight-title">
+        <SectionHeader
+          id="progress-weight"
+          title="Weight and food"
+          subtitle="The weight trend against the plan, the camps ahead, daily calories and macros, and habit counts"
+        />
+        <Box sx={dim}>
+          <WrapRow align="flex-start">
+            <Box sx={{ ...wrapCol(1.3), ...stack(tokens.summit.space.gap.tile) }}>
+              <Reveal delay={section(0)}>
+                <WeightTrendCard
+                  trend={trend}
+                  range={range}
+                  rangeLength={length}
+                  goalKg={goalKg}
+                  plan={plan}
+                />
+              </Reveal>
+              <Reveal delay={section(2)}>
+                <FoodCards
+                  days={days}
+                  to={to}
+                  rails={rails ? { floor: rails.calorie_floor, ceiling: rails.calorie_ceiling } : null}
+                />
+              </Reveal>
+            </Box>
+            <Box sx={{ ...wrapCol(1), ...stack(tokens.summit.space.gap.tile) }}>
+              <Reveal delay={section(1)}>
+                <CampsCard
+                  trend={trend}
+                  goalKg={goalKg}
+                  start={profile ? { date: profile.start_date, kg: profile.start_weight_kg } : null}
+                />
+              </Reveal>
+              <Reveal delay={section(2)}>
+                {trend.data ? (
+                  <WeeklyLossCard trend={trend.data} height={150} titleSize="card" />
+                ) : (
+                  <QueryStateCard query={trend} what="the weekly loss" height={190} titleSize="card" />
+                )}
+              </Reveal>
+              <Reveal delay={section(3)}>
+                <HabitCounts days={days} />
+              </Reveal>
+            </Box>
+          </WrapRow>
+        </Box>
       </Box>
 
       <Reveal delay={section(4)}>

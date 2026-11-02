@@ -76,7 +76,7 @@ function useCommands(close: () => void): Command[] {
       go('Reminders', 'Notifications for the day', '/settings/reminders'),
       go('Export and restore', 'Everything in one zip', '/settings/data'),
       go('Plan history', 'Every plan version, revertible', '/plan'),
-      go('Scans', 'Evolt 360 results', '/scans'),
+      go('Evolt scans', 'Evolt 360 body composition results', '/scans'),
       go('Progress photos', 'Library and compare', '/photos'),
       go('Import Apple Watch data', 'Steps, active energy and sleep', '/imports/health'),
       go('Exercise library', 'Search, filter and form videos', '/train/library'),

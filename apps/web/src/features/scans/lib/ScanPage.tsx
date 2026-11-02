@@ -83,7 +83,7 @@ const crumb = (
     }}
   >
     <ArrowBackRounded aria-hidden sx={{ fontSize: 16 }} />
-    Scans
+    Evolt scans
   </Link>
 )
 

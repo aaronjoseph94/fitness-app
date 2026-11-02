@@ -1,4 +1,4 @@
-// Owns: the exercise list — one 2a row per exercise (44 px thumb tile, name 14/500, primary muscles · equipment in 12 px
+// Owns: the exercise list — one 2a row per exercise (or, with `grid`, rows in as many columns as fit) (44 px thumb tile, name 14/500, primary muscles · equipment in 12 px
 // muted, a "Hidden" chip when outside the allowed set, a chevron when the row opens something), `ink.hairline` hairlines
 // between rows, rendered 40 at a time as the end of the list scrolls into view, with an optional trailing action per
 // row (e.g. an info button) and an "Added" mark for exercises already picked. Rows bring their own 20 px gutter, so the
@@ -26,7 +26,15 @@ export interface ExerciseListProps {
   /** Exercises shown with an "Added" check. */
   pickedIds?: ReadonlySet<string>
   testId?: string
+  /**
+   * Lay the rows out in as many columns as fit (each at least `GRID_MIN` wide), so a wide page is not one long column
+   * with blank space beside it. Off in sheets and pickers, which are one column wide anyway.
+   */
+  grid?: boolean
 }
+
+/** A row's narrowest width in a grid list: a 44 px thumb, a two-line name and the chevron stay readable. */
+const GRID_MIN = 320
 
 export function musclesLine(e: Pick<ExerciseSummary, 'primary_muscles' | 'equipment'>): string {
   const muscles = e.primary_muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
@@ -39,6 +47,7 @@ export function ExerciseList({
   trailing,
   pickedIds,
   testId = 'exercise-list',
+  grid = false,
 }: ExerciseListProps) {
   const [shown, setShown] = useState(PAGE)
   const sentinel = useRef<HTMLDivElement | null>(null)
@@ -60,7 +69,23 @@ export function ExerciseList({
   }, [shown, exercises.length])
 
   return (
-    <Box component="ul" data-testid={testId} sx={{ listStyle: 'none', m: 0, p: 0 }}>
+    <Box
+      component="ul"
+      data-testid={testId}
+      sx={{
+        listStyle: 'none',
+        m: 0,
+        p: 0,
+        // A grid draws each row's hairline under it (rows sit side by side, so "between rows" is per column); the
+        // card clips the last ones.
+        ...(grid && {
+          display: 'grid',
+          gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${GRID_MIN}px), 1fr))`,
+          '& > li': { borderBottom: `1px solid ${tokens.ink.hairline}` },
+          mb: '-1px',
+        }),
+      }}
+    >
       {exercises.slice(0, shown).map((e) => {
         const picked = pickedIds?.has(e.id) ?? false
         return (
@@ -70,7 +95,8 @@ export function ExerciseList({
             sx={{
               display: 'flex',
               alignItems: 'center',
-              '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` },
+              minWidth: 0,
+              ...(!grid && { '& + &': { borderTop: `1px solid ${tokens.ink.hairline}` } }),
             }}
           >
             <ListItemButton
@@ -140,7 +166,11 @@ export function ExerciseList({
         <Box
           component="li"
           ref={sentinel}
-          sx={{ py: 3, textAlign: 'center', borderTop: `1px solid ${tokens.ink.hairline}` }}
+          sx={{
+            py: 3,
+            textAlign: 'center',
+            ...(grid ? { gridColumn: '1 / -1' } : { borderTop: `1px solid ${tokens.ink.hairline}` }),
+          }}
         >
           <Button onClick={() => setShown((n) => n + PAGE)}>Show more ({exercises.length - shown})</Button>
         </Box>

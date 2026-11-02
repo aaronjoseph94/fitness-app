@@ -123,7 +123,7 @@ export function AiCard({ latest, pendingCount, events }: AiCardProps) {
             '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
           }}
         />
-        <Box component="h2" id={titleId} sx={{ m: 0, font: 'inherit', flex: 1, minWidth: 0 }}>
+        <Box component="h3" id={titleId} sx={{ m: 0, font: 'inherit', flex: 1, minWidth: 0 }}>
           AI check-in
         </Box>
         {newest && (
@@ -183,7 +183,7 @@ function ProposalSlot({ proposal, pendingCount }: { proposal: Proposal; pendingC
     >
       <ProposalCard
         testId="today-proposal"
-        headingComponent="h3"
+        headingComponent="h4"
         title={short ? proposal.summary : view.title}
         source={view.source}
         summary={short ? null : proposal.summary}
@@ -280,7 +280,7 @@ function EventSection({ event }: { event: AiEvent }) {
           {formatRecentTime(event.created_at)}
         </Box>
       </Box>
-      <Box component="h3" sx={{ ...displayTitle('card'), m: 0, mt: '6px' }}>
+      <Box component="h4" sx={{ ...displayTitle('card'), m: 0, mt: '6px' }}>
         {view.title}
       </Box>
       {view.text && (

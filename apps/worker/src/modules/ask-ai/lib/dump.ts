@@ -322,7 +322,7 @@ export async function applyDump(
         out.receipts.push({
           kind: 'scan',
           date: scan.date,
-          summary: 'Scan sheet · review in Scans',
+          summary: 'Scan sheet · review in Evolt scans',
           ref_id: scan.id,
           ref_updated_at: null,
           before: null,

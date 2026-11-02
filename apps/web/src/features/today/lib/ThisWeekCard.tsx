@@ -349,7 +349,7 @@ export function ThisWeekCard({
           gap: '4px 12px',
         }}
       >
-        <Box component="h2" sx={{ ...displayTitle('section'), m: 0, minWidth: 0 }}>
+        <Box component="h3" sx={{ ...displayTitle('section'), m: 0, minWidth: 0 }}>
           This week
         </Box>
         <Box

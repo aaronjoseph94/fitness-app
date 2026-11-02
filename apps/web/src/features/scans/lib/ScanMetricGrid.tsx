@@ -55,7 +55,8 @@ export function ScanMetricGrid({ scans }: { scans: readonly ConfirmedScan[] }) {
       subtitle={`${scans.length} scan${scans.length === 1 ? '' : 's'} · latest ${formatDay(last.date)}, change since ${formatDay(first.date)}`}
       testId="scan-metric-grid"
     >
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+      {/* 130 px cells: two across even on a 360 px phone, rather than one long column. */}
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
         {TILES.map((t) => {
           const values = scans.map((s) => s.record[t.field])
           const now = last.record[t.field]

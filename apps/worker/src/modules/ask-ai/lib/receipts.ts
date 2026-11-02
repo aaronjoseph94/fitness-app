@@ -126,7 +126,7 @@ export async function undoReceipt(deps: Deps, id: string): Promise<Receipt> {
   const [row] = await deps.db.select().from(chat_receipts).where(eq(chat_receipts.id, id))
   if (!row) throw notFound('Receipt')
   if (row.kind === 'scan')
-    throw new HttpError(409, 'not_undoable', 'A scan sheet is reviewed or deleted in Scans')
+    throw new HttpError(409, 'not_undoable', 'A scan sheet is reviewed or deleted in Evolt scans')
   const now = deps.now().toISOString()
   const claimed = await deps.db
     .update(chat_receipts)
@@ -251,7 +251,7 @@ async function undoWrite(deps: Deps, row: ReceiptRow): Promise<void> {
       return
     }
     case 'scan':
-      throw new HttpError(409, 'not_undoable', 'A scan sheet is reviewed or deleted in Scans')
+      throw new HttpError(409, 'not_undoable', 'A scan sheet is reviewed or deleted in Evolt scans')
   }
 }
 

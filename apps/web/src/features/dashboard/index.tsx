@@ -1,8 +1,8 @@
 // Owns: the Dashboard — the app's overview of a window of history (1d "Summit"). The sky hero opens it ("The climb so
 // far" and the window's dates, the title, the days logged and the expenditure estimate, the 30 / 90 / 180-day window
 // as glass and "Export in Settings", the way to Settings → Data); then, on the cream panel, the trend card beside the deep-sky "Against the plan", the five KPI
-// tiles, weekly loss / body composition / macros, and Training; then the detail sections (the latest day, the weight
-// journey with the tape and the camps, calories and protein, recovery and habits). Every row of cards wraps rather
+// tiles, weekly loss / body composition / macros and the latest day, under an "Overview" title; then Training and the
+// detail sections (the weight journey with the tape and the camps, calories and protein, recovery and habits). Every row of cards wraps rather
 // than squeezing (README §4). The window is 30, 90 or 180 days (?window=). On a phone the detail sections fold away and
 // open on a tap. Reads GET /api/days, /api/trend, /api/fasts, /api/sessions, /api/scans and /api/settings. Needs a
 // connection.
@@ -20,9 +20,9 @@ import {
   formatShortDate,
   PageHeader,
   Reveal,
+  SectionHeader,
   Segmented,
   staggerDelay,
-  visuallyHidden,
   wrapCol,
   WrapRow,
 } from '../../components'
@@ -197,9 +197,11 @@ export function DashboardPage() {
         data-testid="dashboard-now"
         sx={{ ...column, minWidth: 0 }}
       >
-        <Box component="h2" id="now-title" sx={visuallyHidden}>
-          Now
-        </Box>
+        <SectionHeader
+          id="now"
+          title="Overview"
+          subtitle="Trend weight against the plan, this window’s daily averages, and the latest day against its targets"
+        />
         <KpiBand
           kpis={dashboardKpis(data)}
           goal={facts}
@@ -225,16 +227,14 @@ export function DashboardPage() {
             </Box>
           ))}
         </WrapRow>
+        {/* The latest day against its targets closes the overview (it read as an orphan between two sections). */}
+        <Reveal delay={sectionDelay(0)}>
+          <LatestDay data={data} />
+        </Reveal>
       </Box>
 
-      <Reveal delay={sectionDelay(0)}>
-        <TrainingSection data={data} />
-      </Reveal>
-
       <Reveal delay={sectionDelay(1)}>
-        <Box sx={{ mt: `${40 - ROW_GAP}px` }}>
-          <LatestDay data={data} />
-        </Box>
+        <TrainingSection data={data} />
       </Reveal>
       <Reveal delay={sectionDelay(2)}>
         <BodySection data={data} />
@@ -250,7 +250,7 @@ export function DashboardPage() {
       <Box sx={{ display: { md: 'none' } }}>
         <SettingsGroup id="more" title="More">
           <LinkRow label="Progress" to="/progress" />
-          <LinkRow label="Scans" to="/scans" />
+          <LinkRow label="Evolt scans" to="/scans" />
           <LinkRow label="Plan history" to="/plan" />
         </SettingsGroup>
       </Box>

@@ -206,7 +206,7 @@ function Header({ id, readAt }: { id: string; readAt: number | null }) {
         gap: '4px 12px',
       }}
     >
-      <Box component="h2" id={id} sx={{ ...displayTitle('section'), m: 0, minWidth: 0 }}>
+      <Box component="h3" id={id} sx={{ ...displayTitle('section'), m: 0, minWidth: 0 }}>
         Today’s fuel
       </Box>
       {readAt !== null && (

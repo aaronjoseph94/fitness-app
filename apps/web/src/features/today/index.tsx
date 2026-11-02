@@ -3,11 +3,11 @@
 // the start weight; today's weigh-in and the 7-day change; the pills for the change since base camp and kg to the
 // summit; the glass "Next camp" card; under it the gold "+ Log" that opens the quick-log sheet, in the headline column
 // so it never sits on the mountain; and the mountain with its camps, the summit and "You"), then on the cream panel:
-// "Today's fuel" (five capsule gauges, the fast badge and queued logs) beside the pinned coach note over the quick-log
-// row (1.45 : 1, wrapping); today's session (with the readiness ring), the AI check-in (today's day adjustment, the
-// latest AI event or the pending proposal, any safety flag; live: polled every 15 s while visible) and the deep-sky
-// "This week" (1 : 1 : 1, wrapping; its next Evolt scan from the scan schedule); and the recent activity table from the
-// same feed.
+// "Today at a glance": two columns (1.45 : 1, wrapping) — "Today's fuel" (five capsule gauges, the fast badge and queued
+// logs) over today's workout (with the readiness ring); beside them the quick-log row, the pinned coach note, the AI
+// check-in (today's day adjustment, the latest AI event or the pending proposal, any safety flag; live: polled every
+// 15 s while visible) and the deep-sky "This week" (its next Evolt scan from the scan schedule). Then the recent
+// activity table from the same feed.
 // Reads: GET /api/day/:date (with the note and the active plan's forecast), /api/trend (milestones too), /api/settings,
 // /api/week-plans/view, /api/week-plans?status=proposed, /api/scans/schedule, /api/fasts (this week's planned fasts),
 // /api/days and /api/sessions (readiness),
@@ -28,6 +28,7 @@ import {
   PageHeader,
   QueryStateCard,
   Reveal,
+  SectionHeader,
   WrapRow,
   wrapCol,
 } from '../../components'
@@ -53,8 +54,17 @@ import { useTodayData } from './lib/useToday'
 /** Fallback while settings load: the water target (SPEC §6). */
 const DEFAULT_WATER_ML = 3000
 
-/** The second row's cards with a planned session, for their placeholders. */
-const ROW_HEIGHT = 420
+/** Today's workout card with a planned session, and the week card, for their placeholders. */
+const SESSION_HEIGHT = 420
+const WEEK_HEIGHT = 300
+/** A column of cards: the page's gap between them, each its own height. */
+const columnSx = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: `${tokens.rhythm.section}px`,
+  alignContent: 'start',
+} as const
+const cardSkeleton = { borderRadius: `${tokens.radius.card}px` } as const
 /** The recent activity table's height under its title, for its placeholder. */
 const ACTIVITY_HEIGHT = 260
 
@@ -147,78 +157,36 @@ export function TodayPage() {
         extras={<HeroMountain climb={climb} />}
       />
 
-      {/* Fuel : coach note over the quick-log row, 1.45 : 1; they wrap to one column rather than squeeze. Without a
-          coach note the AI check-in moves up under the quick-log row, so that column is not a lone row of tiles. */}
-      <WrapRow align="flex-start">
-        <Box sx={wrapCol(1.45)}>
-          <Reveal delay={enter(0)}>
-            {!day.data && !isQueryLoading(day) ? (
-              <QueryStateCard query={day} what="today" />
+      {/* Two columns over the panel, 1.45 : 1, that wrap to one column rather than squeeze. The left one holds what
+          today is (the fuel gauges, then today's workout); the right one what to do about it (log, the coach note, the
+          AI check-in) and the week around it, so neither column ends far above the other on a desktop. On a phone the
+          order is: fuel, workout, log, note, AI check-in, this week. */}
+      <Box component="section" aria-labelledby="today-glance-title">
+        <SectionHeader
+          id="today-glance"
+          title="Today at a glance"
+          subtitle="What you’ve eaten, drunk, walked and slept against today’s targets, today’s workout and this week’s plan"
+        />
+        <WrapRow align="flex-start">
+          <Box sx={{ ...wrapCol(1.45), ...columnSx }}>
+            <Reveal delay={enter(0)}>
+              {!day.data && !isQueryLoading(day) ? (
+                <QueryStateCard query={day} what="today" />
+              ) : (
+                <TodayRings
+                  day={day.data}
+                  loading={isQueryLoading(day)}
+                  readAt={day.dataUpdatedAt}
+                  pending={pending}
+                  waterTargetMl={waterTargetMl}
+                  onAddHealth={() => setHealthOpen(true)}
+                />
+              )}
+            </Reveal>
+            {/* Until the day answers, a placeholder: "Rest day" would be a claim. */}
+            {isQueryLoading(day) ? (
+              <Skeleton variant="rounded" height={SESSION_HEIGHT} sx={cardSkeleton} />
             ) : (
-              <TodayRings
-                day={day.data}
-                loading={isQueryLoading(day)}
-                readAt={day.dataUpdatedAt}
-                pending={pending}
-                waterTargetMl={waterTargetMl}
-                onAddHealth={() => setHealthOpen(true)}
-              />
-            )}
-          </Reveal>
-        </Box>
-        <Box
-          sx={{
-            ...wrapCol(1),
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr)',
-            gap: '20px',
-            alignContent: 'start',
-          }}
-        >
-          {note && (
-            <Reveal delay={enter(1)}>
-              <CoachNote note={note} />
-            </Reveal>
-          )}
-          <QuickLogRow fasting={fasting} />
-          {!note && (
-            <Reveal delay={enter(1)}>
-              <AiCard
-                latest={day.data?.proposals.latest ?? null}
-                pendingCount={day.data?.proposals.pending_count ?? 0}
-                events={feed.data?.events ?? []}
-              />
-            </Reveal>
-          )}
-        </Box>
-      </WrapRow>
-
-      {/* Today's session : (AI check-in :) this week, 1 : 1 (: 1), each card its own height. Until the day and the
-          week answer, placeholders; if either fails, its banner: "Rest day" or an empty week would be a claim. */}
-      <WrapRow align="flex-start">
-        {isQueryLoading(day) || isQueryLoading(week) ? (
-          <>
-            <Skeleton
-              variant="rounded"
-              height={ROW_HEIGHT}
-              sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
-            />
-            <Skeleton
-              variant="rounded"
-              height={ROW_HEIGHT}
-              sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
-            />
-            {note && (
-              <Skeleton
-                variant="rounded"
-                height={ROW_HEIGHT}
-                sx={{ ...wrapCol(1), borderRadius: `${tokens.radius.card}px` }}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            <Box sx={wrapCol(1)}>
               <Reveal delay={enter(2)}>
                 {day.data ? (
                   <TodaySession
@@ -233,20 +201,28 @@ export function TodayPage() {
                   <QueryStateCard query={day} what="today’s session" />
                 )}
               </Reveal>
-            </Box>
-            {note && (
-              <Box sx={wrapCol(1)}>
-                <Reveal delay={enter(3)}>
-                  <AiCard
-                    latest={day.data?.proposals.latest ?? null}
-                    pendingCount={day.data?.proposals.pending_count ?? 0}
-                    events={feed.data?.events ?? []}
-                  />
-                </Reveal>
-              </Box>
             )}
-            <Box sx={wrapCol(1)}>
-              <Reveal delay={enter(4)}>
+          </Box>
+          <Box sx={{ ...wrapCol(1), ...columnSx }}>
+            <QuickLogRow fasting={fasting} />
+            {note && (
+              <Reveal delay={enter(1)}>
+                <CoachNote note={note} />
+              </Reveal>
+            )}
+            <Reveal delay={enter(1)}>
+              <AiCard
+                latest={day.data?.proposals.latest ?? null}
+                pendingCount={day.data?.proposals.pending_count ?? 0}
+                events={feed.data?.events ?? []}
+              />
+            </Reveal>
+            {/* Until the day and the week answer, a placeholder; if either fails, its banner: an empty week would be a
+                claim. */}
+            {isQueryLoading(day) || isQueryLoading(week) ? (
+              <Skeleton variant="rounded" height={WEEK_HEIGHT} sx={cardSkeleton} />
+            ) : (
+              <Reveal delay={enter(3)}>
                 {week.data && day.data ? (
                   <ThisWeekCard
                     date={date}
@@ -263,10 +239,10 @@ export function TodayPage() {
                   <QueryStateCard query={week.data ? day : week} what="this week" />
                 )}
               </Reveal>
-            </Box>
-          </>
-        )}
-      </WrapRow>
+            )}
+          </Box>
+        </WrapRow>
+      </Box>
 
       {/* Hidden while the feed has no event (RecentActivity draws nothing then). */}
       <Reveal delay={enter(5)}>
