@@ -156,9 +156,9 @@ export function ProgressPage() {
         <SummaryStats summary={summary} targets={targets} rate={rate} ahead={pace.ahead} />
       </Box>
 
-      <Box component="section" aria-labelledby="progress-weight-title">
+      <Box component="section" aria-labelledby="progress-weight-food-title">
         <SectionHeader
-          id="progress-weight"
+          id="progress-weight-food"
           title="Weight and food"
           subtitle="The weight trend against the plan, the camps ahead, daily calories and macros, and habit counts"
         />

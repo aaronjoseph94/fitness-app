@@ -236,7 +236,10 @@ export function DailyBars({
             <R.YAxis {...yAxisStyle} domain={y.domain} ticks={y.ticks} tickFormatter={ticks} />
             <R.Tooltip content={Tip} cursor={barCursor} />
             {stacked ? (
-              <R.BarStack stackId="day" radius={BAR_RADIUS}>
+              // The stack id names Recharts' clip paths (`recharts-bar-stack-clip-path-<id>-<i>`): the chart's own test id
+              // keeps them unique when two stacked charts share a page (Progress's calories and macros), so neither
+              // clips its bars with the other's shapes.
+              <R.BarStack stackId={testId} radius={BAR_RADIUS}>
                 {barEls(R)}
               </R.BarStack>
             ) : (

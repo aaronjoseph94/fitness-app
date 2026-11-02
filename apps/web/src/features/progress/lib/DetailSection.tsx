@@ -48,10 +48,10 @@ interface DetailSectionProps {
   fastsPerMonth: number | null
 }
 
-/** A single-column stack of cards, 26 px apart (README §4: a grid stack declares its one track). */
 /** Water, steps and sleep share one plot height (sleep's two panels at their default), so the row ends level. */
 const HABIT_CHART_HEIGHT = 300
 
+/** A single-column stack of cards, 26 px apart (README §4: a grid stack declares its one track). */
 const stack = {
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1fr)',
@@ -95,82 +95,87 @@ export function DetailSection({
         subtitle="The waist tape, how consistently you hit protein and logged each day, then water, steps, sleep and fasting"
       />
       <Box sx={stack}>
-        {/* Tape beside the two daily calendars: three cards that end level, wrapping on narrower screens. */}
-        <WrapRow>
-          {waist && (
-            <Box sx={wrapCol(1)}>
-              <ChartCard
-                title="Waist and WHR"
-                titleSize="card"
-                fill
-                subtitle="Waist at the navel and the waist-to-hip ratio"
-                empty={
-                  waist.length
-                    ? undefined
-                    : {
-                        title: 'No tape measurements in this range',
-                        body: 'Measure waist and hips once a week and both lines start here.',
-                      }
-                }
-              >
-                <WaistWhrChart points={waist} whrTarget={WHR_TARGET} />
-              </ChartCard>
-            </Box>
-          )}
-          {rows && (
-            <>
+        {/* Tape beside the two daily calendars: three cards that end level, wrapping on narrower screens. No row
+            while both reads load, so the section has no stray gap. */}
+        {(waist || rows) && (
+          <WrapRow>
+            {waist && (
               <Box sx={wrapCol(1)}>
                 <ChartCard
-                  title="Protein adherence"
+                  title="Waist and WHR"
                   titleSize="card"
                   fill
-                  subtitle={
-                    proteinTarget
-                      ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank`
-                      : 'Share of the protein target'
+                  subtitle="Waist at the navel and the waist-to-hip ratio"
+                  empty={
+                    waist.length
+                      ? undefined
+                      : {
+                          title: 'No tape measurements in this range',
+                          body: 'Measure waist and hips once a week and both lines start here.',
+                        }
                   }
-                  empty={meals ? undefined : { title: 'No meals logged in this range' }}
                 >
-                  <CalendarHeatmap
-                    days={proteinAdherence(rows)}
-                    metric="protein"
-                    label="Protein adherence"
-                    testId="chart-protein-adherence"
-                    describe={(v) =>
-                      v === null
-                        ? 'No meals logged or a fast day'
-                        : v >= 1
-                          ? 'At or above target'
-                          : `${Math.round(v * 100)} % of target`
-                    }
-                  />
+                  <WaistWhrChart points={waist} whrTarget={WHR_TARGET} />
                 </ChartCard>
               </Box>
-              <Box sx={wrapCol(1)}>
-                <ChartCard
-                  title="Logging adherence"
-                  titleSize="card"
-                  fill
-                  subtitle="Weigh-in, two meals or a fast, and water: share of the three"
-                >
-                  <CalendarHeatmap
-                    days={loggingAdherence(rows)}
-                    metric="weight"
-                    label="Logging adherence"
-                    testId="chart-logging-adherence"
-                    describe={(v) =>
-                      v === null
-                        ? 'No data'
-                        : v >= 1
-                          ? 'All three logged'
-                          : `${Math.round(v * 3)} of 3 logged`
+            )}
+            {rows && (
+              <>
+                <Box sx={wrapCol(1)}>
+                  <ChartCard
+                    title="Protein adherence"
+                    titleSize="card"
+                    fill
+                    subtitle={
+                      proteinTarget
+                        ? `Share of the ${formatNumber(proteinTarget)} g target; fast days left blank`
+                        : 'Share of the protein target'
                     }
-                  />
-                </ChartCard>
-              </Box>
-            </>
-          )}
-        </WrapRow>
+                    empty={meals ? undefined : { title: 'No meals logged in this range' }}
+                  >
+                    <CalendarHeatmap
+                      roomy
+                      days={proteinAdherence(rows)}
+                      metric="protein"
+                      label="Protein adherence"
+                      testId="chart-protein-adherence"
+                      describe={(v) =>
+                        v === null
+                          ? 'No meals logged or a fast day'
+                          : v >= 1
+                            ? 'At or above target'
+                            : `${Math.round(v * 100)} % of target`
+                      }
+                    />
+                  </ChartCard>
+                </Box>
+                <Box sx={wrapCol(1)}>
+                  <ChartCard
+                    title="Logging adherence"
+                    titleSize="card"
+                    fill
+                    subtitle="Weigh-in, two meals or a fast, and water: share of the three"
+                  >
+                    <CalendarHeatmap
+                      roomy
+                      days={loggingAdherence(rows)}
+                      metric="weight"
+                      label="Logging adherence"
+                      testId="chart-logging-adherence"
+                      describe={(v) =>
+                        v === null
+                          ? 'No data'
+                          : v >= 1
+                            ? 'All three logged'
+                            : `${Math.round(v * 3)} of 3 logged`
+                      }
+                    />
+                  </ChartCard>
+                </Box>
+              </>
+            )}
+          </WrapRow>
+        )}
         {rows && (
           // The three cards fill their row, so it ends level whatever each chart's height; the row wraps.
           <WrapRow>

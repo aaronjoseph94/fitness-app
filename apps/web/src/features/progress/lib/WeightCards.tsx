@@ -75,7 +75,7 @@ function TitleRow({
   return (
     <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '12px', rowGap: '2px' }}>
       <Box
-        component="h2"
+        component="h3"
         id={id}
         sx={{
           m: 0,

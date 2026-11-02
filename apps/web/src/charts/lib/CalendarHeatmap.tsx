@@ -27,12 +27,17 @@ export interface CalendarHeatmapProps {
   describe?: (value: number | null) => string
   width?: number
   legend?: boolean
+  /**
+   * Let a short range's cells grow (to `MAX_CELL_SHORT` when it spans at most `SHORT_WEEKS` weeks), so a calendar
+   * alone in a card uses the card instead of a corner of it. Progress's calendars set it.
+   */
+  roomy?: boolean
 }
 
 const LEFT = 18
 const TOP = 16
 const MAX_CELL = 22
-/** A short range (Progress's 4 weeks) has few columns: its cells may grow to this, so the calendar uses its card. */
+/** A `roomy` calendar over a short range (Progress's 4 weeks) has few columns: its cells may grow to this. */
 const MAX_CELL_SHORT = 34
 const SHORT_WEEKS = 6
 const WEEKDAYS = ['M', '', 'W', '', 'F', '', 'S']
@@ -51,6 +56,7 @@ export function CalendarHeatmap({
   describe,
   width,
   legend = true,
+  roomy = false,
 }: CalendarHeatmapProps) {
   const [ref, w] = useWidth(width)
   const [selected, setSelected] = useState<string | null>(null)
@@ -64,7 +70,7 @@ export function CalendarHeatmap({
   // Cells shrink to fit the width (never a horizontal scroll); below 10 px the gaps tighten to 1 px.
   const fit = (gap: number) => Math.floor((w - LEFT - gap * (weeks - 1)) / Math.max(weeks, 1))
   const gap = fit(3) >= 10 ? 3 : 1
-  const cell = Math.max(2, Math.min(weeks <= SHORT_WEEKS ? MAX_CELL_SHORT : MAX_CELL, fit(gap)))
+  const cell = Math.max(2, Math.min(roomy && weeks <= SHORT_WEEKS ? MAX_CELL_SHORT : MAX_CELL, fit(gap)))
   const svgW = LEFT + weeks * cell + (weeks - 1) * gap
   const svgH = TOP + 7 * cell + 6 * gap
 

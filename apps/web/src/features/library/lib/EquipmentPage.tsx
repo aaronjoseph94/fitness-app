@@ -132,11 +132,6 @@ function StatusToggle({
   )
 }
 
-/**
- * One 2a list row: name and its muted line on the left, the status control and the note button on the right. The DOM
- * runs name → control → note so Tab follows what you see; on a phone the control wraps to its own full-width line
- * under the name and its note button.
- */
 /** The equipment types' rows, two across from `lg` (each row keeps a top hairline, so both columns read as lists). */
 const twoUpRows = {
   display: 'grid',
@@ -144,13 +139,41 @@ const twoUpRows = {
   columnGap: `${tokens.rhythm.section}px`,
 } as const
 
-/** The machine areas: one column, two from `lg`; the trailing margin of the last card is cancelled. */
+/** The machine areas: one column, two from `lg`, each column a stack of its own panels. */
 const areaColumns = {
-  columnCount: { xs: 1, lg: 2 },
-  columnGap: `${tokens.rhythm.section}px`,
-  mb: `-${tokens.rhythm.section}px`,
+  display: 'grid',
+  gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' },
+  gap: `${tokens.rhythm.section}px`,
+  alignItems: 'start',
+} as const
+const areaStack = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: `${tokens.rhythm.section}px`,
+  minWidth: 0,
 } as const
 
+/**
+ * The areas split between the two columns by position (even left, odd right): a status change or an open note editor
+ * resizes a panel but never moves one to the other column under the pointer, as CSS columns' rebalancing would.
+ * "Not at your gym" is not split: it spans both columns under them.
+ */
+function splitAreas<T extends { title: string }>(
+  groups: readonly T[],
+): { left: T[]; right: T[]; after: T[] } {
+  const atGym = groups.filter((g) => g.title !== NOT_AT_GYM)
+  return {
+    left: atGym.filter((_, i) => i % 2 === 0),
+    right: atGym.filter((_, i) => i % 2 === 1),
+    after: groups.filter((g) => g.title === NOT_AT_GYM),
+  }
+}
+
+/**
+ * One 2a list row: name and its muted line on the left, the status control and the note button on the right. The DOM
+ * runs name → control → note so Tab follows what you see; on a phone the control wraps to its own full-width line
+ * under the name and its note button.
+ */
 function EquipmentRow({
   row,
   count,
@@ -192,7 +215,8 @@ function EquipmentRow({
           rowGap: 2,
         }}
       >
-        <Box sx={{ flex: '1 1 180px', minWidth: 0 }}>
+        {/* 140 px: name + the 285 px control + the note button still fit one line in a two-up column at 1,200 px. */}
+        <Box sx={{ flex: '1 1 140px', minWidth: 0 }}>
           <Box
             sx={{
               display: 'flex',
@@ -442,6 +466,25 @@ export function EquipmentPage() {
     .map((g) => ({ ...g, rows: g.rows.filter(matches) }))
     .filter((g) => g.rows.length > 0)
 
+  const areas = splitAreas(groupsShown)
+  const areaPanel = (group: (typeof groupsShown)[number]) => (
+    <Panel
+      key={group.title}
+      title={group.title}
+      description={
+        group.title === NOT_AT_GYM
+          ? 'Their exercises stay out of the allowed set'
+          : `${group.rows.length} machine${group.rows.length === 1 ? '' : 's'}`
+      }
+      padding="none"
+      testId="equipment-area"
+    >
+      {group.rows.map((row) => (
+        <EquipmentRow key={row.equipment} row={row} onChange={(s, n) => set(row.equipment, s, n)} />
+      ))}
+    </Panel>
+  )
+
   const machineCount = rows.groups
     .filter((g) => g.title !== NOT_AT_GYM)
     .reduce((n, g) => n + g.rows.length, 0)
@@ -540,30 +583,16 @@ export function EquipmentPage() {
             body="Add the machines at your gym; the AI builds workouts from them."
           />
         ) : (
-          // Areas flow into two balanced columns on a wide screen (they differ in length, so a grid would leave gaps).
-          <Box sx={areaColumns}>
-            {groupsShown.map((group) => (
-              <Box key={group.title} sx={{ breakInside: 'avoid', mb: `${tokens.rhythm.section}px` }}>
-                <Panel
-                  title={group.title}
-                  description={
-                    group.title === NOT_AT_GYM
-                      ? 'Their exercises stay out of the allowed set'
-                      : `${group.rows.length} machine${group.rows.length === 1 ? '' : 's'}`
-                  }
-                  padding="none"
-                  testId="equipment-area"
-                >
-                  {group.rows.map((row) => (
-                    <EquipmentRow
-                      key={row.equipment}
-                      row={row}
-                      onChange={(s, n) => set(row.equipment, s, n)}
-                    />
-                  ))}
-                </Panel>
-              </Box>
-            ))}
+          // Two columns of areas from `lg` (split by position, so nothing jumps columns), "Not at your gym" under both.
+          <Box sx={areaStack}>
+            <Box sx={areaColumns}>
+              {[areas.left, areas.right].map((column, c) => (
+                <Box key={c} sx={areaStack}>
+                  {column.map(areaPanel)}
+                </Box>
+              ))}
+            </Box>
+            {areas.after.map(areaPanel)}
           </Box>
         )}
       </Reveal>

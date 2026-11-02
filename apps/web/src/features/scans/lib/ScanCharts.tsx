@@ -1,7 +1,10 @@
 // Owns: the scan charts as one block (SPEC §11 inventory) — fat vs lean mass across scans, body fat % and visceral
 // level across scans with gauges for the focused scan, and segmental fat at the baseline vs the focused scan. Used by
-// the scan page (full size) and the Progress tab (compact). `width` passes through for print.
+// the scan page and the Progress tab (full size: two across from `md`, the two cards ending level) and `compact` (one
+// column, shorter charts). `width` passes through for print.
 import Box from '@mui/material/Box'
+import type { Theme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { BodyCompositionChart, BodyFatVisceralChart, Gauge, SegmentalFatChart } from '../../../charts'
 import { ChartCard, formatNumber } from '../../../components'
 import { scanDay } from './format'
@@ -33,6 +36,9 @@ export function ScanCharts({
   width,
   headingComponent = 'h3',
 }: ScanChartsProps) {
+  // Side by side (full size from `md`), fat vs lean is drawn about as tall as the gauges and the body-fat chart beside
+  // it; stacked, it keeps its own height.
+  const sideBySide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'), { noSsr: true }) && !compact
   const latest = focus ?? scans.at(-1)
   const baseline = scans[0]
   if (!latest || !baseline) return null
@@ -64,7 +70,7 @@ export function ScanCharts({
           scans={compositionSeries(shown)}
           fatTarget={TARGETS.fatMassKg}
           width={width}
-          height={compact ? 180 : 420}
+          height={compact ? 180 : sideBySide ? 420 : 220}
         />
       </ChartCard>
       <ChartCard

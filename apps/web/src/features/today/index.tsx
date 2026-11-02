@@ -210,7 +210,7 @@ export function TodayPage() {
                 <CoachNote note={note} />
               </Reveal>
             )}
-            <Reveal delay={enter(1)}>
+            <Reveal delay={enter(2)}>
               <AiCard
                 latest={day.data?.proposals.latest ?? null}
                 pendingCount={day.data?.proposals.pending_count ?? 0}

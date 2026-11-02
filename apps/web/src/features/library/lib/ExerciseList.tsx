@@ -1,8 +1,9 @@
-// Owns: the exercise list — one 2a row per exercise (or, with `grid`, rows in as many columns as fit) (44 px thumb tile, name 14/500, primary muscles · equipment in 12 px
-// muted, a "Hidden" chip when outside the allowed set, a chevron when the row opens something), `ink.hairline` hairlines
-// between rows, rendered 40 at a time as the end of the list scrolls into view, with an optional trailing action per
-// row (e.g. an info button) and an "Added" mark for exercises already picked. Rows bring their own 20 px gutter, so the
-// list sits flush in a card (or full-bleed in a sheet).
+// Owns: the exercise list — one 2a row per exercise (44 px thumb tile, name 14/500, primary muscles · equipment in
+// 12 px muted, a "Hidden" chip when outside the allowed set, a chevron when the row opens something), `ink.hairline`
+// hairlines between rows, rendered 40 at a time as the end of the list scrolls into view, with an optional trailing
+// action per row (e.g. an info button) and an "Added" mark for exercises already picked. With `grid`, the rows sit in
+// as many columns as fit (the library page). Rows bring their own 20 px gutter, so the list sits flush in a card (or
+// full-bleed in a sheet).
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import Box from '@mui/material/Box'
